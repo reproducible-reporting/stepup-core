@@ -1,0 +1,28 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ grep -i foo data.txt > analyzed.txt
+   SUCCESS │ grep -i foo data.txt > analyzed.txt
+     START │ cat analyzed.txt
+   SUCCESS │ cat analyzed.txt
+─────────────────────────────── Standard output ────────────────────────────────
+A bunch of foos walk into a bar,
+and watch some football.
+────────────────────────────────────────────────────────────────────────────────
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+   DELETED │ data.txt
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+      SKIP │ cat analyzed.txt
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       extended, digest 85191f53, inp_digset 85191f53
+Same inp hash        ./
+Same inp hash        analyzed.txt
+────────────────────────────────────────────────────────────────────────────────
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

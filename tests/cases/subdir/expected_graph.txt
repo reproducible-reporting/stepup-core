@@ -1,0 +1,113 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+            supplies   step:cat ../plan.py  # wd=sub/
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:example.txt
+            supplies   file:plan.py
+            supplies   file:sub/
+            supplies   step:./plan.py
+            supplies   step:cp -aT example.txt sub/example.txt
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:example.txt
+             creates   file:sub/
+             creates   file:sub/plan.py
+             creates   step:./plan.py  # wd=sub/
+             creates   step:cp -aT example.txt sub/example.txt
+
+file:example.txt
+                path = example.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp -aT example.txt sub/example.txt
+
+file:sub/
+                path = sub/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   file:sub/example.txt
+            supplies   file:sub/plan.py
+            supplies   file:sub/upper.txt
+            supplies   step:./plan.py  # wd=sub/
+            supplies   step:cat ../plan.py  # wd=sub/
+            supplies   step:cp -aT example.txt sub/example.txt
+            supplies   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+
+file:sub/plan.py
+                path = sub/plan.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:sub/
+            supplies   step:./plan.py  # wd=sub/
+
+step:cp -aT example.txt sub/example.txt
+             workdir = ./
+             command = cp -aT example.txt sub/example.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:example.txt
+            consumes   file:sub/
+             creates   file:sub/example.txt
+
+file:sub/example.txt
+                path = sub/example.txt
+               state = BUILT
+          created by   step:cp -aT example.txt sub/example.txt
+            consumes   file:sub/
+            supplies   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+
+step:./plan.py  # wd=sub/
+             workdir = sub/
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:sub/
+            consumes   file:sub/plan.py
+             creates   step:cat ../plan.py  # wd=sub/
+             creates   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+
+step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+             workdir = sub/
+             command = tr '[:lower:]' '[:upper:]' < example.txt > upper.txt
+               state = SUCCEEDED
+          created by   step:./plan.py  # wd=sub/
+            consumes   file:sub/
+            consumes   file:sub/example.txt
+             creates   file:sub/upper.txt
+
+file:sub/upper.txt
+                path = sub/upper.txt
+               state = BUILT
+          created by   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+            consumes   file:sub/
+
+step:cat ../plan.py  # wd=sub/
+             workdir = sub/
+             command = cat ../plan.py
+               state = SUCCEEDED
+          created by   step:./plan.py  # wd=sub/
+            consumes   file:plan.py
+            consumes   file:sub/

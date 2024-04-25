@@ -1,0 +1,15 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ echo "spam" > first.txt
+   SUCCESS │ echo "spam" > first.txt
+     START │ cp -v first.txt second.txt
+   SUCCESS │ cp -v first.txt second.txt
+─────────────────────────────── Standard output ────────────────────────────────
+'first.txt' -> 'second.txt'
+────────────────────────────────────────────────────────────────────────────────
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

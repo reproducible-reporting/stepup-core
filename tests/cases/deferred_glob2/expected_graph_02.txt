@@ -1,0 +1,31 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   step:./plan.py
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   dg:'static/**'
+
+dg:'static/**'
+          created by   step:./plan.py

@@ -1,0 +1,73 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:another.txt
+            supplies   file:between.txt
+            supplies   file:original.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:cp between.txt another.txt
+            supplies   step:cp original.txt between.txt
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:original.txt
+             creates   step:cp between.txt another.txt
+             creates   step:cp original.txt between.txt
+
+file:another.txt
+                path = another.txt
+               state = BUILT
+          created by   step:cp between.txt another.txt
+            consumes   file:./
+
+file:original.txt
+                path = original.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp original.txt between.txt
+
+step:cp between.txt another.txt
+             workdir = ./
+             command = cp between.txt another.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:between.txt
+             creates   file:another.txt
+
+file:between.txt
+                path = between.txt
+               state = BUILT
+          created by   step:cp original.txt between.txt
+            consumes   file:./
+            supplies   step:cp between.txt another.txt
+
+step:cp original.txt between.txt
+             workdir = ./
+             command = cp original.txt between.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:original.txt
+             creates   file:between.txt

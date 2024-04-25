@@ -1,0 +1,15 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cp -aT initial.txt input.txt
+   SUCCESS │ cp -aT initial.txt input.txt
+   WARNING │ 2 steps remain pending due to blocked steps
+──────────────────────────────── Blocked steps ─────────────────────────────────
+step:./expensive.py
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping cleanup due to incomplete build.
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

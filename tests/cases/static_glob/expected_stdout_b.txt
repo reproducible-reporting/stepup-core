@@ -1,0 +1,19 @@
+  WORKFLOW │ Loaded from .stepup/workflow.mpk.xz
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+      SKIP │ cp -aT inp3.txt out3.txt
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       extended, digest 67412ddd, inp_digset 2d040ea7
+Same inp hash        ./
+Same inp hash        inp3.txt
+Same out hash        out3.txt
+────────────────────────────────────────────────────────────────────────────────
+     START │ cp -aT inp4.txt out4.txt
+   SUCCESS │ cp -aT inp4.txt out4.txt
+     CLEAN │ out2.txt
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

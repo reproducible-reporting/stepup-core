@@ -1,0 +1,26 @@
+root:
+             version = v1
+
+(file:plan.py)
+                path = plan.py
+               state = STATIC
+            consumes   (file:./)
+
+(file:./)
+                path = ./
+               state = STATIC
+            supplies   (file:plan.py)
+
+(step:./plan.py)
+             workdir = ./
+             command = ./plan.py
+               state = PENDING
+
+(dg:'README.*')
+
+(dg:'*.md')
+
+(step:cat README.md)
+             workdir = ./
+             command = cat README.md
+               state = PENDING

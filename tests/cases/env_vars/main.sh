@@ -1,0 +1,124 @@
+#!/usr/bin/env -S bash -x
+# Exit on first error and cleanup.
+set -e
+trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
+xargs rm -rvf < .gitignore
+
+# Prepare some variables
+export ENV_VAR_TEST_STEPUP_AWDFTD="AAAA"
+export ENV_VAR_TEST_STEPUP_DFTHYH="BBBB"
+
+# Run the example
+cp variables_01.json variables.json
+stepup -e -w 1 plan.py & # > current_stdout_a.txt &
+
+# Get the graph after completion of the pending steps.
+python3 - << EOD
+from stepup.core.interact import *
+wait()
+graph("current_graph_01.txt")
+EOD
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit -1
+grep AAAA current_variables.txt
+cp current_variables.txt current_variables_01.txt
+
+# Rerun with changed file variables.json
+cp variables_02.json variables.json
+python3 - << EOD
+from stepup.core.interact import *
+watch_add("variables.json")
+run()
+wait()
+graph("current_graph_02.txt")
+EOD
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit -1
+grep AAAA current_variables.txt
+grep BBBB current_variables.txt
+cp current_variables.txt current_variables_02.txt
+
+# Rerun with UNchanged file variables.json
+touch variables.json
+python3 - << EOD
+from stepup.core.interact import *
+watch_add("variables.json")
+run()
+wait()
+graph("current_graph_03.txt")
+join()
+EOD
+
+# Wait for background processes, if any.
+wait $(jobs -p)
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit -1
+grep AAAA current_variables.txt
+grep BBBB current_variables.txt
+cp current_variables.txt current_variables_03.txt
+
+# Change a variable and restart
+export ENV_VAR_TEST_STEPUP_DFTHYH="CCCC"
+stepup -e -w 1 plan.py & # > current_stdout_b.txt &
+
+# Get the graph after completion of the pending steps.
+python3 - << EOD
+from stepup.core.interact import *
+wait()
+graph("current_graph_04.txt")
+join()
+EOD
+
+# Wait for background processes, if any.
+wait $(jobs -p)
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit -1
+grep AAAA current_variables.txt
+grep CCCC current_variables.txt
+cp current_variables.txt current_variables_04.txt
+
+# unset a variable and restart
+unset ENV_VAR_TEST_STEPUP_AWDFTD
+stepup -e -w 1 plan.py & # > current_stdout_c.txt &
+
+# Get the graph after completion of the pending steps.
+python3 - << EOD
+from stepup.core.interact import *
+wait()
+graph("current_graph_05.txt")
+join()
+EOD
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit -1
+grep -v AAAA current_variables.txt
+grep CCCC current_variables.txt
+cp current_variables.txt current_variables_05.txt
+
+# Wait for background processes, if any.
+wait $(jobs -p)
+
+# Set a variable again and restart
+export ENV_VAR_TEST_STEPUP_AWDFTD="DDDD"
+stepup -e -w 1 plan.py & # > current_stdout_d.txt &
+
+# Get the graph after completion of the pending steps.
+python3 - << EOD
+from stepup.core.interact import *
+wait()
+graph("current_graph_06.txt")
+join()
+EOD
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit -1
+grep DDDD current_variables.txt
+grep CCCC current_variables.txt
+cp current_variables.txt current_variables_06.txt
+
+# Wait for background processes, if any.
+wait $(jobs -p)

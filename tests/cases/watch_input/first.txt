@@ -1,0 +1,1 @@
+This is the initial state of the input file input.txt.

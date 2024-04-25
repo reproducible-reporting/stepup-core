@@ -1,0 +1,64 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   (file:sub/)
+            supplies   step:./plan.py
+            supplies   step:echo hello > sub/dir/nested/hello.txt
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:echo hello > sub/dir/nested/hello.txt
+
+step:echo hello > sub/dir/nested/hello.txt
+             workdir = ./
+             command = echo hello > sub/dir/nested/hello.txt
+               state = PENDING
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   (file:sub/dir/nested/)
+             creates   file:sub/dir/nested/hello.txt
+
+(file:sub/dir/nested/)
+                path = sub/dir/nested/
+               state = PENDING
+            consumes   (file:sub/dir/)
+            supplies   file:sub/dir/nested/hello.txt
+            supplies   step:echo hello > sub/dir/nested/hello.txt
+
+(file:sub/dir/)
+                path = sub/dir/
+               state = PENDING
+            consumes   (file:sub/)
+            supplies   (file:sub/dir/nested/)
+
+(file:sub/)
+                path = sub/
+               state = PENDING
+            consumes   file:./
+            supplies   (file:sub/dir/)
+
+file:sub/dir/nested/hello.txt
+                path = sub/dir/nested/hello.txt
+               state = PENDING
+          created by   step:echo hello > sub/dir/nested/hello.txt
+            consumes   (file:sub/dir/nested/)

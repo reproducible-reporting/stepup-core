@@ -1,0 +1,16 @@
+  DIRECTOR │ Listening on /tmp/stepup-qx0niv5o/director
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+  DIRECTOR │ Launched worker 1
+     START │ ./plan.py
+     START │ echo hello > hello.txt
+   SUCCESS │ echo hello > hello.txt
+     START │ mkdir -p sub/
+   SUCCESS │ mkdir -p sub/
+     START │ cp -aT hello.txt sub/hello.txt
+   SUCCESS │ ./plan.py
+   SUCCESS │ cp -aT hello.txt sub/hello.txt
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

@@ -1,0 +1,27 @@
+  WORKFLOW │ Loaded from .stepup/workflow.mpk.xz
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+    NOSKIP │ ./plan.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   extended, digest 53ca023c ➜ cc5deac6, inp_digset 53ca023c ➜ cc5deac6
+Modified inp hash    plan.py (digest 98e52b4a ➜ 66b966f4, size 101 ➜ 36)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./plan.py
+      FAIL │ ./plan.py
+────────────────────────────────── Step info ───────────────────────────────────
+Command               ./plan.py
+Return code           1
+──────────────────────────────── Standard error ────────────────────────────────
+Traceback (most recent call last):
+  File "${CASE}/./plan.py", line ---, in <module>
+    assert False
+AssertionError
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ 1 step(s) failed, see error messages above
+   WARNING │ Skipping cleanup due to incomplete build.
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

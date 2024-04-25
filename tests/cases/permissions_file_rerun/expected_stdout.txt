@@ -1,0 +1,17 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cp -aT input.txt output.txt
+   SUCCESS │ cp -aT input.txt output.txt
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+   DELETED │ input.txt
+     ADDED │ input.txt
+     PHASE │ run
+     START │ cp -aT input.txt output.txt
+   SUCCESS │ cp -aT input.txt output.txt
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

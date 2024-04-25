@@ -1,0 +1,16 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./expensive.py
+   SUCCESS │ ./expensive.py
+     START │ cat average.txt
+   SUCCESS │ cat average.txt
+─────────────────────────────── Standard output ────────────────────────────────
+2.580000
+────────────────────────────────────────────────────────────────────────────────
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

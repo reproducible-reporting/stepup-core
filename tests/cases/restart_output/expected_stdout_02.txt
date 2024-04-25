@@ -1,0 +1,24 @@
+  WORKFLOW │ Loaded from .stepup/workflow.mpk.xz
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+      SKIP │ ./plan.py
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       extended, digest 8d0cad40, inp_digset 8d0cad40
+Same inp hash        ./
+Same inp hash        plan.py
+────────────────────────────────────────────────────────────────────────────────
+    NOSKIP │ cp -aT original.txt copy.txt
+───────────────────────────── Missing output files ─────────────────────────────
+copy.txt
+────────────────────────────── Remained the same ───────────────────────────────
+Same step hash       extended, digest 62a4a24b, inp_digset b013fd77
+Same inp hash        ./
+Same inp hash        original.txt
+Same out hash        copy.txt
+────────────────────────────────────────────────────────────────────────────────
+     START │ cp -aT original.txt copy.txt
+   SUCCESS │ cp -aT original.txt copy.txt
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

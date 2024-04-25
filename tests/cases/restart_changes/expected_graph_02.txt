@@ -1,0 +1,84 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan_02.py
+             creates   step:./plan_02.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:copy_02.txt
+            supplies   file:copy_both2.txt
+            supplies   file:plan_02.py
+            supplies   file:source_02.txt
+            supplies   file:source_both.txt
+            supplies   step:./plan_02.py
+            supplies   step:cp source_02.txt copy_02.txt
+            supplies   step:cp source_both.txt copy_both2.txt
+
+file:source_both.txt
+                path = source_both.txt
+               state = STATIC
+          created by   step:./plan_02.py
+            consumes   file:./
+            supplies   step:cp source_both.txt copy_both2.txt
+
+file:plan_02.py
+                path = plan_02.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan_02.py
+
+step:./plan_02.py
+             workdir = ./
+             command = ./plan_02.py
+               state = SUCCEEDED
+       extended hash = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan_02.py
+             creates   file:source_02.txt
+             creates   file:source_both.txt
+             creates   step:cp source_02.txt copy_02.txt
+             creates   step:cp source_both.txt copy_both2.txt
+
+step:cp source_both.txt copy_both2.txt
+             workdir = ./
+             command = cp source_both.txt copy_both2.txt
+               state = SUCCEEDED
+       extended hash = yes
+          created by   step:./plan_02.py
+            consumes   file:./
+            consumes   file:source_both.txt
+             creates   file:copy_both2.txt
+
+file:copy_both2.txt
+                path = copy_both2.txt
+               state = BUILT
+          created by   step:cp source_both.txt copy_both2.txt
+            consumes   file:./
+
+file:source_02.txt
+                path = source_02.txt
+               state = STATIC
+          created by   step:./plan_02.py
+            consumes   file:./
+            supplies   step:cp source_02.txt copy_02.txt
+
+step:cp source_02.txt copy_02.txt
+             workdir = ./
+             command = cp source_02.txt copy_02.txt
+               state = SUCCEEDED
+       extended hash = yes
+          created by   step:./plan_02.py
+            consumes   file:./
+            consumes   file:source_02.txt
+             creates   file:copy_02.txt
+
+file:copy_02.txt
+                path = copy_02.txt
+               state = BUILT
+          created by   step:cp source_02.txt copy_02.txt
+            consumes   file:./

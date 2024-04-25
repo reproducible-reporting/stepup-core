@@ -1,0 +1,56 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:copy.txt
+            supplies   file:original.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:cp -aT original.txt copy.txt
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+       extended hash = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:original.txt
+             creates   step:cp -aT original.txt copy.txt
+
+file:original.txt
+                path = original.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp -aT original.txt copy.txt
+
+step:cp -aT original.txt copy.txt
+             workdir = ./
+             command = cp -aT original.txt copy.txt
+               state = SUCCEEDED
+       extended hash = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:original.txt
+             creates   file:copy.txt
+
+file:copy.txt
+                path = copy.txt
+               state = BUILT
+          created by   step:cp -aT original.txt copy.txt
+            consumes   file:./

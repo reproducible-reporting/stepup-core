@@ -1,0 +1,17 @@
+Changing to ${CASE}/source
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ mkdir -p ../public/
+   SUCCESS │ mkdir -p ../public/
+     START │ ./plan.py  # wd=www/
+   SUCCESS │ ./plan.py  # wd=www/
+     START │ mkdir -p ../public/www/
+   SUCCESS │ mkdir -p ../public/www/
+     START │ cp -aT index.md ../../public/www/index.md  # wd=www/
+   SUCCESS │ cp -aT index.md ../../public/www/index.md  # wd=www/
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

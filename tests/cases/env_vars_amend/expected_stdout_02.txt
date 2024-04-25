@@ -1,0 +1,24 @@
+  WORKFLOW │ Loaded from .stepup/workflow.mpk.xz
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+      SKIP │ ./plan.py
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       extended, digest 80ac726d, inp_digset 80ac726d
+Same inp hash        ./
+Same inp hash        plan.py
+────────────────────────────────────────────────────────────────────────────────
+    NOSKIP │ ./demovars.py > output.txt
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   extended, digest da42a3ce ➜ 47cfd969, inp_digset bf5f3e34 ➜ c9fddfc1
+Modified env var     ENV_VAR_TEST_STEPUP_SDASFD ='AAAA' ➜ ='BBBB'
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+Same inp hash        demovars.py
+Same out hash        output.txt
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./demovars.py > output.txt
+   SUCCESS │ ./demovars.py > output.txt
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

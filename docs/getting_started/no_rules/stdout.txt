@@ -1,0 +1,13 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ tr '[:lower:]' '[:upper:]' < lower1.txt > upper1.txt
+   SUCCESS │ tr '[:lower:]' '[:upper:]' < lower1.txt > upper1.txt
+     START │ tr '[:lower:]' '[:upper:]' < lower2.txt > upper2.txt
+   SUCCESS │ tr '[:lower:]' '[:upper:]' < lower2.txt > upper2.txt
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

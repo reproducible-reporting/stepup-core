@@ -1,0 +1,14 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./work.py plan
+   SUCCESS │ ./work.py plan
+     START │ ./work.py run -- '-5.0'
+   SUCCESS │ ./work.py run -- '-5.0'
+     START │ ./work.py run -- '+7.0'
+   SUCCESS │ ./work.py run -- '+7.0'
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

@@ -1,0 +1,17 @@
+  WORKFLOW │ Loaded from .stepup/workflow.mpk.xz
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+      SKIP │ cp -aT initial.txt input.txt
+     START │ ./expensive.py
+   SUCCESS │ ./expensive.py
+─────────────────────────────── Standard output ────────────────────────────────
+The initial file.
+────────────────────────────────────────────────────────────────────────────────
+     START │ cp -aT output.txt final.txt
+   SUCCESS │ cp -aT output.txt final.txt
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

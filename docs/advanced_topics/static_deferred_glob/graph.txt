@@ -1,0 +1,50 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:foo.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:cat foo.txt
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = RUNNING
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   dg:'*.txt'
+             creates   step:cat foo.txt
+
+dg:'*.txt'
+          created by   step:./plan.py
+             creates   file:foo.txt
+
+step:cat foo.txt
+             workdir = ./
+             command = cat foo.txt
+               state = QUEUED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:foo.txt
+
+file:foo.txt
+                path = foo.txt
+               state = STATIC
+          created by   dg:'*.txt'
+            consumes   file:./
+            supplies   step:cat foo.txt

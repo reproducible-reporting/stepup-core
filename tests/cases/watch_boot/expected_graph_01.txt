@@ -1,0 +1,63 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:final.txt
+            supplies   file:first.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:cp first.txt final.txt
+            supplies   step:echo "test 1" > first.txt
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:cp first.txt final.txt
+             creates   step:echo "test 1" > first.txt
+
+step:echo "test 1" > first.txt
+             workdir = ./
+             command = echo "test 1" > first.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+             creates   file:first.txt
+
+file:first.txt
+                path = first.txt
+               state = BUILT
+          created by   step:echo "test 1" > first.txt
+            consumes   file:./
+            supplies   step:cp first.txt final.txt
+
+step:cp first.txt final.txt
+             workdir = ./
+             command = cp first.txt final.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:first.txt
+             creates   file:final.txt
+
+file:final.txt
+                path = final.txt
+               state = BUILT
+          created by   step:cp first.txt final.txt
+            consumes   file:./

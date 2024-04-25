@@ -1,0 +1,33 @@
+  WORKFLOW │ Loaded from .stepup/workflow.mpk.xz
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+      SKIP │ ./plan.py
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       extended, digest 76df2380, inp_digset 76df2380
+Same inp hash        ./
+Same inp hash        plan.py
+────────────────────────────────────────────────────────────────────────────────
+      SKIP │ echo something > single.txt
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       extended, digest ca72d171, inp_digset ad912c6d
+Same inp hash        ./
+Same out hash        single.txt
+────────────────────────────────────────────────────────────────────────────────
+      SKIP │ cat single.txt single.txt > double.txt
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       extended, digest 9b261dd2, inp_digset ee6e348b
+Same inp hash        ./
+Same inp hash        single.txt
+Same out hash        double.txt
+────────────────────────────────────────────────────────────────────────────────
+      SKIP │ cat double.txt double.txt > quadruple.txt
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       extended, digest 3edd99a1, inp_digset 823d6969
+Same inp hash        ./
+Same inp hash        double.txt
+Same out hash        quadruple.txt
+────────────────────────────────────────────────────────────────────────────────
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

@@ -1,0 +1,117 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:config.json
+            supplies   file:copy.txt
+            supplies   file:output.txt
+            supplies   file:plan.py
+            supplies   file:report.txt
+            supplies   file:script.log
+            supplies   file:use_config.py
+            supplies   step:./plan.py
+            supplies   step:./use_config.py
+            supplies   step:cp -aT report.txt copy.txt
+            supplies   step:echo All is fine. > script.log
+            supplies   step:echo log written to script.log. > report.txt
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:config.json
+             creates   file:use_config.py
+             creates   step:./use_config.py
+             creates   step:cp -aT report.txt copy.txt
+
+file:config.json
+                path = config.json
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./use_config.py
+
+file:use_config.py
+                path = use_config.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./use_config.py
+
+step:./use_config.py
+             workdir = ./
+             command = ./use_config.py
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:config.json
+            consumes   file:use_config.py
+             creates   file:output.txt
+             creates   step:echo All is fine. > script.log
+             creates   step:echo log written to script.log. > report.txt
+
+file:output.txt
+                path = output.txt
+               state = BUILT
+          created by   step:./use_config.py
+            consumes   file:./
+
+step:cp -aT report.txt copy.txt
+             workdir = ./
+             command = cp -aT report.txt copy.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:report.txt
+             creates   file:copy.txt
+
+file:report.txt
+                path = report.txt
+               state = BUILT
+          created by   step:echo log written to script.log. > report.txt
+            consumes   file:./
+            supplies   step:cp -aT report.txt copy.txt
+
+file:copy.txt
+                path = copy.txt
+               state = BUILT
+          created by   step:cp -aT report.txt copy.txt
+            consumes   file:./
+
+step:echo All is fine. > script.log
+             workdir = ./
+             command = echo All is fine. > script.log
+               state = SUCCEEDED
+          created by   step:./use_config.py
+            consumes   file:./
+             creates   file:script.log
+
+file:script.log
+                path = script.log
+               state = BUILT
+          created by   step:echo All is fine. > script.log
+            consumes   file:./
+
+step:echo log written to script.log. > report.txt
+             workdir = ./
+             command = echo log written to script.log. > report.txt
+               state = SUCCEEDED
+          created by   step:./use_config.py
+            consumes   file:./
+             creates   file:report.txt

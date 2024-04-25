@@ -1,0 +1,16 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+      FAIL │ cat static/foo/bar/README.md
+────────────────────────────────── Step info ───────────────────────────────────
+Command               cat static/foo/bar/README.md
+──────────────────────────────── Invalid inputs ────────────────────────────────
+STATIC Path does not exist: static/foo/bar/README.md
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ 1 step(s) failed, see error messages above
+   WARNING │ Skipping cleanup due to incomplete build.
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

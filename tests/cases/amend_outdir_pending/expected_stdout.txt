@@ -1,0 +1,25 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./demo.py
+RESCHEDULE │ ./demo.py
+────────────────────────────────── Step info ───────────────────────────────────
+Command               ./demo.py
+Return code           0
+──────────────── Rescheduling due to unavailable amended inputs ────────────────
+nonexisting/
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ 1 step remains pending due to incomplete requirements
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               ./demo.py
+Working directory     ./
+Inputs        STATIC  ./
+             PENDING  (nonexisting/)
+Outputs      PENDING  nonexisting/foo.out
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping cleanup due to incomplete build.
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

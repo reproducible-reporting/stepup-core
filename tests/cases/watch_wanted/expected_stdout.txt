@@ -1,0 +1,41 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+   WARNING │ 2 steps remain pending due to incomplete requirements
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               cp input1.txt output1.txt
+Working directory     ./
+Inputs        STATIC  ./
+             PENDING  (input1.txt)
+Outputs      PENDING  output1.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               cp input2.txt output2.txt
+Working directory     ./
+Inputs        STATIC  ./
+             PENDING  (input2.txt)
+Outputs      PENDING  output2.txt
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping cleanup due to incomplete build.
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+   DELETED │ plan.py
+     PHASE │ run
+   WARNING │ 1 step remains pending due to incomplete requirements
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               ./plan.py
+Working directory     ./
+Inputs        STATIC  ./
+             MISSING  plan.py
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping cleanup due to incomplete build.
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+     ADDED │ plan.py
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

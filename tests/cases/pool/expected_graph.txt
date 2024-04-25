@@ -1,0 +1,47 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:echo 1; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
+            supplies   step:echo 2; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:echo 1; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
+             creates   step:echo 2; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
+
+step:echo 1; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
+             workdir = ./
+             command = echo 1; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
+               state = SUCCEEDED
+                pool = transform
+          created by   step:./plan.py
+            consumes   file:./
+
+step:echo 2; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
+             workdir = ./
+             command = echo 2; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
+               state = SUCCEEDED
+                pool = transform
+          created by   step:./plan.py
+            consumes   file:./

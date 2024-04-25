@@ -1,0 +1,80 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:exists/
+            supplies   file:plan.py
+            supplies   file:sub/
+            supplies   step:./plan.py
+            supplies   step:mkdir -p exists/
+            supplies   step:mkdir -p sub/
+            supplies   step:touch sub/foo.txt
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:mkdir -p exists/
+             creates   step:mkdir -p sub/
+             creates   step:touch sub/foo.txt
+
+step:mkdir -p sub/
+             workdir = ./
+             command = mkdir -p sub/
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+             creates   file:sub/
+
+file:sub/
+                path = sub/
+               state = BUILT
+          created by   step:mkdir -p sub/
+            consumes   file:./
+            supplies   file:sub/foo.txt
+            supplies   step:touch sub/foo.txt
+
+step:touch sub/foo.txt
+             workdir = ./
+             command = touch sub/foo.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:sub/
+             creates   file:sub/foo.txt
+
+file:sub/foo.txt
+                path = sub/foo.txt
+               state = BUILT
+          created by   step:touch sub/foo.txt
+            consumes   file:sub/
+
+step:mkdir -p exists/
+             workdir = ./
+             command = mkdir -p exists/
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+             creates   file:exists/
+
+file:exists/
+                path = exists/
+               state = BUILT
+          created by   step:mkdir -p exists/
+            consumes   file:./

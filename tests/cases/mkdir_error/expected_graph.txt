@@ -1,0 +1,58 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   (file:sub/)
+            supplies   step:./plan.py
+            supplies   step:mkdir -p sub/blub/pup/
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:mkdir -p sub/blub/pup/
+
+step:mkdir -p sub/blub/pup/
+             workdir = ./
+             command = mkdir -p sub/blub/pup/
+               state = PENDING
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   (file:sub/blub/)
+             creates   file:sub/blub/pup/
+
+(file:sub/blub/)
+                path = sub/blub/
+               state = PENDING
+            consumes   (file:sub/)
+            supplies   file:sub/blub/pup/
+            supplies   step:mkdir -p sub/blub/pup/
+
+(file:sub/)
+                path = sub/
+               state = PENDING
+            consumes   file:./
+            supplies   (file:sub/blub/)
+
+file:sub/blub/pup/
+                path = sub/blub/pup/
+               state = PENDING
+          created by   step:mkdir -p sub/blub/pup/
+            consumes   (file:sub/blub/)

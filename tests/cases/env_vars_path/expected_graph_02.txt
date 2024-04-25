@@ -1,0 +1,66 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:FOO-stderr.txt
+            supplies   file:FOO-stdout.txt
+            supplies   file:FOO.md
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+   env_var (amended) = ENV_VAR_TEST_STEPUP_PREFIX
+       extended hash = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:FOO.md
+             creates   step:grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+
+file:FOO.md
+                path = FOO.md
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+
+step:grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+             workdir = ./
+             command = grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+               state = SUCCEEDED
+             env_var = ENV_VAR_TEST_STEPUP_PREFIX
+       extended hash = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:FOO.md
+             creates   file:FOO-stderr.txt
+             creates   file:FOO-stdout.txt
+
+file:FOO-stdout.txt
+                path = FOO-stdout.txt
+               state = BUILT
+          created by   step:grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+            consumes   file:./
+
+file:FOO-stderr.txt
+                path = FOO-stderr.txt
+               state = VOLATILE
+          created by   step:grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+            consumes   file:./

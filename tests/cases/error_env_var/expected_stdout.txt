@@ -1,0 +1,24 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+      FAIL │ ./plan.py
+────────────────────────────────── Step info ───────────────────────────────────
+Command               ./plan.py
+Return code           1
+──────────────────────────────── Standard error ────────────────────────────────
+Traceback (most recent call last):
+  File "${CASE}/./plan.py", line ---, in <module>
+    step("echo > foo", out=["${ENV_VAR_TEST_STEPUP_NON_EXISTING}.txt"])
+  File "${PWD}/stepup/core/api.py", line ---, in step
+    out_paths = [translate(subs(out_path)) for out_path in out_paths]
+                           ^^^^^^^^^^^^^^
+  File "${PWD}/stepup/core/api.py", line ---, in subs
+    raise ValueError(f"Undefined shell variable: {name}")
+ValueError: Undefined shell variable: ENV_VAR_TEST_STEPUP_NON_EXISTING
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ 1 step(s) failed, see error messages above
+   WARNING │ Skipping cleanup due to incomplete build.
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

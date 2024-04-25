@@ -1,0 +1,67 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:bar.log
+            supplies   file:bar.txt
+            supplies   file:foo.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:./step.py
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:foo.txt
+             creates   step:./step.py
+
+file:foo.txt
+                path = foo.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./step.py
+
+step:./step.py
+             workdir = ./
+             command = ./step.py
+               state = SUCCEEDED
+  consumes (amended) = file:foo.txt
+   creates (amended) = file:bar.log
+                     = file:bar.txt
+   env_var (amended) = INP_VAR_TEST_STEPUP_BAR
+                     = INP_VAR_TEST_STEPUP_FOO
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:foo.txt
+             creates   file:bar.log
+             creates   file:bar.txt
+
+file:bar.txt
+                path = bar.txt
+               state = BUILT
+          created by   step:./step.py
+            consumes   file:./
+
+file:bar.log
+                path = bar.log
+               state = VOLATILE
+          created by   step:./step.py
+            consumes   file:./

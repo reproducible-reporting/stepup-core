@@ -1,0 +1,17 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+─────────────────────────────── Standard output ────────────────────────────────
+sub
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./plan.py  # wd=sub/
+   SUCCESS │ ./plan.py  # wd=sub/
+─────────────────────────────── Standard output ────────────────────────────────
+../sub
+../sub/foo.txt
+────────────────────────────────────────────────────────────────────────────────
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

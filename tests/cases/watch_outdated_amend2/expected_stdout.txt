@@ -1,0 +1,48 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cp -aT inp1.txt conv1.txt
+   SUCCESS │ cp -aT inp1.txt conv1.txt
+     START │ ./step.py subs1.txt > subs2.txt
+   SUCCESS │ ./step.py subs1.txt > subs2.txt
+     START │ ./step.py subs2.txt > subs3.txt
+   SUCCESS │ ./step.py subs2.txt > subs3.txt
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+     ADDED │ inp2.txt
+   DELETED │ subs1.txt
+     ADDED │ subs1.txt
+   DELETED │ inp1.txt
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cp -aT inp2.txt conv2.txt
+   SUCCESS │ cp -aT inp2.txt conv2.txt
+ DROPAMEND │ ./step.py subs1.txt > subs2.txt
+────────────────────── Outdated amended step information ───────────────────────
+Modified step hash   extended, digest 17e12e00 ➜ 5efd4f5d, inp_digset 8293e4ae ➜ a3ccc3c1
+Modified inp hash    subs1.txt (digest f927920a ➜ 2ab04a00)
+──────────────────────── Remained the same (or missing) ────────────────────────
+Same inp hash        ./
+Same inp hash        conv1.txt
+Same out hash        subs2.txt
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./step.py subs1.txt > subs2.txt
+   SUCCESS │ ./step.py subs1.txt > subs2.txt
+ DROPAMEND │ ./step.py subs2.txt > subs3.txt
+────────────────────── Outdated amended step information ───────────────────────
+Modified step hash   extended, digest 92fd431c ➜ 7ec44d07, inp_digset c04b2fe4 ➜ d3a28d67
+Modified inp hash    subs2.txt (digest f927920a ➜ 2ab04a00)
+──────────────────────── Remained the same (or missing) ────────────────────────
+Same inp hash        ./
+Same inp hash        conv1.txt
+Same out hash        subs3.txt
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./step.py subs2.txt > subs3.txt
+   SUCCESS │ ./step.py subs2.txt > subs3.txt
+     CLEAN │ conv1.txt
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

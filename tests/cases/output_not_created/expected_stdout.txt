@@ -1,0 +1,20 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ touch input.txt
+   SUCCESS │ touch input.txt
+     START │ cp input.txt wrong.txt
+      FAIL │ cp input.txt wrong.txt
+────────────────────────────────── Step info ───────────────────────────────────
+Command               cp input.txt wrong.txt
+Return code           0
+───────────────────────── Expected outputs not created ─────────────────────────
+output.txt
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ 1 step(s) failed, see error messages above
+   WARNING │ Skipping cleanup due to incomplete build.
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

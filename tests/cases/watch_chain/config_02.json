@@ -1,0 +1,4 @@
+{
+  "msg": "Also this message will be written to output.txt",
+  "log": "other.log"
+}

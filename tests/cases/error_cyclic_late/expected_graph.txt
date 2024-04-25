@@ -1,0 +1,37 @@
+root:
+             version = v1
+
+(file:plan.py)
+                path = plan.py
+               state = STATIC
+            consumes   (file:./)
+
+(file:./)
+                path = ./
+               state = STATIC
+            supplies   (file:plan.py)
+            supplies   (file:second)
+
+(step:./plan.py)
+             workdir = ./
+             command = ./plan.py
+               state = PENDING
+
+(step:cat first > second)
+             workdir = ./
+             command = cat first > second
+               state = PENDING
+
+(file:first)
+                path = first
+               state = PENDING
+
+(file:second)
+                path = second
+               state = PENDING
+            consumes   (file:./)
+
+(step:cat second > first)
+             workdir = ./
+             command = cat second > first
+               state = PENDING

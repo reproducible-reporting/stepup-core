@@ -1,0 +1,1 @@
+This file contains another sentence with the word variable.

@@ -1,0 +1,57 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:/
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   step:./plan.py
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:/usr/
+             creates   file:/usr/bin/
+             creates   file:/usr/bin/env
+
+file:/usr/
+                path = /usr/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:/
+            supplies   file:/usr/bin/
+
+file:/
+                path = /
+               state = STATIC
+          created by   root:
+            supplies   file:/usr/
+
+file:/usr/bin/
+                path = /usr/bin/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:/usr/
+            supplies   file:/usr/bin/env
+
+file:/usr/bin/env
+                path = /usr/bin/env
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:/usr/bin/

@@ -1,0 +1,49 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:analyzed.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:cat analyzed.txt
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+                 ngm = ['data.txt'] {}
+       extended hash = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:analyzed.txt
+             creates   step:cat analyzed.txt
+
+file:analyzed.txt
+                path = analyzed.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cat analyzed.txt
+
+step:cat analyzed.txt
+             workdir = ./
+             command = cat analyzed.txt
+               state = SUCCEEDED
+       extended hash = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:analyzed.txt

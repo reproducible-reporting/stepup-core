@@ -1,0 +1,67 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   (file:copy1.txt)
+            supplies   file:copy2.txt
+            supplies   (file:orig.txt)
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:cp copy1.txt copy2.txt
+            supplies   (step:cp orig.txt copy1.txt)
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:cp copy1.txt copy2.txt
+
+(file:orig.txt)
+                path = orig.txt
+               state = MISSING
+            consumes   file:./
+            supplies   (step:cp orig.txt copy1.txt)
+
+(step:cp orig.txt copy1.txt)
+             workdir = ./
+             command = cp orig.txt copy1.txt
+               state = PENDING
+            consumes   file:./
+            consumes   (file:orig.txt)
+
+(file:copy1.txt)
+                path = copy1.txt
+               state = PENDING
+            consumes   file:./
+            supplies   step:cp copy1.txt copy2.txt
+
+step:cp copy1.txt copy2.txt
+             workdir = ./
+             command = cp copy1.txt copy2.txt
+               state = PENDING
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   (file:copy1.txt)
+             creates   file:copy2.txt
+
+file:copy2.txt
+                path = copy2.txt
+               state = PENDING
+          created by   step:cp copy1.txt copy2.txt
+            consumes   file:./

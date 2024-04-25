@@ -1,0 +1,50 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./demovars.py
+   SUCCESS │ ./demovars.py
+     START │ ./printvars.py
+   SUCCESS │ ./printvars.py
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+   DELETED │ variables.json
+     ADDED │ variables.json
+     PHASE │ run
+    NOSKIP │ ./demovars.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   extended, digest 85c835c6 ➜ 58d07c3f, inp_digset 85c835c6 ➜ 58d07c3f
+Modified inp hash    variables.json (digest 9fcdaff9 ➜ b38f0cd4, size 35 ➜ 67)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+Same inp hash        demovars.py
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./demovars.py
+   SUCCESS │ ./demovars.py
+     START │ ./printvars.py
+   SUCCESS │ ./printvars.py
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+   DELETED │ variables.json
+     ADDED │ variables.json
+     PHASE │ run
+      SKIP │ ./demovars.py
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       extended, digest 58d07c3f, inp_digset 58d07c3f
+Same inp hash        ./
+Same inp hash        demovars.py
+Same inp hash        variables.json
+────────────────────────────────────────────────────────────────────────────────
+      SKIP │ ./printvars.py
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       extended, digest d52c2733, inp_digset 2a71c927
+Same inp hash        ./
+Same inp hash        printvars.py
+Same env var         ENV_VAR_TEST_STEPUP_AWDFTD ='AAAA'
+Same env var         ENV_VAR_TEST_STEPUP_DFTHYH ='BBBB'
+Same out hash        current_variables.txt
+────────────────────────────────────────────────────────────────────────────────
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

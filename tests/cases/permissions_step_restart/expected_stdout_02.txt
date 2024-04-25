@@ -1,0 +1,15 @@
+  WORKFLOW │ Loaded from .stepup/workflow.mpk.xz
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+      SKIP │ ./plan.py
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       extended, digest 5e1badbc, inp_digset 5e1badbc
+Same inp hash        ./
+Same inp hash        plan.py
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./step.py
+   SUCCESS │ ./step.py
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

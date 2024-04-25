@@ -1,0 +1,60 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   file:static/
+            supplies   step:./plan.py
+            supplies   step:cat static/foo.txt
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+       extended hash = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   dg:'static/**'
+             creates   step:cat static/foo.txt
+
+dg:'static/**'
+          created by   step:./plan.py
+             creates   file:static/
+             creates   file:static/foo.txt
+
+step:cat static/foo.txt
+             workdir = ./
+             command = cat static/foo.txt
+               state = SUCCEEDED
+       extended hash = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:static/foo.txt
+
+file:static/foo.txt
+                path = static/foo.txt
+               state = STATIC
+          created by   dg:'static/**'
+            consumes   file:static/
+            supplies   step:cat static/foo.txt
+
+file:static/
+                path = static/
+               state = STATIC
+          created by   dg:'static/**'
+            consumes   file:./
+            supplies   file:static/foo.txt

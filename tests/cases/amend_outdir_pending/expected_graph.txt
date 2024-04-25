@@ -1,0 +1,54 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   (file:nonexisting/)
+            supplies   file:plan.py
+            supplies   step:./demo.py
+            supplies   step:./plan.py
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:./demo.py
+
+step:./demo.py
+             workdir = ./
+             command = ./demo.py
+               state = PENDING
+  consumes (amended) = file:nonexisting/
+   creates (amended) = file:nonexisting/foo.out
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   (file:nonexisting/)
+             creates   file:nonexisting/foo.out
+
+(file:nonexisting/)
+                path = nonexisting/
+               state = PENDING
+            consumes   file:./
+            supplies   file:nonexisting/foo.out
+            supplies   step:./demo.py
+
+file:nonexisting/foo.out
+                path = nonexisting/foo.out
+               state = PENDING
+          created by   step:./demo.py
+            consumes   (file:nonexisting/)

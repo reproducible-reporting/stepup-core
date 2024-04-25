@@ -1,0 +1,18 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./step.py
+      FAIL │ ./step.py
+────────────────────────────────── Step info ───────────────────────────────────
+Command               ./step.py
+Return code           126
+──────────────────────────────── Standard error ────────────────────────────────
+/bin/sh: line 1: ./step.py: Permission denied
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ 1 step(s) failed, see error messages above
+   WARNING │ Skipping cleanup due to incomplete build.
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

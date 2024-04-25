@@ -1,0 +1,60 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   (file:first.txt)
+            supplies   file:plan.py
+            supplies   file:second.txt
+            supplies   file:third.txt
+            supplies   step:./plan.py
+            supplies   step:cp -v first.txt second.txt
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:cp -v first.txt second.txt
+
+step:cp -v first.txt second.txt
+             workdir = ./
+             command = cp -v first.txt second.txt
+               state = PENDING
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   (file:first.txt)
+             creates   file:second.txt
+             creates   file:third.txt
+
+(file:first.txt)
+                path = first.txt
+               state = PENDING
+            consumes   file:./
+            supplies   step:cp -v first.txt second.txt
+
+file:second.txt
+                path = second.txt
+               state = PENDING
+          created by   step:cp -v first.txt second.txt
+            consumes   file:./
+
+file:third.txt
+                path = third.txt
+               state = VOLATILE
+          created by   step:cp -v first.txt second.txt
+            consumes   file:./

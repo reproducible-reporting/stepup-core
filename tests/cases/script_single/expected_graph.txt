@@ -1,0 +1,105 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   file:work/
+            supplies   step:./plan.py
+            supplies   step:cp -aT work/test.csv work/copy.csv
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:work/
+             creates   file:work/generate.py
+             creates   step:./generate.py plan --optional  # wd=work/
+             creates   step:cp -aT work/test.csv work/copy.csv
+
+file:work/
+                path = work/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   file:work/config.json
+            supplies   file:work/copy.csv
+            supplies   file:work/generate.py
+            supplies   file:work/test.csv
+            supplies   step:./generate.py plan --optional  # wd=work/
+            supplies   step:./generate.py run  # wd=work/
+            supplies   step:cp -aT work/test.csv work/copy.csv
+
+file:work/generate.py
+                path = work/generate.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:work/
+            supplies   step:./generate.py plan --optional  # wd=work/
+            supplies   step:./generate.py run  # wd=work/
+
+step:./generate.py plan --optional  # wd=work/
+             workdir = work/
+             command = ./generate.py plan --optional
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:work/
+            consumes   file:work/generate.py
+             creates   file:work/config.json
+             creates   step:./generate.py run  # wd=work/
+
+step:cp -aT work/test.csv work/copy.csv
+             workdir = ./
+             command = cp -aT work/test.csv work/copy.csv
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:work/
+            consumes   file:work/test.csv
+             creates   file:work/copy.csv
+
+file:work/test.csv
+                path = work/test.csv
+               state = BUILT
+          created by   step:./generate.py run  # wd=work/
+            consumes   file:work/
+            supplies   step:cp -aT work/test.csv work/copy.csv
+
+file:work/copy.csv
+                path = work/copy.csv
+               state = BUILT
+          created by   step:cp -aT work/test.csv work/copy.csv
+            consumes   file:work/
+
+file:work/config.json
+                path = work/config.json
+               state = STATIC
+          created by   step:./generate.py plan --optional  # wd=work/
+            consumes   file:work/
+            supplies   step:./generate.py run  # wd=work/
+
+step:./generate.py run  # wd=work/
+             workdir = work/
+             command = ./generate.py run
+               state = SUCCEEDED
+           mandatory = IMPLIED
+          created by   step:./generate.py plan --optional  # wd=work/
+            consumes   file:work/
+            consumes   file:work/config.json
+            consumes   file:work/generate.py
+             creates   file:work/test.csv

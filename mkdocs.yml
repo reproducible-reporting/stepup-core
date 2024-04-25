@@ -1,0 +1,100 @@
+site_name: StepUp Core
+repo_url: https://github.com/reproducible-reporting/stepup-core
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  font:
+    text: IBM Plex Sans
+    code: Source Code Pro
+  features:
+  - search.highlight
+  - search.suggest
+  - search.share
+  - navigation.instant
+  - navigation.instant.prefetch
+  - content.code.copy
+  - content.action.edit
+  palette:
+  - media: "(prefers-color-scheme)"
+    toggle:
+      icon: material/link
+      name: Switch to light mode
+  - media: "(prefers-color-scheme: light)"
+    scheme: default
+    primary: black
+    accent: indigo
+    toggle:
+      icon: material/toggle-switch
+      name: Switch to dark mode
+  - media: "(prefers-color-scheme: dark)"
+    scheme: slate
+    primary: black
+    accent: indigo
+    toggle:
+      icon: material/toggle-switch-off
+      name: Switch to system preference
+
+nav:
+  - Home: index.md
+  - installation.md
+  - Getting started:
+    - getting_started/introduction.md
+    - getting_started/first_step.md
+    - getting_started/dependencies.md
+    - getting_started/static_files.md
+    - getting_started/copy_mkdir.md
+    - getting_started/static_glob.md
+    - getting_started/static_glob_conditional.md
+    - getting_started/interactive_usage.md
+    - getting_started/script_single.md
+    - getting_started/script_multiple.md
+    - getting_started/no_rules.md
+    - getting_started/distributed_plans.md
+    - getting_started/automatic_cleaning.md
+  - Advanced topics:
+    - advanced_topics/introduction.md
+    - advanced_topics/static_named_glob.md
+    - advanced_topics/static_deferred_glob.md
+    - advanced_topics/optional_steps.md
+    - advanced_topics/blocked_steps.md
+    - advanced_topics/pools.md
+    - advanced_topics/environment_variables.md
+    - advanced_topics/volatile_outputs.md
+    - advanced_topics/amending_steps.md
+    - advanced_topics/variable_substitution.md
+    - advanced_topics/here_and_root.md
+  - Reference:
+    - reference/stepup.core.api.md
+    - reference/stepup.core.interact.md
+    - reference/interactive.md
+  - changelog.md
+  - development.md
+  - license.md
+
+exclude_docs: |
+  */*/ch*/*.md
+  */*/public/*.md
+
+plugins:
+- search
+- macros
+- mkdocstrings:
+    default_handler: python
+    handlers:
+      python:
+        paths: ["stepup-core"]
+        options:
+          docstring_style: numpy
+          show_root_heading: true
+          docstring_section_style: list
+
+markdown_extensions:
+  - smarty
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences

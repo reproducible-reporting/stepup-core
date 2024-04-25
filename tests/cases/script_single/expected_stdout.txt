@@ -1,0 +1,14 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./generate.py plan --optional  # wd=work/
+   SUCCESS │ ./generate.py plan --optional  # wd=work/
+     START │ ./generate.py run  # wd=work/
+   SUCCESS │ ./generate.py run  # wd=work/
+     START │ cp -aT work/test.csv work/copy.csv
+   SUCCESS │ cp -aT work/test.csv work/copy.csv
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

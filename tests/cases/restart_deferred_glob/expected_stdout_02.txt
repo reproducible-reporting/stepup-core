@@ -1,0 +1,19 @@
+  WORKFLOW │ Loaded from .stepup/workflow.mpk.xz
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+      SKIP │ ./plan.py
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       extended, digest 9bc2d092, inp_digset 9bc2d092
+Same inp hash        ./
+Same inp hash        plan.py
+────────────────────────────────────────────────────────────────────────────────
+      SKIP │ cat static/foo.txt
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       extended, digest 8fd229c0, inp_digset 8fd229c0
+Same inp hash        ./
+Same inp hash        static/foo.txt
+────────────────────────────────────────────────────────────────────────────────
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

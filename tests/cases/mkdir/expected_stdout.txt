@@ -1,0 +1,14 @@
+     PHASE │ run
+  DIRECTOR │ Launched worker 0
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ mkdir -p sub/
+   SUCCESS │ mkdir -p sub/
+     START │ mkdir -p exists/
+   SUCCESS │ mkdir -p exists/
+     START │ touch sub/foo.txt
+   SUCCESS │ touch sub/foo.txt
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!
