@@ -1,4 +1,4 @@
-[![PyPI Upload](https://github.com/reproducible-reporting/stepup-core/actions/workflows/pypi.yaml/badge.svg)](https://github.com/reproducible-reporting/stepup-core/actions/workflows/release.yaml)
+[![release](https://github.com/reproducible-reporting/stepup-core/actions/workflows/release.yaml/badge.svg)](https://github.com/reproducible-reporting/stepup-core/actions/workflows/release.yaml)
 [![pytest](https://github.com/reproducible-reporting/stepup-core/actions/workflows/pytest.yaml/badge.svg)](https://github.com/reproducible-reporting/stepup-core/actions/workflows/pytest.yaml)
 [![PyPI Version](https://img.shields.io/pypi/v/stepup)](https://pypi.org/project/stepup/)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/stepup)
