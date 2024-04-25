@@ -8,7 +8,7 @@
 Command               ./step.py
 Return code           126
 ──────────────────────────────── Standard error ────────────────────────────────
-/bin/sh: line 1: ./step.py: Permission denied
+(stripped)
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ 1 step(s) failed, see error messages above
    WARNING │ Skipping cleanup due to incomplete build.

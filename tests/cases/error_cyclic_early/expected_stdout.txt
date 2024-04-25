@@ -6,41 +6,7 @@
 Command               ./plan.py
 Return code           1
 ──────────────────────────────── Standard error ────────────────────────────────
-Traceback (most recent call last):
-  File "${CASE}/./plan.py", line ---, in <module>
-    amend(inp="README.md")
-  File "${PWD}/stepup/core/api.py", line ---, in amend
-    keep_going = RPC_CLIENT(
-                 ^^^^^^^^^^^
-  File "${PWD}/stepup/core/rpc.py", line ---, in __call__
-    _handle_error(body, name, args, kwargs)
-  File "${PWD}/stepup/core/rpc.py", line ---, in _handle_error
-    raise RPCError(f"An exception was raised in the server during the call {fmt_call}: \n\n{body}")
-stepup.core.exceptions.RPCError: An exception was raised in the server during the call amend('step:./plan.py', [Path('README.md')], [], [], []):
-
-Traceback (most recent call last):
-  File "${PWD}/stepup/core/rpc.py", line ---, in _handle_request
-    result = call(*bound.args, **bound.kwargs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "${PWD}/stepup/core/director.py", line ---, in amend
-    return self._workflow.amend_step(step_key, inp_paths, env_vars, out_paths, vol_paths)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "${PWD}/stepup/core/workflow.py", line ---, in amend_step
-    self.check_inputs_outputs(step_key, inp_paths, out_paths, vol_paths)
-  File "${PWD}/stepup/core/workflow.py", line ---, in check_inputs_outputs
-    self.check_cyclic(file_key, step_key)
-  File "${PWD}/stepup/core/cascade.py", line ---, in check_cyclic
-    self.report_cyclic(src_key, dst_key)
-  File "${PWD}/stepup/core/cascade.py", line ---, in report_cyclic
-    raise CyclicError("\n".join(lines))
-stepup.core.exceptions.CyclicError: New relation introduces cyclic dependency
-
-src = file:README.md
-dst = step:./plan.py
-
-cycle:
-  file:README.md
-  step:./plan.py
+(stripped)
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ 1 step(s) failed, see error messages above
    WARNING │ Skipping cleanup due to incomplete build.

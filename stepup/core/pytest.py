@@ -39,6 +39,10 @@ def remove_hashes(graph: dict) -> dict:
     return graph
 
 
+STDERR_BEGIN = "──────────────────────────────── Standard error ────────────────────────────────"
+STDERR_END = "────────────────────────────────────────────────────────────────────────────────"
+
+
 async def run_example(srcdir, tmpdir, overwrite_expected=False):
     """Run an example use case in a temporary directory and check the outputs.
 
@@ -92,12 +96,17 @@ async def run_example(srcdir, tmpdir, overwrite_expected=False):
             cur = cur.replace(workdir, "${CASE}")
             # - Listening paths are random
             cur = re.sub(r" {2}DIRECTOR │ Listening on .*\n", "", cur)
-            # - Exact line numbers in exceptions change often, not important
-            cur = re.sub(r", line \d+, in ", ", line ---, in ", cur)
             # - Remove trailing whitespace
             cur = re.sub(r"[ \t]+?(\n|\Z)", r"\1", cur)
             # - Remove digests, change often, content of results must be tested explicitly.
             cur = re.sub(r" {10}(inp_| {4})digest = [ 0-9a-f]{71}\n {21}= [ 0-9a-f]{71}\n", "", cur)
+            # - Remove standard error: sensitive to OS and Python version
+            cur = re.sub(
+                STDERR_BEGIN + r".*" + STDERR_END,
+                STDERR_BEGIN + "\n(stripped)\n" + STDERR_END,
+                cur,
+                flags=re.DOTALL,
+            )
 
             # Perform the comparison
             print()

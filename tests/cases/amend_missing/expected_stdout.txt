@@ -15,14 +15,7 @@ missing.txt
 Command               ./step.py
 Return code           1
 ──────────────────────────────── Standard error ────────────────────────────────
-Traceback (most recent call last):
-  File "${CASE}/./step.py", line ---, in <module>
-    amend(inp="missing.txt")
-  File "${PWD}/stepup/core/api.py", line ---, in amend
-    check_inp_paths(su_inp_paths)
-  File "${PWD}/stepup/core/api.py", line ---, in check_inp_paths
-    raise ValueError(f"{message}: {inp_path}")
-ValueError: Path does not exist: missing.txt
+(stripped)
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ 1 step(s) failed, see error messages above
    WARNING │ Skipping cleanup due to incomplete build.

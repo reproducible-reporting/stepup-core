@@ -6,45 +6,7 @@
 Command               ./plan.py
 Return code           1
 ──────────────────────────────── Standard error ────────────────────────────────
-Traceback (most recent call last):
-  File "${CASE}/./plan.py", line ---, in <module>
-    step("cat second > first", inp="second", out="first")
-  File "${PWD}/stepup/core/api.py", line ---, in step
-    return RPC_CLIENT(
-           ^^^^^^^^^^^
-  File "${PWD}/stepup/core/rpc.py", line ---, in __call__
-    _handle_error(body, name, args, kwargs)
-  File "${PWD}/stepup/core/rpc.py", line ---, in _handle_error
-    raise RPCError(f"An exception was raised in the server during the call {fmt_call}: \n\n{body}")
-stepup.core.exceptions.RPCError: An exception was raised in the server during the call step('step:./plan.py', 'cat second > first', [Path('second')], (), [Path('first')], [], Path('./'), False, None, False):
-
-Traceback (most recent call last):
-  File "${PWD}/stepup/core/rpc.py", line ---, in _handle_request
-    result = call(*bound.args, **bound.kwargs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "${PWD}/stepup/core/director.py", line ---, in step
-    return self._workflow.define_step(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "${PWD}/stepup/core/workflow.py", line ---, in define_step
-    self.create_file(step_key, out_path, FileState.PENDING)
-  File "${PWD}/stepup/core/workflow.py", line ---, in create_file
-    self.create(file, creator_key)
-  File "${PWD}/stepup/core/cascade.py", line ---, in create
-    self.check_cyclic(creator_key, node.key)
-  File "${PWD}/stepup/core/cascade.py", line ---, in check_cyclic
-    self.report_cyclic(src_key, dst_key)
-  File "${PWD}/stepup/core/cascade.py", line ---, in report_cyclic
-    raise CyclicError("\n".join(lines))
-stepup.core.exceptions.CyclicError: New relation introduces cyclic dependency
-
-src = step:cat second > first
-dst = file:first
-
-cycle:
-  step:cat second > first
-  file:second
-  step:cat first > second
-  file:first
+(stripped)
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ 1 step(s) failed, see error messages above
    WARNING │ Scheduler is put on hold. Not reporting pending steps.

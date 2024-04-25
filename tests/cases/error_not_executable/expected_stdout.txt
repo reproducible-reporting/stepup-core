@@ -1,11 +1,11 @@
      ERROR │ The director raised an exception.
 ────────────────────────────────── Traceback ───────────────────────────────────
 Traceback (most recent call last):
-  File "${PWD}/stepup/core/director.py", line ---, in async_main
+  File "${PWD}/stepup/core/director.py", line 60, in async_main
     await serve(
-  File "${PWD}/stepup/core/director.py", line ---, in serve
+  File "${PWD}/stepup/core/director.py", line 183, in serve
     check_plan(path_plan)
-  File "${PWD}/stepup/core/utils.py", line ---, in check_plan
+  File "${PWD}/stepup/core/utils.py", line 229, in check_plan
     raise ValueError(f"File is not executable: {path_plan}")
 ValueError: File is not executable: plan.py
 ────────────────────────────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@ Return code           1
 ───────────────────────── Expected outputs not created ─────────────────────────
 oops.txt
 ──────────────────────────────── Standard error ────────────────────────────────
-rm: cannot remove '.sjdksjdfkjasdfkdjsak': No such file or directory
+(stripped)
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ 1 step(s) failed, see error messages above
    WARNING │ Skipping cleanup due to incomplete build.

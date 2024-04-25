@@ -14,10 +14,7 @@ Same inp hash        ./
 Command               ./plan.py
 Return code           1
 ──────────────────────────────── Standard error ────────────────────────────────
-Traceback (most recent call last):
-  File "${CASE}/./plan.py", line ---, in <module>
-    assert False
-AssertionError
+(stripped)
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ 1 step(s) failed, see error messages above
    WARNING │ Skipping cleanup due to incomplete build.
