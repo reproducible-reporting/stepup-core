@@ -58,7 +58,7 @@ class ReporterClient:
         if self.client is not None:
             if pages is None:
                 pages = {}
-            await self.client.call.reporter(action, description, pages)
+            await self.client.call.report(action, description, pages)
 
     async def set_num_workers(self, num_workers: int):
         if self.client is not None:
@@ -133,7 +133,7 @@ class ReporterHandler:
         self.stop_event.set()
 
     @allow_rpc
-    def reporter(self, action: str, description: str, pages: list[tuple[str, str]]):
+    def report(self, action: str, description: str, pages: list[tuple[str, str]]):
         # Progress bar
         nsuc = self._step_counts[StepState.SUCCEEDED]
         nrun = self._step_counts[StepState.RUNNING]

@@ -118,13 +118,13 @@ async def async_main():
             try:
                 await asyncio.gather(*tasks)
             except ConnectionRefusedError:
-                reporter_handler.reporter("ERROR", "Could not connect to director", [])
+                reporter_handler.report("ERROR", "Could not connect to director", [])
             finally:
                 log_file.close()
                 path_tmpsock.remove_p()
 
 
-async def wait_for_path(path: str, stop_event: asyncio.Event):
+async def wait_for_path(path: Path, stop_event: asyncio.Event):
     while not path.exists():
         if stop_event.is_set():
             return
