@@ -92,7 +92,7 @@ class ReporterHandler:
     _num_digits: int = attrs.field(init=False, default=3)
     console: Console = attrs.field(init=False)
     progress_bar: ProgressBar = attrs.field(init=False)
-    running_id_step: TaskID = attrs.field(init=False)
+    task_id_running: TaskID = attrs.field(init=False)
     task_id_step: TaskID = attrs.field(init=False)
     start: float = attrs.field(init=False, factory=perf_counter)
 
@@ -119,8 +119,8 @@ class ReporterHandler:
         progress_bar.start()
         return progress_bar
 
-    @running_id_step.default
-    def _default_running_id_step(self):
+    @task_id_running.default
+    def _default_task_id_running(self):
         return self.progress_bar.add_task("🛠️ ", total=0, visible=True)
 
     @task_id_step.default
@@ -140,7 +140,7 @@ class ReporterHandler:
         npen = self._step_counts[StepState.PENDING] + self._step_counts[StepState.QUEUED]
         nd = max(self._num_digits, len(str(nsuc)), len(str(nrun)), len(str(npen)))
         self._num_digits = nd
-        self.progress_bar.update(self.running_id_step, completed=nrun, total=self._num_workers)
+        self.progress_bar.update(self.task_id_running, completed=nrun, total=self._num_workers)
         self.progress_bar.update(self.task_id_step, completed=nsuc, total=nsuc + nrun + npen)
 
         # Action info
