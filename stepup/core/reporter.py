@@ -111,7 +111,7 @@ class ReporterHandler:
     def _default_progress_bar(self):
         progress_bar = ProgressBar(
             TextColumn("{task.description}"),
-            BarColumn(self.console.width),
+            BarColumn(None),
             MofNCompleteColumn(),
             transient=True,
             console=self.console,
@@ -121,11 +121,11 @@ class ReporterHandler:
 
     @task_id_running.default
     def _default_task_id_running(self):
-        return self.progress_bar.add_task("🛠️ ", total=0, visible=True)
+        return self.progress_bar.add_task("🛠 ", total=0, visible=True)
 
     @task_id_step.default
     def _default_task_id_step(self):
-        return self.progress_bar.add_task("✔️ ", total=0, visible=True)
+        return self.progress_bar.add_task("✔ ", total=0, visible=True)
 
     @allow_rpc
     def shutdown(self):
