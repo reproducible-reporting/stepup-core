@@ -8,6 +8,13 @@ Domain-specific features are implemented in extension packages.
 Currently, there is only the StepUp RepRep extension for creating **rep**roducible **rep**orts: papers, presentations, theses, etc.
 
 
+## What does StepUp look like?
+
+The following screen recording gives a quick visual impression StepUp's terminal user interface.
+
+[![asciicast](https://asciinema.org/a/656610.svg)](https://asciinema.org/a/656610)
+
+
 ## Why was StepUp Core created?
 
 StepUp is a [greenfield project](https://en.wikipedia.org/wiki/Greenfield_project) inspired by similar tools, like [Ninja](https://ninja-build.org/), [pydoit](https://pydoit.org/) and [tup](https://gittup.org/tup).
