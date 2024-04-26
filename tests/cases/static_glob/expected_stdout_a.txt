@@ -8,7 +8,7 @@
    SUCCESS │ cp -aT inp2.txt out2.txt
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
-     ADDED │ inp3.txt
+   UPDATED │ inp3.txt
    DELETED │ inp1.txt
      PHASE │ run
      START │ ./plan.py

@@ -12,7 +12,7 @@ step:./expensive.py
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
    DELETED │ plan.py
-     ADDED │ plan.py
+   UPDATED │ plan.py
      PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py

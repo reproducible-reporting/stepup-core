@@ -7,7 +7,7 @@
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
    DELETED │ subs.txt
-     ADDED │ subs.txt
+   UPDATED │ subs.txt
    DELETED │ inp1.txt
      PHASE │ run
  DROPAMEND │ ./step.py

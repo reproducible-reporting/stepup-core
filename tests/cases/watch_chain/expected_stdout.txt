@@ -13,7 +13,7 @@
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
    DELETED │ config.json
-     ADDED │ config.json
+   UPDATED │ config.json
      PHASE │ run
      START │ ./use_config.py
    SUCCESS │ ./use_config.py

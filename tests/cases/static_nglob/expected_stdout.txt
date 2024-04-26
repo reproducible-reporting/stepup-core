@@ -35,7 +35,7 @@ Planning sec 1 summary
    SUCCESS │ cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
-     ADDED │ ch-2-theory/sec-2-2-original.txt
+   UPDATED │ ch-2-theory/sec-2-2-original.txt
    DELETED │ ch-2-theory/sec-2-2-advanced.txt
      PHASE │ run
      START │ ./plan.py

@@ -27,7 +27,7 @@ Same out hash        out2.txt
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
    DELETED │ inp2.txt
-     ADDED │ inp2.txt
+   UPDATED │ inp2.txt
      PHASE │ run
  DROPAMEND │ ./step.py
 ────────────────────── Outdated amended step information ───────────────────────

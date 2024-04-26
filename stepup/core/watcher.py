@@ -61,7 +61,7 @@ class Watcher:
                         self.added.discard(path)
                         self.changed.set()
                     if change in (Change.modified, Change.added):
-                        await self.reporter("CHANGED", path)
+                        await self.reporter("UPDATED", path)
                         self.deleted.discard(path)
                         self.added.add(path)
                         self.changed.set()

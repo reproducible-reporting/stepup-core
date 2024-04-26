@@ -9,7 +9,7 @@
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
    DELETED │ plan.py
-     ADDED │ plan.py
+   UPDATED │ plan.py
    DELETED │ orig.txt
      PHASE │ run
      START │ ./plan.py

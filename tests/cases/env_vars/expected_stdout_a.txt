@@ -9,7 +9,7 @@
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
    DELETED │ variables.json
-     ADDED │ variables.json
+   UPDATED │ variables.json
      PHASE │ run
     NOSKIP │ ./demovars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
@@ -26,7 +26,7 @@ Same inp hash        demovars.py
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
    DELETED │ variables.json
-     ADDED │ variables.json
+   UPDATED │ variables.json
      PHASE │ run
       SKIP │ ./demovars.py
 ───────────────────────────── No changes observed ──────────────────────────────

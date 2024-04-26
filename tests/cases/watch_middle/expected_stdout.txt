@@ -20,7 +20,7 @@ Inputs        STATIC  ./
    WARNING │ Skipping cleanup due to incomplete build.
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
-     ADDED │ plan.py
+   UPDATED │ plan.py
      PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py

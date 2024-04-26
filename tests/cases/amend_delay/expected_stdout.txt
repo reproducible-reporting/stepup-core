@@ -35,9 +35,9 @@ Same out hash        log.txt
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
    DELETED │ inp0.txt
-     ADDED │ inp0.txt
+   UPDATED │ inp0.txt
    DELETED │ inp1.txt
-     ADDED │ inp1.txt
+   UPDATED │ inp1.txt
      PHASE │ run
  DROPAMEND │ ./step.py > log.txt
 ────────────────────── Outdated amended step information ───────────────────────

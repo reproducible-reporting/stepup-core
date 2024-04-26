@@ -16,7 +16,7 @@ Return code           126
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
    DELETED │ sub/plan.py
-     ADDED │ sub/plan.py
+   UPDATED │ sub/plan.py
      PHASE │ run
      START │ ./plan.py  # wd=sub/
    SUCCESS │ ./plan.py  # wd=sub/

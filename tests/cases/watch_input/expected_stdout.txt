@@ -19,7 +19,7 @@ Outputs      PENDING  output.txt
    WARNING │ Skipping cleanup due to incomplete build.
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
-     ADDED │ input.txt
+   UPDATED │ input.txt
      PHASE │ run
      START │ cp input.txt output.txt
    SUCCESS │ cp input.txt output.txt
