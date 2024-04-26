@@ -55,3 +55,10 @@ You will at least see the following:
 Now press (lower case) `r` again.
 The `./plan.py` step is executed again because a new file appeared that matches a glob pattern used in `plan.py`.
 Rerunning `./plan.py` will in turn create a new step to copy `src/spam.txt` to `dst/spam.txt`.
+
+
+## Screen recording
+
+The following recording shows the terminal output when starting StepUp from scratch with two workers, changing `src/foo.txt` and rerunning, and adding `src/spam.txt` and rerunning:
+
+[![asciicast](https://asciinema.org/a/e8W0oYwnR6sXzqLH0WWkqvo5Z.svg)](https://asciinema.org/a/e8W0oYwnR6sXzqLH0WWkqvo5Z)
