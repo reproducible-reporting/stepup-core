@@ -4,13 +4,13 @@
   DIRECTOR │ Launched worker 1
      START │ ./plan.py
      START │ echo First line. > story.txt; echo Second line. >> story.txt
-   SUCCESS │ ./plan.py
    SUCCESS │ echo First line. > story.txt; echo Second line. >> story.txt
      START │ grep First story.txt
    SUCCESS │ grep First story.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 First line.
 ────────────────────────────────────────────────────────────────────────────────
+   SUCCESS │ ./plan.py
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
   DIRECTOR │ Stopping workers.

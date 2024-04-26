@@ -2,3 +2,8 @@
 git clean -dfX .
 unset STEPUP_ROOT
 stepup -n -w1 | sed -f ../../clean_stdout.sed > stdout.txt
+
+# INP: plan.py
+# INP: matplotlibrc
+# INP: generate.py
+# INP: plot.py

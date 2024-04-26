@@ -1,4 +1,4 @@
-  DIRECTOR │ Listening on /tmp/stepup-qx0niv5o/director
+  DIRECTOR │ Listening on /tmp/stepup-########/director
      PHASE │ run
   DIRECTOR │ Launched worker 0
   DIRECTOR │ Launched worker 1

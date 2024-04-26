@@ -3,10 +3,10 @@
   DIRECTOR │ Launched worker 0
      START │ ./plan.py
    SUCCESS │ ./plan.py
-     START │ ./plan.py  # wd=sub/
-   SUCCESS │ ./plan.py  # wd=sub/
      START │ mkdir -p ../public/
    SUCCESS │ mkdir -p ../public/
+     START │ ./plan.py  # wd=sub/
+   SUCCESS │ ./plan.py  # wd=sub/
      START │ mkdir -p ../../public/sub/  # wd=sub/
    SUCCESS │ mkdir -p ../../public/sub/  # wd=sub/
      START │ cp -aT example.txt ../../public/sub/example.txt  # wd=sub/

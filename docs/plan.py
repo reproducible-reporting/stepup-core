@@ -1,40 +1,64 @@
 #!/usr/bin/env python
-from stepup.core.api import static, step
+"""StepUp plan to generate all the outputs of the examples."""
+
+from stepup.core.api import glob, static, step
 from path import Path
 
 
-def plan_tutorial(tutdir: str, out: list[str]):
-    """Define static files and a step for running a tutorial example."""
-    workdir = Path(tutdir)
-    main = workdir / "main.sh"
-    plan = workdir / "plan.py"
-    static(workdir, main, plan)
-    out = [workdir / out_path for out_path in out]
-    step("./main.sh", workdir=workdir, inp=[main, plan], out=out)
-    return out
+def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
+    """Get list of static inputs, StepUp root and some outputs of the example.
+
+    This information is embedded in the comments of `main.sh` and the commands
+
+    ```
+    stepup -n -w 1 | sed -f ../../clean_stdout.sed > stdout.txt
+    # INP: input
+    # ROOT: root/ (optional)
+    ```
+
+    Parameters
+    ----------
+    path_main
+        The path of the `main.sh` script.
+
+    Returns
+    -------
+    inp
+        A list of static input paths.
+    root
+        The root of the StepUp example run.
+    out
+        A list of output paths, deduced from output redirection.
+    """
+    inp = []
+    workdir = Path(path_main).parent
+    root = workdir
+    out = []
+    with open(path_main) as fh:
+        for line in fh:
+            if line.startswith("# INP:"):
+                inp.append(workdir / line[6:].strip())
+            elif line.startswith("# ROOT:"):
+                root = workdir / line[7:].strip()
+                inp.append(root)
+            elif line.startswith("stepup") and line.count(">") == 1:
+                out.append(workdir / Path(line[line.find(">") + 1 :].strip()))
+    return inp, root, out
 
 
-static("getting_started/", "advanced_topics/")
-tutout = [
-    *plan_tutorial("getting_started/first_step/", ["stdout1.txt", "stdout2.txt"]),
-    *plan_tutorial("getting_started/dependencies/", ["stdout.txt"]),
-    *plan_tutorial("getting_started/static_files/", ["stdout.txt"]),
-    *plan_tutorial("getting_started/static_glob/", ["stdout.txt"]),
-    *plan_tutorial("getting_started/static_glob_conditional/", ["stdout1.txt", "stdout2.txt"]),
-    *plan_tutorial("getting_started/script_single/", ["stdout.txt"]),
-    *plan_tutorial("getting_started/script_multiple/", ["stdout.txt"]),
-    *plan_tutorial("getting_started/no_rules/", ["stdout.txt"]),
-    *plan_tutorial("getting_started/distributed_plans/", ["stdout.txt"]),
-    *plan_tutorial("advanced_topics/static_named_glob/", ["stdout.txt"]),
-    *plan_tutorial("advanced_topics/static_deferred_glob/", ["stdout.txt"]),
-    *plan_tutorial("advanced_topics/optional_steps/", ["stdout.txt"]),
-    *plan_tutorial("advanced_topics/blocked_steps/", ["stdout.txt"]),
-    *plan_tutorial("advanced_topics/pools/", ["stdout.txt"]),
-    *plan_tutorial("advanced_topics/environment_variables/", ["stdout.txt"]),
-    *plan_tutorial("advanced_topics/volatile_outputs/", ["stdout.txt"]),
-    *plan_tutorial("advanced_topics/amending_steps/", ["stdout.txt"]),
-    *plan_tutorial("advanced_topics/variable_substitution/", ["stdout.txt"]),
-    *plan_tutorial("advanced_topics/here_and_root/", ["stdout.txt"]),
-]
+def main():
+    static("run_example.py", "getting_started/", "advanced_topics/")
+    glob("getting_started/*/")
+    glob("advanced_topics/*/")
+    paths_main = glob("*/*/main.sh")
+    # TODO: amend(inp=paths_main)
+    for path_main in paths_main:
+        inp, root, out = scan_main(path_main)
+        static(inp)
+        inp.append(Path("run_example.py"))
+        inp.append(path_main)
+        step(f"./run_example.py {path_main} {root}", inp=inp, out=out)
 
-# step("mkdocs build", workdir="../", inp=tutout)
+
+if __name__ == "__main__":
+    main()
