@@ -77,13 +77,6 @@ async def async_main():
         )
         tasks = [task_reporter]
 
-        # Instantiate keyboard interaction
-        if sys.stdin.isatty() and args.interactive:
-            task_keyboard = asyncio.create_task(
-                keyboard(director_socket_path, reporter_socket_path, stop_event), name="keyboard"
-            )
-            tasks.append(task_keyboard)
-
         # Launch director as background process
         log_file = open(".stepup/logs/director", "w")
         argv = [
@@ -106,7 +99,16 @@ async def async_main():
                 stdout=log_file,
                 stderr=subprocess.STDOUT,
             )
-            if not args.interactive:
+            # Instantiate keyboard interaction or work non-interactively
+            if args.interactive:
+                if sys.stdin.isatty():
+                    await wait_for_path(director_socket_path, stop_event)
+                    task_keyboard = asyncio.create_task(
+                        keyboard(director_socket_path, reporter_socket_path, stop_event),
+                        name="keyboard",
+                    )
+                    tasks.append(task_keyboard)
+            else:
                 await wait_for_path(director_socket_path, stop_event)
                 async with await AsyncRPCClient.socket(director_socket_path) as client:
                     await client.call.join()
@@ -115,6 +117,8 @@ async def async_main():
         finally:
             try:
                 await asyncio.gather(*tasks)
+            except ConnectionRefusedError:
+                reporter_handler.reporter("ERROR", "Could not connect to director", [])
             finally:
                 log_file.close()
                 path_tmpsock.remove_p()
@@ -169,7 +173,6 @@ async def keyboard(
     reporter_socket_path: Path,
     stop_event: asyncio.Event,
 ):
-    await wait_for_path(director_socket_path, stop_event)
     async with (
         ReporterClient.socket(reporter_socket_path) as reporter,
         await AsyncRPCClient.socket(director_socket_path) as client,
