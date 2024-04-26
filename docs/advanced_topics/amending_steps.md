@@ -24,6 +24,8 @@ Some features in Ninja cover what can be achieved with `amend`.
 
 ## Example
 
+Example source files: [advanced_topics/amending_steps/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/amending_steps)
+
 This example intentionally creates a simple scenario with an amended input.
 This is a somewhat silly example to illustrate the concept.
 You may achieve the same result without amending, because you have full control over all scripts in the example.

@@ -22,6 +22,8 @@ for which the pool size is 1.
 
 ## Example
 
+Example source files: [advanced_topics/pools/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/pools)
+
 The example here is a simple test case illustrating the use of a pool.
 The steps can also run easily in parallel, so you can experiment with the pool size.
 

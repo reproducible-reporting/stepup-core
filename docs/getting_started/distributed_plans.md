@@ -7,6 +7,8 @@ it may be convenient to distribute the workflow over multiple files.
 
 ## Example
 
+Example source files: [getting_started/distributed_plans/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/distributed_plans)
+
 Create a simple example with a top-level `plan.py` as follows:
 
 ```python

@@ -31,6 +31,8 @@ Blocking steps has some consequences:
 
 ## Example
 
+Example source files: [advanced_topics/blocked_steps/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/blocked_steps)
+
 The following `plan.py` illustrates the blocking mechanism.
 The copy commands are too simple and cheap to justify blocking,
 so this is just an example to illustrate the mechanism only.

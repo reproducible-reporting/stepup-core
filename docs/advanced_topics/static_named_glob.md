@@ -27,6 +27,8 @@ Named globs are often useful when working with files distributed over multiple d
 
 ## Example
 
+Example source files: [advanced_topics/static_named_glob/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/static_named_glob)
+
 In the example below, each directory represents a chapter from course notes, containing source files for the individual sections.
 In a realistic setting one could envision building a PDF presentations from LaTeX sources instead.
 To keep the example independent of StepUp RepRep, text files will be copied to Markdown files, which will then be concatenated.

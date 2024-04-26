@@ -23,6 +23,8 @@ because it would raise an exception when the file does not exist.
 
 ## Example
 
+Example source files: [getting_started/static_glob_conditional/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/static_glob_conditional)
+
 Let's simulate a scenario where `dataset/`, if it exists, is remote storage with a huge dataset.
 Plan A is to extract useful information from the dataset.
 However, there may be reasons why this is not always possible or desirable:

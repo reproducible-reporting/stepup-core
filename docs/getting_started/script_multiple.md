@@ -62,6 +62,8 @@ The script has the following elements:
 
 ## Example
 
+Example source files: [getting_started/script_multiple/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/script_multiple)
+
 To make the example a little more entertaining,
 it makes use of [NumPy](https://numpy.org/) and [Matplotlib](https://matplotlib.org/).
 The same plotting function is applied to two datasets of hourly temperatures recorded at

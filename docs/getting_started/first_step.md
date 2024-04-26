@@ -6,6 +6,8 @@ For the sake of simplicity, a minimal workflow will be defined that won't achiev
 
 ## Example
 
+Example source files: [getting_started/first_step/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/first_step)
+
 Create a file `plan.py` with the following contents:
 
 ```python

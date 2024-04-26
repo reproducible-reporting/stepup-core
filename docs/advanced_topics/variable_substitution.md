@@ -12,6 +12,8 @@ It returns the value of the variable and calls `amend()` to tell the director th
 
 ## Example
 
+Example source files: [advanced_topics/variable_substitution/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/variable_substitution)
+
 Create a `plan.py` with the following contents:
 
 ```python

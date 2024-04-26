@@ -19,6 +19,8 @@ These variables can be useful in the following cases:
 
 ## Example
 
+Example source files: [advanced_topics/here_and_root/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/here_and_root)
+
 This example represents a minimal out-of-source build, which is nevertheless involving several files, due to the inherent complexity of out-of-source builds.
 
 Create a `source/` directory with the following `source/plan.py`:

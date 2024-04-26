@@ -5,6 +5,8 @@ This informs StepUp that it does not need to wait for other steps whose outputs 
 
 ## Example
 
+Example source files: [getting_started/static_files/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/static_files)
+
 Create a file `limerick.txt` with the following contents:
 
 ```

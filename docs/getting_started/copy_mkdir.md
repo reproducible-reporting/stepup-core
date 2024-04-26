@@ -7,6 +7,8 @@ The simple example below will also be used in the [Automatic cleaning](automatic
 
 ## Example
 
+Example source files: [getting_started/copy_mkdir/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/copy_mkdir)
+
 Create a file `plan.py` with the following contents:
 
 ```python

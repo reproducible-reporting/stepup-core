@@ -9,6 +9,8 @@ One cannot modify environment variables while StepUp is running.
 
 ## Example
 
+Example source files: [advanced_topics/environment_variables/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/environment_variables)
+
 Create the following `plan.py`:
 
 ```python

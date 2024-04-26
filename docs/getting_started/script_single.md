@@ -69,6 +69,8 @@ The argument list of `run` may also contain less arguments (or even none at all)
 
 ## Example
 
+Example source files: [getting_started/script_single/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/script_single)
+
 Consider a script that has parameters defined in a config file `config.json`,
 which may be used by multiple script, e.g. for reasons of consistency.
 For this example, the configuration contains a number of steps and a frequency in arbitrary units,

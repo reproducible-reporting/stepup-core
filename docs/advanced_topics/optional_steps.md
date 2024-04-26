@@ -28,6 +28,8 @@ These are supported by StepUp as follows:
 
 ## Example
 
+Example source files: [advanced_topics/optional_steps/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/optional_steps)
+
 The example below uses the `script()` feature introduced in
 [Script (single case)](../getting_started/script_single.md) and
 [Script (multiple cases)](../getting_started/script_multiple.md)

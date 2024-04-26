@@ -8,6 +8,8 @@ which will only declare static files matching a glob pattern when they are used 
 
 ## Example
 
+Example source files: [advanced_topics/static_deferred_glob/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/static_deferred_glob)
+
 Create two text files with some content: `foo.txt` and `bar.txt`,
 and alsos the following `plan.py`:
 

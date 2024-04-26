@@ -5,6 +5,8 @@ This tutorial shows how StepUp keeps track of dependencies.
 
 ## Example
 
+Example source files: [getting_started/dependencies/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/dependencies)
+
 The following `plan.py` defines two steps, the second making use of the output from the first.
 
 ```python

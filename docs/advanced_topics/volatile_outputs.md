@@ -11,6 +11,8 @@ One may pass a list of such files to the `vol` argument of the [`step()`][stepup
 
 ## Example
 
+Example source files: [advanced_topics/volatile_outputs/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/volatile_outputs)
+
 Create the following `plan.py`, with a single step that produces a trivially volatile output:
 
 ```python

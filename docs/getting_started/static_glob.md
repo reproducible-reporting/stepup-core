@@ -11,6 +11,8 @@ See [Static named glob](../advanced_topics/static_named_glob.md) and [Static def
 
 ## Example
 
+Example source files: [getting_started/static_glob/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/static_glob)
+
 Create a subdirectory `src/` with two files: `sub/foo.txt` and `sub/bar.txt`.
 Also create a `plan.py` with the following contents:
 
