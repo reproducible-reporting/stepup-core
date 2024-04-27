@@ -59,9 +59,11 @@ step:cp copy1.txt copy2.txt
             consumes   file:./
             consumes   (file:copy1.txt)
              creates   file:copy2.txt
+            supplies   file:copy2.txt
 
 file:copy2.txt
                 path = copy2.txt
                state = PENDING
           created by   step:cp copy1.txt copy2.txt
             consumes   file:./
+            consumes   step:cp copy1.txt copy2.txt

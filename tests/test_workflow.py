@@ -132,7 +132,7 @@ def test_step(wfs: Workflow):
             {"c": "file", "p": 10, "s": FileState.PENDING.value},
         ],
         "products": [[0, 0], [0, 1], [0, 2], [0, 3], [1, 4], [1, 5], [2, 6]],
-        "consumers": [[3, 2], [3, 4], [3, 5], [4, 2], [4, 6], [5, 2]],
+        "consumers": [[2, 6], [3, 2], [3, 4], [3, 5], [4, 2], [4, 6], [5, 2]],
         "strings": ["./", "sub/", "foo.txt", "sub/bar.txt"],
     }
     assert remove_hashes(wfs.unstructure()) == expected
@@ -234,7 +234,7 @@ def test_simple_example(wfs: Workflow):
             {"c": "file", "p": 8, "s": FileState.PENDING.value},
         ],
         "products": [[0, 0], [0, 1], [0, 2], [0, 3], [1, 4], [2, 5]],
-        "consumers": [[3, 2], [3, 4], [3, 5], [4, 2]],
+        "consumers": [[2, 5], [3, 2], [3, 4], [3, 5], [4, 2]],
         "strings": ["./", "foo.txt", "bar.txt"],
     }
     wfs.declare_static("root:", ["foo.txt"])
@@ -253,7 +253,7 @@ def test_simple_example(wfs: Workflow):
             {"c": "file", "p": 8, "s": FileState.PENDING.value},
         ],
         "products": [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [2, 5]],
-        "consumers": [[3, 2], [3, 4], [3, 5], [4, 2]],
+        "consumers": [[2, 5], [3, 2], [3, 4], [3, 5], [4, 2]],
         "strings": ["./", "foo.txt", "bar.txt"],
     }
     assert wfs.get_file_counters() == Counter({FileState.STATIC: 2, FileState.PENDING: 1})
@@ -281,7 +281,7 @@ def test_simple_example(wfs: Workflow):
             {"c": "file", "p": 8, "s": FileState.BUILT.value},
         ],
         "products": [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [2, 5]],
-        "consumers": [[3, 2], [3, 4], [3, 5], [4, 2]],
+        "consumers": [[2, 5], [3, 2], [3, 4], [3, 5], [4, 2]],
         "strings": ["./", "foo.txt", "bar.txt"],
     }
     assert wfs.get_file_counters() == Counter({FileState.STATIC: 2, FileState.BUILT: 1})
@@ -311,7 +311,7 @@ def test_simple_example(wfs: Workflow):
             {"c": "file", "p": 8, "s": FileState.PENDING.value},
         ],
         "products": [[0, 0], [0, 1], [0, 2], [1, 3], [1, 4], [2, 5]],
-        "consumers": [[3, 2], [3, 4], [3, 5], [4, 2]],
+        "consumers": [[2, 5], [3, 2], [3, 4], [3, 5], [4, 2]],
         "strings": ["./", "foo.txt", "bar.txt"],
     }
     wfs.declare_static("root:", ["./"])
@@ -330,7 +330,7 @@ def test_simple_example(wfs: Workflow):
             {"c": "file", "p": 8, "s": FileState.PENDING.value},
         ],
         "products": [[0, 0], [0, 1], [0, 2], [0, 3], [1, 4], [2, 5]],
-        "consumers": [[3, 2], [3, 4], [3, 5], [4, 2]],
+        "consumers": [[2, 5], [3, 2], [3, 4], [3, 5], [4, 2]],
         "strings": ["./", "foo.txt", "bar.txt"],
     }
     wfs.declare_static("root:", ["foo.txt"])
@@ -349,7 +349,7 @@ def test_simple_example(wfs: Workflow):
             {"c": "file", "p": 8, "s": FileState.PENDING.value},
         ],
         "products": [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [2, 5]],
-        "consumers": [[3, 2], [3, 4], [3, 5], [4, 2]],
+        "consumers": [[2, 5], [3, 2], [3, 4], [3, 5], [4, 2]],
         "strings": ["./", "foo.txt", "bar.txt"],
     }
 
@@ -578,7 +578,7 @@ def test_define_queued_step_replay():
             {"c": "file", "p": 8, "s": FileState.BUILT.value, "h": [b"bar", 0, 0.0, 0, 0]},
         ],
         "products": [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [3, 5]],
-        "consumers": [[2, 3], [2, 4], [2, 5], [4, 3]],
+        "consumers": [[2, 3], [2, 4], [2, 5], [3, 5], [4, 3]],
         "strings": ["./", "inp", "out"],
     }
     workflow = Workflow.structure(state)
@@ -624,7 +624,6 @@ def test_define_queued_step_replay_extra(wfp):
     wfp.amend_step(foo_key, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"])
     foo.completed(wfp, True, StepHash(b"foo_ok", b"zzz"))
     assert foo.get_state(wfp) == StepState.SUCCEEDED
-    print(foo.recording.steps_args)
     assert bar.get_state(wfp) == StepState.QUEUED
     # bar
     assert wfp.queue.get_nowait() == RunJob(bar_key, None)
@@ -680,6 +679,7 @@ def test_replay_step_amended_orphaned_input(wfp):
     foo_key = wfp.define_step(plan_key, "foo > log", out_paths=["log"])
     foo = wfp.get_step(foo_key)
     assert foo.get_state(wfp) == StepState.QUEUED
+    assert foo.get_out_paths(wfp) == ["log"]
     assert wfp.queue_changed.is_set()
 
     # Simulate run
@@ -692,7 +692,9 @@ def test_replay_step_amended_orphaned_input(wfp):
 
     # Make ainp orphan and check state
     wfp.queue_changed.clear()
+    assert foo.get_out_paths(wfp) == ["aout", "log"]
     wfp.orphan(ainp_key)
+    assert foo.get_out_paths(wfp) == ["log"]
     assert not wfp.queue_changed.is_set()
     assert foo.hash is not None
     assert isinstance(foo.recording, StepRecording)
@@ -708,8 +710,11 @@ def test_replay_step_amended_orphaned_input(wfp):
     assert wfp.queue.get_nowait() == TryReplayJob(foo_key, None)
     foo.clean_before_run(wfp)
     foo.replay_amend(wfp)
+    assert isinstance(foo.recording, StepRecording)
     foo.replay_rest(wfp)
     assert foo.get_state(wfp) == StepState.SUCCEEDED
+    assert not wfp.is_orphan("file:log")
+    assert wfp.get_file("file:log").get_state(wfp) == FileState.BUILT
     check_workflow_unstructure(wfp)
     assert wfp.unstructure() == state1
 
@@ -773,7 +778,7 @@ def test_amend_step(wfp: Workflow):
         step_key, inp_paths=["inp1", "inp2"], out_paths=["out3"], vol_paths=["vol4"]
     )
     assert step.amended_suppliers == {"file:inp1", "file:inp2"}
-    assert step.amended_products == {"file:out3", "file:vol4"}
+    assert step.amended_consumers == {"file:out3", "file:vol4"}
     step.completed(wfp, False, StepHash(b"fail", b"inp_fail"))
     step.set_state(wfp, StepState.PENDING)
     wfp.declare_static("step:./plan.py", ["inp1"])
@@ -798,7 +803,7 @@ def test_define_queued_step_replay_amended():
                 "p": "bb",
                 "h": [b"boo", b"www"],
                 "as": [7],
-                "ao": [8, 9],
+                "ac": [8, 9],
             },
             {"c": "file", "p": 11, "s": FileState.STATIC.value, "h": [b"foo", 0, 0.0, 0, 0]},
             {"c": "file", "p": 12, "s": FileState.BUILT.value, "h": [b"bar", 0, 0.0, 0, 0]},
@@ -819,7 +824,21 @@ def test_define_queued_step_replay_amended():
             [3, 8],
             [3, 9],
         ],
-        "consumers": [[2, 3], [2, 4], [2, 5], [2, 6], [2, 7], [2, 8], [2, 9], [4, 3], [7, 3]],
+        "consumers": [
+            [2, 3],
+            [2, 4],
+            [2, 5],
+            [2, 6],
+            [2, 7],
+            [2, 8],
+            [2, 9],
+            [3, 5],
+            [3, 6],
+            [3, 8],
+            [3, 9],
+            [4, 3],
+            [7, 3],
+        ],
         "strings": ["./", "inp", "out", "vol", "ainp", "aout", "avol"],
     }
     workflow = Workflow.structure(state)
@@ -998,7 +1017,7 @@ def test_to_be_deleted(wfp: Workflow):
     wfp.define_step(plan_key, "blub2", vol_paths=["volatile"])
     wfp.define_step(plan_key, "blub3", out_paths=["pending"])
     wfp.define_step(plan_key, "mkdir sub", out_paths=["sub/"])
-    gone_file_hash = FileHash(b"m", 0, 0.0, 0, 0)
+    gone_file_hash = FileHash(b"mockg", 0, 0.0, 0, 0)
     wfp.set_file_hash("gone", gone_file_hash)
     built_file_hash = FileHash(b"mockb", 0, 0.0, 0, 0)
     wfp.set_file_hash("built", built_file_hash)
@@ -1011,6 +1030,7 @@ def test_to_be_deleted(wfp: Workflow):
     wfp.clean()
     assert wfp.to_be_deleted == [
         ("built", built_file_hash),
+        ("gone", gone_file_hash),
         ("sub/", sub_file_hash),
         ("volatile", None),
     ]
@@ -1197,14 +1217,15 @@ def test_amended_env_vars(wfp):
     check_workflow_unstructure(wfp)
 
 
-def test_cyclic_amend_static(wfp):
+def test_acyclic_amend_static(wfp):
     plan_key = "step:./plan.py"
     plan = wfp.get_step(plan_key)
     assert plan.get_state(wfp) == StepState.QUEUED
     assert wfp.queue.get_nowait() == RunJob(plan_key, None)
     wfp.declare_static(plan_key, ["static.txt"])
-    with pytest.raises(GraphError):
-        wfp.amend_step(plan_key, inp_paths=["static.txt"])
+    wfp.amend_step(plan_key, inp_paths=["static.txt"])
+    assert plan.get_inp_paths(wfp) == ["./", "plan.py", "static.txt"]
+    assert plan.get_static_paths(wfp) == ["static.txt"]
 
 
 def test_cyclic_two_steps(wfp):

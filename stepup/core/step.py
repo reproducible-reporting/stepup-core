@@ -82,7 +82,7 @@ class Step(Node):
 
     # Augment information in Workflow instance
     _amended_suppliers: set[str] = attrs.field(kw_only=True, factory=set)
-    _amended_products: set[str] = attrs.field(kw_only=True, factory=set)
+    _amended_consumers: set[str] = attrs.field(kw_only=True, factory=set)
 
     # Extra information, not in Workflow instance
     _initial_env_vars: set[str] = attrs.field(kw_only=True, factory=set)
@@ -127,8 +127,8 @@ class Step(Node):
         return self._amended_suppliers
 
     @property
-    def amended_products(self) -> set[str]:
-        return self._amended_products
+    def amended_consumers(self) -> set[str]:
+        return self._amended_consumers
 
     @property
     def amended_env_vars(self) -> set[str]:
@@ -176,7 +176,7 @@ class Step(Node):
         initial_env_vars = data.get("i")
         if initial_env_vars is not None:
             kwargs["initial_env_vars"] = set(initial_env_vars)
-        for short, name in ("as", "amended_suppliers"), ("ao", "amended_products"):
+        for short, name in ("as", "amended_suppliers"), ("ac", "amended_consumers"):
             idxs = data.get(short)
             if idxs is not None:
                 kwargs[name] = {strings[idx] for idx in idxs}
@@ -215,8 +215,8 @@ class Step(Node):
             data["i"] = sorted(self._initial_env_vars)
         if len(self._amended_suppliers) > 0:
             data["as"] = sorted(lookup[key] for key in self._amended_suppliers)
-        if len(self._amended_products) > 0:
-            data["ao"] = sorted(lookup[key] for key in self._amended_products)
+        if len(self._amended_consumers) > 0:
+            data["ac"] = sorted(lookup[key] for key in self._amended_consumers)
         if len(self._amended_env_vars) > 0:
             data["ai"] = sorted(self._amended_env_vars)
         if len(self._nglob_multis) > 0:
@@ -244,8 +244,8 @@ class Step(Node):
         for supplier in sorted(self._amended_suppliers):
             yield label, supplier
             label = ""
-        label = "creates (amended)"
-        for product in sorted(self._amended_products):
+        label = "supplies (amended)"
+        for product in sorted(self._amended_consumers):
             yield label, product
             label = ""
         label = "env_var (amended)"
@@ -409,9 +409,9 @@ class Step(Node):
         file_hash=False,
         only_initial=False,
     ) -> list:
-        file_keys = workflow.get_products(self.key, kind="file")
+        file_keys = workflow.get_consumers(self.key, kind="file")
         if only_initial:
-            file_keys = [fk for fk in file_keys if fk not in self._amended_products]
+            file_keys = [fk for fk in file_keys if fk not in self._amended_consumers]
         filter_states = (FileState.PENDING, FileState.BUILT)
         return self._get_paths(workflow, file_keys, state, file_hash, False, filter_states)
 
@@ -422,9 +422,9 @@ class Step(Node):
         file_hash=False,
         only_initial=False,
     ) -> list:
-        file_keys = workflow.get_products(self.key, kind="file")
+        file_keys = workflow.get_consumers(self.key, kind="file")
         if only_initial:
-            file_keys = [fk for fk in file_keys if fk not in self._amended_products]
+            file_keys = [fk for fk in file_keys if fk not in self._amended_consumers]
         filter_states = (FileState.VOLATILE,)
         return self._get_paths(workflow, file_keys, False, file_hash, False, filter_states)
 
@@ -483,17 +483,19 @@ class Step(Node):
     def clean_before_run(self, workflow: "Workflow"):
         """Drop amended inputs and (volatile) outputs.
 
-        This method is called right before (re)running a step, which will effectively recreate
+        This method is called right before (re)running a step.
+        Running the step will effectively recreate
         the same or different amended inputs and (volatile) outputs.
         """
         for supplier_key in self._amended_suppliers:
             workflow.consumers.discard(supplier_key, self._key, insist=True)
         self._amended_suppliers.clear()
-        for product_key in sorted(self._amended_products):
-            product = workflow.get_file(product_key)
-            assert product.get_state(workflow) in (FileState.PENDING, FileState.VOLATILE)
-            workflow.orphan(product_key)
-        self._amended_products.clear()
+        for consumer_key in sorted(self._amended_consumers):
+            consumer = workflow.get_file(consumer_key)
+            assert consumer.get_state(workflow) in (FileState.PENDING, FileState.VOLATILE)
+            workflow.suppliers.discard(consumer_key, self.key, insist=True)
+            workflow.orphan(consumer_key)
+        self._amended_consumers.clear()
         self._amended_env_vars.clear()
         self._nglob_multis = []
 
@@ -556,14 +558,14 @@ class Step(Node):
 
         for out_path in self.get_out_paths(workflow):
             file_key = f"file:{out_path}"
-            if file_key in self.amended_products:
+            if file_key in self.amended_consumers:
                 recording.amend_args.setdefault("out_paths", []).append(out_path)
             else:
                 recording.initial_out_paths.append(out_path)
 
         for vol_path in self.get_vol_paths(workflow):
             file_key = f"file:{vol_path}"
-            if file_key in self.amended_products:
+            if file_key in self.amended_consumers:
                 recording.amend_args.setdefault("vol_paths", []).append(vol_path)
             else:
                 recording.initial_vol_paths.append(vol_path)
@@ -608,13 +610,12 @@ class Step(Node):
         if self._recording.key != self.key:
             raise ValueError("The recorded key is not consistent with the step key")
         if (
-            len(self._amended_products) != 0
+            len(self._amended_consumers) != 0
             or len(self._amended_suppliers) != 0
             or len(self._amended_env_vars) != 0
         ):
             raise ValueError("Cannot restore amended info if step is already amended")
         if (
-            # TODO: get_inp_paths must include orphans!
             self._recording.initial_inp_paths == self.get_inp_paths(workflow, only_initial=True)
             and self._recording.initial_env_vars == self.initial_env_vars
             and self._recording.initial_out_paths == self.get_out_paths(workflow, only_initial=True)
@@ -653,7 +654,7 @@ class Step(Node):
             workflow.defer_glob(self.key, patterns)
         # Mark the step as succeeded and mark outputs as BUILT
         self.set_state(workflow, StepState.SUCCEEDED)
-        for file_key in workflow.get_products(self.key, kind="file"):
+        for file_key in workflow.get_consumers(self.key, kind="file"):
             file = workflow.get_file(file_key)
             if file.get_state(workflow) == FileState.PENDING:
                 file.set_state(workflow, FileState.BUILT)
@@ -671,20 +672,20 @@ class Step(Node):
         self.validate_amended |= input_changed
         if self.get_state(workflow) != StepState.PENDING:
             self.set_state(workflow, StepState.PENDING)
-            other_keys = []
+            # First make all consumers (output files) pending
+            for key in workflow.get_consumers(self.key):
+                if key.startswith("file:"):
+                    file = workflow.get_file(key)
+                    if file.get_state(workflow) == FileState.BUILT:
+                        file.make_pending(workflow)
+            # Then orphan all products that are not (volatile) output files
             for key in workflow.get_products(self.key):
                 if key.startswith("file:"):
                     file = workflow.get_file(key)
-                    state = file.get_state(workflow)
-                    if state in (FileState.STATIC, FileState.MISSING):
-                        workflow.orphan(key)
-                    elif state == FileState.BUILT:
-                        file.make_pending(workflow)
-                else:
-                    # Postpone orphaning other things than files, so
-                    # steps are made pending before they are orphaned.
-                    # This is a slightly better (and order-independent)
-                    # representation of the current status.
-                    other_keys.append(key)
-            for key in other_keys:
+                    if file.get_state(workflow) in (
+                        FileState.BUILT,
+                        FileState.PENDING,
+                        FileState.VOLATILE,
+                    ):
+                        continue
                 workflow.orphan(key)

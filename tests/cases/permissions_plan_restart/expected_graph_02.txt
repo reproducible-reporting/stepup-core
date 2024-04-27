@@ -66,9 +66,11 @@ step:touch done.txt  # wd=sub/
           created by   step:./plan.py  # wd=sub/
             consumes   file:sub/
              creates   file:sub/done.txt
+            supplies   file:sub/done.txt
 
 file:sub/done.txt
                 path = sub/done.txt
                state = BUILT
           created by   step:touch done.txt  # wd=sub/
             consumes   file:sub/
+            consumes   step:touch done.txt  # wd=sub/

@@ -79,9 +79,11 @@ step:./printvars.py
             consumes   file:./
             consumes   file:printvars.py
              creates   file:current_variables.txt
+            supplies   file:current_variables.txt
 
 file:current_variables.txt
                 path = current_variables.txt
                state = BUILT
           created by   step:./printvars.py
             consumes   file:./
+            consumes   step:./printvars.py

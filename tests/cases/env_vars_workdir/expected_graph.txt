@@ -55,9 +55,11 @@ step:cat input.txt > output.txt  # wd=sub/
             consumes   file:sub/
             consumes   file:sub/input.txt
              creates   file:sub/output.txt
+            supplies   file:sub/output.txt
 
 file:sub/output.txt
                 path = sub/output.txt
                state = BUILT
           created by   step:cat input.txt > output.txt  # wd=sub/
             consumes   file:sub/
+            consumes   step:cat input.txt > output.txt  # wd=sub/

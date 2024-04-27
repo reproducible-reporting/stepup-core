@@ -37,6 +37,7 @@ file:final.txt
                state = BUILT
           created by   step:cp second.txt final.txt
             consumes   file:./
+            consumes   step:cp second.txt final.txt
 
 step:echo "test 2" > second.txt
              workdir = ./
@@ -45,12 +46,14 @@ step:echo "test 2" > second.txt
           created by   step:./plan.py
             consumes   file:./
              creates   file:second.txt
+            supplies   file:second.txt
 
 file:second.txt
                 path = second.txt
                state = BUILT
           created by   step:echo "test 2" > second.txt
             consumes   file:./
+            consumes   step:echo "test 2" > second.txt
             supplies   step:cp second.txt final.txt
 
 step:cp second.txt final.txt
@@ -61,3 +64,4 @@ step:cp second.txt final.txt
             consumes   file:./
             consumes   file:second.txt
              creates   file:final.txt
+            supplies   file:final.txt

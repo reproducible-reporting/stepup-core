@@ -75,12 +75,14 @@ step:./work.py run -- '-5.0'
             consumes   file:helper.py
             consumes   file:work.py
              creates   file:data-5.0.txt
+            supplies   file:data-5.0.txt
 
 file:data-5.0.txt
                 path = data-5.0.txt
                state = BUILT
           created by   step:./work.py run -- '-5.0'
             consumes   file:./
+            consumes   step:./work.py run -- '-5.0'
 
 step:./work.py run -- '+7.0'
              workdir = ./
@@ -91,9 +93,11 @@ step:./work.py run -- '+7.0'
             consumes   file:helper.py
             consumes   file:work.py
              creates   file:data+7.0.txt
+            supplies   file:data+7.0.txt
 
 file:data+7.0.txt
                 path = data+7.0.txt
                state = BUILT
           created by   step:./work.py run -- '+7.0'
             consumes   file:./
+            consumes   step:./work.py run -- '+7.0'

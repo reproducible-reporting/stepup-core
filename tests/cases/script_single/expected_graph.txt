@@ -72,12 +72,14 @@ step:cp -aT work/test.csv work/copy.csv
             consumes   file:work/
             consumes   file:work/test.csv
              creates   file:work/copy.csv
+            supplies   file:work/copy.csv
 
 file:work/test.csv
                 path = work/test.csv
                state = BUILT
           created by   step:./generate.py run  # wd=work/
             consumes   file:work/
+            consumes   step:./generate.py run  # wd=work/
             supplies   step:cp -aT work/test.csv work/copy.csv
 
 file:work/copy.csv
@@ -85,6 +87,7 @@ file:work/copy.csv
                state = BUILT
           created by   step:cp -aT work/test.csv work/copy.csv
             consumes   file:work/
+            consumes   step:cp -aT work/test.csv work/copy.csv
 
 file:work/config.json
                 path = work/config.json
@@ -103,3 +106,4 @@ step:./generate.py run  # wd=work/
             consumes   file:work/config.json
             consumes   file:work/generate.py
              creates   file:work/test.csv
+            supplies   file:work/test.csv

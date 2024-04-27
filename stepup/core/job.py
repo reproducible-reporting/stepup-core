@@ -73,7 +73,6 @@ class ValidateAmendedJob(Job):
         if must_run:
             run_job = RunJob(self._step_key, self._pool)
             scheduler.inqueue.put_nowait(run_job)
-            # TODO: needed?
             scheduler.changed.set()
 
 
@@ -100,7 +99,6 @@ class TryReplayJob(Job):
         if must_run:
             run_job = RunJob(self._step_key, self._pool)
             scheduler.inqueue.put_nowait(run_job)
-            # TODO: needed?
             scheduler.changed.set()
 
 

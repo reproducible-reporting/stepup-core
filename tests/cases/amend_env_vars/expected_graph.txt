@@ -44,7 +44,7 @@ step:./step.py
              command = ./step.py
                state = SUCCEEDED
   consumes (amended) = file:foo.txt
-   creates (amended) = file:bar.log
+  supplies (amended) = file:bar.log
                      = file:bar.txt
    env_var (amended) = INP_VAR_TEST_STEPUP_BAR
                      = INP_VAR_TEST_STEPUP_FOO
@@ -53,15 +53,19 @@ step:./step.py
             consumes   file:foo.txt
              creates   file:bar.log
              creates   file:bar.txt
+            supplies   file:bar.log
+            supplies   file:bar.txt
 
 file:bar.txt
                 path = bar.txt
                state = BUILT
           created by   step:./step.py
             consumes   file:./
+            consumes   step:./step.py
 
 file:bar.log
                 path = bar.log
                state = VOLATILE
           created by   step:./step.py
             consumes   file:./
+            consumes   step:./step.py

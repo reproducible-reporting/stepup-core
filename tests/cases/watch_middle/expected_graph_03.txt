@@ -39,6 +39,7 @@ file:another.txt
                state = BUILT
           created by   step:cp between.txt another.txt
             consumes   file:./
+            consumes   step:cp between.txt another.txt
 
 file:original.txt
                 path = original.txt
@@ -55,12 +56,14 @@ step:cp between.txt another.txt
             consumes   file:./
             consumes   file:between.txt
              creates   file:another.txt
+            supplies   file:another.txt
 
 file:between.txt
                 path = between.txt
                state = BUILT
           created by   step:cp original.txt between.txt
             consumes   file:./
+            consumes   step:cp original.txt between.txt
             supplies   step:cp between.txt another.txt
 
 step:cp original.txt between.txt
@@ -71,3 +74,4 @@ step:cp original.txt between.txt
             consumes   file:./
             consumes   file:original.txt
              creates   file:between.txt
+            supplies   file:between.txt

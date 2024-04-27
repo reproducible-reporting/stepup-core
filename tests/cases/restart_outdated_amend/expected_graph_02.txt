@@ -58,19 +58,21 @@ step:./step.py
              command = ./step.py
                state = SUCCEEDED
   consumes (amended) = file:inp2.txt
-   creates (amended) = file:copy.txt
+  supplies (amended) = file:copy.txt
        extended hash = yes
           created by   step:./plan.py
             consumes   file:./
             consumes   file:inp2.txt
             consumes   file:subs.txt
              creates   file:copy.txt
+            supplies   file:copy.txt
 
 file:copy.txt
                 path = copy.txt
                state = BUILT
           created by   step:./step.py
             consumes   file:./
+            consumes   step:./step.py
 
 file:inp2.txt
                 path = inp2.txt

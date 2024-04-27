@@ -86,12 +86,14 @@ step:cp -aT inp1.txt out1.txt  # wd=sub/
             consumes   file:sub/
             consumes   file:sub/inp1.txt
              creates   file:sub/out1.txt
+            supplies   file:sub/out1.txt
 
 file:sub/out1.txt
                 path = sub/out1.txt
                state = BUILT
           created by   step:cp -aT inp1.txt out1.txt  # wd=sub/
             consumes   file:sub/
+            consumes   step:cp -aT inp1.txt out1.txt  # wd=sub/
 
 step:cp -aT inp2.txt out2.txt  # wd=sub/
              workdir = sub/
@@ -101,9 +103,11 @@ step:cp -aT inp2.txt out2.txt  # wd=sub/
             consumes   file:sub/
             consumes   file:sub/inp2.txt
              creates   file:sub/out2.txt
+            supplies   file:sub/out2.txt
 
 file:sub/out2.txt
                 path = sub/out2.txt
                state = BUILT
           created by   step:cp -aT inp2.txt out2.txt  # wd=sub/
             consumes   file:sub/
+            consumes   step:cp -aT inp2.txt out2.txt  # wd=sub/

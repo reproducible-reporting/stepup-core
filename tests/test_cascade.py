@@ -188,7 +188,6 @@ def test_singleton():
     cascade.clean()
     check_cascade_unstructure(cascade)
     assert cascade.log == ["new foo:one", "act foo:one hello", "orphan foo:one", "clean foo:one"]
-    print(cascade.format_str())
     assert cascade.format_str() == SINGLETON2_FORMAT_STR
 
     # Validate sanity checking
@@ -427,7 +426,6 @@ def test_clean_consumers():
     assert "foo:3" not in cascade.nodes
     assert "foo:1" not in cascade.nodes
     assert "foo:2" not in cascade.nodes
-    print(cascade.format_str())
     assert cascade.format_str() == FROM_SCRATCH_FORMAT_STR
 
 
@@ -469,8 +467,8 @@ def test_cyclic1():
     cascade = LogCascade.from_scratch()
     cascade.create(Foo("0"), "vacuum:")
     cascade.create(Foo("1"), "foo:0")
-    with pytest.raises(GraphError):
-        cascade.supply("foo:1", "foo:0")
+    cascade.supply("foo:1", "foo:0")
+    assert "foo:1" in cascade.suppliers["foo:0"]
 
 
 def test_cyclic2():

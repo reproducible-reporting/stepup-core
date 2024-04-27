@@ -34,11 +34,12 @@ step:./demo.py
              command = ./demo.py
                state = PENDING
   consumes (amended) = file:nonexisting/
-   creates (amended) = file:nonexisting/foo.out
+  supplies (amended) = file:nonexisting/foo.out
           created by   step:./plan.py
             consumes   file:./
             consumes   (file:nonexisting/)
              creates   file:nonexisting/foo.out
+            supplies   file:nonexisting/foo.out
 
 (file:nonexisting/)
                 path = nonexisting/
@@ -52,3 +53,4 @@ file:nonexisting/foo.out
                state = VOLATILE
           created by   step:./demo.py
             consumes   (file:nonexisting/)
+            consumes   step:./demo.py

@@ -44,6 +44,7 @@ step:./plan.py
                state = PENDING
             consumes   file:./
             consumes   (file:input1.txt)
+            supplies   (file:output1.txt)
 
 (file:input1.txt)
                 path = input1.txt
@@ -55,6 +56,7 @@ step:./plan.py
                 path = output1.txt
                state = PENDING
             consumes   file:./
+            consumes   (step:cp input1.txt output1.txt)
 
 (step:cp input2.txt output2.txt)
              workdir = ./
@@ -62,6 +64,7 @@ step:./plan.py
                state = PENDING
             consumes   file:./
             consumes   (file:input2.txt)
+            supplies   (file:output2.txt)
 
 (file:input2.txt)
                 path = input2.txt
@@ -73,3 +76,4 @@ step:./plan.py
                 path = output2.txt
                state = PENDING
             consumes   file:./
+            consumes   (step:cp input2.txt output2.txt)

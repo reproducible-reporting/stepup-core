@@ -54,12 +54,14 @@ step:cp -aT inp2.txt out2.txt
             consumes   file:./
             consumes   file:inp2.txt
              creates   file:out2.txt
+            supplies   file:out2.txt
 
 file:out2.txt
                 path = out2.txt
                state = BUILT
           created by   step:cp -aT inp2.txt out2.txt
             consumes   file:./
+            consumes   step:cp -aT inp2.txt out2.txt
 
 file:inp3.txt
                 path = inp3.txt
@@ -77,9 +79,11 @@ step:cp -aT inp3.txt out3.txt
             consumes   file:./
             consumes   file:inp3.txt
              creates   file:out3.txt
+            supplies   file:out3.txt
 
 file:out3.txt
                 path = out3.txt
                state = BUILT
           created by   step:cp -aT inp3.txt out3.txt
             consumes   file:./
+            consumes   step:cp -aT inp3.txt out3.txt

@@ -37,6 +37,7 @@ step:echo hello > sub/dir/nested/hello.txt
             consumes   file:./
             consumes   (file:sub/dir/nested/)
              creates   file:sub/dir/nested/hello.txt
+            supplies   file:sub/dir/nested/hello.txt
 
 (file:sub/dir/nested/)
                 path = sub/dir/nested/
@@ -62,3 +63,4 @@ file:sub/dir/nested/hello.txt
                state = PENDING
           created by   step:echo hello > sub/dir/nested/hello.txt
             consumes   (file:sub/dir/nested/)
+            consumes   step:echo hello > sub/dir/nested/hello.txt

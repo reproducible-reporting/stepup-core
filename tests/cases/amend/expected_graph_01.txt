@@ -48,7 +48,7 @@ step:./step.py
              command = ./step.py
                state = SUCCEEDED
   consumes (amended) = file:inp2.txt
-   creates (amended) = file:out2.txt
+  supplies (amended) = file:out2.txt
        extended hash = yes
           created by   step:./plan.py
             consumes   file:./
@@ -56,12 +56,15 @@ step:./step.py
             consumes   file:inp2.txt
              creates   file:out1.txt
              creates   file:out2.txt
+            supplies   file:out1.txt
+            supplies   file:out2.txt
 
 file:out1.txt
                 path = out1.txt
                state = BUILT
           created by   step:./step.py
             consumes   file:./
+            consumes   step:./step.py
 
 step:echo word2 > inp2.txt
              workdir = ./
@@ -71,12 +74,14 @@ step:echo word2 > inp2.txt
           created by   step:./plan.py
             consumes   file:./
              creates   file:inp2.txt
+            supplies   file:inp2.txt
 
 file:inp2.txt
                 path = inp2.txt
                state = BUILT
           created by   step:echo word2 > inp2.txt
             consumes   file:./
+            consumes   step:echo word2 > inp2.txt
             supplies   step:./step.py
 
 file:out2.txt
@@ -84,3 +89,4 @@ file:out2.txt
                state = BUILT
           created by   step:./step.py
             consumes   file:./
+            consumes   step:./step.py

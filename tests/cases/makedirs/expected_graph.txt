@@ -41,7 +41,7 @@ step:./bunch.py
              workdir = ./
              command = ./bunch.py
                state = SUCCEEDED
-   creates (amended) = file:sub/one/
+  supplies (amended) = file:sub/one/
                      = file:sub/one/bar/
                      = file:sub/one/bar/text
           created by   step:./plan.py
@@ -53,12 +53,20 @@ step:./bunch.py
              creates   file:sub/other/
              creates   file:sub/other/foo/
              creates   file:sub/other/foo/text
+            supplies   file:sub/
+            supplies   file:sub/one/
+            supplies   file:sub/one/bar/
+            supplies   file:sub/one/bar/text
+            supplies   file:sub/other/
+            supplies   file:sub/other/foo/
+            supplies   file:sub/other/foo/text
 
 file:sub/
                 path = sub/
                state = BUILT
           created by   step:./bunch.py
             consumes   file:./
+            consumes   step:./bunch.py
             supplies   file:sub/one/
             supplies   file:sub/other/
 
@@ -67,6 +75,7 @@ file:sub/other/
                state = BUILT
           created by   step:./bunch.py
             consumes   file:sub/
+            consumes   step:./bunch.py
             supplies   file:sub/other/foo/
 
 file:sub/other/foo/
@@ -74,6 +83,7 @@ file:sub/other/foo/
                state = BUILT
           created by   step:./bunch.py
             consumes   file:sub/other/
+            consumes   step:./bunch.py
             supplies   file:sub/other/foo/text
 
 file:sub/other/foo/text
@@ -81,12 +91,14 @@ file:sub/other/foo/text
                state = BUILT
           created by   step:./bunch.py
             consumes   file:sub/other/foo/
+            consumes   step:./bunch.py
 
 file:sub/one/
                 path = sub/one/
                state = BUILT
           created by   step:./bunch.py
             consumes   file:sub/
+            consumes   step:./bunch.py
             supplies   file:sub/one/bar/
 
 file:sub/one/bar/
@@ -94,6 +106,7 @@ file:sub/one/bar/
                state = BUILT
           created by   step:./bunch.py
             consumes   file:sub/one/
+            consumes   step:./bunch.py
             supplies   file:sub/one/bar/text
 
 file:sub/one/bar/text
@@ -101,3 +114,4 @@ file:sub/one/bar/text
                state = BUILT
           created by   step:./bunch.py
             consumes   file:sub/one/bar/
+            consumes   step:./bunch.py

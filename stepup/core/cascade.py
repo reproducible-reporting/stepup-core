@@ -151,7 +151,7 @@ class Cascade:
     nodes: dict[str, Node] = attrs.field(factory=dict)
     # Association (kind, keys_of_kind)
     kinds: Assoc[str, str] = attrs.field(factory=one_to_many)
-    # Association (creator, products) and its inverse
+    # Association (creator, product) and its inverse
     products: Assoc[str, str] = attrs.field(factory=one_to_many)
     creators: AssocView[str, str] = attrs.field(init=False)
     # Association (supplier, consumer) and its inverse
@@ -369,23 +369,28 @@ class Cascade:
     # Graph modifications
     #
 
-    def _iter_cycles(self, src_key, dst_key):
+    def _iter_cycles(self, src_key: str, dst_key: str) -> Iterator[tuple[str]]:
+        """Iterate over cycles that point from `dst_key` back to `src_key`.
+
+        Notes
+        -----
+        This method only consider supplier-consumer edges.
+        """
         if src_key != "root:":
             if src_key == dst_key:
                 yield (src_key,)
-            creator_key = self.creators.get(src_key)
-            if creator_key is not None:
-                for cycle in self._iter_cycles(creator_key, dst_key):
-                    yield (src_key,) + cycle
             for supplier_key in self.suppliers.get(src_key, ()):
                 for cycle in self._iter_cycles(supplier_key, dst_key):
                     yield (src_key,) + cycle
 
-    def report_cyclic(self, src_key, dst_key):
+    def report_cyclic(self, src_key: str, dst_key: str):
         """Raise an informative exception when the new edge would make the directed graph cyclic.
 
-        This method is rather slow and only called when there is a known problem.
-        It is helpful because it provides more useful (and expensive) feedback.
+        Notes
+        -----
+        - This method is rather slow and only called when there is a known problem.
+          It is helpful because it provides more useful (and expensive) feedback.
+        - This method only consider supplier-consumer edges.
         """
         lines = []
         for cycle in self._iter_cycles(src_key, dst_key):
@@ -403,18 +408,21 @@ class Cascade:
             ] + lines
             raise CyclicError("\n".join(lines))
 
-    def _iter_predecessors(self, key: str, visited: set):
+    def _iter_predecessors(self, key: str, visited: set[str]):
+        """Efficiently collect all predecessors of `key` and add them to `visited`.
+
+        Notes
+        -----
+        This method only consider supplier-consumer edges.
+        """
         if key != "root:":
             visited.add(key)
-            creator_key = self.creators.get(key)
-            if creator_key not in visited:
-                self._iter_predecessors(creator_key, visited)
             for supplier_key in self.suppliers.get(key, ()):
                 if supplier_key not in visited:
                     self._iter_predecessors(supplier_key, visited)
 
-    def check_cyclic(self, src_key, dst_key):
-        """Raise an informative exception when the new edge would make the directed graph cyclic."""
+    def check_cyclic(self, src_key: str, dst_key: str):
+        """Raise an informative exception when the new edge would introduce a cyclic dependency."""
         visited = set()
         self._iter_predecessors(src_key, visited)
         if dst_key in visited:

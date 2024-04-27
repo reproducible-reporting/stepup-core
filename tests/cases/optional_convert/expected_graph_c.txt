@@ -73,6 +73,7 @@ file:used.txt
                state = BUILT
           created by   step:cp -aT converted_01.txt used.txt
             consumes   file:./
+            consumes   step:cp -aT converted_01.txt used.txt
 
 step:cp -aT raw_01.txt converted_01.txt
              workdir = ./
@@ -84,12 +85,14 @@ step:cp -aT raw_01.txt converted_01.txt
             consumes   file:./
             consumes   file:raw_01.txt
              creates   file:converted_01.txt
+            supplies   file:converted_01.txt
 
 file:converted_01.txt
                 path = converted_01.txt
                state = BUILT
           created by   step:cp -aT raw_01.txt converted_01.txt
             consumes   file:./
+            consumes   step:cp -aT raw_01.txt converted_01.txt
             supplies   step:cp -aT converted_01.txt used.txt
 
 step:cp -aT converted_01.txt used.txt
@@ -101,3 +104,4 @@ step:cp -aT converted_01.txt used.txt
             consumes   file:./
             consumes   file:converted_01.txt
              creates   file:used.txt
+            supplies   file:used.txt

@@ -37,6 +37,7 @@ step:mkdir -p sub/blub/pup/
             consumes   file:./
             consumes   (file:sub/blub/)
              creates   file:sub/blub/pup/
+            supplies   file:sub/blub/pup/
 
 (file:sub/blub/)
                 path = sub/blub/
@@ -56,3 +57,4 @@ file:sub/blub/pup/
                state = PENDING
           created by   step:mkdir -p sub/blub/pup/
             consumes   (file:sub/blub/)
+            consumes   step:mkdir -p sub/blub/pup/

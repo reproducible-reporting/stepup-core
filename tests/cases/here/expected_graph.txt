@@ -63,6 +63,7 @@ step:mkdir -p ../public/
             consumes   file:../
             consumes   file:./
              creates   file:../public/
+            supplies   file:../public/
 
 file:../
                 path = ../
@@ -77,6 +78,7 @@ file:../public/
                state = BUILT
           created by   step:mkdir -p ../public/
             consumes   file:../
+            consumes   step:mkdir -p ../public/
             supplies   file:../public/www/
             supplies   step:mkdir -p ../public/www/
 
@@ -88,12 +90,14 @@ step:mkdir -p ../public/www/
             consumes   file:../public/
             consumes   file:./
              creates   file:../public/www/
+            supplies   file:../public/www/
 
 file:../public/www/
                 path = ../public/www/
                state = BUILT
           created by   step:mkdir -p ../public/www/
             consumes   file:../public/
+            consumes   step:mkdir -p ../public/www/
             supplies   file:../public/www/index.md
             supplies   step:cp -aT index.md ../../public/www/index.md  # wd=www/
 
@@ -126,9 +130,11 @@ step:cp -aT index.md ../../public/www/index.md  # wd=www/
             consumes   file:www/
             consumes   file:www/index.md
              creates   file:../public/www/index.md
+            supplies   file:../public/www/index.md
 
 file:../public/www/index.md
                 path = ../public/www/index.md
                state = BUILT
           created by   step:cp -aT index.md ../../public/www/index.md  # wd=www/
             consumes   file:../public/www/
+            consumes   step:cp -aT index.md ../../public/www/index.md  # wd=www/

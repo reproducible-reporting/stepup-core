@@ -78,12 +78,14 @@ step:cp -aT raw_03.txt converted_03.txt
             consumes   file:./
             consumes   file:raw_03.txt
              creates   file:converted_03.txt
+            supplies   file:converted_03.txt
 
 file:converted_03.txt
                 path = converted_03.txt
                state = BUILT
           created by   step:cp -aT raw_03.txt converted_03.txt
             consumes   file:./
+            consumes   step:cp -aT raw_03.txt converted_03.txt
             supplies   step:cp -aT converted_03.txt used.txt
 
 step:cp -aT converted_03.txt used.txt
@@ -95,9 +97,11 @@ step:cp -aT converted_03.txt used.txt
             consumes   file:./
             consumes   file:converted_03.txt
              creates   file:used.txt
+            supplies   file:used.txt
 
 file:used.txt
                 path = used.txt
                state = BUILT
           created by   step:cp -aT converted_03.txt used.txt
             consumes   file:./
+            consumes   step:cp -aT converted_03.txt used.txt

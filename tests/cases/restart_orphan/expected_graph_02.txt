@@ -42,12 +42,14 @@ step:cp -aT foo.txt bar.txt
             consumes   file:./
             consumes   file:foo.txt
              creates   file:bar.txt
+            supplies   file:bar.txt
 
 file:foo.txt
                 path = foo.txt
                state = BUILT
           created by   step:echo test > foo.txt
             consumes   file:./
+            consumes   step:echo test > foo.txt
             supplies   step:cp -aT foo.txt bar.txt
 
 file:bar.txt
@@ -55,6 +57,7 @@ file:bar.txt
                state = BUILT
           created by   step:cp -aT foo.txt bar.txt
             consumes   file:./
+            consumes   step:cp -aT foo.txt bar.txt
 
 step:echo test > foo.txt
              workdir = ./
@@ -64,3 +67,4 @@ step:echo test > foo.txt
           created by   step:./plan.py
             consumes   file:./
              creates   file:foo.txt
+            supplies   file:foo.txt

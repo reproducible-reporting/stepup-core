@@ -38,9 +38,11 @@ step:touch output.txt
           created by   step:./plan.py
             consumes   file:./
              creates   file:output.txt
+            supplies   file:output.txt
 
 file:output.txt
                 path = output.txt
                state = BUILT
           created by   step:touch output.txt
             consumes   file:./
+            consumes   step:touch output.txt

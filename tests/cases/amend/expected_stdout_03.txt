@@ -31,16 +31,6 @@ inp2.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ echo word2 > inp2.txt
    SUCCESS │ echo word2 > inp2.txt
- DROPAMEND │ ./step.py
-────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   extended, digest 504fde78 ➜ 3f35ebaa, inp_digset 137fec45 ➜ 4a859afe
-Modified inp hash    inp2.txt (digest 705a962e ➜ 55af8bcf, size 16 ➜ 6)
-──────────────────────── Remained the same (or missing) ────────────────────────
-Same inp hash        ./
-Same inp hash        inp1.txt
-Same out hash        out1.txt
-Same out hash        out2.txt
-────────────────────────────────────────────────────────────────────────────────
      START │ ./step.py
    SUCCESS │ ./step.py
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz

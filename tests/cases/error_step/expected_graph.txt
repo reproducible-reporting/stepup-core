@@ -36,9 +36,11 @@ step:rm .sjdksjdfkjasdfkdjsak
           created by   step:./plan.py
             consumes   file:./
              creates   file:oops.txt
+            supplies   file:oops.txt
 
 file:oops.txt
                 path = oops.txt
                state = PENDING
           created by   step:rm .sjdksjdfkjasdfkdjsak
             consumes   file:./
+            consumes   step:rm .sjdksjdfkjasdfkdjsak

@@ -51,6 +51,7 @@ step:sleep 0.1; cp inp1.txt tmp1.txt
             consumes   file:./
             consumes   file:inp1.txt
              creates   file:tmp1.txt
+            supplies   file:tmp1.txt
 
 file:inp1.txt
                 path = inp1.txt
@@ -64,6 +65,7 @@ file:tmp1.txt
                state = BUILT
           created by   step:sleep 0.1; cp inp1.txt tmp1.txt
             consumes   file:./
+            consumes   step:sleep 0.1; cp inp1.txt tmp1.txt
             supplies   step:./step.py > log.txt
 
 step:./step.py > log.txt
@@ -81,6 +83,7 @@ step:./step.py > log.txt
             consumes   file:step.py
             consumes   file:tmp1.txt
              creates   file:log.txt
+            supplies   file:log.txt
 
 file:step.py
                 path = step.py
@@ -94,6 +97,7 @@ file:log.txt
                state = BUILT
           created by   step:./step.py > log.txt
             consumes   file:./
+            consumes   step:./step.py > log.txt
 
 step:sleep 0.1; echo Contents of inp2.txt > inp2.txt
              workdir = ./
@@ -103,12 +107,14 @@ step:sleep 0.1; echo Contents of inp2.txt > inp2.txt
           created by   step:./plan.py
             consumes   file:./
              creates   file:inp2.txt
+            supplies   file:inp2.txt
 
 file:inp2.txt
                 path = inp2.txt
                state = BUILT
           created by   step:sleep 0.1; echo Contents of inp2.txt > inp2.txt
             consumes   file:./
+            consumes   step:sleep 0.1; echo Contents of inp2.txt > inp2.txt
             supplies   step:./step.py > log.txt
 
 file:inp0.txt

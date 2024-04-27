@@ -1,0 +1,57 @@
+#!/usr/bin/env -S bash -x
+# Exit on first error and cleanup.
+set -e
+trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
+xargs rm -rvf < .gitignore
+
+# Run the example
+echo "hello" > input.txt
+stepup -w 1 plan.py & # > current_stdout.txt &
+
+# Get the graph after completion of the pending steps.
+python3 - << EOD
+from stepup.core.interact import *
+wait()
+graph("current_graph_01.txt")
+EOD
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit -1
+[[ -f input.txt ]] || exit -1
+grep hello output.txt
+
+# Change the input and check that the step reruns without pending dependencies
+echo "bye" > input.txt
+python3 - << EOD
+from stepup.core.interact import *
+watch_add("input.txt")
+run()
+wait()
+graph("current_graph_02.txt")
+EOD
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit -1
+[[ -f input.txt ]] || exit -1
+grep bye output.txt
+
+# Touch input (no changes) and check that the step reruns without pending dependencies
+touch input.txt
+rm output.txt
+python3 - << EOD
+from stepup.core.interact import *
+watch_add("input.txt")
+watch_del("output.txt")
+run()
+wait()
+graph("current_graph_03.txt")
+join()
+EOD
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit -1
+[[ -f input.txt ]] || exit -1
+grep bye output.txt
+
+# Wait for background processes, if any.
+wait $(jobs -p)

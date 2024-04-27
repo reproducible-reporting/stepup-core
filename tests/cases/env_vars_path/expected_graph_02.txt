@@ -52,15 +52,19 @@ step:grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> 
             consumes   file:FOO.md
              creates   file:FOO-stderr.txt
              creates   file:FOO-stdout.txt
+            supplies   file:FOO-stderr.txt
+            supplies   file:FOO-stdout.txt
 
 file:FOO-stdout.txt
                 path = FOO-stdout.txt
                state = BUILT
           created by   step:grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
             consumes   file:./
+            consumes   step:grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
 
 file:FOO-stderr.txt
                 path = FOO-stderr.txt
                state = VOLATILE
           created by   step:grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
             consumes   file:./
+            consumes   step:grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt

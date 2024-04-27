@@ -71,12 +71,14 @@ step:cp -aT example.txt sub/example.txt
             consumes   file:example.txt
             consumes   file:sub/
              creates   file:sub/example.txt
+            supplies   file:sub/example.txt
 
 file:sub/example.txt
                 path = sub/example.txt
                state = BUILT
           created by   step:cp -aT example.txt sub/example.txt
             consumes   file:sub/
+            consumes   step:cp -aT example.txt sub/example.txt
             supplies   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 
 step:./plan.py  # wd=sub/
@@ -97,12 +99,14 @@ step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
             consumes   file:sub/
             consumes   file:sub/example.txt
              creates   file:sub/upper.txt
+            supplies   file:sub/upper.txt
 
 file:sub/upper.txt
                 path = sub/upper.txt
                state = BUILT
           created by   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
             consumes   file:sub/
+            consumes   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 
 step:cat ../plan.py  # wd=sub/
              workdir = sub/

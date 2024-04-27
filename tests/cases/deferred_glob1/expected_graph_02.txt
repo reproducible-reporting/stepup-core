@@ -51,6 +51,7 @@ file:copy.txt
                state = BUILT
           created by   step:cp -aT static/sub/bar.txt copy.txt
             consumes   file:./
+            consumes   step:cp -aT static/sub/bar.txt copy.txt
 
 dg:'static/**'
           created by   step:./plan.py
@@ -66,6 +67,7 @@ step:cp -aT static/sub/bar.txt copy.txt
             consumes   file:./
             consumes   file:static/sub/bar.txt
              creates   file:copy.txt
+            supplies   file:copy.txt
 
 file:static/sub/bar.txt
                 path = static/sub/bar.txt

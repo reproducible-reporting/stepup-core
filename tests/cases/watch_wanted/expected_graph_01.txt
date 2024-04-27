@@ -50,6 +50,7 @@ step:cp input1.txt output1.txt
             consumes   file:./
             consumes   (file:input1.txt)
              creates   file:output1.txt
+            supplies   file:output1.txt
 
 (file:input1.txt)
                 path = input1.txt
@@ -62,6 +63,7 @@ file:output1.txt
                state = PENDING
           created by   step:cp input1.txt output1.txt
             consumes   file:./
+            consumes   step:cp input1.txt output1.txt
 
 step:cp input2.txt output2.txt
              workdir = ./
@@ -71,6 +73,7 @@ step:cp input2.txt output2.txt
             consumes   file:./
             consumes   (file:input2.txt)
              creates   file:output2.txt
+            supplies   file:output2.txt
 
 (file:input2.txt)
                 path = input2.txt
@@ -83,3 +86,4 @@ file:output2.txt
                state = PENDING
           created by   step:cp input2.txt output2.txt
             consumes   file:./
+            consumes   step:cp input2.txt output2.txt

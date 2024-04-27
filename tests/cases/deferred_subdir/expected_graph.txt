@@ -70,6 +70,7 @@ step:cp -aT used.txt copy.txt  # wd=sub/
             consumes   file:sub/
             consumes   file:sub/used.txt
              creates   file:sub/copy.txt
+            supplies   file:sub/copy.txt
 
 file:sub/used.txt
                 path = sub/used.txt
@@ -83,3 +84,4 @@ file:sub/copy.txt
                state = BUILT
           created by   step:cp -aT used.txt copy.txt  # wd=sub/
             consumes   file:sub/
+            consumes   step:cp -aT used.txt copy.txt  # wd=sub/

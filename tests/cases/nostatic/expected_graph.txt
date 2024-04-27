@@ -39,12 +39,14 @@ step:echo "spam" > first.txt
           created by   step:./plan.py
             consumes   file:./
              creates   file:first.txt
+            supplies   file:first.txt
 
 file:first.txt
                 path = first.txt
                state = BUILT
           created by   step:echo "spam" > first.txt
             consumes   file:./
+            consumes   step:echo "spam" > first.txt
             supplies   step:cp -v first.txt second.txt
 
 step:cp -v first.txt second.txt
@@ -55,9 +57,11 @@ step:cp -v first.txt second.txt
             consumes   file:./
             consumes   file:first.txt
              creates   file:second.txt
+            supplies   file:second.txt
 
 file:second.txt
                 path = second.txt
                state = BUILT
           created by   step:cp -v first.txt second.txt
             consumes   file:./
+            consumes   step:cp -v first.txt second.txt

@@ -65,12 +65,14 @@ step:./use_config.py
              creates   file:output.txt
              creates   step:echo All is fine. > other.log
              creates   step:echo log written to other.log. > report.txt
+            supplies   file:output.txt
 
 file:output.txt
                 path = output.txt
                state = BUILT
           created by   step:./use_config.py
             consumes   file:./
+            consumes   step:./use_config.py
 
 step:cp -aT report.txt copy.txt
              workdir = ./
@@ -80,12 +82,14 @@ step:cp -aT report.txt copy.txt
             consumes   file:./
             consumes   file:report.txt
              creates   file:copy.txt
+            supplies   file:copy.txt
 
 file:report.txt
                 path = report.txt
                state = BUILT
           created by   step:echo log written to other.log. > report.txt
             consumes   file:./
+            consumes   step:echo log written to other.log. > report.txt
             supplies   step:cp -aT report.txt copy.txt
 
 file:copy.txt
@@ -93,6 +97,7 @@ file:copy.txt
                state = BUILT
           created by   step:cp -aT report.txt copy.txt
             consumes   file:./
+            consumes   step:cp -aT report.txt copy.txt
 
 step:echo All is fine. > other.log
              workdir = ./
@@ -101,12 +106,14 @@ step:echo All is fine. > other.log
           created by   step:./use_config.py
             consumes   file:./
              creates   file:other.log
+            supplies   file:other.log
 
 file:other.log
                 path = other.log
                state = BUILT
           created by   step:echo All is fine. > other.log
             consumes   file:./
+            consumes   step:echo All is fine. > other.log
 
 step:echo log written to other.log. > report.txt
              workdir = ./
@@ -115,3 +122,4 @@ step:echo log written to other.log. > report.txt
           created by   step:./use_config.py
             consumes   file:./
              creates   file:report.txt
+            supplies   file:report.txt

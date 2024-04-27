@@ -44,12 +44,14 @@ step:echo something > single.txt
           created by   step:./plan.py
             consumes   file:./
              creates   file:single.txt
+            supplies   file:single.txt
 
 file:single.txt
                 path = single.txt
                state = BUILT
           created by   step:echo something > single.txt
             consumes   file:./
+            consumes   step:echo something > single.txt
             supplies   step:cat single.txt single.txt > double.txt
 
 step:cat single.txt single.txt > double.txt
@@ -61,12 +63,14 @@ step:cat single.txt single.txt > double.txt
             consumes   file:./
             consumes   file:single.txt
              creates   file:double.txt
+            supplies   file:double.txt
 
 file:double.txt
                 path = double.txt
                state = BUILT
           created by   step:cat single.txt single.txt > double.txt
             consumes   file:./
+            consumes   step:cat single.txt single.txt > double.txt
             supplies   step:cat double.txt double.txt > quadruple.txt
 
 step:cat double.txt double.txt > quadruple.txt
@@ -78,9 +82,11 @@ step:cat double.txt double.txt > quadruple.txt
             consumes   file:./
             consumes   file:double.txt
              creates   file:quadruple.txt
+            supplies   file:quadruple.txt
 
 file:quadruple.txt
                 path = quadruple.txt
                state = BUILT
           created by   step:cat double.txt double.txt > quadruple.txt
             consumes   file:./
+            consumes   step:cat double.txt double.txt > quadruple.txt

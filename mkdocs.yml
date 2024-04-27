@@ -64,6 +64,8 @@ nav:
     - advanced_topics/amending_steps.md
     - advanced_topics/variable_substitution.md
     - advanced_topics/here_and_root.md
+    - advanced_topics/cyclic_dependencies.md
+    - advanced_topics/amending_static_inputs.md
   - Reference:
     - reference/stepup.core.api.md
     - reference/stepup.core.interact.md

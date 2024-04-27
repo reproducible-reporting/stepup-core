@@ -40,6 +40,7 @@ file:analyzed.txt
                state = BUILT
           created by   step:grep -i foo data.txt > analyzed.txt
             consumes   file:./
+            consumes   step:grep -i foo data.txt > analyzed.txt
             supplies   step:cat analyzed.txt
 
 step:cat analyzed.txt
@@ -67,3 +68,4 @@ step:grep -i foo data.txt > analyzed.txt
             consumes   file:./
             consumes   file:data.txt
              creates   file:analyzed.txt
+            supplies   file:analyzed.txt

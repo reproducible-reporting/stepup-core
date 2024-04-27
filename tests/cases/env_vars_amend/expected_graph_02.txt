@@ -49,9 +49,11 @@ step:./demovars.py > output.txt
             consumes   file:./
             consumes   file:demovars.py
              creates   file:output.txt
+            supplies   file:output.txt
 
 file:output.txt
                 path = output.txt
                state = BUILT
           created by   step:./demovars.py > output.txt
             consumes   file:./
+            consumes   step:./demovars.py > output.txt

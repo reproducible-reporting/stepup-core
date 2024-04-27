@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """StepUp plan to generate all the outputs of the examples."""
 
-from stepup.core.api import glob, static, step
+from stepup.core.api import glob, static, step, amend
 from path import Path
 
 
@@ -51,7 +51,7 @@ def main():
     glob("getting_started/*/")
     glob("advanced_topics/*/")
     paths_main = glob("*/*/main.sh")
-    # TODO: amend(inp=paths_main)
+    assert amend(inp=paths_main.files())
     for path_main in paths_main:
         inp, root, out = scan_main(path_main)
         static(inp)

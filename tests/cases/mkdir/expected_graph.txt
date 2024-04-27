@@ -41,12 +41,14 @@ step:mkdir -p sub/
           created by   step:./plan.py
             consumes   file:./
              creates   file:sub/
+            supplies   file:sub/
 
 file:sub/
                 path = sub/
                state = BUILT
           created by   step:mkdir -p sub/
             consumes   file:./
+            consumes   step:mkdir -p sub/
             supplies   file:sub/foo.txt
             supplies   step:touch sub/foo.txt
 
@@ -58,12 +60,14 @@ step:touch sub/foo.txt
             consumes   file:./
             consumes   file:sub/
              creates   file:sub/foo.txt
+            supplies   file:sub/foo.txt
 
 file:sub/foo.txt
                 path = sub/foo.txt
                state = BUILT
           created by   step:touch sub/foo.txt
             consumes   file:sub/
+            consumes   step:touch sub/foo.txt
 
 step:mkdir -p exists/
              workdir = ./
@@ -72,9 +76,11 @@ step:mkdir -p exists/
           created by   step:./plan.py
             consumes   file:./
              creates   file:exists/
+            supplies   file:exists/
 
 file:exists/
                 path = exists/
                state = BUILT
           created by   step:mkdir -p exists/
             consumes   file:./
+            consumes   step:mkdir -p exists/

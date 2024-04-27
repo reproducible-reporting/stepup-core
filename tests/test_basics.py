@@ -199,6 +199,7 @@ step:cp -v original.txt copy.txt
             consumes   file:./
             consumes   file:original.txt
              creates   file:copy.txt
+            supplies   file:copy.txt
 
 file:original.txt
                 path = original.txt
@@ -212,6 +213,7 @@ file:copy.txt
                state = BUILT
           created by   step:cp -v original.txt copy.txt
             consumes   file:./
+            consumes   step:cp -v original.txt copy.txt
 
 """
 

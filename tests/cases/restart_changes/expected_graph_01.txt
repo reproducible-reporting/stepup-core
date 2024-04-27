@@ -53,12 +53,14 @@ step:cp source_both.txt copy_both1.txt
             consumes   file:./
             consumes   file:source_both.txt
              creates   file:copy_both1.txt
+            supplies   file:copy_both1.txt
 
 file:copy_both1.txt
                 path = copy_both1.txt
                state = BUILT
           created by   step:cp source_both.txt copy_both1.txt
             consumes   file:./
+            consumes   step:cp source_both.txt copy_both1.txt
 
 step:cp source_01.txt copy_01.txt
              workdir = ./
@@ -69,6 +71,7 @@ step:cp source_01.txt copy_01.txt
             consumes   file:./
             consumes   file:source_01.txt
              creates   file:copy_01.txt
+            supplies   file:copy_01.txt
 
 file:source_01.txt
                 path = source_01.txt
@@ -82,3 +85,4 @@ file:copy_01.txt
                state = BUILT
           created by   step:cp source_01.txt copy_01.txt
             consumes   file:./
+            consumes   step:cp source_01.txt copy_01.txt

@@ -65,12 +65,11 @@ There are also a few special nodes:
 
 #### Edges
 
-The StepUp workflow has two types of directed edges (arrows) that connect a pair of nodes:
+The StepUp workflow has two types of directed edges (arrows) that connect a pair of nodes.
+Each type of edges forms a graph with its own rules and logic.
 
-- A **creator** edge is an arrow pointing from a node to its creator.
-  It is added whenever the workflow is extended with a new node:
-  every node must have a creator.
-  The inverse arrows are also used in StepUp and are called **product** edges.
+- A **"creator ➜ product"** edge is added whenever the workflow is extended with a new node:
+  Every node must have **one** creator, but nodes may have multiple products.
   A few examples:
     - A step is the creator of its output files.
     - When a `plan.py` (or other step) defines new steps, then `plan.py` step is the creator of
@@ -80,12 +79,12 @@ The StepUp workflow has two types of directed edges (arrows) that connect a pair
     - Only the `Root` node is its own creator, making it the top-level node by construction.
     - When nodes are slated for removal, the `Vacuum` node becomes their creator.
 
-- A **consumer** edge is an arrow pointing from a node to other nodes that use it (as input).
-  The inverse arrows are also present in StepUp and are called **supplier** edges.
+- A **"supplier ➜ consumer"** edge points from a node that provides *something* to a node that uses that *something*.
   A few examples:
     - When a step uses a file as input, it is the consumer of that file.
-    - Each file is the consumer of its parent directory,
-      except for `./` (for relative paths) and `/` (for absolute paths).
+    - Likewise, a step is the supplier of its outputs
+    - Each file is the consumer of its parent directory.
+      (The only exceptions are `./` and `/`.)
     - A step is the consumer of its working directory.
 
 

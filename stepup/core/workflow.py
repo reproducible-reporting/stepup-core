@@ -321,21 +321,22 @@ class Workflow(Cascade):
             raise GraphError(f"Path is created as {file_state} but must be static: {path}")
         file_key = f"file:{path}"
         file = self.get_file(file_key)
-        if file is None or self.is_orphan(file_key):
-            if file_state == FileState.VOLATILE and len(self.consumers.get(file_key, ())) > 0:
-                raise GraphError(f"An input to an existing step cannot be volatile: {path}")
-            file = File(path)
-            self.create(file, creator_key)
-            parent_key, _, _ = self.supply_parent(file)
-            if file_state == FileState.STATIC and not (
+        if not (file is None or self.is_orphan(file_key)):
+            raise GraphError(f"File was already created: {path}")
+        if file_state == FileState.VOLATILE and len(self.consumers.get(file_key, ())) > 0:
+            raise GraphError(f"An input to an existing step cannot be volatile: {path}")
+        file = File(path)
+        self.create(file, creator_key)
+        parent_key, _, _ = self.supply_parent(file)
+        file.set_state(self, file_state)
+        if file_state == FileState.STATIC:
+            if not (
                 parent_key is None or self.get_file(parent_key).get_state(self) == FileState.STATIC
             ):
                 raise GraphError(f"Static path does not have a parent path node: {path}")
-        else:
-            raise GraphError(f"File was already created: {path}")
-        file.set_state(self, file_state)
-        if file_state == FileState.STATIC:
             file.release_pending(self)
+        else:
+            self.supply(creator_key, file_key)
         return file_key
 
     def get_parent_key(self, path: str, allow_orphan: bool = False) -> str | None:
@@ -644,12 +645,12 @@ class Workflow(Cascade):
         # Create out_paths
         for out_path in out_paths:
             file_key = self.create_file(step_key, out_path, FileState.PENDING)
-            step.amended_products.add(file_key)
+            step.amended_consumers.add(file_key)
 
         # Create vol_paths
         for vol_path in vol_paths:
             file_key = self.create_file(step_key, vol_path, FileState.VOLATILE)
-            step.amended_products.add(file_key)
+            step.amended_consumers.add(file_key)
 
         if len(inp_paths) > 0:
             step.imply_mandatory_suppliers(self, new_inp_path_keys)

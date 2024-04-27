@@ -124,6 +124,10 @@ class File(Node):
         for step_key in workflow.get_consumers(self.key, kind="step"):
             step = workflow.get_step(step_key)
             step.make_pending(workflow)
+            # When inputs of a step are orphaned,
+            # amended information becomes unreliable because the orphaned
+            # nodes may have been created by the step.
+            step.clean_before_run(workflow)
 
     def cleanup(self, workflow: "Workflow"):
         if self._path.endswith("/"):
@@ -132,7 +136,7 @@ class File(Node):
         if state == FileState.VOLATILE:
             workflow.to_be_deleted.append((self._path, None))
         elif state in (FileState.PENDING, FileState.BUILT):
-            if self.hash.digest not in (b"u", b"m"):
+            if self.hash.digest != b"u":
                 workflow.to_be_deleted.append((self._path, self.hash))
         workflow.file_states.discard(self.key, insist=True)
 

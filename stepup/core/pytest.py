@@ -102,7 +102,7 @@ async def run_example(srcdir, tmpdir, overwrite_expected=False):
             cur = re.sub(r" {10}(inp_| {4})digest = [ 0-9a-f]{71}\n {21}= [ 0-9a-f]{71}\n", "", cur)
             # - Remove standard error: sensitive to OS and Python version
             cur = re.sub(
-                STDERR_BEGIN + r".*" + STDERR_END,
+                STDERR_BEGIN + r".*?" + STDERR_END,
                 STDERR_BEGIN + "\n(stripped)\n" + STDERR_END,
                 cur,
                 flags=re.DOTALL,

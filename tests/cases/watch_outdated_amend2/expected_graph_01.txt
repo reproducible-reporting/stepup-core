@@ -72,12 +72,14 @@ step:cp -aT inp1.txt conv1.txt
             consumes   file:./
             consumes   file:inp1.txt
              creates   file:conv1.txt
+            supplies   file:conv1.txt
 
 file:conv1.txt
                 path = conv1.txt
                state = BUILT
           created by   step:cp -aT inp1.txt conv1.txt
             consumes   file:./
+            consumes   step:cp -aT inp1.txt conv1.txt
             supplies   step:./step.py subs1.txt > subs2.txt
             supplies   step:./step.py subs2.txt > subs3.txt
 
@@ -92,12 +94,14 @@ step:./step.py subs1.txt > subs2.txt
             consumes   file:conv1.txt
             consumes   file:subs1.txt
              creates   file:subs2.txt
+            supplies   file:subs2.txt
 
 file:subs2.txt
                 path = subs2.txt
                state = BUILT
           created by   step:./step.py subs1.txt > subs2.txt
             consumes   file:./
+            consumes   step:./step.py subs1.txt > subs2.txt
             supplies   step:./step.py subs2.txt > subs3.txt
 
 step:./step.py subs2.txt > subs3.txt
@@ -111,9 +115,11 @@ step:./step.py subs2.txt > subs3.txt
             consumes   file:conv1.txt
             consumes   file:subs2.txt
              creates   file:subs3.txt
+            supplies   file:subs3.txt
 
 file:subs3.txt
                 path = subs3.txt
                state = BUILT
           created by   step:./step.py subs2.txt > subs3.txt
             consumes   file:./
+            consumes   step:./step.py subs2.txt > subs3.txt

@@ -57,10 +57,12 @@ step:echo Will be deleted by accident > missing.txt
           created by   step:./plan.py
             consumes   file:./
              creates   file:missing.txt
+            supplies   file:missing.txt
 
 file:missing.txt
                 path = missing.txt
                state = BUILT
           created by   step:echo Will be deleted by accident > missing.txt
             consumes   file:./
+            consumes   step:echo Will be deleted by accident > missing.txt
             supplies   step:./step.py

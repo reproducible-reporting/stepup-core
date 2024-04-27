@@ -128,12 +128,14 @@ step:cp -aT ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
             consumes   file:ch-1-intro/
             consumes   file:ch-1-intro/sec-1-1-blabla.txt
              creates   file:ch-1-intro/sec-1-1-blabla.md
+            supplies   file:ch-1-intro/sec-1-1-blabla.md
 
 file:ch-1-intro/sec-1-1-blabla.md
                 path = ch-1-intro/sec-1-1-blabla.md
                state = BUILT
           created by   step:cp -aT ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
             consumes   file:ch-1-intro/
+            consumes   step:cp -aT ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
             supplies   step:cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
 
 step:cp -aT ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
@@ -145,12 +147,14 @@ step:cp -aT ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
             consumes   file:ch-1-intro/
             consumes   file:ch-1-intro/sec-1-2-some-more.txt
              creates   file:ch-1-intro/sec-1-2-some-more.md
+            supplies   file:ch-1-intro/sec-1-2-some-more.md
 
 file:ch-1-intro/sec-1-2-some-more.md
                 path = ch-1-intro/sec-1-2-some-more.md
                state = BUILT
           created by   step:cp -aT ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
             consumes   file:ch-1-intro/
+            consumes   step:cp -aT ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
             supplies   step:cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
 
 step:cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
@@ -163,12 +167,14 @@ step:cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-int
             consumes   file:ch-1-intro/sec-1-1-blabla.md
             consumes   file:ch-1-intro/sec-1-2-some-more.md
              creates   file:ch-1-intro/ch-1-compiled.md
+            supplies   file:ch-1-intro/ch-1-compiled.md
 
 file:ch-1-intro/ch-1-compiled.md
                 path = ch-1-intro/ch-1-compiled.md
                state = BUILT
           created by   step:cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
             consumes   file:ch-1-intro/
+            consumes   step:cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
             supplies   step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
 
 file:ch-2-theory/sec-2-1-basics.txt
@@ -194,12 +200,14 @@ step:cp -aT ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
             consumes   file:ch-2-theory/
             consumes   file:ch-2-theory/sec-2-2-advanced.txt
              creates   file:ch-2-theory/sec-2-2-advanced.md
+            supplies   file:ch-2-theory/sec-2-2-advanced.md
 
 file:ch-2-theory/sec-2-2-advanced.md
                 path = ch-2-theory/sec-2-2-advanced.md
                state = BUILT
           created by   step:cp -aT ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
             consumes   file:ch-2-theory/
+            consumes   step:cp -aT ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
             supplies   step:cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
 
 step:cp -aT ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
@@ -211,12 +219,14 @@ step:cp -aT ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
             consumes   file:ch-2-theory/
             consumes   file:ch-2-theory/sec-2-1-basics.txt
              creates   file:ch-2-theory/sec-2-1-basics.md
+            supplies   file:ch-2-theory/sec-2-1-basics.md
 
 file:ch-2-theory/sec-2-1-basics.md
                 path = ch-2-theory/sec-2-1-basics.md
                state = BUILT
           created by   step:cp -aT ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
             consumes   file:ch-2-theory/
+            consumes   step:cp -aT ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
             supplies   step:cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
 
 step:cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
@@ -229,12 +239,14 @@ step:cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-th
             consumes   file:ch-2-theory/sec-2-1-basics.md
             consumes   file:ch-2-theory/sec-2-2-advanced.md
              creates   file:ch-2-theory/ch-2-compiled.md
+            supplies   file:ch-2-theory/ch-2-compiled.md
 
 file:ch-2-theory/ch-2-compiled.md
                 path = ch-2-theory/ch-2-compiled.md
                state = BUILT
           created by   step:cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
             consumes   file:ch-2-theory/
+            consumes   step:cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
             supplies   step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
 
 file:ch-3-conclusions/sec-3-1-summary.txt
@@ -260,12 +272,14 @@ step:cp -aT ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outloo
             consumes   file:ch-3-conclusions/
             consumes   file:ch-3-conclusions/sec-3-2-outlook.txt
              creates   file:ch-3-conclusions/sec-3-2-outlook.md
+            supplies   file:ch-3-conclusions/sec-3-2-outlook.md
 
 file:ch-3-conclusions/sec-3-2-outlook.md
                 path = ch-3-conclusions/sec-3-2-outlook.md
                state = BUILT
           created by   step:cp -aT ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
             consumes   file:ch-3-conclusions/
+            consumes   step:cp -aT ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
             supplies   step:cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
 
 step:cp -aT ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
@@ -277,12 +291,14 @@ step:cp -aT ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summar
             consumes   file:ch-3-conclusions/
             consumes   file:ch-3-conclusions/sec-3-1-summary.txt
              creates   file:ch-3-conclusions/sec-3-1-summary.md
+            supplies   file:ch-3-conclusions/sec-3-1-summary.md
 
 file:ch-3-conclusions/sec-3-1-summary.md
                 path = ch-3-conclusions/sec-3-1-summary.md
                state = BUILT
           created by   step:cp -aT ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
             consumes   file:ch-3-conclusions/
+            consumes   step:cp -aT ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
             supplies   step:cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
 
 step:cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
@@ -295,12 +311,14 @@ step:cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md
             consumes   file:ch-3-conclusions/sec-3-1-summary.md
             consumes   file:ch-3-conclusions/sec-3-2-outlook.md
              creates   file:ch-3-conclusions/ch-3-compiled.md
+            supplies   file:ch-3-conclusions/ch-3-compiled.md
 
 file:ch-3-conclusions/ch-3-compiled.md
                 path = ch-3-conclusions/ch-3-compiled.md
                state = BUILT
           created by   step:cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
             consumes   file:ch-3-conclusions/
+            consumes   step:cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
             supplies   step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
 
 step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
@@ -313,9 +331,11 @@ step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusio
             consumes   file:ch-2-theory/ch-2-compiled.md
             consumes   file:ch-3-conclusions/ch-3-compiled.md
              creates   file:book.md
+            supplies   file:book.md
 
 file:book.md
                 path = book.md
                state = BUILT
           created by   step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
             consumes   file:./
+            consumes   step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md

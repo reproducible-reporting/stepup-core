@@ -69,12 +69,14 @@ step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
             consumes   file:head_x.txt
             consumes   file:tail_x.txt
              creates   file:paste_x.txt
+            supplies   file:paste_x.txt
 
 file:paste_x.txt
                 path = paste_x.txt
                state = BUILT
           created by   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
             consumes   file:./
+            consumes   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 file:head_z.txt
                 path = head_z.txt
