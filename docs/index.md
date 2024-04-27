@@ -5,7 +5,9 @@ StepUp is a simple, powerful and universal build tool, a modern alternative to [
 This is the documentation for StepUp Core, the basic framework for StepUp, without any domain-specific functionality.
 
 Domain-specific features are implemented in extension packages.
-Currently, there is only the StepUp RepRep extension for creating **rep**roducible **rep**orts: papers, presentations, theses, etc.
+Currently, there is only the
+[StepUp RepRep](https://reproducible-reporting.github.io/stepup-reprep/)
+extension for creating **rep**roducible **rep**orts: papers, presentations, theses, etc.
 
 
 ## What does StepUp look like?
