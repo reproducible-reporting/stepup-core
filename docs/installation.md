@@ -15,7 +15,8 @@ The core package is installed with
 pip install stepup
 ```
 
-The RepRep extension (for reproducible reporting) is installed with:
+The [StepUp RepRep](https://reproducible-reporting.github.io/stepup-reprep/) extension
+(for reproducible reporting) is installed with:
 
 ```bash
 pip install stepup-reprep
