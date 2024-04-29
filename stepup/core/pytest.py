@@ -96,6 +96,8 @@ async def run_example(srcdir, tmpdir, overwrite_expected=False):
             cur = cur.replace(workdir, "${CASE}")
             # - Listening paths are random
             cur = re.sub(r" {2}DIRECTOR │ Listening on .*\n", "", cur)
+            # - Exact line numbers in exceptions change often, not important
+            cur = re.sub(r", line \d+, in ", ", line ---, in ", cur)
             # - Remove trailing whitespace
             cur = re.sub(r"[ \t]+?(\n|\Z)", r"\1", cur)
             # - Remove digests, change often, content of results must be tested explicitly.

@@ -24,7 +24,7 @@ grep hello output.txt
 echo "bye" > input.txt
 python3 - << EOD
 from stepup.core.interact import *
-watch_add("input.txt")
+watch_update("input.txt")
 run()
 wait()
 graph("current_graph_02.txt")
@@ -40,8 +40,8 @@ touch input.txt
 rm output.txt
 python3 - << EOD
 from stepup.core.interact import *
-watch_add("input.txt")
-watch_del("output.txt")
+watch_update("input.txt")
+watch_delete("output.txt")
 run()
 wait()
 graph("current_graph_03.txt")

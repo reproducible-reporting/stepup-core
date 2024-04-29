@@ -24,8 +24,6 @@ This module also includes a synchronous RPC client to support simple client APIs
 
 
 import inspect
-import os
-import sys
 import traceback
 import asyncio
 import subprocess
@@ -36,15 +34,13 @@ from typing import Any, Callable, Collection, Awaitable
 
 import attrs
 
+from .asyncio import stoppable_iterator, stdio
 from .exceptions import RPCError
 
 
 __all__ = (
     "fmt_rpc_call",
     "allow_rpc",
-    "stoppable_iterator",
-    "stdio",
-    "pipe",
     "serve_rpc",
     "serve_socket_rpc",
     "serve_stdio_rpc",
@@ -78,112 +74,6 @@ def _handle_error(body: str, name: str, args, kwargs):
 def allow_rpc(func):
     func._allow_rpc = True
     return func
-
-
-#
-# Stoppable async loop
-#
-
-
-async def stoppable_iterator(get_next, stop_event: asyncio.Event, args=()):
-    """Iterate over messages received by calling awaitable get_next until stop_event is set.
-
-    Parameters
-    ----------
-    get_next
-        An awaitable that returns the next iteration.
-    stop_event
-        When set, the loop is interrupted.
-    args
-        A list of arguments to pass into get_next.
-    """
-    stop_task = asyncio.create_task(stop_event.wait(), name="stop_task")
-    while True:
-        future = asyncio.ensure_future(get_next(*args))
-        done, pending = await asyncio.wait([future, stop_task], return_when=asyncio.FIRST_COMPLETED)
-        if stop_task in done and future in pending:
-            await stop_task
-            stop_task.result()
-            future.cancel()
-            break
-        yield await future
-
-
-#
-# Setting up reader and writer pairs, other than those provided by asyncio.
-#
-
-
-async def stdio(
-    limit=asyncio.streams._DEFAULT_LIMIT, loop=None
-) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
-    """Create a reader and writer connected to stdin and stdout.
-
-    Adapted from:
-    https://stackoverflow.com/questions/52089869/
-    how-to-create-asyncio-stream-reader-writer-for-stdin-stdout
-
-    Parameters
-    ----------
-    limit
-        The maximum buffers size.
-    loop
-        The event loop. When not given `asyncio.get_event_loop()` is
-        called, which is usually just fine.
-
-    Returns
-    -------
-    reader
-        The StreamReader connected to standard input.
-    writer
-        The StreamWriter connected to standard output.
-    """
-    if loop is None:
-        loop = asyncio.get_event_loop()
-    reader = asyncio.StreamReader(limit=limit, loop=loop)
-    await loop.connect_read_pipe(lambda: asyncio.StreamReaderProtocol(reader, loop=loop), sys.stdin)
-    writer_transport, writer_protocol = await loop.connect_write_pipe(
-        lambda: asyncio.streams.FlowControlMixin(loop=loop), os.fdopen(sys.stdout.fileno(), "wb")
-    )
-    writer = asyncio.streams.StreamWriter(writer_transport, writer_protocol, None, loop)
-    return reader, writer
-
-
-async def pipe(
-    limit=asyncio.streams._DEFAULT_LIMIT, loop=None
-) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
-    """Create a connected reader and writer through `os.pipe`.
-
-    This is mainly useful for testing, to setup an RPC client and server within one test function.
-    Testing the RPC code involves two of these pipes, to set up bidirectional communication.
-
-    Parameters
-    ----------
-    limit
-        The maximum buffers size.
-    loop
-        The event loop. When not given `asyncio.get_event_loop()` is
-        called, which is usually just fine.
-
-    Returns
-    -------
-    reader
-        The StreamReader taking data out of the pipe.
-    writer
-        The StreamWriter putting data into the pipe.
-    """
-    if loop is None:
-        loop = asyncio.get_event_loop()
-    fd_in, fd_out = os.pipe()
-    pipe_in = open(fd_in)
-    pipe_out = open(fd_out)
-    reader = asyncio.StreamReader(limit=limit, loop=loop)
-    await loop.connect_read_pipe(lambda: asyncio.StreamReaderProtocol(reader, loop=loop), pipe_in)
-    writer_transport, writer_protocol = await loop.connect_write_pipe(
-        lambda: asyncio.streams.FlowControlMixin(loop=loop), pipe_out
-    )
-    writer = asyncio.streams.StreamWriter(writer_transport, writer_protocol, None, loop)
-    return reader, writer
 
 
 #
@@ -580,8 +470,30 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
         return body
 
     def _readexactly(self, size: int) -> bytes:
+        """Keep reading from the socket until (at least) size bytes were received.
+
+        Parameters
+        ----------
+        size
+            The length of the byte sequence to receive.
+
+        Raises
+        ------
+        ConectionResetError
+            When the socket returns zero bytes, the connection is lost and this error is raised.
+
+        Returns
+        -------
+        data
+            The bytes read from the socket of the requested size.
+            Any additional data received from the socket is stored for the
+            following call to `_readexactly`.
+        """
         while len(self._partial_recv) < size:
-            self._partial_recv += self._socket.recv(4096)
+            fragment = self._socket.recv(4096)
+            if len(fragment) == 0:
+                raise ConnectionResetError()
+            self._partial_recv += fragment
         result = self._partial_recv[:size]
         self._partial_recv = self._partial_recv[size:]
         return result

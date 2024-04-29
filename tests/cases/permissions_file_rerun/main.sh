@@ -28,7 +28,7 @@ chmod -x input.txt
 # Wait and get graph.
 python3 - << EOD
 from stepup.core.interact import *
-watch_add("input.txt")
+watch_update("input.txt")
 run()
 wait()
 graph("current_graph_02.txt")

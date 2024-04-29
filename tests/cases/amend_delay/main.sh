@@ -28,7 +28,7 @@ EOD
 rm inp2.txt
 python3 - << EOD
 from stepup.core.interact import *
-watch_del("inp2.txt")
+watch_delete("inp2.txt")
 run()
 wait()
 graph("current_graph_02.txt")
@@ -47,8 +47,8 @@ echo "Something new" > inp0.txt
 echo "Second inp1.txt" > inp1.txt
 python3 - << EOD
 from stepup.core.interact import *
-watch_add("inp0.txt")
-watch_add("inp1.txt")
+watch_update("inp0.txt")
+watch_update("inp1.txt")
 run()
 wait()
 graph("current_graph_03.txt")

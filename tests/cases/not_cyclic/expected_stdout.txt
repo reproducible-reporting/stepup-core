@@ -1,17 +1,15 @@
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
-   DELETED │ input.txt
    UPDATED │ input.txt
      PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
-   DELETED │ input.txt
    UPDATED │ input.txt
    DELETED │ output.txt
      PHASE │ run

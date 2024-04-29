@@ -25,7 +25,7 @@ EOD
 rm data.txt
 python3 - << EOD
 from stepup.core.interact import *
-watch_del("data.txt")
+watch_delete("data.txt")
 run()
 wait()
 graph("current_graph_02.txt")

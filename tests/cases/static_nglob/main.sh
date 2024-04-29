@@ -34,7 +34,7 @@ EOD
 mv ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-original.txt
 python3 - << EOD
 from stepup.core.interact import *
-watch_add("ch-2-theory/sec-2-2-original.txt")
+watch_update("ch-2-theory/sec-2-2-original.txt")
 run()
 wait()
 graph("current_graph_02.txt")

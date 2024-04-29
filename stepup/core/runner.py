@@ -20,69 +20,107 @@
 """Execute tasks."""
 
 import asyncio
-import enum
 import logging
 from functools import partial
 
 import attrs
 from path import Path
 
+from .asyncio import wait_for_events
 from .hash import FileHash
 from .job import Job
 from .reporter import ReporterClient
 from .scheduler import Scheduler
 from .step import StepState, Mandatory
-from .utils import MultiEvent
+from .watcher import Watcher
 from .worker import WorkerClient
 from .workflow import Workflow
 
 
-__all__ = ("Runner", "Phase")
-
-
-class Phase(enum.Enum):
-    RUN = 1000
-    WATCH = 2000
+__all__ = ("Runner",)
 
 
 @attrs.define
 class Runner:
+    # The watcher instance, used to start the watcher when the runner becomes idle.
+    watcher: Watcher = attrs.field()
+
+    # The scheduler providing jobs to the runner.
     scheduler: Scheduler = attrs.field()
+
+    # The workflow which generated the jobs and which gets updated as a result of the jobs.
     workflow: Workflow = attrs.field()
+
+    # The location of the workflow file (is written after the runner becomes idle).
     path_workflow: Path = attrs.field()
+
+    # A reporter client for sending progress info to.
     reporter: ReporterClient = attrs.field()
+
+    # The path of the director socket, passed on to worker processes.
     director_socket_path: str = attrs.field()
+
+    # Flag to enable performance output after a worker executed a step.
     show_perf: bool = attrs.field()
+
+    # Flag to enable more details on why steps cannot be skipped.
     explain_rerun: bool = attrs.field()
-    phase: MultiEvent = attrs.field(init=False)
-    workers: dict[int, WorkerClient] = attrs.field(init=False, factory=dict)
+
+    # Other parts of StepUp can set the resume event to put the runner back to work.
+    resume: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+
+    # A list of worker client objects, one for each worker process.
+    workers: list[WorkerClient] = attrs.field(init=False, factory=list)
+
+    # The list of active and idle workers (just integer indexes of the workers list).
     active_workers: set[int] = attrs.field(init=False, factory=set)
     idle_workers: set[int] = attrs.field(init=False, factory=set)
+
+    # Dictionary of asyncio tasks that interact with a worker client.
     running_worker_tasks: dict[asyncio.Task, Job] = attrs.field(init=False, factory=dict)
     done_worker_tasks: dict[asyncio.Task, Job] = attrs.field(init=False, factory=dict)
+
+    # Flag set when an error is raised halfway an RPC that changes the workflow.
+    # StepUp has no rollback mechanism, so this is the nuclear option to prevent
+    # StepUp from continuing with a half-baked workflow.
     dissolve_after_dump: bool = attrs.field(init=False, default=False)
 
-    @phase.default
-    def _default_phase(self):
-        return MultiEvent.from_values(Phase.RUN, Phase.WATCH)
+    async def loop(self, stop_event: asyncio.Event):
+        """The main runner loop.
 
-    async def loop(self):
+        Parameters
+        ----------
+        stop_event
+            The main runner loop is interrupted by this event.
+
+        Notes
+        -----
+        One iteration in the main runner loop consists of running a bunch of jobs:
+        All runnable jobs are executed unless the user interrupts the runner (drain command).
+        """
+        # Start workers
+        self.idle_workers.update(
+            await asyncio.gather(
+                *[self._launch_worker() for _ in range(self.scheduler.num_workers)]
+            )
+        )
+        # Loop through runner phases.
+        while True:
+            await self.job_loop()
+            await self.finalize()
+            self.resume.clear()
+            await wait_for_events(self.resume, stop_event, return_when=asyncio.FIRST_COMPLETED)
+            if stop_event.is_set():
+                return
+
+    async def job_loop(self):
+        """Run all runnable jobs unless the scheduler is drained while the runner is in progress."""
         await self.reporter.update_step_counts(self.workflow.get_step_counters())
         await self.reporter("PHASE", "run")
 
-        # Make clear to the rest of the code that the runner is working.
-        self.phase.set(Phase.RUN)
-
-        # Pre-launch workers (if more are needed)
-        num_launch = self.scheduler.num_workers - len(self.workers)
-        if num_launch > 0:
-            self.idle_workers.update(
-                await asyncio.gather(*[self._launch_worker() for _ in range(num_launch)])
-            )
-
         # Get step jobs and run them on the workers.
         while True:
-            # Get next step job and send it to workers if there is such a job.
+            # Get the next job and send it to workers if there is such a job.
             job, pool_name = self.scheduler.pop_runnable_job()
             if job is not None:
                 await self.send_to_worker(job, pool_name)
@@ -94,8 +132,6 @@ class Runner:
                 and len(self.running_worker_tasks) == 0
                 and len(self.done_worker_tasks) == 0
             ):
-                # Time to stop
-                await self.finalize()
                 return
 
             # If the runner needs to wait, there is time to handle exceptions of done tasks.
@@ -105,6 +141,26 @@ class Runner:
             # or a task has completed.
             await self.scheduler.changed.wait()
             self.scheduler.changed.clear()
+
+    async def finalize(self):
+        """Final steps after the runner has executed a bunch of jobs."""
+        success = await report_completion(self.workflow, self.scheduler, self.reporter)
+        if success:
+            self.workflow.clean()
+            await remove_files(self.workflow.to_be_deleted, self.reporter)
+        else:
+            await self.reporter("WARNING", "Skipping cleanup due to incomplete build.")
+        self.workflow.to_file(self.path_workflow)
+        await self.reporter.update_step_counts(self.workflow.get_step_counters())
+        await self.reporter("WORKFLOW", f"Dumped to {self.path_workflow}")
+        if self.dissolve_after_dump:
+            await self.reporter(
+                "WARNING",
+                "Dissolving the workflow due to an exceptions while the graph was being changed.",
+            )
+            self.workflow.dissolve()
+            self.dissolve_after_dump = False
+        self.watcher.resume.set()
 
     async def send_to_worker(self, job: Job, pool_name: str):
         if len(self.idle_workers) > 0:
@@ -127,7 +183,7 @@ class Runner:
             self.explain_rerun,
             len(self.workers),
         )
-        self.workers[worker.idx] = worker
+        self.workers.append(worker)
         await worker.boot()
         await self.reporter("DIRECTOR", f"Launched worker {worker.idx}")
         return worker.idx
@@ -151,35 +207,16 @@ class Runner:
             job.finalize(task.result(), self.scheduler, self.workflow)
             self.scheduler.changed.set()
 
-    async def finalize(self):
-        success = await report_completion(self.workflow, self.scheduler, self.reporter)
-        if success:
-            self.workflow.clean()
-            await remove_files(self.workflow.to_be_deleted, self.reporter)
-        else:
-            await self.reporter("WARNING", "Skipping cleanup due to incomplete build.")
-        self.workflow.to_file(self.path_workflow)
-        await self.reporter.update_step_counts(self.workflow.get_step_counters())
-        await self.reporter("WORKFLOW", f"Dumped to {self.path_workflow}")
-        if self.dissolve_after_dump:
-            await self.reporter(
-                "WARNING",
-                "Dissolving the workflow due to an exceptions while the graph was being changed.",
-            )
-            self.workflow.dissolve()
-            self.dissolve_after_dump = False
-        self.phase.set(Phase.WATCH)
-
     async def stop_workers(self):
         waits = []
         while len(self.idle_workers) > 0:
             worker_idx = self.idle_workers.pop()
-            worker = self.workers.pop(worker_idx)
+            worker = self.workers[worker_idx]
             await worker.shutdown()
             waits.append(worker.close())
         while len(self.active_workers) > 0:
             worker_idx = self.active_workers.pop()
-            worker = self.workers.pop(worker_idx)
+            worker = self.workers[worker_idx]
             await worker.shutdown()
             waits.append(worker.close())
         await asyncio.gather(*waits)

@@ -1,5 +1,5 @@
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan.py
       FAIL │ ./plan.py
 ────────────────────────────────── Step info ───────────────────────────────────

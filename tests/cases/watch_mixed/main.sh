@@ -21,8 +21,8 @@ cp plan_trimmed.py plan.py
 rm orig.txt
 python3 - << EOD
 from stepup.core.interact import *
-watch_add("plan.py")
-watch_del("orig.txt")
+watch_update("plan.py")
+watch_delete("orig.txt")
 run()
 wait()
 graph("current_graph_02.txt")

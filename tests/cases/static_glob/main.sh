@@ -31,8 +31,8 @@ echo "Third input" > inp3.txt
 rm inp1.txt
 python3 - << EOD
 from stepup.core.interact import *
-watch_add("inp3.txt")
-watch_del("inp1.txt")
+watch_update("inp3.txt")
+watch_delete("inp1.txt")
 run()
 wait()
 graph("current_graph_02.txt")

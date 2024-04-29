@@ -28,7 +28,7 @@ cp current_variables.txt current_variables_01.txt
 cp variables_02.json variables.json
 python3 - << EOD
 from stepup.core.interact import *
-watch_add("variables.json")
+watch_update("variables.json")
 run()
 wait()
 graph("current_graph_02.txt")
@@ -44,7 +44,7 @@ cp current_variables.txt current_variables_02.txt
 touch variables.json
 python3 - << EOD
 from stepup.core.interact import *
-watch_add("variables.json")
+watch_update("variables.json")
 run()
 wait()
 graph("current_graph_03.txt")

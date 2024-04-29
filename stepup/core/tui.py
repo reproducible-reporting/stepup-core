@@ -32,8 +32,9 @@ from decimal import Decimal
 import attrs
 from path import Path
 
+from .asyncio import stoppable_iterator
 from .director import interpret_num_workers
-from .rpc import serve_socket_rpc, stoppable_iterator, AsyncRPCClient
+from .rpc import serve_socket_rpc, AsyncRPCClient
 from .reporter import ReporterHandler, ReporterClient
 
 

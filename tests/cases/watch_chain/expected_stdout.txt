@@ -1,5 +1,5 @@
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ ./use_config.py
@@ -12,7 +12,6 @@
    SUCCESS │ cp -aT report.txt copy.txt
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
-   DELETED │ config.json
    UPDATED │ config.json
      PHASE │ run
      START │ ./use_config.py

@@ -19,7 +19,7 @@ EOD
 rm plan.py
 python3 - << EOD
 from stepup.core.interact import *
-watch_del("plan.py")
+watch_delete("plan.py")
 run()
 wait()
 graph("current_graph_02.txt")
@@ -34,7 +34,7 @@ EOD
 cp plan_02.py plan.py
 python3 - << EOD
 from stepup.core.interact import *
-watch_add("plan.py")
+watch_update("plan.py")
 run()
 wait()
 graph("current_graph_03.txt")

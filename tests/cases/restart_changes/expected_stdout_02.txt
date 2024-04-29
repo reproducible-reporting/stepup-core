@@ -1,6 +1,6 @@
   WORKFLOW │ Loaded from .stepup/workflow.mpk.xz
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan_02.py
    SUCCESS │ ./plan_02.py
      START │ cp source_both.txt copy_both2.txt

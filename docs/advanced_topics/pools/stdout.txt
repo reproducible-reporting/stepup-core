@@ -1,9 +1,9 @@
   DIRECTOR │ Listening on /tmp/stepup-########/director
-     PHASE │ run
   DIRECTOR │ Launched worker 0
   DIRECTOR │ Launched worker 1
   DIRECTOR │ Launched worker 2
   DIRECTOR │ Launched worker 3
+     PHASE │ run
      START │ ./plan.py
      START │ sleep 0.1; echo A
      START │ sleep 0.1; echo B

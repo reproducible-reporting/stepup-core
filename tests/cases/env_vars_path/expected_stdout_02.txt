@@ -1,6 +1,6 @@
   WORKFLOW │ Loaded from .stepup/workflow.mpk.xz
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   extended, digest 20bbb647 ➜ c4b2f903, inp_digset 20bbb647 ➜ c4b2f903

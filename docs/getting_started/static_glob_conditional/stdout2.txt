@@ -1,7 +1,7 @@
   DIRECTOR │ Listening on /tmp/stepup-########/director
   WORKFLOW │ Loaded from .stepup/workflow.mpk.xz
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py
       SKIP │ cat average.txt

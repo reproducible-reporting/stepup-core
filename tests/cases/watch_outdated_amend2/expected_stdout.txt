@@ -1,5 +1,5 @@
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ cp -aT inp1.txt conv1.txt
@@ -10,10 +10,9 @@
    SUCCESS │ ./step.py subs2.txt > subs3.txt
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
-   UPDATED │ inp2.txt
-   DELETED │ subs1.txt
-   UPDATED │ subs1.txt
    DELETED │ inp1.txt
+   UPDATED │ inp2.txt
+   UPDATED │ subs1.txt
      PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py

@@ -1,6 +1,6 @@
   WORKFLOW │ Loaded from .stepup/workflow.mpk.xz
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py
       SKIP │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt

@@ -25,7 +25,7 @@ grep word2 out2.txt
 echo "word2 and some" > inp2.txt
 python3 - << EOD
 from stepup.core.interact import *
-watch_add("inp2.txt")
+watch_update("inp2.txt")
 run()
 wait()
 graph("current_graph_02.txt")

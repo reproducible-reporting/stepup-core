@@ -1,5 +1,5 @@
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan_01.py
    SUCCESS │ ./plan_01.py
      START │ cp source_both.txt copy_both1.txt

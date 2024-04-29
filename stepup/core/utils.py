@@ -19,15 +19,12 @@
 # --
 """Small utilities used throughout."""
 
-import asyncio
 import importlib.util
 import os
 import string
 import re
 from types import ModuleType
-from typing import Any
 
-import attrs
 from path import Path
 
 
@@ -38,8 +35,6 @@ __all__ = (
     "myabsolute",
     "myparent",
     "make_path_out",
-    # Asyncio
-    "MultiEvent",
     # Miscellaneous
     "classproperty",
     "lookupdict",
@@ -143,36 +138,6 @@ def make_path_out(path_in: str, out: str | None, ext: str | None) -> Path:
     if not (ext is None or path_out.suffix == ext):
         raise ValueError(f"The output path does not have extension '{ext}': {path_out}.")
     return path_out
-
-
-#
-# Asyncio
-#
-
-
-@attrs.define
-class MultiEvent:
-    """Multiple events of which one at a time can be set."""
-
-    _events: dict[Any, asyncio.Event] = attrs.field()
-
-    @classmethod
-    def from_values(cls, *args):
-        result = cls({arg: asyncio.Event() for arg in args})
-        result.set(args[0])
-        return result
-
-    def set(self, value):
-        self._events[value].set()
-        for other_value, other_event in self._events.items():
-            if other_value != value:
-                other_event.clear()
-
-    def is_set(self, value):
-        return self._events[value].is_set()
-
-    async def wait(self, value):
-        await self._events[value].wait()
 
 
 #

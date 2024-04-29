@@ -32,8 +32,8 @@ echo "ty" > tail_y.txt
 echo "hz" > head_z.txt
 python3 - << EOD
 from stepup.core.interact import *
-watch_add("tail_y.txt")
-watch_add("head_z.txt")
+watch_update("tail_y.txt")
+watch_update("head_z.txt")
 run()
 wait()
 graph("current_graph_02.txt")
@@ -50,7 +50,7 @@ grep 'hy ty' paste_y.txt
 rm tail_y.txt
 python3 - << EOD
 from stepup.core.interact import *
-watch_del("tail_y.txt")
+watch_delete("tail_y.txt")
 run()
 wait()
 graph("current_graph_03.txt")

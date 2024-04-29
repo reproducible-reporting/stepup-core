@@ -1,6 +1,6 @@
   WORKFLOW │ Loaded from .stepup/workflow.mpk.xz
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
       SKIP │ ./plan.py
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       extended, digest 80ac726d, inp_digset 80ac726d

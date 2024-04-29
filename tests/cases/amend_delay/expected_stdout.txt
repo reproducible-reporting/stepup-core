@@ -1,5 +1,5 @@
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ sleep 0.1; echo Contents of inp2.txt > inp2.txt
@@ -34,9 +34,7 @@ Same out hash        log.txt
 ────────────────────────────────────────────────────────────────────────────────
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
-   DELETED │ inp0.txt
    UPDATED │ inp0.txt
-   DELETED │ inp1.txt
    UPDATED │ inp1.txt
      PHASE │ run
  DROPAMEND │ ./step.py > log.txt

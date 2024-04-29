@@ -27,7 +27,7 @@ They can also be used to create keyboard shortcuts in your IDE to control StepUp
 from .api import RPC_CLIENT
 
 
-__all__ = ("run", "graph", "watch_add", "watch_del", "wait", "join")
+__all__ = ("run", "graph", "watch_update", "watch_delete", "wait", "join")
 
 
 def run():
@@ -40,14 +40,14 @@ def graph(path: str):
     return RPC_CLIENT.call.graph(path)
 
 
-def watch_add(path: str):
-    """Block until the watcher has observed the addition of file."""
-    RPC_CLIENT.call.watch_add(path, _rpc_timeout=None)
+def watch_update(path: str):
+    """Block until the watcher has observed an update of the file."""
+    RPC_CLIENT.call.watch_update(path, _rpc_timeout=None)
 
 
-def watch_del(path: str):
-    """Block until the watcher has observed the deletion of a file."""
-    RPC_CLIENT.call.watch_del(path, _rpc_timeout=None)
+def watch_delete(path: str):
+    """Block until the watcher has observed the deletion of the file."""
+    RPC_CLIENT.call.watch_delete(path, _rpc_timeout=None)
 
 
 def wait():

@@ -1,6 +1,6 @@
 Changing to ${CASE}/source
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ mkdir -p ../public/

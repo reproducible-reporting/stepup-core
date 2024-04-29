@@ -25,7 +25,7 @@ dependencies = [
     "parse",
     "path",
     "rich",
-    "watchfiles",
+    "watchdog",
 ]
 dynamic = ["version"]
 
@@ -43,9 +43,10 @@ dev = [
 ]
 
 [project.urls]
+Documentation = "https://reproducible-reporting.github.io/stepup-core/"
 Issues = "https://github.com/reproducible-reporting/stepup-core/issues"
 Source = "https://github.com/reproducible-reporting/stepup-core/"
-Changelog = "https://github.com/reproducible-reporting/stepup-core/blob/main/CHANGELOG.md"
+Changelog = "https://reproducible-reporting.github.io/stepup-core/changelog/"
 
 [project.scripts]
 stepup = "stepup.core.tui:main"

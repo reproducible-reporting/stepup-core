@@ -139,11 +139,11 @@ def test_step(wfs: Workflow):
     check_workflow_unstructure(wfs)
     assert wfs.get_step(step_key) == wfs.nodes[step_key]
     assert wfs.get_steps() == [wfs.nodes[step_key]]
-    assert wfs.used_directories == ["./", "sub/"]
+    assert wfs.dir_queue.get_nowait() == (False, "./")
     with pytest.raises(TypeError):
         wfs.get_step("file:./")
 
-    # Redefining the boot script is not allows
+    # Redefining the boot script is not allowed.
     with pytest.raises(GraphError):
         wfs.define_step(
             "root:", "cp foo.txt sub/bar.txt", inp_paths=["foo.txt"], out_paths=["sub/bar.txt"]
@@ -210,12 +210,12 @@ def test_unstructure():
         "strings": ["./", "blub/", "sub/", "blub/foo.txt", "sub/bar.txt"],
     }
     workflow = Workflow.structure(state)
-    assert workflow.used_directories == ["./", "blub/", "sub/"]
+    check_workflow_unstructure(workflow)
 
 
 def test_simple_example(wfs: Workflow):
     # Create a runnable step and check the queue
-    assert wfs.queue.qsize() == 0
+    assert wfs.job_queue.qsize() == 0
     step_key = wfs.define_step(
         "root:", "cp foo.txt bar.txt", inp_paths=["foo.txt"], out_paths=["bar.txt"]
     )
@@ -264,7 +264,7 @@ def test_simple_example(wfs: Workflow):
         wfs.declare_static("root:", ["bar.txt"])
 
     # Mimic the runner, pretending to execute the step
-    assert wfs.queue.get_nowait() == RunJob(step_key, None)
+    assert wfs.job_queue.get_nowait() == RunJob(step_key, None)
     wfs.get_step(step_key).completed(wfs, True, StepHash(b"mockhash", b"zzz"))
     assert remove_hashes(wfs.unstructure()) == {
         "nodes": [
@@ -547,8 +547,8 @@ def test_define_queued_step_no_pool(wfp: Workflow):
     step_key = wfp.define_step(plan_key, "touch given", vol_paths=["given"])
     step = wfp.get_step(step_key)
     assert step.get_state(wfp) == StepState.QUEUED
-    assert wfp.queue.get_nowait() == RunJob(plan_key, None)
-    assert wfp.queue.get_nowait() == RunJob(step_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(plan_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(step_key, None)
 
 
 def test_define_queued_step_pool(wfp: Workflow):
@@ -556,8 +556,8 @@ def test_define_queued_step_pool(wfp: Workflow):
     step_key = wfp.define_step(plan_key, "touch given", out_paths=["given"], pool="aa")
     step = wfp.get_step(step_key)
     assert step.get_state(wfp) == StepState.QUEUED
-    assert wfp.queue.get_nowait() == RunJob(plan_key, None)
-    assert wfp.queue.get_nowait() == RunJob(step_key, "aa")
+    assert wfp.job_queue.get_nowait() == RunJob(plan_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(step_key, "aa")
 
 
 def test_define_queued_step_replay():
@@ -592,7 +592,7 @@ def test_define_queued_step_replay():
     assert step.get_state(workflow) == StepState.QUEUED
     out = workflow.get_file("file:out")
     assert out.get_state(workflow) == FileState.PENDING
-    assert workflow.queue.get_nowait() == TryReplayJob(step_key, "bb")
+    assert workflow.job_queue.get_nowait() == TryReplayJob(step_key, "bb")
     step.replay_rest(workflow)
     assert workflow.unstructure() == state
     workflow.discard_recordings()
@@ -604,13 +604,13 @@ def test_define_queued_step_replay_extra(wfp):
     # Prepare jobs for normal run
     plan_key = "step:./plan.py"
     plan = wfp.get_step(plan_key)
-    assert wfp.queue.get_nowait() == RunJob(plan_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(plan_key, None)
     wfp.declare_static(plan_key, ["ainp", "ainp2"])
-    wfp.queue_changed.clear()
+    wfp.job_queue_changed.clear()
     foo_key = wfp.define_step(plan_key, "foo > log", env_vars={"VAR": "VALUE"}, out_paths=["log"])
     foo = wfp.get_step(foo_key)
     assert foo.get_state(wfp) == StepState.QUEUED
-    assert wfp.queue_changed.is_set()
+    assert wfp.job_queue_changed.is_set()
     bar_key = wfp.define_step(
         foo_key, "bar > spam", inp_paths=["log"], env_vars={"X": "Y"}, vol_paths=["spam"]
     )
@@ -620,13 +620,13 @@ def test_define_queued_step_replay_extra(wfp):
 
     # Simulate run
     # foo
-    assert wfp.queue.get_nowait() == RunJob(foo_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(foo_key, None)
     wfp.amend_step(foo_key, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"])
     foo.completed(wfp, True, StepHash(b"foo_ok", b"zzz"))
     assert foo.get_state(wfp) == StepState.SUCCEEDED
     assert bar.get_state(wfp) == StepState.QUEUED
     # bar
-    assert wfp.queue.get_nowait() == RunJob(bar_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(bar_key, None)
     wfp.amend_step(bar_key, inp_paths=["ainp2"], out_paths=["aout2"], vol_paths=["avol2"])
     assert "file:ainp2" in wfp.suppliers[bar_key]
     bar.completed(wfp, True, StepHash(b"bar_ok", b"zzz"))
@@ -635,9 +635,9 @@ def test_define_queued_step_replay_extra(wfp):
     state1 = wfp.unstructure()
 
     # Make foo pending and check state
-    wfp.queue_changed.clear()
+    wfp.job_queue_changed.clear()
     foo.make_pending(wfp)
-    assert not wfp.queue_changed.is_set()
+    assert not wfp.job_queue_changed.is_set()
     assert foo.hash is not None
     assert isinstance(foo.recording, StepRecording)
     assert foo.get_state(wfp) == StepState.PENDING
@@ -652,16 +652,16 @@ def test_define_queued_step_replay_extra(wfp):
 
     # Simulate rerun
     foo.queue_if_appropriate(wfp)
-    assert wfp.queue_changed.is_set()
+    assert wfp.job_queue_changed.is_set()
     assert foo.get_state(wfp) == StepState.QUEUED
     assert bar.get_state(wfp) == StepState.PENDING
-    assert wfp.queue.get_nowait() == TryReplayJob(foo_key, None)
+    assert wfp.job_queue.get_nowait() == TryReplayJob(foo_key, None)
     foo.clean_before_run(wfp)
     foo.replay_amend(wfp)
     foo.replay_rest(wfp)
     assert foo.get_state(wfp) == StepState.SUCCEEDED
     assert bar.get_state(wfp) == StepState.QUEUED
-    assert wfp.queue.get_nowait() == TryReplayJob(bar_key, None)
+    assert wfp.job_queue.get_nowait() == TryReplayJob(bar_key, None)
     bar.clean_before_run(wfp)
     bar.replay_amend(wfp)
     bar.replay_rest(wfp)
@@ -673,17 +673,17 @@ def test_define_queued_step_replay_extra(wfp):
 def test_replay_step_amended_orphaned_input(wfp):
     # Prepare jobs for normal run
     plan_key = "step:./plan.py"
-    assert wfp.queue.get_nowait() == RunJob(plan_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(plan_key, None)
     (ainp_key,) = wfp.declare_static(plan_key, ["ainp"])
-    wfp.queue_changed.clear()
+    wfp.job_queue_changed.clear()
     foo_key = wfp.define_step(plan_key, "foo > log", out_paths=["log"])
     foo = wfp.get_step(foo_key)
     assert foo.get_state(wfp) == StepState.QUEUED
     assert foo.get_out_paths(wfp) == ["log"]
-    assert wfp.queue_changed.is_set()
+    assert wfp.job_queue_changed.is_set()
 
     # Simulate run
-    assert wfp.queue.get_nowait() == RunJob(foo_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(foo_key, None)
     wfp.amend_step(foo_key, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"])
     foo.completed(wfp, True, StepHash(b"foo_ok", b"zzz"))
     assert foo.get_state(wfp) == StepState.SUCCEEDED
@@ -691,11 +691,11 @@ def test_replay_step_amended_orphaned_input(wfp):
     state1 = wfp.unstructure()
 
     # Make ainp orphan and check state
-    wfp.queue_changed.clear()
+    wfp.job_queue_changed.clear()
     assert foo.get_out_paths(wfp) == ["aout", "log"]
     wfp.orphan(ainp_key)
     assert foo.get_out_paths(wfp) == ["log"]
-    assert not wfp.queue_changed.is_set()
+    assert not wfp.job_queue_changed.is_set()
     assert foo.hash is not None
     assert isinstance(foo.recording, StepRecording)
     assert foo.get_state(wfp) == StepState.PENDING
@@ -705,9 +705,9 @@ def test_replay_step_amended_orphaned_input(wfp):
     # Replay
     wfp.declare_static(plan_key, ["ainp"])
     foo.queue_if_appropriate(wfp)
-    assert wfp.queue_changed.is_set()
+    assert wfp.job_queue_changed.is_set()
     assert foo.get_state(wfp) == StepState.QUEUED
-    assert wfp.queue.get_nowait() == TryReplayJob(foo_key, None)
+    assert wfp.job_queue.get_nowait() == TryReplayJob(foo_key, None)
     foo.clean_before_run(wfp)
     foo.replay_amend(wfp)
     assert isinstance(foo.recording, StepRecording)
@@ -723,17 +723,17 @@ def test_replay_ngm(wfp: Workflow):
     # Prepare jobs for normal run
     plan_key = "step:./plan.py"
     plan = wfp.get_step(plan_key)
-    assert wfp.queue.get_nowait() == RunJob(plan_key, None)
-    wfp.queue_changed.clear()
+    assert wfp.job_queue.get_nowait() == RunJob(plan_key, None)
+    wfp.job_queue_changed.clear()
     foo_key = wfp.define_step(plan_key, "foo")
     foo = wfp.get_step(foo_key)
     assert foo.get_state(wfp) == StepState.QUEUED
-    assert wfp.queue_changed.is_set()
+    assert wfp.job_queue_changed.is_set()
     plan.completed(wfp, True, StepHash(b"plan_ok", b"ee"))
     assert plan.get_state(wfp) == StepState.SUCCEEDED
 
     # Simulate run
-    assert wfp.queue.get_nowait() == RunJob(foo_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(foo_key, None)
     ngm = NGlobMulti.from_patterns(["${*prefix}_data.txt"], subs={"prefix": "n???"})
     wfp.register_nglob(foo_key, ngm)
     foo.completed(wfp, True, StepHash(b"foo_ok", b"zzz"))
@@ -741,18 +741,18 @@ def test_replay_ngm(wfp: Workflow):
     check_workflow_unstructure(wfp)
 
     # Make foo pending and check state
-    wfp.queue_changed.clear()
+    wfp.job_queue_changed.clear()
     foo.make_pending(wfp)
-    assert not wfp.queue_changed.is_set()
+    assert not wfp.job_queue_changed.is_set()
     assert foo.hash is not None
     assert isinstance(foo.recording, StepRecording)
     assert foo.get_state(wfp) == StepState.PENDING
 
     # Replay
     foo.queue_if_appropriate(wfp)
-    assert wfp.queue_changed.is_set()
+    assert wfp.job_queue_changed.is_set()
     assert foo.get_state(wfp) == StepState.QUEUED
-    assert wfp.queue.get_nowait() == TryReplayJob(foo_key, None)
+    assert wfp.job_queue.get_nowait() == TryReplayJob(foo_key, None)
     foo.clean_before_run(wfp)
     foo.replay_amend(wfp)
     foo.replay_rest(wfp)
@@ -771,8 +771,8 @@ def test_amend_step(wfp: Workflow):
     step_key = wfp.define_step(plan_key, "blub > log", vol_paths=["log"])
     step = wfp.get_step(step_key)
     assert step.get_state(wfp) == StepState.QUEUED
-    assert wfp.queue.get_nowait() == RunJob(plan_key, None)
-    assert wfp.queue.get_nowait() == RunJob(step_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(plan_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(step_key, None)
     assert wfp.amend_step(step_key)
     assert not wfp.amend_step(
         step_key, inp_paths=["inp1", "inp2"], out_paths=["out3"], vol_paths=["vol4"]
@@ -786,7 +786,7 @@ def test_amend_step(wfp: Workflow):
     wfp.declare_static("step:./plan.py", ["inp2"])
     step.set_state(wfp, StepState.QUEUED)
     assert wfp.get_products(step_key) == ["file:log", "file:out3", "file:vol4"]
-    assert wfp.queue.get_nowait() == ValidateAmendedJob(step_key, None)
+    assert wfp.job_queue.get_nowait() == ValidateAmendedJob(step_key, None)
 
 
 def test_define_queued_step_replay_amended():
@@ -852,7 +852,7 @@ def test_define_queued_step_replay_amended():
     assert step.get_state(workflow) == StepState.QUEUED
     out = workflow.get_file("file:out")
     assert out.get_state(workflow) == FileState.PENDING
-    assert workflow.queue.get_nowait() == TryReplayJob(step_key, "bb")
+    assert workflow.job_queue.get_nowait() == TryReplayJob(step_key, "bb")
     step.clean_before_run(workflow)
     assert "file:ainp" not in workflow.get_suppliers(step_key, include_orphans=True)
     assert workflow.is_orphan("file:aout")
@@ -930,7 +930,7 @@ def test_watcher_update(wfp: Workflow):
     assert ngm.nglob_singles[1].results == {("aa1",): {"aa1_bar.txt"}, ("bb7",): {"bb7_bar.txt"}}
 
 
-def test_watcher_added_static_orphan(wfp):
+def test_watcher_updated_static_orphan(wfp):
     plan_key = "step:./plan.py"
     wfp.declare_static(plan_key, ["foo.txt"])
     wfp.orphan("file:foo.txt")
@@ -944,7 +944,7 @@ def test_watcher_deleted_static_orphan(wfp):
     wfp.process_watcher_changes({"foo.txt"}, {})
 
 
-def test_watcher_added_built_orphan(wfp):
+def test_watcher_updated_built_orphan(wfp):
     plan_key = "step:./plan.py"
     step_key = wfp.define_step(plan_key, "touch foo.txt", out_paths=["foo.txt"])
     wfp.orphan(step_key)
@@ -959,17 +959,17 @@ def test_watcher_deleted_built_orphan(wfp):
 
 
 def test_directory_usage(wfs: Workflow):
-    assert len(wfs._used_directories) == 0
+    assert wfs.dir_queue.empty()
     wfs.declare_static("root:", ["./"])
-    assert wfs.used_directories == ["./"]
+    assert wfs.dir_queue.get_nowait() == (False, "./")
     wfs.declare_static("root:", ["foo.txt"])
-    assert wfs.used_directories == ["./"]
+    assert wfs.dir_queue.empty()
     wfs.orphan("file:foo.txt")
-    assert wfs.used_directories == ["./"]
+    assert wfs.dir_queue.empty()
     wfs.orphan("file:./")
-    assert wfs.used_directories == ["./"]
+    assert wfs.dir_queue.empty()
     wfs.clean()
-    assert len(wfs._used_directories) == 0
+    assert wfs.dir_queue.get_nowait() == (True, "./")
 
 
 def test_parent_must_exist():
@@ -1067,7 +1067,7 @@ def test_watcher_deleted(wfp):
     assert step2.get_state(wfp) == StepState.PENDING
 
 
-def test_watcher_added(wfp):
+def test_watcher_updated(wfp):
     plan_key = "step:./plan.py"
     (tst_key,) = wfp.declare_static("root:", ["tst"])
     cat_key = wfp.define_step(plan_key, "cat tst", ["tst"])
@@ -1081,7 +1081,7 @@ def test_watcher_added(wfp):
     tst_file.watcher_deleted(wfp)
     assert tst_file.get_state(wfp) == FileState.MISSING
     assert cat.get_state(wfp) == StepState.PENDING
-    tst_file.watcher_added(wfp)
+    tst_file.watcher_updated(wfp)
     assert tst_file.get_state(wfp) == FileState.STATIC
     assert cat.get_state(wfp) == StepState.PENDING
 
@@ -1089,14 +1089,14 @@ def test_watcher_added(wfp):
     prr_key = "file:prr"
     prr_file = wfp.get_file(prr_key)
     assert prr_file.get_state(wfp) == FileState.PENDING
-    prr_file.watcher_added(wfp)
+    prr_file.watcher_updated(wfp)
     assert prr_file.get_state(wfp) == FileState.PENDING
     step1 = wfp.get_step(step1_key)
     step1.completed(wfp, True, StepHash(b"11", b"zzz"))
     step2 = wfp.get_step(step2_key)
     step2.completed(wfp, False, StepHash(b"fail", b"inp_fail"))
     assert prr_file.get_state(wfp) == FileState.BUILT
-    prr_file.watcher_added(wfp)
+    prr_file.watcher_updated(wfp)
     assert prr_file.get_state(wfp) == FileState.PENDING
     assert step1.get_state(wfp) == StepState.PENDING
     assert step2.get_state(wfp) == StepState.PENDING
@@ -1124,8 +1124,8 @@ def test_dissolve(wfp):
     wfp.declare_static(plan_key, ["sub/"])
     wfp.declare_static(plan_key, ["sub/static.txt"])
     wfp.register_nglob(plan_key, NGlobMulti.from_patterns(["*.txt"]))
-    assert wfp.queue.get_nowait() == RunJob(plan_key, None)
-    assert wfp.queue.qsize() == 0
+    assert wfp.job_queue.get_nowait() == RunJob(plan_key, None)
+    assert wfp.job_queue.qsize() == 0
     plan = wfp.get_step(plan_key)
     plan.completed(wfp, True, StepHash(b"sth", b"zzz"))
     assert plan.get_state(wfp) == StepState.SUCCEEDED
@@ -1208,8 +1208,8 @@ def test_amended_env_vars(wfp):
     step_key = wfp.define_step(plan_key, "prog1", env_vars=["egg"])
     step = wfp.get_step(step_key)
     assert step.get_state(wfp) == StepState.QUEUED
-    assert wfp.queue.get_nowait() == RunJob(plan_key, None)
-    assert wfp.queue.get_nowait() == RunJob(step_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(plan_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(step_key, None)
     wfp.amend_step(step_key, env_vars=["foo", "egg"])
     wfp.amend_step(step_key, env_vars=["foo", "bar"])
     assert step.initial_env_vars == {"egg"}
@@ -1221,7 +1221,7 @@ def test_acyclic_amend_static(wfp):
     plan_key = "step:./plan.py"
     plan = wfp.get_step(plan_key)
     assert plan.get_state(wfp) == StepState.QUEUED
-    assert wfp.queue.get_nowait() == RunJob(plan_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(plan_key, None)
     wfp.declare_static(plan_key, ["static.txt"])
     wfp.amend_step(plan_key, inp_paths=["static.txt"])
     assert plan.get_inp_paths(wfp) == ["./", "plan.py", "static.txt"]
@@ -1251,12 +1251,12 @@ def test_optional_imply(wfp):
     assert step1.get_state(wfp) == StepState.QUEUED
 
     # Simulate scheduler
-    assert wfp.queue.get_nowait() == RunJob(plan_key, None)
-    assert wfp.queue.get_nowait() == RunJob(step1_key, None)
-    assert wfp.queue.qsize() == 0
+    assert wfp.job_queue.get_nowait() == RunJob(plan_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(step1_key, None)
+    assert wfp.job_queue.qsize() == 0
     step1.completed(wfp, True, StepHash(b"sth", b"zzz"))
     assert step2.get_state(wfp) == StepState.QUEUED
-    assert wfp.queue.get_nowait() == RunJob(step2_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(step2_key, None)
 
     # Simulate watcher: orphan mandatory step
     wfp.orphan(step2_key)
@@ -1292,15 +1292,15 @@ def test_optional_imply_chain(wfp):
     assert step1.get_state(wfp) == StepState.QUEUED
 
     # Simulate scheduler
-    assert wfp.queue.get_nowait() == RunJob(plan_key, None)
-    assert wfp.queue.get_nowait() == RunJob(step1_key, None)
-    assert wfp.queue.qsize() == 0
+    assert wfp.job_queue.get_nowait() == RunJob(plan_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(step1_key, None)
+    assert wfp.job_queue.qsize() == 0
     step1.completed(wfp, True, StepHash(b"sth", b"zzz"))
     assert step2.get_state(wfp) == StepState.QUEUED
-    assert wfp.queue.get_nowait() == RunJob(step2_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(step2_key, None)
     step2.completed(wfp, True, StepHash(b"sth", b"zzz"))
     assert step3.get_state(wfp) == StepState.QUEUED
-    assert wfp.queue.get_nowait() == RunJob(step3_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(step3_key, None)
     step3.completed(wfp, True, StepHash(b"sth", b"zzz"))
 
     # Simulate watcher: orphan middle step
@@ -1396,11 +1396,11 @@ def test_deferred_glob_clean(wfp):
     assert "static/foo/bar.txt" in dg.ngm.files()
 
     # Simulate the execution of the steps
-    assert wfp.queue.get_nowait() == RunJob(plan_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(plan_key, None)
     plan = wfp.get_step(plan_key)
     plan.completed(wfp, True, StepHash(b"sth", b"zzz"))
-    assert wfp.queue.get_nowait() == RunJob(step_key, None)
-    assert wfp.queue.qsize() == 0
+    assert wfp.job_queue.get_nowait() == RunJob(step_key, None)
+    assert wfp.job_queue.qsize() == 0
     step = wfp.get_step(step_key)
     step.completed(wfp, True, StepHash(b"sth", b"zzz"))
     check_workflow_unstructure(wfp)
@@ -1426,7 +1426,7 @@ def test_deferred_glob_clean(wfp):
     assert wfp.is_orphan(dg_key)
     plan.queue_if_appropriate(wfp)
     assert plan.get_state(wfp) == StepState.QUEUED
-    assert wfp.queue.qsize() == 1
+    assert wfp.job_queue.qsize() == 1
     assert dg_key in wfp.nodes
 
 
@@ -1575,8 +1575,8 @@ def test_replay_amend_orphan_inputs(wfp):
     (foo_key,) = wfp.declare_static(plan_key, ["foo"])
 
     # Simulate running the step
-    assert wfp.queue.get_nowait() == RunJob(plan_key, None)
-    assert wfp.queue.get_nowait() == RunJob(step_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(plan_key, None)
+    assert wfp.job_queue.get_nowait() == RunJob(step_key, None)
     step = wfp.get_step(step_key)
     wfp.amend_step(step_key, env_vars=["AAA"], vol_paths=["bbb"])
     step.completed(wfp, True, StepHash(b"step_ok", b"zzz"))

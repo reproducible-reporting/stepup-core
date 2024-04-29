@@ -1,5 +1,5 @@
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ echo "test 1" > first.txt
@@ -8,7 +8,6 @@
    SUCCESS │ cp first.txt final.txt
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
-   DELETED │ plan.py
    UPDATED │ plan.py
      PHASE │ run
      START │ ./plan.py

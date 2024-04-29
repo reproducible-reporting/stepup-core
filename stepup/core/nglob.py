@@ -427,15 +427,15 @@ class NGlobMulti:
                     return True
         return False
 
-    def will_change(self, deleted: Collection[str], added: Collection[str]) -> bool:
+    def will_change(self, deleted: Collection[str], updated: Collection[str]) -> bool:
         """Determine whether the results may change after deleting or adding files.
 
         Parameters
         ----------
         deleted
             Set of files to be deleted.
-        added
-            Set of files to be added.
+        updated
+            Set of files to be added or changed.
 
         Returns
         -------
@@ -443,7 +443,7 @@ class NGlobMulti:
             True if the NGlobMulti results will change.
         """
         evolved = self.deepcopy()
-        evolved.extend(added)
+        evolved.extend(updated)
         evolved.reduce(deleted)
         return not evolved.equals(self)
 

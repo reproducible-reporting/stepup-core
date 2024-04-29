@@ -477,8 +477,8 @@ class Step(Node):
         self.set_state(workflow, StepState.QUEUED)
         self.reschedule_due_to = set()
         self.validate_amended = False
-        workflow.queue.put_nowait(job)
-        workflow.queue_changed.set()
+        workflow.job_queue.put_nowait(job)
+        workflow.job_queue_changed.set()
 
     def clean_before_run(self, workflow: "Workflow"):
         """Drop amended inputs and (volatile) outputs.

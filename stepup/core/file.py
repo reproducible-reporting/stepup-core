@@ -88,8 +88,6 @@ class File(Node):
         state = FileState(data.pop("s"))
         file = cls(path=strings[data["p"]], hash=FileHash.structure(data["h"]))
         file.set_state(workflow, state)
-        if file._path.endswith("/"):
-            workflow._used_directories.add(file._path)
         return file
 
     def unstructure(self, workflow: "Workflow", lookup: dict[str, int]) -> dict:
@@ -112,11 +110,7 @@ class File(Node):
     #
 
     def recycle(self, workflow: "Workflow", old: Self | None):
-        if old is None:
-            # Bookkeeping relevant directories
-            if self._path.endswith("/"):
-                workflow._used_directories.add(self._path)
-        else:
+        if old is not None:
             # Recycle hash
             self.hash = old.hash
 
@@ -131,7 +125,7 @@ class File(Node):
 
     def cleanup(self, workflow: "Workflow"):
         if self._path.endswith("/"):
-            workflow._used_directories.discard(self._path)
+            workflow.dir_queue.put_nowait((True, self._path))
         state = self.get_state(workflow)
         if state == FileState.VOLATILE:
             workflow.to_be_deleted.append((self._path, None))
@@ -155,17 +149,26 @@ class File(Node):
     #
 
     def release_pending(self, workflow: "Workflow"):
-        """Check all steps using this one as input and queue them if possible."""
+        """Check all steps using this one as input and queue them if possible.
+
+        In case of a directory, also notify the watcher by putting it on the dir_queue.
+        """
         for step_key in sorted(workflow.get_consumers(self.key, kind="step")):
             step = workflow.get_step(step_key)
             step.validate_amended = True
             step.queue_if_appropriate(workflow)
+        if self.path.endswith("/"):
+            workflow.dir_queue.put_nowait((False, self.path))
 
     #
     # Watch phase
     #
 
     def watcher_deleted(self, workflow: "Workflow"):
+        """Modify the graph to account for the fact this was deleted.
+
+        Hashes are not removed in case the file is restored by the user with the same contents.
+        """
         state = self.get_state(workflow)
         if state == FileState.MISSING:
             raise ValueError(f"Cannot delete a path that is already MISSING: {self._path}")
@@ -182,7 +185,12 @@ class File(Node):
         for step_key in workflow.get_consumers(self.key, kind="step"):
             workflow.get_step(step_key).make_pending(workflow)
 
-    def watcher_added(self, workflow: "Workflow"):
+    def watcher_updated(self, workflow: "Workflow"):
+        """Modify the graph to account for the fact that this file changed on disk.
+
+        Hashes are not updated until needed, to allow for reverting the file in its original
+        form. (This is more common than one may thing, e.g. when switching Git branches.)
+        """
         state = self.get_state(workflow)
         if state == FileState.MISSING:
             self.set_state(workflow, FileState.STATIC)

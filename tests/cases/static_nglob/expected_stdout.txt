@@ -1,5 +1,5 @@
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py
 ─────────────────────────────── Standard output ────────────────────────────────
@@ -35,8 +35,8 @@ Planning sec 1 summary
    SUCCESS │ cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
-   UPDATED │ ch-2-theory/sec-2-2-original.txt
    DELETED │ ch-2-theory/sec-2-2-advanced.txt
+   UPDATED │ ch-2-theory/sec-2-2-original.txt
      PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py

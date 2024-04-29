@@ -19,7 +19,7 @@ EOD
 rm input.txt
 python3 - << EOD
 from stepup.core.interact import *
-watch_del("input.txt")
+watch_delete("input.txt")
 run()
 wait()
 graph("current_graph_02.txt")
@@ -29,7 +29,7 @@ EOD
 cp second.txt input.txt
 python3 - << EOD
 from stepup.core.interact import *
-watch_add("input.txt")
+watch_update("input.txt")
 run()
 wait()
 graph("current_graph_03.txt")

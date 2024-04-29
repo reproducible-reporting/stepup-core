@@ -1,13 +1,13 @@
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
    SUCCESS │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
-   UPDATED │ head_z.txt
    UPDATED │ tail_y.txt
+   UPDATED │ head_z.txt
      PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py

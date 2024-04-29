@@ -1,6 +1,6 @@
   DIRECTOR │ Listening on /tmp/stepup-########/director
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ cp -aT ch1/sec1_1_introduction.txt ch1/sec1_1_introduction.md

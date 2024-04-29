@@ -28,8 +28,8 @@ echo inp2 > inp2.txt
 echo inp2.txt > subs.txt
 python3 - << EOD
 from stepup.core.interact import *
-watch_add("subs.txt")
-watch_del("inp1.txt")
+watch_update("subs.txt")
+watch_delete("inp1.txt")
 run()
 wait()
 graph("current_graph_02.txt")

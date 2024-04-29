@@ -1,7 +1,7 @@
   DIRECTOR │ Listening on /tmp/stepup-########/director
-     PHASE │ run
   DIRECTOR │ Launched worker 0
   DIRECTOR │ Launched worker 1
+     PHASE │ run
      START │ ./plan.py
      START │ echo First line. > story.txt; echo Second line. >> story.txt
    SUCCESS │ echo First line. > story.txt; echo Second line. >> story.txt

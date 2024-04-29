@@ -25,7 +25,6 @@ from typing import cast, Collection, Self
 from collections import Counter
 
 import attrs
-from path import Path
 
 from .assoc import Assoc, many_to_one
 from .cascade import Cascade, Node, get_kind
@@ -44,10 +43,13 @@ __all__ = ("Workflow",)
 @attrs.define
 class Workflow(Cascade):
     # Steps ready for scheduling and execution.
-    queue: asyncio.queues = attrs.field(init=False, factory=asyncio.Queue)
+    job_queue: asyncio.queues = attrs.field(init=False, factory=asyncio.Queue)
 
-    # This event is set when the scheduler should check the queue again.
-    queue_changed: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+    # Directories to be (un)watched
+    dir_queue: asyncio.queues = attrs.field(init=False, factory=asyncio.Queue)
+
+    # This event is set when the scheduler should check the job_queue again.
+    job_queue_changed: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
 
     # The workflow_changed flag is set True in the run phase methods, right before they start
     # changing the graph. Errors raised afterwards result in an inconsistent graph.
@@ -61,9 +63,6 @@ class Workflow(Cascade):
     file_states: "Assoc[str, FileState]" = attrs.field(init=False, factory=many_to_one)
     step_states: "Assoc[str, StepState]" = attrs.field(init=False, factory=many_to_one)
     step_mandatory: "Assoc[str, Mandatory]" = attrs.field(init=False, factory=many_to_one)
-
-    # A list of used directories, used in watch phase.
-    _used_directories: set = attrs.field(init=False, factory=set)
 
     # All keys using nglobs, used to lookup steps after watch phase that need to be re-executed.
     step_keys_with_nglob: set[str] = attrs.field(init=False, factory=set)
@@ -379,8 +378,6 @@ class Workflow(Cascade):
             The node creating this file (or None if not known).
         paths
             The locations of the files or directories (ending with /).
-        deferred
-            This must be set to True when the static file is cre
 
         Returns
         -------
@@ -706,10 +703,6 @@ class Workflow(Cascade):
     # Watch phase
     #
 
-    @property
-    def used_directories(self) -> list[Path]:
-        return sorted(self._used_directories)
-
     def is_relevant(self, path: str):
         file = self.get_file(f"file:{path}")
         if file is not None:
@@ -720,9 +713,18 @@ class Workflow(Cascade):
                 return True
         return False
 
-    def process_watcher_changes(self, deleted: Collection[str], added: Collection[str]):
+    def process_watcher_changes(self, deleted: Collection[str], updated: Collection[str]):
+        """Update the workflow given a list of deleted and updated paths observed by the watcher.
+
+        Parameters
+        ----------
+        deleted
+            The deleted files.
+        updated
+            The added / changed files.
+        """
         # Sanity check
-        if not set(deleted).isdisjoint(added):
+        if not set(deleted).isdisjoint(updated):
             raise ValueError("Added and deleted files are not mutually exclusive.")
 
         # Process all deletions
@@ -733,19 +735,19 @@ class Workflow(Cascade):
                 raise ValueError("Cannot process deletion of file absent from workflow")
             file.watcher_deleted(self)
 
-        # Process all additions (could also be file changes)
-        for path in added:
+        # Process all updates
+        for path in updated:
             file = self.get_file(f"file:{path}")
-            # If added the file is known, it must have changed (or a MISSING file was added).
+            # If updated the file is known, it must have changed (or a MISSING file was added).
             if file is not None:
-                file.watcher_added(self)
+                file.watcher_updated(self)
 
         for step_key in sorted(self.step_keys_with_nglob):
             step = self.get_step(step_key)
             # Check if any of the deleted files matches an nglob. If yes, step becomes pending.
             # Check if added files could result in new nglob matches. If yes, step becomes pending.
             if not self.is_orphan(step_key) and any(
-                ngm.will_change(deleted, added) for ngm in step.nglob_multis
+                ngm.will_change(deleted, updated) for ngm in step.nglob_multis
             ):
                 step.discard_recording()
                 step.make_pending(self, input_changed=True)
@@ -753,7 +755,7 @@ class Workflow(Cascade):
             # are up to date.
             for ngm in step.nglob_multis:
                 ngm.reduce(deleted)
-                ngm.extend(added)
+                ngm.extend(updated)
 
         # Queue pending steps that can be executed.
         for step_key in sorted(self.step_states.inverse.get(StepState.PENDING, ())):

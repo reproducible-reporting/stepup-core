@@ -36,7 +36,7 @@ from .rpc import serve_socket_rpc, allow_rpc
 from .workflow import Workflow
 from .exceptions import GraphError
 from .reporter import ReporterClient
-from .runner import Runner, Phase
+from .runner import Runner
 from .scheduler import Scheduler
 from .utils import check_plan, mynormpath
 from .watcher import Watcher
@@ -58,7 +58,7 @@ async def async_main():
         await reporter("DIRECTOR", f"Listening on {args.director_socket}")
         try:
             await serve(
-                args.director_socket,
+                Path(args.director_socket),
                 num_workers,
                 args.workflow,
                 args.plan,
@@ -148,7 +148,7 @@ The broken workflow file was copied to {}.
 
 
 async def serve(
-    director_socket_path: str,
+    director_socket_path: Path,
     num_workers: int,
     path_workflow: str,
     path_plan: str,
@@ -167,6 +167,8 @@ async def serve(
     path_workflow
         The path where the workflow file will be written to
         (and read from if there was a previous run).
+    path_plan
+        The initial `plan.py` file.
     reporter
         The reporter client for sending information back to
         the terminal user interface.
@@ -182,7 +184,7 @@ async def serve(
     path_workflow = Path(path_workflow)
     check_plan(path_plan)
 
-    # Initialize components
+    # Initialize workflow
     workflow = None
     if path_workflow.exists():
         try:
@@ -208,36 +210,35 @@ async def serve(
         if len(dir_workflow) > 0 and dir_workflow != ".":
             dir_workflow.makedirs_p()
         workflow = Workflow.from_scratch()
-    scheduler = Scheduler(workflow.queue, workflow.queue_changed)
+
+    # Create components
+    scheduler = Scheduler(workflow.job_queue, workflow.job_queue_changed)
     scheduler.num_workers = num_workers
+    watcher = Watcher(workflow, reporter, workflow.dir_queue)
     runner = Runner(
-        scheduler, workflow, path_workflow, reporter, director_socket_path, show_perf, explain_rerun
+        watcher,
+        scheduler,
+        workflow,
+        path_workflow,
+        reporter,
+        director_socket_path,
+        show_perf,
+        explain_rerun,
     )
-    watcher = Watcher(workflow, reporter)
-
-    # Start tasks and wait for them to complete
     stop_event = asyncio.Event()
-    cycle = asyncio.create_task(cycle_run_watch(runner, watcher, stop_event), name="run-watch loop")
     director_handler = DirectorHandler(scheduler, workflow, runner, watcher, path_plan, stop_event)
-
-    # Add the initial plan
     director_handler.define_boot()
 
-    # Start RPC task
-    rpc_director = asyncio.create_task(
-        serve_socket_rpc(director_handler, director_socket_path, stop_event), name="director-rpc"
-    )
+    # Start tasks and wait for them to complete
+    watcher_loop = watcher.loop(stop_event)
+    runner_loop = runner.loop(stop_event)
+    rpc_director = serve_socket_rpc(director_handler, director_socket_path, stop_event)
     try:
-        await asyncio.gather(cycle, rpc_director)
+        await asyncio.gather(watcher_loop, runner_loop, rpc_director)
     finally:
         await reporter("DIRECTOR", "Stopping workers.")
         await runner.stop_workers()
-
-
-async def cycle_run_watch(runner: Runner, watcher: Watcher, stop_event: asyncio.Event):
-    while not stop_event.is_set():
-        await runner.loop()
-        await watcher.loop()
+        director_socket_path.remove_p()
 
 
 @attrs.define
@@ -254,6 +255,7 @@ class DirectorHandler:
     #
 
     def define_boot(self):
+        """Define the initial plan.py as static file and create a step for it."""
         if Path(self._path_plan).absolute().parent != Path.cwd():
             raise ValueError("The plan script must be in the current directory.")
         self.static("root:", [self._path_plan])
@@ -272,6 +274,7 @@ class DirectorHandler:
 
     @contextlib.contextmanager
     def _dissolve_if_graph_changed(self):
+        """A context manager that will dissolve the workflow is errors were after making changes."""
         self._workflow.graph_changed = False
         try:
             yield
@@ -287,20 +290,19 @@ class DirectorHandler:
 
         They are stored internal as paths relative to STEPUP_ROOT.
         """
-        if self._runner.phase.is_set(Phase.WATCH):
-            raise GraphError("A static file cannot be declared in watch phase.")
         with self._dissolve_if_graph_changed():
             self._workflow.declare_static(creator_key, paths)
 
     @allow_rpc
     def nglob(self, creator_key: str, ngm_data: list, strings: list[str]):
-        """Register a number of glob patterns to be watched."""
+        """Register a glob patterns to be watched."""
         with self._dissolve_if_graph_changed():
             ngm = NGlobMulti.structure(ngm_data, strings)
             self._workflow.register_nglob(creator_key, ngm)
 
     @allow_rpc
     def defer(self, creator_key: str, patterns: list[str]):
+        """Register a deferred glob."""
         with self._dissolve_if_graph_changed():
             self._workflow.defer_glob(creator_key, patterns)
 
@@ -318,10 +320,15 @@ class DirectorHandler:
         pool: str | None,
         block: bool,
     ) -> str:
-        """See ``stepup.core.api.step``."""
+        """Create a step in the workflow.
+
+        Notes
+        -----
+        This is an RPC wrapper for `Workflow.define_step` with a few additional sanity checks:
+        - The pool must exist.
+        - The working directory must exist.
+        """
         # If the pool is unknown, raise an error
-        if self._runner.phase.is_set(Phase.WATCH):
-            raise GraphError(f"A step cannot be defined in watch phase: {command}")
         if not self._scheduler.has_pool(pool):
             raise GraphError(f"Unknown pool name: {pool}")
         if not workdir.endswith(os.sep):
@@ -342,7 +349,12 @@ class DirectorHandler:
 
     @allow_rpc
     def pool(self, name: str, size: int):
-        """See ``stepup.core.api.pool``."""
+        """Define a pool with given name and size.
+
+        Notes
+        -----
+        This is an RPC wrapper for `Scheduler.set_pool`.
+        """
         self._scheduler.set_pool(name, size)
 
     @allow_rpc
@@ -354,9 +366,12 @@ class DirectorHandler:
         out_paths: list[str],
         vol_paths: list[str],
     ) -> bool:
-        """See ``stepup.core.api.amend``."""
-        if self._runner.phase.is_set(Phase.WATCH):
-            raise GraphError(f"A step cannot be amended in watch phase: {step_key}")
+        """Amend a step.
+
+        Notes
+        -----
+        This is an RPC wrapper for `Workflow.amend_step`.
+        """
         with self._dissolve_if_graph_changed():
             return self._workflow.amend_step(step_key, inp_paths, env_vars, out_paths, vol_paths)
 
@@ -366,33 +381,27 @@ class DirectorHandler:
 
     @allow_rpc
     async def shutdown(self):
-        """See ``stepup.core.api.shutdown``."""
+        """Shut down the director and worker processes."""
+        self._stop_event.set()
         self._scheduler.drain()
         self._watcher.interrupt.set()
-        self._stop_event.set()
 
     @allow_rpc
     async def drain(self):
-        """See ``stepup.core.api.shutdown``."""
+        """Do not start new steps and switch to the watch phase after the steps completed.
+
+        Notes
+        -----
+        This RPC blocks until all running steps have completed.
+        """
         self._scheduler.drain()
-        await self._runner.phase.wait(Phase.WATCH)
+        await self._watcher.active.wait()
 
     @allow_rpc
     async def join(self):
-        """See ``stepup.core.api.join``."""
-        await self._runner.phase.wait(Phase.WATCH)
+        """Block until the runner completed all (runnable) steps and shut down."""
+        await self._watcher.active.wait()
         await self.shutdown()
-
-    @allow_rpc
-    async def run(self):
-        """See ``stepup.core.api.run``."""
-        # No point in starting run phase when the runner is active.
-        if self._runner.phase.is_set(Phase.RUN):
-            return
-        self._watcher.interrupt.set()
-        # Only return after the runner loop has started.
-        self._scheduler.resume()
-        await self._runner.phase.wait(Phase.RUN)
 
     @allow_rpc
     def graph(self, path_graph: str):
@@ -401,54 +410,72 @@ class DirectorHandler:
             print(self._workflow.format_str(), file=fh)
 
     @allow_rpc
-    async def from_scratch(self):
-        """Remove all recordings and run everything again."""
-        # No point in starting run phase when the runner is active.
-        if self._runner.phase.is_set(Phase.RUN):
+    def from_scratch(self):
+        """Remove all recordings and run everything again.
+
+        Notes
+        -----
+        This has no effect during the run phase.
+        """
+        if not self._watcher.active.is_set():
             return
         self._workflow.discard_recordings()
-        await self.try_replay()
+        self.try_replay()
 
     @allow_rpc
-    async def try_replay(self):
-        """Make all steps pending and try replaying them. When needed, steps are rerun instead."""
-        # No point in starting run phase when the runner is active.
-        if self._runner.phase.is_set(Phase.RUN):
+    def try_replay(self):
+        """Make all steps pending and try replaying them. When needed, steps are rerun instead.
+
+        Notes
+        -----
+        This has no effect during the run phase.
+        """
+        if not self._watcher.active.is_set():
             return
         self._workflow.dissolve()
-        self._watcher.interrupt.set()
-        # This is a bit hacky: make runner active to be able to modify the workflow,
-        # which is normally only done in run phase.
-        self._runner.phase.set(Phase.RUN)
         self.define_boot()
-        self._runner.phase.set(Phase.WATCH)
+        self.run()
+
+    @allow_rpc
+    def run(self):
+        """Run pending steps (based on file changes observed in the watch phase).
+
+        Notes
+        -----
+        This has no effect during the run phase.
+        """
+        if not self._watcher.active.is_set():
+            return
+        self._watcher.interrupt.set()
         self._scheduler.resume()
-        await self._runner.phase.wait(Phase.RUN)
+        self._runner.resume.set()
 
     @allow_rpc
-    async def watch_add(self, path: str):
-        """Wait for a file to be added by the watcher."""
+    async def watch_update(self, path: str):
+        """Block until the watcher observed an update of the file."""
         path = mynormpath(path)
-        while not self._watcher.interrupt.is_set():
-            if path in self._watcher.added:
+        await self._watcher.active.wait()
+        while True:
+            if path in self._watcher.updated:
                 return
-            self._watcher.changed.clear()
-            await self._watcher.changed.wait()
+            self._watcher.files_changed.clear()
+            await self._watcher.files_changed.wait()
 
     @allow_rpc
-    async def watch_del(self, path: str):
-        """Wait for a file to be deleted by the watcher."""
+    async def watch_delete(self, path: str):
+        """Block until the watcher observed the deletion of the file."""
         path = mynormpath(path)
-        while not self._watcher.interrupt.is_set():
+        await self._watcher.active.wait()
+        while True:
             if path in self._watcher.deleted:
                 return
-            self._watcher.changed.clear()
-            await self._watcher.changed.wait()
+            self._watcher.files_changed.clear()
+            await self._watcher.files_changed.wait()
 
     @allow_rpc
     async def wait(self):
-        """See ``stepup.core.api.wait``."""
-        await self._runner.phase.wait(Phase.WATCH)
+        """Block until the runner completed all (runnable) steps."""
+        await self._watcher.active.wait()
 
 
 if __name__ == "__main__":

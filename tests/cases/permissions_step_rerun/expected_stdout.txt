@@ -1,5 +1,5 @@
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ ./step.py
@@ -14,7 +14,6 @@ Return code           126
    WARNING │ Skipping cleanup due to incomplete build.
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
-   DELETED │ step.py
    UPDATED │ step.py
      PHASE │ run
      START │ ./step.py

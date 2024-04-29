@@ -1,2 +1,2 @@
-A simple example of a cyclic dependency: `plan.py` declares the static file `README.md`,
-and then wants to use it as an input through the `amend` function.
+Demonstrate the error generated when defining a deferred glob,
+which makes a non-existing file static.

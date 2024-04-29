@@ -1,14 +1,13 @@
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ ./step.py
    SUCCESS │ ./step.py
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
-   DELETED │ subs.txt
-   UPDATED │ subs.txt
    DELETED │ inp1.txt
+   UPDATED │ subs.txt
      PHASE │ run
  DROPAMEND │ ./step.py
 ────────────────────── Outdated amended step information ───────────────────────

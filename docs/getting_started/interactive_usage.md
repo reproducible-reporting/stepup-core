@@ -1,33 +1,33 @@
 # Interactive usage
 
-All previous tutorials ran StepUp non-interatively, for the sake of simplicity.
-In practice this is mainly useful for build projects in batch jobs, e.g. in the cloud.
-When working on a project, interative usage is more efficient and convenient,
+All previous tutorials have run StepUp non-interactively, for the sake of simplicity.
+In practice, this is mainly useful when building projects in batch jobs, e.g. in the cloud.
+When working on a project, interactive usage is more efficient and convenient,
 but requires a little more explanation.
-(For this reason most tutorials here will use the non-interactive option.)
+(For this reason, most of the tutorials use the non-interactive option.)
 
-The tutorial [Static glob](static_glob.md) is in fact a good showcase for StepUp's interactive usage.
-When running StepUp as follows, the terminal user interface will not exit:
+The [Static glob](static_glob.md) tutorial is a good example to demonstrate the interactive use of StepUp.
+Running StepUp as follows will not exit the terminal user interface:
 
 ```bash
 stepup
 ```
 
-In fact, `stepup` without any arguments is the recommended way of running StepUp in most cases.
+In fact, running the `stepup` command without any arguments is the recommended way to run StepUp in most cases.
 
 After the line `PHASE │ watch` appears, StepUp just waits for changes to the (static) files.
 
 ## Change an existing file
 
-For example, while StepUp is still running, change the file `src/foo.txt`.
-You will at least see the following:
+For example, while StepUp is still running, edit and save the file `src/foo.txt`.
+You will see at least the following:
 
 ```
-     ADDED │ src/foo.txt
+    UPDATED │ src/foo.txt
 ```
 
-Now go back to the terminal and press the character `?`,
-which will show the supported keys with interactive commands:
+Now go back to the terminal and press the character `?`
+to display the supported keys with interactive commands:
 
 ```
 ───────────────────────────────────── Keys ─────────────────────────────────────
@@ -39,22 +39,22 @@ which will show the supported keys with interactive commands:
 ```
 
 Now press (lower case) `r` to run steps whose (indirect) inputs have changed.
-The new file `src/foo.txt` is copied again to `dst/foo.txt` while other step are ignored.
+The new file `src/foo.txt` is copied again to `dst/foo.txt` while other steps are ignored.
 
-The interactive commands are described in detail in the [Interactive command reference](../reference/interactive.md)
+The interactive commands are described in detail in the [Interactive command reference](../reference/interactive.md).
 
 ## Add a new file that matches `glob("src/*.txt")`
 
-Create a new file `src/spam.txt` with some contents to your liking, still while StepUp is running.
-You will at least see the following:
+Create a new file `src/spam.txt` with content of your choice while StepUp is still running.
+You will see at least the following:
 
 ```
-     ADDED │ src/spam.txt
+    UPDATED │ src/spam.txt
 ```
 
 Now press (lower case) `r` again.
-The `./plan.py` step is executed again because a new file appeared that matches a glob pattern used in `plan.py`.
-Rerunning `./plan.py` will in turn create a new step to copy `src/spam.txt` to `dst/spam.txt`.
+The `./plan.py` step is executed again because a new file has appeared that matches a glob pattern used in `plan.py`.
+Running `./plan.py` again will in turn create a new step to copy `src/spam.txt` to `dst/spam.txt`.
 
 
 ## Screen recording

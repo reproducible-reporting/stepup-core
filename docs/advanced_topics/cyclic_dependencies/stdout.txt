@@ -1,6 +1,6 @@
   DIRECTOR │ Listening on /tmp/stepup-########/director
-     PHASE │ run
   DIRECTOR │ Launched worker 0
+     PHASE │ run
      START │ ./plan.py
       FAIL │ ./plan.py
 ────────────────────────────────── Step info ───────────────────────────────────
@@ -15,21 +15,21 @@ Traceback (most recent call last):
   File "/home/toon/univ/reprep/stepup-core/stepup/core/api.py", line 288, in step
     return RPC_CLIENT(
            ^^^^^^^^^^^
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 550, in __call__
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 440, in __call__
     _handle_error(body, name, args, kwargs)
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 75, in _handle_error
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 71, in _handle_error
     raise RPCError(f"An exception was raised in the server during the call {fmt_call}: \n\n{body}")
 stepup.core.exceptions.RPCError: An exception was raised in the server during the call step('step:./plan.py', 'cp -aT b.txt a.txt', [Path('b.txt')], (), [Path('a.txt')], [], Path('./'), False, None, False):
 Traceback (most recent call last):
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 306, in _handle_request
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 196, in _handle_request
     result = call(*bound.args, **bound.kwargs)
              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/director.py", line 330, in step
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/director.py", line 337, in step
     return self._workflow.define_step(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/workflow.py", line 559, in define_step
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/workflow.py", line 556, in define_step
     self.create_file(step_key, out_path, FileState.PENDING)
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/workflow.py", line 329, in create_file
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/workflow.py", line 328, in create_file
     self.create(file, creator_key)
   File "/home/toon/univ/reprep/stepup-core/stepup/core/cascade.py", line 462, in create
     self.check_cyclic(creator_key, node.key)

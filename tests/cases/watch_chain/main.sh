@@ -26,7 +26,7 @@ grep script.log copy.txt
 cp config_02.json config.json
 python3 - << EOD
 from stepup.core.interact import *
-watch_add("config.json")
+watch_update("config.json")
 run()
 wait()
 graph("current_graph_02.txt")
