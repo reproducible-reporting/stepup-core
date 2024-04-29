@@ -404,10 +404,14 @@ class DirectorHandler:
         await self.shutdown()
 
     @allow_rpc
-    def graph(self, path_graph: str):
+    def graph(self, prefix: str):
         """Write out the graph in text format."""
-        with open(path_graph, "w") as fh:
+        with open(f"{prefix}.txt", "w") as fh:
             print(self._workflow.format_str(), file=fh)
+        with open(f"{prefix}_creator.dot", "w") as fh:
+            print(self._workflow.format_dot_creator(), file=fh)
+        with open(f"{prefix}_supplier.dot", "w") as fh:
+            print(self._workflow.format_dot_supplier(), file=fh)
 
     @allow_rpc
     def from_scratch(self):

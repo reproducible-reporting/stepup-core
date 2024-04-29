@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Export of graphs to [Graphviz](https://graphviz.org/) DOT files.
+
 ### Fixed
 
 - More graceful error message when director process crashes early.
@@ -29,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Place custom asyncio utilities in `stepup.core.asyncio`.
     - The watcher also tracks changes to static files while steps are being executed.
     - Directories are watched as soon as they are created.
+- The function `stepup.core.interact.graph` takes a prefix argument instead of a full filename,
+  e.g. `graph` instead of `graph.txt`.
 
 
 ## [1.0.0] - 2024-04-25

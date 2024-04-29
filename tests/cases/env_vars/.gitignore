@@ -1,15 +1,3 @@
 .stepup
 variables.json
-current_graph_01.txt
-current_graph_02.txt
-current_graph_03.txt
-current_graph_04.txt
-current_graph_05.txt
-current_graph_06.txt
-current_variables.txt
-current_variables_01.txt
-current_variables_02.txt
-current_variables_03.txt
-current_variables_04.txt
-current_variables_05.txt
-current_variables_06.txt
+current_*

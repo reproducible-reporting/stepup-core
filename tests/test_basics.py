@@ -96,9 +96,9 @@ async def test_from_scratch(client: AsyncRPCClient, tmpdir: str):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     await client("wait")
-    path_graph = Path(tmpdir) / "graph.txt"
-    await client("graph", path_graph)
-    _check_graph(path_graph, FROM_SCRATCH_GRAPH)
+    prefix_graph = Path(tmpdir) / "graph"
+    await client("graph", prefix_graph)
+    _check_graph(prefix_graph + ".txt", FROM_SCRATCH_GRAPH)
 
 
 STATIC_GRAPH = """\
@@ -152,9 +152,9 @@ async def test_static(client: AsyncRPCClient, tmpdir: str):
         with open("DONE.txt", "w") as fh:
             fh.write("done")
     await client("wait")
-    path_graph = Path(tmpdir) / "graph.txt"
-    await client("graph", path_graph)
-    _check_graph(path_graph, STATIC_GRAPH)
+    prefix_graph = Path(tmpdir) / "graph"
+    await client("graph", prefix_graph)
+    _check_graph(prefix_graph + ".txt", STATIC_GRAPH)
 
 
 COPY_GRAPH = """\
@@ -243,6 +243,6 @@ async def test_copy(client: AsyncRPCClient, tmpdir: str):
         with open("DONE.txt", "w") as fh:
             fh.write("done")
     await client("wait")
-    path_graph = Path(tmpdir) / "graph.txt"
-    await client("graph", path_graph)
-    _check_graph(path_graph, COPY_GRAPH)
+    prefix_graph = Path(tmpdir) / "graph"
+    await client("graph", prefix_graph)
+    _check_graph(prefix_graph + ".txt", COPY_GRAPH)

@@ -1,6 +1,5 @@
 .stepup
-current_graph_01.txt
-current_graph_02.txt
+current_*
 subs1.txt
 subs2.txt
 subs3.txt

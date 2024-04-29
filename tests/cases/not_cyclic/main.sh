@@ -12,7 +12,7 @@ stepup -w 1 plan.py & # > current_stdout.txt &
 python3 - << EOD
 from stepup.core.interact import *
 wait()
-graph("current_graph_01.txt")
+graph("current_graph_01")
 EOD
 
 # Check files that are expected to be present and/or missing.
@@ -27,7 +27,7 @@ from stepup.core.interact import *
 watch_update("input.txt")
 run()
 wait()
-graph("current_graph_02.txt")
+graph("current_graph_02")
 EOD
 
 # Check files that are expected to be present and/or missing.
@@ -44,7 +44,7 @@ watch_update("input.txt")
 watch_delete("output.txt")
 run()
 wait()
-graph("current_graph_03.txt")
+graph("current_graph_03")
 join()
 EOD
 

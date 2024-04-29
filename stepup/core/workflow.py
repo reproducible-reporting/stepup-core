@@ -20,7 +20,9 @@
 """StepUp workflow: cascade with more concrete node implementations."""
 
 import asyncio
+import json
 import os
+import textwrap
 from typing import cast, Collection, Self
 from collections import Counter
 
@@ -34,8 +36,7 @@ from .hash import FileHash, ExtendedStepHash
 from .nglob import NGlobMulti
 from .deferred_glob import DeferredGlob
 from .step import Step, StepState, Mandatory
-from .utils import myparent
-
+from .utils import myparent, lookupdict
 
 __all__ = ("Workflow",)
 
@@ -141,6 +142,44 @@ class Workflow(Cascade):
         for step_key in self.kinds.get("step", ()):
             self.suppliers.discard(step_key)
             self.consumers.discard(step_key)
+
+    def _format_dot_generic(self, arrowhead: str, include_dirs: bool, edges: Assoc):
+        lines = [
+            "strict digraph {",
+            "  graph [rankdir=BT bgcolor=transparent]",
+            "  node [penwidth=0 colorscheme=set39 style=filled fillcolor=5]",
+            f"  edge [color=dimgray arrowhead={arrowhead}]",
+        ]
+        lookup = lookupdict()
+        for key, node in self.nodes.items():
+            if key not in edges and key not in edges.inverse:
+                continue
+            if not include_dirs and key.startswith("file:") and key.endswith("/"):
+                continue
+            label = node.key[:-1] if node.key.endswith(":") else node.key[node.key.find(":") + 1 :]
+            label = json.dumps(textwrap.fill(label, 20))
+            if node.kind == "step":
+                props = ""
+            elif node.kind == "file":
+                props = " shape=rect fillcolor=9"
+            elif node.kind == "dg":
+                props = " shape=octagon fillcolor=7"
+            else:
+                props = " shape=hexagon fillcolor=6"
+            lines.append(f"  {lookup[key]} [label={label}{props}]")
+            for other in edges.get(key, ()):
+                if other != key:
+                    lines.append(f"  {lookup[key]} -> {lookup[other]}")
+        lines.append("}")
+        return "\n".join(lines)
+
+    def format_dot_creator(self):
+        """Return the creator-product graph in GraphViz DOT format."""
+        return self._format_dot_generic("empty", True, self.products)
+
+    def format_dot_supplier(self):
+        """Return the supplier-product graph in GraphViz DOT format."""
+        return self._format_dot_generic("normal", False, self.consumers)
 
     #
     # Type-annotated and type-checked node access

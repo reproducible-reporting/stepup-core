@@ -27,9 +27,9 @@ Traceback (most recent call last):
   File "/home/toon/univ/reprep/stepup-core/stepup/core/director.py", line 337, in step
     return self._workflow.define_step(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/workflow.py", line 556, in define_step
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/workflow.py", line 611, in define_step
     self.create_file(step_key, out_path, FileState.PENDING)
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/workflow.py", line 328, in create_file
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/workflow.py", line 383, in create_file
     self.create(file, creator_key)
   File "/home/toon/univ/reprep/stepup-core/stepup/core/cascade.py", line 462, in create
     self.check_cyclic(creator_key, node.key)

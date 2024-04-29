@@ -197,7 +197,7 @@ async def keyboard(
                     await client.call.run()
             elif ch == "g":
                 async with asyncio.timeout(5):
-                    await client.call.graph("graph.txt")
+                    await client.call.graph("graph")
                 await reporter("KEYBOARD", "Workflow graph written to graph.txt.")
             elif ch == "f":
                 await reporter("KEYBOARD", "Discarding hashes and running from scratch.")

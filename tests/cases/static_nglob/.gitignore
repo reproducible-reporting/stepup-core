@@ -1,6 +1,5 @@
 .stepup
-current_graph_01.txt
-current_graph_02.txt
+current_*
 ch-2-theory/sec-2-2-advanced.txt
 ch-2-theory/sec-2-2-original.txt
 ch-1-intro/sec-1-1-blabla.md

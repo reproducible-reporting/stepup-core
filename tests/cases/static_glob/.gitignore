@@ -1,7 +1,5 @@
 .stepup
-current_graph_01.txt
-current_graph_02.txt
-current_graph_03.txt
+current_*
 subdir
 inp1.txt
 inp2.txt

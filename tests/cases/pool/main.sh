@@ -11,7 +11,7 @@ stepup -w 2 plan.py & # > current_stdout.txt &
 python3 - << EOD
 from stepup.core.interact import *
 wait()
-graph("current_graph.txt")
+graph("current_graph")
 join()
 EOD
 

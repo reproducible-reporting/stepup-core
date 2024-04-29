@@ -1,4 +1,5 @@
 .stepup
 first.txt
 second.txt
-current_graph.txt
+current_*
+current_graph_creator.dot

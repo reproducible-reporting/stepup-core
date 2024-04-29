@@ -3,5 +3,4 @@ README-stdout.txt
 README-stderr.txt
 FOO-stdout.txt
 FOO-stderr.txt
-current_graph_01.txt
-current_graph_02.txt
+current_*

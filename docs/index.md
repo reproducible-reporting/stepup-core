@@ -53,8 +53,8 @@ This process is bootstrapped by an initial `plan.py` script containing the first
 Each build step can use intermediate results to add new information to the workflow.
 Steps can even be added rather late in the build, if this is necessary to correctly define such steps.
 
-The program [`tup`](https://gittup.org/tup/) deserves a special mention in this brief review.
-StepUp's algorithm for rebuilding steps (in response to changed inputs) strongly resembles that of tup. Both tools rely on an *up*ward traversal through the build graph.
+The program [tup](https://gittup.org/tup/) deserves a special mention in this brief review.
+StepUp's algorithm for rebuilding steps (in response to changed inputs) strongly resembles that of tup. The build algorithm in both programs traverse *up*wards through the build graph.
 The "Up" part of StepUp's name acknowledges this inspiration, with "Step" reflecting how StepUp defines operations as individual *steps*.
 
 

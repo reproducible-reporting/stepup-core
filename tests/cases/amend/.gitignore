@@ -1,8 +1,5 @@
 .stepup
-current_graph_01.txt
-current_graph_02.txt
-current_graph_03.txt
-current_graph_04.txt
+current_*
 inp2.txt
 out1.txt
 out2.txt

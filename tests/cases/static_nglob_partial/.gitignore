@@ -1,8 +1,5 @@
 .stepup
-current_graph_01.txt
-current_graph_02.txt
-current_graph_03.txt
-current_graph_04.txt
+current_*
 head_ignored.txt
 head_x.txt
 head_y.txt

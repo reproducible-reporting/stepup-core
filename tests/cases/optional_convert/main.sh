@@ -12,7 +12,7 @@ stepup -e -w 1 plan.py & # > current_stdout_a.txt &
 python3 - << EOD
 from stepup.core.interact import *
 wait()
-graph("current_graph_a.txt")
+graph("current_graph_a")
 EOD
 
 # Rerun without changes
@@ -20,7 +20,7 @@ python3 - << EOD
 from stepup.core.interact import *
 run()
 wait()
-graph("current_graph_b.txt")
+graph("current_graph_b")
 join()
 EOD
 
@@ -44,7 +44,7 @@ stepup -e -w 1 plan.py & # > current_stdout_b.txt &
 python3 - << EOD
 from stepup.core.interact import *
 wait()
-graph("current_graph_c.txt")
+graph("current_graph_c")
 join()
 EOD
 

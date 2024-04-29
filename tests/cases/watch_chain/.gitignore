@@ -1,6 +1,5 @@
 .stepup
-current_graph_01.txt
-current_graph_02.txt
+current_*
 output.txt
 report.txt
 copy.txt

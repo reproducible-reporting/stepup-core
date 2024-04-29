@@ -37,3 +37,14 @@ mkdocs serve --watch stepup/core/
 
 (Keep this running.)
 Then open the live preview in your browser: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+and edit markdown files in your IDE.
+
+If you want to regenerate the output of the example, run `stepup` in the `docs` directory:
+
+```bash
+cd docs
+stepup -n
+```
+
+Note that some of the scripts use [Graphviz](https://graphviz.org/) to generate diagrams,
+so you must have it installed on your system.

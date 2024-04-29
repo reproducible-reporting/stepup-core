@@ -35,9 +35,9 @@ def run():
     RPC_CLIENT.call.run()
 
 
-def graph(path: str):
-    """Write the workflow graph in text format to a file."""
-    return RPC_CLIENT.call.graph(path)
+def graph(prefix: str):
+    """Write the workflow graph files in text and dot formats."""
+    return RPC_CLIENT.call.graph(prefix)
 
 
 def watch_update(path: str):

@@ -1,2 +1,4 @@
 .stepup
 story.txt
+graph.txt
+graph_*.dot
