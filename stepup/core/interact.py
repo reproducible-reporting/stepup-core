@@ -33,15 +33,35 @@ where a `stepup` command is running in interactive mode.
 """
 
 
-from .api import RPC_CLIENT
+from .api import RPC_CLIENT, translate
 
-
-__all__ = ("run", "graph", "watch_update", "watch_delete", "wait", "join")
+__all__ = ("run", "cleanup", "graph", "watch_update", "watch_delete", "wait", "join")
 
 
 def run():
     """Exit the watch phase and start running steps whose inputs have changed."""
     RPC_CLIENT.call.run()
+
+
+def cleanup(*paths: str) -> tuple[int, int]:
+    """Remove paths (if they are outputs), recursively removing all consumer files and directories.
+
+    Parameters
+    ----------
+    paths
+        A list of paths to consider for removal.
+        Variable substitutions are not supported.
+
+    Returns
+    -------
+    numf
+        The number of files effectively removed.
+    numd
+        The number of directories effectively removed.
+    """
+    # Translate paths to directory working dir and make RPC call
+    tr_paths = sorted(translate(path) for path in paths)
+    return RPC_CLIENT.call.cleanup(tr_paths)
 
 
 def graph(prefix: str):

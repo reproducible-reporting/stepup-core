@@ -31,6 +31,7 @@ from decimal import Decimal
 import attrs
 from path import Path
 
+from stepup.core.file import FileState
 from stepup.core.nglob import NGlobMulti
 from .rpc import serve_socket_rpc, allow_rpc
 from .workflow import Workflow
@@ -38,7 +39,7 @@ from .exceptions import GraphError
 from .reporter import ReporterClient
 from .runner import Runner
 from .scheduler import Scheduler
-from .utils import check_plan, mynormpath
+from .utils import check_plan, mynormpath, remove_path
 from .watcher import Watcher
 
 
@@ -453,6 +454,47 @@ class DirectorHandler:
         self._watcher.interrupt.set()
         self._scheduler.resume()
         self._runner.resume.set()
+
+    @allow_rpc
+    async def cleanup(self, paths: list[str]) -> tuple[int, int]:
+        """Recursively clean up outputs (consumer files and directories).
+
+        Parameters
+        ----------
+        paths
+            A list of paths to consider for removal.
+
+        Returns
+        -------
+        numf
+            The number of files effectively removed.
+        numd
+            The number of directories effectively removed.
+        """
+        if not self._watcher.active.is_set():
+            raise ValueError("Cleanup is only allowed in the watch phase.")
+        initial_keys = []
+        for path in paths:
+            key = f"file:{path}"
+            if key not in self._workflow.nodes:
+                raise ValueError(f"Path not known to workflow: {path}")
+            initial_keys.append(key)
+        visited = set()
+        for key in initial_keys:
+            self._workflow.walk_consumers(key, visited)
+
+        numf = 0
+        numd = 0
+        for key in sorted(visited, reverse=True):
+            if key.startswith("file:"):
+                file = self._workflow.get_file(key)
+                if file.get_state(self._workflow) not in (FileState.STATIC, FileState.MISSING):
+                    remove_path(file.path)
+                    if file.path.endswith("/"):
+                        numd += 1
+                    else:
+                        numf += 1
+        return numf, numd
 
     @allow_rpc
     async def watch_update(self, path: str):

@@ -478,3 +478,43 @@ def test_cyclic2():
     cascade.supply("foo:0", "foo:1")
     with pytest.raises(GraphError):
         cascade.supply("foo:1", "foo:0")
+
+
+def test_walk_consumers():
+    cascade = LogCascade.from_scratch()
+    cascade.create(Foo("0"), "root:")
+    cascade.create(Foo("1"), "root:")
+    cascade.create(Foo("2"), "root:")
+    cascade.create(Foo("3"), "root:")
+    cascade.supply("foo:0", "foo:1")
+    cascade.supply("foo:1", "foo:2")
+    cascade.supply("foo:1", "foo:3")
+    visited = set()
+    cascade.walk_consumers("foo:0", visited)
+    assert visited == {"foo:0", "foo:1", "foo:2", "foo:3"}
+    visited = set()
+    cascade.walk_consumers("foo:1", visited)
+    assert visited == {"foo:1", "foo:2", "foo:3"}
+    visited = set()
+    cascade.walk_consumers("foo:3", visited)
+    assert visited == {"foo:3"}
+
+
+def test_walk_suppliers():
+    cascade = LogCascade.from_scratch()
+    cascade.create(Foo("0"), "root:")
+    cascade.create(Foo("1"), "root:")
+    cascade.create(Foo("2"), "root:")
+    cascade.create(Foo("3"), "root:")
+    cascade.supply("foo:0", "foo:1")
+    cascade.supply("foo:1", "foo:2")
+    cascade.supply("foo:1", "foo:3")
+    visited = set()
+    cascade.walk_suppliers("foo:0", visited)
+    assert visited == {"foo:0"}
+    visited = set()
+    cascade.walk_suppliers("foo:1", visited)
+    assert visited == {"foo:0", "foo:1"}
+    visited = set()
+    cascade.walk_suppliers("foo:3", visited)
+    assert visited == {"foo:0", "foo:1", "foo:3"}

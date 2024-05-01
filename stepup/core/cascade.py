@@ -416,23 +416,28 @@ class Cascade:
             ] + lines
             raise CyclicError("\n".join(lines))
 
-    def _iter_predecessors(self, key: str, visited: set[str]):
-        """Efficiently collect all predecessors of `key` and add them to `visited`.
+    def walk_suppliers(self, key: str, visited: set[str]):
+        """Efficiently collect all suppliers of `key` and add them to `visited`."""
+        if key in ["root:", "vacuum:"]:
+            return
+        visited.add(key)
+        for supplier_key in self.suppliers.get(key, ()):
+            if supplier_key not in visited:
+                self.walk_suppliers(supplier_key, visited)
 
-        Notes
-        -----
-        This method only consider supplier-consumer edges.
-        """
-        if key != "root:":
-            visited.add(key)
-            for supplier_key in self.suppliers.get(key, ()):
-                if supplier_key not in visited:
-                    self._iter_predecessors(supplier_key, visited)
+    def walk_consumers(self, key: str, visited: set[str]):
+        """Efficiently collect all consumers of `key` and add them to `visited`."""
+        if key in ["root:", "vacuum:"]:
+            return
+        visited.add(key)
+        for consumer_key in self.consumers.get(key, ()):
+            if consumer_key not in visited:
+                self.walk_consumers(consumer_key, visited)
 
     def check_cyclic(self, src_key: str, dst_key: str):
         """Raise an informative exception when the new edge would introduce a cyclic dependency."""
         visited = set()
-        self._iter_predecessors(src_key, visited)
+        self.walk_suppliers(src_key, visited)
         if dst_key in visited:
             self.report_cyclic(src_key, dst_key)
 

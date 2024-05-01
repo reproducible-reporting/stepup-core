@@ -33,6 +33,7 @@ from .job import Job
 from .reporter import ReporterClient
 from .scheduler import Scheduler
 from .step import StepState, Mandatory
+from .utils import remove_path
 from .watcher import Watcher
 from .worker import WorkerClient
 from .workflow import Workflow
@@ -226,25 +227,9 @@ class Runner:
 async def remove_files(to_be_deleted: list[tuple[str, FileHash | None]], reporter: ReporterClient):
     to_be_deleted.sort(reverse=True)
     for path, file_hash in to_be_deleted:
-        path = Path(path)
-        if path.endswith("/"):
-            try:
-                path.rmdir()
+        if path.endswith("/") or file_hash is None or file_hash.update(path) is False:
+            if remove_path(Path(path)):
                 await reporter("CLEAN", path)
-            except FileNotFoundError:
-                logging.error(f"Stale directory not found: {path}")
-            except OSError:
-                logging.error(f"Stale directory not empty: {path}")
-        else:
-            # Volatile outputs have no hash, and are always cleaned up
-            if file_hash is None or file_hash.update(path) is False:
-                try:
-                    path.remove()
-                    await reporter("CLEAN", path)
-                except FileNotFoundError:
-                    logging.error(f"Stale file not found: {path}")
-                except OSError:
-                    logging.error(f"Stale file is a directory: {path}")
     to_be_deleted.clear()
 
 

@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Export of graphs to [Graphviz](https://graphviz.org/) DOT files.
+- The `cleanup` script for manually cleaning up outputs.
 
 ### Fixed
 

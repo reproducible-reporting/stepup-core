@@ -66,6 +66,7 @@ nav:
     - advanced_topics/here_and_root.md
     - advanced_topics/cyclic_dependencies.md
     - advanced_topics/amending_static_inputs.md
+    - advanced_topics/manual_cleaning.md
   - Reference:
     - reference/stepup.core.api.md
     - reference/stepup.core.interact.md
@@ -92,6 +93,7 @@ plugins:
           docstring_section_style: list
 
 markdown_extensions:
+  - admonition
   - smarty
   - pymdownx.highlight:
       anchor_linenums: true

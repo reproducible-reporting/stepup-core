@@ -12,13 +12,34 @@ python3 - << EOD
 from stepup.core.interact import *
 wait()
 graph("current_graph")
-join()
 EOD
-
-# Wait for background processes, if any.
-wait $(jobs -p)
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit -1
 [[ -f first.txt ]] || exit -1
 [[ -f second.txt ]] || exit -1
+
+# Test cleanup that has no effect
+cleanup plan.py
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit -1
+[[ -f first.txt ]] || exit -1
+[[ -f second.txt ]] || exit -1
+
+# Test cleanup that removes first and second
+cleanup ./
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit -1
+[[ ! -f first.txt ]] || exit -1
+[[ ! -f second.txt ]] || exit -1
+
+# Exit stepup
+python3 - << EOD
+from stepup.core.interact import *
+join()
+EOD
+
+# Wait for background processes, if any.
+wait $(jobs -p)

@@ -67,5 +67,8 @@ Planning sec 1 summary
      CLEAN │ ch-2-theory/sec-2-2-advanced.md
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
+   DELETED │ ch-3-conclusions/sec-3-1-summary.md
+   DELETED │ ch-3-conclusions/ch-3-compiled.md
+   DELETED │ book.md
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

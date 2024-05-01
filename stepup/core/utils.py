@@ -35,6 +35,7 @@ __all__ = (
     "myabsolute",
     "myparent",
     "make_path_out",
+    "remove_path",
     # Miscellaneous
     "classproperty",
     "lookupdict",
@@ -138,6 +139,27 @@ def make_path_out(path_in: str, out: str | None, ext: str | None) -> Path:
     if not (ext is None or path_out.suffix == ext):
         raise ValueError(f"The output path does not have extension '{ext}': {path_out}.")
     return path_out
+
+
+def remove_path(path: Path) -> bool:
+    """Remove a file or directory. Return `True` of the file was removed."""
+    if path.endswith("/"):
+        try:
+            path.rmdir()
+            return True
+        except FileNotFoundError:
+            return False
+        except OSError:
+            return False
+    else:
+        try:
+            path.remove()
+            return True
+        except FileNotFoundError:
+            return False
+        except OSError:
+            return False
+    return False
 
 
 #

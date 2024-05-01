@@ -50,6 +50,7 @@ Changelog = "https://reproducible-reporting.github.io/stepup-core/changelog/"
 
 [project.scripts]
 stepup = "stepup.core.tui:main"
+cleanup = "stepup.core.cleanup:main"
 
 [tool.pytest.ini_options]
 addopts = "-n auto"
