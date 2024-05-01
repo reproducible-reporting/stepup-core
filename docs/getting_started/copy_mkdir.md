@@ -4,7 +4,7 @@ Copying a file or making a directory can be planned using the [`copy()`][stepup.
 and [`mkdir()`][stepup.core.api.mkdir] functions, respectively.
 These functions perform a few sanity checks and then create a step with the corresponding shell command.
 
-The example below will also be used in the [Automatic cleaning](automatic_cleaning.md) tutorial.
+The example below will also be used in the [Automatic Cleaning](automatic_cleaning.md) tutorial.
 
 
 ## Example

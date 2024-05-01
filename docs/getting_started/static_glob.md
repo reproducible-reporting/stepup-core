@@ -7,7 +7,8 @@ The [`glob()`][stepup.core.api.glob] function is similar to [`static()`][stepup.
 
 Here, only the basic usage of [`glob()`][stepup.core.api.glob] is covered.
 In the [following tutorial](static_glob_conditional.md), the use of `glob` in conditionals is discussed.
-See [Static named glob](../advanced_topics/static_named_glob.md) and [Static deferred glob](../advanced_topics/static_deferred_glob.md) for more advanced use cases.
+See [Static Named Glob](../advanced_topics/static_named_glob.md) and
+[Static Deferred Glob](../advanced_topics/static_deferred_glob.md) for more advanced use cases.
 
 
 ## Example
