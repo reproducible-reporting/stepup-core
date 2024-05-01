@@ -135,7 +135,7 @@ def glob(
         This is not compatible with `_required=True`.
         Named wildcards are not supported in deferred globs.
     **subs
-        When using named wildcards, they will match the pattern ``*`` by default.
+        When using named wildcards, they will match the pattern `*` by default.
         Through the subs argument each name can be associated with another glob pattern.
         Names starting with underscores are not allowed.
 
@@ -206,7 +206,7 @@ def glob(
 
 
 def _str_to_list(arg: Collection[str] | str) -> list[str]:
-    return [arg] if isinstance(arg, str) else arg
+    return [arg] if isinstance(arg, str) else list(arg)
 
 
 def step(
@@ -386,7 +386,7 @@ def plan(subdir: str, block: bool = False):
     Parameters
     ----------
     subdir
-        The subdirectory in which another ``plan.py`` script can be found.
+        The subdirectory in which another `plan.py` script can be found.
         The file must be executable and have `#!/usr/bin/env python` as its first line.
     block
         When True, the step will always remain pending.
@@ -494,7 +494,7 @@ def script(executable: str, workdir: str = "./", optional: bool = False, block: 
         The path of the executable is assumed to be relative to this directory.
     optional
         When True, the steps planned by the executable are made optional.
-        The planing itself is never optional.
+        The planning itself is never optional.
     block
         When True, the planning will always remain pending.
     """
@@ -515,7 +515,7 @@ def script(executable: str, workdir: str = "./", optional: bool = False, block: 
 
 
 @contextlib.contextmanager
-def subs_env_vars() -> Iterator[Callable]:
+def subs_env_vars() -> Iterator[Callable[[str | None], str | None]]:
     """A context manager for substituting environment variables and tracking the used variables.
 
     The context manager yields a function, `subs`, which takes a string with variables and
@@ -624,6 +624,7 @@ RPC_CLIENT = _get_rpc_client()
 
 
 def _get_step_key():
+    """Get the current step key from the STEPUP_STEP_KEY environment variable."""
     stepup_step_key = os.getenv("STEPUP_STEP_KEY")
     if stepup_step_key is None:
         if isinstance(RPC_CLIENT, DummySyncRPCClient):

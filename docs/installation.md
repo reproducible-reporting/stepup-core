@@ -7,7 +7,7 @@ Requirements:
 - [Pip](https://pip.pypa.io/)
 
 It is assumed that you know how to use [Pip](https://pip.pypa.io/).
-We recommend performing the installation within a [Python virtual environment](https://docs.python.org/3/library/venv.html) and activating such environments with [direnv](https://direnv.net/).
+We recommend performing the installation in a [Python virtual environment](https://docs.python.org/3/library/venv.html) and activating such environments with [direnv](https://direnv.net/).
 
 The core package can be installed with:
 
