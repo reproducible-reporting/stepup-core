@@ -1,11 +1,11 @@
-# Script (multiple cases)
+# Script (Multiple Cases)
 
 In the [previous tutorial](script_single.md), the script protocol and driver
 were illustrated with a single use case of a script.
 The driver also handles scripts that can be executed with different combinations of inputs.
 
 
-## Multiple case script driver
+## Multiple Cases Script Driver
 
 A Python script using the driver for multiple cases has the following structure.
 
@@ -51,7 +51,7 @@ The script has the following elements:
   so that they can be derived again from the formatted string
   with the [parse](https://github.com/r1chardj0n3s/parse) library.
 
-    - Here, the two string representations will `foo1` and `foo2`.
+    - Here, the two string representations will be `foo1` and `foo2`.
     - The corresponding steps will be `./script.py run foo1` and `./script.py run foo2`
 
 - The function `case_info()` is used to translate `args` and `kwargs` into a more detailed
@@ -64,10 +64,10 @@ The script has the following elements:
 
 Example source files: [getting_started/script_multiple/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/script_multiple)
 
-To make the example a little more entertaining,
-it makes use of [NumPy](https://numpy.org/) and [Matplotlib](https://matplotlib.org/).
+To make the example more engaging,
+it leverages [NumPy](https://numpy.org/) and [Matplotlib](https://matplotlib.org/).
 The same plotting function is applied to two datasets of hourly temperatures recorded at
-the airports of Brussels and Ostend in the month of February 2024, downloaded from the
+the airports of Brussels and Ostend in February 2024, downloaded from the
 [ASOS network hosted by Iowa State University](https://mesonet.agron.iastate.edu/request/download.phtml).
 
 
@@ -102,21 +102,19 @@ This produces the following figures:
 ![EBOS](script_multiple/plot_ebos.png)
 
 
-## Try the following
+## Try the Following
 
-- Download temperature data for the same month of an airport close to your home and put it in
-  the same format as the `*.csv` already present.
+- Download temperature data for the same month of an airport close to your home and format it
+  similarly to the `*.csv` already present.
   Extend the `cases()` generator to also process your temperature data.
 
-- It is common that iterates of `cases()` are reused by multiple scripts.
+- It is common for iterates of `cases()` to be reused by multiple scripts.
   One way to centralize this information is by defining a list `airports` in a `settings.py` module.
   By locally importing this module in the `cases()` function,
-  the driver will make `settings.py` an input of (only) the planning step of the script:
+  the driver will make `settings.py` an input only of the planning step of the script:
 
     ```python
     def cases():
         from settings import airports
         yield from airports
     ```
-
-    A change in `settings.py` will only affect the relevant run steps.

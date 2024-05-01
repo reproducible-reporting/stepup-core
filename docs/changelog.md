@@ -13,9 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- More graceful error message when director process crashes early.
+- More graceful error message when the director process crashes early.
 - Fix compatibility with [asciinema](https://asciinema.org) terminal recording.
-- Raise `ConnectionResetError` in `SocketSyncRPCClient` instead blocking forever when
+- Raise `ConnectionResetError` in `SocketSyncRPCClient` instead of blocking forever when
   the director process crashes.
 
 ### Changed
@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Limit acyclic constraint to the supplier-consumer graph.
   This means a step can declare a static file and then amend it as input.
 - Refactoring of the file `stepup.core.watcher` module:
-    - Replace dependency `wathfiles` by `watchdog`.
+    - Replace dependency `watchfiles` by `watchdog`.
     - Rename functions in `stepup.core.interact`:
         - `watch_add` -> `watch_update`
         - `watch_del` -> `watch_delete`

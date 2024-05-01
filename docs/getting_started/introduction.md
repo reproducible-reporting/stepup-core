@@ -2,7 +2,7 @@
 
 The "Getting Started" section consists of a series of short tutorials.
 Each tutorial introduces a few concepts at a time to maintain a gentle learning curve.
-The following initial competences are assumed:
+The following initial competencies are assumed:
 
 - Basic Python programming.
 - Working with a virtual terminal.
@@ -16,22 +16,23 @@ Once you know how StepUp works, you can impress yourself by effortlessly masteri
 
 ## Tutorial source files
 
-Input files for each tutorial are stored in a corresponding subdirectory under `docs/getting_started/` in the source code of StepUp Core.
-Each directory contains a script `main.sh` that simply runs the example in non-interactive mode,
-to generate output that can be included in the documentation.
+Input files for each tutorial are stored in a corresponding subdirectory under `docs/getting_started/` within StepUp Core's source code.
+Each directory contains a script named `main.sh`,
+which simply runs the example in non-interactive mode,
+generating output that can be included in the documentation.
 
 
 ## StepUp architecture
 
-The tutorials use terminology defined in this mini architecture overview.
-The overview merely summarizes the internals of StepUp and omits plenty of details for the sake of clarity.
-It provides just enough to get a basic understanding of its core concepts.
+The tutorials use terminology defined in this small architecture overview.
+This overview summarizes the internals of StepUp, omitting many details for the sake of clarity.
+It provides just enough to give a basic understanding of its core concepts.
 
 
-### Workflow (graph)
+### Workflow (graphs)
 
-StepUp keeps track of what it has to do and what it has already done in a workflow data structure.
-This workflow is represented by *two* [direct acyclic graphs](https://en.wikipedia.org/wiki/Directed_acyclic_graph) that make use of the same nodes.
+StepUp keeps track of what it needs to do and what it has already done in a workflow data structure.
+This workflow is represented by *two* [direct acyclic graphs (DAGs)](https://en.wikipedia.org/wiki/Directed_acyclic_graph), which comprise the same nodes.
 
 
 #### Nodes
@@ -41,12 +42,15 @@ The nodes of the graph can be instances of the following main classes:
 - A `Step` defines a program that can be executed with all the information for a specific execution:
   working directory, command, arguments, inputs, outputs, etc.
   A step can also be in one of the following states:
+
     - `PENDING`: the step cannot yet be scheduled because some inputs have not been declared or built yet.
     - `QUEUED`: all inputs are available and the step is waiting to be executed.
     - `RUNNING`: the step is being executed by one of the workers.
     - `SUCCEEDED`: the step has been successfully completed.
     - `FAILED`: the subprocess exited with a non-zero exit code or some output files were not created.
+
 - A `File` defines a path and a status, which can be any of the following:
+
     - `PENDING`: the file is the output of a step that still needs to be executed.
     - `BUILT`: the file is the output of a step that has been successfully executed.
     - `VOLATILE`: the file is (or can be) created by a step, but it is volatile.
@@ -70,22 +74,25 @@ Each type of edge forms a graph with its own rules and logic.
 
 - A **"supplier ➜ consumer"** edge points from a node that provides *something* to a node that uses that *something*.
   A few examples:
+
     - If a step uses a file as its input, it is the consumer of that file.
     - Likewise, a step is the supplier of its outputs
     - Every file is the consumer of its parent directory.
       (The only exceptions are `./` and `/`.)
     - A step is the consumer of its working directory.
 
-    This is an example of such a graph from the [Dependencies tutorial](dependencies.md).
-    (Directories are not included. Steps are blue ellipses. Files are grey rectangles.)
+    The following diagram from the [Dependencies tutorial](dependencies.md) illustrates this type of edge.
+    (Directories are not included, steps are blue ellipses, files are grey rectangles.)
 
     ![graph_supplier.svg](dependencies/graph_supplier.svg)
 
-    Just as in [tup](https://gittup.org/tup/), the build algorithm in StepUp will traverse *up*wards through this graph as it executes the steps.
+    The build algorithm in StepUp will traverse *up*wards through this graph as it executes the steps,
+    similarly to [tup](https://gittup.org/tup/)
 
 - A **"creator ➜ product"** edge is added whenever a new node is added to the workflow:
   Each node must have **one** creator, but nodes can have multiple products.
-  A few examples:
+  Examples include:
+
     - A step is the creator of its output files.
     - If a `plan.py` (or other step) defines new steps, then the `./plan.py` step is the creator of
       the new steps.
@@ -94,8 +101,8 @@ Each type of edge forms a graph with its own rules and logic.
     - Only the `Root` node is its own creator, making it the top-level node by construction.
     - When nodes are slated for removal, the `Vacuum` node becomes their creator.
 
-    This is an example of such a graph from the [Dependencies tutorial](dependencies.md).
-    (Steps are blue ellipses. Files are grey rectangles. Root and vacuum are shown as orange hexagons.)
+    The following graph from the [Dependencies tutorial](dependencies.md) illustrates this type of edge.
+    (Steps are blue ellipses, files are grey rectangles, root and vacuum are orange hexagons.)
 
     ![graph_creator.svg](dependencies/graph_creator.svg)
 

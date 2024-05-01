@@ -1,7 +1,7 @@
-# Variable substitution
+# Variable Substitution
 
-StepUp does not susbtitute environment variables is the command (first argument) of the [`step()`][stepup.core.api.step] function.
-As discussed in the tutorial on [envorinment variables](environment_variables.md), the executing shell takes care of such substitutions.
+StepUp does not substitute environment variables is the command (first argument) of the [`step()`][stepup.core.api.step] function.
+As discussed in the tutorial on [environment variables](environment_variables.md), the executing shell takes care of such substitutions.
 
 However, environment variables in all path-like arguments (e.g. `workdir`, `inp`, `out` and `vol`) of functions that take such arguments ([`step()`][stepup.core.api.step], [`amend()`][stepup.core.api.amend] etc.) are automatically substituted.
 This substitution takes place before the commands are sent to the director process and all used variables are communicated to the director with an `amend()` call.
@@ -49,10 +49,10 @@ As shown in this example, the function [`getenv()`][stepup.core.api.getenv] retu
 When using variables like `${MYVAR}` in path-like arguments, the variable must exist or an exception is raised.
 
 
-## Try the following
+## Try the Following
 
-- Run StepUp without defining `MYVAR`, i.e. just `stepup -n -w1`.
+- Run StepUp without defining `MYVAR`: `stepup -n -w1`.
   As explained above, this raises an exception.
-- Run StepUp by also defining `MYNAME`, i.e. `MYVAR=foo MYNUM=1 stepup -n -w1`.
+- Run StepUp by also defining `MYNUM`: `MYVAR=foo MYNUM=1 stepup -n -w1`.
   Now the string `'1'` is shown in the output `dst_foo.txt`.
-  Note that environment variables are always strings, and need to converted to other types is needed.
+  Note that environment variables are always strings, and need to be converted to other types if needed.

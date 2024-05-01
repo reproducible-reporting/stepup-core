@@ -1,8 +1,8 @@
 # Introduction
 
 The advanced topic tutorials are recommended
-after having gone through the "Getting Started" tutorials,
-and after having gained some hands-on experience by using StepUp.
+after completing the "Getting Started" tutorials
+and gaining some hands-on experience with StepUp.
 
-The following tutorials are useful for bigger build workflows with more specialized needs
-and for developing domain-specific StepUp extension.
+The following tutorials are useful for larger build workflows with more specialized needs,
+as well as for developing domain-specific StepUp extensions.

@@ -1,11 +1,13 @@
-# Volatile outputs
+# Volatile Outputs
 
-It may happen that steps produce auxiliary outputs that are not really of interest, but just happen to be created as a side effect.
+It may happen that steps produce auxiliary outputs that are not really of interest,
+but rather occur as a side effect.
 For example, LaTeX is notoriously productive in terms of output files.
-Some of these files will change with every run, e.g. because they contain timestamps.
+Some of these files will change with every run, e.g., because they contain timestamps.
 
-It is useful to inform StepUp of the existence of such volatile files, so they are cleaned up when appropriate.
-However, there is no point in computing file hashes for them, because these files are not used as inputs later and may change for no good reason.
+It is useful to inform StepUp of the existence of such volatile files, so they can be cleaned up when appropriate.
+However, there is no point in computing file hashes for them,
+as these files are not used as inputs later and may change for no good reason.
 One may pass a list of such files to the `vol` argument of the [`step()`][stepup.core.api.step] function.
 
 
@@ -34,15 +36,17 @@ You should get the following terminal output:
 ```
 
 
-## Try the following
+## Try the Following
 
 - Remove the file `date.txt` and run StepUp again.
   You will see that the step gets ignored:
-  StepUp does not care much about the state of the volatile files.
+  StepUp does not care much about the state of volatile files.
   It only keeps track of them, so they can be removed when needed.
+
 - Manually recreate the file `date.txt` with some arbitrary contents,
   and run StepUp.
-  Again, the step gets skipped because also the contents of the
-  volatile `date.txt` is not considered when deciding if a step is outdated.
-- Comment out the the step in `plan.py` and run StepUp again.
+  Again, the step gets skipped because the contents of the
+  volatile `date.txt` are not considered when deciding if a step is outdated.
+
+- Comment out the step in `plan.py` and run StepUp again.
   Because the step is removed, the volatile output is also removed.

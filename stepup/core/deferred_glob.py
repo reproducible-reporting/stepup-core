@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""StepUp deferred patterns for static files."""
+"""Deferred patterns for static files."""
 
 from typing import Any, Self, Iterator, TYPE_CHECKING
 

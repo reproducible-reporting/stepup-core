@@ -1,10 +1,10 @@
-# Script (single case)
+# Script (Single Case)
 
 StepUp Core implements a simple *script protocol* for defining scripts that combine planning and execution in a single source file.
-This is sometimes more convenient than putting a lot of detail in the `plan.py` file.
+This can be more convenient than putting a lot of detail in the `plan.py` file.
 
 
-## Script protocol
+## Script Protocol
 
 The [`script()`][stepup.core.api.script] protocol itself is rather simple.
 The following line in `plan.py`:
@@ -13,14 +13,14 @@ The following line in `plan.py`:
 script("sub/executable")
 ```
 
-is roughly equivalent to
+is roughly equivalent to:
 
 ```python
-step("./excutable plan", inp="sub/executable", workdir="sub/")
+step("./executable plan", inp="sub/executable", workdir="sub/")
 ```
 
 where the subdirectory is optional.
-The step `./excutable plan` is expected to define additional steps to actually run something useful with the executable.
+The step `./executable plan` is expected to define additional steps to actually run something useful with the executable.
 A common scenario is that it plans a single step `./executable run` with appropriate inputs and outputs.
 
 
@@ -32,10 +32,11 @@ writing Python scripts that adhere to the script protocol.
 It can be used in two ways:
 
 1. To run the executable for just one specific case of inputs and outputs (this tutorial).
+
 2. To run the same script with multiple combinations of inputs and outputs ([next tutorial](script_multiple.md)).
 
 
-## Single case script driver
+## Single Case Script Driver
 
 A Python script using the driver for a single case has the following structure.
 
@@ -58,13 +59,16 @@ if __name__ == "__main__":
     driver()
 ```
 
-- The `info` function provides the necessary data to implement the planning of the running of script.
-  It is executed when calling the script as `./script.py plan`
-- The `run` function is called to perform the useful work and is executed when running he script with `./script.py run`.
+- The `info` function provides the necessary data to implement
+  the planning of the execution of the script.
+  It is executed when calling the script as `./script.py plan`.
+
+- The `run` function is called to perform the useful work and
+  is executed when running the script with `./script.py run`.
 
 Note that the `run` function can have any argument defined in the dictionary return by `info`,
 but it does not have to specify all of them.
-The argument list of `run` may also contain less arguments (or even none at all).
+The argument list of `run` may also contain fewer arguments (or even none at all).
 
 
 ## Example
@@ -107,17 +111,20 @@ You should see the following output on screen:
 
 As expected, this creates two files: `cos.npy` and `sin.npy`.
 
-Now, try the following:
 
-- Change the file `config.json` and rerun StepUp.
+## Try the Following:
+
+- Modify the file `config.json` and re-run StepUp.
   The planning is skipped because the script itself did not change.
   Only the run function is called to work with the updated `config.json`.
+
 - Delete one of the outputs and rerun StepUp.
   Again, the planning is skipped and the computation is repeated to recreate the missing output.
+
 - Create a new module `utils.py` with a `compute` function to calculate the cosine and sine arrays
   with parameters `nstep` and `freq`.
-  Import this module into `generate.py`, use it in `run` and rerun StepUp.
+  Import this module into `generate.py`, use it in `run` and re-run StepUp.
   This will automatically make `utils.py` an input for the planning and running of `generate.py`.
-  Test this by making a small change to `utils.py` and rerunning it.
+  Test this by making a small change to `utils.py` and re-running it.
   (Note that local imports inside the `run` function will not be identified automatically and
-  are therefore note recommended.)
+  are therefore not recommended.)

@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""StepUp workflow: cascade with more concrete node implementations."""
+"""The `Workflow` is a `Cascade` subclass with more concrete node implementations."""
 
 import asyncio
 import json

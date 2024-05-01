@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""StepUp steps are things that can be executed and have inputs and outputs."""
+"""A `Step` is a shell command that can be executed and that has inputs and outputs."""
 
 import enum
 from typing import Any, Self, Iterator, TYPE_CHECKING, Collection

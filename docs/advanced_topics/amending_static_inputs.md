@@ -1,11 +1,12 @@
-# Amending static inputs
+# Amending Static Inputs
 
-Occasionally, e.g. for the top-level `plan.py`, it may be convenient to declare a static file and then use it as input in the same script.
+Occasionally, it may be convenient to declare a static file and then use it as input in the same script.
 As of StepUp 1.1, this is allowed and no longer treated as a cyclic dependency.
+
 
 ## Example
 
-Create the following `plan.py`, which declares a static file, amends it as input and then opens it to just print it to the standard output.
+Create the following `plan.py`, which declares a static file, amends it as input, and then opens it to print it to the standard output.
 
 ```python
 {% include 'advanced_topics/amending_static_inputs/plan.py' %}
@@ -23,7 +24,7 @@ chmod +x plan.py
 stepup -n -w1
 ```
 
-You should get the followng terminal output:
+You should get the following terminal output:
 
 ```
 {% include 'advanced_topics/amending_static_inputs/stdout.txt' %}

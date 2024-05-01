@@ -19,15 +19,64 @@
 # --
 """Glob with named back-reference support.
 
-A named glob (nglob) pattern may contain the following:
+Named glob (NGlob) patterns are an advanced form of pattern matching
+that supports back referencing of previously matched substrings.
 
-- ``${*name}`` is a named wildcard. Optionally, the name can be associated with a glob pattern.
-  When no pattern is specified for a name, the default is ``*``.
-  When a name appears twice in a named glob pattern (or multiple named glob patterns),
-  the same value must be present for each placeholder to get a match.
-- One may also specify a set of named glob patterns, enforcing consistency between their names.
-- Regular wildcards are also allowed and are called "anonymous wildcards"
-  to clarify the distinction with named wildcards.
+It has the following use cases:
+
+- **Single named wildcard:**
+    By default, the wildcard `${*name}` is a placeholder for any string.
+    One may also specify a pattern for `${*name}` through optional arguments.
+    For example:
+
+    ```python
+    ngs = NGlobSingle("feedback_${*idx}.md", idx="[0-9][0-9][0-9]")
+    ngs.glob()
+    print(ngs.results)
+    ```
+
+- **Consistency within one pattern:**
+    If a pattern uses the same named globs multiple times,
+    the matching substring must also be consistent.
+    For example:
+
+    ```python
+    ngs = NGlobSingle("archive_${*idx}/feedback_${*idx}.md", idx="[0-9][0-9][0-9]")
+    ngs.glob()
+    print(ngs.results)
+    ```
+
+    These would match:
+
+    - `archive_042/feedback_042.md`
+    - `archive_777/feedback_777.md`
+
+    This won't match:
+
+    - `archive_042/feedback_777.md`
+
+- **Consistency across multiple patterns:**
+    One can define multiple patterns and enforce consistency between their matches.
+    For example:
+
+    ```python
+    ngm = NGlobMulti("feedback_${*idx}.md", "report_${*idx}.pdf", idx="[0-9][0-9][0-9]")
+    ngm.glob()
+    print(ngm.results)
+    ```
+
+    This will produce pairs of matches (provided the files are present).
+    For example, the following would match:
+
+    - `feedback_001.md` with `report_001.pdf`
+    - `feedback_123.md` with `report_123.pdf`
+
+    The following won't be in the results, despite the fact that the files exist:
+
+    - `feedback_001.md` with `report_123.pdf`
+
+- Conventional glob wildcards are also allowed and are called "anonymous wildcards"
+  to clarify the distinction from named wildcards.
 """
 
 import copy

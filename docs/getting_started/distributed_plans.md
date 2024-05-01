@@ -1,8 +1,8 @@
-# Distributed plans
+# Distributed Plans
 
-When your project grows, defining the whole workflow in a single `plan.py` may become inconvenient.
-Especially working with nested directories for different parts of the project,
-it may be convenient to distribute the workflow over multiple files.
+When your project grows, defining the entire workflow in a single `plan.py` file may become inconvenient.
+Especially when working with nested directories for different parts of the project,
+it may be convenient to distribute the workflow over multiple `plan.py` files.
 
 
 ## Example
@@ -16,7 +16,7 @@ Create a simple example with a top-level `plan.py` as follows:
 ```
 
 The top-level plan defines a few static files and then calls another plan in `sub/`.
-Create a files `sub/plan.py` as follows:
+Create a file `sub/plan.py` as follows:
 
 ```python
 {% include 'getting_started/distributed_plans/sub/plan.py' %}
@@ -36,11 +36,14 @@ You will get the following output:
 ```
 
 
-## Practical considerations
+## Practical Considerations
 
-- The main benefit of multiple plan.py files is to improve the logical structure of your project.
+- The main benefit of having multiple `plan.py` files
+  is to improve the logical structure of your project.
   It may also be helpful when a part of your `plan.py` is computationally demanding, in which
-  case it can be factored out such that it does not slow down the rest of the build.
+  case it can be factored out so that it does not slow down the rest of the build.
   However, ideally, the `plan.py` scripts execute quickly, leaving the hard work to other steps.
-- When there are multiple `plan.py`, keep in mind that their order of execution cannot be relied upon.
-  In general, they are executed in parallel.
+- When there are multiple `plan.py` files,
+  keep in mind that their order of execution cannot be relied upon.
+  They are executed in parallel, and their relative starting times depend
+  on factors unknown a priori, such as system load and number of workers.

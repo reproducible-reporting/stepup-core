@@ -1,8 +1,8 @@
-# Interactive command reference
+# Interactive Command Reference
 
-By default StepUp runs in interactive mode.
-When pressing a key on the keyboard, it will respond by executing a corresponding command.
-If the key is not associated with some command, the following help message is shown:
+By default, StepUp runs in interactive mode.
+When pressing a key on the keyboard, it responds by executing a corresponding command.
+If the key is not associated with any command, the following help message appears:
 
 ```
 ───────────────────────────────────── Keys ─────────────────────────────────────
@@ -16,22 +16,23 @@ If the key is not associated with some command, the following help message is sh
 These commands are defined as follows:
 
 - `q = shutdown`:
-  StepUp waits for the workers to complete their current job but will not start new jobs.
-  As soon as all workers are idle, StepUp exists.
+  StepUp waits for the workers to complete their current job and will not start new jobs.
+  As soon as all workers are idle, StepUp exits.
 - `d = drain`:
-  StepUp waits for the workers to complete their current job but will not start new jobs.
-  As soon as all workers are idle, StepUp switches to *watch phase*.
+  StepUp waits for the workers to complete their current job and will not start new jobs.
+  As soon as all workers are idle, StepUp transitions into the *watch phase*.
 - `j = join`:
-  StepUp keeps running jobs until no new jobs can be found to send to the workers.
-  As soon as all workers are idle, StepUp exists.
+  StepUp continues running jobs until no new jobs can be found to send to the workers.
+  As soon as all workers are idle, StepUp terminates.
 - `g = graph`:
-  Write out the workflow graph in text format to a file `graph.txt`.
-  (This is a human readable file containing most of the information in `.stepup/workflow.mp.xz`)
+  Writes out the workflow graph in text format to a file named `graph.txt`.
+  (This human-readable file contains most of the information from `.stepup/workflow.mp.xz`)
 - `f = from scratch`:
-  Discard all hashes and rerun all steps.
-  No attempts are made to skip steps and everything is executed from scratch.
+  Discards all hashes and reruns all steps.
+  No attempts are made to skip steps, and everything is executed from scratch.
 - `t = try replay`:
-  Check the hash of each step and skip it if no changes were detected. Run otherwise.
-  (Normally, this command is never needed.)
+  Checks the hash of each step and skips it if no changes were detected.
+  Otherwise, run the step.
+  (Normally, this command is not needed.)
 - `r = run`:
-  Run steps that are affected by file changes registered in *watch phase*.
+  Runs steps that are affected by file changes registered during the *watch phase*.

@@ -41,7 +41,7 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
             elif line.startswith("# ROOT:"):
                 root = workdir / line[7:].strip()
                 inp.append(root)
-            elif line.startswith("stepup") and line.count(">") == 1:
+            elif line.startswith("stepup") and ">" in line:
                 out.append(workdir / Path(line[line.find(">") + 1 :].strip()))
     return inp, root, out
 

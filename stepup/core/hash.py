@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""File and Step hashing."""
+"""File and step hashing."""
 
 import hashlib
 import os

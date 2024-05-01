@@ -1,4 +1,4 @@
-# Static glob conditional
+# Static Glob Conditional
 
 The [`glob()`][stepup.core.api.glob] function introduced in the previous tutorial
 also works in conditional expressions.
@@ -68,7 +68,7 @@ You should get the following output:
 {% include 'getting_started/static_glob_conditional/stdout1.txt' %}
 ```
 
-Now, simulate the situation the absence of the dataset by renaming the directory:
+Now, simulate the situation where the dataset is absent by renaming the directory:
 
 ```bash
 mv dataset tmp
@@ -84,20 +84,20 @@ The new output reveals that the dataset is completely ignored while the file `av
 Since the file `average.txt` did not change, the step `cat average.txt` is skipped.
 
 
-## Practical considerations
+## Practical Considerations
 
-- The example involves few calculations for the sake of simplicity.
+- For simplity's sake, the example involves few calculations.
   In a more realistic setting, the step `cat average.txt` is replaced by several scripts that
   make graphs of the information extracted from the large dataset.
   Tweaking these graphs for clarity usually takes some iterations,
-  for which access to the big dataset is not relevant.
+  for which access to the large dataset is not necessary.
 
 - A StepUp project practically always resides in a Git repository.
-  While the files extract from the big dataset can be reproduced easily,
-  it may still be relevant to commit the data extracted from the big data set into the Git repository:
+  While the files extracted from the large dataset can be reproduced easily,
+  it may still be relevant to commit them into the Git repository:
 
-    - Not all your collaborators may have access to the dataset,
+    - Not all collaborators may have access to the dataset,
       but you still want them to be able to reproduce the workflow.
 
-    - In the long run, the big dataset may be removed because it is too big and old keep around.
-      The extracted data are then a relevant and compact subset that you can easily store for longer times.
+    - In the long run, the large dataset might be removed because it is too big and old to keep around.
+      The extracted data then become a relevant and compact subset that can be easily stored for longer periods.

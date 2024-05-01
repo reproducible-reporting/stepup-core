@@ -1,7 +1,7 @@
-# First step
+# First Step
 
 The goal of the first tutorial is to introduce the basic usage of StepUp.
-For the sake of simplicity, a minimal workflow will be defined that won't achieve much.
+For the sake of simplicity, a minimal workflow will be defined that does not achieve much.
 
 
 ## Example
@@ -49,7 +49,7 @@ Let's analyze the output:
 - When no more steps can be executed, StepUp wraps up by saving the worklow for future runs.
 - Because of the `-n` option, StepUp immediately shuts down.
 
-Now repeat the execution of StepUp with
+Now repeat the execution of StepUp with:
 
 ```bash
 stepup -n -w1
@@ -68,7 +68,8 @@ StepUp determines if a step can be skipped by comparing a [Blake2 hash](https://
 When you manually remove `.stepup/workflow.mpk.xz`,
 StepUp will not know anymore that it already executed some steps and runs all of them again.
 
-## Try the following
 
-Now change the arguments of the `echo` command in `plan.py` and run `stepup -n -w1` again.
-You will see that it detected the change and reruns both `plan.py` and the `echo` command.
+## Try the Following
+
+Now, change the arguments of the `echo` command in `plan.py` and run `stepup -n -w1` again.
+As expected, StepUp will detect the change and repeat the `plan.py` and `echo` steps.

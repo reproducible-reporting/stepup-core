@@ -1,7 +1,7 @@
 # HERE and ROOT variables
 
-When a worker runs a step, it defines several environment variables, of which `HERE` and `ROOT` can be relevant for writing advanced scripts.
-(The workers also defines variables starting with `STEPUP_`, but these are only useful to StepUp itself, not to end users.)
+When a worker runs a step, it defines several environment variables, including `HERE` and `ROOT`, which can be relevant for writing advanced scripts.
+(The workers also define variables starting with `STEPUP_`, but these are only useful to StepUp itself, not to end users.)
 
 The two variables are defined as follows:
 
@@ -14,7 +14,7 @@ These variables can be useful in the following cases:
 
 - For out-of-source builds, where you want to replicate the directory structure of the source material.
   (See example below.)
-- To refeference a local script that is stored in the top-level directory of your project: `${ROOT}/script.py`
+- To reference a local script that is stored in the top-level directory of your project: `${ROOT}/script.py`
 
 
 ## Example
@@ -65,14 +65,15 @@ dst = getenv("DST", is_path=True)
 ```
 
 The `is_path=True` option implies that the variable is a path defined globally.
-If it is a relative path, it will be interpreted relative to the sorking directory where StepUp was started and will be translated to the working directory of the script calling `getenv`.
+If it is a relative path, it will be interpreted relative to the working directory where StepUp was started and will be translated to the working directory of the script calling `getenv`.
 Any variables present in the environment variable will also be substituted once.
 
 
-## Try the following
+## Try the Following
 
-- Change the scripts `plan.py` and `sub/plan.py` such that they make use of a `DST` variable as explained above.
-  To make this work, you need to define `DST` externally, e.g. by starting StepUp as `DST='../public/${HERE}' stepup -n -w1`.
-- After the previous point, run StepUp with a different `DST` value.
+- Modify the scripts `plan.py` and `sub/plan.py` to utilize a `DST` variable as explained above.
+  To achieve this, define `DST` externally, for instance, by starting StepUp as `DST='../public/${HERE}' stepup -n -w1`.
+
+- As a follow-up to the previous point, run StepUp with a different `DST` value.
   For example: `DST='../out/${HERE}' stepup -n -w1`.
-  You will see that all the old output files get cleaned up after the new output is created
+  You will see that all old output files get cleaned up after the new output is created.

@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""Schedule steps."""
+"""The `Scheduler` plans the execution of jobs by the worker processes."""
 
 import asyncio
 import itertools

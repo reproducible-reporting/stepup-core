@@ -1,7 +1,6 @@
-# Static deferred glob
+# Static Deferred Glob
 
-When working with large datasets (containing many thousands of files),
-it is not practical to make all these files static if only a few of them are going to be used.
+When dealing with massive datasets comprising tens of thousands of files, it doesn't make sense to render all of them as static when only a handful will actually be utilized.
 StepUp addresses this issue with the *deferred glob* feature,
 which makes previously unknown files static when:
 
@@ -58,11 +57,12 @@ The **creator graph**:
 ![graph_creator.svg](static_deferred_glob/graph_creator.svg)
 
 
-## Try the following
+## Try the Following
 
 - When using deferred globs, steps cannot create outputs that match the deferred glob.
   This would mean that a built file could be made static when used as input later,
   which is clearly inconsistent.
   Try causing this error by adding a step `copy("foo.txt", "foo2.txt")`.
+
 - Remove the `_defer=True` option and inspect the corresponding `graph.txt`.
   You should see that `bar.txt` is now indeed included in the graph.

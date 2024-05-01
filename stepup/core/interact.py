@@ -17,10 +17,19 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""Application programming interface to the director to simulate interactive use.
+"""Application Programming Interface (API) for interactive use of the director process.
 
 Most of these functions are used for writing tests.
-They can also be used to create keyboard shortcuts in your IDE to control StepUp.
+They can also be employed to create keyboard shortcuts within your IDE.
+
+For example, one may bind the following command to an IDE's keyboard shortcut:
+
+```bash
+python -c 'from stepup.core.interact import run; run()'
+```
+
+This command must be executed in the top-level directory
+where a `stepup` command is running in interactive mode.
 """
 
 

@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""director."""
+"""The director process manages the workflow and sends jobs to the worker processes."""
 
 import asyncio
 import contextlib

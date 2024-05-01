@@ -17,7 +17,8 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""Execute tasks."""
+"""The `Runner` delegates the execution of jobs by the workers."""
+
 
 import asyncio
 import logging

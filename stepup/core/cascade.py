@@ -17,7 +17,15 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""A Cascade instance is StepUp's abstract dependency graph."""
+"""A Cascade instance is StepUp's abstract implementation of the workflow graph.
+
+It introduces two types of edges (creator-product) and (supplier-consumer),
+and several essential `Node` classes: `Root` and `Vacuum`.
+All other nodes and their logic are implemented in `stepup.core.workflow`.
+
+The separation between `Cascade` and `Workflow` allows for testing a well-defined subset,
+before building more complexity on top of it.
+"""
 
 import lzma
 from typing import Any, Self, Iterator

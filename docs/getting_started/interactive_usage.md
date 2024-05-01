@@ -1,7 +1,7 @@
 # Interactive usage
 
 All previous tutorials have run StepUp non-interactively, for the sake of simplicity.
-In practice, this is mainly useful when building projects in batch jobs, e.g. in the cloud.
+In practice, this is mainly useful when building projects in batch jobs, e.g., in the cloud.
 When working on a project, interactive usage is more efficient and convenient,
 but requires a little more explanation.
 (For this reason, most of the tutorials use the non-interactive option.)
@@ -16,6 +16,7 @@ stepup
 In fact, running the `stepup` command without any arguments is the recommended way to run StepUp in most cases.
 
 After the line `PHASE │ watch` appears, StepUp just waits for changes to the (static) files.
+
 
 ## Change an existing file
 
@@ -39,9 +40,10 @@ to display the supported keys with interactive commands:
 ```
 
 Now press (lower case) `r` to run steps whose (indirect) inputs have changed.
-The new file `src/foo.txt` is copied again to `dst/foo.txt` while other steps are ignored.
+The new file `src/foo.txt` is copied again to `dst/foo.txt`, while other steps are ignored.
 
-The interactive commands are described in detail in the [Interactive command reference](../reference/interactive.md).
+The interactive commands are described in detail in the [Interactive Command Reference](../reference/interactive.md).
+
 
 ## Add a new file that matches `glob("src/*.txt")`
 
@@ -54,7 +56,7 @@ You will see at least the following:
 
 Now press (lower case) `r` again.
 The `./plan.py` step is executed again because a new file has appeared that matches a glob pattern used in `plan.py`.
-Running `./plan.py` again will in turn create a new step to copy `src/spam.txt` to `dst/spam.txt`.
+Running `./plan.py` again will, in turn, create a new step to copy `src/spam.txt` to `dst/spam.txt`.
 
 
 ## Screen recording

@@ -1,9 +1,9 @@
-# Environment variables
+# Environment Variables
 
-When defining a step, one may specify environment variables it uses (not their values).
+When defining a step, one can specify the environment variables it uses (not their values).
 When starting StepUp with a different value for any of these variables, StepUp will know that it has to repeat the step instead of skipping it.
 
-One can only change an environment variable by stopping StepUp, changing the variable and starting StepUp again.
+One can only change an environment variable by stopping StepUp, changing the variable, and then starting StepUp again.
 One cannot modify environment variables while StepUp is running.
 
 
@@ -31,13 +31,15 @@ You will see the following output:
 ```
 
 The variable substitution is performed in the subshell of the worker.
-StepUp will not try substitute `${MYVAR}` before starting the step.
-The special variables `${inp}` and `${out}` are the exceptions to this rule as discussed in the [tutorial on dependencies](../getting_started/dependencies.md).
+StepUp will not try to substitute `${MYVAR}` before starting the step.
+The special variables `${inp}` and `${out}` are exceptions to this rule,
+as discussed in the [tutorial on dependencies](../getting_started/dependencies.md).
 
 
-## Try the following
+## Try the Following
 
 - Repeat `MYVAR=foo stepup -n -w1` without making changes.
   You will see that the `echo` step is skipped as expected.
+
 - Now run `MYVAR=bar stepup -n -w1`.
   This time, the variable change will cause the step to be executed.

@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""StepUp files are inputs or outputs of steps."""
+"""A `File` is StepUp's node for an input or output file of a step."""
 
 import enum
 from typing import Any, Self, Iterator, TYPE_CHECKING

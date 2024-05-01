@@ -34,7 +34,15 @@ __all__ = ("driver",)
 
 
 def driver(obj=None) -> int:
-    """Driver function to be called from script as ``driver()`` or ``driver(obj)``."""
+    """Driver function to be called from a script as `driver()` or `driver(obj)`.
+
+    Parameters
+    ----------
+    obj
+        When not provided, the namespace of the module where `driver` is defined
+        will be searched for names like 'info' and 'run' to implement the script protocol.
+        When an object is given as a parameter, its attributes are searched instead.
+    """
     frame = inspect.currentframe().f_back
     script_path = Path(frame.f_locals["__file__"]).relpath()
     if obj is None:

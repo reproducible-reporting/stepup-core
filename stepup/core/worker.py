@@ -50,12 +50,28 @@ __all__ = ("WorkerClient", "WorkerStep", "WorkerHandler")
 
 @attrs.define
 class WorkerClient:
+    """Client interface to a worker, used by the director process."""
+
+    # The workflow that the client is interacting with.
     workflow: Workflow = attrs.field()
+
+    # A reporter to send progress and terminal output to.
     reporter: ReporterClient = attrs.field()
+
+    # The path of the directory socket.
+    # A step being executed by a worker needs this socket extend the workflow.
     director_socket_path: str = attrs.field()
+
+    # Flag to enable detailed CPU usage of each step.
     show_perf: bool = attrs.field()
+
+    # Flat to explain why a step could not be skipped.
     explain_rerun: bool = attrs.field()
+
+    # The integer index of the worker (in the list of workers kept by the Runner instance).
     idx: int = attrs.field(converter=int)
+
+    # The RPC client to communicate with the worker process.
     client: AsyncRPCClient | None = attrs.field(init=False, default=None)
 
     #
@@ -240,7 +256,8 @@ class WorkerClient:
 
 @attrs.define
 class WorkerStep:
-    # Bundle all process related attributes into one WorkerStep object.
+    """Information on the current step that a worker is working on."""
+
     key: str = attrs.field()
     command: str = attrs.field()
     workdir: Path = attrs.field()
@@ -261,6 +278,8 @@ class WorkerStep:
 
 @attrs.define
 class WorkerHandler:
+    """RPC Handler in the worker process to respond to requests from the WorkerClient."""
+
     director_socket_path: str
     reporter: ReporterClient = attrs.field()
     show_perf: bool = attrs.field()

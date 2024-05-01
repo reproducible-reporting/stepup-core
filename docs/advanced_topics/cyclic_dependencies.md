@@ -1,6 +1,6 @@
 # Cyclic dependencies
 
-In StepUp, cyclic dependencies are defined as closed loops in the "supplier ➜ consumer" graph.
+Cyclic dependencies are defined in StepUp as closed loops in the "supplier ➜ consumer" graph.
 One may construct these in a `plan.py`, which will result in an error message.
 
 In theory, one could also have cycles in the "creator ➜ product" graph, but these are excluded by construction and therefore not relevant to discuss in the tutorial.

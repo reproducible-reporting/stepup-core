@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""Progress monitoring."""
+"""Terminal output of StepUp's runner progress and observed file changes."""
 
 
 import asyncio

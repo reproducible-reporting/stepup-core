@@ -8,8 +8,10 @@ A "pool" is a simple mechanism to limit parallelization in the few cases that th
    Here are a few examples encountered in the development of StepUp RepRep:
     - [Inkscape/issue4716](https://gitlab.com/inkscape/inkscape/-/issues/4716)
     - [markdown-katex/issue16](https://github.com/mbarkhau/markdown-katex/issues/16)
-2. Some steps may consume a lot of resources, e.g. memory,
+
+2. Some steps may consume a lot of resources, such as memory,
    and would require more resources than available when running in parallel.
+
 3. Software licenses may not allow for more than a given number of instances running in parallel.
 
 One defines a pool with [`pool(name, size)`][stepup.core.api.pool].
@@ -24,8 +26,8 @@ for which the pool size is 1.
 
 Example source files: [advanced_topics/pools/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/pools)
 
-The example here is a simple test case illustrating the use of a pool.
-The steps can also run easily in parallel, so you can experiment with the pool size.
+The example here illustrates the use of a pool in a simple test case.
+The steps can run easily in parallel, so you can experiment with the pool size.
 
 Create the following `plan.py`:
 
@@ -33,8 +35,8 @@ Create the following `plan.py`:
 {% include 'advanced_topics/pools/plan.py' %}
 ```
 
-The `sleep` command assures the step last sufficient long,
-which guarantees they will run in parallel when allowed.
+The `sleep` command ensures that each step lasts long enough to guarantee they will run in parallel when allowed.
+
 
 Make the plan executable and run it with StepUp:
 
@@ -50,19 +52,20 @@ You should get the following output:
 ```
 
 Initially, the `./plan.py` step and two `sleep+echo` commands are running in parallel.
-Despite the fact that there are four workers,
-the third `sleep+echo` is only started after the previous two.
+Despite having four workers,
+the third `sleep+echo` is only started after the previous two have finished.
 
 
-## Try the following
+## Try the Following
 
 - Run `stepup -n -w4` again without making changes.
-  Skipping of steps is never subject to pool size restrictions.
-  (It does require some computation and comparison of hashes,
-  which is done by the worker processes.)
+  Skipping of steps requires some computation and comparison of hashes,
+  which is done by worker processes.
+  However, these hash computations are never subject to pool size restrictions.
+
 - Change the pool size to `1` or `3` and verify that the output matches your expectations.
-  When you try this, StepUp will keep skipping steps.
+  When you try this, StepUp will continue skipping steps.
   To forcibly re-execute steps, you have two options:
 
     1. Remove the file `.stepup/workflow.mpk.xz` and start StepUp.
-    2. Run StepUp interactively (wihout `-n`) and use the `f` key to start the workflow from scratch.
+    2. Run StepUp interactively (without `-n`) and use the `f` key to start the workflow from scratch.

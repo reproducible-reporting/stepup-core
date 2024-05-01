@@ -1,4 +1,4 @@
-# Blocked steps
+# Blocked Steps
 
 As discussed in the [previous tutorial](optional_steps.md),
 StepUp has several mechanisms to ignore certain steps.
@@ -13,19 +13,19 @@ A valid reason for ignoring some steps is illustrated in the following schematic
 |-------------|      |----------|      |-----------------|      |----------|
 ```
 
-Imagine that you are the `Step 2` is very expensive and you are developing a script for `Step 1`.
+Imagine that `Step 2` is very expensive and you are developing a script for `Step 1`.
 In practice, it takes several iterations to get `Step 1` working properly.
-This can, for example, be verified by analyzing the file `converted.txt` or with unit tests.
+This can be verified by analyzing the file `converted.txt` or with unit tests.
 
-To avoid that `Step 2` is executed at every iteration in the development of `Step 1`,
+To avoid executing `Step 2` at every iteration in the development of `Step 1`,
 you can **block** this step.
-All step-creating functions accept an optional `block=True` keyword argument to these prevent step(s) from being executed.
-Blocking steps is obviously a temporary measure, meant to be reverted once you're done with `Step 1`.
+All step-creating functions accept an optional `block=True` keyword argument to prevent them from being executed.
+Blocking steps is a temporary measure, meant to be reverted once you're done with `Step 1`.
 
 Blocking steps has some consequences:
 
 - Blocked steps remain in the PENDING state, meaning that outdated output files are not cleaned up automatically.
-- At the end of the *run phase* a list of blocked steps is shown, to remind the user that some steps are blocked.
+- At the end of the *run phase*, a list of blocked steps is shown, to remind the user that some steps are blocked.
 - Subsequent steps, which use outputs of blocked or pending steps, also remain pending.
 
 
@@ -55,12 +55,13 @@ You should get the following terminal output:
 ```
 
 
-## Try the following
+## Try the Following
 
 - Unblock the copy step, run StepUp, block it again, and run StepUp again.
-  Even though the copy commands are no longer executed, their outputs (`b.txt` and `c.txt`)
+  Although the copy commands are no longer executed, their outputs (`b.txt` and `c.txt`)
   are not cleaned up.
-  This is the expected behavior because the automatic cleaning is only performed when all
-  (non-optional) steps have been executed succesfully.
+  This is the expected behavior because automatic cleaning is only performed when all
+  (non-optional) steps have been executed successfully.
+
 - Unblock the copy step, run StepUp, and then make the last copy command optional.
   In this case, the output of the optional step (`c.txt`) will be removed.

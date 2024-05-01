@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""Definition of a job to be executed by a worker."""
+"""Definition of jobs to be executed by a worker."""
 
 
 from typing import TYPE_CHECKING
