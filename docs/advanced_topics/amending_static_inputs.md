@@ -1,7 +1,7 @@
 # Amending Static Inputs
 
 Occasionally, it may be convenient to declare a static file and then use it as input in the same script.
-As of StepUp 1.1, this is allowed and no longer treated as a cyclic dependency.
+As of StepUp 1.2.0, this is allowed and no longer treated as a cyclic dependency.
 
 
 ## Example
