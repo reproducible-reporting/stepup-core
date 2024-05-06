@@ -68,7 +68,7 @@ select = ["E", "F", "UP", "B", "SIM", "I", "PGH", "PL", "RUF", "C"]
 ignore = ["PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004", "PLW2901", "C901"]
 
 [tool.setuptools]
-packages = ["stepup.core"]
+packages = ["stepup"]
 
 [tool.setuptools_scm]
 write_to = "stepup/core/_version.py"
