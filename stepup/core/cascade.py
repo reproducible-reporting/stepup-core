@@ -28,13 +28,14 @@ before building more complexity on top of it.
 """
 
 import lzma
-from typing import Any, Self, Iterator
+from collections.abc import Iterator
+from typing import Any, Self
 
 import attrs
 import msgpack
 
-from .assoc import Assoc, one_to_many, many_to_many, AssocView
-from .exceptions import GraphError, CyclicError
+from .assoc import Assoc, AssocView, many_to_many, one_to_many
+from .exceptions import CyclicError, GraphError
 from .utils import classproperty, lookupdict
 
 __all__ = ("Node", "Root", "Vacuum", "Cascade", "get_kind")
@@ -241,7 +242,7 @@ class Cascade:
         state = {"nodes": [], "products": [], "consumers": []}
         for key in self.nodes:
             lookup[key] = len(lookup)
-        for inode, (key, node) in enumerate(self.nodes.items()):
+        for node in self.nodes.values():
             node_data = {"c": node.kind}
             node_data.update(node.unstructure(self, lookup))
             state["nodes"].append(node_data)
@@ -282,7 +283,7 @@ class Cascade:
             else:
                 lines.append(key)
             for name, value in node.format_properties(self):
-                lines.append(f"{name:>20s} = {str(value)}")
+                lines.append(f"{name:>20s} = {value!s}")
             pairs = []
             if not (creator_key == "vacuum:" or key == "root:"):
                 pairs.append(("created by", creator_key))
@@ -366,10 +367,7 @@ class Cascade:
 
     def get_nodes(self, kind: str | None = None, include_orphans: bool = False):
         assert kind is None or kind in self.node_classes
-        if kind is None:
-            keys = self.nodes
-        else:
-            keys = self.kinds.get(kind, ())
+        keys = self.nodes if kind is None else self.kinds.get(kind, ())
         keys = sorted(key for key in keys if (include_orphans or not self.is_orphan(key)))
         return [self.nodes[key] for key in keys]
 
@@ -389,7 +387,7 @@ class Cascade:
                 yield (src_key,)
             for supplier_key in self.suppliers.get(src_key, ()):
                 for cycle in self._iter_cycles(supplier_key, dst_key):
-                    yield (src_key,) + cycle
+                    yield (src_key, *cycle)
 
     def report_cyclic(self, src_key: str, dst_key: str):
         """Raise an informative exception when the new edge would make the directed graph cyclic.
@@ -407,13 +405,13 @@ class Cascade:
                 lines.append(f"  {key}")
             lines.append("")
         if len(lines) > 0:
-            lines = [
+            lines[:0] = [
                 "New relation introduces cyclic dependency",
                 "",
                 f"src = {src_key}",
                 f"dst = {dst_key}",
                 "",
-            ] + lines
+            ]
             raise CyclicError("\n".join(lines))
 
     def walk_suppliers(self, key: str, visited: set[str]):

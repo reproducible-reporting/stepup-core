@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from stepup.core.api import glob, step, static
+from stepup.core.api import glob, static, step
 
 if glob("dataset/"):
     static("dataset/bigfile.txt", "expensive.py")

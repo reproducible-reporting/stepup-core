@@ -35,7 +35,7 @@ Same inp hash        variables.json
 ────────────────────────────────────────────────────────────────────────────────
       SKIP │ ./printvars.py
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       extended, digest d52c2733, inp_digset 2a71c927
+Same step hash       extended, digest 0acb0b1e, inp_digset 9419840d
 Same inp hash        ./
 Same inp hash        printvars.py
 Same env var         ENV_VAR_TEST_STEPUP_AWDFTD ='AAAA'

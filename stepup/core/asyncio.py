@@ -23,7 +23,6 @@ import asyncio
 import os
 import sys
 
-
 __all__ = (
     "wait_for_events",
     "stoppable_iterator",
@@ -150,8 +149,8 @@ async def pipe(
     if loop is None:
         loop = asyncio.get_event_loop()
     fd_in, fd_out = os.pipe()
-    pipe_in = open(fd_in)
-    pipe_out = open(fd_out)
+    pipe_in = open(fd_in)  # noqa: SIM115
+    pipe_out = open(fd_out)  # noqa: SIM115
     reader = asyncio.StreamReader(limit=limit, loop=loop)
     await loop.connect_read_pipe(lambda: asyncio.StreamReaderProtocol(reader, loop=loop), pipe_in)
     writer_transport, writer_protocol = await loop.connect_write_pipe(

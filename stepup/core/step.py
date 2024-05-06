@@ -20,14 +20,15 @@
 """A `Step` is a shell command that can be executed and that has inputs and outputs."""
 
 import enum
-from typing import Any, Self, Iterator, TYPE_CHECKING, Collection
+from collections.abc import Collection, Iterator
+from typing import TYPE_CHECKING, Any, Self
 
 import attrs
 
 from .cascade import Node
 from .file import FileState
-from .hash import StepHash, ExtendedStepHash
-from .job import TryReplayJob, RunJob, ValidateAmendedJob
+from .hash import ExtendedStepHash, StepHash
+from .job import RunJob, TryReplayJob, ValidateAmendedJob
 from .nglob import NGlobMulti
 from .utils import format_digest
 

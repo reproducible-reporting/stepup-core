@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from stepup.core.api import mkdir, copy, static
+from stepup.core.api import copy, mkdir, static
 
 static("example.txt")
 dst = "${ROOT}/../public/${HERE}/"

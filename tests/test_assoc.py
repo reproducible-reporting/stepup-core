@@ -23,7 +23,6 @@ import pytest
 
 from stepup.core.assoc import Assoc
 
-
 MAX_CASES = [(None, None), (1, 2), (2, 1), (2, None), (None, 2), (1, None), (None, 1)]
 MAX_CASES_SRC_MULTI = [case for case in MAX_CASES if case[1] != 1]
 MAX_CASES_DST_MULTI = [case for case in MAX_CASES if case[0] != 1]

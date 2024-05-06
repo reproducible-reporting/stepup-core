@@ -19,25 +19,24 @@
 # --
 """Unit tests for stepup.core.nglob2"""
 
-
 import contextlib
 import re
-import msgpack
-from typing import Collection
+from collections.abc import Collection
 
+import msgpack
 import pytest
 from path import Path
 
 from stepup.core.nglob import (
     RE_NAMED_WILD,
-    NGlobSingle,
+    NGlobMatch,
     NGlobMulti,
-    has_wildcards,
-    has_anonymous_wildcards,
-    iter_wildcard_names,
+    NGlobSingle,
     convert_nglob_to_glob,
     convert_nglob_to_regex,
-    NGlobMatch,
+    has_anonymous_wildcards,
+    has_wildcards,
+    iter_wildcard_names,
 )
 from stepup.core.utils import lookupdict
 

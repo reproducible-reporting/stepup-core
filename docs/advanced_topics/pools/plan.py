@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from stepup.core.api import step, pool
+from stepup.core.api import pool, step
 
 pool("test", 2)
 step("sleep 0.1; echo A", pool="test")

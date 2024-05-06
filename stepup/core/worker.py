@@ -19,7 +19,6 @@
 # --
 """Worker process."""
 
-
 import argparse
 import asyncio
 import os
@@ -31,14 +30,14 @@ import attrs
 from path import Path
 
 from stepup.core.utils import check_inp_path
-from .exceptions import RPCError
-from .hash import FileHash, compare_step_hashes, StepHash, create_step_hash
-from .reporter import ReporterClient
-from .rpc import serve_stdio_rpc, AsyncRPCClient, allow_rpc
-from .workflow import Workflow
-from .step import StepState, Step
-from .file import FileState
 
+from .exceptions import RPCError
+from .file import FileState
+from .hash import FileHash, StepHash, compare_step_hashes, create_step_hash
+from .reporter import ReporterClient
+from .rpc import AsyncRPCClient, allow_rpc, serve_stdio_rpc
+from .step import Step, StepState
+from .workflow import Workflow
 
 __all__ = ("WorkerClient", "WorkerStep", "WorkerHandler")
 
@@ -79,7 +78,7 @@ class WorkerClient:
     #
 
     async def boot(self):
-        log_file = open(f".stepup/logs/worker{self.idx}", "w")
+        log_file = open(f".stepup/logs/worker{self.idx}", "w")  # noqa: SIM115
         args = [
             "-m",
             "stepup.core.worker",

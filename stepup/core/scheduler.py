@@ -26,7 +26,6 @@ import attrs
 
 from .job import Job
 
-
 __all__ = ("Pool", "Scheduler")
 
 

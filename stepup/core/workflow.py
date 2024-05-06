@@ -23,20 +23,21 @@ import asyncio
 import json
 import os
 import textwrap
-from typing import cast, Collection, Self
 from collections import Counter
+from collections.abc import Collection
+from typing import Self, cast
 
 import attrs
 
 from .assoc import Assoc, many_to_one
 from .cascade import Cascade, Node, get_kind
+from .deferred_glob import DeferredGlob
 from .exceptions import GraphError
 from .file import File, FileState
-from .hash import FileHash, ExtendedStepHash
+from .hash import ExtendedStepHash, FileHash
 from .nglob import NGlobMulti
-from .deferred_glob import DeferredGlob
-from .step import Step, StepState, Mandatory
-from .utils import myparent, lookupdict
+from .step import Mandatory, Step, StepState
+from .utils import lookupdict, myparent
 
 __all__ = ("Workflow",)
 
@@ -86,9 +87,8 @@ class Workflow(Cascade):
         # Check whether the initial graph satisfies all constraints.
         for node_key in self.nodes:
             creator_key = self.get_creator(node_key)
-            if get_kind(creator_key) == "step":
-                if node_key == creator_key:
-                    raise ValueError("A step cannot be its own creator")
+            if get_kind(creator_key) == "step" and node_key == creator_key:
+                raise ValueError("A step cannot be its own creator")
             if get_kind(node_key) == "file":
                 parent_key = self.get_parent_key(node_key[5:], allow_orphan=True)
                 if not (parent_key is None or parent_key in self.suppliers.get(node_key, ())):
@@ -439,14 +439,12 @@ class Workflow(Cascade):
                     if not (
                         parent_key is None or self.file_states.get(parent_key) == FileState.STATIC
                     ):
-                        raise GraphError(
-                            f"Static path does not have static parent path node: {path}"
-                        )
-                except ValueError:
+                        raise GraphError(f"Static path has no static parent path node: {path}")
+                except ValueError as exc:
                     parent_path = myparent(path)
                     if parent_path not in paths:
-                        raise GraphError(f"Static path does not have a parent path node: {path}")
-            #
+                        raise GraphError(f"Static path has no parent path node: {path}") from exc
+
             file_key = f"file:{path}"
             if file_key in self.nodes:
                 if file_key in self.nodes and not self.is_orphan(file_key):

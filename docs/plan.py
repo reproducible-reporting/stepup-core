@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 """StepUp plan to generate all the outputs of the examples."""
 
-from stepup.core.api import glob, static, step, amend
 from path import Path
+
+from stepup.core.api import amend, glob, static, step
 
 
 def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:

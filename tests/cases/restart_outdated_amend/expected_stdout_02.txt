@@ -3,7 +3,7 @@
      PHASE │ run
       SKIP │ ./plan.py
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       extended, digest 03904dae, inp_digset 03904dae
+Same step hash       extended, digest edb0b44b, inp_digset edb0b44b
 Same inp hash        ./
 Same inp hash        plan.py
 ────────────────────────────────────────────────────────────────────────────────

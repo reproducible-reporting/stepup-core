@@ -19,7 +19,8 @@
 # --
 """Deferred patterns for static files."""
 
-from typing import Any, Self, Iterator, TYPE_CHECKING
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, Self
 
 import attrs
 
@@ -31,7 +32,7 @@ if TYPE_CHECKING:
     from .workflow import Workflow
 
 
-__all__ = "DeferredGlob"
+__all__ = ("DeferredGlob",)
 
 
 @attrs.define

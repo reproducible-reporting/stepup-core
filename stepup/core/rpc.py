@@ -22,21 +22,20 @@
 This module also includes a synchronous RPC client to support simple client APIs.
 """
 
-
-import inspect
-import traceback
 import asyncio
-import subprocess
+import inspect
 import pickle
 import socket
+import subprocess
+import traceback
+from collections.abc import Awaitable, Callable, Collection
 from functools import partial
-from typing import Any, Callable, Collection, Awaitable
+from typing import Any
 
 import attrs
 
-from .asyncio import stoppable_iterator, stdio
+from .asyncio import stdio, stoppable_iterator
 from .exceptions import RPCError
-
 
 __all__ = (
     "fmt_rpc_call",
@@ -60,9 +59,7 @@ __all__ = (
 
 def fmt_rpc_call(name: str, args: Collection, kwargs: dict) -> str:
     """String format an RPC call with arguments."""
-    all_args = [repr(arg) for arg in args] + [
-        f"{name}={repr(value)}" for name, value in kwargs.items()
-    ]
+    all_args = [repr(arg) for arg in args] + [f"{name}={value!r}" for name, value in kwargs.items()]
     return f"{name}({', '.join(all_args)})"
 
 

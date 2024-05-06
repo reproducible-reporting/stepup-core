@@ -32,7 +32,6 @@ This command must be executed in the top-level directory
 where a `stepup` command is running in interactive mode.
 """
 
-
 from .api import RPC_CLIENT, translate
 
 __all__ = ("run", "cleanup", "graph", "watch_update", "watch_delete", "wait", "join")

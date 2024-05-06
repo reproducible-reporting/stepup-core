@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
-from stepup.core.script import driver
-
 from helper import num_to_str
 
+from stepup.core.script import driver
 
 CASE_FMT = "{:+03.1f}"
 

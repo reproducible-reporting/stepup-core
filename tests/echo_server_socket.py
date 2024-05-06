@@ -22,9 +22,9 @@
 import asyncio
 import sys
 
-from stepup.core.rpc import serve_socket_rpc
-
 from core_common import EchoHandler
+
+from stepup.core.rpc import serve_socket_rpc
 
 
 async def main():

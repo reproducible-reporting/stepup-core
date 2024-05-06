@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from stepup.core.api import step, static
+from stepup.core.api import static, step
 
 # Not used, intentionally
 static("static.txt")

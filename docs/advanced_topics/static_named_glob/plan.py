@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from stepup.core.api import glob, copy, mkdir, step
+from stepup.core.api import copy, glob, mkdir, step
 
 # Make all chapter directories static
 glob("ch*/")

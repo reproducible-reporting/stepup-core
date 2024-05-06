@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-from stepup.core.api import amend
 import sys
+
+from stepup.core.api import amend
 
 with open(sys.argv[1]) as fh:
     path_inp = fh.read().strip()

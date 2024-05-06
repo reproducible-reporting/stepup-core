@@ -24,13 +24,12 @@ import sys
 
 import pytest
 import pytest_asyncio
+from core_common import EchoHandler
 from path import Path
 
 from stepup.core.asyncio import pipe
 from stepup.core.exceptions import RPCError
-from stepup.core.rpc import serve_rpc, fmt_rpc_call, AsyncRPCClient, SocketSyncRPCClient
-
-from core_common import EchoHandler
+from stepup.core.rpc import AsyncRPCClient, SocketSyncRPCClient, fmt_rpc_call, serve_rpc
 
 
 @pytest_asyncio.fixture()

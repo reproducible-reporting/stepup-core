@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from stepup.core.api import static, step, glob, copy
+from stepup.core.api import copy, glob, static, step
 
 static("step.py", "subs1.txt")
 for path_inp in glob("inp*.txt"):

@@ -19,7 +19,6 @@
 # --
 """Terminal output of StepUp's runner progress and observed file changes."""
 
-
 import asyncio
 import contextlib
 from collections import Counter
@@ -28,11 +27,12 @@ from typing import Self
 
 import attrs
 from rich.console import Console
-from rich.theme import Theme
-from rich.progress import Progress as ProgressBar, TaskID, BarColumn, MofNCompleteColumn, TextColumn
 from rich.markup import escape as escape_markup
+from rich.progress import BarColumn, MofNCompleteColumn, TaskID, TextColumn
+from rich.progress import Progress as ProgressBar
+from rich.theme import Theme
 
-from .rpc import BaseAsyncRPCClient, DummyAsyncRPCClient, AsyncRPCClient, allow_rpc
+from .rpc import AsyncRPCClient, BaseAsyncRPCClient, DummyAsyncRPCClient, allow_rpc
 from .step import StepState
 
 __all__ = ("ReporterClient", "ReporterHandler")

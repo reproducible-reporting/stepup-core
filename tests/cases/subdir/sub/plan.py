@@ -3,7 +3,9 @@
 # The fact that the director runs in a different directory is not a problem.
 
 import os
+
 from path import Path
+
 from stepup.core.api import step
 
 step(

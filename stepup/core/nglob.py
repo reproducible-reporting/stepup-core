@@ -82,11 +82,11 @@ It has the following use cases:
 import copy
 import glob
 import re
-from typing import Iterator, Iterable, Self, Collection, Any
+from collections.abc import Collection, Iterable, Iterator
+from typing import Any, Self
 
 import attrs
 from path import Path
-
 
 RE_NAMED_WILD = re.compile(r"(\[.*?]|\$\{\*[a-zA-Z0-9_]*?}|[*]{1,2}|[?])")
 
@@ -112,8 +112,8 @@ class NGlobMatch:
     def __getattr__(self, name) -> str:
         try:
             return self._mapping[name]
-        except KeyError:
-            raise AttributeError(f"'NGlobMatch' object has not attribute '{name}'")
+        except KeyError as exc:
+            raise AttributeError(f"'NGlobMatch' object has not attribute '{name}'") from exc
 
     @property
     def mapping(self) -> dict[str, str]:
@@ -301,7 +301,7 @@ class NGlobMulti:
         return data
 
     @classmethod
-    def from_patterns(cls, patterns: Iterable[str], subs: dict[str, str] = None) -> Self:
+    def from_patterns(cls, patterns: Iterable[str], subs: dict[str, str] | None = None) -> Self:
         if isinstance(patterns, str):
             raise TypeError("The patterns argument cannot be a string")
         if not all(isinstance(pattern, str) for pattern in patterns):
@@ -347,7 +347,7 @@ class NGlobMulti:
             ngs = self._nglob_singles[start]
             for new_values, paths in ngs.results.items():
                 next_criteria = criteria.copy()
-                for name, new_value in zip(ngs.used_names, new_values):
+                for name, new_value in zip(ngs.used_names, new_values, strict=False):
                     value = next_criteria.get(name)
                     if value is None:
                         next_criteria[name] = new_value
@@ -361,13 +361,13 @@ class NGlobMulti:
                     yield from self._iter_consistent(next_criteria, next_full_paths)
 
     def _extend_consistent(self, i: int, values: tuple[str, ...]):
-        criteria = dict(zip(self._nglob_singles[i].used_names, values))
+        criteria = dict(zip(self._nglob_singles[i].used_names, values, strict=False))
         new_items = list(self._iter_consistent(criteria, []))
         for full_values, full_paths in new_items:
             self._results[full_values] = full_paths
 
     def _reduce_consistent(self, i: int, values: tuple[str, ...]):
-        criteria = dict(zip(self._nglob_singles[i].used_names, values))
+        criteria = dict(zip(self._nglob_singles[i].used_names, values, strict=False))
         old_items = list(self._iter_consistent(criteria, 0))
         for full_values, _ in old_items:
             del self._results[full_values]
@@ -406,10 +406,10 @@ class NGlobMulti:
     def matches(self) -> Iterator[NGlobMatch]:
         """Iterate over combinations of files that consistently match of all patterns."""
         for values, path_sets in sorted(self._results.items()):
-            mapping = dict(zip(self._used_names, values))
+            mapping = dict(zip(self._used_names, values, strict=False))
             files = [
                 (sorted(paths) if has_anonymous_wildcards(ngs.pattern) else next(iter(paths)))
-                for ngs, paths in zip(self._nglob_singles, path_sets)
+                for ngs, paths in zip(self._nglob_singles, path_sets, strict=False)
             ]
             yield NGlobMatch(mapping, files)
 
@@ -442,10 +442,7 @@ class NGlobMulti:
         When added, it will show up in the result of the `files` method and it may affect the
         outcome of the `matches` method.
         """
-        for ngs in self._nglob_singles:
-            if ngs.regex.fullmatch(path):
-                return True
-        return False
+        return any(ngs.regex.fullmatch(path) for ngs in self._nglob_singles)
 
     def may_change(self, deleted: set[str], added: set[str]) -> bool:
         """Determine whether the results may change (later) after deleting or adding files.
@@ -536,10 +533,7 @@ def convert_nglob_to_regex(
             elif part == "**":
                 regex = r".*"
             elif part.startswith("[") and part.endswith("]"):
-                if part[1] == "!":
-                    regex = rf"[^{part[2:-1]}]"
-                else:
-                    regex = rf"[{part[1:-1]}]"
+                regex = rf"[^{part[2:-1]}]" if part[1] == "!" else rf"[{part[1:-1]}]"
             elif part.startswith("${*") and part.endswith("}"):
                 if not allow_names:
                     raise ValueError(f"Named wildcards not allowed in {pattern}")

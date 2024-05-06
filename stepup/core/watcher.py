@@ -30,9 +30,8 @@ from watchdog.observers import Observer
 from .asyncio import stoppable_iterator
 from .file import FileState
 from .reporter import ReporterClient
-from .utils import myrelpath, myabsolute
+from .utils import myabsolute, myrelpath
 from .workflow import Workflow
-
 
 __all__ = ("Watcher",)
 
@@ -162,7 +161,7 @@ class Watcher:
                 self.deleted.add(path)
                 self.updated.discard(path)
                 self.files_changed.set()
-        elif change == Change.UPDATED and path not in self.updated:
+        elif change == Change.UPDATED and path not in self.updated:  # noqa: SIM102
             if self.workflow.is_relevant(path):
                 await self.reporter("UPDATED", path)
                 self.deleted.discard(path)

@@ -19,19 +19,18 @@
 # --
 """Fixtures for testing StepUp."""
 
-
 import asyncio
 import contextlib
 import os
 import stat
 from collections.abc import Iterator
 
-import pytest_asyncio
 import pytest
+import pytest_asyncio
 from path import Path
 
-from stepup.core.reporter import ReporterClient
 from stepup.core.director import serve
+from stepup.core.reporter import ReporterClient
 from stepup.core.rpc import AsyncRPCClient
 
 pytest.register_assert_rewrite("stepup.core.pytest")

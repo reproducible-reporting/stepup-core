@@ -20,13 +20,14 @@
 """A `File` is StepUp's node for an input or output file of a step."""
 
 import enum
-from typing import Any, Self, Iterator, TYPE_CHECKING
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, Self
 
 import attrs
 from path import Path
 
-from .hash import FileHash
 from .cascade import Node
+from .hash import FileHash
 from .utils import format_digest
 
 if TYPE_CHECKING:
@@ -129,9 +130,8 @@ class File(Node):
         state = self.get_state(workflow)
         if state == FileState.VOLATILE:
             workflow.to_be_deleted.append((self._path, None))
-        elif state in (FileState.PENDING, FileState.BUILT):
-            if self.hash.digest != b"u":
-                workflow.to_be_deleted.append((self._path, self.hash))
+        elif state in (FileState.PENDING, FileState.BUILT) and self.hash.digest != b"u":
+            workflow.to_be_deleted.append((self._path, self.hash))
         workflow.file_states.discard(self.key, insist=True)
 
     #

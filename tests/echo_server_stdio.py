@@ -20,9 +20,10 @@
 """A single echo RPC server over stdio pipes, used by test_rpc.py"""
 
 import asyncio
-from stepup.core.rpc import serve_stdio_rpc
 
 from core_common import EchoHandler
+
+from stepup.core.rpc import serve_stdio_rpc
 
 
 async def main():

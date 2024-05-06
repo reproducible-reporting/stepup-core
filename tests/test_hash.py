@@ -20,7 +20,6 @@
 """Unit tests for stepup.core.hash"""
 
 import msgpack
-
 import pytest
 
 from stepup.core.hash import FileHash

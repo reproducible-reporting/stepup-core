@@ -19,7 +19,6 @@
 # --
 """The `Runner` delegates the execution of jobs by the workers."""
 
-
 import asyncio
 import logging
 from functools import partial
@@ -32,12 +31,11 @@ from .hash import FileHash
 from .job import Job
 from .reporter import ReporterClient
 from .scheduler import Scheduler
-from .step import StepState, Mandatory
+from .step import Mandatory, StepState
 from .utils import remove_path
 from .watcher import Watcher
 from .worker import WorkerClient
 from .workflow import Workflow
-
 
 __all__ = ("Runner",)
 
@@ -227,9 +225,10 @@ class Runner:
 async def remove_files(to_be_deleted: list[tuple[str, FileHash | None]], reporter: ReporterClient):
     to_be_deleted.sort(reverse=True)
     for path, file_hash in to_be_deleted:
-        if path.endswith("/") or file_hash is None or file_hash.update(path) is False:
-            if remove_path(Path(path)):
-                await reporter("CLEAN", path)
+        if (
+            path.endswith("/") or file_hash is None or file_hash.update(path) is False
+        ) and remove_path(Path(path)):
+            await reporter("CLEAN", path)
     to_be_deleted.clear()
 
 
@@ -301,10 +300,7 @@ async def report_completion(workflow: Workflow, scheduler: Scheduler, reporter: 
 
         if num_pending > 0:
             success = False
-            if num_pending == 1:
-                lead = "1 step remains"
-            else:
-                lead = f"{num_pending} steps remain"
+            lead = "1 step remains" if num_pending == 1 else f"{num_pending} steps remain"
             if len(block_lines) > 0:
                 block_page = ("Blocked steps", "\n".join(block_lines))
                 await reporter("WARNING", f"{lead} pending due to blocked steps", [block_page])

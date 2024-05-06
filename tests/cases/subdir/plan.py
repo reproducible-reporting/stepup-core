@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from stepup.core.api import static, plan, copy
+from stepup.core.api import copy, plan, static
 
 static("example.txt")
 static("sub/")

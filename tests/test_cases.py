@@ -26,7 +26,6 @@ from path import Path
 
 from stepup.core.pytest import run_example
 
-
 OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
 
 

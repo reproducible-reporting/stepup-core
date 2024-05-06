@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from stepup.core.api import static, copy, step
+from stepup.core.api import copy, static, step
 
 static("initial.txt", "expensive.py")
 copy("initial.txt", "input.txt")

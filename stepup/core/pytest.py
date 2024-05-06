@@ -19,7 +19,6 @@
 # --
 """Utilities for testing with pytest."""
 
-
 import asyncio
 import os
 import re
@@ -27,7 +26,6 @@ import shutil
 import subprocess
 
 from path import Path
-
 
 __all__ = ("remove_hashes", "run_example")
 

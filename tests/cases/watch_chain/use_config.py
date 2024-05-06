@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import json
+
 from stepup.core.api import step
 
 # Load configuration

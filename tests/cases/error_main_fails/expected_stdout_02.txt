@@ -3,8 +3,8 @@
      PHASE │ run
     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   extended, digest 53ca023c ➜ cc5deac6, inp_digset 53ca023c ➜ cc5deac6
-Modified inp hash    plan.py (digest 98e52b4a ➜ 66b966f4, size 101 ➜ 36)
+Modified step hash   extended, digest 53ca023c ➜ 59506490, inp_digset 53ca023c ➜ 59506490
+Modified inp hash    plan.py (digest 98e52b4a ➜ 6057f437, size 101 ➜ 46)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────

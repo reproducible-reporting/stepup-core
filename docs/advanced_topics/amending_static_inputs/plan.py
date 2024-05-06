@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from stepup.core.api import static, amend
+from stepup.core.api import amend, static
 
 static("config.txt")
 amend(inp="config.txt")

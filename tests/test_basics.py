@@ -24,8 +24,8 @@ import re
 import pytest
 from path import Path
 
-from stepup.core.rpc import AsyncRPCClient
 from stepup.core.exceptions import RPCError
+from stepup.core.rpc import AsyncRPCClient
 
 
 @pytest.mark.asyncio

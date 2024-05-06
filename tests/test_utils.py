@@ -19,17 +19,16 @@
 # --
 """Tests for stepup.core.utils."""
 
-
 import pytest
 from path import Path
 
 from stepup.core.utils import (
-    myrelpath,
+    load_module_file,
+    make_path_out,
+    myabsolute,
     mynormpath,
     myparent,
-    myabsolute,
-    make_path_out,
-    load_module_file,
+    myrelpath,
 )
 
 

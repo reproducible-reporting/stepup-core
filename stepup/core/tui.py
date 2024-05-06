@@ -19,7 +19,6 @@
 # --
 """StepUp terminal user interface."""
 
-
 import argparse
 import asyncio
 import os
@@ -34,9 +33,8 @@ from path import Path
 
 from .asyncio import stoppable_iterator
 from .director import interpret_num_workers
-from .rpc import serve_socket_rpc, AsyncRPCClient
-from .reporter import ReporterHandler, ReporterClient
-
+from .reporter import ReporterClient, ReporterHandler
+from .rpc import AsyncRPCClient, serve_socket_rpc
 
 __all__ = ()
 
@@ -79,7 +77,6 @@ async def async_main():
         tasks = [task_reporter]
 
         # Launch director as background process
-        log_file = open(".stepup/logs/director", "w")
         argv = [
             "-m",
             "stepup.core.director",
@@ -93,27 +90,28 @@ async def async_main():
         if args.explain_rerun:
             argv.append("--explain-rerun")
         try:
-            process_director = await asyncio.create_subprocess_exec(
-                sys.executable,
-                *argv,
-                stdin=subprocess.DEVNULL,
-                stdout=log_file,
-                stderr=subprocess.STDOUT,
-            )
-            # Instantiate keyboard interaction or work non-interactively
-            if args.interactive:
-                if sys.stdin.isatty():
+            with open(".stepup/logs/director", "w") as log_file:
+                process_director = await asyncio.create_subprocess_exec(
+                    sys.executable,
+                    *argv,
+                    stdin=subprocess.DEVNULL,
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,
+                )
+                # Instantiate keyboard interaction or work non-interactively
+                if args.interactive:
+                    if sys.stdin.isatty():
+                        await wait_for_path(director_socket_path, stop_event)
+                        task_keyboard = asyncio.create_task(
+                            keyboard(director_socket_path, reporter_socket_path, stop_event),
+                            name="keyboard",
+                        )
+                        tasks.append(task_keyboard)
+                else:
                     await wait_for_path(director_socket_path, stop_event)
-                    task_keyboard = asyncio.create_task(
-                        keyboard(director_socket_path, reporter_socket_path, stop_event),
-                        name="keyboard",
-                    )
-                    tasks.append(task_keyboard)
-            else:
-                await wait_for_path(director_socket_path, stop_event)
-                async with await AsyncRPCClient.socket(director_socket_path) as client:
-                    await client.call.join()
-            await process_director.wait()
+                    async with await AsyncRPCClient.socket(director_socket_path) as client:
+                        await client.call.join()
+                await process_director.wait()
             stop_event.set()
         finally:
             try:
@@ -121,7 +119,6 @@ async def async_main():
             except ConnectionRefusedError:
                 reporter_handler.report("ERROR", "Could not connect to director", [])
             finally:
-                log_file.close()
                 path_tmpsock.remove_p()
 
 

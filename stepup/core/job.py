@@ -19,13 +19,13 @@
 # --
 """Definition of jobs to be executed by a worker."""
 
-
 from typing import TYPE_CHECKING
+
 import attrs
 
 if TYPE_CHECKING:
-    from .worker import WorkerClient
     from .scheduler import Scheduler
+    from .worker import WorkerClient
     from .workflow import Workflow
 
 

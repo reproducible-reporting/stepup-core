@@ -21,12 +21,11 @@
 
 import importlib.util
 import os
-import string
 import re
+import string
 from types import ModuleType
 
 from path import Path
-
 
 __all__ = (
     # Path manipulation
@@ -128,10 +127,7 @@ def make_path_out(path_in: str, out: str | None, ext: str | None) -> Path:
         path_out = path_in
         if ext is not None:
             path_out = Path(path_out.stem + ext)
-        if out is None:
-            path_out = path_in.parent / path_out
-        else:
-            path_out = Path(out) / path_out.basename()
+        path_out = path_in.parent / path_out if out is None else Path(out) / path_out.basename()
     else:
         path_out = Path(out)
     if path_out == path_in:
@@ -159,7 +155,6 @@ def remove_path(path: Path) -> bool:
             return False
         except OSError:
             return False
-    return False
 
 
 #
@@ -167,16 +162,16 @@ def remove_path(path: Path) -> bool:
 #
 
 
-# Taken from https://stackoverflow.com/a/39542816/494584
+# Adapted from https://stackoverflow.com/a/39542816/494584
 class classproperty(property):
     def __get__(self, obj, objtype=None):
-        return super(classproperty, self).__get__(objtype)
+        return super().__get__(objtype)
 
     def __set__(self, obj, value):
-        super(classproperty, self).__set__(type(obj), value)
+        super().__set__(type(obj), value)
 
     def __delete__(self, obj):
-        super(classproperty, self).__delete__(type(obj))
+        super().__delete__(type(obj))
 
 
 class lookupdict(dict):

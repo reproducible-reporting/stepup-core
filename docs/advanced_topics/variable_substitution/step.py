@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys
+
 from stepup.core.api import getenv
 
 myname = repr(getenv("MYNUM"))

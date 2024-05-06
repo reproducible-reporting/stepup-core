@@ -18,12 +18,13 @@
 #
 # --
 """Unit tests for stepup.core.scheduler."""
+
 import asyncio
 
 import pytest
 
+from stepup.core.job import RunJob, TryReplayJob
 from stepup.core.scheduler import Pool, Scheduler
-from stepup.core.job import TryReplayJob, RunJob
 
 
 def test_pool_basics():
@@ -54,10 +55,7 @@ def test_pool_basics():
 
 
 def queue_job(scheduler: Scheduler, step_key: str, pool: str | None, try_replay: bool):
-    if try_replay:
-        job = TryReplayJob(step_key, pool)
-    else:
-        job = RunJob(step_key, pool)
+    job = TryReplayJob(step_key, pool) if try_replay else RunJob(step_key, pool)
     scheduler.inqueue.put_nowait(job)
     scheduler.changed.set()
 

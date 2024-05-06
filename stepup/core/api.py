@@ -26,22 +26,21 @@ This module should not be imported by other stepup.core modules, except for step
 
 import contextlib
 import os
+from collections.abc import Callable, Collection, Iterable, Iterator
 from time import sleep
-from typing import Collection, Iterable, Iterator, Callable
 
 from path import Path
 
 from .nglob import NGlobMulti
+from .rpc import DummySyncRPCClient, SocketSyncRPCClient
 from .utils import (
-    myrelpath,
     CaseSensitiveTemplate,
-    mynormpath,
-    make_path_out,
     check_inp_path,
     lookupdict,
+    make_path_out,
+    mynormpath,
+    myrelpath,
 )
-from .rpc import SocketSyncRPCClient, DummySyncRPCClient
-
 
 __all__ = (
     # Basic API
@@ -598,7 +597,7 @@ def _get_rpc_client():
         STEPUP_ROOT = Path(os.getenv("STEPUP_ROOT", "./"))
         path_tmpsock = STEPUP_ROOT / ".stepup/tmpsock.txt"
         time = 0.0
-        for itry in range(5):
+        for _ in range(5):
             if time > 0:
                 print(f"WARNING: waiting {time} seconds for {path_tmpsock}")
                 sleep(time)

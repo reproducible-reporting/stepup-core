@@ -19,10 +19,10 @@
 # --
 """The director process manages the workflow and sends jobs to the worker processes."""
 
+import argparse
 import asyncio
 import contextlib
 import os
-import argparse
 import shutil
 import sys
 import traceback
@@ -33,15 +33,15 @@ from path import Path
 
 from stepup.core.file import FileState
 from stepup.core.nglob import NGlobMulti
-from .rpc import serve_socket_rpc, allow_rpc
-from .workflow import Workflow
+
 from .exceptions import GraphError
 from .reporter import ReporterClient
+from .rpc import allow_rpc, serve_socket_rpc
 from .runner import Runner
 from .scheduler import Scheduler
 from .utils import check_plan, mynormpath, remove_path
 from .watcher import Watcher
-
+from .workflow import Workflow
 
 __all__ = ("interpret_num_workers", "serve")
 

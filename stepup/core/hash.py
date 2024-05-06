@@ -27,7 +27,6 @@ from typing import Self
 import attrs
 from path import Path
 
-
 __all__ = (
     "HashWords",
     "compute_file_digest",
@@ -253,9 +252,8 @@ def compare_step_hashes(old_hash: StepHash, new_hash: StepHash) -> tuple[str, st
     chl = []
     sml = []
     _compare_step_digests(chl, sml, old_hash, new_hash)
-    if isinstance(old_hash, ExtendedStepHash):
-        if isinstance(new_hash, ExtendedStepHash):
-            _compare_extended_hashes(chl, sml, old_hash, new_hash)
+    if isinstance(old_hash, ExtendedStepHash) and isinstance(new_hash, ExtendedStepHash):
+        _compare_extended_hashes(chl, sml, old_hash, new_hash)
     changed = "\n".join(f"{descr:20s} {content}" for descr, content in chl)
     same = "\n".join(f"{descr:20s} {content}" for descr, content in sml)
     return changed, same
@@ -329,11 +327,10 @@ def _explain_hash_changes(
                     sml.append(line)
             else:
                 chl.append((f"Deleted {label} hash", path))
+        elif path in new_hashes:
+            chl.append((f"Added {label} hash", path))
         else:
-            if path in new_hashes:
-                chl.append((f"Added {label} hash", path))
-            else:
-                assert False
+            raise AssertionError("This should never happen.")
 
 
 def _report_hash_diff(
@@ -380,12 +377,11 @@ def _explain_env_changes(
                     chl.append(("Modified env var", f"{name} {old_var} ➜ {new_var}"))
             else:
                 chl.append(("Deleted env var", f"{name} {old_var}"))
+        elif name in new_env:
+            new_var = _fmt_env_value(new_env[name])
+            chl.append(("Added env var", f"{name} {new_var}"))
         else:
-            if name in new_env:
-                new_var = _fmt_env_value(new_env[name])
-                chl.append(("Added env var", f"{name} {new_var}"))
-            else:
-                assert False
+            raise AssertionError("This should never happen.")
 
 
 def _fmt_env_value(value: str | None) -> str:

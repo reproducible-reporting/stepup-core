@@ -23,12 +23,12 @@ import argparse
 import inspect
 import os
 import sys
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 import attrs
 from parse import parse
 from path import Path
-
 
 __all__ = ("driver",)
 

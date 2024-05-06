@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from stepup.core.api import copy, glob, getenv
+from stepup.core.api import copy, getenv, glob
 
 for fn_raw in glob("raw_*.txt"):
     copy(fn_raw, "converted_" + fn_raw[4:], optional=True)

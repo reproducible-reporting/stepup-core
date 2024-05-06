@@ -20,10 +20,10 @@
 """Bidirectional non-exclusive map."""
 
 import enum
-from typing import TypeVar, Generic, Iterator
+from collections.abc import Iterator
+from typing import Generic, TypeVar
 
 import attrs
-
 
 __all__ = ("Assoc", "AssocView", "one_to_one", "one_to_many", "many_to_one", "many_to_many")
 

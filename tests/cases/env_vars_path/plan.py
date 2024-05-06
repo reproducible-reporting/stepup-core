@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from stepup.core.api import step, static
+from stepup.core.api import static, step
 
 static("${ENV_VAR_TEST_STEPUP_PREFIX}.md")
 # Note that `${ENV_VAR_TEST_STEPUP_PREFIX}.txt` is not in inp_paths for testing purposes.

@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 """Run one example and amend (volatile) outputs."""
 
-import sys
 import subprocess
+import sys
 
 from path import Path
+
 from stepup.core.api import amend
 from stepup.core.file import FileState
 from stepup.core.workflow import Workflow
@@ -14,7 +15,7 @@ def main():
     path_main, root = sys.argv[1:]
 
     workdir, name_main = Path(path_main).splitpath()
-    subprocess.run(f"./{name_main}", cwd=workdir)
+    subprocess.run(f"./{name_main}", cwd=workdir, check=False)
 
     root = Path(root)
     path_stepup = root / ".stepup/"

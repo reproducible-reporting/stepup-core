@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-from stepup.core.api import amend
 from shutil import copy
+
+from stepup.core.api import amend
 
 if amend(inp=["inp2.txt"], out=["out2.txt"]):
     # Only perform the work when inp2.txt is available.

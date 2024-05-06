@@ -24,18 +24,17 @@ from typing import cast
 
 import pytest
 from path import Path
+from test_cascade import check_cascade_unstructure
 
 from stepup.core.deferred_glob import DeferredGlob
 from stepup.core.exceptions import GraphError
 from stepup.core.file import File, FileState
 from stepup.core.hash import FileHash, StepHash
-from stepup.core.job import TryReplayJob, RunJob, ValidateAmendedJob
+from stepup.core.job import RunJob, TryReplayJob, ValidateAmendedJob
 from stepup.core.nglob import NGlobMulti
 from stepup.core.pytest import remove_hashes
-from stepup.core.step import Step, StepState, StepRecording, Mandatory
+from stepup.core.step import Mandatory, Step, StepRecording, StepState
 from stepup.core.workflow import Workflow
-
-from test_cascade import check_cascade_unstructure
 
 
 def check_workflow_unstructure(workflow: Workflow) -> Workflow:

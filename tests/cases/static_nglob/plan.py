@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from stepup.core.api import glob, copy, step
+from stepup.core.api import copy, glob, step
 
 # This double loop mimics the conversion and concatenation of sections and chapters
 paths_ch = []

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
+
 from stepup.core.script import driver
 
 

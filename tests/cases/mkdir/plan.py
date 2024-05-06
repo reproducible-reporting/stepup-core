@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from stepup.core.api import step, mkdir
+from stepup.core.api import mkdir, step
 
 mkdir("sub")
 step("touch sub/foo.txt", inp=["sub/"], out=["sub/foo.txt"])

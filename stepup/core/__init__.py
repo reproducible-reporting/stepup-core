@@ -19,7 +19,6 @@
 # --
 """StepUp Core package."""
 
-
 __all__ = ("__version__", "__version_tuple__")
 
 
