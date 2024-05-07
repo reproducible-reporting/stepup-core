@@ -3,13 +3,6 @@
 If you would like to contribute, please read [CONTRIBUTING.md](https://github.com/reproducible-reporting/.github/blob/main/CONTRIBUTING.md).
 
 
-## How to Make Releases
-
-- Mark the release in `docs/changelog.md`.
-- Make a new commit and tag it with `vX.Y.Z`.
-- Trigger the PyPI GitHub Action: `git push origin main --tags`.
-
-
 ## Development Install and Unit Tests
 
 ```bash
@@ -54,3 +47,10 @@ stepup -n
 
 Note that some scripts use [Graphviz](https://graphviz.org/) to generate diagrams,
 so you must have it installed on your system.
+
+
+## How to Make a Release
+
+- Mark the release in `docs/changelog.md`.
+- Make a new commit and tag it with `vX.Y.Z`.
+- Trigger the PyPI GitHub Action: `git push origin main --tags`.
