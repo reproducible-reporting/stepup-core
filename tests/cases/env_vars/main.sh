@@ -12,6 +12,11 @@ export ENV_VAR_TEST_STEPUP_DFTHYH="BBBB"
 cp variables_01.json variables.json
 stepup -e -w 1 plan.py & # > current_stdout_a.txt &
 
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
+
 # Get the graph after completion of the pending steps.
 python3 - << EOD
 from stepup.core.interact import *
@@ -52,7 +57,7 @@ join()
 EOD
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit -1
@@ -64,6 +69,11 @@ cp current_variables.txt current_variables_03.txt
 export ENV_VAR_TEST_STEPUP_DFTHYH="CCCC"
 stepup -e -w 1 plan.py & # > current_stdout_b.txt &
 
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
+
 # Get the graph after completion of the pending steps.
 python3 - << EOD
 from stepup.core.interact import *
@@ -73,7 +83,7 @@ join()
 EOD
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit -1
@@ -84,6 +94,11 @@ cp current_variables.txt current_variables_04.txt
 # unset a variable and restart
 unset ENV_VAR_TEST_STEPUP_AWDFTD
 stepup -e -w 1 plan.py & # > current_stdout_c.txt &
+
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
 
 # Get the graph after completion of the pending steps.
 python3 - << EOD
@@ -100,11 +115,16 @@ grep CCCC current_variables.txt
 cp current_variables.txt current_variables_05.txt
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait
 
 # Set a variable again and restart
 export ENV_VAR_TEST_STEPUP_AWDFTD="DDDD"
 stepup -e -w 1 plan.py & # > current_stdout_d.txt &
+
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
 
 # Get the graph after completion of the pending steps.
 python3 - << EOD
@@ -121,4 +141,4 @@ grep CCCC current_variables.txt
 cp current_variables.txt current_variables_06.txt
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait

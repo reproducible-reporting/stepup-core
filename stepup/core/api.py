@@ -27,7 +27,6 @@ This module should not be imported by other stepup.core modules, except for step
 import contextlib
 import os
 from collections.abc import Callable, Collection, Iterable, Iterator
-from time import sleep
 
 from path import Path
 
@@ -592,31 +591,10 @@ def check_inp_paths(inp_paths: Collection[Path]):
 
 def _get_rpc_client():
     """Try setting up a Synchronous RPC client or fall back to the dummy client if that fails."""
-    STEPUP_DIRECTOR_SOCKET = os.getenv("STEPUP_DIRECTOR_SOCKET")
-    if STEPUP_DIRECTOR_SOCKET is None:
-        STEPUP_ROOT = Path(os.getenv("STEPUP_ROOT", "./"))
-        path_tmpsock = STEPUP_ROOT / ".stepup/tmpsock.txt"
-        time = 0.0
-        for _ in range(5):
-            if time > 0:
-                print(f"WARNING: waiting {time} seconds for {path_tmpsock}")
-                sleep(time)
-                time *= 2
-            else:
-                time = 0.1
-            if path_tmpsock.is_file():
-                with open(path_tmpsock) as fh:
-                    dir_sockets = Path(fh.read().strip())
-                    if dir_sockets != "":
-                        path_socket = dir_sockets / "director"
-                        if path_socket.exists():
-                            STEPUP_DIRECTOR_SOCKET = path_socket
-                            break
-    if STEPUP_DIRECTOR_SOCKET is None:
-        print("STEPUP_DIRECTOR_SOCKET not set and .stepup/tmpsock.txt not valid.")
-        print("RPC calls are printed and have no effect.")
+    stepup_director_socket = os.getenv("STEPUP_DIRECTOR_SOCKET")
+    if stepup_director_socket is None:
         return DummySyncRPCClient()
-    return SocketSyncRPCClient(STEPUP_DIRECTOR_SOCKET)
+    return SocketSyncRPCClient(stepup_director_socket)
 
 
 RPC_CLIENT = _get_rpc_client()

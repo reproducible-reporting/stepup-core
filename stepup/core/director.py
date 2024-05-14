@@ -25,6 +25,7 @@ import contextlib
 import os
 import shutil
 import sys
+import time
 import traceback
 from decimal import Decimal
 
@@ -43,7 +44,7 @@ from .utils import check_plan, mynormpath, remove_path
 from .watcher import Watcher
 from .workflow import Workflow
 
-__all__ = ("interpret_num_workers", "serve")
+__all__ = ("interpret_num_workers", "serve", "get_socket")
 
 
 def main():
@@ -53,6 +54,7 @@ def main():
 async def async_main():
     args = parse_args()
     print(f"PID {os.getpid()}", file=sys.stderr)
+    print(f"SOCKET {args.director_socket}", file=sys.stderr)
     async with ReporterClient.socket(args.reporter_socket) as reporter:
         num_workers = interpret_num_workers(args.num_workers)
         await reporter.set_num_workers(num_workers)
@@ -522,6 +524,27 @@ class DirectorHandler:
     async def wait(self):
         """Block until the runner completed all (runnable) steps."""
         await self._watcher.active.wait()
+
+
+def get_socket() -> str:
+    """Block until the director socket is known and return it."""
+    stepup_root = Path(os.getenv("STEPUP_ROOT", "./"))
+    path_director_log = stepup_root / ".stepup/logs/director"
+    secs = 0
+    while True:
+        time.sleep(secs)
+        secs += 0.1
+        if os.path.isfile(path_director_log):
+            with open(path_director_log) as fh:
+                for line in fh:
+                    if line.startswith("SOCKET "):
+                        path_socket = Path(line[7:].strip())
+                        if len(path_socket) > 2 and path_socket.exists():
+                            return path_socket
+        print(
+            f"Director socket not found in {path_director_log}. Waiting {secs:.1f} seconds.",
+            file=sys.stderr,
+        )
 
 
 if __name__ == "__main__":

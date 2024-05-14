@@ -8,6 +8,11 @@ xargs rm -rvf < .gitignore
 cp plan_01.py plan.py
 stepup -w 1 plan.py & # > current_stdout.txt &
 
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
+
 # Initial graph
 python3 - << EOD
 from stepup.core.interact import *
@@ -42,7 +47,7 @@ join()
 EOD
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit -1

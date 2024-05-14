@@ -16,6 +16,8 @@ Same out hash        paste_x.txt
      START │ paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
    SUCCESS │ paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+   UPDATED │ tail_y.txt
+   UPDATED │ tail_z.txt
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

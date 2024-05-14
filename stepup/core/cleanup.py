@@ -21,12 +21,21 @@
 
 import argparse
 
-from .interact import cleanup
+from .director import get_socket
+from .rpc import SocketSyncRPCClient
 
 
 def main():
     """Main program."""
     args = parse_args()
+    # Forcibly discover the socket and set the client,
+    # also when STEPUP_DIRECTOR_SOCKET is not set.
+    import stepup.core.api
+
+    stepup.core.api.RPC_CLIENT = SocketSyncRPCClient(get_socket())
+    # Only import cleanup after modifying RPC_CLIENT, which is a little hacky.
+    from .interact import cleanup
+
     numf, numd = cleanup(*args.paths)
     print(f"Removed {numf} files and {numd} directories.")
 

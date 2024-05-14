@@ -14,6 +14,11 @@ echo "hy" > head_y.txt
 # Run the example
 stepup -e -w 1 plan.py & # > current_stdout_a.txt &
 
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
+
 # Get the graph after completion of the pending steps.
 python3 - << EOD
 from stepup.core.interact import *
@@ -65,10 +70,16 @@ grep 'hx tx' paste_x.txt
 [[ ! -f paste_z.txt ]] || exit -1
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait
 
 # Modify nglob results and restart
 stepup -e -w 1 plan.py & # > current_stdout_b.txt &
+
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
+
 echo "ty" > tail_y.txt
 echo "tz" > tail_z.txt
 python3 - << EOD
@@ -86,4 +97,4 @@ grep 'hy ty' paste_y.txt
 grep 'hz tz' paste_z.txt
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait

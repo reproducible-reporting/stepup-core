@@ -62,11 +62,6 @@ async def async_main():
         director_socket_path = dir_sockets / "director"
         reporter_socket_path = dir_sockets / "reporter"
 
-        num_workers = interpret_num_workers(args.num_workers)
-        path_tmpsock = dir_stepup / "tmpsock.txt"
-        with open(path_tmpsock, "w") as fh:
-            print(dir_sockets, file=fh)
-
         # Set up the reporter monitor
         stop_event = asyncio.Event()
         reporter_handler = ReporterHandler(args.show_perf > 0, stop_event)
@@ -77,6 +72,7 @@ async def async_main():
         tasks = [task_reporter]
 
         # Launch director as background process
+        num_workers = interpret_num_workers(args.num_workers)
         argv = [
             "-m",
             "stepup.core.director",
@@ -118,15 +114,17 @@ async def async_main():
                 await asyncio.gather(*tasks)
             except ConnectionRefusedError:
                 reporter_handler.report("ERROR", "Could not connect to director", [])
-            finally:
-                path_tmpsock.remove_p()
 
 
 async def wait_for_path(path: Path, stop_event: asyncio.Event):
+    """Wait until a path exists."""
+    time = 0.0
     while not path.exists():
         if stop_event.is_set():
-            return
-        await asyncio.sleep(0.1)
+            break
+        if time > 0:
+            await asyncio.sleep(time)
+        time += 0.1
 
 
 @attrs.define

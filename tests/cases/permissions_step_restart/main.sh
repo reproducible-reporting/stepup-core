@@ -8,6 +8,11 @@ xargs rm -rvf < .gitignore
 chmod -x step.py
 stepup -e -w 1 plan.py & # > current_stdout_01.txt &
 
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
+
 # Wait and get graph.
 python3 - << EOD
 from stepup.core.interact import *
@@ -17,7 +22,7 @@ join()
 EOD
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit -1
@@ -28,6 +33,11 @@ wait $(jobs -p)
 chmod +x step.py
 stepup -e -w 1 plan.py & # > current_stdout_02.txt &
 
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
+
 # Wait and get graph.
 python3 - << EOD
 from stepup.core.interact import *
@@ -37,7 +47,7 @@ join()
 EOD
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit -1

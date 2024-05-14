@@ -11,6 +11,11 @@ echo "Second input" > inp2.txt
 # Run the example
 stepup -e -w 1 plan.py & # > current_stdout_a.txt &
 
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
+
 # Get the graph after completion of the pending steps.
 python3 - << EOD
 from stepup.core.interact import *
@@ -48,11 +53,17 @@ grep Second out2.txt
 grep Third out3.txt
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait
 
 # Modify nglob results and restart
 echo "Fourth input" > inp4.txt
 stepup -e -w 1 plan.py & # > current_stdout_b.txt &
+
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
+
 rm inp2.txt
 python3 - << EOD
 from stepup.core.interact import *
@@ -71,4 +82,4 @@ grep Third out3.txt
 grep Fourth out4.txt
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait
