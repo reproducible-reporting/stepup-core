@@ -6,6 +6,11 @@ xargs rm -rvf < .gitignore
 # Run the example
 stepup -e -w 1 plan.py & # > current_stdout_01.txt &
 
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
+
 # Get graph after normal run.
 python3 - << EOD
 from stepup.core.interact import *
@@ -41,10 +46,15 @@ grep word1 out1.txt
 grep word2 out2.txt
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait
 
 # Restart StepUp without changes
 stepup -e -w 1 plan.py & # > current_stdout_02.txt &
+
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
 
 # Get graph after restart without changes.
 python3 - << EOD
@@ -63,11 +73,16 @@ grep word1 out1.txt
 grep word2 out2.txt
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait
 
 # Restart StepUp with changes
 echo "word2 and other" > inp2.txt
 stepup -e -w 1 plan.py & # > current_stdout_03.txt &
+
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
 
 # Get graph after restart without changes.
 python3 - << EOD
@@ -86,4 +101,4 @@ grep word1 out1.txt
 grep word2 out2.txt
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait

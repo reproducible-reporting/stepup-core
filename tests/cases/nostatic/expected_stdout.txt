@@ -11,7 +11,5 @@
 ────────────────────────────────────────────────────────────────────────────────
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
-   DELETED │ second.txt
-   DELETED │ first.txt
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

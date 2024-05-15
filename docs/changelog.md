@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Make `cleanup` command work in project subdirectories when `STEPUP_ROOT` is set.
+- Avoid useless wait when running a `plan.py` script outside of `stepup`.
+
+### Changed
+
+- Documentation updates.
+
+
 ## [1.2.1] - 2024-05-07
 
 ### Fixed

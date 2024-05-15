@@ -9,6 +9,11 @@ echo "Something old" > inp0.txt
 echo "First inp1.txt" > inp1.txt
 stepup -e -w 1 plan.py & # > current_stdout.txt &
 
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
+
 # Initial graph
 python3 - << EOD
 from stepup.core.interact import *
@@ -64,4 +69,4 @@ EOD
 [[ -f log.txt ]] || exit -1
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait

@@ -8,4 +8,4 @@ xargs rm -rvf < .gitignore
 stepup -w 1 plan.py & # > current_stdout.txt &
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait

@@ -21,13 +21,19 @@
 
 import argparse
 
-from .interact import cleanup
+from .api import translate
+from .director import get_socket
+from .rpc import SocketSyncRPCClient
 
 
 def main():
     """Main program."""
+    # Instead of using the interact module, a new RPC client is created after
+    # discovering the socket without relying on STEPUP_DIRECTOR_SOCKET.
     args = parse_args()
-    numf, numd = cleanup(*args.paths)
+    rpc_client = SocketSyncRPCClient(get_socket())
+    tr_paths = sorted(translate(path) for path in args.paths)
+    numf, numd = rpc_client.call.cleanup(tr_paths)
     print(f"Removed {numf} files and {numd} directories.")
 
 

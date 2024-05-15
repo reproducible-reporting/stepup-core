@@ -8,6 +8,11 @@ xargs rm -rvf < .gitignore
 cp original.txt data.txt
 stepup -e -w 1 plan.py & # > current_stdout_a.txt &
 
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
+
 # Get the graph after completion of the pending steps.
 python3 - << EOD
 from stepup.core.interact import *
@@ -38,11 +43,16 @@ EOD
 [[ -f analyzed.txt ]] || exit -1
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait
 
 # Create file again and restart
 cp original.txt data.txt
 stepup -e -w 1 plan.py & # > current_stdout_b.txt &
+
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
 
 # Get the graph after completion of the pending steps.
 python3 - << EOD
@@ -59,4 +69,4 @@ EOD
 [[ -f analyzed.txt ]] || exit -1
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait

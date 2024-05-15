@@ -8,6 +8,11 @@ xargs rm -rvf < .gitignore
 export ENV_VAR_TEST_STEPUP_INP="static/sub/foo.txt"
 stepup -w 1 plan.py & # > current_stdout_01.txt &
 
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
+
 # Get the graph after completion of the pending steps.
 python3 - << EOD
 from stepup.core.interact import *
@@ -23,11 +28,16 @@ EOD
 grep foo copy.txt
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait
 
 # Restart the example with a different input
 export ENV_VAR_TEST_STEPUP_INP="static/sub/bar.txt"
 stepup -w 1 plan.py & # > current_stdout_02.txt &
+
+# Wait for the director and get its socket.
+export STEPUP_DIRECTOR_SOCKET=$(
+  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
+)
 
 # Get the graph after completion of the pending steps.
 python3 - << EOD
@@ -44,4 +54,4 @@ EOD
 grep bar copy.txt
 
 # Wait for background processes, if any.
-wait $(jobs -p)
+wait

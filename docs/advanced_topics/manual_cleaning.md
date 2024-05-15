@@ -20,19 +20,34 @@ Such arguments can be one of the two things:
 
 1. If a file is given, all outputs using this file as input will be removed.
    Furthermore, if the file itself is also a build output, it will also be removed.
-2. If a directory is given, all outputs will be removed from this directory.
+
+1. If a directory is given, all outputs will be removed from this directory.
    Furthermore, if the directory is created in the build, it will also be removed.
 
 Files are removed recursively, so outputs of outputs are also cleaned up.
 `cleanup` will only remove files with status `PENDING`, `BUILT` or `VOLATILE`.
 Static files, i.e., files you have created, are never removed.
 
-!!! note "`cleanup` requires `stepup` to be running."
+There are a few gotchas you should be aware of:
 
-    The `cleanup` script sends a list of paths to be cleaned to the director process.
-    The director takes care of analyzing the workflow to decide which files need to remove.
-    For this reason, an instance of `stepup` must be running for `cleanup` to work.
+1. The `cleanup` script sends a list of paths to be cleaned to the director process.
+   The director takes care of analyzing the workflow to decide which files need to be removed.
+   For this reason, an instance of `stepup` must be running for `cleanup` to work.
 
+1. By default, you need to run `cleanup` in the top-level directory where you also started `stepup`.
+   This requirement can be lifted by defining the top-level directory in the `STEPUP_ROOT` environment variable, as explained in the [next tutorial](stepup_root.md).
+
+If `cleanup` cannot connect to the StepUp director process, it will keep trying and print warning messages, for example:
+
+```
+Trying to contact StepUp director process.
+File ./.stepup/logs/director not found.  Waiting 0.1 seconds.
+Socket /tmp/stepup-c9a12bau/director read from ./.stepup/logs/director does not exist. Stepup not running?  Waiting 0.2 seconds.
+Socket /tmp/stepup-c9a12bau/director read from ./.stepup/logs/director does not exist. Stepup not running?  Waiting 0.3 seconds.
+...
+```
+
+When you see this, either start `stepup` in a second terminal or interrupt `cleanup` with Ctrl-C.
 
 ## Try the Following
 
