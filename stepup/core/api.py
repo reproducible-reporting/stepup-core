@@ -558,6 +558,8 @@ def subs_env_vars() -> Iterator[Callable[[str | None], str | None]]:
 def translate(path: str) -> Path:
     """Normalize the path and, if relative, make it relative to `ROOT` by prepending `HERE`.
 
+    If the environment variable `HERE` is not set, it is derived from `STEPUP_ROOT` if set.
+
     Parameters
     ----------
     path
@@ -571,6 +573,10 @@ def translate(path: str) -> Path:
     path = mynormpath(path)
     if not path.isabs():
         here = os.getenv("HERE")
+        if here is None:
+            stepup_root = os.getenv("STEPUP_ROOT")
+            if stepup_root is not None:
+                here = myrelpath("./", stepup_root)
         if here is not None:
             path = mynormpath(here / path)
     return path

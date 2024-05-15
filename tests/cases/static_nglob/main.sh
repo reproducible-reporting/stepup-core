@@ -88,8 +88,8 @@ EOD
 # Unset STEPUP_DIRECTOR_SOCKET because cleanup should work without it.
 unset STEPUP_DIRECTOR_SOCKET
 
-# Test cleanup
-cleanup ch-3-conclusions/sec-3-1-summary.txt
+# Test cleanup with STEPUP_ROOT
+(export STEPUP_ROOT="${PWD}"; cd ch-3-conclusions; cleanup sec-3-1-summary.txt)
 [[ -f ch-3-conclusions/sec-3-1-summary.txt ]] || exit -1
 [[ ! -f ch-3-conclusions/sec-3-1-summary.md ]] || exit -1
 [[ -f ch-3-conclusions/sec-3-2-outlook.md ]] || exit -1

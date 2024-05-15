@@ -27,11 +27,14 @@ Files are removed recursively, so outputs of outputs are also cleaned up.
 `cleanup` will only remove files with status `PENDING`, `BUILT` or `VOLATILE`.
 Static files, i.e., files you have created, are never removed.
 
-!!! note "`cleanup` requires `stepup` to be running."
+There are a few gotchas you should be aware of:
 
-    The `cleanup` script sends a list of paths to be cleaned to the director process.
-    The director takes care of analyzing the workflow to decide which files need to remove.
-    For this reason, an instance of `stepup` must be running for `cleanup` to work.
+1. The `cleanup` script sends a list of paths to be cleaned to the director process.
+   The director takes care of analyzing the workflow to decide which files need to be removed.
+   For this reason, an instance of `stepup` must be running for `cleanup` to work.
+
+1. By default, you need to run `cleanup` in the top-level directory where you also started `stepup`.
+   This requirement can be lifted by defining the top-level directory in the `STEPUP_ROOT` environment variable, as explained in the [next tutorial](stepup_root.md).
 
 
 ## Try the Following

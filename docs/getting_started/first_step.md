@@ -71,5 +71,19 @@ StepUp will not know anymore that it already executed some steps and runs all of
 
 ## Try the Following
 
-Now, change the arguments of the `echo` command in `plan.py` and run `stepup -n -w1` again.
-As expected, StepUp will detect the change and repeat the `plan.py` and `echo` steps.
+- Change the arguments of the `echo` command in `plan.py` and run `stepup -n -w1` again.
+  As expected, StepUp detects the change and repeats the `plan.py` and `echo` steps.
+
+- Normally, you would never run `./plan.py` directly as a normal Python script, i.e.,
+  without running it through `stepup`.
+  Try it anyway, just to see what happens.
+  The terminal output shows the commands that would normally be sent to the StepUp director
+  process when `plan.py` is executed by `stepup`.
+  You should get the following screen output:
+
+    ```
+    {% include 'getting_started/first_step/stdout3.txt' | indent(width=4) %}
+    ```
+
+    This output contains internal details of StepUp,
+    which can be useful for debugging purposes.

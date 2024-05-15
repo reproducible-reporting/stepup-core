@@ -53,8 +53,8 @@ def main():
 
 async def async_main():
     args = parse_args()
-    print(f"PID {os.getpid()}", file=sys.stderr)
     print(f"SOCKET {args.director_socket}", file=sys.stderr)
+    print(f"PID {os.getpid()}", file=sys.stderr)
     async with ReporterClient.socket(args.reporter_socket) as reporter:
         num_workers = interpret_num_workers(args.num_workers)
         await reporter.set_num_workers(num_workers)
@@ -533,18 +533,26 @@ def get_socket() -> str:
     secs = 0
     while True:
         time.sleep(secs)
-        secs += 0.1
         if os.path.isfile(path_director_log):
             with open(path_director_log) as fh:
-                for line in fh:
-                    if line.startswith("SOCKET "):
-                        path_socket = Path(line[7:].strip())
-                        if len(path_socket) > 2 and path_socket.exists():
-                            return path_socket
-        print(
-            f"Director socket not found in {path_director_log}. Waiting {secs:.1f} seconds.",
-            file=sys.stderr,
-        )
+                line = fh.readline()
+                if line.startswith("SOCKET"):
+                    path_socket = Path(line[6:].strip())
+                    if len(path_socket) > 2 and path_socket.exists():
+                        return path_socket
+                    else:
+                        message = (
+                            f"Socket {path_socket} read from {path_director_log} does not exist. "
+                            "Stepup not running?"
+                        )
+                else:
+                    message = f"File {path_director_log} does not start with SOCKET line."
+        else:
+            message = f"File {path_director_log} not found."
+        if secs == 0.0:
+            print("Trying to contact StepUp director process.", file=sys.stderr)
+        secs += 0.1
+        print(f"{message}  Waiting {secs:.1f} seconds.", file=sys.stderr)
 
 
 if __name__ == "__main__":
