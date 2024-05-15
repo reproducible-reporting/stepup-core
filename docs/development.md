@@ -5,6 +5,8 @@ If you would like to contribute, please read [CONTRIBUTING.md](https://github.co
 
 ## Development Install and Unit Tests
 
+A local installation for testing and development can be installed as follows
+
 ```bash
 git clone git@github.com:reproducible-reporting/stepup-core.git
 cd stepup-core
@@ -16,7 +18,6 @@ pip install -U pip
 pip install -e .[dev]
 pytest -vv
 ```
-
 
 ## Documentation
 
