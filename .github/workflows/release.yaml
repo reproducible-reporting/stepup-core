@@ -2,6 +2,11 @@ name: release
 
 on: push
 
+env:
+  # This is not critical
+  # It is used only for showing URLs in GitHub Actions web interface.
+  PYPI_NAME: stepup
+
 jobs:
   build:
     name: Build distribution
@@ -35,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/stepup
+      url: https://pypi.org/p/${{ env.PYPI_NAME }}
     permissions:
       id-token: write
 
@@ -100,7 +105,7 @@ jobs:
 
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/stepup
+      url: https://test.pypi.org/p/${{ env.PYPI_NAME }}
 
     permissions:
       id-token: write
