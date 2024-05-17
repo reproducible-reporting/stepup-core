@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Completed and revised docstrings in `stepup.core.nglob`,
+  and added this module to the reference documentation.
+
+
 ## [1.2.2] - 2024-05-16
 
 ### Fixed

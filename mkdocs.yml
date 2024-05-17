@@ -71,6 +71,7 @@ nav:
   - Reference:
     - reference/stepup.core.api.md
     - reference/stepup.core.interact.md
+    - reference/stepup.core.nglob.md
     - reference/interactive.md
   - changelog.md
   - development.md
