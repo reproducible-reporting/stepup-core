@@ -105,7 +105,7 @@ __all__ = (
 class NGlobMatch:
     """A set of matches corresponding sharing consistent values for named wildcards.
 
-    The matching files can accessed by integer indexing or through the `files` attribute:
+    The matching files can be accessed by integer indexing or through the `files` attribute:
 
     ```python
     assert match[0] == match.files[0]
@@ -140,7 +140,7 @@ class NGlobMatch:
     def files(self) -> list[Path | list[Path]]:
         """Matching files, all having consistent substrings matching the named wildcards.
 
-        Each item corresponds to the a pattern in `NGlobMulti.patterns`.
+        Each item corresponds to a pattern in `NGlobMulti.patterns`.
         If a pattern has anonymous wildcards,
         the item itself is a list of all files matching the pattern,
         If the pattern contains no anonymous wildcards,
@@ -464,9 +464,9 @@ class NGlobMulti:
             A dictionary mapping named wildcards to matching substrings.
         full_paths
             If this is a list, it contains lists of paths matching the patterns
-            in of the `patterns` attribute with substrings consist to those in
+            in of the `patterns` attribute with substrings consistent with those in
             the criteria argument.
-            Note that this is a recursive iterator, so full_paths may contain less
+            Note that this is a recursive iterator, so full_paths may contain fewer
             items than there are patterns when the recursion has not reached it full
             depth yet.
             If this is an integer, it is in index referring to the item in the `patterns`
@@ -605,8 +605,8 @@ class NGlobMulti:
         """Return True if the path matches one of the NGlobSingle instances.
 
         This means that it may be path contributing to a consistent match of NGlobMulti.
-        When added, it will show up in the result of the `files` method and it may affect the
-        outcome of the `matches` method.
+        When added, it will show up in the result of the `files` method,
+        and it may affect the outcome of the `matches` method.
         """
         return any(ngs.regex.fullmatch(path) for ngs in self._nglob_singles)
 
