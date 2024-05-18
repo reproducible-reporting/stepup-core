@@ -19,10 +19,13 @@
 # --
 """Unit tests for stepup.core.hash"""
 
+from hashlib import blake2b
+
 import msgpack
 import pytest
+from path import Path
 
-from stepup.core.hash import FileHash
+from stepup.core.hash import FileHash, compute_file_digest
 
 
 def test_new():
@@ -68,3 +71,29 @@ def test_dir():
     assert file_hash.update("stepup/") is False
     data = msgpack.packb(file_hash.unstructure())
     assert file_hash == FileHash.structure(msgpack.unpackb(data))
+
+
+def test_symbolic_link(path_tmp: Path):
+    path_dest = path_tmp / "dest.txt"
+    with open(path_dest, "w") as fh:
+        fh.write("Hello!")
+    assert compute_file_digest(path_dest) == blake2b(b"Hello!").digest()
+    path_symlink = path_tmp / "link.txt"
+    path_symlink.symlink_to("dest.txt")
+    assert compute_file_digest(path_symlink) == blake2b(b"Hello!").digest()
+    assert compute_file_digest(path_symlink, dereference=False) == blake2b(b"dest.txt").digest()
+
+
+def test_hash_dir(path_tmp: Path):
+    with pytest.raises(IOError):
+        compute_file_digest(path_tmp)
+
+
+def test_hash_symbolic_link_dir(path_tmp: Path):
+    path_sub = path_tmp / "sub"
+    path_sub.mkdir()
+    path_symlink = path_tmp / "link"
+    path_symlink.symlink_to("sub", target_is_directory=True)
+    with pytest.raises(IOError):
+        assert compute_file_digest(path_symlink)
+    assert compute_file_digest(path_symlink, dereference=False) == blake2b(b"sub").digest()
