@@ -31,6 +31,7 @@ wait
 
 # Restart the example with a different variable
 export ENV_VAR_TEST_STEPUP_PREFIX="FOO"
+rm -r .stepup/logs
 stepup -e -w 1 plan.py & # > current_stdout_02.txt &
 
 # Wait for the director and get its socket.

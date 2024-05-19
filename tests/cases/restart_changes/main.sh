@@ -32,6 +32,7 @@ wait
 
 # second with a different plan.
 echo
+rm -r .stepup/logs
 stepup -e -w 1 plan_02.py & # > current_stdout_02.txt &
 
 # Wait for the director and get its socket.

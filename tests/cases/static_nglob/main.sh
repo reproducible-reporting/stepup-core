@@ -72,6 +72,7 @@ wait
 
 # Start stepup without checking expected output because watchdog file
 # order is not reproducible.
+rm -r .stepup/logs
 stepup -w 1 plan.py &
 
 # Wait for the director and get its socket.

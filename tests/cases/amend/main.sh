@@ -49,6 +49,7 @@ grep word2 out2.txt
 wait
 
 # Restart StepUp without changes
+rm -r .stepup/logs
 stepup -e -w 1 plan.py & # > current_stdout_02.txt &
 
 # Wait for the director and get its socket.
@@ -77,6 +78,7 @@ wait
 
 # Restart StepUp with changes
 echo "word2 and other" > inp2.txt
+rm -r .stepup/logs
 stepup -e -w 1 plan.py & # > current_stdout_03.txt &
 
 # Wait for the director and get its socket.

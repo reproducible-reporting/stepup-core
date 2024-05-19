@@ -73,6 +73,9 @@ grep 'hx tx' paste_x.txt
 wait
 
 # Modify nglob results and restart
+echo "ty" > tail_y.txt
+echo "tz" > tail_z.txt
+rm -r .stepup/logs
 stepup -e -w 1 plan.py & # > current_stdout_b.txt &
 
 # Wait for the director and get its socket.
@@ -80,8 +83,6 @@ export STEPUP_DIRECTOR_SOCKET=$(
   python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
 )
 
-echo "ty" > tail_y.txt
-echo "tz" > tail_z.txt
 python3 - << EOD
 from stepup.core.interact import *
 wait()
@@ -89,12 +90,12 @@ graph("current_graph_04")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit -1
 [[ ! -f paste_ignored.txt ]] || exit -1
 grep 'hx tx' paste_x.txt
 grep 'hy ty' paste_y.txt
 grep 'hz tz' paste_z.txt
-
-# Wait for background processes, if any.
-wait

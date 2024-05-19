@@ -31,6 +31,7 @@ wait
 
 # Modify a few things and restart
 cp plan_unblocked.py plan.py
+rm -r .stepup/logs
 stepup -w 1 plan.py & # > current_stdout_02.txt &
 
 # Wait for the director and get its socket.

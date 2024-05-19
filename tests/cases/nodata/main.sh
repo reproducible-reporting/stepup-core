@@ -47,6 +47,7 @@ wait
 
 # Create file again and restart
 cp original.txt data.txt
+rm -r .stepup/logs
 stepup -e -w 1 plan.py & # > current_stdout_b.txt &
 
 # Wait for the director and get its socket.

@@ -31,6 +31,7 @@ wait
 
 # Restart the plan with executable step.py.
 chmod +x step.py
+rm -r .stepup/logs
 stepup -e -w 1 plan.py & # > current_stdout_02.txt &
 
 # Wait for the director and get its socket.
