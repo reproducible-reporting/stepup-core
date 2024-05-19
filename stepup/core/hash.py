@@ -57,16 +57,16 @@ class HashWords:
         return self._hash.digest()
 
 
-def compute_file_digest(path: str, dereference=True) -> bytes:
+def compute_file_digest(path: str, follow_symlinks=True) -> bytes:
     """Compute the blake2b digest of a file or a symbolic link.
 
     Parameters
     ----------
     path
         The file of which the hash must be computed.
-    dereference
+    follow_symlinks
         If True (default) and the path is a symbolic link,
-        try to read the destination of the link.
+        try to hash the contents of the destination file.
         If False, the destination path itself is hashed.
 
     Returns
@@ -75,7 +75,7 @@ def compute_file_digest(path: str, dereference=True) -> bytes:
         A 64 bytes blake2b hash.
     """
     path = Path(path)
-    if path.islink() and not dereference:
+    if path.islink() and not follow_symlinks:
         return hashlib.blake2b(path.readlink().encode("utf-8")).digest()
     if path.is_dir():
         raise OSError("File digests of directories are not supported.")
