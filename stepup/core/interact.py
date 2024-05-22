@@ -25,11 +25,33 @@ They can also be employed to create keyboard shortcuts within your IDE.
 For example, one may bind the following command to an IDE's keyboard shortcut:
 
 ```bash
+STEPUP_DIRECTOR_SOCKET=$(python -c "import stepup.core.director; \
+print(stepup.core.director.get_socket())") \
 python -c 'from stepup.core.interact import run; run()'
 ```
 
 This command must be executed in the top-level directory
 where a `stepup` command is running in interactive mode.
+
+You can better understand how the above example works by breaking it down into two parts:
+
+- The command `python -c "import stepup.core.director; print(stepup.core.director.get_socket())"`
+  prints the path to the socket where the director listens for instructions.
+  This is a randomized temporary path that is created when `stepup` is started.
+  (For technical reasons, this path cannot be deterministic
+  and must be read from `.stepup/log/director`.)
+  By wrapping this command in `STEPUP_DIRECTOR_SOCKET=$(...)`, the path will be
+  assigned to an environment variable `STEPUP_DIRECTOR_SOCKET`,
+  which will be available for the second Python call.
+- The part `python -c 'from stepup.core.interact import run; run()'`
+  has the same effect as pressing `r` in the terminal where StepUp is running.
+  The variable `STEPUP_DIRECTOR_SOCKET` tells which instance of StepUp to interact with.
+  When StepUp runs `plan.py` scripts, they also use this environment variable
+  to interact with the director process.
+  As these are subprocesses of the director process, the variable is set automatically,
+  so you don't need to set it.
+  This is only needed if processes other than subprocesses need to interact with the director,
+  as in this example.
 """
 
 from .api import RPC_CLIENT, translate
