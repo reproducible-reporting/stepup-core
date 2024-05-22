@@ -55,10 +55,6 @@ cleanup = "stepup.core.cleanup:main"
 [tool.pytest.ini_options]
 addopts = "-n auto"
 
-[tool.black]
-line-length = 100
-target-version = ['py311']
-
 [tool.ruff]
 line-length = 100
 target-version = "py311"
