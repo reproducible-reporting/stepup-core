@@ -64,7 +64,7 @@ def test_has_anonymous_wildcards_false(pattern):
 
 
 @pytest.mark.parametrize(
-    "pattern, names",
+    ("pattern", "names"),
     [
         ("bar_${*foo}", ["foo"]),
         ("bar_*foo", []),
@@ -180,7 +180,7 @@ def test_nglob_single_anonymous():
 
 
 @pytest.mark.parametrize(
-    "patterns, subs",
+    ("patterns", "subs"),
     [
         (["inp*.txt"], {}),
         (["${*inp}.txt"], {}),
@@ -195,7 +195,7 @@ def test_nglob_multi_has_wildcards_true(patterns, subs):
 
 
 @pytest.mark.parametrize(
-    "patterns, subs",
+    ("patterns", "subs"),
     [
         (["inp.txt"], {}),
         (["${inp}.txt"], {}),
@@ -332,7 +332,7 @@ def test_nglob_multi_iterators_named():
 
 
 @pytest.mark.parametrize(
-    "string, matches",
+    ("string", "matches"),
     [
         ("foo*", ["*"]),
         ("foo**", ["**"]),
@@ -357,7 +357,7 @@ def test_nglob_wild(string, matches):
 
 
 @pytest.mark.parametrize(
-    "pattern, normal",
+    ("pattern", "normal"),
     [
         ("generic/${*ch}/*.md", "generic/*/*.md"),
         ("generic/*${*ch}/*.md", "generic/*/*.md"),
@@ -383,7 +383,7 @@ def test_nglob_to_glob(pattern, normal):
 
 
 @pytest.mark.parametrize(
-    "pattern, subs, normal",
+    ("pattern", "subs", "normal"),
     [
         (
             "${*generic}/${*ch}/*.md",
@@ -400,7 +400,7 @@ def test_nglob_to_glob_subs(pattern, subs, normal):
 
 
 @pytest.mark.parametrize(
-    "pattern, regex",
+    ("pattern", "regex"),
     [
         ("generic/${*ch}/*.md", r"generic/(?P<ch>[^/]*)/[^/]*\.md"),
         ("generic/${*ch}/?.md", r"generic/(?P<ch>[^/]*)/[^/]\.md"),
@@ -439,7 +439,7 @@ def test_nglob_to_regex(pattern, regex):
 
 
 @pytest.mark.parametrize(
-    "pattern, subs, regex",
+    ("pattern", "subs", "regex"),
     [
         (
             "prefix_${*year}",

@@ -96,7 +96,7 @@ def driver(obj=None) -> int:
                     optional=args.optional,
                 )
         return 0
-    elif args.cmd == "cases":
+    if args.cmd == "cases":
         if wrapper.has_single:
             print(f"./{script_path} run")
         if wrapper.has_cases:
@@ -104,20 +104,18 @@ def driver(obj=None) -> int:
                 argstr = wrapper.format(*case_args, **case_kwargs)
                 print(f"./{script_path} run -- '{argstr}'")
         return 0
-    elif args.cmd == "run":
+    if args.cmd == "run":
         if args.string == "":
             if not wrapper.has_single:
                 raise RuntimeError(f"Script has no info function: {script_path}")
             info = wrapper.filter_info(wrapper.get_info())
             return wrapper.run(**info)
-        else:
-            if not wrapper.has_cases:
-                raise RuntimeError(f"Script has no case_info function: {script_path}")
-            case_args, case_kwargs = wrapper.parse(args.string)
-            info = wrapper.filter_info(wrapper.get_case_info(*case_args, **case_kwargs))
-            return wrapper.run(**info)
-    else:
-        raise NotImplementedError
+        if not wrapper.has_cases:
+            raise RuntimeError(f"Script has no case_info function: {script_path}")
+        case_args, case_kwargs = wrapper.parse(args.string)
+        info = wrapper.filter_info(wrapper.get_case_info(*case_args, **case_kwargs))
+        return wrapper.run(**info)
+    raise NotImplementedError
 
 
 def parse_args(script_path: str) -> argparse.Namespace:

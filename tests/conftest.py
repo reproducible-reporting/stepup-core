@@ -73,6 +73,6 @@ async def client(tmpdir) -> Iterator[AsyncRPCClient]:
         await director
 
 
-@pytest.fixture
+@pytest.fixture()
 def path_tmp(tmpdir: str) -> Path:
     return Path(tmpdir)

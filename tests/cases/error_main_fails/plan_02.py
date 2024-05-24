@@ -1,3 +1,3 @@
 #!/usr/bin/env python
 
-raise AssertionError()
+raise AssertionError

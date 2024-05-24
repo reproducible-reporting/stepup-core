@@ -29,7 +29,7 @@ MAX_CASES_DST_MULTI = [case for case in MAX_CASES if case[0] != 1]
 MAX_CASES_MULTI = [case for case in MAX_CASES if case[0] != 1 and case[1] != 1]
 
 
-@pytest.mark.parametrize("dst_max, src_max", MAX_CASES)
+@pytest.mark.parametrize(("dst_max", "src_max"), MAX_CASES)
 def test_empty(dst_max, src_max):
     a = Assoc(dst_max, src_max)
     if dst_max is None:
@@ -50,7 +50,7 @@ def test_empty(dst_max, src_max):
     assert len(a.inverse) == 0
 
 
-@pytest.mark.parametrize("dst_max, src_max", MAX_CASES)
+@pytest.mark.parametrize(("dst_max", "src_max"), MAX_CASES)
 @pytest.mark.parametrize("discard", ["pair", "all", "inverse_all"])
 def test_modify_1(dst_max, src_max, discard):
     a = Assoc(dst_max, src_max)
@@ -116,7 +116,7 @@ def test_modify_1(dst_max, src_max, discard):
     assert len(a.inverse) == 1
 
 
-@pytest.mark.parametrize("dst_max, src_max", MAX_CASES_DST_MULTI)
+@pytest.mark.parametrize(("dst_max", "src_max"), MAX_CASES_DST_MULTI)
 def test_modify_2_dst(dst_max, src_max):
     a = Assoc(dst_max, src_max)
     a.add(1, "a")
@@ -174,7 +174,7 @@ def test_modify_2_dst(dst_max, src_max):
             ]
 
 
-@pytest.mark.parametrize("dst_max, src_max", MAX_CASES_SRC_MULTI)
+@pytest.mark.parametrize(("dst_max", "src_max"), MAX_CASES_SRC_MULTI)
 def test_modify_2_src(dst_max, src_max):
     a = Assoc(dst_max, src_max)
     a.add(1, "a")
@@ -195,7 +195,7 @@ def test_modify_2_src(dst_max, src_max):
     assert len(a.inverse) == 2
 
 
-@pytest.mark.parametrize("dst_max, src_max", MAX_CASES_MULTI)
+@pytest.mark.parametrize(("dst_max", "src_max"), MAX_CASES_MULTI)
 def test_modify_2_dst_src(dst_max, src_max):
     a = Assoc(dst_max, src_max)
     a.add(1, "a")

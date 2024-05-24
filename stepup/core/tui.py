@@ -179,13 +179,13 @@ async def keyboard(
                 await reporter("KEYBOARD", "Waiting for workers to complete before shutdown.")
                 await client.call.shutdown()
                 break
-            elif ch == "d":
-                await reporter("KEYBOARD", "Draining the scheduler and waiting for workers.")
-                await client.call.drain()
-            elif ch == "j":
+            if ch == "j":
                 await reporter("KEYBOARD", "Waiting for the runner to complete to shutdown.")
                 await client.call.join()
                 break
+            if ch == "d":
+                await reporter("KEYBOARD", "Draining the scheduler and waiting for workers.")
+                await client.call.drain()
             elif ch == "r":
                 await reporter("KEYBOARD", "Restarting the runner.")
                 async with asyncio.timeout(5):

@@ -167,9 +167,11 @@ class Workflow(Cascade):
             else:
                 props = " shape=hexagon fillcolor=6"
             lines.append(f"  {lookup[key]} [label={label}{props}]")
-            for other in edges.get(key, ()):
-                if other != key:
-                    lines.append(f"  {lookup[key]} -> {lookup[other]}")
+            lines.extend(
+                f"  {lookup[key]} -> {lookup[other]}"
+                for other in edges.get(key, ())
+                if other != key
+            )
         lines.append("}")
         return "\n".join(lines)
 
@@ -249,14 +251,14 @@ class Workflow(Cascade):
     def _check_step_key(self, step_key: str, argname: str, allow_root=False):
         """Check the creator or step key in the methods below."""
         if not isinstance(step_key, str):
-            raise ValueError(f"{argname} must be a string, got: {type(step_key)}")
+            raise TypeError(f"{argname} must be a string, got: {type(step_key)}")
         if step_key not in self.nodes:
             raise ValueError(f"Unknown {argname}: '{step_key}'")
         if self.is_orphan(step_key):
             raise ValueError(f"{argname} is orphan: '{step_key}'")
         if allow_root and step_key == "root:":
             return
-        if not (step_key.startswith("step:") or step_key.startswith("dg:")):
+        if not (step_key.startswith(("step:", "dg:"))):
             allowed = "step, dg or root" if allow_root else "step or dg"
             raise ValueError(f"{argname} is not a {allowed}: '{step_key}'")
 
@@ -267,10 +269,7 @@ class Workflow(Cascade):
         return self.supply_file(file.key, parent_path, new=False)
 
     def matching_deferred_glob(self, path: str) -> DeferredGlob | None:
-        dgs = []
-        for dg in self.get_deferred_globs():
-            if dg.ngm.may_match(path):
-                dgs.append(dg)
+        dgs = [dg for dg in self.get_deferred_globs() if dg.ngm.may_match(path)]
         if len(dgs) > 1:
             raise GraphError(f"Multiple deferred globs match: {path}")
         if len(dgs) == 1:

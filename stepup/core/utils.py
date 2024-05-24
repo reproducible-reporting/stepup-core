@@ -163,7 +163,7 @@ def remove_path(path: Path) -> bool:
 
 
 # Adapted from https://stackoverflow.com/a/39542816/494584
-class classproperty(property):
+class classproperty(property):  # noqa: N801
     def __get__(self, obj, objtype=None):
         return super().__get__(objtype)
 
@@ -174,7 +174,7 @@ class classproperty(property):
         super().__delete__(type(obj))
 
 
-class lookupdict(dict):
+class lookupdict(dict):  # noqa: N801
     """Dictionary assigning enumerated values to keys."""
 
     def __missing__(self, key):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import matplotlib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -15,7 +15,7 @@ def info():
 
 
 def run(inp, out):
-    matplotlib.rc_file(inp[0])
+    mpl.rc_file(inp[0])
     seq = np.loadtxt(inp[1])
     fig, ax = plt.subplots()
     ax.plot(seq)

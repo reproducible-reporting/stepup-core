@@ -138,8 +138,7 @@ def interpret_num_workers(num_workers: Decimal) -> int:
     """Convert the command-line argument num-workers into an integer."""
     if num_workers.as_tuple().exponent < 0:
         return int(len(os.sched_getaffinity(0)) * num_workers)
-    else:
-        return int(num_workers)
+    return int(num_workers)
 
 
 WORKFLOW_OH_NO = """
@@ -195,7 +194,7 @@ async def serve(
             workflow.check_consistency()
             workflow.dissolve(not explain_rerun)
             await reporter("WORKFLOW", f"Loaded from {path_workflow}")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             traceback_fmt = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
             path_workflow_bug = path_workflow.parent / "workflow-bug.mpk"
             shutil.copy(path_workflow, path_workflow_bug)
@@ -540,11 +539,10 @@ def get_socket() -> str:
                     path_socket = Path(line[6:].strip())
                     if len(path_socket) > 2 and path_socket.exists():
                         return path_socket
-                    else:
-                        message = (
-                            f"Socket {path_socket} read from {path_director_log} does not exist. "
-                            "Stepup not running?"
-                        )
+                    message = (
+                        f"Socket {path_socket} read from {path_director_log} does not exist. "
+                        "Stepup not running?"
+                    )
                 else:
                     message = f"File {path_director_log} does not start with SOCKET line."
         else:

@@ -204,7 +204,7 @@ class StepHash:
     def structure(cls, state, strings: list[str]):
         if len(state) == 2:
             return StepHash(*state)
-        elif len(state) == 5:
+        if len(state) == 5:
             return ExtendedStepHash(
                 state[0],
                 state[1],
@@ -212,8 +212,7 @@ class StepHash:
                 state[3],
                 {strings[path]: FileHash.structure(data) for path, data in state[4]},
             )
-        else:
-            TypeError(f"Cannot structure as StepHash: {state}")
+        TypeError(f"Cannot structure as StepHash: {state}")
 
     def unstructure(self, lookup: dict[str, int]) -> list:
         return [self.digest, self.inp_digest]
@@ -265,8 +264,7 @@ def create_step_hash(
     args = _compute_step_digest(step_key, inp_hashes, env_var_values, out_hashes)
     if extended:
         return ExtendedStepHash(*args)
-    else:
-        return StepHash(*args[:2])
+    return StepHash(*args[:2])
 
 
 def compare_step_hashes(old_hash: StepHash, new_hash: StepHash) -> tuple[str, str]:
@@ -367,8 +365,7 @@ def _report_hash_diff(
         changes.append(f"mode {stat.filemode(old_hash.mode)} ➜ {stat.filemode(new_hash.mode)}")
     if len(changes) > 0:
         return True, (f"Modified {label} hash", f"{path} ({', '.join(changes)})")
-    else:
-        return False, (f"Same {label} hash", path)
+    return False, (f"Same {label} hash", path)
 
 
 def _fmt_digest(digest: bytes) -> str:

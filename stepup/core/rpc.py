@@ -101,9 +101,10 @@ async def _recv_rpc_message(reader: asyncio.StreamReader) -> tuple[int | None, b
             body = None
         else:
             body = await reader.readexactly(size)
-        return call_id, body
     except asyncio.IncompleteReadError:
         return None, None
+    else:
+        return call_id, body
 
 
 async def _send_rpc_message(writer: asyncio.StreamWriter, call_id: int, message: bytes | None):
@@ -163,12 +164,11 @@ async def _serve_rpc_recv_loop(
         if call_id is None or request is None:
             stop_event.set()
             break
-        else:
-            name, args, kwargs = pickle.loads(request)
-            task_name = f"RPC:{name}-{call_id}"
-            task = asyncio.create_task(_handle_request(handler, name, args, kwargs), name=task_name)
-            tasks.add(task)
-            task.add_done_callback(partial(_queue_done, call_id, tasks, queue))
+        name, args, kwargs = pickle.loads(request)
+        task_name = f"RPC:{name}-{call_id}"
+        task = asyncio.create_task(_handle_request(handler, name, args, kwargs), name=task_name)
+        tasks.add(task)
+        task.add_done_callback(partial(_queue_done, call_id, tasks, queue))
 
 
 async def _handle_request(handler, name: str, args: list, kwargs: dict) -> tuple[Any, bool]:
@@ -194,7 +194,7 @@ async def _handle_request(handler, name: str, args: list, kwargs: dict) -> tuple
         if asyncio.iscoroutinefunction(call):
             result = await result
         return result, False
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         message = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
         return message, True
 
@@ -280,9 +280,8 @@ class AsyncRPCClient(BaseAsyncRPCClient):
 
     @_recv_task.default
     def _default_recv_task(self):
-        task = asyncio.create_task(self._client_rpc_recv_loop(), name="client-rpc-recv-loop")
-        # Store reference to task to prevent garbage collection while client is alive.
-        return task
+        # Keep reference to task to prevent garbage collection while client is alive.
+        return asyncio.create_task(self._client_rpc_recv_loop(), name="client-rpc-recv-loop")
 
     async def _client_rpc_recv_loop(self):
         si = stoppable_iterator(_recv_rpc_message, self._recv_stop, (self.reader,))
@@ -463,8 +462,7 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
         size = int.from_bytes(self._readexactly(8))
         if size == 0:
             raise ValueError("RPC clients should never receive a closing message.")
-        body = self._readexactly(size)
-        return body
+        return self._readexactly(size)
 
     def _readexactly(self, size: int) -> bytes:
         """Keep reading from the socket until (at least) size bytes were received.
@@ -489,7 +487,7 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
         while len(self._partial_recv) < size:
             fragment = self._socket.recv(4096)
             if len(fragment) == 0:
-                raise ConnectionResetError()
+                raise ConnectionResetError
             self._partial_recv += fragment
         result = self._partial_recv[:size]
         self._partial_recv = self._partial_recv[size:]

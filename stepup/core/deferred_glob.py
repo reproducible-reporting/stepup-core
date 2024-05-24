@@ -46,7 +46,7 @@ class DeferredGlob(Node):
     #
 
     @classproperty
-    def kind(cls):
+    def kind(cls):  # noqa: N805
         return "dg"
 
     @property

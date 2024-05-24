@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import matplotlib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.dates import DateFormatter
@@ -24,7 +24,7 @@ def case_info(airport):
 
 
 def run(inp, out, airport):
-    matplotlib.rc_file(inp[0])
+    mpl.rc_file(inp[0])
     dtype = [("dt", "datetime64[s]"), ("tmpc", "f8")]
     data = np.loadtxt(inp[1], dtype=dtype, delimiter=",", skiprows=1).T
     fig, ax = plt.subplots()

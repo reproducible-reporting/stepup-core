@@ -325,13 +325,12 @@ class NGlobMulti:
     def _default_subs(self):
         if len(self._nglob_singles) == 0:
             return {}
-        else:
-            subs = self._nglob_singles[0].subs
-            for other in self._nglob_singles[1:]:
-                if other.subs != subs:
-                    raise ValueError("Searches in one NGlobMulti must use the same substitutions")
-                other._subs = subs
-            return subs
+        subs = self._nglob_singles[0].subs
+        for other in self._nglob_singles[1:]:
+            if other.subs != subs:
+                raise ValueError("Searches in one NGlobMulti must use the same substitutions")
+            other._subs = subs
+        return subs
 
     @_used_names.default
     def _default_used_names(self) -> tuple[str, ...]:
@@ -598,8 +597,7 @@ class NGlobMulti:
         """Iterates over `self.matches` if there are named wildcards, else over `self.files`."""
         if len(self._used_names) > 0:
             return self.matches()
-        else:
-            return iter(self.files())
+        return iter(self.files())
 
     def may_match(self, path):
         """Return True if the path matches one of the NGlobSingle instances.

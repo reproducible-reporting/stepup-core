@@ -181,26 +181,27 @@ def glob(
             raise ValueError("Named wildcards are not supported in deferred globs.")
         tr_patterns = [translate(su_pattern) for su_pattern in su_patterns]
         RPC_CLIENT.call.defer(_get_step_key(), tr_patterns)
-    else:
-        # Collect all matches
-        nglob_multi = NGlobMulti.from_patterns(su_patterns, subs)
-        nglob_multi.glob()
-        if _required and len(nglob_multi.results) == 0:
-            raise FileNotFoundError("Could not find any matching paths on the filesystem.")
+        return None
 
-        # Send static paths
-        static_paths = nglob_multi.files()
-        if len(static_paths) > 0:
-            check_inp_paths(static_paths)
-            tr_static_paths = [translate(static_path) for static_path in static_paths]
-            RPC_CLIENT.call.static(_get_step_key(), tr_static_paths)
+    # Collect all matches
+    nglob_multi = NGlobMulti.from_patterns(su_patterns, subs)
+    nglob_multi.glob()
+    if _required and len(nglob_multi.results) == 0:
+        raise FileNotFoundError("Could not find any matching paths on the filesystem.")
 
-        # Unstructure the nglob_multi and translate all paths before sending it to the director.
-        lookup = lookupdict()
-        ngm_data = nglob_multi.unstructure(lookup)
-        tr_strings = [str(translate(path)) for path in lookup.get_list()]
-        RPC_CLIENT.call.nglob(_get_step_key(), ngm_data, tr_strings)
-        return nglob_multi
+    # Send static paths
+    static_paths = nglob_multi.files()
+    if len(static_paths) > 0:
+        check_inp_paths(static_paths)
+        tr_static_paths = [translate(static_path) for static_path in static_paths]
+        RPC_CLIENT.call.static(_get_step_key(), tr_static_paths)
+
+    # Unstructure the nglob_multi and translate all paths before sending it to the director.
+    lookup = lookupdict()
+    ngm_data = nglob_multi.unstructure(lookup)
+    tr_strings = [str(translate(path)) for path in lookup.get_list()]
+    RPC_CLIENT.call.nglob(_get_step_key(), ngm_data, tr_strings)
+    return nglob_multi
 
 
 def _str_to_list(arg: Collection[str] | str) -> list[str]:
@@ -612,6 +613,5 @@ def _get_step_key():
     if stepup_step_key is None:
         if isinstance(RPC_CLIENT, DummySyncRPCClient):
             return "dummy:"
-        else:
-            raise RuntimeError("The STEPUP_STEP_KEY environment variable is not defined.")
+        raise RuntimeError("The STEPUP_STEP_KEY environment variable is not defined.")
     return stepup_step_key

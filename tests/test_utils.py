@@ -33,7 +33,7 @@ from stepup.core.utils import (
 
 
 @pytest.mark.parametrize(
-    "inp, out",
+    ("inp", "out"),
     [
         ("./foo", "foo"),
         ("./dir/", "dir/"),
@@ -52,7 +52,7 @@ def test_mynormpath(inp: str, out: str):
 
 
 @pytest.mark.parametrize(
-    "inp, start, out",
+    ("inp", "start", "out"),
     [
         ("/foo/bar/", "/foo", "bar/"),
         ("/foo/bar", "/foo", "bar"),
@@ -82,7 +82,7 @@ def test_myabsolute(inp: str):
 
 
 @pytest.mark.parametrize(
-    "inp, out",
+    ("inp", "out"),
     [
         ("foo/bar", "foo/"),
         ("foo/bar/", "foo/"),

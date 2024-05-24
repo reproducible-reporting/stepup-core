@@ -46,13 +46,13 @@ def check_workflow_unstructure(workflow: Workflow) -> Workflow:
     return workflow
 
 
-@pytest.fixture
+@pytest.fixture()
 def wfs() -> Workflow:
     """A workflow from scratch, no plan.py"""
     return Workflow.from_scratch()
 
 
-@pytest.fixture
+@pytest.fixture()
 def wfp() -> Workflow:
     """A workflow with a boots step plan.py"""
     workflow = Workflow.from_scratch()

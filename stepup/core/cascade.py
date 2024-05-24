@@ -48,7 +48,7 @@ class Node:
     _key: str = attrs.field(init=False, default="todo:")
 
     @classproperty
-    def kind(cls):
+    def kind(cls):  # noqa: N805
         return cls.__name__.lower()
 
     @classmethod
@@ -77,15 +77,12 @@ class Node:
 
     def recycle(self, cascade: "Cascade", old: Self | None):
         """Copy useful information from older orphaned version of the node, if any."""
-        pass
 
     def orphan(self, cascade: "Cascade"):
         """This method is called when the creator of a node is set to Creator.vacuum."""
-        pass
 
     def cleanup(self, cascade: "Cascade"):
         """Perform a cleanup right before the orphaned node is removed from the graph."""
-        pass
 
 
 @attrs.define
@@ -287,13 +284,19 @@ class Cascade:
             pairs = []
             if not (creator_key == "vacuum:" or key == "root:"):
                 pairs.append(("created by", creator_key))
-            for other_key in self.get_suppliers(key, include_orphans=True):
-                pairs.append(("consumes", other_key))
-            for other_key in self.get_products(key, include_orphans=True):
-                if other_key != "root:":
-                    pairs.append(("creates", other_key))
-            for other_key in self.get_consumers(key, include_orphans=True):
-                pairs.append(("supplies", other_key))
+            pairs.extend(
+                ("consumes", other_key)
+                for other_key in self.get_suppliers(key, include_orphans=True)
+            )
+            pairs.extend(
+                ("creates", other_key)
+                for other_key in self.get_products(key, include_orphans=True)
+                if other_key != "root:"
+            )
+            pairs.extend(
+                ("supplies", other_key)
+                for other_key in self.get_consumers(key, include_orphans=True)
+            )
             for role, other_key in pairs:
                 if other_key == "vacuum:":
                     continue
@@ -401,8 +404,7 @@ class Cascade:
         lines = []
         for cycle in self._iter_cycles(src_key, dst_key):
             lines.append("cycle:")
-            for key in cycle:
-                lines.append(f"  {key}")
+            lines.extend(f"  {key}" for key in cycle)
             lines.append("")
         if len(lines) > 0:
             lines[:0] = [
