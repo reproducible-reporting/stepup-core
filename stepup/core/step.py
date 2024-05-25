@@ -92,7 +92,7 @@ class Step(Node):
 
     # List of missing amended files causing reschedule
     reschedule_due_to: set[str] = attrs.field(init=False, factory=set)
-    # Flow to validate the amended inputs, e.g. because inputs may have changed.
+    # Flag to validate the amended inputs, e.g. because inputs may have changed.
     validate_amended: bool = attrs.field(init=False, default=True)
 
     # Attributes for skipping steps whose inputs and outputs have not changed on disk.
@@ -467,10 +467,18 @@ class Step(Node):
         else:
             for file_key in workflow.get_suppliers(self.key, kind="file", include_orphans=True):
                 if workflow.is_orphan(file_key):
-                    return
-                state = workflow.get_file(file_key).get_state(workflow)
-                if state not in (FileState.BUILT, FileState.STATIC):
-                    return
+                    if self._recording is None:
+                        # If there is no recording that could undo
+                        # the orphaned state, the step cannot be queued
+                        return
+                    if file_key[5:] not in self._recording.static_paths:
+                        # If the orphaned file is not a recorded static
+                        # file, the step cannot be queued.
+                        return
+                else:
+                    state = workflow.get_file(file_key).get_state(workflow)
+                    if state not in (FileState.BUILT, FileState.STATIC):
+                        return
             if self._hash is None or self._recording is None:
                 job = RunJob(self._key, self._pool)
             else:

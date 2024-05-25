@@ -471,13 +471,6 @@ class Cascade:
         _check_key(creator_key, self.node_classes)
         if creator_key not in self.nodes:
             raise ValueError(f"Non-existing creator: {creator_key}")
-        try:
-            self.check_cyclic(creator_key, node.key)
-        except Exception:
-            # Instead of creating the cycle, the node is created as an orphan,
-            # to make sure the graph remains meaningful. All nodes must have a creator.
-            self.products.add("vacuum:", node.key)
-            raise
         self.products.add(creator_key, node.key)
         return node.key
 

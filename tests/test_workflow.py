@@ -1232,7 +1232,6 @@ def test_cyclic_two_steps(wfp):
     wfp.define_step(plan_key, "cat first > second", inp_paths=["first"], out_paths=["second"])
     with pytest.raises(GraphError):
         wfp.define_step(plan_key, "cat second > first", inp_paths=["second"], out_paths=["first"])
-    assert wfp.is_orphan("file:first")
 
 
 def test_optional_imply(wfp):

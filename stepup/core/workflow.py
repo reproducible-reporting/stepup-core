@@ -331,7 +331,7 @@ class Workflow(Cascade):
         return file_key, available, new_relation
 
     def create_file(self, creator_key: str, path: str, file_state: FileState) -> str:
-        """Create (or recycle) a file with a PENDING or VOLATILE file state.
+        """Create (or recycle) a file with a STATIC, PENDING or VOLATILE file state.
 
         Parameters
         ----------
@@ -445,10 +445,8 @@ class Workflow(Cascade):
                         raise GraphError(f"Static path has no parent path node: {path}") from exc
 
             file_key = f"file:{path}"
-            if file_key in self.nodes:
-                if file_key in self.nodes and not self.is_orphan(file_key):
-                    raise GraphError(f"Static path already exists: {path}")
-                self.check_cyclic(creator_key, file_key)
+            if file_key in self.nodes and not self.is_orphan(file_key):
+                raise GraphError(f"Static path already exists: {path}")
         # Make the actual changes
         self.graph_changed = True
         return [self.create_file(creator_key, path, FileState.STATIC) for path in paths]

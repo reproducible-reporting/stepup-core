@@ -104,7 +104,7 @@ class WorkerClient:
     #
 
     async def validate_amended_job(self, step_key: str) -> bool:
-        """Test if the inputs have changed, which would invalidate the amended step info.
+        """Test if the inputs (hashes) have changed, which would invalidate the amended step info.
 
         Parameters
         ----------

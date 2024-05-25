@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Do not refuse to replay of unchanged step that declares its own static inputs.
+
 ## [1.2.3] - 2024-05-19
 
 ### Changed

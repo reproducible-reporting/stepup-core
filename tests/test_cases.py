@@ -37,6 +37,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "amend_env_vars",
         "amend_missing",
         "amend_outdir_pending",
+        "amend_self_static",
         "amend_voldir_pending",
         "deferred_glob1",
         "deferred_glob2",
