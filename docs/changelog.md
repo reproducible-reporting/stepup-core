@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Include "hidden" files when globbing.
+
 ### Fixed
 
 - Do not refuse to replay of unchanged step that declares its own static inputs.
+- Make recursive glob consistent with Python's built-in glob in `step.core.nglob`.
+
 
 ## [1.2.3] - 2024-05-19
 

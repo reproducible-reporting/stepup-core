@@ -88,7 +88,18 @@ from typing import Any, Self
 import attrs
 from path import Path
 
-RE_NAMED_WILD = re.compile(r"(\[.*?]|\$\{\*[a-zA-Z0-9_]*?}|[*]{1,2}|[?])")
+RE_WILD_PARTS = [
+    r"^[*][*]$",  # recursive ** wildcard, full string
+    r"^[*][*](?=/)",  # recursive ** wildcard, leading
+    r"(?<=/)[*][*]$",  # recursive ** wildcard, trailing
+    r"(?<=/)[*][*](?=/)",  # recursive ** wildcard, middle
+    r"\[.*?]",  # anonymous [abc] wildcard
+    r"[*]",  # anonymous * wildcard
+    r"[?]",  # anonymous ? wildcard
+    r"\$\{\*[a-zA-Z0-9_]*?}",  # named wildcard
+]
+
+RE_NAMED_WILD = re.compile("(" + "|".join(RE_WILD_PARTS) + ")")
 
 
 __all__ = (
@@ -288,7 +299,13 @@ class NGlobSingle:
             A tuple with substring matching the named wildcards,
             only this combination of names was not present yet.
         """
-        yield from self.extend(glob.glob(self._glob_pattern, recursive=True))
+        paths = []
+        for path in glob.iglob(self._glob_pattern, recursive=True, include_hidden=True):
+            path = Path(path)
+            if path.is_dir():
+                path = path / ""
+            paths.append(path)
+        yield from self.extend(paths)
 
 
 def has_wildcards(pattern: str) -> bool:
@@ -684,19 +701,32 @@ def convert_nglob_to_regex(
     if subs is None:
         subs = {}
     parts = []
+    # Last non-empty part matched by re.split
+    last = None
+    # Names encountered so far
     encountered = set()
     for i, part in enumerate(RE_NAMED_WILD.split(pattern)):
         if i % 2 == 0:
-            # Not a wildcard: escape regex characters.
-            parts.append(re.escape(part))
+            if len(part) > 0:
+                # Not a wildcard: escape regex characters.
+                parts.append(re.escape(part))
         else:
             # A (named) wildcard: replace with corresponding regex.
+            replace = False
+            regex = None
             if part == "?":
-                regex = r"[^/]"
+                if last not in ["*", "**"]:
+                    regex = r"[^/]"
             elif part == "*":
-                regex = r"[^/]*"
+                if last not in ["*", "**"]:
+                    if last == "?":
+                        replace = True
+                    regex = r"[^/]*"
             elif part == "**":
-                regex = r".*"
+                if last != "**":
+                    regex = r".*"
+                    if last in ["*", "?"]:
+                        replace = True
             elif part.startswith("[") and part.endswith("]"):
                 regex = rf"[^{part[2:-1]}]" if part[1] == "!" else rf"[{part[1:-1]}]"
             elif part.startswith("${*") and part.endswith("}"):
@@ -711,7 +741,13 @@ def convert_nglob_to_regex(
                     encountered.add(name)
             else:
                 raise ValueError(f"Cannot convert wildcard to regex: {part}")
-            parts.append(regex)
+            if regex is not None:
+                if replace:
+                    parts[-1] = regex
+                else:
+                    parts.append(regex)
+        if len(part) > 0:
+            last = part
     return "".join(parts)
 
 

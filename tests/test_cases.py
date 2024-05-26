@@ -89,6 +89,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "static_glob",
         "static_nglob",
         "static_nglob_partial",
+        "static_nglob_recursive",
         "static_nglob_subdir",
         "subdir",
         "watch_blocked",

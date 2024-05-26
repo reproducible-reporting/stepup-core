@@ -1,0 +1,68 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:data/
+            supplies   file:plan.py
+            supplies   step:./plan.py
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+                 ngm = ['data/**'] {}
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:data/
+             creates   file:data/sub/
+             creates   file:data/sub/test3.xyz
+             creates   file:data/test1.txt
+             creates   file:data/test2.dat
+
+file:data/
+                path = data/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   file:data/sub/
+            supplies   file:data/test1.txt
+            supplies   file:data/test2.dat
+
+file:data/sub/
+                path = data/sub/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:data/
+            supplies   file:data/sub/test3.xyz
+
+file:data/sub/test3.xyz
+                path = data/sub/test3.xyz
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:data/sub/
+
+file:data/test1.txt
+                path = data/test1.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:data/
+
+file:data/test2.dat
+                path = data/test2.dat
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:data/

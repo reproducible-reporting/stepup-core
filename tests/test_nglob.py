@@ -53,7 +53,9 @@ def test_has_wildcards_false(pattern):
     assert not has_wildcards(pattern)
 
 
-@pytest.mark.parametrize("pattern", ["foo*", "*", "?", "**", "ls/ff**f/", "num[0-9]"])
+@pytest.mark.parametrize(
+    "pattern", ["foo*", "*", "?", "**", "ls/ff**f/", "./**/help.txt", "num[0-9]"]
+)
 def test_has_anonymous_wildcards_true(pattern):
     assert has_anonymous_wildcards(pattern)
 
@@ -335,13 +337,13 @@ def test_nglob_multi_iterators_named():
     ("string", "matches"),
     [
         ("foo*", ["*"]),
-        ("foo**", ["**"]),
+        ("foo**", ["*", "*"]),
         ("foo${*bar}", ["${*bar}"]),
         ("*foo${*bar}", ["*", "${*bar}"]),
-        ("***foo${*bar}", ["**", "*", "${*bar}"]),
-        ("**spam*foo${*bar}", ["**", "*", "${*bar}"]),
-        ("*spam**foo${*bar}", ["*", "**", "${*bar}"]),
-        ("*${*spam}**foo${*bar}", ["*", "${*spam}", "**", "${*bar}"]),
+        ("***foo${*bar}", ["*", "*", "*", "${*bar}"]),
+        ("**spam*foo${*bar}", ["*", "*", "*", "${*bar}"]),
+        ("*spam**foo${*bar}", ["*", "*", "*", "${*bar}"]),
+        ("*${*spam}**foo${*bar}", ["*", "${*spam}", "*", "*", "${*bar}"]),
         ("*foo?", ["*", "?"]),
         ("?foo??", ["?", "?", "?"]),
         ("?foo[ab]?", ["?", "[ab]", "?"]),
@@ -350,6 +352,10 @@ def test_nglob_multi_iterators_named():
         ("foo[*]", ["[*]"]),
         ("foo[${*ab}]", ["[${*ab}]"]),
         ("foo[[]a]", ["[[]"]),
+        ("**/", ["**"]),
+        ("/**", ["**"]),
+        ("**", ["**"]),
+        ("./**/*.txt", ["**", "*"]),
     ],
 )
 def test_nglob_wild(string, matches):
@@ -363,9 +369,9 @@ def test_nglob_wild(string, matches):
         ("generic/*${*ch}/*.md", "generic/*/*.md"),
         ("generic/${*ch}*/*.md", "generic/*/*.md"),
         ("generic/*${*ch}*/*.md", "generic/*/*.md"),
-        ("generic/*${*ch}**/*.md", "generic/**/*.md"),
-        ("generic/**${*ch}*/*.md", "generic/**/*.md"),
-        ("generic/**${*ch}**/*.md", "generic/**/*.md"),
+        ("generic/*${*ch}**/*.md", "generic/*/*.md"),
+        ("generic/**${*ch}*/*.md", "generic/*/*.md"),
+        ("generic/**${*ch}**/*.md", "generic/*/*.md"),
         ("generic/${*ch}${*foo}/*.md", "generic/*/*.md"),
         ("generic/${*ch}-${*foo}/*.md", "generic/*-*/*.md"),
         ("generic/${*ch}/${*foo}/*.md", "generic/*/*/*.md"),
@@ -373,9 +379,15 @@ def test_nglob_wild(string, matches):
         ("generic/ch${*foo}/${*md}", "generic/ch*/*"),
         ("generic/${*md}${*ch}/${*md}", "generic/*/*"),
         ("generic/${*md}?/${*md}", "generic/*/*"),
-        ("generic/**?/?${*md}", "generic/**/*"),
-        ("generic/?**/*?", "generic/**/*"),
+        ("generic/**?/?${*md}", "generic/*/*"),
+        ("generic/?**/*?", "generic/*/*"),
+        ("generic/**/*?", "generic/**/*"),
         ("generic/${*md}[a[b]/?[*]", "generic/*[a[b]/?[*]"),
+        ("**/${*name}.txt", "**/*.txt"),
+        ("foo/**/${*name}.txt", "foo/**/*.txt"),
+        ("${*sub}/**", "*/**"),
+        ("${*sub}/**/", "*/**/"),
+        ("data**", "data*"),
     ],
 )
 def test_nglob_to_glob(pattern, normal):
@@ -392,7 +404,8 @@ def test_nglob_to_glob(pattern, normal):
         ),
         ("${*a}${*b}/ab", {"a": "a*"}, "a*/ab"),
         ("${*a}${*b}/ab", {"a": "a*", "b": "?b"}, "a*b/ab"),
-        ("${*a}${*b}${*a}/ab", {"a": "?a*", "b": "**b*"}, "?a**b*a*/ab"),
+        ("${*a}${*b}${*a}/ab", {"a": "?a*", "b": "**b*"}, "?a*b*a*/ab"),
+        ("${*a}/ab", {"a": "**/*a"}, "**/*a/ab"),
     ],
 )
 def test_nglob_to_glob_subs(pattern, subs, normal):
@@ -420,11 +433,11 @@ def test_nglob_to_glob_subs(pattern, subs, normal):
         ),
         (
             "generic/${*ch}**${*foo}/*.md",
-            r"generic/(?P<ch>[^/]*).*(?P<foo>[^/]*)/[^/]*\.md",
+            r"generic/(?P<ch>[^/]*)[^/]*(?P<foo>[^/]*)/[^/]*\.md",
         ),
         (
             "generic/${*ch}**/${*foo}/*.md",
-            r"generic/(?P<ch>[^/]*).*/(?P<foo>[^/]*)/[^/]*\.md",
+            r"generic/(?P<ch>[^/]*)[^/]*/(?P<foo>[^/]*)/[^/]*\.md",
         ),
         (
             "${*generic}/ch${*foo}/*.md",
@@ -432,6 +445,7 @@ def test_nglob_to_glob_subs(pattern, subs, normal):
         ),
         ("generic/ch${*foo}/${*md}", r"generic/ch(?P<foo>[^/]*)/(?P<md>[^/]*)"),
         ("generic/${*md}${*ch}/${*md}", "generic/(?P<md>[^/]*)(?P<ch>[^/]*)/(?P=md)"),
+        ("data**", "data[^/]*"),
     ],
 )
 def test_nglob_to_regex(pattern, regex):
@@ -449,7 +463,7 @@ def test_nglob_to_regex(pattern, regex):
         (
             "latex-${*name}/${*name}.tex",
             {"name": "?*"},
-            r"latex\-(?P<name>[^/][^/]*)/(?P=name)\.tex",
+            r"latex\-(?P<name>[^/]*)/(?P=name)\.tex",
         ),
     ],
 )
@@ -458,7 +472,7 @@ def test_nglob_to_regex_subs(pattern, subs, regex):
 
 
 def test_nglob_to_regex_groups():
-    regex = re.compile(convert_nglob_to_regex("generic/${*ch}**/${*foo}/*.md"))
+    regex = re.compile(convert_nglob_to_regex("generic/${*ch}/**/${*foo}/*.md"))
     match_ = regex.fullmatch("generic/ch1/some/some/name/file.md")
     assert match_.groups() == ("ch1", "name")
 
@@ -466,10 +480,13 @@ def test_nglob_to_regex_groups():
 def _make_files(paths: Collection[str]):
     for path in paths:
         path = Path(path)
-        if len(path.parent) > 0:
-            path.parent.makedirs_p()
-        with open(path, "w"):
-            pass
+        if path.endswith("/"):
+            path.makedirs_p()
+        else:
+            if len(path.parent) > 0:
+                path.parent.makedirs_p()
+            with open(path, "w"):
+                pass
 
 
 def _check_ngm_multi(tmpdir, patterns, subs, paths, used_names, results):
@@ -591,6 +608,72 @@ def test_filter_named2_subs(tmpdir):
         ("b", "egg"): [{"b/foo.txt"}, {"other/egg.txt"}],
     }
     _check_ngm_multi(tmpdir, patterns, subs, paths, used_names, results)
+
+
+def test_recursive1(tmpdir):
+    _check_ngm_multi(
+        tmpdir,
+        patterns=["data/**"],
+        subs={},
+        paths=["data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"],
+        used_names=(),
+        results={(): [{"data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"}]},
+    )
+
+
+def test_recursive2(tmpdir):
+    _check_ngm_multi(
+        tmpdir,
+        patterns=["data**"],
+        subs={},
+        paths=["data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"],
+        used_names=(),
+        results={},
+    )
+
+
+def test_recursive3(tmpdir):
+    _check_ngm_multi(
+        tmpdir,
+        patterns=["data**/"],
+        subs={},
+        paths=["data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"],
+        used_names=(),
+        results={(): [{"data/"}]},
+    )
+
+
+def test_recursive4(tmpdir):
+    _check_ngm_multi(
+        tmpdir,
+        patterns=["**.txt"],
+        subs={},
+        paths=["data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"],
+        used_names=(),
+        results={},
+    )
+
+
+def test_recursive5(tmpdir):
+    _check_ngm_multi(
+        tmpdir,
+        patterns=["**/*.txt"],
+        subs={},
+        paths=["data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"],
+        used_names=(),
+        results={(): [{"data/sub/part1.txt", "data/part2.txt"}]},
+    )
+
+
+def test_hidden(tmpdir):
+    _check_ngm_multi(
+        tmpdir,
+        patterns=["*.txt"],
+        subs={},
+        paths=["visible.txt", ".hidden.txt"],
+        used_names=(),
+        results={(): [{"visible.txt", ".hidden.txt"}]},
+    )
 
 
 def test_may_match():
