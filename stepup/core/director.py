@@ -326,13 +326,9 @@ class DirectorHandler:
 
         Notes
         -----
-        This is an RPC wrapper for `Workflow.define_step` with a few additional sanity checks:
-        - The pool must exist.
+        This is an RPC wrapper for `Workflow.define_step` with an additional sanity check:
         - The working directory must exist.
         """
-        # If the pool is unknown, raise an error
-        if not self._scheduler.has_pool(pool):
-            raise GraphError(f"Unknown pool name: {pool}")
         if not workdir.endswith(os.sep):
             raise GraphError(f"A working directory must end with a separator, got: {workdir}")
         with self._dissolve_if_graph_changed():
@@ -350,14 +346,14 @@ class DirectorHandler:
             )
 
     @allow_rpc
-    def pool(self, name: str, size: int):
+    def pool(self, step_key: str, name: str, size: int):
         """Define a pool with given name and size.
 
         Notes
         -----
         This is an RPC wrapper for `Scheduler.set_pool`.
         """
-        self._scheduler.set_pool(name, size)
+        self._workflow.set_pool(step_key, name, size)
 
     @allow_rpc
     def amend(

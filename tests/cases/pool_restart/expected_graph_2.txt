@@ -15,34 +15,34 @@ file:./
                 path = ./
                state = STATIC
           created by   root:
+            supplies   file:bar.txt
             supplies   file:plan.py
             supplies   step:./plan.py
-            supplies   step:echo 1; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
-            supplies   step:echo 2; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
+            supplies   step:echo foo > bar.txt
 
 step:./plan.py
              workdir = ./
              command = ./plan.py
                state = SUCCEEDED
-        defined pool = transform=1
+        defined pool = random=1
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:echo 1; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
-             creates   step:echo 2; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
+             creates   step:echo foo > bar.txt
 
-step:echo 1; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
+step:echo foo > bar.txt
              workdir = ./
-             command = echo 1; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
+             command = echo foo > bar.txt
                state = SUCCEEDED
-                pool = transform
+                pool = random
           created by   step:./plan.py
             consumes   file:./
+             creates   file:bar.txt
+            supplies   file:bar.txt
 
-step:echo 2; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
-             workdir = ./
-             command = echo 2; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
-               state = SUCCEEDED
-                pool = transform
-          created by   step:./plan.py
+file:bar.txt
+                path = bar.txt
+               state = BUILT
+          created by   step:echo foo > bar.txt
             consumes   file:./
+            consumes   step:echo foo > bar.txt

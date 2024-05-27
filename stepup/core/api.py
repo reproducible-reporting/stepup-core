@@ -284,8 +284,7 @@ def step(
         out=" ".join(myrelpath(out_path, workdir) for out_path in out_paths),
         vol=" ".join(myrelpath(vol_path, workdir) for vol_path in vol_paths),
     )
-    return RPC_CLIENT(
-        "step",
+    return RPC_CLIENT.call.step(
         _get_step_key(),
         command,
         inp_paths,
@@ -309,7 +308,7 @@ def pool(name: str, size: int):
     size
         The pool size.
     """
-    RPC_CLIENT.call.pool(name, size)
+    RPC_CLIENT.call.pool(_get_step_key(), name, size)
 
 
 def amend(
@@ -361,8 +360,7 @@ def amend(
         tr_inp_paths = [translate(inp_path) for inp_path in su_inp_paths]
         tr_out_paths = [translate(subs(out_path)) for out_path in out_paths]
         tr_vol_paths = [translate(subs(vol_path)) for vol_path in vol_paths]
-    keep_going = RPC_CLIENT(
-        "amend",
+    keep_going = RPC_CLIENT.call.amend(
         _get_step_key(),
         tr_inp_paths,
         sorted(env_vars),

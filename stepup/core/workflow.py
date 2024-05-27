@@ -35,6 +35,7 @@ from .deferred_glob import DeferredGlob
 from .exceptions import GraphError
 from .file import File, FileState
 from .hash import ExtendedStepHash, FileHash
+from .job import SetPoolJob
 from .nglob import NGlobMulti
 from .step import Mandatory, Step, StepState
 from .utils import lookupdict, myparent
@@ -604,6 +605,13 @@ class Workflow(Cascade):
             step.queue_if_appropriate(self)
 
         return step_key
+
+    def set_pool(self, step_key: str, pool: str, size: int):
+        """Set the pool size and keep the information in the step to support replay."""
+        step = self.get_step(step_key)
+        step.defined_pools[pool] = size
+        self.job_queue.put_nowait(SetPoolJob(pool, size))
+        self.job_queue_changed.set()
 
     def amend_step(
         self,

@@ -1631,3 +1631,13 @@ def test_amend_step_vol_nested(wfp):
     assert step.get_inp_paths(wfp) == ["./"]
     assert step.get_out_paths(wfp) == ["sub/", "sub/foo/"]
     assert step.get_vol_paths(wfp) == ["sub/foo/bar"]
+
+
+def test_set_pool(wfp):
+    plan_key = "step:./plan.py"
+    wfp.set_pool(plan_key, "random", 2)
+    plan = wfp.get_step(plan_key)
+    assert plan.defined_pools == {"random": 2}
+    plan.update_recording(wfp)
+    assert plan.recording.defined_pools == {"random": 2}
+    check_workflow_unstructure(wfp)

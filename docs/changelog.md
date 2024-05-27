@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Do not refuse to replay of unchanged step that declares its own static inputs.
 - Make recursive glob consistent with Python's built-in glob in `step.core.nglob`.
+- Pool definitions are stored in workflow and replayed correctly when a step is skipped.
 
 
 ## [1.2.3] - 2024-05-19

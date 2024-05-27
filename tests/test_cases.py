@@ -72,6 +72,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "permissions_step_rerun",
         "permissions_step_restart",
         "pool",
+        "pool_restart",
         "restart_blocked",
         "restart_changes",
         "restart_deferred_glob",

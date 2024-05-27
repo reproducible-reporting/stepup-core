@@ -70,33 +70,48 @@ class StepRecording:
     steps_args: list[dict] = attrs.field(factory=list)
     nglob_multis: list[NGlobMulti] = attrs.field(factory=list)
     deferred_glob_args: list[list[str]] = attrs.field(factory=list)
+    defined_pools: dict[str, int] = attrs.field(factory=dict)
 
 
 @attrs.define
 class Step(Node):
+    # - Core attributes
+    #   - Shell command to execute in this step
     _command: str = attrs.field()
+    #   - Work directory where the step command is executed
     _workdir: str = attrs.field()
+    #   - If set, concurrency is limited by the pool size (see scheduler module)
     _pool: str | None = attrs.field(kw_only=True, default=None)
-    # When True, the step will behave as it never has all dependencies satisfied.
-    # This is convenient for lowering the build time when working on intermediate steps.
+    #   - When True, the step will behave as it never has all dependencies satisfied.
+    #     This is convenient for lowering the build time when working on intermediate steps.
     _block: bool = attrs.field(kw_only=True, default=False)
 
-    # Augment information in Workflow instance
+    # - Augment information in Workflow instance
+    #   - From amend(inp=...)
     _amended_suppliers: set[str] = attrs.field(kw_only=True, factory=set)
+    #   - From amend(out=..., vol=...)
     _amended_consumers: set[str] = attrs.field(kw_only=True, factory=set)
 
-    # Extra information, not in Workflow instance
+    # - Extra information, not in Workflow instance
+    #   - env var names when step was defined
     _initial_env_vars: set[str] = attrs.field(kw_only=True, factory=set)
+    #   - env var names amended while executing
     _amended_env_vars: set[str] = attrs.field(kw_only=True, factory=set)
+    #   - named globs used while running step
     _nglob_multis: list[NGlobMulti] = attrs.field(kw_only=True, factory=list)
+    #   - pools defined by this step
+    _defined_pools: dict[str, int] = attrs.field(kw_only=True, factory=dict)
 
-    # List of missing amended files causing reschedule
+    # - Related to execution
+    #   - List of missing amended files causing reschedule
     reschedule_due_to: set[str] = attrs.field(init=False, factory=set)
-    # Flag to validate the amended inputs, e.g. because inputs may have changed.
+    #   - Flag to validate the amended inputs, e.g. because inputs may have changed.
     validate_amended: bool = attrs.field(init=False, default=True)
 
-    # Attributes for skipping steps whose inputs and outputs have not changed on disk.
+    # - Attributes for skipping steps whose inputs and outputs have not changed on disk.
+    #   - Digests of executed step (inputs, outputs, ...)
     _hash: StepHash | None = attrs.field(kw_only=True, default=None)
+    #   - All information needed to replay a job without executing it
     _recording: StepRecording | None = attrs.field(kw_only=True, default=None)
 
     #
@@ -138,6 +153,10 @@ class Step(Node):
     @property
     def nglob_multis(self) -> list[NGlobMulti]:
         return self._nglob_multis
+
+    @property
+    def defined_pools(self) -> dict[str, int]:
+        return self._defined_pools
 
     @property
     def hash(self) -> StepHash:
@@ -192,6 +211,9 @@ class Step(Node):
         hash_ = data.get("h")
         if hash_ is not None:
             kwargs["hash"] = StepHash.structure(hash_, strings)
+        defined_pools = data.get("dp")
+        if defined_pools is not None:
+            kwargs["defined_pools"] = defined_pools
         step = cls(**kwargs)
         workflow.step_states[step.key] = state
         workflow.step_mandatory[step.key] = mandatory
@@ -222,6 +244,8 @@ class Step(Node):
             data["ai"] = sorted(self._amended_env_vars)
         if len(self._nglob_multis) > 0:
             data["g"] = [nglob_multi.unstructure(lookup) for nglob_multi in self._nglob_multis]
+        if len(self.defined_pools) > 0:
+            data["dp"] = self.defined_pools.copy()
         if self._hash is not None:
             data["h"] = self._hash.unstructure(lookup)
         return data
@@ -255,6 +279,8 @@ class Step(Node):
             label = ""
         for ngm in self._nglob_multis:
             yield "ngm", f"{[ngs.pattern for ngs in ngm.nglob_singles]} {ngm.subs}"
+        for pool, size in sorted(self.defined_pools.items()):
+            yield "defined pool", f"{pool}={size}"
         if self._hash is not None:
             l1, l2 = format_digest(self._hash.digest)
             yield "digest", l1
@@ -606,6 +632,7 @@ class Step(Node):
             dg = workflow.get_deferred_glob(dg_key)
             patterns = [ngs.pattern for ngs in dg.ngm.nglob_singles]
             recording.deferred_glob_args.append(patterns)
+        recording.defined_pools = self._defined_pools.copy()
         self._recording = recording
 
     def replay_amend(self, workflow: "Workflow"):
@@ -654,6 +681,8 @@ class Step(Node):
                 raise ValueError("Upon replay, output files cannot be MISSING or BUILT")
         recording = self._recording
         # Restore as if the step executed
+        for pool, size in recording.defined_pools.items():
+            workflow.set_pool(self.key, pool, size)
         workflow.declare_static(self.key, recording.static_paths)
         for step_args in recording.steps_args:
             workflow.define_step(**step_args)

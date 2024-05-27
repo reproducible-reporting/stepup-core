@@ -24,7 +24,7 @@ import itertools
 
 import attrs
 
-from .job import Job
+from .job import Job, SetPoolJob
 
 __all__ = ("Pool", "Scheduler")
 
@@ -113,7 +113,10 @@ class Scheduler:
         if not self._onhold:
             while self.inqueue.qsize() > 0:
                 job = self.inqueue.get_nowait()
-                if job.pool is None:
+                if isinstance(job, SetPoolJob):
+                    # Shortcut that allows workflow to set a pool.
+                    self.set_pool(*job.set_pool_args)
+                elif job.pool is None:
                     self._main_pool.queue.put_nowait(job)
                 else:
                     self._pools[job.pool].queue.put_nowait(job)

@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from .workflow import Workflow
 
 
-__all__ = ("Job", "ValidateAmendedJob", "TryReplayJob", "RunJob")
+__all__ = ("Job", "SetPoolJob", "ValidateAmendedJob", "TryReplayJob", "RunJob")
 
 
 @attrs.define
@@ -51,7 +51,26 @@ class Job:
 
 
 @attrs.define
+class SetPoolJob(Job):
+    """This is a stub: the scheduler uses it to set the pool, never executes on the worker."""
+
+    _pool: str = attrs.field()
+    _size: int = attrs.field()
+
+    @property
+    def pool(self) -> str | None:
+        # Setting a pool never requires a pool.
+        return None
+
+    @property
+    def set_pool_args(self) -> tuple[str, int]:
+        return (self._pool, self._size)
+
+
+@attrs.define
 class ValidateAmendedJob(Job):
+    """Validate that amended inputs have not changed yet, or schedule for rerun."""
+
     _step_key: str = attrs.field()
     _pool: str | None = attrs.field()
 
@@ -78,6 +97,8 @@ class ValidateAmendedJob(Job):
 
 @attrs.define
 class TryReplayJob(Job):
+    """Simulate the execution of a job, if inputs and outputs have not changed."""
+
     _step_key: str = attrs.field()
     _pool: str | None = attrs.field()
 
@@ -104,6 +125,8 @@ class TryReplayJob(Job):
 
 @attrs.define
 class RunJob(Job):
+    """Actually execute a job."""
+
     _step_key: str = attrs.field()
     _pool: str | None = attrs.field()
 
