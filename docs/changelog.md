@@ -7,13 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.4] - 2024-05-27
+
 ### Changed
 
 - Include "hidden" files when globbing.
 
 ### Fixed
 
-- Do not refuse to replay of unchanged step that declares its own static inputs.
+- Do not refuse to replay unchanged step that declares its own static inputs.
 - Make recursive glob consistent with Python's built-in glob in `step.core.nglob`.
 - Pool definitions are stored in workflow and replayed correctly when a step is skipped.
 
