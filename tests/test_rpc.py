@@ -239,10 +239,10 @@ def test_fmt_rpc_call_noargs():
 @pytest.mark.asyncio()
 async def test_pipe_not_allowed(pc):
     with pytest.raises(RPCError):
-        assert await pc.call.not_allowed()
+        await pc.call.not_allowed()
 
 
 @pytest.mark.asyncio()
 async def test_pipe_not_defined(pc):
     with pytest.raises(RPCError):
-        assert await pc.call.not_defined()
+        await pc.call.not_defined()

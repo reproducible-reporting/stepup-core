@@ -51,7 +51,7 @@ class HashWords:
         elif word is None:
             self._hash.update(b"\0\2")
         else:
-            TypeError(f"Not supported by HashWords: {type(word)}")
+            raise TypeError(f"Not supported by HashWords: {type(word)}")
 
     def digest(self):
         return self._hash.digest()
@@ -212,7 +212,7 @@ class StepHash:
                 state[3],
                 {strings[path]: FileHash.structure(data) for path, data in state[4]},
             )
-        TypeError(f"Cannot structure as StepHash: {state}")
+        raise TypeError(f"Cannot structure as StepHash: {state}")
 
     def unstructure(self, lookup: dict[str, int]) -> list:
         return [self.digest, self.inp_digest]
