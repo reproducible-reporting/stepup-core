@@ -419,10 +419,6 @@ class WorkerHandler:
     @allow_rpc
     async def list_rescheduled(self, inp_paths: set[str]):
         self.step.inp_amend_missing = sorted(inp_paths)
-        # for inp_path, inp_state, orphan in inp_paths:
-        #    if inp_state not in (FileState.BUILT, FileState.STATIC):
-        #        inp_path_fmt = f"({inp_path})" if orphan else inp_path
-        #        self.step.inp_amend_missing.append(f"{inp_state.name} {inp_path_fmt}")
 
     @allow_rpc
     async def report(self):

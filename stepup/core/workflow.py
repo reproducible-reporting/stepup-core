@@ -259,7 +259,7 @@ class Workflow(Cascade):
             raise ValueError(f"{argname} is orphan: '{step_key}'")
         if allow_root and step_key == "root:":
             return
-        if not (step_key.startswith(("step:", "dg:"))):
+        if not step_key.startswith(("step:", "dg:")):
             allowed = "step, dg or root" if allow_root else "step or dg"
             raise ValueError(f"{argname} is not a {allowed}: '{step_key}'")
 
