@@ -22,5 +22,5 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f README.md ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f README.md ]] || exit 1

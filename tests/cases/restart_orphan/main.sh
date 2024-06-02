@@ -24,9 +24,9 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f foo.txt ]] || exit -1
-[[ -f bar.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f foo.txt ]] || exit 1
+[[ -f bar.txt ]] || exit 1
 
 # Run the plan.
 rm -r .stepup/logs
@@ -49,6 +49,6 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f foo.txt ]] || exit -1
-[[ -f bar.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f foo.txt ]] || exit 1
+[[ -f bar.txt ]] || exit 1

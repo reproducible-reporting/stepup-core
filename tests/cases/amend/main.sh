@@ -19,10 +19,10 @@ graph("current_graph_01")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f step.py ]] || exit -1
-[[ -f inp1.txt ]] || exit -1
-[[ -f inp2.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f step.py ]] || exit 1
+[[ -f inp1.txt ]] || exit 1
+[[ -f inp2.txt ]] || exit 1
 grep word1 out1.txt
 grep word2 out2.txt
 
@@ -38,10 +38,10 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f step.py ]] || exit -1
-[[ -f inp1.txt ]] || exit -1
-[[ -f inp2.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f step.py ]] || exit 1
+[[ -f inp1.txt ]] || exit 1
+[[ -f inp2.txt ]] || exit 1
 grep word1 out1.txt
 grep word2 out2.txt
 
@@ -66,10 +66,10 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f step.py ]] || exit -1
-[[ -f inp1.txt ]] || exit -1
-[[ -f inp2.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f step.py ]] || exit 1
+[[ -f inp1.txt ]] || exit 1
+[[ -f inp2.txt ]] || exit 1
 grep word1 out1.txt
 grep word2 out2.txt
 
@@ -95,10 +95,10 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f step.py ]] || exit -1
-[[ -f inp1.txt ]] || exit -1
-[[ -f inp2.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f step.py ]] || exit 1
+[[ -f inp1.txt ]] || exit 1
+[[ -f inp2.txt ]] || exit 1
 grep word1 out1.txt
 grep word2 out2.txt
 

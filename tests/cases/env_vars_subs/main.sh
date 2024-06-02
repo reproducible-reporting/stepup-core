@@ -23,8 +23,8 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f sub/plan.py ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f sub/plan.py ]] || exit 1
 
 # Wait for background processes, if any.
 wait

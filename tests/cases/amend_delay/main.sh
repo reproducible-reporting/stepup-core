@@ -22,12 +22,12 @@ graph("current_graph_01")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f inp0.txt ]] || exit -1
-[[ -f inp1.txt ]] || exit -1
-[[ -f tmp1.txt ]] || exit -1
-[[ -f inp2.txt ]] || exit -1
-[[ -f log.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f inp0.txt ]] || exit 1
+[[ -f inp1.txt ]] || exit 1
+[[ -f tmp1.txt ]] || exit 1
+[[ -f inp2.txt ]] || exit 1
+[[ -f log.txt ]] || exit 1
 
 # Remove input and rerun the plan.
 rm inp2.txt
@@ -40,12 +40,12 @@ graph("current_graph_02")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f inp0.txt ]] || exit -1
-[[ -f inp1.txt ]] || exit -1
-[[ -f tmp1.txt ]] || exit -1
-[[ -f inp2.txt ]] || exit -1
-[[ -f log.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f inp0.txt ]] || exit 1
+[[ -f inp1.txt ]] || exit 1
+[[ -f tmp1.txt ]] || exit 1
+[[ -f inp2.txt ]] || exit 1
+[[ -f log.txt ]] || exit 1
 
 # Replace input and rerun the plan.
 echo "Something new" > inp0.txt
@@ -61,12 +61,12 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f inp0.txt ]] || exit -1
-[[ -f inp1.txt ]] || exit -1
-[[ -f tmp1.txt ]] || exit -1
-[[ -f inp2.txt ]] || exit -1
-[[ -f log.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f inp0.txt ]] || exit 1
+[[ -f inp1.txt ]] || exit 1
+[[ -f tmp1.txt ]] || exit 1
+[[ -f inp2.txt ]] || exit 1
+[[ -f log.txt ]] || exit 1
 
 # Wait for background processes, if any.
 wait

@@ -24,9 +24,9 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f first.txt ]] || exit -1
-[[ -f second.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f first.txt ]] || exit 1
+[[ -f second.txt ]] || exit 1
 
 # Start stepup without checking expected output because watchdog file
 # order is not reproducible.
@@ -51,17 +51,17 @@ unset STEPUP_DIRECTOR_SOCKET
 cleanup plan.py
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f first.txt ]] || exit -1
-[[ -f second.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f first.txt ]] || exit 1
+[[ -f second.txt ]] || exit 1
 
 # Test cleanup that removes first and second
 cleanup ./
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ ! -f first.txt ]] || exit -1
-[[ ! -f second.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ ! -f first.txt ]] || exit 1
+[[ ! -f second.txt ]] || exit 1
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

@@ -24,11 +24,11 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan_01.py ]] || exit -1
-[[ -f copy_01.txt ]] || exit -1
-[[ -f copy_both1.txt ]] || exit -1
-[[ -f source_both.txt ]] || exit -1
-[[ -f source_01.txt ]] || exit -1
+[[ -f plan_01.py ]] || exit 1
+[[ -f copy_01.txt ]] || exit 1
+[[ -f copy_both1.txt ]] || exit 1
+[[ -f source_both.txt ]] || exit 1
+[[ -f source_01.txt ]] || exit 1
 
 # second with a different plan.
 rm -r .stepup/logs
@@ -51,16 +51,16 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan_01.py ]] || exit -1
-[[ -f plan_02.py ]] || exit -1
+[[ -f plan_01.py ]] || exit 1
+[[ -f plan_02.py ]] || exit 1
 
 # Static files should never be removed.
-[[ -f source_both.txt ]] || exit -1
-[[ -f source_01.txt ]] || exit -1
-[[ -f source_02.txt ]] || exit -1
+[[ -f source_both.txt ]] || exit 1
+[[ -f source_01.txt ]] || exit 1
+[[ -f source_02.txt ]] || exit 1
 
 # Only the output file of the second should remain.
-[[ ! -f copy_01.txt ]] || exit -1
-[[ ! -f copy_both1.txt ]] || exit -1
-[[ -f copy_02.txt ]] || exit -1
-[[ -f copy_both2.txt ]] || exit -1
+[[ ! -f copy_01.txt ]] || exit 1
+[[ ! -f copy_both1.txt ]] || exit 1
+[[ -f copy_02.txt ]] || exit 1
+[[ -f copy_both2.txt ]] || exit 1

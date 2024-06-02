@@ -21,9 +21,9 @@ graph("current_graph_01")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f input.txt ]] || exit -1
-[[ -f output.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f input.txt ]] || exit 1
+[[ -f output.txt ]] || exit 1
 stat input.txt | grep 'Access: (0755/-rwxr-xr-x)'
 stat output.txt | grep 'Access: (0755/-rwxr-xr-x)'
 
@@ -44,8 +44,8 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f input.txt ]] || exit -1
-[[ -f output.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f input.txt ]] || exit 1
+[[ -f output.txt ]] || exit 1
 stat input.txt | grep 'Access: (0644/-rw-r--r--)'
 stat output.txt | grep 'Access: (0644/-rw-r--r--)'

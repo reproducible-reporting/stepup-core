@@ -24,6 +24,6 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f sub/foo.txt ]] || exit -1
-[[ -f exists/.keep ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f sub/foo.txt ]] || exit 1
+[[ -f exists/.keep ]] || exit 1

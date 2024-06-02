@@ -32,8 +32,8 @@ EOD
 
 # Check files that are expected to be present and/or missing.
 # Files should not be removed because of pending steps:
-[[ -f copy.txt ]] || exit -1
-[[ -f another.txt ]] || exit -1
+[[ -f copy.txt ]] || exit 1
+[[ -f another.txt ]] || exit 1
 
 # Replace plan and rerun.
 cp plan_02.py plan.py
@@ -50,8 +50,8 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f original.txt ]] || exit -1
-[[ ! -f copy.txt ]] || exit -1
-[[ -f another.txt ]] || exit -1
-[[ -f between.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f original.txt ]] || exit 1
+[[ ! -f copy.txt ]] || exit 1
+[[ -f another.txt ]] || exit 1
+[[ -f between.txt ]] || exit 1

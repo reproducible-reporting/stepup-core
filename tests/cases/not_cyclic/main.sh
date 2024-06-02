@@ -21,8 +21,8 @@ graph("current_graph_01")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f input.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f input.txt ]] || exit 1
 grep hello output.txt
 
 # Change the input and check that the step reruns without pending dependencies
@@ -36,8 +36,8 @@ graph("current_graph_02")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f input.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f input.txt ]] || exit 1
 grep bye output.txt
 
 # Touch input (no changes) and check that the step reruns without pending dependencies
@@ -54,8 +54,8 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f input.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f input.txt ]] || exit 1
 grep bye output.txt
 
 # Wait for background processes, if any.
@@ -78,8 +78,8 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f input.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f input.txt ]] || exit 1
 grep bye output.txt
 grep BUILT current_graph_04.txt
 

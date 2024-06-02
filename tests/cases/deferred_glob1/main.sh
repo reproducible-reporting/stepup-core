@@ -22,9 +22,9 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f static/sub/foo.txt ]] || exit -1
-[[ -f copy.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f static/sub/foo.txt ]] || exit 1
+[[ -f copy.txt ]] || exit 1
 grep foo copy.txt
 
 # Wait for background processes, if any.
@@ -49,9 +49,9 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f static/sub/foo.txt ]] || exit -1
-[[ -f copy.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f static/sub/foo.txt ]] || exit 1
+[[ -f copy.txt ]] || exit 1
 grep bar copy.txt
 
 # Wait for background processes, if any.

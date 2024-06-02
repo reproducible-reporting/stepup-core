@@ -33,13 +33,13 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f converted_03.txt ]] || exit -1
-[[ -f used.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f converted_03.txt ]] || exit 1
+[[ -f used.txt ]] || exit 1
 grep raw_03 used.txt
-[[ ! -f converted_01.txt ]] || exit -1
-[[ ! -f converted_02.txt ]] || exit -1
-[[ ! -f converted_04.txt ]] || exit -1
+[[ ! -f converted_01.txt ]] || exit 1
+[[ ! -f converted_02.txt ]] || exit 1
+[[ ! -f converted_04.txt ]] || exit 1
 
 # Restart with a different environment variables
 export ENV_VAR_TEST_STEPUP_IDX="1"
@@ -63,10 +63,10 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f converted_01.txt ]] || exit -1
-[[ -f used.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f converted_01.txt ]] || exit 1
+[[ -f used.txt ]] || exit 1
 grep raw_01 used.txt
-[[ ! -f converted_02.txt ]] || exit -1
-[[ ! -f converted_03.txt ]] || exit -1
-[[ ! -f converted_04.txt ]] || exit -1
+[[ ! -f converted_02.txt ]] || exit 1
+[[ ! -f converted_03.txt ]] || exit 1
+[[ ! -f converted_04.txt ]] || exit 1

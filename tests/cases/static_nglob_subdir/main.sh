@@ -21,12 +21,12 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f sub/plan.py ]] || exit -1
-[[ -f sub/inp1.txt ]] || exit -1
-[[ -f sub/inp2.txt ]] || exit -1
-[[ -f sub/out1.txt ]] || exit -1
-[[ -f sub/out2.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f sub/plan.py ]] || exit 1
+[[ -f sub/inp1.txt ]] || exit 1
+[[ -f sub/inp2.txt ]] || exit 1
+[[ -f sub/out1.txt ]] || exit 1
+[[ -f sub/out2.txt ]] || exit 1
 grep one sub/out1.txt
 grep two sub/out2.txt
 
@@ -52,14 +52,14 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f sub/plan.py ]] || exit -1
-[[ -f sub/inp1.txt ]] || exit -1
-[[ -f sub/inp2.txt ]] || exit -1
-[[ -f sub/inp3.txt ]] || exit -1
-[[ -f sub/out1.txt ]] || exit -1
-[[ -f sub/out2.txt ]] || exit -1
-[[ -f sub/out3.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f sub/plan.py ]] || exit 1
+[[ -f sub/inp1.txt ]] || exit 1
+[[ -f sub/inp2.txt ]] || exit 1
+[[ -f sub/inp3.txt ]] || exit 1
+[[ -f sub/out1.txt ]] || exit 1
+[[ -f sub/out2.txt ]] || exit 1
+[[ -f sub/out3.txt ]] || exit 1
 grep one sub/out1.txt
 grep two sub/out2.txt
 grep three sub/out3.txt

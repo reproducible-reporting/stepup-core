@@ -25,9 +25,9 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f step.py ]] || exit -1
-[[ ! -f message.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f step.py ]] || exit 1
+[[ ! -f message.txt ]] || exit 1
 
 # Restart the plan with executable step.py.
 chmod +x step.py
@@ -51,6 +51,6 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f step.py ]] || exit -1
-[[ -f message.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f step.py ]] || exit 1
+[[ -f message.txt ]] || exit 1

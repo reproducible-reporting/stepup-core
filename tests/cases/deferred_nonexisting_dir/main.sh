@@ -22,9 +22,9 @@ graph("current_graph_01")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f sub/message.txt ]] || exit -1
-[[ -f message.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f sub/message.txt ]] || exit 1
+[[ -f message.txt ]] || exit 1
 
 # Create the required static files and try again
 rm sub/message.txt
@@ -41,9 +41,9 @@ graph("current_graph_02")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ ! -f sub/message.txt ]] || exit -1
-[[ ! -f message.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ ! -f sub/message.txt ]] || exit 1
+[[ ! -f message.txt ]] || exit 1
 
 # Create again and rerun
 mkdir sub/
@@ -59,9 +59,9 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f sub/message.txt ]] || exit -1
-[[ -f message.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f sub/message.txt ]] || exit 1
+[[ -f message.txt ]] || exit 1
 
 # Wait for background processes, if any.
 wait
