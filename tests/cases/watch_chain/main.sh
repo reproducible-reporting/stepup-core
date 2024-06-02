@@ -21,11 +21,11 @@ graph("current_graph_01")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f script.log ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f script.log ]] || exit 1
 grep script.log report.txt
 grep script.log copy.txt
-[[ -f output.txt ]] || exit -1
+[[ -f output.txt ]] || exit 1
 
 # Modify config.json and rerun.
 cp config_02.json config.json
@@ -42,9 +42,9 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ ! -f script.log ]] || exit -1
-[[ -f other.log ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ ! -f script.log ]] || exit 1
+[[ -f other.log ]] || exit 1
 grep other.log report.txt
 grep other.log copy.txt
-[[ -f output.txt ]] || exit -1
+[[ -f output.txt ]] || exit 1

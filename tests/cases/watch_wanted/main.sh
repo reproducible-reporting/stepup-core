@@ -24,12 +24,12 @@ graph("current_graph_01")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f static.txt ]] || exit -1
-[[ -f input1.txt ]] || exit -1
-[[ -f input2.txt ]] || exit -1
-[[ ! -f output1.txt ]] || exit -1
-[[ ! -f output2.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f static.txt ]] || exit 1
+[[ -f input1.txt ]] || exit 1
+[[ -f input2.txt ]] || exit 1
+[[ ! -f output1.txt ]] || exit 1
+[[ ! -f output2.txt ]] || exit 1
 
 # Remove plan and rerun.
 rm plan.py
@@ -42,11 +42,11 @@ graph("current_graph_02")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f static.txt ]] || exit -1
-[[ -f input1.txt ]] || exit -1
-[[ -f input2.txt ]] || exit -1
-[[ ! -f output1.txt ]] || exit -1
-[[ ! -f output2.txt ]] || exit -1
+[[ -f static.txt ]] || exit 1
+[[ -f input1.txt ]] || exit 1
+[[ -f input2.txt ]] || exit 1
+[[ ! -f output1.txt ]] || exit 1
+[[ ! -f output2.txt ]] || exit 1
 
 # Replace plan and rerun.
 cp plan_02.py plan.py
@@ -63,9 +63,9 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f static.txt ]] || exit -1
-[[ -f input1.txt ]] || exit -1
-[[ -f input2.txt ]] || exit -1
-[[ ! -f output1.txt ]] || exit -1
-[[ ! -f output2.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f static.txt ]] || exit 1
+[[ -f input1.txt ]] || exit 1
+[[ -f input2.txt ]] || exit 1
+[[ ! -f output1.txt ]] || exit 1
+[[ ! -f output2.txt ]] || exit 1

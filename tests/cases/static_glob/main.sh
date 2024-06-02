@@ -24,12 +24,12 @@ graph("current_graph_01")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
+[[ -f plan.py ]] || exit 1
 grep First inp1.txt
 grep Second inp2.txt
 grep First out1.txt
 grep Second out2.txt
-[[ ! -f out3.txt ]] || exit -1
+[[ ! -f out3.txt ]] || exit 1
 
 # Modify nglob results and rerun
 echo "Third input" > inp3.txt
@@ -45,8 +45,8 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ ! -f out1.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ ! -f out1.txt ]] || exit 1
 grep Second inp2.txt
 grep Third inp3.txt
 grep Second out2.txt
@@ -74,9 +74,9 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ ! -f out1.txt ]] || exit -1
-[[ ! -f out2.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ ! -f out1.txt ]] || exit 1
+[[ ! -f out2.txt ]] || exit 1
 grep Third inp3.txt
 grep Fourth inp4.txt
 grep Third out3.txt

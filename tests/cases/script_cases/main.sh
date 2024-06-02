@@ -24,8 +24,8 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f helper.py ]] || exit -1
-[[ -f work.py ]] || exit -1
-[[ -f data-5.0.txt ]] || exit -1
-[[ -f data+7.0.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f helper.py ]] || exit 1
+[[ -f work.py ]] || exit 1
+[[ -f data-5.0.txt ]] || exit 1
+[[ -f data+7.0.txt ]] || exit 1

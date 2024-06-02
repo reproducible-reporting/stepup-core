@@ -24,10 +24,10 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f single.txt ]] || exit -1
-[[ -f double.txt ]] || exit -1
-[[ -f quadruple.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f single.txt ]] || exit 1
+[[ -f double.txt ]] || exit 1
+[[ -f quadruple.txt ]] || exit 1
 
 # Run the plan.
 rm -r .stepup/logs
@@ -50,7 +50,7 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f single.txt ]] || exit -1
-[[ -f double.txt ]] || exit -1
-[[ -f quadruple.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f single.txt ]] || exit 1
+[[ -f double.txt ]] || exit 1
+[[ -f quadruple.txt ]] || exit 1

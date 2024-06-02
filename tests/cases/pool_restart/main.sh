@@ -24,8 +24,8 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f bar.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f bar.txt ]] || exit 1
 
 # Remove the output and run stepup again.
 # Only the echo will be restart, not the plan defining the pool.
@@ -50,5 +50,5 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f bar.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f bar.txt ]] || exit 1

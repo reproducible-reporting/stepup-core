@@ -25,7 +25,7 @@ graph("current_graph_01")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
+[[ -f plan.py ]] || exit 1
 grep AAAA current_variables.txt
 cp current_variables.txt current_variables_01.txt
 
@@ -40,7 +40,7 @@ graph("current_graph_02")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
+[[ -f plan.py ]] || exit 1
 grep AAAA current_variables.txt
 grep BBBB current_variables.txt
 cp current_variables.txt current_variables_02.txt
@@ -60,7 +60,7 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
+[[ -f plan.py ]] || exit 1
 grep AAAA current_variables.txt
 grep BBBB current_variables.txt
 cp current_variables.txt current_variables_03.txt
@@ -87,7 +87,7 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
+[[ -f plan.py ]] || exit 1
 grep AAAA current_variables.txt
 grep CCCC current_variables.txt
 cp current_variables.txt current_variables_04.txt
@@ -111,7 +111,7 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
+[[ -f plan.py ]] || exit 1
 grep -v AAAA current_variables.txt
 grep CCCC current_variables.txt
 cp current_variables.txt current_variables_05.txt
@@ -138,7 +138,7 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
+[[ -f plan.py ]] || exit 1
 grep DDDD current_variables.txt
 grep CCCC current_variables.txt
 cp current_variables.txt current_variables_06.txt

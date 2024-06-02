@@ -25,8 +25,8 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f output.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f output.txt ]] || exit 1
 grep first output.txt
 
 # Run the plan with the second input.
@@ -51,6 +51,6 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f output.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f output.txt ]] || exit 1
 grep second output.txt

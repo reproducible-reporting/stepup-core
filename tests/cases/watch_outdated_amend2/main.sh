@@ -22,12 +22,12 @@ graph("current_graph_01")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f inp1.txt ]] || exit -1
-[[ -f subs1.txt ]] || exit -1
-[[ -f subs2.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f inp1.txt ]] || exit 1
+[[ -f subs1.txt ]] || exit 1
+[[ -f subs2.txt ]] || exit 1
 grep conv1.txt subs2.txt
-[[ -f subs3.txt ]] || exit -1
+[[ -f subs3.txt ]] || exit 1
 grep conv1.txt subs3.txt
 
 # Change subs.txt and rerun.
@@ -48,11 +48,11 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ ! -f inp1.txt ]] || exit -1
-[[ -f inp2.txt ]] || exit -1
-[[ -f subs1.txt ]] || exit -1
-[[ -f subs2.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ ! -f inp1.txt ]] || exit 1
+[[ -f inp2.txt ]] || exit 1
+[[ -f subs1.txt ]] || exit 1
+[[ -f subs2.txt ]] || exit 1
 grep conv2.txt subs2.txt
-[[ -f subs3.txt ]] || exit -1
+[[ -f subs3.txt ]] || exit 1
 grep conv2.txt subs3.txt

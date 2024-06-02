@@ -21,9 +21,9 @@ graph("current_graph_01")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f static/sub/foo.txt ]] || exit -1
-[[ -f copy.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f static/sub/foo.txt ]] || exit 1
+[[ -f copy.txt ]] || exit 1
 
 # Remove the file foo.txt and verify the consequences
 cp plan_02.py plan.py
@@ -37,9 +37,9 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f static/sub/foo.txt ]] || exit -1
-[[ ! -f copy.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f static/sub/foo.txt ]] || exit 1
+[[ ! -f copy.txt ]] || exit 1
 
 # Wait for background processes, if any.
 wait

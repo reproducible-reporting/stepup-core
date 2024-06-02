@@ -23,9 +23,9 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f original.txt ]] || exit -1
-[[ -f copy.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f original.txt ]] || exit 1
+[[ -f copy.txt ]] || exit 1
 
 # Restart StepUp after removing the output.
 rm copy.txt
@@ -48,6 +48,6 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f original.txt ]] || exit -1
-[[ -f copy.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f original.txt ]] || exit 1
+[[ -f copy.txt ]] || exit 1

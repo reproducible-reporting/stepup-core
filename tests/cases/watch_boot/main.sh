@@ -21,9 +21,9 @@ graph("current_graph_01")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f first.txt ]] || exit -1
-[[ -f final.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f first.txt ]] || exit 1
+[[ -f final.txt ]] || exit 1
 
 # Modify the plan.py script and rerun with the modified plan.py.
 cp -a plan_02.py plan.py
@@ -40,7 +40,7 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ ! -f first.txt ]] || exit -1
-[[ -f second.txt ]] || exit -1
-[[ -f final.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ ! -f first.txt ]] || exit 1
+[[ -f second.txt ]] || exit 1
+[[ -f final.txt ]] || exit 1

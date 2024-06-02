@@ -21,10 +21,10 @@ graph("current_graph_01")
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f original.txt ]] || exit -1
-[[ -f data.txt ]] || exit -1
-[[ -f analyzed.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f original.txt ]] || exit 1
+[[ -f data.txt ]] || exit 1
+[[ -f analyzed.txt ]] || exit 1
 
 # Remove the data file and run again
 rm data.txt
@@ -38,9 +38,9 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f original.txt ]] || exit -1
-[[ -f analyzed.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f original.txt ]] || exit 1
+[[ -f analyzed.txt ]] || exit 1
 
 # Wait for background processes, if any.
 wait
@@ -64,10 +64,10 @@ join()
 EOD
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f original.txt ]] || exit -1
-[[ -f data.txt ]] || exit -1
-[[ -f analyzed.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f original.txt ]] || exit 1
+[[ -f data.txt ]] || exit 1
+[[ -f analyzed.txt ]] || exit 1
 
 # Wait for background processes, if any.
 wait

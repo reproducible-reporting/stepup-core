@@ -25,8 +25,8 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f output.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f output.txt ]] || exit 1
 
 # Run the example, version 2
 cp plan_02.py plan.py
@@ -50,5 +50,5 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f output.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f output.txt ]] || exit 1

@@ -20,10 +20,10 @@ wait()
 graph("current_graph_01")
 EOD
 
-[[ -f initial.txt ]] || exit -1
-[[ -f input.txt ]] || exit -1
-[[ ! -f output.txt ]] || exit -1
-[[ ! -f final.txt ]] || exit -1
+[[ -f initial.txt ]] || exit 1
+[[ -f input.txt ]] || exit 1
+[[ ! -f output.txt ]] || exit 1
+[[ ! -f final.txt ]] || exit 1
 
 # Modify a few things and rerun
 cp plan_unblocked.py plan.py
@@ -40,8 +40,8 @@ EOD
 wait
 
 # Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f initial.txt ]] || exit -1
-[[ -f input.txt ]] || exit -1
-[[ -f output.txt ]] || exit -1
-[[ -f final.txt ]] || exit -1
+[[ -f plan.py ]] || exit 1
+[[ -f initial.txt ]] || exit 1
+[[ -f input.txt ]] || exit 1
+[[ -f output.txt ]] || exit 1
+[[ -f final.txt ]] || exit 1
