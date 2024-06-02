@@ -5,6 +5,7 @@
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/stepup)
 ![GPL-3 License](https://img.shields.io/github/license/reproducible-reporting/stepup-core)
 [![CodeFactor](https://www.codefactor.io/repository/github/tovrstra/stepup-core/badge)](https://www.codefactor.io/repository/github/tovrstra/stepup-core)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=reproducible-reporting_stepup-core&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=reproducible-reporting_stepup-core)
 
 # StepUp Core
 

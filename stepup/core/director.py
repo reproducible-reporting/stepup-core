@@ -543,7 +543,7 @@ def get_socket() -> str:
                     message = f"File {path_director_log} does not start with SOCKET line."
         else:
             message = f"File {path_director_log} not found."
-        if secs == 0.0:
+        if secs == 0:
             print("Trying to contact StepUp director process.", file=sys.stderr)
         secs += 0.1
         print(f"{message}  Waiting {secs:.1f} seconds.", file=sys.stderr)

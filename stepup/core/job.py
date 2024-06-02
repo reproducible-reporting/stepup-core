@@ -142,4 +142,6 @@ class RunJob(Job):
         return worker.run_job(self._step_key)
 
     def finalize(self, _, scheduler: "Scheduler", workflow: "Workflow"):
+        # When a run job has completed, it does not need to create a follow-up job.
+        # This is the last possible job for a given step to run.
         pass

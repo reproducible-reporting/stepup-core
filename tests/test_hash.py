@@ -95,5 +95,5 @@ def test_hash_symbolic_link_dir(path_tmp: Path):
     path_symlink = path_tmp / "link"
     path_symlink.symlink_to("sub", target_is_directory=True)
     with pytest.raises(IOError):
-        assert compute_file_digest(path_symlink)
+        compute_file_digest(path_symlink)
     assert compute_file_digest(path_symlink, follow_symlinks=False) == blake2b(b"sub").digest()
