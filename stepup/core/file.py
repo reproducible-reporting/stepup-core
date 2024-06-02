@@ -153,12 +153,13 @@ class File(Node):
 
         In case of a directory, also notify the watcher by putting it on the dir_queue.
         """
-        for step_key in sorted(workflow.get_consumers(self.key, kind="step")):
-            step = workflow.get_step(step_key)
-            step.validate_amended = True
-            step.queue_if_appropriate(workflow)
-        if self.path.endswith("/"):
-            workflow.dir_queue.put_nowait((False, self.path))
+        if self.get_state(workflow) in [FileState.STATIC, FileState.BUILT]:
+            for step_key in sorted(workflow.get_consumers(self.key, kind="step")):
+                step = workflow.get_step(step_key)
+                step.validate_amended = True
+                step.queue_if_appropriate(workflow)
+            if self._path.endswith("/"):
+                workflow.dir_queue.put_nowait((False, self.path))
 
     #
     # Watch phase
@@ -169,6 +170,8 @@ class File(Node):
 
         Hashes are not removed in case the file is restored by the user with the same contents.
         """
+        if self._path.endswith("/"):
+            workflow.dir_queue.put_nowait((True, self._path))
         state = self.get_state(workflow)
         if state == FileState.MISSING:
             raise ValueError(f"Cannot delete a path that is already MISSING: {self._path}")

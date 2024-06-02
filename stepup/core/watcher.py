@@ -153,7 +153,7 @@ class Watcher:
         self.files_changed.clear()
         self.interrupt.clear()
 
-    async def record_change(self, change, path):
+    async def record_change(self, change: Change, path: Path):
         """Record a single event taken from the change_queue."""
         if change == Change.DELETED and path not in self.deleted:
             if self.workflow.is_relevant(path):
@@ -167,6 +167,13 @@ class Watcher:
                 self.deleted.discard(path)
                 self.updated.add(path)
                 self.files_changed.set()
+                # When a directory is added, create a watcher early,
+                # to catch events in this directory.
+                # All files already present are also considered to be updated.
+                if path.endswith("/"):
+                    self.dir_queue.put_nowait((False, path))
+                    for sub_path in path.iterdir():
+                        await self.record_change(Change.UPDATED, sub_path)
 
 
 class QueueEventHandler(FileSystemEventHandler):
@@ -188,17 +195,22 @@ class QueueEventHandler(FileSystemEventHandler):
     def on_any_event(self, event: FileSystemEvent):
         """Process any event received from the watchdog observer."""
         if isinstance(event, FileSystemMovedEvent):
-            self.put_event(Change.DELETED, event.src_path)
-            self.put_event(Change.UPDATED, event.dest_path)
-        elif event.event_type in ["created", "modified", "closed"]:
-            self.put_event(Change.UPDATED, event.src_path)
+            self.put_event(Change.DELETED, event.src_path, event.is_directory)
+            self.put_event(Change.UPDATED, event.dest_path, event.is_directory)
+        elif event.event_type == "created":
+            self.put_event(Change.UPDATED, event.src_path, event.is_directory)
+        elif event.event_type in ["modified", "closed"]:
+            if not event.is_directory:
+                self.put_event(Change.UPDATED, event.src_path, event.is_directory)
         elif event.event_type == "deleted":
-            self.put_event(Change.DELETED, event.src_path)
+            self.put_event(Change.DELETED, event.src_path, event.is_directory)
         elif event.event_type != "opened":
             raise NotImplementedError(f"Cannot handle event: {event}")
 
-    def put_event(self, change: Change, path: str):
+    def put_event(self, change: Change, path: str, is_directory: bool):
         """Put an event on the queue, includes translation of abs/rel path."""
         path = myabsolute(path) if self._is_absolute else myrelpath(path)
+        if is_directory:
+            path = path / ""
         # The event calls from watch dog live in a separate thread ...
         self._loop.call_soon_threadsafe(self._queue.put_nowait, (change, path))

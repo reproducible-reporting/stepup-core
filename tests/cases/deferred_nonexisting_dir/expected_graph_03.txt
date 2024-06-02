@@ -1,0 +1,68 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:message.txt
+            supplies   file:plan.py
+            supplies   file:sub/
+            supplies   step:./plan.py
+            supplies   step:cp -aT sub/message.txt message.txt
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   dg:'sub/**'
+             creates   step:cp -aT sub/message.txt message.txt
+
+dg:'sub/**'
+          created by   step:./plan.py
+             creates   file:sub/
+             creates   file:sub/message.txt
+
+step:cp -aT sub/message.txt message.txt
+             workdir = ./
+             command = cp -aT sub/message.txt message.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:sub/message.txt
+             creates   file:message.txt
+            supplies   file:message.txt
+
+file:sub/message.txt
+                path = sub/message.txt
+               state = STATIC
+          created by   dg:'sub/**'
+            consumes   file:sub/
+            supplies   step:cp -aT sub/message.txt message.txt
+
+file:sub/
+                path = sub/
+               state = STATIC
+          created by   dg:'sub/**'
+            consumes   file:./
+            supplies   file:sub/message.txt
+
+file:message.txt
+                path = message.txt
+               state = BUILT
+          created by   step:cp -aT sub/message.txt message.txt
+            consumes   file:./
+            consumes   step:cp -aT sub/message.txt message.txt

@@ -1,0 +1,144 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   file:sub/
+            supplies   step:./plan.py
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:sub/
+             creates   file:sub/plan.py
+             creates   step:./plan.py  # wd=sub/
+
+file:sub/
+                path = sub/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   file:sub/inp1.txt
+            supplies   file:sub/inp2.txt
+            supplies   file:sub/inp3.txt
+            supplies   file:sub/out1.txt
+            supplies   file:sub/out2.txt
+            supplies   file:sub/out3.txt
+            supplies   file:sub/plan.py
+            supplies   step:./plan.py  # wd=sub/
+            supplies   step:cp -aT inp1.txt out1.txt  # wd=sub/
+            supplies   step:cp -aT inp2.txt out2.txt  # wd=sub/
+            supplies   step:cp -aT inp3.txt out3.txt  # wd=sub/
+
+file:sub/plan.py
+                path = sub/plan.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:sub/
+            supplies   step:./plan.py  # wd=sub/
+
+step:./plan.py  # wd=sub/
+             workdir = sub/
+             command = ./plan.py
+               state = SUCCEEDED
+                 ngm = ['sub/inp${*idx}.txt'] {'idx': '?'}
+       extended hash = yes
+          created by   step:./plan.py
+            consumes   file:sub/
+            consumes   file:sub/plan.py
+             creates   file:sub/inp1.txt
+             creates   file:sub/inp2.txt
+             creates   file:sub/inp3.txt
+             creates   step:cp -aT inp1.txt out1.txt  # wd=sub/
+             creates   step:cp -aT inp2.txt out2.txt  # wd=sub/
+             creates   step:cp -aT inp3.txt out3.txt  # wd=sub/
+
+file:sub/inp1.txt
+                path = sub/inp1.txt
+               state = STATIC
+          created by   step:./plan.py  # wd=sub/
+            consumes   file:sub/
+            supplies   step:cp -aT inp1.txt out1.txt  # wd=sub/
+
+file:sub/inp2.txt
+                path = sub/inp2.txt
+               state = STATIC
+          created by   step:./plan.py  # wd=sub/
+            consumes   file:sub/
+            supplies   step:cp -aT inp2.txt out2.txt  # wd=sub/
+
+step:cp -aT inp1.txt out1.txt  # wd=sub/
+             workdir = sub/
+             command = cp -aT inp1.txt out1.txt
+               state = SUCCEEDED
+          created by   step:./plan.py  # wd=sub/
+            consumes   file:sub/
+            consumes   file:sub/inp1.txt
+             creates   file:sub/out1.txt
+            supplies   file:sub/out1.txt
+
+file:sub/out1.txt
+                path = sub/out1.txt
+               state = BUILT
+          created by   step:cp -aT inp1.txt out1.txt  # wd=sub/
+            consumes   file:sub/
+            consumes   step:cp -aT inp1.txt out1.txt  # wd=sub/
+
+step:cp -aT inp2.txt out2.txt  # wd=sub/
+             workdir = sub/
+             command = cp -aT inp2.txt out2.txt
+               state = SUCCEEDED
+          created by   step:./plan.py  # wd=sub/
+            consumes   file:sub/
+            consumes   file:sub/inp2.txt
+             creates   file:sub/out2.txt
+            supplies   file:sub/out2.txt
+
+file:sub/out2.txt
+                path = sub/out2.txt
+               state = BUILT
+          created by   step:cp -aT inp2.txt out2.txt  # wd=sub/
+            consumes   file:sub/
+            consumes   step:cp -aT inp2.txt out2.txt  # wd=sub/
+
+file:sub/inp3.txt
+                path = sub/inp3.txt
+               state = STATIC
+          created by   step:./plan.py  # wd=sub/
+            consumes   file:sub/
+            supplies   step:cp -aT inp3.txt out3.txt  # wd=sub/
+
+step:cp -aT inp3.txt out3.txt  # wd=sub/
+             workdir = sub/
+             command = cp -aT inp3.txt out3.txt
+               state = SUCCEEDED
+       extended hash = yes
+          created by   step:./plan.py  # wd=sub/
+            consumes   file:sub/
+            consumes   file:sub/inp3.txt
+             creates   file:sub/out3.txt
+            supplies   file:sub/out3.txt
+
+file:sub/out3.txt
+                path = sub/out3.txt
+               state = BUILT
+          created by   step:cp -aT inp3.txt out3.txt  # wd=sub/
+            consumes   file:sub/
+            consumes   step:cp -aT inp3.txt out3.txt  # wd=sub/

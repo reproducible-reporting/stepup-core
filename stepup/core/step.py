@@ -692,7 +692,7 @@ class Step(Node):
             workflow.defer_glob(self.key, patterns)
         # Mark the step as succeeded and mark outputs as BUILT
         self.set_state(workflow, StepState.SUCCEEDED)
-        for file_key in workflow.get_consumers(self.key, kind="file"):
+        for file_key in workflow.get_products(self.key, kind="file"):
             file = workflow.get_file(file_key)
             if file.get_state(workflow) == FileState.PENDING:
                 file.set_state(workflow, FileState.BUILT)

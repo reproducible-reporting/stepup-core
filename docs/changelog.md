@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Effectively make watching recursive when a directory is added that is known in the workflow.
+
+
 ## [1.2.4] - 2024-05-27
 
 ### Changed
