@@ -5,6 +5,7 @@ trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 xargs rm -rvf < .gitignore
 
 # Run the plan for the first time.
+mkdir -p static
 echo first > static/foo.txt
 stepup -e -w 1 plan.py & # > current_stdout_01.txt &
 
