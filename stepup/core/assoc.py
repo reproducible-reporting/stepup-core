@@ -180,11 +180,11 @@ class AssocView(Generic[S, D]):
                 raise KeyError("No edges found to be discarded.")
             return
         if dst is NOTHING:
-            for dst in dst_set:
-                src_set = self._inverse._dict[dst]
+            for other_dst in dst_set:
+                src_set = self._inverse._dict[other_dst]
                 src_set.discard(src)
                 if len(src_set) == 0:
-                    del self._inverse._dict[dst]
+                    del self._inverse._dict[other_dst]
             del self._dict[src]
         elif dst not in dst_set:
             if insist:

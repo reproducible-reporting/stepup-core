@@ -213,7 +213,7 @@ def parse_args():
     parser.add_argument("plan_py", default="plan.py", help="Top-level build script", nargs="?")
     parser.add_argument(
         "--root",
-        default=os.getenv("STEPUP_ROOT", Path.cwd()),
+        default=os.getenv("STEPUP_ROOT", os.getcwd()),
         help="Directory containing top-level plan.py [default=%(default)s]",
     )
     parser.add_argument(

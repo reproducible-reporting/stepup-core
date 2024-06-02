@@ -140,7 +140,6 @@ def parse_args(script_path: str) -> argparse.Namespace:
 
     # run
     run_parser = sub_parsers.add_parser("run", description="Print all ways to run the script.")
-    # run_parser.set_defaults(cmd=Action.RUN)
     run_parser.add_argument(
         "string",
         default="",

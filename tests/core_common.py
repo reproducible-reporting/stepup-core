@@ -35,7 +35,6 @@ class EchoHandler:
 
     @allow_rpc
     async def echo(self, msg: str, delay: float = 0.0) -> str:
-        # print("ECHO", file=sys.stderr)
         if delay > 0:
             await asyncio.sleep(delay)
         return f"{self.name}: {msg}"
@@ -50,7 +49,6 @@ class EchoHandler:
 
     @allow_rpc
     def shutdown(self):
-        # print("SHUTDOWN", file=sys.stderr)
         self.stop_event.set()
 
     def not_allowed(self):
