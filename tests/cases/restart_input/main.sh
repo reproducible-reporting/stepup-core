@@ -4,7 +4,8 @@ set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 xargs rm -rvf < .gitignore
 
-# Run the example
+# Run the plan with the first input.
+echo first > input.txt
 stepup -w 1 plan.py & # > current_stdout_01.txt &
 
 # Wait for the director and get its socket.
@@ -12,7 +13,7 @@ export STEPUP_DIRECTOR_SOCKET=$(
   python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
 )
 
-# Get the graph after completion of the pending steps.
+# Wait for StepUp to complete
 python3 - << EOD
 from stepup.core.interact import *
 wait()
@@ -20,23 +21,18 @@ graph("current_graph_01")
 join()
 EOD
 
-# Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f sub/plan.py ]] || exit -1
-[[ -f sub/inp1.txt ]] || exit -1
-[[ -f sub/inp2.txt ]] || exit -1
-[[ -f sub/out1.txt ]] || exit -1
-[[ -f sub/out2.txt ]] || exit -1
-grep one sub/out1.txt
-grep two sub/out2.txt
-
 # Wait for background processes, if any.
 wait
 
-# Restart with one more input
-echo three > sub/inp3.txt
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit -1
+[[ -f output.txt ]] || exit -1
+grep first output.txt
+
+# Run the plan with the second input.
+echo second > input.txt
 rm -r .stepup/logs
-stepup -e -w 1 plan.py & # > current_stdout_02.txt &
+stepup -w 1 plan.py & # > current_stdout_02.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -51,18 +47,10 @@ graph("current_graph_02")
 join()
 EOD
 
-# Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit -1
-[[ -f sub/plan.py ]] || exit -1
-[[ -f sub/inp1.txt ]] || exit -1
-[[ -f sub/inp2.txt ]] || exit -1
-[[ -f sub/inp3.txt ]] || exit -1
-[[ -f sub/out1.txt ]] || exit -1
-[[ -f sub/out2.txt ]] || exit -1
-[[ -f sub/out3.txt ]] || exit -1
-grep one sub/out1.txt
-grep two sub/out2.txt
-grep three sub/out3.txt
-
 # Wait for background processes, if any.
 wait
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit -1
+[[ -f output.txt ]] || exit -1
+grep second output.txt

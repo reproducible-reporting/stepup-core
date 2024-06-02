@@ -7,13 +7,16 @@ Same step hash       extended, digest 65de00f1, inp_digset 65de00f1
 Same inp hash        ./
 Same inp hash        plan.py
 ────────────────────────────────────────────────────────────────────────────────
-      SKIP │ cp -aT static/foo.txt bar.txt
-───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       extended, digest 40686cd4, inp_digset 9d394a1e
+    NOSKIP │ cp -aT static/foo.txt bar.txt
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   extended, digest 40686cd4 ➜ 6479f342, inp_digset 9d394a1e ➜ a5e3d119
+Modified inp hash    static/foo.txt (digest 5d470882 ➜ 4e2397d6, size 6 ➜ 7)
+────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
-Same inp hash        static/foo.txt
 Same out hash        bar.txt
 ────────────────────────────────────────────────────────────────────────────────
+     START │ cp -aT static/foo.txt bar.txt
+   SUCCESS │ cp -aT static/foo.txt bar.txt
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
   DIRECTOR │ Stopping workers.

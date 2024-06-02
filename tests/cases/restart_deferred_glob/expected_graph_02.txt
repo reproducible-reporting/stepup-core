@@ -15,10 +15,11 @@ file:./
                 path = ./
                state = STATIC
           created by   root:
+            supplies   file:bar.txt
             supplies   file:plan.py
             supplies   file:static/
             supplies   step:./plan.py
-            supplies   step:cat static/foo.txt
+            supplies   step:cp -aT static/foo.txt bar.txt
 
 step:./plan.py
              workdir = ./
@@ -29,28 +30,30 @@ step:./plan.py
             consumes   file:./
             consumes   file:plan.py
              creates   dg:'static/**'
-             creates   step:cat static/foo.txt
+             creates   step:cp -aT static/foo.txt bar.txt
 
 dg:'static/**'
           created by   step:./plan.py
              creates   file:static/
              creates   file:static/foo.txt
 
-step:cat static/foo.txt
+step:cp -aT static/foo.txt bar.txt
              workdir = ./
-             command = cat static/foo.txt
+             command = cp -aT static/foo.txt bar.txt
                state = SUCCEEDED
        extended hash = yes
           created by   step:./plan.py
             consumes   file:./
             consumes   file:static/foo.txt
+             creates   file:bar.txt
+            supplies   file:bar.txt
 
 file:static/foo.txt
                 path = static/foo.txt
                state = STATIC
           created by   dg:'static/**'
             consumes   file:static/
-            supplies   step:cat static/foo.txt
+            supplies   step:cp -aT static/foo.txt bar.txt
 
 file:static/
                 path = static/
@@ -58,3 +61,10 @@ file:static/
           created by   dg:'static/**'
             consumes   file:./
             supplies   file:static/foo.txt
+
+file:bar.txt
+                path = bar.txt
+               state = BUILT
+          created by   step:cp -aT static/foo.txt bar.txt
+            consumes   file:./
+            consumes   step:cp -aT static/foo.txt bar.txt
