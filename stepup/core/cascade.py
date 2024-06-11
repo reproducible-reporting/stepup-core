@@ -274,7 +274,8 @@ class Cascade:
             if key == "vacuum:":
                 continue
             creator_key = self.get_creator(key)
-            assert creator_key is not None
+            if creator_key is None:
+                raise AssertionError(f"Node without creator: {key}")
             if creator_key == "vacuum:":
                 lines.append(f"({key})")
             else:
@@ -336,7 +337,8 @@ class Cascade:
         self, key: str, kind: str | None = None, include_orphans: bool = False
     ) -> list[str]:
         """Return other keys created by key."""
-        assert kind is None or kind in self.node_classes
+        if not (kind is None or kind in self.node_classes):
+            raise ValueError("Kind must be one of: " + " ".join(self.node_classes))
         return sorted(
             other
             for other in self.products.get(key, ())
@@ -348,7 +350,8 @@ class Cascade:
         self, key: str, kind: str | None = None, include_orphans: bool = False
     ) -> list[str]:
         """Other keys that require key, only those that are still fresh."""
-        assert kind is None or kind in self.node_classes
+        if not (kind is None or kind in self.node_classes):
+            raise ValueError("Kind must be one of: " + " ".join(self.node_classes))
         return sorted(
             other
             for other in self.suppliers.get(key, ())
@@ -360,7 +363,8 @@ class Cascade:
         self, key: str, kind: str | None = None, include_orphans: bool = False
     ) -> list[str]:
         """Other keys required by key, only those that are still fresh."""
-        assert kind is None or kind in self.node_classes
+        if not (kind is None or kind in self.node_classes):
+            raise ValueError("Kind must be one of: " + " ".join(self.node_classes))
         return sorted(
             other
             for other in self.consumers.get(key, ())
@@ -369,7 +373,8 @@ class Cascade:
         )
 
     def get_nodes(self, kind: str | None = None, include_orphans: bool = False):
-        assert kind is None or kind in self.node_classes
+        if not (kind is None or kind in self.node_classes):
+            raise ValueError("Kind must be one of: " + " ".join(self.node_classes))
         keys = self.nodes if kind is None else self.kinds.get(kind, ())
         keys = sorted(key for key in keys if (include_orphans or not self.is_orphan(key)))
         return [self.nodes[key] for key in keys]
@@ -457,8 +462,9 @@ class Cascade:
         if old is not None:
             if not self.is_orphan(node.key):
                 raise ValueError("Node already exists and is not orphan.")
-            # Sanity check: An orphan node cannot be a creator of other nodes.
-            assert node.key not in self.products
+            # Sanity check
+            if node.key in self.products:
+                raise AssertionError("An orphan node cannot be a creator of other nodes")
             # Remove "vacuum:" creator.
             self.creators.discard(node.key)
             # Old suppliers are discarded because they are defined after creating a node.

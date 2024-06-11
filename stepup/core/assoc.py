@@ -75,7 +75,8 @@ class AssocView(Generic[S, D]):
     def __getitem__(self, src: S) -> D | set[D]:
         dsts = self._dict[src]
         if self.max == 1:
-            assert len(dsts) == 1
+            if len(dsts) != 1:
+                raise AssertionError("Internal inconsistency in Assoc: multiple dst with max=1")
             return next(iter(dsts))
         return frozenset(dsts)
 
@@ -114,7 +115,8 @@ class AssocView(Generic[S, D]):
         if dsts is None:
             return default
         if self.max == 1:
-            assert len(dsts) == 1
+            if len(dsts) != 1:
+                raise AssertionError("Internal inconsistency in Assoc: multiple dst with max=1")
             return next(iter(dsts))
         return frozenset(dsts)
 

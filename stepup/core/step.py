@@ -345,7 +345,8 @@ class Step(Node):
 
     def imply_mandatory(self, workflow: "Workflow"):
         """Make this step Mandatory.IMPLIED and propagate this to its suppliers."""
-        assert self.get_mandatory(workflow) == Mandatory.NO
+        if self.get_mandatory(workflow) != Mandatory.NO:
+            raise AssertionError("imply_mandatory called for a step that is already mandatory.")
         self.set_mandatory(workflow, Mandatory.IMPLIED)
         self.imply_mandatory_suppliers(workflow)
         self.queue_if_appropriate(workflow)
@@ -354,7 +355,10 @@ class Step(Node):
         self, workflow: "Workflow", file_keys: Collection[str] | None = None
     ):
         """Make supplying steps Mandatory.IMPLIED (if they were Mandatory.NO)."""
-        assert self.get_mandatory(workflow) != Mandatory.NO
+        if self.get_mandatory(workflow) == Mandatory.NO:
+            raise AssertionError(
+                "imply_mandatory_suppliers called for a step that is not mandatory."
+            )
         if file_keys is None:
             file_keys = workflow.get_suppliers(self.key, kind="file")
         step_keys = set()
@@ -368,13 +372,19 @@ class Step(Node):
                 step.imply_mandatory(workflow)
 
     def undo_mandatory(self, workflow: "Workflow"):
-        assert self.get_mandatory(workflow) == Mandatory.IMPLIED
+        if self.get_mandatory(workflow) != Mandatory.IMPLIED:
+            raise AssertionError(
+                "undo_mandatory called for a step that is not implied to be mandatory."
+            )
         self.undo_mandatory_suppliers(workflow)
         self.set_mandatory(workflow, Mandatory.NO)
 
     def undo_mandatory_suppliers(self, workflow: "Workflow"):
         """Make supplying steps Mandatory.NO (if they were Mandatory.IMPLIED)."""
-        assert self.get_mandatory(workflow) != Mandatory.NO
+        if self.get_mandatory(workflow) == Mandatory.NO:
+            raise AssertionError(
+                "undo_mandatory_suppliers called for a step that is not mandatory."
+            )
         step_keys = set()
         for file_key in workflow.get_suppliers(self.key, kind="file"):
             creator_key = workflow.get_creator(file_key)
@@ -527,7 +537,11 @@ class Step(Node):
         self._amended_suppliers.clear()
         for consumer_key in sorted(self._amended_consumers):
             consumer = workflow.get_file(consumer_key)
-            assert consumer.get_state(workflow) in (FileState.PENDING, FileState.VOLATILE)
+            file_state = consumer.get_state(workflow)
+            if file_state not in (FileState.PENDING, FileState.VOLATILE):
+                raise AssertionError(
+                    f"Consumer of step is {file_state.name} when cleaning step before run."
+                )
             workflow.suppliers.discard(consumer_key, self.key, insist=True)
             workflow.orphan(consumer_key)
         self._amended_consumers.clear()
@@ -555,7 +569,8 @@ class Step(Node):
         """
         self._hash = new_hash
         if len(self.reschedule_due_to) > 0:
-            assert new_hash is not None
+            if new_hash is None:
+                raise ValueError("Step rescheduled without new_hash")
             self.set_state(workflow, StepState.PENDING)
             # The missing inputs may have appeared by the time the step ended,
             # so we need to check if we can put the step back on the queue right away.
@@ -563,7 +578,8 @@ class Step(Node):
             self.queue_if_appropriate(workflow)
             return missing
         if success:
-            assert new_hash is not None
+            if new_hash is None:
+                raise ValueError("Step succeeded without new_hash")
             self.set_state(workflow, StepState.SUCCEEDED)
             for file_key in workflow.get_products(self._key, kind="file"):
                 file = workflow.get_file(file_key)

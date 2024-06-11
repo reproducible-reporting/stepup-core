@@ -129,7 +129,8 @@ class WorkerClient:
         # Compute the hash and check for changes in inputs
         await self.new_step(step)
         new_step_hash = await self.update_hashes(step, log_missing_out=False)
-        assert new_step_hash is not None
+        if new_step_hash is None:
+            raise AssertionError("update_hashes returned None")
         if step.hash.inp_digest != new_step_hash.inp_digest:
             # Inputs have changed, so must run.
             await self.client.call.outdated_amended(step.hash, new_step_hash)
@@ -158,13 +159,16 @@ class WorkerClient:
             True if skipping failed and the steps needs to be rescheduled for running immediately.
         """
         step = self.workflow.get_step(step_key)
-        assert step.hash is not None
-        assert step.recording is not None
+        if step.hash is None:
+            raise AssertionError("Step without hash cannot be replayed")
+        if step.recording is None:
+            raise AssertionError("Step without recording cannot be replayed")
         await self.new_step(step)
         if not await self.inputs_valid(step):
             return False
         new_step_hash = await self.update_hashes(step, log_missing_out=True)
-        assert new_step_hash is not None
+        if new_step_hash is None:
+            raise AssertionError("update_hashes returned None")
         # If files changes or outputs are missing, skipping is not possible
         success = await self.client.call.get_success()
         if step.hash.digest != new_step_hash.digest or not success:
@@ -224,7 +228,8 @@ class WorkerClient:
         inp_paths = step.get_inp_paths(self.workflow, state=True)
         if not await self.client.call.inputs_valid(inp_paths):
             rescheduled = step.completed(self.workflow, False, None)
-            assert not rescheduled
+            if rescheduled:
+                raise AssertionError("Step rescheduled while inputs are invalid.")
             await self.reporter.update_step_counts(self.workflow.get_step_counters())
             await self.client.call.report()
             return False
@@ -466,7 +471,10 @@ class WorkerHandler:
         pages = []
         if self.explain_rerun:
             page_change, page_same = compare_step_hashes(step_hash, step_hash)
-            assert len(page_change) == 0
+            if len(page_change) > 0:
+                raise AssertionError(
+                    "A skipped step cannot have changes in inputs, env vars or outputs."
+                )
             if len(page_same) > 0:
                 pages.append(("No changes observed", page_same))
         await self.reporter("SKIP", self.step.description, pages)
