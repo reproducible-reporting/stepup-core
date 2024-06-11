@@ -272,27 +272,28 @@ async def report_completion(workflow: Workflow, scheduler: Scheduler, reporter: 
             if step.workdir != ".":
                 lines.append(f"Working directory     {step.workdir}")
 
-            static_paths = step.get_static_paths(workflow, state=True)
             prefix = "Declares"
-            for path, state in static_paths:
-                lines.append(f"{prefix}      {state.name:>8s}  {path}")
+            for path in step.get_static_paths(workflow):
+                lines.append(f"{prefix}        STATIC  {path}")
                 prefix = "        "
 
-            inp_paths = step.get_inp_paths(workflow, state=True, orphan=True)
+            prefix = "Declares"
+            for path in step.get_missing_paths(workflow):
+                lines.append(f"{prefix}       MISSING  {path}")
+                prefix = "        "
+
             prefix = "Inputs"
-            for path, state, orphan in inp_paths:
+            for path, state, orphan in step.get_inp_paths(workflow, state=True, orphan=True):
                 path_fmt = f"({path})" if orphan else path
                 lines.append(f"{prefix}      {state.name:>8s}  {path_fmt}")
                 prefix = "      "
 
-            out_paths = step.get_out_paths(workflow, state=True)
             prefix = "Outputs"
-            for path, state in out_paths:
+            for path, state in step.get_out_paths(workflow, state=True):
                 lines.append(f"{prefix}     {state.name:>8s}  {path}")
                 prefix = "       "
 
-            vol_paths = step.get_vol_paths(workflow)
-            for path in vol_paths:
+            for path in step.get_vol_paths(workflow):
                 lines.append(f"{prefix}     VOLATILE  {path}")
                 prefix = "       "
 

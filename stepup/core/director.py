@@ -304,9 +304,33 @@ class DirectorHandler:
 
     @allow_rpc
     def defer(self, creator_key: str, patterns: list[str]):
-        """Register a deferred glob."""
+        """Register a deferred glob.
+
+        Returns
+        -------
+        to_check
+            A list of paths to check and make static if valid.
+        """
         with self._dissolve_if_graph_changed():
-            self._workflow.defer_glob(creator_key, patterns)
+            return self._workflow.defer_glob(creator_key, patterns)
+
+    @allow_rpc
+    def filter_deferred(self, paths: list[str]) -> list[str]:
+        """Test all paths against deferred globs and return matches.
+
+        Returns
+        -------
+        to_check
+            A list of paths whose existence and validity needs to be checked.
+        """
+        with self._dissolve_if_graph_changed():
+            return self._workflow.filter_deferred(paths)
+
+    @allow_rpc
+    def confirm_deferred(self, paths: list[str]):
+        """Mark missing files as static because they were found to be present."""
+        with self._dissolve_if_graph_changed():
+            self._workflow.confirm_deferred(paths)
 
     @allow_rpc
     def step(

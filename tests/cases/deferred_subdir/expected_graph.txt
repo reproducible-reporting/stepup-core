@@ -62,6 +62,13 @@ dg:'sub/u*.txt'
           created by   step:./plan.py  # wd=sub/
              creates   file:sub/used.txt
 
+file:sub/used.txt
+                path = sub/used.txt
+               state = STATIC
+          created by   dg:'sub/u*.txt'
+            consumes   file:sub/
+            supplies   step:cp -aT used.txt copy.txt  # wd=sub/
+
 step:cp -aT used.txt copy.txt  # wd=sub/
              workdir = sub/
              command = cp -aT used.txt copy.txt
@@ -71,13 +78,6 @@ step:cp -aT used.txt copy.txt  # wd=sub/
             consumes   file:sub/used.txt
              creates   file:sub/copy.txt
             supplies   file:sub/copy.txt
-
-file:sub/used.txt
-                path = sub/used.txt
-               state = STATIC
-          created by   dg:'sub/u*.txt'
-            consumes   file:sub/
-            supplies   step:cp -aT used.txt copy.txt  # wd=sub/
 
 file:sub/copy.txt
                 path = sub/copy.txt

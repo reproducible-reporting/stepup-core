@@ -1364,16 +1364,23 @@ def test_deferred_glob_basic(wfp):
     with pytest.raises(GraphError):
         wfp.defer_glob(plan_key, patterns1)
     patterns2 = ["head_*.txt", "tail_*.txt"]
-    dg_key = wfp.defer_glob(plan_key, patterns2)
-    assert dg_key == "dg:'head_*.txt' 'tail_*.txt'"
-    dg = wfp.get_deferred_glob(dg_key)
-    assert isinstance(dg, DeferredGlob)
+    to_check = wfp.defer_glob(plan_key, patterns2)
+    dg = wfp.get_deferred_glob("dg:'head_*.txt' 'tail_*.txt'")
 
-    # Check if head_1.txt is static
-    assert wfp.get_file("file:head_1.txt").get_state(wfp) == FileState.STATIC
+    # Validate the to_check result
+    assert to_check == ["head_1.txt"]
+    assert wfp.get_file("file:head_1.txt").get_state(wfp) == FileState.MISSING
     assert "head_1.txt" in dg.ngm.files()
 
+    # Check if head_1.txt is static after confirming
+    wfp.confirm_deferred(to_check)
+    assert wfp.get_file("file:head_1.txt").get_state(wfp) == FileState.STATIC
+
     # Use deferred glob after it is added
+    to_check = wfp.filter_deferred(["tail_1.txt"])
+    assert to_check == ["tail_1.txt"]
+    assert wfp.get_file("file:tail_1.txt").get_state(wfp) == FileState.MISSING
+    wfp.confirm_deferred(to_check)
     wfp.define_step(plan_key, "cat tail_1.txt", inp_paths=["tail_1.txt"])
     assert wfp.get_file("file:tail_1.txt").get_state(wfp) == FileState.STATIC
     assert "tail_1.txt" in dg.ngm.files()
@@ -1381,10 +1388,16 @@ def test_deferred_glob_basic(wfp):
 
 def test_deferred_glob_clean(wfp):
     plan_key = "step:./plan.py"
-    dg_key = wfp.defer_glob(plan_key, ["static/**"])
-    step_key = wfp.define_step(plan_key, "cat static/foo/bar.txt", inp_paths=["static/foo/bar.txt"])
+    to_check = wfp.defer_glob(plan_key, ["static/**"])
+    assert len(to_check) == 0
+    inp_paths = ["static/foo/bar.txt"]
+    to_check = wfp.filter_deferred(inp_paths)
+    assert to_check == ["static/", "static/foo/", "static/foo/bar.txt"]
+    wfp.confirm_deferred(to_check)
+    step_key = wfp.define_step(plan_key, "cat static/foo/bar.txt", inp_paths=inp_paths)
 
     # Check effect of defining the step on the deferred_glob
+    dg_key = "dg:'static/**'"
     dg = wfp.get_deferred_glob(dg_key)
     assert wfp.get_file("file:static/").get_state(wfp) == FileState.STATIC
     assert wfp.get_file("file:static/foo/").get_state(wfp) == FileState.STATIC
@@ -1433,7 +1446,7 @@ def test_deferred_glob_two_matches(wfp):
     wfp.defer_glob(plan_key, ["*.md"])
     wfp.defer_glob(plan_key, ["README.*"])
     with pytest.raises(GraphError):
-        wfp.define_step(plan_key, "cat README.md", inp_paths=["README.md"])
+        wfp.filter_deferred(["README.md"])
 
 
 def test_deferred_glob_static(wfp):
@@ -1547,23 +1560,19 @@ def test_get_vol_paths(wfp):
     ]
 
 
-def test_get_static_paths(wfp):
+def test_get_static_missing_paths(wfp):
     step_key = wfp.define_step("step:./plan.py", "script")
-    wfp.declare_static(step_key, ["foo", "bar"])
+    wfp.declare_static(step_key, ["foo", "bar", "zzz"])
     step = wfp.get_step(step_key)
-    wfp.get_file("file:bar").set_state(wfp, FileState.MISSING)
+    wfp.get_file("file:zzz").set_state(wfp, FileState.MISSING)
     assert step.get_static_paths(wfp) == ["bar", "foo"]
-    assert step.get_static_paths(wfp, state=True) == [
-        ["bar", FileState.MISSING],
-        ["foo", FileState.STATIC],
-    ]
+    assert step.get_missing_paths(wfp) == ["zzz"]
     assert step.get_static_paths(wfp, file_hash=True) == [
         ["bar", FileHash(b"u", 0, 0.0, 0, 0)],
         ["foo", FileHash(b"u", 0, 0.0, 0, 0)],
     ]
-    assert step.get_static_paths(wfp, state=True, file_hash=True) == [
-        ["bar", FileState.MISSING, FileHash(b"u", 0, 0.0, 0, 0)],
-        ["foo", FileState.STATIC, FileHash(b"u", 0, 0.0, 0, 0)],
+    assert step.get_missing_paths(wfp, file_hash=True) == [
+        ["zzz", FileHash(b"u", 0, 0.0, 0, 0)],
     ]
 
 

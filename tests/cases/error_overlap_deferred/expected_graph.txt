@@ -1,26 +1,35 @@
 root:
              version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
 
-(file:plan.py)
+file:plan.py
                 path = plan.py
                state = STATIC
-            consumes   (file:./)
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
 
-(file:./)
+file:./
                 path = ./
                state = STATIC
-            supplies   (file:plan.py)
+          created by   root:
+            supplies   file:plan.py
+            supplies   step:./plan.py
 
-(step:./plan.py)
+step:./plan.py
              workdir = ./
              command = ./plan.py
-               state = PENDING
+               state = FAILED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   dg:'*.md'
+             creates   dg:'README.*'
 
-(dg:'README.*')
+dg:'README.*'
+          created by   step:./plan.py
 
-(dg:'*.md')
-
-(step:cat README.md)
-             workdir = ./
-             command = cat README.md
-               state = PENDING
+dg:'*.md'
+          created by   step:./plan.py
