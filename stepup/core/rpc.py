@@ -397,7 +397,7 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
     def call(self) -> CallInterface:
         return self._call
 
-    def __call__(self, name: str, *args, _rpc_timeout: float | None = 5.0, **kwargs):
+    def __call__(self, name: str, *args, _rpc_timeout: float | None = 5.0, **kwargs) -> Any:
         """Call a function of the RPC server.
 
         Parameters
@@ -498,6 +498,6 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
 class DummySyncRPCClient(BaseSyncRPCClient):
     """Dummy RPC client. This one just prints the RPC calls instead of sending them to a server."""
 
-    def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
+    def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs) -> Any:
         """Call a function of the RPC server. See SocketSyncRPCClient for details."""
         print(fmt_rpc_call(name, args, kwargs))
