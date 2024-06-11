@@ -579,7 +579,7 @@ class Step(Node):
             return missing
         if success:
             if new_hash is None:
-                raise AssertionError("Step succeeded without new_hash")
+                raise ValueError("Step succeeded without new_hash")
             self.set_state(workflow, StepState.SUCCEEDED)
             for file_key in workflow.get_products(self._key, kind="file"):
                 file = workflow.get_file(file_key)
