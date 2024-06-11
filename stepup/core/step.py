@@ -67,6 +67,7 @@ class StepRecording:
     amend_args: dict = attrs.field(factory=dict)
     # Created while running the step
     static_paths: list[str] = attrs.field(factory=list)
+    missing_paths: list[str] = attrs.field(factory=list)
     steps_args: list[dict] = attrs.field(factory=list)
     nglob_multis: list[NGlobMulti] = attrs.field(factory=list)
     deferred_glob_args: list[list[str]] = attrs.field(factory=list)
@@ -465,10 +466,15 @@ class Step(Node):
         filter_states = (FileState.VOLATILE,)
         return self._get_paths(workflow, file_keys, False, file_hash, False, filter_states)
 
-    def get_static_paths(self, workflow: "Workflow", *, state=False, file_hash=False) -> list:
+    def get_static_paths(self, workflow: "Workflow", *, file_hash=False) -> list:
         file_keys = workflow.get_products(self.key, kind="file")
-        filter_states = (FileState.STATIC, FileState.MISSING)
-        return self._get_paths(workflow, file_keys, state, file_hash, False, filter_states)
+        filter_states = (FileState.STATIC,)
+        return self._get_paths(workflow, file_keys, False, file_hash, False, filter_states)
+
+    def get_missing_paths(self, workflow: "Workflow", *, file_hash=False) -> list:
+        file_keys = workflow.get_products(self.key, kind="file")
+        filter_states = (FileState.MISSING,)
+        return self._get_paths(workflow, file_keys, False, file_hash, False, filter_states)
 
     #
     # Step state
@@ -628,6 +634,7 @@ class Step(Node):
             recording.amend_args.setdefault("vol_paths", [])
 
         recording.static_paths.extend(self.get_static_paths(workflow))
+        recording.missing_paths.extend(self.get_missing_paths(workflow))
         for sub_step_key in workflow.get_products(self.key, kind="step"):
             sub_step = workflow.get_step(sub_step_key)
             step_args = {
@@ -700,12 +707,15 @@ class Step(Node):
         for pool, size in recording.defined_pools.items():
             workflow.set_pool(self.key, pool, size)
         workflow.declare_static(self.key, recording.static_paths)
+        workflow.declare_static(self.key, recording.missing_paths, verified=False)
         for step_args in recording.steps_args:
             workflow.define_step(**step_args)
         for ngm in recording.nglob_multis:
             workflow.register_nglob(self.key, ngm)
         for patterns in recording.deferred_glob_args:
-            workflow.defer_glob(self.key, patterns)
+            paths = workflow.defer_glob(self.key, patterns)
+            # We're assuming all paths exist since the replay was allowed.
+            workflow.confirm_deferred(paths)
         # Mark the step as succeeded and mark outputs as BUILT
         self.set_state(workflow, StepState.SUCCEEDED)
         for file_key in workflow.get_products(self.key, kind="file"):

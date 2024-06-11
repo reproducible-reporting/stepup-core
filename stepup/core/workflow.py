@@ -281,12 +281,12 @@ class Workflow(Cascade):
     def always_static(path: str) -> bool:
         return path in ["./", "/"] or path == "../" * (len(path) // 3)
 
-    def supply_file(self, step_key: str, path: str, new: bool = True) -> tuple[str, bool, bool]:
+    def supply_file(self, key: str, path: str, new: bool = True) -> tuple[str, bool, bool]:
         """Find an existing file or create on orphan file, and make it a supplier of step_key.
 
         Parameters
         ----------
-        step_key
+        key
             The step or file to supply to.
         path
             The file that should supply to the step.
@@ -309,24 +309,18 @@ class Workflow(Cascade):
             if self.always_static(path):
                 self.declare_static("root:", [path])
             else:
-                dg = self.matching_deferred_glob(path)
-                if dg is None:
-                    file = File(path)
-                    self.create(file, "vacuum:")
-                    self.supply_parent(file)
-                    file.set_state(self, FileState.PENDING)
-                else:
-                    dg.ngm.extend([path])
-                    self.declare_static(dg.key, [path])
-                    available = True
+                file = File(path)
+                self.create(file, "vacuum:")
+                self.supply_parent(file)
+                file.set_state(self, FileState.PENDING)
         else:
             state = self.get_file(file_key).get_state(self)
             if state == FileState.VOLATILE:
                 raise GraphError(f"Input is volatile: {path}")
             available = state in (FileState.BUILT, FileState.STATIC)
-        new_relation = file_key not in self.suppliers.get(step_key, ())
+        new_relation = file_key not in self.suppliers.get(key, ())
         if new_relation:
-            self.supply(file_key, step_key)
+            self.supply(file_key, key)
         elif new:
             raise GraphError(f"Supplying file already exists: {path}")
         return file_key, available, new_relation
@@ -349,8 +343,8 @@ class Workflow(Cascade):
         file_key
             The key of the created / recycled file.
         """
-        if file_state not in (FileState.STATIC, FileState.PENDING, FileState.VOLATILE):
-            raise ValueError("Can only create a file with state STATIC, PENDING or VOLATILE.")
+        if file_state == FileState.BUILT:
+            raise ValueError("Cannot create a BUILT file. It must be PENDING first.")
         if file_state == FileState.VOLATILE and path.endswith(os.sep):
             raise GraphError("A volatile output cannot be a directory.")
         if not (creator_key.startswith("dg:") or self.matching_deferred_glob(path) is None):
@@ -366,13 +360,17 @@ class Workflow(Cascade):
         file = File(path)
         self.create(file, creator_key)
         parent_key, _, _ = self.supply_parent(file)
+        parent_state = None if parent_key is None else self.get_file(parent_key).get_state(self)
         file.set_state(self, file_state)
         if file_state == FileState.STATIC:
-            if not (
-                parent_key is None or self.get_file(parent_key).get_state(self) == FileState.STATIC
-            ):
-                raise GraphError(f"Static path does not have a parent path node: {path}")
+            if not (parent_state is None or parent_state == FileState.STATIC):
+                raise GraphError(f"Static path does not have a static parent path node: {path}")
             file.release_pending(self)
+        elif file_state == FileState.MISSING:
+            if not (parent_state is None or parent_state in (FileState.STATIC, FileState.MISSING)):
+                raise GraphError(
+                    f"Missing path does not have a static or missing parent path node: {path}"
+                )
         else:
             self.supply(creator_key, file_key)
         return file_key
@@ -408,7 +406,9 @@ class Workflow(Cascade):
             raise ValueError(f"Path does not have a parent path node: {path}")
         return parent_key
 
-    def declare_static(self, creator_key: str, paths: Collection[str]) -> list[str]:
+    def declare_static(
+        self, creator_key: str, paths: Collection[str], *, verified: bool = True
+    ) -> list[str]:
         """Declare a file as static, i.e. created manually, not built by a step.
 
         Parameters
@@ -417,6 +417,10 @@ class Workflow(Cascade):
             The node creating this file (or None if not known).
         paths
             The locations of the files or directories (ending with /).
+        verified
+            When False, the path is given the MISSING state,
+            meaning that it needs to confirmed externally that the file
+            actually exits.
 
         Returns
         -------
@@ -450,7 +454,8 @@ class Workflow(Cascade):
                 raise GraphError(f"Static path already exists: {path}")
         # Make the actual changes
         self.graph_changed = True
-        return [self.create_file(creator_key, path, FileState.STATIC) for path in paths]
+        state = FileState.STATIC if verified else FileState.MISSING
+        return [self.create_file(creator_key, path, state) for path in paths]
 
     def check_inputs_outputs(
         self,
@@ -499,6 +504,33 @@ class Workflow(Cascade):
                     raise GraphError(f"Volatile output is already created: {vol_path}")
                 if len(self.consumers.get(file_key, ())) > 0:
                     raise GraphError(f"An input to an existing step cannot be volatile: {vol_path}")
+
+    def filter_deferred(self, paths: list[str]) -> list[str]:
+        """Add all paths that match a deferred glob as MISSING, until further notice."""
+        to_check = []
+        for path in paths:
+            # All parents of the path must be checked.
+            all_paths = []
+            while not (path is None or f"file:{path}" in self.nodes):
+                all_paths.insert(0, path)
+                print(all_paths)
+                path = myparent(path)
+            for path_up in all_paths:
+                dg = self.matching_deferred_glob(path_up)
+                if dg is not None:
+                    dg.ngm.extend([path_up])
+                    self.declare_static(dg.key, [path_up], verified=False)
+                    to_check.append(path_up)
+        return to_check
+
+    def confirm_deferred(self, paths: list[str]):
+        """Make matches of deferred globs STATIC."""
+        for path in paths:
+            file = self.get_file(f"file:{path}")
+            if file.get_state(self) != FileState.MISSING:
+                raise AssertionError(f"Found file was not even missing: {path}")
+            file.set_state(self, FileState.STATIC)
+            file.release_pending(self)
 
     def define_step(
         self,
@@ -704,7 +736,21 @@ class Workflow(Cascade):
         self.graph_changed = True
         step.register_nglob(self, ngm)
 
-    def defer_glob(self, creator_key: str, patterns: Collection[str]) -> str:
+    def defer_glob(self, creator_key: str, patterns: Collection[str]) -> list[str]:
+        """Install a deferred glob.
+
+        Parameters
+        ----------
+        creator_key
+            The step creating the deferred glob.
+        patterns
+            A list of patterns, must be relative paths without named wildcards.
+
+        Returns
+        -------
+        to_check
+            A list of matching paths whose existence and validity must be checked.
+        """
         self._check_step_key(creator_key, "creator_key")
         if isinstance(patterns, str):
             raise TypeError("The argument patterns cannot be a string.")
@@ -719,10 +765,12 @@ class Workflow(Cascade):
             raise GraphError(f"Cannot define a deferred nglob twice: {dg.key}")
         self.graph_changed = True
         self.create(dg, creator_key)
-        # Check for matches in existing files
+        # Check for matches in existing files.
+        # For example previously defined inputs whose origin was not determined yet.
         ngm.extend([file.path for file in self.get_files(include_orphans=True)])
-        self.declare_static(dg.key, ngm.files())
-        return dg.key
+        paths = list(ngm.files())
+        self.declare_static(dg.key, paths, verified=False)
+        return paths
 
     def set_file_hash(self, path: str, file_hash: FileHash):
         self.get_file(f"file:{path}").hash = file_hash

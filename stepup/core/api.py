@@ -180,7 +180,12 @@ def glob(
         if len(subs) > 0:
             raise ValueError("Named wildcards are not supported in deferred globs.")
         tr_patterns = [translate(su_pattern) for su_pattern in su_patterns]
-        RPC_CLIENT.call.defer(_get_step_key(), tr_patterns)
+        tr_inp_check = RPC_CLIENT.call.defer(_get_step_key(), tr_patterns)
+        if tr_inp_check is not None:
+            # Verify that matches of the deferred glob exist.
+            lo_inp_check = [translate_back(inp_path) for inp_path in tr_inp_check]
+            check_inp_paths(lo_inp_check)
+            RPC_CLIENT.call.confirm_deferred(tr_inp_check)
         return None
 
     # Collect all matches
@@ -268,30 +273,41 @@ def step(
     Before substitution, they are rewritten as paths relative to the workdir.
     (Amended inputs and outputs are never substituted this way because they are yet unknown.)
     """
+    # Pre-process the arguments for the Director process.
     inp_paths = _str_to_list(inp)
     env_vars = _str_to_list(env)
     out_paths = _str_to_list(out)
     vol_paths = _str_to_list(vol)
     amended_env_vars = set()
     with subs_env_vars() as subs:
-        inp_paths = [translate(subs(inp_path)) for inp_path in inp_paths]
-        out_paths = [translate(subs(out_path)) for out_path in out_paths]
-        vol_paths = [translate(subs(vol_path)) for vol_path in vol_paths]
-        workdir = translate(subs(workdir))
+        tr_inp_paths = [translate(subs(inp_path)) for inp_path in inp_paths]
+        tr_out_paths = [translate(subs(out_path)) for out_path in out_paths]
+        tr_vol_paths = [translate(subs(vol_path)) for vol_path in vol_paths]
+        tr_workdir = translate(subs(workdir))
     amend(env=sorted(amended_env_vars))
     command = CaseSensitiveTemplate(command).safe_substitute(
-        inp=" ".join(myrelpath(inp_path, workdir) for inp_path in inp_paths),
-        out=" ".join(myrelpath(out_path, workdir) for out_path in out_paths),
-        vol=" ".join(myrelpath(vol_path, workdir) for vol_path in vol_paths),
+        inp=" ".join(myrelpath(inp_path, tr_workdir) for inp_path in tr_inp_paths),
+        out=" ".join(myrelpath(out_path, tr_workdir) for out_path in tr_out_paths),
+        vol=" ".join(myrelpath(vol_path, tr_workdir) for vol_path in tr_vol_paths),
     )
+
+    # Look for inputs that match deferred globs and check their existence
+    # before making them static.
+    tr_inp_check = RPC_CLIENT.call.filter_deferred(tr_inp_paths)
+    if tr_inp_check is not None:
+        lo_inp_check = [translate_back(inp_path) for inp_path in tr_inp_check]
+        check_inp_paths(lo_inp_check)
+        RPC_CLIENT.call.confirm_deferred(tr_inp_check)
+
+    # Finally create the step.
     return RPC_CLIENT.call.step(
         _get_step_key(),
         command,
-        inp_paths,
+        tr_inp_paths,
         env_vars,
-        out_paths,
-        vol_paths,
-        workdir,
+        tr_out_paths,
+        tr_vol_paths,
+        tr_workdir,
         optional,
         pool,
         block,
@@ -348,6 +364,7 @@ def amend(
     as in the `step()` function. The used variables are added to the env_vars argument.
 
     """
+    # Pre-process the arguments for the Director process.
     inp_paths = _str_to_list(inp)
     env_vars = _str_to_list(env)
     out_paths = _str_to_list(out)
@@ -360,6 +377,16 @@ def amend(
         tr_inp_paths = [translate(inp_path) for inp_path in su_inp_paths]
         tr_out_paths = [translate(subs(out_path)) for out_path in out_paths]
         tr_vol_paths = [translate(subs(vol_path)) for vol_path in vol_paths]
+
+    # Look for inputs that match deferred globs and check their existence
+    # before making them static.
+    tr_inp_check = RPC_CLIENT.call.filter_deferred(tr_inp_paths)
+    if tr_inp_check is not None:
+        lo_inp_check = [translate_back(inp_path) for inp_path in tr_inp_check]
+        check_inp_paths(lo_inp_check)
+        RPC_CLIENT.call.confirm_deferred(tr_inp_check)
+
+    # Finally, amend for real.
     keep_going = RPC_CLIENT.call.amend(
         _get_step_key(),
         tr_inp_paths,
@@ -373,6 +400,7 @@ def amend(
         # manually and made sure all the required files are present.
         keep_going = True
     if keep_going:
+        # Double check that all inputs are indeed present.
         check_inp_paths(su_inp_paths)
     return keep_going
 
@@ -583,6 +611,32 @@ def translate(path: str) -> Path:
                 here = myrelpath("./", stepup_root)
         if here is not None:
             path = mynormpath(here / path)
+    return path
+
+
+def translate_back(path: str) -> Path:
+    """If relative, make it relative to `HERE`, assuming it is relative to `ROOT`.
+
+    If the environment variable `HERE` is not set, it is derived from `STEPUP_ROOT` if set.
+
+    Parameters
+    ----------
+    path
+        The path to translate.
+
+    Returns
+    -------
+    back_translated_path
+        A path that can be interpreted in the local working directory.
+    """
+    if not path.isabs():
+        here = os.getenv("HERE")
+        if here is None:
+            stepup_root = os.getenv("STEPUP_ROOT")
+            if stepup_root is not None:
+                here = myrelpath("./", stepup_root)
+        if here is not None:
+            path = myrelpath(path, here)
     return path
 
 

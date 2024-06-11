@@ -37,6 +37,20 @@ dg:'static/**'
              creates   file:static/
              creates   file:static/foo.txt
 
+file:static/
+                path = static/
+               state = STATIC
+          created by   dg:'static/**'
+            consumes   file:./
+            supplies   file:static/foo.txt
+
+file:static/foo.txt
+                path = static/foo.txt
+               state = STATIC
+          created by   dg:'static/**'
+            consumes   file:static/
+            supplies   step:cp -aT static/foo.txt bar.txt
+
 step:cp -aT static/foo.txt bar.txt
              workdir = ./
              command = cp -aT static/foo.txt bar.txt
@@ -47,20 +61,6 @@ step:cp -aT static/foo.txt bar.txt
             consumes   file:static/foo.txt
              creates   file:bar.txt
             supplies   file:bar.txt
-
-file:static/foo.txt
-                path = static/foo.txt
-               state = STATIC
-          created by   dg:'static/**'
-            consumes   file:static/
-            supplies   step:cp -aT static/foo.txt bar.txt
-
-file:static/
-                path = static/
-               state = STATIC
-          created by   dg:'static/**'
-            consumes   file:./
-            supplies   file:static/foo.txt
 
 file:bar.txt
                 path = bar.txt
