@@ -1381,6 +1381,9 @@ def test_deferred_glob_basic(wfp, path_tmp):
         assert wfp.get_file("file:tail_1.txt").get_state(wfp) == FileState.STATIC
         assert "tail_1.txt" in dg.ngm.files()
 
+    with pytest.raises(ValueError):
+        wfp.define_step(plan_key, "cat head_2.txt", inp_paths=["head_2.txt"])
+
 
 def test_deferred_glob_clean(wfp, path_tmp):
     plan_key = "step:./plan.py"
