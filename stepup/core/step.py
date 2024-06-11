@@ -570,7 +570,7 @@ class Step(Node):
         self._hash = new_hash
         if len(self.reschedule_due_to) > 0:
             if new_hash is None:
-                raise AssertionError("Step rescheduled without new_hash")
+                raise ValueError("Step rescheduled without new_hash")
             self.set_state(workflow, StepState.PENDING)
             # The missing inputs may have appeared by the time the step ended,
             # so we need to check if we can put the step back on the queue right away.
