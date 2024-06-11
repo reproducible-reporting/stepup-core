@@ -338,7 +338,7 @@ class Cascade:
     ) -> list[str]:
         """Return other keys created by key."""
         if not (kind is None or kind in self.node_classes):
-            raise ValueError("Kind must be one of: " + " ".join(self.node_clases))
+            raise ValueError("Kind must be one of: " + " ".join(self.node_classes))
         return sorted(
             other
             for other in self.products.get(key, ())
@@ -351,7 +351,7 @@ class Cascade:
     ) -> list[str]:
         """Other keys that require key, only those that are still fresh."""
         if not (kind is None or kind in self.node_classes):
-            raise ValueError("Kind must be one of: " + " ".join(self.node_clases))
+            raise ValueError("Kind must be one of: " + " ".join(self.node_classes))
         return sorted(
             other
             for other in self.suppliers.get(key, ())
@@ -364,7 +364,7 @@ class Cascade:
     ) -> list[str]:
         """Other keys required by key, only those that are still fresh."""
         if not (kind is None or kind in self.node_classes):
-            raise ValueError("Kind must be one of: " + " ".join(self.node_clases))
+            raise ValueError("Kind must be one of: " + " ".join(self.node_classes))
         return sorted(
             other
             for other in self.consumers.get(key, ())
@@ -374,7 +374,7 @@ class Cascade:
 
     def get_nodes(self, kind: str | None = None, include_orphans: bool = False):
         if not (kind is None or kind in self.node_classes):
-            raise ValueError("Kind must be one of: " + " ".join(self.node_clases))
+            raise ValueError("Kind must be one of: " + " ".join(self.node_classes))
         keys = self.nodes if kind is None else self.kinds.get(kind, ())
         keys = sorted(key for key in keys if (include_orphans or not self.is_orphan(key)))
         return [self.nodes[key] for key in keys]
