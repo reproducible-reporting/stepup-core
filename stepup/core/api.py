@@ -367,6 +367,11 @@ def amend(
         tr_out_paths,
         tr_vol_paths,
     )
+    if keep_going is None:
+        # When the RPC_CLIENT is a dummy, it always returns None.
+        # In this case, we're assuming the users calls the script
+        # manually and made sure all the required files are present.
+        keep_going = True
     if keep_going:
         check_inp_paths(su_inp_paths)
     return keep_going

@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Effectively make watching recursive when a directory is added that is known in the workflow.
+- The function `amend()` now always returns `True` when the RPC client is a dummy.
+  This fixes early exits from scripts that used `amend()` when they are called manually.
 
 
 ## [1.2.4] - 2024-05-27
