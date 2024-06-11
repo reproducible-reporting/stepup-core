@@ -68,7 +68,7 @@ class DeferredGlob(Node):
         if ngm is None:
             ngm_data = data.get("g")
             if ngm_data is None:
-                raise ValueError("Cannot derive key_tail from the data argument")
+                raise ValueError(f"Cannot derive key_tail from the data argument: {data}")
             ngm = NGlobMulti.structure(ngm_data, strings)
         if not cls.valid_ngm(ngm):
             raise ValueError("Deferred globs cannot contain named wildcards")
