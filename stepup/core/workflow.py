@@ -735,7 +735,6 @@ class Workflow(Cascade):
             orphaned_paths = []
             for file_key in file_keys[::-1]:
                 if len(self.get_consumers(file_key)) == 0:
-                    assert file_key.startswith("file:")
                     self.orphan(file_key)
                     orphaned_paths.append(file_key[5:])
             dg.ngm.reduce(orphaned_paths)

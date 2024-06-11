@@ -208,7 +208,8 @@ class ScriptWrapper:
     # Wrapper methods
 
     def get_info(self) -> dict:
-        assert self._has_single
+        if not self._has_single:
+            raise NotImplementedError("get_info only works for scripts with an info function")
         info = self._object.info()
         if not isinstance(info, dict) or len(info) == 0:
             raise TypeError("info must return a non-empty dictionary.")
@@ -223,7 +224,8 @@ class ScriptWrapper:
         )
 
     def generate_cases(self) -> Iterator[tuple[list, dict]]:
-        assert self._has_cases
+        if not self._has_cases:
+            raise NotImplementedError("generate_cases only works for scripts with multiple cases")
         for case in self._object.cases():
             if isinstance(case, dict):
                 yield [], case
@@ -240,13 +242,15 @@ class ScriptWrapper:
                 yield [case], {}
 
     def format(self, *args, **kwargs) -> str:
-        assert self._has_cases
+        if not self._has_cases:
+            raise NotImplementedError("format only works for scripts with multiple cases")
         if not isinstance(self._object.CASE_FMT, str):
             raise TypeError("CASE_FMT must be a string")
         return self._object.CASE_FMT.format(*args, **kwargs)
 
     def parse(self, argstr: str) -> tuple[tuple, dict]:
-        assert self._has_cases
+        if not self._has_cases:
+            raise NotImplementedError("parse only works for scripts with multiple cases")
         case_fmt = self._object.CASE_FMT
         result = parse(case_fmt, argstr, case_sensitive=True)
         if result is None:
@@ -254,7 +258,8 @@ class ScriptWrapper:
         return result.fixed, result.named
 
     def get_case_info(self, *args, **kwargs) -> dict:
-        assert self._has_cases
+        if not self._has_cases:
+            raise NotImplementedError("get_case_info only works for scripts with multiple cases")
         info = self._object.case_info(*args, **kwargs)
         if not isinstance(info, dict) or len(info) == 0:
             raise TypeError("case_info must return a non-empty dictionary.")
