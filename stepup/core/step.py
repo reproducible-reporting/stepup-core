@@ -467,11 +467,31 @@ class Step(Node):
         return self._get_paths(workflow, file_keys, False, file_hash, False, filter_states)
 
     def get_static_paths(self, workflow: "Workflow", *, file_hash=False) -> list:
+        """Return a list of STATIC paths created by this step.
+
+        Patterns
+        --------
+        workflow
+            The workflow in which the step is defined.
+        file_hash
+            If True, a list with path and file_hash tuples is returned.
+            If False, just a list of paths is returned.
+        """
         file_keys = workflow.get_products(self.key, kind="file")
         filter_states = (FileState.STATIC,)
         return self._get_paths(workflow, file_keys, False, file_hash, False, filter_states)
 
     def get_missing_paths(self, workflow: "Workflow", *, file_hash=False) -> list:
+        """Return a list of MISSING paths created by this step.
+
+        Patterns
+        --------
+        workflow
+            The workflow in which the step is defined.
+        file_hash
+            If True, a list with path and file_hash tuples is returned.
+            If False, just a list of paths is returned.
+        """
         file_keys = workflow.get_products(self.key, kind="file")
         filter_states = (FileState.MISSING,)
         return self._get_paths(workflow, file_keys, False, file_hash, False, filter_states)
