@@ -19,6 +19,7 @@
 # --
 """Unit tests for stepup.core.workflow."""
 
+import contextlib
 from collections import Counter
 from typing import cast
 
@@ -1354,7 +1355,7 @@ def test_optional_infer_chained(wfp):
     assert step1.get_state(wfp) == StepState.PENDING
 
 
-def test_deferred_glob_basic(wfp):
+def test_deferred_glob_basic(wfp, path_tmp):
     plan_key = "step:./plan.py"
     # Define a step with an orphan input
     wfp.define_step(plan_key, "cat head_1.txt", inp_paths=["head_1.txt"])
@@ -1374,15 +1375,22 @@ def test_deferred_glob_basic(wfp):
     assert "head_1.txt" in dg.ngm.files()
 
     # Use deferred glob after it is added
-    wfp.define_step(plan_key, "cat tail_1.txt", inp_paths=["tail_1.txt"])
-    assert wfp.get_file("file:tail_1.txt").get_state(wfp) == FileState.STATIC
-    assert "tail_1.txt" in dg.ngm.files()
+    with contextlib.chdir(path_tmp):
+        Path("tail_1.txt").touch()
+        wfp.define_step(plan_key, "cat tail_1.txt", inp_paths=["tail_1.txt"])
+        assert wfp.get_file("file:tail_1.txt").get_state(wfp) == FileState.STATIC
+        assert "tail_1.txt" in dg.ngm.files()
 
 
-def test_deferred_glob_clean(wfp):
+def test_deferred_glob_clean(wfp, path_tmp):
     plan_key = "step:./plan.py"
     dg_key = wfp.defer_glob(plan_key, ["static/**"])
-    step_key = wfp.define_step(plan_key, "cat static/foo/bar.txt", inp_paths=["static/foo/bar.txt"])
+    with contextlib.chdir(path_tmp):
+        Path("static/foo/").makedirs_p()
+        Path("static/foo/bar.txt").touch()
+        step_key = wfp.define_step(
+            plan_key, "cat static/foo/bar.txt", inp_paths=["static/foo/bar.txt"]
+        )
 
     # Check effect of defining the step on the deferred_glob
     dg = wfp.get_deferred_glob(dg_key)

@@ -28,6 +28,7 @@ from collections.abc import Collection
 from typing import Self, cast
 
 import attrs
+from path import Path
 
 from .assoc import Assoc, many_to_one
 from .cascade import Cascade, Node, get_kind
@@ -38,7 +39,7 @@ from .hash import ExtendedStepHash, FileHash
 from .job import SetPoolJob
 from .nglob import NGlobMulti
 from .step import Mandatory, Step, StepState
-from .utils import lookupdict, myparent
+from .utils import check_inp_path, lookupdict, myparent
 
 __all__ = ("Workflow",)
 
@@ -316,6 +317,9 @@ class Workflow(Cascade):
                     self.supply_parent(file)
                     file.set_state(self, FileState.PENDING)
                 else:
+                    message = check_inp_path(Path(path))
+                    if message is not None:
+                        raise ValueError(f"{message}: {path}")
                     dg.ngm.extend([path])
                     self.declare_static(dg.key, [path])
                     available = True

@@ -1,28 +1,18 @@
   DIRECTOR │ Launched worker 0
      PHASE │ run
      START │ ./plan.py
-   SUCCESS │ ./plan.py
-      FAIL │ cat static/foo/bar/README.md
+      FAIL │ ./plan.py
 ────────────────────────────────── Step info ───────────────────────────────────
-Command               cat static/foo/bar/README.md
-──────────────────────────────── Invalid inputs ────────────────────────────────
-STATIC Path does not exist: static/foo/bar/README.md
+Command               ./plan.py
+Return code           1
+──────────────────────────────── Standard error ────────────────────────────────
+(stripped)
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ 1 step(s) failed, see error messages above
+   WARNING │ Scheduler is put on hold. Not reporting pending steps.
    WARNING │ Skipping cleanup due to incomplete build.
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+   WARNING │ Dissolving the workflow due to an exceptions while the graph was being changed.
+     PHASE │ watch
   DIRECTOR │ Stopping workers.
-     ERROR │ The director raised an exception.
-────────────────────────────────── Traceback ───────────────────────────────────
-Traceback (most recent call last):
-  File "${PWD}/stepup/core/director.py", line ---, in async_main
-    await serve(
-  File "${PWD}/stepup/core/director.py", line ---, in serve
-    await asyncio.gather(watcher_loop, runner_loop, rpc_director)
-  File "${PWD}/stepup/core/watcher.py", line ---, in loop
-    await dir_loop
-  File "${PWD}/stepup/core/watcher.py", line ---, in dir_loop
-    raise FileNotFoundError(f"Cannot watch non-existing directory: {path}")
-FileNotFoundError: Cannot watch non-existing directory: static/
-────────────────────────────────────────────────────────────────────────────────
   DIRECTOR │ See you!
