@@ -37,7 +37,6 @@ jobs:
         with:
           path: ./site/
 
-  # Deploy site
   deploy:
     # Only deploy if we're on the main branch.
     if: github.ref == 'refs/heads/main'

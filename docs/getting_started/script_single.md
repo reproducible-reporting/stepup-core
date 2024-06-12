@@ -23,6 +23,12 @@ where the subdirectory is optional.
 The step `./executable plan` is expected to define additional steps to actually run something useful with the executable.
 A common scenario is that it plans a single step `./executable run` with appropriate inputs and outputs.
 
+When the `optional=True` keyword argument is given to the `script()` function,
+it executes `./executable plan --optional`.
+The script protocol requires that all *run* steps created by this planning step should then receive the `optional=True` keyword argument.
+Note that the *plan* step itself is never an optional step:
+It is always executed.
+
 
 ## Script driver
 
