@@ -3,7 +3,16 @@
 # using the "GitHub Actions" option.
 
 name: mkdocs
-on: push
+on:
+  push:
+    branches:
+    # Run tests for change on the main branch ...
+    - main
+    tags-ignore:
+    # ... but not for tags (avoids duplicate work).
+    - '**'
+  pull_request:
+  # Run tests on pull requests
 
 permissions:
   contents: read

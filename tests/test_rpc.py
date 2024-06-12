@@ -36,17 +36,16 @@ from stepup.core.rpc import AsyncRPCClient, SocketSyncRPCClient, fmt_rpc_call, s
 async def pc():
     async with asyncio.timeout(5):
         handler = EchoHandler("pipe")
-        sr, cw = await pipe()
-        cr, sw = await pipe()
-        stop_event = asyncio.Event()
-        server = asyncio.create_task(serve_rpc(handler, sr, sw, stop_event))
-        server.add_done_callback(lambda task: task.result())
-        try:
-            async with AsyncRPCClient(cr, cw) as client:
-                yield client
-        finally:
-            await server
-            assert stop_event.is_set()
+        async with pipe() as (sr, cw), pipe() as (cr, sw):
+            stop_event = asyncio.Event()
+            server = asyncio.create_task(serve_rpc(handler, sr, sw, stop_event))
+            server.add_done_callback(lambda task: task.result())
+            try:
+                async with AsyncRPCClient(cr, cw) as client:
+                    yield client
+            finally:
+                await server
+                assert stop_event.is_set()
 
 
 @pytest_asyncio.fixture()
@@ -92,6 +91,11 @@ async def test_stdio_simple_args(ic):
     assert await ic.call.echo("hello") == "stdio: hello"
 
 
+# See also https://github.com/python/cpython/issues/113538
+REASON_SOCKET = "sockets hang in 3.11"
+
+
+@pytest.mark.skipif(sys.version_info[:2] == (3, 11), reason=REASON_SOCKET)
 @pytest.mark.asyncio()
 async def test_socket_simple_args(sc):
     assert await sc.call.echo("hello") == "socket: hello"
@@ -107,6 +111,7 @@ async def test_stdio_simple_kwargs(ic):
     assert await ic.call.echo(msg="hello") == "stdio: hello"
 
 
+@pytest.mark.skipif(sys.version_info[:2] == (3, 11), reason=REASON_SOCKET)
 @pytest.mark.asyncio()
 async def test_socket_simple_kwargs(sc):
     assert await sc.call.echo(msg="hello") == "socket: hello"
@@ -135,6 +140,7 @@ async def test_stdio_lcg_kwargs(ic, args, kwargs, result):
     assert await ic.call.lcg(*args, **kwargs) == result
 
 
+@pytest.mark.skipif(sys.version_info[:2] == (3, 11), reason=REASON_SOCKET)
 @pytest.mark.asyncio()
 @pytest.mark.parametrize(("args", "kwargs", "result"), LCG_CASES)
 async def test_socket_lcg_kwargs(sc, args, kwargs, result):
@@ -153,6 +159,7 @@ async def test_stdio_seq(ic):
     assert await ic.call.echo("world") == "stdio: world"
 
 
+@pytest.mark.skipif(sys.version_info[:2] == (3, 11), reason=REASON_SOCKET)
 @pytest.mark.asyncio()
 async def test_socket_seq(sc):
     assert await sc.call.echo("hello", 0.1) == "socket: hello"
@@ -171,6 +178,7 @@ async def test_stdio_par1(ic):
     assert await asyncio.gather(ic.call.echo("hello", 0.1), ic.call.echo("world")) == expected
 
 
+@pytest.mark.skipif(sys.version_info[:2] == (3, 11), reason=REASON_SOCKET)
 @pytest.mark.asyncio()
 async def test_socket_par1(sc):
     expected = ["socket: hello", "socket: world"]
@@ -189,12 +197,14 @@ async def test_stdio_par2(ic):
     assert await asyncio.gather(ic.call.echo("hello"), ic.call.echo("world", 0.1)) == expected
 
 
+@pytest.mark.skipif(sys.version_info[:2] == (3, 11), reason=REASON_SOCKET)
 @pytest.mark.asyncio()
 async def test_socket_par2(sc):
     expected = ["socket: hello", "socket: world"]
     assert await asyncio.gather(sc.call.echo("hello"), sc.call.echo("world", 0.1)) == expected
 
 
+@pytest.mark.skipif(sys.version_info[:2] == (3, 11), reason=REASON_SOCKET)
 @pytest.mark.asyncio()
 async def test_socket_multi_clients(socket_server_path):
     r1, w1 = await asyncio.open_unix_connection(socket_server_path)
@@ -210,6 +220,7 @@ async def test_socket_multi_clients(socket_server_path):
             assert await asyncio.gather(c2.call.echo("h"), c1.call.echo("w", 0.1)) == expected
 
 
+@pytest.mark.skipif(sys.version_info[:2] == (3, 11), reason=REASON_SOCKET)
 def test_sync_socket_rpc_client(socket_server_path):
     with SocketSyncRPCClient(socket_server_path) as client:
         assert client.call.echo("hello", _rpc_timeout=5) == "socket: hello"

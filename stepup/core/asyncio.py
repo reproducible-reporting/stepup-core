@@ -20,6 +20,7 @@
 """Asyncio utilities used in StepUp."""
 
 import asyncio
+import contextlib
 import os
 import sys
 
@@ -123,6 +124,7 @@ async def stdio(
     return reader, writer
 
 
+@contextlib.asynccontextmanager
 async def pipe(
     limit=asyncio.streams._DEFAULT_LIMIT, loop=None
 ) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
@@ -149,12 +151,13 @@ async def pipe(
     if loop is None:
         loop = asyncio.get_event_loop()
     fd_in, fd_out = os.pipe()
-    pipe_in = open(fd_in)  # noqa: SIM115
-    pipe_out = open(fd_out)  # noqa: SIM115
-    reader = asyncio.StreamReader(limit=limit, loop=loop)
-    await loop.connect_read_pipe(lambda: asyncio.StreamReaderProtocol(reader, loop=loop), pipe_in)
-    writer_transport, writer_protocol = await loop.connect_write_pipe(
-        lambda: asyncio.streams.FlowControlMixin(loop=loop), pipe_out
-    )
-    writer = asyncio.streams.StreamWriter(writer_transport, writer_protocol, None, loop)
-    return reader, writer
+    with open(fd_in) as pipe_in, open(fd_out) as pipe_out:
+        reader = asyncio.StreamReader(limit=limit, loop=loop)
+        await loop.connect_read_pipe(
+            lambda: asyncio.StreamReaderProtocol(reader, loop=loop), pipe_in
+        )
+        writer_transport, writer_protocol = await loop.connect_write_pipe(
+            lambda: asyncio.streams.FlowControlMixin(loop=loop), pipe_out
+        )
+        writer = asyncio.streams.StreamWriter(writer_transport, writer_protocol, None, loop)
+        yield reader, writer
