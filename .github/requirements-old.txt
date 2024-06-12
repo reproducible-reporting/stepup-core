@@ -1,0 +1,7 @@
+# Ensure changes to these dependencies are reflected in pyproject.toml
+attrs==22.1.0
+msgpack==1.0.8
+parse==1.19.1
+path==16.14.0
+rich==13.0.0
+watchdog==4.0.0

@@ -21,6 +21,7 @@
 
 import argparse
 import asyncio
+import contextlib
 import os
 import resource
 import shlex
@@ -79,11 +80,11 @@ class WorkerClient:
     #
 
     async def boot(self):
-        log_file = open(f".stepup/logs/worker{self.idx}", "w")  # noqa: SIM115
         args = [
             "-m",
             "stepup.core.worker",
             self.director_socket_path,
+            str(self.idx),
         ]
         if self.show_perf:
             args.append("--show-perf")
@@ -94,7 +95,6 @@ class WorkerClient:
         self.client = await AsyncRPCClient.subprocess(
             sys.executable,
             *args,
-            stderr=log_file,
         )
 
     async def close(self):
@@ -532,6 +532,7 @@ def parse_args():
         prog="stepup-worker", description="Launch and monitor running steps."
     )
     parser.add_argument("director_socket", help="Socket of the director")
+    parser.add_argument("worker_idx", type=int, help="Worker index")
     parser.add_argument(
         "--reporter",
         "-r",
@@ -558,10 +559,15 @@ def parse_args():
 
 async def async_main():
     args = parse_args()
-    print(f"PID {os.getpid()}", file=sys.stderr)
-    async with ReporterClient.socket(args.reporter_socket) as reporter:
-        handler = WorkerHandler(args.director_socket, reporter, args.show_perf, args.explain_rerun)
-        await serve_stdio_rpc(handler)
+    with contextlib.ExitStack() as stack:
+        ferr = stack.enter_context(open(".stepup/logs/worker{args.worker_idx}", "w"))
+        stack.enter_context(contextlib.redirect_stderr(ferr))
+        print(f"PID {os.getpid()}", file=sys.stderr)
+        async with ReporterClient.socket(args.reporter_socket) as reporter:
+            handler = WorkerHandler(
+                args.director_socket, reporter, args.show_perf, args.explain_rerun
+            )
+            await serve_stdio_rpc(handler)
 
 
 def main():
