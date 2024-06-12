@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   This fixes early exits from scripts that used `amend()` when they are called manually.
 - Prevent the `Cannot watch non-existing directory` error by ensuring that deferred glob matches
   exist before they are included as static files in the graph.
+- Check that local scripts have a shebang line before trying to execute them.
+
 
 ## [1.2.4] - 2024-05-27
 
