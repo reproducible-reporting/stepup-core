@@ -2,6 +2,7 @@
 .envrc
 .idea
 tmp
+site/
 venv/
 .ruff_cache
 .pytest_cache
