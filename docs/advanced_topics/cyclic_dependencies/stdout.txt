@@ -10,32 +10,32 @@ Return code           1
 Traceback (most recent call last):
   File "/home/toon/univ/reprep/stepup-core/docs/advanced_topics/cyclic_dependencies/./plan.py", line 5, in <module>
     copy("b.txt", "a.txt")
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/api.py", line 423, in copy
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/api.py", line 453, in copy
     step("cp -aT ${inp} ${out}", inp=path_src, out=path_dst, optional=optional, block=block)
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/api.py", line 288, in step
-    return RPC_CLIENT(
-           ^^^^^^^^^^^
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 440, in __call__
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/api.py", line 303, in step
+    return RPC_CLIENT.call.step(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 436, in __call__
     _handle_error(body, name, args, kwargs)
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 71, in _handle_error
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 68, in _handle_error
     raise RPCError(f"An exception was raised in the server during the call {fmt_call}: \n\n{body}")
-stepup.core.exceptions.RPCError: An exception was raised in the server during the call step('step:./plan.py', 'cp -aT b.txt a.txt', [Path('b.txt')], (), [Path('a.txt')], [], Path('./'), False, None, False):
+stepup.core.exceptions.RPCError: An exception was raised in the server during the call step('step:./plan.py', 'cp -aT b.txt a.txt', [Path('b.txt')], [], [Path('a.txt')], [], Path('./'), False, None, False):
 Traceback (most recent call last):
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 196, in _handle_request
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 193, in _handle_request
     result = call(*bound.args, **bound.kwargs)
              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/director.py", line 337, in step
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/director.py", line 359, in step
     return self._workflow.define_step(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/workflow.py", line 611, in define_step
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/workflow.py", line 623, in define_step
     self.create_file(step_key, out_path, FileState.PENDING)
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/workflow.py", line 383, in create_file
-    self.create(file, creator_key)
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/cascade.py", line 462, in create
-    self.check_cyclic(creator_key, node.key)
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/cascade.py", line 429, in check_cyclic
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/workflow.py", line 375, in create_file
+    self.supply(creator_key, file_key)
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/cascade.py", line 493, in supply
+    self.check_cyclic(supplier_key, consumer_key)
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/cascade.py", line 447, in check_cyclic
     self.report_cyclic(src_key, dst_key)
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/cascade.py", line 409, in report_cyclic
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/cascade.py", line 422, in report_cyclic
     raise CyclicError("\n".join(lines))
 stepup.core.exceptions.CyclicError: New relation introduces cyclic dependency
 src = step:cp -aT b.txt a.txt

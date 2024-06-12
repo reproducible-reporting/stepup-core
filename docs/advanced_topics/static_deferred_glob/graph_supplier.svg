@@ -28,18 +28,18 @@
 <!-- 2 -->
 <g id="node3" class="node">
 <title>2</title>
-<ellipse fill="#80b1d3" stroke="black" stroke-width="0" cx="174.56" cy="-91.45" rx="55.86" ry="19.45"/>
-<text text-anchor="middle" x="174.56" y="-87.9" font-family="IBM Plex Sans" font-size="14.00">cat foo.txt</text>
+<polygon fill="#d9d9d9" stroke="black" stroke-width="0" points="202.81,-36 146.31,-36 146.31,0 202.81,0 202.81,-36"/>
+<text text-anchor="middle" x="174.56" y="-14.45" font-family="IBM Plex Sans" font-size="14.00">foo.txt</text>
 </g>
 <!-- 3 -->
 <g id="node4" class="node">
 <title>3</title>
-<polygon fill="#d9d9d9" stroke="black" stroke-width="0" points="202.81,-36 146.31,-36 146.31,0 202.81,0 202.81,-36"/>
-<text text-anchor="middle" x="174.56" y="-14.45" font-family="IBM Plex Sans" font-size="14.00">foo.txt</text>
+<ellipse fill="#80b1d3" stroke="black" stroke-width="0" cx="174.56" cy="-91.45" rx="55.86" ry="19.45"/>
+<text text-anchor="middle" x="174.56" y="-87.9" font-family="IBM Plex Sans" font-size="14.00">cat foo.txt</text>
 </g>
-<!-- 3&#45;&gt;2 -->
+<!-- 2&#45;&gt;3 -->
 <g id="edge2" class="edge">
-<title>3&#45;&gt;2</title>
+<title>2&#45;&gt;3</title>
 <path fill="none" stroke="dimgray" d="M174.56,-35.93C174.56,-43.34 174.56,-52.25 174.56,-60.7"/>
 <polygon fill="dimgray" stroke="dimgray" points="171.06,-60.62 174.56,-70.62 178.06,-60.62 171.06,-60.62"/>
 </g>

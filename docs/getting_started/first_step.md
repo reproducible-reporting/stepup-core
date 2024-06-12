@@ -79,7 +79,7 @@ StepUp will not know anymore that it already executed some steps and runs all of
   Try it anyway, just to see what happens.
   The terminal output shows the commands that would normally be sent to the StepUp director
   process when `plan.py` is executed by `stepup`.
-  You should get the following screen output:
+  You should get the following screen output.
 
     ```
     {% include 'getting_started/first_step/stdout3.txt' | indent(width=4) %}

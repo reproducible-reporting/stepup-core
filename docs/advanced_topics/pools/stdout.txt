@@ -5,18 +5,18 @@
   DIRECTOR │ Launched worker 3
      PHASE │ run
      START │ ./plan.py
-     START │ sleep 0.1; echo B
      START │ sleep 0.1; echo A
+     START │ sleep 0.1; echo B
    SUCCESS │ ./plan.py
    SUCCESS │ sleep 0.1; echo B
 ─────────────────────────────── Standard output ────────────────────────────────
 B
 ────────────────────────────────────────────────────────────────────────────────
-     START │ sleep 0.1; echo C
    SUCCESS │ sleep 0.1; echo A
 ─────────────────────────────── Standard output ────────────────────────────────
 A
 ────────────────────────────────────────────────────────────────────────────────
+     START │ sleep 0.1; echo C
    SUCCESS │ sleep 0.1; echo C
 ─────────────────────────────── Standard output ────────────────────────────────
 C
