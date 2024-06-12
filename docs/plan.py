@@ -3,7 +3,7 @@
 
 from path import Path
 
-from stepup.core.api import amend, glob, static, step
+from stepup.core.api import glob, static, step
 
 
 def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
@@ -48,11 +48,11 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
 
 
 def main():
+    """Main program."""
     static("run_example.py", "getting_started/", "advanced_topics/")
     glob("getting_started/*/")
     glob("advanced_topics/*/")
     paths_main = glob("*/*/main.sh")
-    assert amend(inp=paths_main.files())
     for path_main in paths_main:
         inp, root, out = scan_main(path_main)
         static(inp)
