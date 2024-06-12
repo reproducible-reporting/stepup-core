@@ -27,12 +27,13 @@ classifiers = [
     "Topic :: Software Development :: Build Tools",
 ]
 dependencies = [
-    "attrs",
-    "msgpack",
-    "parse",
-    "path",
-    "rich",
-    "watchdog",
+    # Ensure changes to these dependencies are reflected in .github/workflows/pytest.yaml
+    "attrs>=21.3.0",
+    "msgpack>=1.0.8",
+    "parse>=1.19.1",
+    "path>=16.14.0",
+    "rich>=13.0.0",
+    "watchdog>=4.0.0",
 ]
 dynamic = ["version"]
 
@@ -60,7 +61,7 @@ stepup = "stepup.core.tui:main"
 cleanup = "stepup.core.cleanup:main"
 
 [tool.pytest.ini_options]
-addopts = "-n auto"
+addopts = "-n auto -W error"
 
 [tool.ruff]
 line-length = 100

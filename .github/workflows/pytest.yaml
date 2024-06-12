@@ -2,18 +2,30 @@ name: pytest
 on:
   push:
     branches:
-     - main
+    # Run tests for change on the main branch ...
+    - main
     tags-ignore:
-      - '**'
+    # ... but not for tags (avoids duplicate work).
+    - '**'
   pull_request:
+  # Run tests on pull requests
+
 jobs:
   tests:
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.x
+          python-version: ${{ matrix.python-version }}
+      - name: Install oldest versions of supported dependencies
+        if: ${{ matrix.python-version == '3.11'}}
+        # Ensure changes to these dependencies are reflected in pyproject.toml
+        run: pip attrs==21.3.0 msgpack==1.0.8 parse==1.19.1 path==16.14.0 rich==13.0.0 watchdog==4.0.0
       - name: Install development version
         run: pip install -e .[dev]
       - name: Run pytest
