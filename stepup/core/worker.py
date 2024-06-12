@@ -23,6 +23,7 @@ import argparse
 import asyncio
 import os
 import resource
+import shlex
 import sys
 from time import perf_counter
 
@@ -382,6 +383,16 @@ class WorkerHandler:
     @allow_rpc
     async def run(self):
         await self.reporter("START", self.step.description)
+
+        # Sanity check of the executable (if it can be found)
+        if not has_shebang(self.step.workdir / shlex.split(self.step.command)[0]):
+            self.step.stdout = b""
+            self.step.stderr = b"Script does not start with a shebang."
+            self.step.returncode = 1
+            self.step.success = False
+            return
+
+        # Actual execution
         stepup_root = Path.cwd()
         env = os.environ | {
             "STEPUP_DIRECTOR_SOCKET": self.director_socket_path,
@@ -401,6 +412,8 @@ class WorkerHandler:
             env=env,
             cwd=self.step.workdir,
         )
+
+        # Process results of the step.
         self.step.stdout, self.step.stderr = await proc.communicate()
         self.step.returncode = proc.returncode
         if self.show_perf:
@@ -493,6 +506,25 @@ class WorkerHandler:
                 pages.append(("Remained the same", page_same))
             await self.reporter("NOSKIP", self.step.description, pages)
         self.step = None
+
+
+def has_shebang(executable: Path) -> bool:
+    """Return `True` if a script has a shebang or if the file is not a script."""
+    # See https://en.wikipedia.org/wiki/Shebang_%28Unix%29
+    if not executable.is_file():
+        # The executable is probably in the PATH,
+        # i.e. not a custom script, so not checking
+        return True
+    # Check if the file is binary.
+    # https://stackoverflow.com/a/7392391
+    with open(executable, "rb") as fh:
+        head = fh.read(1024)
+    printable_text_chars = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F})
+    # Check if the file is binary by translating non-text characters
+    if bool(head.translate(None, printable_text_chars)):
+        # This is unlikely to be a script, so not checking the shebang.
+        return True
+    return head[:3] == b"#!/"
 
 
 def parse_args():
