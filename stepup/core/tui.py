@@ -85,6 +85,8 @@ async def async_main():
             argv.append("--show-perf")
         if args.explain_rerun:
             argv.append("--explain-rerun")
+        if not args.interactive:
+            argv.append("--non-interactive")
         try:
             with open(".stepup/logs/director", "w") as log_file:
                 process_director = await asyncio.create_subprocess_exec(
@@ -95,18 +97,13 @@ async def async_main():
                     stderr=subprocess.STDOUT,
                 )
                 # Instantiate keyboard interaction or work non-interactively
-                if args.interactive:
-                    if sys.stdin.isatty():
-                        await wait_for_path(director_socket_path, stop_event)
-                        task_keyboard = asyncio.create_task(
-                            keyboard(director_socket_path, reporter_socket_path, stop_event),
-                            name="keyboard",
-                        )
-                        tasks.append(task_keyboard)
-                else:
+                if args.interactive and sys.stdin.isatty():
                     await wait_for_path(director_socket_path, stop_event)
-                    async with await AsyncRPCClient.socket(director_socket_path) as client:
-                        await client.call.join()
+                    task_keyboard = asyncio.create_task(
+                        keyboard(director_socket_path, reporter_socket_path, stop_event),
+                        name="keyboard",
+                    )
+                    tasks.append(task_keyboard)
                 await process_director.wait()
             stop_event.set()
         finally:

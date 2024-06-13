@@ -68,6 +68,7 @@ async def async_main():
                 reporter,
                 args.show_perf,
                 args.explain_rerun,
+                args.interactive,
             )
         except Exception as exc:
             tbstr = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
@@ -131,6 +132,14 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Explain for every step with recording info why it cannot be skipped.",
     )
+    parser.add_argument(
+        "--non-interactive",
+        "-n",
+        dest="interactive",
+        default=True,
+        action="store_false",
+        help="Exit when all runnable tasks have completed. Disable watching file changes.",
+    )
     return parser.parse_args()
 
 
@@ -157,6 +166,7 @@ async def serve(
     reporter: ReporterClient,
     show_perf: bool,
     explain_rerun: bool,
+    interactive: bool,
 ):
     """Server program.
 
@@ -178,6 +188,10 @@ async def serve(
         Show performance details after each completed step.
     explain_rerun
         Let workers explain why steps with recording info cannot be skipped.
+    interactive
+        If True, the director alternates between run and watch phases until
+        it receives an RPC to shutdown.
+        If False, the director exits after a single run phase.
     """
     if num_workers < 1:
         raise ValueError(f"Number of workers must be strictly positive, got {num_workers}")
@@ -216,7 +230,7 @@ async def serve(
     # Create components
     scheduler = Scheduler(workflow.job_queue, workflow.job_queue_changed)
     scheduler.num_workers = num_workers
-    watcher = Watcher(workflow, reporter, workflow.dir_queue)
+    watcher = Watcher(workflow, reporter, workflow.dir_queue) if interactive else None
     runner = Runner(
         watcher,
         scheduler,
@@ -232,11 +246,14 @@ async def serve(
     director_handler.define_boot()
 
     # Start tasks and wait for them to complete
-    watcher_loop = watcher.loop(stop_event)
-    runner_loop = runner.loop(stop_event)
-    rpc_director = serve_socket_rpc(director_handler, director_socket_path, stop_event)
+    coroutines = [
+        runner.loop(stop_event, interactive),
+        serve_socket_rpc(director_handler, director_socket_path, stop_event),
+    ]
+    if interactive:
+        coroutines.append(watcher.loop(stop_event))
     try:
-        await asyncio.gather(watcher_loop, runner_loop, rpc_director)
+        await asyncio.gather(*coroutines)
     finally:
         await reporter("DIRECTOR", "Stopping workers.")
         await runner.stop_workers()

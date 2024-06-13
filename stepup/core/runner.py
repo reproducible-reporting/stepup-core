@@ -43,7 +43,7 @@ __all__ = ("Runner",)
 @attrs.define
 class Runner:
     # The watcher instance, used to start the watcher when the runner becomes idle.
-    watcher: Watcher = attrs.field()
+    watcher: Watcher | None = attrs.field()
 
     # The scheduler providing jobs to the runner.
     scheduler: Scheduler = attrs.field()
@@ -85,13 +85,15 @@ class Runner:
     # StepUp from continuing with a half-baked workflow.
     dissolve_after_dump: bool = attrs.field(init=False, default=False)
 
-    async def loop(self, stop_event: asyncio.Event):
+    async def loop(self, stop_event: asyncio.Event, interactive: bool):
         """The main runner loop.
 
         Parameters
         ----------
         stop_event
             The main runner loop is interrupted by this event.
+        interactive:
+            When False, the jobloop is started only once.
 
         Notes
         -----
@@ -109,6 +111,8 @@ class Runner:
             await self.job_loop()
             await self.finalize()
             self.resume.clear()
+            if not interactive:
+                stop_event.set()
             await wait_for_events(self.resume, stop_event, return_when=asyncio.FIRST_COMPLETED)
             if stop_event.is_set():
                 return
@@ -160,7 +164,8 @@ class Runner:
             )
             self.workflow.dissolve()
             self.dissolve_after_dump = False
-        self.watcher.resume.set()
+        if self.watcher is not None:
+            self.watcher.resume.set()
 
     async def send_to_worker(self, job: Job, pool_name: str):
         if len(self.idle_workers) > 0:
