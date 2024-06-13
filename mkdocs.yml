@@ -1,6 +1,24 @@
 site_name: StepUp Core
 repo_url: https://github.com/reproducible-reporting/stepup-core
 edit_uri: edit/main/docs/
+site_description: StepUp Core Documentation
+site_author: Toon Verstraelen
+copyright: 2024, Toon Verstraelen
+
+watch:
+  - stepup
+
+#strict: true
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    anchors: warn
+    absolute_links: warn
+    unrecognized_links: warn
 
 theme:
   name: material
@@ -82,7 +100,9 @@ exclude_docs: |
   */*/public/*.md
 
 plugins:
-- search
+- search:
+    lang:
+      - en
 - macros
 - mkdocstrings:
     default_handler: python
