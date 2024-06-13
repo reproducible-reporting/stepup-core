@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.6] - 2024-06-13
+
+- Do not watch files when running StepUp non-interactively.
+  This makes non-interactive mode a workaround for a nasty watchdog bug,
+  which crops up when working on larger StepUp projects.
+  See https://github.com/gorakhargosh/watchdog/issues/275
+
+
 ## [1.2.5] - 2024-06-13
 
 ### Fixed
