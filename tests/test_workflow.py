@@ -1650,3 +1650,50 @@ def test_set_pool(wfp):
     plan.update_recording(wfp)
     assert plan.recording.defined_pools == {"random": 2}
     check_workflow_unstructure(wfp)
+
+
+def test_filter_deferred1(wfp):
+    plan_key = "step:./plan.py"
+    assert wfp.defer_glob(plan_key, ["*.txt"]) == []
+    assert wfp.filter_deferred(["test.png", "test.txt", "other.txt", "sub/boom.txt"]) == [
+        "test.txt",
+        "other.txt",
+    ]
+    assert "file:test.png" not in wfp.nodes
+    assert wfp.get_file("file:test.txt").get_state(wfp) == FileState.MISSING
+    assert wfp.get_file("file:other.txt").get_state(wfp) == FileState.MISSING
+    assert "file:sub/boom.txt" not in wfp.nodes
+
+
+def test_filter_deferred2(wfp):
+    plan_key = "step:./plan.py"
+    assert wfp.defer_glob(plan_key, ["data/**"]) == []
+    assert wfp.filter_deferred(["data/test.txt", "data.txt"]) == ["data/", "data/test.txt"]
+    assert wfp.get_file("file:data/").get_state(wfp) == FileState.MISSING
+    assert wfp.get_file("file:data/test.txt").get_state(wfp) == FileState.MISSING
+    assert "file:data.txt" not in wfp.nodes
+
+
+def test_filter_deferred3(wfp):
+    plan_key = "step:./plan.py"
+    assert wfp.defer_glob(plan_key, ["data/**/foo.txt"]) == []
+    with pytest.raises(GraphError):
+        wfp.filter_deferred(["data/test/foo.txt"])
+    wfp.declare_static(plan_key, ["data/", "data/other/"])
+    assert wfp.filter_deferred(["data/other/foo.txt"]) == ["data/other/foo.txt"]
+
+
+def test_confirm_deferred(wfp):
+    plan_key = "step:./plan.py"
+    step_key = wfp.define_step(plan_key, "cat ${inp}", inp_paths=["test.txt"])
+    wfp.declare_static(plan_key, ["test.txt", "other.txt"], verified=False)
+    # static other.txt
+    assert wfp.get_file("file:other.txt").get_state(wfp) == FileState.MISSING
+    wfp.confirm_deferred(["other.txt"])
+    assert wfp.get_step(step_key).get_state(wfp) == StepState.PENDING
+    # static test.txt
+    assert wfp.get_file("file:test.txt").get_state(wfp) == FileState.MISSING
+    assert wfp.get_step(step_key).get_state(wfp) == StepState.PENDING
+    wfp.confirm_deferred(["test.txt"])
+    assert wfp.get_file("file:test.txt").get_state(wfp) == FileState.STATIC
+    assert wfp.get_step(step_key).get_state(wfp) == StepState.QUEUED

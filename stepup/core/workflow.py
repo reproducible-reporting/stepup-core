@@ -513,7 +513,6 @@ class Workflow(Cascade):
             all_paths = []
             while not (path is None or f"file:{path}" in self.nodes):
                 all_paths.insert(0, path)
-                print(all_paths)
                 path = myparent(path)
             for path_up in all_paths:
                 dg = self.matching_deferred_glob(path_up)

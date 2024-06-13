@@ -5,16 +5,7 @@
 # - Update some actions to more recent versions
 
 name: release
-on:
-  push:
-    branches:
-    # Run tests for change on the main branch ...
-    - main
-    tags-ignore:
-    # ... but not for tags (avoids duplicate work).
-    - '**'
-  pull_request:
-  # Run tests on pull requests
+on: push
 
 env:
   # This is not critical
