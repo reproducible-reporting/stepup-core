@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.5] - 2024-06-13
+
 ### Fixed
 
 - Effectively make watching recursive when a directory is added that is known in the workflow.
@@ -15,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prevent the `Cannot watch non-existing directory` error by ensuring that deferred glob matches
   exist before they are included as static files in the graph.
 - Check that local scripts have a shebang line before trying to execute them.
+- Improved continuous integration setup
+- Minor documentation improvements
+- Minor code cleanups
 
 
 ## [1.2.4] - 2024-05-27
@@ -99,6 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Initial release
 
 
+[1.2.5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.5
 [1.2.4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.4
 [1.2.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.3
 [1.2.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.2
