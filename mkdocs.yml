@@ -8,7 +8,7 @@ copyright: 2024, Toon Verstraelen
 watch:
   - stepup
 
-#strict: true
+strict: true
 validation:
   nav:
     omitted_files: warn
