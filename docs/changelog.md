@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.2.6] - 2024-06-13 ## {: #v1.2.6 }
+## [1.2.6] - 2024-06-13 {: #v1.2.6 }
 
 ### Fixed
 
@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   See https://github.com/gorakhargosh/watchdog/issues/275
 
 
-## [1.2.5] - 2024-06-13 ## {: #v1.2.5 }
+## [1.2.5] - 2024-06-13 {: #v1.2.5 }
 
 ### Fixed
 
@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Minor code cleanups
 
 
-## [1.2.4] - 2024-05-27 ## {: #v1.2.4 }
+## [1.2.4] - 2024-05-27 {: #v1.2.4 }
 
 ### Changed
 
@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pool definitions are stored in workflow and replayed correctly when a step is skipped.
 
 
-## [1.2.3] - 2024-05-19 ## {: #v1.2.3 }
+## [1.2.3] - 2024-05-19 {: #v1.2.3 }
 
 ### Changed
 
@@ -57,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve hash computation of a symbolic links in `stepup.core.hash`.
 
 
-## [1.2.2] - 2024-05-16 ## {: #v1.2.2 }
+## [1.2.2] - 2024-05-16 {: #v1.2.2 }
 
 ### Fixed
 
@@ -69,14 +69,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation updates.
 
 
-## [1.2.1] - 2024-05-07 ## {: #v1.2.1 }
+## [1.2.1] - 2024-05-07 {: #v1.2.1 }
 
 ### Fixed
 
 - Fixed packaging mistake that confused PyCharm and Pytest.
 
 
-## [1.2.0] - 2024-05-02 ## {: #v1.2.0 }
+## [1.2.0] - 2024-05-02 {: #v1.2.0 }
 
 ### Added
 
@@ -109,7 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   e.g. `graph` instead of `graph.txt`.
 
 
-## [1.0.0] - 2024-04-25 ## {: #v1.0.0 }
+## [1.0.0] - 2024-04-25 {: #v1.0.0 }
 
 Initial release
 
