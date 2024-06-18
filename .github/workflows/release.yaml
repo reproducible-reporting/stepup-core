@@ -100,7 +100,7 @@ jobs:
         gh release upload
         '${{ github.ref_name }}' dist/**
         --repo '${{ github.repository }}'
-
+        --notes 'See [docs/changelog/#${{ github.ref_name }}](https://reproducible-reporting.github.io/stepup-core/changelog/#${{ github.ref_name }})'
   publish-to-testpypi:
     name: Publish Python distribution to TestPyPI
     if: ${{ github.ref == 'refs/heads/main' &&  github.repository_owner == 'reproducible-reporting'}}
