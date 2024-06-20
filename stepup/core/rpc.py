@@ -219,16 +219,33 @@ async def _serve_rpc_send_loop(
 #
 
 
-async def _handle_connection(handler, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-    await serve_rpc(handler, reader, writer)
+async def _handle_connection(
+    handler,
+    stop_events: list[asyncio.Event],
+    reader: asyncio.StreamReader,
+    writer: asyncio.StreamWriter,
+):
+    stop_event = asyncio.Event()
+    stop_events.append(stop_event)
+    await serve_rpc(handler, reader, writer, stop_event)
+    await writer.drain()
     writer.close()
     await writer.wait_closed()
 
 
 async def serve_socket_rpc(handler, path, stop_event):
-    server = await asyncio.start_unix_server(partial(_handle_connection, handler), path)
+    # Keep a list of stop_events, including one for each handler.
+    # This works around an apparent (but difficult to isolate) issue in Python 3.11:
+    # The server context handler exits before all open requests are handled,
+    # resulting in lost connection errors.
+    # (This is not needed for Python 3.12)
+    stop_events = [stop_event]
+    server = await asyncio.start_unix_server(
+        partial(_handle_connection, handler, stop_events), path
+    )
     async with server:
-        await stop_event.wait()
+        while len(stop_events) > 0:
+            await stop_events.pop().wait()
 
 
 async def serve_stdio_rpc(handler):

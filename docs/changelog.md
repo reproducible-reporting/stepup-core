@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Add workaround for Python==3.11 bug with RPC over sockets.
+  The RPC server (created with `asyncio.start_unix_server`) closes before all requests are handled.
+  A stop event is now included for all RPC handlers
+  to wait with stopping the server until every request is handled.
+
+
 ## [1.2.6] - 2024-06-13 {: #v1.2.6 }
 
 ### Fixed
