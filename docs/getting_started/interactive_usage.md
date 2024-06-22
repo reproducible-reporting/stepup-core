@@ -63,4 +63,4 @@ Running `./plan.py` again will, in turn, create a new step to copy `src/spam.txt
 
 The following recording shows the terminal output when starting StepUp from scratch with two workers, changing `src/foo.txt` and re-running, followed by adding `src/spam.txt` and re-running:
 
-[![asciicast](https://asciinema.org/a/657277.svg)](https://asciinema.org/a/657277)
+<script src="https://asciinema.org/a/657277.js" id="asciicast-657277" async="true"></script>
