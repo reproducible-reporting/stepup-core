@@ -52,6 +52,33 @@ You can better understand how the above example works by breaking it down into t
   so you don't need to set it.
   This is only needed if processes other than subprocesses need to interact with the director,
   as in this example.
+
+You can define a
+[Custom Task in VSCode](https://code.visualstudio.com/docs/editor/tasks#_custom-tasks)
+to rerun StepUp with the following `tasks.json` file:
+
+```json
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "StepUp run",
+      "type": "shell",
+      "command": "STEPUP_DIRECTOR_SOCKET=$(python -c 'import stepup.core.director; \
+print(stepup.core.director.get_socket())') python -c 'from stepup.core.interact import run; run()'",
+      "options": {"cwd": "./path/from/project/root/to/stepup/root/"},
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    }
+  ]
+}
+```
 """
 
 from .api import RPC_CLIENT, translate
