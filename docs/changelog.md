@@ -7,12 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.7] - 2024-06-24 {: #v1.2.7 }
+
 ### Fixed
 
 - Add workaround for Python==3.11 bug with RPC over sockets.
   The RPC server (created with `asyncio.start_unix_server`) closes before all requests are handled.
   A stop event is now included for all RPC handlers
   to wait with stopping the server until every request is handled.
+  This is a known issue fixed in Python 3.12.1:
+  https://github.com/python/cpython/issues/120866
 
 
 ## [1.2.6] - 2024-06-13 {: #v1.2.6 }
@@ -123,6 +127,7 @@ Initial release
 
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[1.2.7]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.7
 [1.2.6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.6
 [1.2.5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.5
 [1.2.4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.4
