@@ -53,6 +53,8 @@ You can better understand how the above example works by breaking it down into t
   This is only needed if processes other than subprocesses need to interact with the director,
   as in this example.
 
+## Configuration of a Task in VSCode
+
 You can define a
 [Custom Task in VSCode](https://code.visualstudio.com/docs/editor/tasks#_custom-tasks)
 to rerun StepUp with the following `tasks.json` file:
@@ -79,6 +81,19 @@ print(stepup.core.director.get_socket())') python -c 'from stepup.core.interact 
   ]
 }
 ```
+
+The following `keybindings.json` file will bind `ctrl+d` to run the task:
+
+```json
+[
+  {
+    "key": "ctrl+d",
+    "command": "workbench.action.tasks.runTask",
+    "args": "StepUp run"
+  }
+]
+```
+
 """
 
 from .api import RPC_CLIENT, translate
