@@ -211,8 +211,8 @@ class ScriptWrapper:
         if not self._has_single:
             raise NotImplementedError("get_info only works for scripts with an info function")
         info = self._object.info()
-        if not isinstance(info, dict) or len(info) == 0:
-            raise TypeError("info must return a non-empty dictionary.")
+        if not isinstance(info, dict):
+            raise TypeError("info must return a dictionary.")
         return info
 
     def get_plan(self) -> tuple[list[str], list[str], list[str]]:
@@ -261,8 +261,8 @@ class ScriptWrapper:
         if not self._has_cases:
             raise NotImplementedError("get_case_info only works for scripts with multiple cases")
         info = self._object.case_info(*args, **kwargs)
-        if not isinstance(info, dict) or len(info) == 0:
-            raise TypeError("case_info must return a non-empty dictionary.")
+        if not isinstance(info, dict):
+            raise TypeError("case_info must return a dictionary.")
         return info
 
     def get_case_plan(self, *args, **kwargs) -> tuple[list[str], list[str], list[str]]:

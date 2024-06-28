@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Modify the script driver so that `info` and `case_info` may return empty dictionaries.
+
+
 ## [1.2.7] - 2024-06-24 {: #v1.2.7 }
 
 ### Fixed
