@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.8] - 2024-06-28 {: #v1.2.8 }
+
 ### Fixed
 
 - Modify the script driver so that `info` and `case_info` may return empty dictionaries.
@@ -132,6 +134,7 @@ Initial release
 
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[1.2.8]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.8
 [1.2.7]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.7
 [1.2.6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.6
 [1.2.5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.5
