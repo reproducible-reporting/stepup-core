@@ -6,6 +6,5 @@
    SUCCESS │ ./plan.py
       SKIP │ cat average.txt
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
-     PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

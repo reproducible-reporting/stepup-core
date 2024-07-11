@@ -15,19 +15,19 @@ Traceback (most recent call last):
   File "/home/toon/univ/reprep/stepup-core/stepup/core/api.py", line 303, in step
     return RPC_CLIENT.call.step(
            ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 436, in __call__
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 448, in __call__
     _handle_error(body, name, args, kwargs)
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 68, in _handle_error
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 69, in _handle_error
     raise RPCError(f"An exception was raised in the server during the call {fmt_call}: \n\n{body}")
 stepup.core.exceptions.RPCError: An exception was raised in the server during the call step('step:./plan.py', 'cp -aT b.txt a.txt', [Path('b.txt')], [], [Path('a.txt')], [], Path('./'), False, None, False):
 Traceback (most recent call last):
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 193, in _handle_request
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/rpc.py", line 194, in _handle_request
     result = call(*bound.args, **bound.kwargs)
              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/director.py", line 359, in step
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/director.py", line 376, in step
     return self._workflow.define_step(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/toon/univ/reprep/stepup-core/stepup/core/workflow.py", line 623, in define_step
+  File "/home/toon/univ/reprep/stepup-core/stepup/core/workflow.py", line 622, in define_step
     self.create_file(step_key, out_path, FileState.PENDING)
   File "/home/toon/univ/reprep/stepup-core/stepup/core/workflow.py", line 375, in create_file
     self.supply(creator_key, file_key)
@@ -51,6 +51,5 @@ cycle:
    WARNING │ Skipping cleanup due to incomplete build.
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
    WARNING │ Dissolving the workflow due to an exceptions while the graph was being changed.
-     PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

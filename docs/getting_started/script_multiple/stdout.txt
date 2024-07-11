@@ -10,6 +10,5 @@
      START │ ./plot.py run -- 'plot_ebos'
    SUCCESS │ ./plot.py run -- 'plot_ebos'
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
-     PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

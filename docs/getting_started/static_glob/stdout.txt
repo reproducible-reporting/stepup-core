@@ -10,6 +10,5 @@
      START │ cp -aT src/foo.txt dst/foo.txt
    SUCCESS │ cp -aT src/foo.txt dst/foo.txt
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
-     PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

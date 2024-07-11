@@ -4,10 +4,10 @@
    SUCCESS │ ./plan.py
      START │ ./work.py plan
    SUCCESS │ ./work.py plan
-     START │ ./work.py run -- '-5.0'
-   SUCCESS │ ./work.py run -- '-5.0'
-     START │ ./work.py run -- '+7.0'
-   SUCCESS │ ./work.py run -- '+7.0'
+     START │ ./work.py run -- '-5.0' > stdout-5.0.txt 2> stderr-5.0.txt
+   SUCCESS │ ./work.py run -- '-5.0' > stdout-5.0.txt 2> stderr-5.0.txt
+     START │ ./work.py run -- '+7.0' > stdout+7.0.txt 2> stderr+7.0.txt
+   SUCCESS │ ./work.py run -- '+7.0' > stdout+7.0.txt 2> stderr+7.0.txt
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
   DIRECTOR │ Stopping workers.

@@ -16,6 +16,5 @@ This is part 2.
 This is part 1.
 ────────────────────────────────────────────────────────────────────────────────
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
-     PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

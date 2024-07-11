@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add support for standard output and error redirection in the script driver.
+  The dictionary returned by the `info` or `case_info` functions
+  can include `"stdout"` and/or `"stderr"` items.
+  The values of these two fields are paths to which the standard output and/or error
+  of the run part of the script are redirected.
+
+
 ## [1.2.8] - 2024-06-28 {: #v1.2.8 }
 
 ### Fixed

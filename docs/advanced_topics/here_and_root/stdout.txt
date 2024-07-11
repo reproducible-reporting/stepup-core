@@ -12,6 +12,5 @@
      START │ cp -aT example.txt ../../public/sub/example.txt  # wd=sub/
    SUCCESS │ cp -aT example.txt ../../public/sub/example.txt  # wd=sub/
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
-     PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

@@ -2,3 +2,5 @@
 data-5.0.txt
 data+7.0.txt
 current_*
+stdout*.txt
+stderr*.txt

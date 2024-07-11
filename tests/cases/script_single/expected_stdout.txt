@@ -4,8 +4,8 @@
    SUCCESS │ ./plan.py
      START │ ./generate.py plan --optional  # wd=work/
    SUCCESS │ ./generate.py plan --optional  # wd=work/
-     START │ ./generate.py run  # wd=work/
-   SUCCESS │ ./generate.py run  # wd=work/
+     START │ ./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
+   SUCCESS │ ./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
      START │ cp -aT work/test.csv work/copy.csv
    SUCCESS │ cp -aT work/test.csv work/copy.csv
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
