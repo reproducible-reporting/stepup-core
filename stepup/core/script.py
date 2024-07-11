@@ -360,6 +360,7 @@ def _driver_run(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapp
             raise RuntimeError(f"Script has no info function: {script_path}")
         info = wrapper.filter_info(wrapper.get_info())
         wrapper.run(**info)
+        return
     if not wrapper.has_cases:
         raise RuntimeError(f"Script has no case_info function: {script_path}")
     case_args, case_kwargs = wrapper.parse(args.string)
