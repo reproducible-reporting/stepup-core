@@ -234,7 +234,7 @@ class ScriptWrapper:
         self._object.run(**filtered_info)
 
 
-def driver(obj=None):
+def driver(obj: Any = None):
     """Driver function to be called from a script as `driver()` or `driver(obj)`.
 
     Parameters
@@ -310,7 +310,7 @@ def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrap
     # Plan the script.
     if wrapper.has_single:
         if not amend(inp=top_mod_paths):
-            return None
+            return
         static_paths, inp_paths, out_paths, stdout_path, stderr_path = wrapper.get_plan()
         inp_paths.extend(top_mod_paths)
         inp_paths.append(script_path)
@@ -323,7 +323,7 @@ def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrap
         # Include local imports, used to generate the cases, as inputs for the plan step.
         plan_mod_paths = _get_local_import_paths(script_path)
         if not amend(inp=plan_mod_paths):
-            return 0
+            return
         # Then create steps for all cases
         for case_args, case_kwargs in cases:
             argstr = wrapper.format(*case_args, **case_kwargs)
@@ -359,7 +359,7 @@ def _driver_run(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapp
         if not wrapper.has_single:
             raise RuntimeError(f"Script has no info function: {script_path}")
         info = wrapper.filter_info(wrapper.get_info())
-        return wrapper.run(**info)
+        wrapper.run(**info)
     if not wrapper.has_cases:
         raise RuntimeError(f"Script has no case_info function: {script_path}")
     case_args, case_kwargs = wrapper.parse(args.string)
@@ -416,7 +416,7 @@ def _add_redirects(
         The standard output path. Ignored if `None`. Not added to out_paths if `"/dev/null"`.
     stderr_path
         The standard error path. Ignored if `None`. Not added to out_paths if `"/dev/null"`.
-        Use `"__stdout__"` to redirect it to the same file as stdout (if any).
+        Use the same value as `stdout` to redirect both streams to the same file.
 
     Returns
     -------
@@ -424,13 +424,13 @@ def _add_redirects(
         The command with redirections included.
     """
     if stdout_path is not None:
-        if stderr_path == "__stdout__":
+        if stderr_path == stdout_path:
             command += f" &> {stdout_path}"
         else:
             command += f" > {stdout_path}"
         if stdout_path != "/dev/null":
             out_paths.append(stdout_path)
-    if not (stderr_path is None or stderr_path == "__stdout__"):
+    if not (stderr_path is None or stderr_path == stdout_path):
         command += f" 2> {stderr_path}"
         if stderr_path != "/dev/null":
             out_paths.append(stderr_path)

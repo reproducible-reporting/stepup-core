@@ -60,7 +60,7 @@ The script has the following elements:
 - The function `case_info()` is used to translate `args` and `kwargs` into a more detailed
   planning of the run steps.
   The returned dictionary is handled in the same way as that of the `info()` function in
-  the previous tutorial [Script (Single Case)](script_single.md#single-case-script-driver)
+  the previous tutorial [Script (Single Case)](script_single.md#single-case-script-driver).
 
 - The function `run()` works in the same way as for the single case script driver.
 
@@ -124,7 +124,7 @@ This produces the following figures:
         yield from airports
     ```
 
-- For debugging purposes, it is somtimes useful to just run a single case of a script.
+- For debugging purposes, it is sometimes useful to run just a single case of a script.
   To facilitate this type of debugging, the script can be called with the `cases` argument.
   When you run the following command:
 
@@ -132,7 +132,7 @@ This produces the following figures:
     ./plot.py cases
     ```
 
-    you get a list with different ways of running the `run()` function of the script:
+    you will get a list of different ways to execute the script's `run()` function:
 
 {% macro incl() %}
 {% include "getting_started/script_multiple/cases_out.txt" %}

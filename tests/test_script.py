@@ -50,13 +50,13 @@ def test_add_redirects_err():
 
 def test_add_redirects_combined():
     out_paths = ["aaa"]
-    assert _add_redirects("echo foo", out_paths, "out", "__stdout__") == "echo foo &> out"
+    assert _add_redirects("echo foo", out_paths, "out", "out") == "echo foo &> out"
     assert out_paths == ["aaa", "out"]
 
 
 def test_add_redirects_devnull():
     out_paths = ["aaa"]
-    expected = "echo foo > /dev/null 2> /dev/null"
+    expected = "echo foo &> /dev/null"
     assert _add_redirects("echo foo", out_paths, "/dev/null", "/dev/null") == expected
     assert out_paths == ["aaa"]
 
