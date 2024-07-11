@@ -6,6 +6,5 @@
      START │ nl limerick.txt > numbered.txt
    SUCCESS │ nl limerick.txt > numbered.txt
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
-     PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

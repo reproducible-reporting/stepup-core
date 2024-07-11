@@ -28,6 +28,5 @@
      START │ cat ch4/sec4_1_summary.md > public/ch4.md
    SUCCESS │ cat ch4/sec4_1_summary.md > public/ch4.md
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
-     PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

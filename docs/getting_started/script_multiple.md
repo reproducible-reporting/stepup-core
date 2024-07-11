@@ -23,6 +23,9 @@ def case_info(case: int):
     return {
         "inp": ..., # a single input path or a list of input paths
         "out": ..., # a single output path or a list of input paths
+        "static": ..., # declare a static file or a list of static files
+        "stdout": ..., # redirect the standard output to a file (StepUp 1.3.0)
+        "stderr": ..., # redirect the standard error to a file (StepUp 1.3.0)
         "just_any": "argument that you want to add",
     }
 
@@ -56,6 +59,8 @@ The script has the following elements:
 
 - The function `case_info()` is used to translate `args` and `kwargs` into a more detailed
   planning of the run steps.
+  The returned dictionary is handled in the same way as that of the `info()` function in
+  the previous tutorial [Script (Single Case)](script_single.md#single-case-script-driver).
 
 - The function `run()` works in the same way as for the single case script driver.
 
@@ -117,4 +122,22 @@ This produces the following figures:
     def cases():
         from settings import airports
         yield from airports
+    ```
+
+- For debugging purposes, it is sometimes useful to run just a single case of a script.
+  To facilitate this type of debugging, the script can be called with the `cases` argument.
+  When you run the following command:
+
+    ```bash
+    ./plot.py cases
+    ```
+
+    you will get a list of different ways to execute the script's `run()` function:
+
+{% macro incl() %}
+{% include "getting_started/script_multiple/cases_out.txt" %}
+{% endmacro %}
+
+    ```bash
+    {{ incl() | indent(width=4) }}
     ```

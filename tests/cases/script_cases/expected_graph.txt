@@ -19,11 +19,15 @@ file:./
             supplies   file:data-5.0.txt
             supplies   file:helper.py
             supplies   file:plan.py
+            supplies   file:stderr+7.0.txt
+            supplies   file:stderr-5.0.txt
+            supplies   file:stdout+7.0.txt
+            supplies   file:stdout-5.0.txt
             supplies   file:work.py
             supplies   step:./plan.py
             supplies   step:./work.py plan
-            supplies   step:./work.py run -- '+7.0'
-            supplies   step:./work.py run -- '-5.0'
+            supplies   step:./work.py run -- '+7.0' > stdout+7.0.txt 2> stderr+7.0.txt
+            supplies   step:./work.py run -- '-5.0' > stdout-5.0.txt 2> stderr-5.0.txt
 
 step:./plan.py
              workdir = ./
@@ -42,8 +46,8 @@ file:helper.py
           created by   step:./plan.py
             consumes   file:./
             supplies   step:./work.py plan
-            supplies   step:./work.py run -- '+7.0'
-            supplies   step:./work.py run -- '-5.0'
+            supplies   step:./work.py run -- '+7.0' > stdout+7.0.txt 2> stderr+7.0.txt
+            supplies   step:./work.py run -- '-5.0' > stdout-5.0.txt 2> stderr-5.0.txt
 
 file:work.py
                 path = work.py
@@ -51,8 +55,8 @@ file:work.py
           created by   step:./plan.py
             consumes   file:./
             supplies   step:./work.py plan
-            supplies   step:./work.py run -- '+7.0'
-            supplies   step:./work.py run -- '-5.0'
+            supplies   step:./work.py run -- '+7.0' > stdout+7.0.txt 2> stderr+7.0.txt
+            supplies   step:./work.py run -- '-5.0' > stdout-5.0.txt 2> stderr-5.0.txt
 
 step:./work.py plan
              workdir = ./
@@ -63,41 +67,77 @@ step:./work.py plan
             consumes   file:./
             consumes   file:helper.py
             consumes   file:work.py
-             creates   step:./work.py run -- '+7.0'
-             creates   step:./work.py run -- '-5.0'
+             creates   step:./work.py run -- '+7.0' > stdout+7.0.txt 2> stderr+7.0.txt
+             creates   step:./work.py run -- '-5.0' > stdout-5.0.txt 2> stderr-5.0.txt
 
-step:./work.py run -- '-5.0'
+step:./work.py run -- '-5.0' > stdout-5.0.txt 2> stderr-5.0.txt
              workdir = ./
-             command = ./work.py run -- '-5.0'
+             command = ./work.py run -- '-5.0' > stdout-5.0.txt 2> stderr-5.0.txt
                state = SUCCEEDED
           created by   step:./work.py plan
             consumes   file:./
             consumes   file:helper.py
             consumes   file:work.py
              creates   file:data-5.0.txt
+             creates   file:stderr-5.0.txt
+             creates   file:stdout-5.0.txt
             supplies   file:data-5.0.txt
+            supplies   file:stderr-5.0.txt
+            supplies   file:stdout-5.0.txt
 
 file:data-5.0.txt
                 path = data-5.0.txt
                state = BUILT
-          created by   step:./work.py run -- '-5.0'
+          created by   step:./work.py run -- '-5.0' > stdout-5.0.txt 2> stderr-5.0.txt
             consumes   file:./
-            consumes   step:./work.py run -- '-5.0'
+            consumes   step:./work.py run -- '-5.0' > stdout-5.0.txt 2> stderr-5.0.txt
 
-step:./work.py run -- '+7.0'
+file:stderr-5.0.txt
+                path = stderr-5.0.txt
+               state = BUILT
+          created by   step:./work.py run -- '-5.0' > stdout-5.0.txt 2> stderr-5.0.txt
+            consumes   file:./
+            consumes   step:./work.py run -- '-5.0' > stdout-5.0.txt 2> stderr-5.0.txt
+
+file:stdout-5.0.txt
+                path = stdout-5.0.txt
+               state = BUILT
+          created by   step:./work.py run -- '-5.0' > stdout-5.0.txt 2> stderr-5.0.txt
+            consumes   file:./
+            consumes   step:./work.py run -- '-5.0' > stdout-5.0.txt 2> stderr-5.0.txt
+
+step:./work.py run -- '+7.0' > stdout+7.0.txt 2> stderr+7.0.txt
              workdir = ./
-             command = ./work.py run -- '+7.0'
+             command = ./work.py run -- '+7.0' > stdout+7.0.txt 2> stderr+7.0.txt
                state = SUCCEEDED
           created by   step:./work.py plan
             consumes   file:./
             consumes   file:helper.py
             consumes   file:work.py
              creates   file:data+7.0.txt
+             creates   file:stderr+7.0.txt
+             creates   file:stdout+7.0.txt
             supplies   file:data+7.0.txt
+            supplies   file:stderr+7.0.txt
+            supplies   file:stdout+7.0.txt
 
 file:data+7.0.txt
                 path = data+7.0.txt
                state = BUILT
-          created by   step:./work.py run -- '+7.0'
+          created by   step:./work.py run -- '+7.0' > stdout+7.0.txt 2> stderr+7.0.txt
             consumes   file:./
-            consumes   step:./work.py run -- '+7.0'
+            consumes   step:./work.py run -- '+7.0' > stdout+7.0.txt 2> stderr+7.0.txt
+
+file:stderr+7.0.txt
+                path = stderr+7.0.txt
+               state = BUILT
+          created by   step:./work.py run -- '+7.0' > stdout+7.0.txt 2> stderr+7.0.txt
+            consumes   file:./
+            consumes   step:./work.py run -- '+7.0' > stdout+7.0.txt 2> stderr+7.0.txt
+
+file:stdout+7.0.txt
+                path = stdout+7.0.txt
+               state = BUILT
+          created by   step:./work.py run -- '+7.0' > stdout+7.0.txt 2> stderr+7.0.txt
+            consumes   file:./
+            consumes   step:./work.py run -- '+7.0' > stdout+7.0.txt 2> stderr+7.0.txt

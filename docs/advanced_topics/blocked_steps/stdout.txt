@@ -11,6 +11,5 @@ step:cp -aT a.txt b.txt
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ Skipping cleanup due to incomplete build.
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
-     PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

@@ -103,7 +103,9 @@ plugins:
 - search:
     lang:
       - en
-- macros
+- macros:
+    on_error_fail: true
+    on_undefined: strict
 - mkdocstrings:
     default_handler: python
     handlers:

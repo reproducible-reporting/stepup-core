@@ -19,9 +19,9 @@ is roughly equivalent to:
 step("./executable plan", inp="sub/executable", workdir="sub/")
 ```
 
-where the subdirectory is optional.
-The step `./executable plan` is expected to define additional steps to actually run something useful with the executable.
-A common scenario is that it plans a single step `./executable run` with appropriate inputs and outputs.
+Note that the use of a subdirectory is not required.
+The `./executable plan` step is expected to define additional steps to actually run something useful with the executable.
+A common scenario is to plan a single `./executable run` step with appropriate inputs and outputs.
 
 When the `optional=True` keyword argument is given to the `script()` function,
 it executes `./executable plan --optional`.
@@ -55,6 +55,9 @@ def info():
     return {
         "inp": ..., # a single input path or a list of input paths
         "out": ..., # a single output path or a list of input paths
+        "static": ..., # declare a static file or a list of static files
+        "stdout": ..., # redirect the standard output to a file (StepUp 1.3.0)
+        "stderr": ..., # redirect the standard error to a file (StepUp 1.3.0)
         "just_any": "argument that you want to add",
     }
 
@@ -65,16 +68,24 @@ if __name__ == "__main__":
     driver()
 ```
 
-- The `info` function provides the necessary data to implement
-  the planning of the execution of the script.
+- The `info` function provides the data necessary to plan the execution of the script.
   It is executed when calling the script as `./script.py plan`.
 
-- The `run` function is called to perform the useful work and
-  is executed when running the script with `./script.py run`.
+    !!! note
 
-Note that the `run` function can have any argument defined in the dictionary return by `info`,
-but it does not have to specify all of them.
-The argument list of `run` may also contain fewer arguments (or even none at all).
+        All dictionary items are optional.
+        The `info` function can even return an empty dictionary.
+        The keys `inp`, `out`, `static`, `stdout` and `stderr` affect the planning the run part,
+        as explained in the comments above.
+
+- The `run` function is called to perform the useful work and
+  is executed when the script is executed as `./script.py run`.
+
+    !!! note
+
+        The `run` function can have any argument defined in the dictionary returned by `info`,
+        but it does not have to specify all of them.
+        The argument list of `run` can contain fewer arguments (or even none at all).
 
 
 ## Example

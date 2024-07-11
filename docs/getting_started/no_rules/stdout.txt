@@ -8,6 +8,5 @@
      START │ tr '[:lower:]' '[:upper:]' < lower2.txt > upper2.txt
    SUCCESS │ tr '[:lower:]' '[:upper:]' < lower2.txt > upper2.txt
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
-     PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

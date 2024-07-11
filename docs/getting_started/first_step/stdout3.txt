@@ -1,2 +1,0 @@
-filter_deferred([])
-step('dummy:', 'echo Hello World', [], [], [], [], Path('./'), False, None, False)

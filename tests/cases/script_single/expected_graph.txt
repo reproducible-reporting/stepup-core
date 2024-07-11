@@ -40,9 +40,11 @@ file:work/
             supplies   file:work/config.json
             supplies   file:work/copy.csv
             supplies   file:work/generate.py
+            supplies   file:work/stderr.txt
+            supplies   file:work/stdout.txt
             supplies   file:work/test.csv
             supplies   step:./generate.py plan --optional  # wd=work/
-            supplies   step:./generate.py run  # wd=work/
+            supplies   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
             supplies   step:cp -aT work/test.csv work/copy.csv
 
 file:work/generate.py
@@ -51,7 +53,7 @@ file:work/generate.py
           created by   step:./plan.py
             consumes   file:work/
             supplies   step:./generate.py plan --optional  # wd=work/
-            supplies   step:./generate.py run  # wd=work/
+            supplies   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
 
 step:./generate.py plan --optional  # wd=work/
              workdir = work/
@@ -61,7 +63,7 @@ step:./generate.py plan --optional  # wd=work/
             consumes   file:work/
             consumes   file:work/generate.py
              creates   file:work/config.json
-             creates   step:./generate.py run  # wd=work/
+             creates   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
 
 step:cp -aT work/test.csv work/copy.csv
              workdir = ./
@@ -77,9 +79,9 @@ step:cp -aT work/test.csv work/copy.csv
 file:work/test.csv
                 path = work/test.csv
                state = BUILT
-          created by   step:./generate.py run  # wd=work/
+          created by   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
             consumes   file:work/
-            consumes   step:./generate.py run  # wd=work/
+            consumes   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
             supplies   step:cp -aT work/test.csv work/copy.csv
 
 file:work/copy.csv
@@ -94,16 +96,34 @@ file:work/config.json
                state = STATIC
           created by   step:./generate.py plan --optional  # wd=work/
             consumes   file:work/
-            supplies   step:./generate.py run  # wd=work/
+            supplies   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
 
-step:./generate.py run  # wd=work/
+step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
              workdir = work/
-             command = ./generate.py run
+             command = ./generate.py run > stdout.txt 2> stderr.txt
                state = SUCCEEDED
            mandatory = IMPLIED
           created by   step:./generate.py plan --optional  # wd=work/
             consumes   file:work/
             consumes   file:work/config.json
             consumes   file:work/generate.py
+             creates   file:work/stderr.txt
+             creates   file:work/stdout.txt
              creates   file:work/test.csv
+            supplies   file:work/stderr.txt
+            supplies   file:work/stdout.txt
             supplies   file:work/test.csv
+
+file:work/stderr.txt
+                path = work/stderr.txt
+               state = BUILT
+          created by   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
+            consumes   file:work/
+            consumes   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
+
+file:work/stdout.txt
+                path = work/stdout.txt
+               state = BUILT
+          created by   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
+            consumes   file:work/
+            consumes   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/

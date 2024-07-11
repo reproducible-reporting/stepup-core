@@ -81,8 +81,12 @@ StepUp will not know anymore that it already executed some steps and runs all of
   process when `plan.py` is executed by `stepup`.
   You should get the following screen output.
 
+{% macro incl() %}
+{% include "getting_started/first_step/stdout3.txt" %}
+{% endmacro %}
+
     ```
-    {% include 'getting_started/first_step/stdout3.txt' | indent(width=4) %}
+    {{ incl() | indent(width=4) }}
     ```
 
     This output contains internal details of StepUp,

@@ -29,3 +29,7 @@ wait
 [[ -f work.py ]] || exit 1
 [[ -f data-5.0.txt ]] || exit 1
 [[ -f data+7.0.txt ]] || exit 1
+grep "Standard output for -5.0" stdout-5.0.txt
+grep "Standard output for +7.0" stdout+7.0.txt
+grep "Standard error for -5.0" stderr-5.0.txt
+grep "Standard error for +7.0" stderr+7.0.txt
