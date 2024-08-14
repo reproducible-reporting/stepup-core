@@ -604,13 +604,11 @@ def translate(path: str) -> Path:
     """
     path = mynormpath(path)
     if not path.isabs():
+        stepup_root = Path(os.getenv("STEPUP_ROOT", "./"))
         here = os.getenv("HERE")
         if here is None:
-            stepup_root = os.getenv("STEPUP_ROOT")
-            if stepup_root is not None:
-                here = myrelpath("./", stepup_root)
-        if here is not None:
-            path = mynormpath(here / path)
+            here = myrelpath("./", stepup_root)
+        path = myrelpath(mynormpath(stepup_root / here / path), stepup_root)
     return path
 
 

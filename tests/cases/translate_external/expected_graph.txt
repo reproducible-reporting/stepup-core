@@ -1,0 +1,103 @@
+root:
+             version = v1
+             creates   file:../
+             creates   file:../../
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:../
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:mkdir -p ../public/
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:../../common/
+             creates   file:../../common/script.py
+             creates   step:./script.py  # wd=../../common/
+             creates   step:mkdir -p ../public/
+
+file:../../common/
+                path = ../../common/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:../../
+            supplies   file:../../common/script.py
+            supplies   step:./script.py  # wd=../../common/
+
+file:../../
+                path = ../../
+               state = STATIC
+          created by   root:
+            consumes   file:../
+            supplies   file:../../common/
+
+file:../
+                path = ../
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   file:../../
+            supplies   file:../public/
+            supplies   step:mkdir -p ../public/
+
+file:../../common/script.py
+                path = ../../common/script.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:../../common/
+
+step:mkdir -p ../public/
+             workdir = ./
+             command = mkdir -p ../public/
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:../
+            consumes   file:./
+             creates   file:../public/
+            supplies   file:../public/
+
+file:../public/
+                path = ../public/
+               state = BUILT
+          created by   step:mkdir -p ../public/
+            consumes   file:../
+            consumes   step:mkdir -p ../public/
+            supplies   file:../public/foo.txt
+            supplies   step:./script.py  # wd=../../common/
+
+step:./script.py  # wd=../../common/
+             workdir = ../../common/
+             command = ./script.py
+               state = SUCCEEDED
+  consumes (amended) = file:../public/
+  supplies (amended) = file:../public/foo.txt
+          created by   step:./plan.py
+            consumes   file:../../common/
+            consumes   file:../public/
+             creates   file:../public/foo.txt
+            supplies   file:../public/foo.txt
+
+file:../public/foo.txt
+                path = ../public/foo.txt
+               state = BUILT
+          created by   step:./script.py  # wd=../../common/
+            consumes   file:../public/
+            consumes   step:./script.py  # wd=../../common/

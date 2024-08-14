@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The values of these two fields are paths to which the standard output and/or error
   of the run part of the script are redirected.
 
+### Fixed
+
+- Fix corner-case bug in the translation of relative paths before they are sent to the director process.
+
 
 ## [1.2.8] - 2024-06-28 {: #v1.2.8 }
 
