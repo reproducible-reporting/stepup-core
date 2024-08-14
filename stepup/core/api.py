@@ -246,6 +246,7 @@ def step(
         These can be files only.
     workdir
         The directory where the command must be executed.
+        A trailing slash is added when not present.
         (The default is the current directory.)
     optional
         When set to True, the step is only executed when required by other mandatory steps.
@@ -278,6 +279,8 @@ def step(
     env_vars = _str_to_list(env)
     out_paths = _str_to_list(out)
     vol_paths = _str_to_list(vol)
+    if not workdir.endswith("/"):
+        workdir = f"{workdir}/"
     amended_env_vars = set()
     with subs_env_vars() as subs:
         tr_inp_paths = [translate(subs(inp_path)) for inp_path in inp_paths]
@@ -418,6 +421,7 @@ def plan(subdir: str, block: bool = False):
     subdir
         The subdirectory in which another `plan.py` script can be found.
         The file must be executable and have `#!/usr/bin/env python` as its first line.
+        A trailing slash is added when not present.
     block
         When True, the step will always remain pending.
     """
@@ -459,7 +463,8 @@ def mkdir(dirname: str, optional: bool = False, block: bool = False):
     Parameters
     ----------
     dirname
-        The director to create. (Trailing slash is added if missing.)
+        The director to create.
+        A trailing slash is added when not present.
         Environment variables are substituted.
     optional
         When True, the directory is only created when needed by other steps.
@@ -521,6 +526,7 @@ def script(executable: str, workdir: str = "./", optional: bool = False, block: 
         The file must be executable.
     workdir
         The subdirectory in which the script is to be executed.
+        A trailing slash is added when not present.
         The path of the executable is assumed to be relative to this directory.
     optional
         When True, the steps planned by the executable are made optional.

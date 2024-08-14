@@ -2,5 +2,5 @@
 from stepup.core.api import mkdir, static, step
 
 static("../../common/", "../../common/script.py")
-mkdir("../public/")
-step("./script.py", workdir="../../common/")
+mkdir("../public")
+step("./script.py", workdir="../../common")

@@ -7,5 +7,5 @@ step(
     "cat input.txt > output.txt",
     inp=["${INP_VAR_TEST_STEPUP_WORKDIR}/input.txt"],
     out=["${INP_VAR_TEST_STEPUP_WORKDIR}/output.txt"],
-    workdir="${INP_VAR_TEST_STEPUP_WORKDIR}/",
+    workdir="${INP_VAR_TEST_STEPUP_WORKDIR}",
 )

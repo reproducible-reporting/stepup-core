@@ -16,7 +16,7 @@ script("sub/executable")
 is roughly equivalent to:
 
 ```python
-step("./executable plan", inp="sub/executable", workdir="sub/")
+step("./executable plan", inp="sub/executable", workdir="sub")
 ```
 
 Note that the use of a subdirectory is not required.

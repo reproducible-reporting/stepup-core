@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix corner-case bug in the translation of relative paths before they are sent to the director process.
+- Fix bug in the translation of relative paths before they are sent to the director process.
+- Add trailing slash to `workdir` argument of `stepup.core.api.step()` if it is missing.
 
 
 ## [1.2.8] - 2024-06-28 {: #v1.2.8 }

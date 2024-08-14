@@ -3,10 +3,10 @@
   DIRECTOR │ Launched worker 1
      PHASE │ run
      START │ ./plan.py
-   SUCCESS │ ./plan.py
      START │ echo First line. > story.txt; echo Second line. >> story.txt
    SUCCESS │ echo First line. > story.txt; echo Second line. >> story.txt
      START │ grep First story.txt
+   SUCCESS │ ./plan.py
    SUCCESS │ grep First story.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 First line.
