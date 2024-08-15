@@ -23,7 +23,6 @@ import pytest
 from path import Path
 
 from stepup.core.utils import (
-    load_module_file,
     make_path_out,
     myabsolute,
     mynormpath,
@@ -116,11 +115,3 @@ def test_make_path_out():
         make_path_out("foo.pdf", None, ".pdf")
     with pytest.raises(ValueError):
         make_path_out("foo.pdf", None, None)
-
-
-def test_load_module_file(path_tmp):
-    path_foo = path_tmp / "foo.py"
-    with open(path_foo, "w") as fh:
-        print("a = 10", file=fh)
-    foo = load_module_file(path_foo)
-    assert foo.a == 10

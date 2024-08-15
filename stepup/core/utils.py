@@ -19,11 +19,9 @@
 # --
 """Small utilities used throughout."""
 
-import importlib.util
 import os
 import re
 import string
-from types import ModuleType
 
 from path import Path
 
@@ -42,7 +40,6 @@ __all__ = (
     "check_plan",
     "check_inp_path",
     "format_digest",
-    "load_module_file",
 )
 
 
@@ -232,11 +229,3 @@ def format_digest(digest: bytes) -> tuple[str, str]:
         " ".join(hexdigest[i : i + 8] for i in range(0, 64, 8)),
         " ".join(hexdigest[i : i + 8] for i in range(64, 128, 8)),
     )
-
-
-def load_module_file(path_py: str, name: str = "pythonscript") -> ModuleType:
-    """Load a Python module from a given path."""
-    spec = importlib.util.spec_from_file_location(f"<{name}>", str(path_py))
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module

@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The values of these two fields are paths to which the standard output and/or error
   of the run part of the script are redirected.
 
+### Changed
+
+- Migrate `load_module_file` to stepup-reprep.
+
 ### Fixed
 
 - Fix bug in the translation of relative paths before they are sent to the director process.
@@ -92,14 +96,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.2] - 2024-05-16 {: #v1.2.2 }
 
+### Changed
+
+- Documentation updates.
+
 ### Fixed
 
 - Make `cleanup` command work in project subdirectories when `STEPUP_ROOT` is set.
 - Avoid useless wait when running a `plan.py` script outside of `stepup`.
-
-### Changed
-
-- Documentation updates.
 
 
 ## [1.2.1] - 2024-05-07 {: #v1.2.1 }
@@ -115,13 +119,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Export of graphs to [Graphviz](https://graphviz.org/) DOT files.
 - The `cleanup` script for manually cleaning up outputs.
-
-### Fixed
-
-- More graceful error message when the director process crashes early.
-- Fix compatibility with [asciinema](https://asciinema.org) terminal recording.
-- Raise `ConnectionResetError` in `SocketSyncRPCClient` instead of blocking forever when
-  the director process crashes.
 
 ### Changed
 
@@ -140,6 +137,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Directories are watched as soon as they are created.
 - The function `stepup.core.interact.graph` takes a prefix argument instead of a full filename,
   e.g. `graph` instead of `graph.txt`.
+
+### Fixed
+
+- More graceful error message when the director process crashes early.
+- Fix compatibility with [asciinema](https://asciinema.org) terminal recording.
+- Raise `ConnectionResetError` in `SocketSyncRPCClient` instead of blocking forever when
+  the director process crashes.
 
 
 ## [1.0.0] - 2024-04-25 {: #v1.0.0 }
