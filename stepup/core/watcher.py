@@ -23,14 +23,12 @@ import asyncio
 import enum
 
 import attrs
+from asyncinotify import Inotify, Mask, Watch
 from path import Path
-from watchdog.events import FileSystemEvent, FileSystemEventHandler, FileSystemMovedEvent
-from watchdog.observers import Observer
 
 from .asyncio import stoppable_iterator
 from .file import FileState
 from .reporter import ReporterClient
-from .utils import myabsolute, myrelpath
 from .workflow import Workflow
 
 __all__ = ("Watcher",)
@@ -63,10 +61,6 @@ class Watcher:
     # The resume event is set when other parts of StepUp (the runner) want to enable the watcher.
     resume: asyncio.Event = attrs.field(factory=asyncio.Event)
 
-    # A queue object holding file changes received from the watchdog observer,
-    # which is running in a separate thread. Each item is in stance of `Change` and path.
-    change_queue: asyncio.Queue = attrs.field(init=False, factory=asyncio.Queue)
-
     # The following sets contain the deleted and changed file
     # while the watcher is observing. These changes are not sent to the workflow yet.
     deleted: set[Path] = attrs.field(init=False, factory=set)
@@ -90,59 +84,26 @@ class Watcher:
         The iteration ends by informing the workflow of all the changes, after which
         StepUp starts the runner again (or exists).
         """
-        dir_loop = asyncio.create_task(self.dir_loop(stop_event))
-        while not stop_event.is_set():
-            await self.resume.wait()
-            # Check for problems with non-existing directories and raise early if needed
-            if dir_loop.done() and dir_loop.exception() is not None:
-                await dir_loop
-            await self.change_loop()
-            self.resume.clear()
-        await dir_loop
+        async with AsyncInotifyWrapper(self.dir_queue) as wrapper:
+            while not stop_event.is_set():
+                await self.resume.wait()
+                await self.watch_changes(wrapper.change_queue)
+                self.resume.clear()
 
-    async def dir_loop(self, stop_event: asyncio.Event):
-        """Add or remove directories to watch, as soon as they are created or defined static.
-
-        For every directory added, an event handler for watch_dog is created, which puts
-        the observed file events to the change_queue.
-
-        Parameters
-        ----------
-        stop_event
-            Event to interrupt processing items from the dir_queue.
-        """
-        observer = Observer()
-        observer.start()
-        watches = {}
-        try:
-            async for remove, path in stoppable_iterator(self.dir_queue.get, stop_event):
-                if remove:
-                    watch = watches.pop(path, None)
-                    if watch is not None:
-                        observer.unschedule(watch)
-                else:
-                    if not path.is_dir():
-                        raise FileNotFoundError(f"Cannot watch non-existing directory: {path}")
-                    if path not in watches:
-                        handler = QueueEventHandler(self.change_queue, Path(path).isabs())
-                        watches[path] = observer.schedule(handler, path)
-        finally:
-            observer.stop()
-
-    async def change_loop(self):
+    async def watch_changes(self, change_queue: asyncio.Queue):
         """Watch file events. They are sent to the workflow right before the runner is restarted."""
         self.files_changed.clear()
 
         # Process changes to static files picked up during watch phase.
-        while not self.change_queue.empty():
-            change, path = self.change_queue.get_nowait()
+        while not change_queue.empty():
+            change, path = change_queue.get_nowait()
             if self.workflow.file_states.get(f"file:{path}") == FileState.STATIC:
                 await self.record_change(change, path)
 
         # Wait for new changes to show up.
         self.active.set()
         await self.reporter("PHASE", "watch")
-        async for change, path in stoppable_iterator(self.change_queue.get, self.interrupt):
+        async for change, path in stoppable_iterator(change_queue.get, self.interrupt):
             await self.record_change(change, path)
 
         # Feed all updates to the worker and clean up.
@@ -176,41 +137,104 @@ class Watcher:
                         await self.record_change(Change.UPDATED, sub_path)
 
 
-class QueueEventHandler(FileSystemEventHandler):
-    """A file system event handler for watchdog that puts events safely on an asyncio queue.
+@attrs.define
+class AsyncInotifyWrapper:
+    """Interface between a `Watcher` instance and the `asyncinotify` library."""
 
-    Parameters
-    ----------
-    queue
-        The queue on which file events are put.
-    is_absolute
-        True when the directory being watch is known to StepUp as an absolute path.
+    dir_queue: asyncio.Queue = attrs.field()
+    """The dir_queue provides directories to (un)watch.
+
+    Each item is a tuple `(remove, path)`, where `remove` is True when the path
+    not longer needs to be watched.
     """
 
-    def __init__(self, queue: asyncio.Queue, is_absolute: bool):
-        self._queue = queue
-        self._is_absolute = is_absolute
-        self._loop = asyncio.get_event_loop()
+    inotify: Inotify | None = attrs.field(init=False, default=None)
+    """Inotify object, only present in context."""
 
-    def on_any_event(self, event: FileSystemEvent):
-        """Process any event received from the watchdog observer."""
-        if isinstance(event, FileSystemMovedEvent):
-            self.put_event(Change.DELETED, event.src_path, event.is_directory)
-            self.put_event(Change.UPDATED, event.dest_path, event.is_directory)
-        elif event.event_type == "created":
-            self.put_event(Change.UPDATED, event.src_path, event.is_directory)
-        elif event.event_type in ["modified", "closed"]:
-            if not event.is_directory:
-                self.put_event(Change.UPDATED, event.src_path, event.is_directory)
-        elif event.event_type == "deleted":
-            self.put_event(Change.DELETED, event.src_path, event.is_directory)
-        elif event.event_type != "opened":
-            raise NotImplementedError(f"Cannot handle event: {event}")
+    stop_event: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+    """Internal stop event, called when context is closed."""
 
-    def put_event(self, change: Change, path: str, is_directory: bool):
-        """Put an event on the queue, includes translation of abs/rel path."""
-        path = myabsolute(path) if self._is_absolute else myrelpath(path)
-        if is_directory:
-            path = path / ""
-        # The event calls from watch dog live in a separate thread ...
-        self._loop.call_soon_threadsafe(self._queue.put_nowait, (change, path))
+    watches: dict[str, Watch] = attrs.field(init=False, factory=dict)
+    """Directory of watches created with asyncinotify"""
+
+    change_queue: asyncio.Queue = attrs.field(init=False, factory=asyncio.Queue)
+    """A queue object holding file changes received from asyncinotify.
+
+    Each item is a tuple with a `Change` instance and a path."""
+
+    dir_loop_task: asyncio.Task | None = attrs.field(init=False, default=None)
+    """Task corresponding to the dir_loop method."""
+
+    change_loop_task: asyncio.Task | None = attrs.field(init=False, default=None)
+    """Task corresponding to the change_loop method."""
+
+    async def __aenter__(self):
+        """Start using the Inotify Wrapper."""
+        self.inotify = Inotify()
+        self.stop_event.clear()
+        self.dir_loop_task = asyncio.create_task(self.dir_loop())
+        self.change_loop_task = asyncio.create_task(self.change_loop())
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        """Close the InotifyWrapper."""
+        self.stop_event.set()
+        await asyncio.gather(self.dir_loop_task, self.change_loop_task)
+        self.dir_loop_task = None
+        self.change_loop_task = None
+        self.inotify.close()
+        self.inotify = None
+
+    async def dir_loop(self):
+        """Add or remove directories to watch, as soon as they are created or defined static.
+
+        For every directory added, an event handler for watch_dog is created, which puts
+        the observed file events to the change_queue.
+
+        Parameters
+        ----------
+        stop_event
+            Event to interrupt processing items from the dir_queue.
+        """
+        async for remove, path in stoppable_iterator(self.dir_queue.get, self.stop_event):
+            if remove:
+                watch = self.watches.pop(path, None)
+                if watch is not None:
+                    self.inotify.rm_watch(watch)
+            else:
+                if not path.is_dir():
+                    raise FileNotFoundError(f"Cannot watch non-existing directory: {path}")
+                if path not in self.watches:
+                    self.watches[path] = self.inotify.add_watch(
+                        path,
+                        (
+                            Mask.MODIFY
+                            | Mask.CREATE
+                            | Mask.DELETE
+                            | Mask.CLOSE_WRITE
+                            | Mask.MOVE
+                            | Mask.MOVE_SELF
+                            | Mask.DELETE_SELF
+                            | Mask.UNMOUNT
+                            | Mask.ATTRIB
+                            | Mask.IGNORED
+                        ),
+                    )
+
+    async def change_loop(self):
+        """Collect from INotify and translate then to items for the change_queue."""
+        async for event in stoppable_iterator(self.inotify.get, self.stop_event):
+            # Drop invalid watches (deleted or unmounted directories)
+            if event.mask & Mask.IGNORED:
+                self.watches.pop(f"{event.watch.path}/", None)
+            if event.mask & Mask.MOVE_SELF:
+                raise RuntimeError("StepUp does not support moving directories it is watching.")
+            change = (
+                Change.DELETED
+                if event.mask & (Mask.DELETE | Mask.DELETE_SELF | Mask.MOVED_FROM)
+                else Change.UPDATED
+            )
+            path = Path(event.path)
+            if event.mask & Mask.ISDIR:
+                path = path / ""
+            self.change_queue.put_nowait((change, path))

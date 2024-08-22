@@ -289,9 +289,9 @@ def step(
         tr_workdir = translate(subs(workdir))
     amend(env=sorted(amended_env_vars))
     command = CaseSensitiveTemplate(command).safe_substitute(
-        inp=" ".join(myrelpath(inp_path, tr_workdir) for inp_path in tr_inp_paths),
-        out=" ".join(myrelpath(out_path, tr_workdir) for out_path in tr_out_paths),
-        vol=" ".join(myrelpath(vol_path, tr_workdir) for vol_path in tr_vol_paths),
+        inp=" ".join(translate_back(inp_path) for inp_path in tr_inp_paths),
+        out=" ".join(translate_back(out_path) for out_path in tr_out_paths),
+        vol=" ".join(translate_back(vol_path) for vol_path in tr_vol_paths),
     )
 
     # Look for inputs that match deferred globs and check their existence
@@ -451,7 +451,7 @@ def copy(src: str, dst: str, optional: bool = False, block: bool = False):
     with subs_env_vars() as subs:
         src = subs(src)
         dst = subs(dst)
-    path_src = myrelpath(src)
+    path_src = mynormpath(src)
     path_dst = make_path_out(src, dst, None)
     amend(env=amended_env_vars)
     step("cp -aT ${inp} ${out}", inp=path_src, out=path_dst, optional=optional, block=block)
@@ -476,7 +476,7 @@ def mkdir(dirname: str, optional: bool = False, block: bool = False):
         dirname = subs(dirname)
     if not dirname.endswith("/"):
         dirname += "/"
-    dirname = myrelpath(dirname)
+    dirname = mynormpath(dirname)
     amend(env=amended_env_vars)
     step(f"mkdir -p {dirname}", out=dirname, optional=optional, block=block)
 

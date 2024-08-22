@@ -32,6 +32,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
 @pytest.mark.parametrize(
     "name",
     [
+        "absolute",
         "amend",
         "amend_delay",
         "amend_env_vars",

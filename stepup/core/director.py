@@ -422,7 +422,6 @@ class DirectorHandler:
     async def shutdown(self):
         """Shut down the director and worker processes."""
         self._stop_event.set()
-        self._scheduler.drain()
         self._watcher.interrupt.set()
 
     @allow_rpc
