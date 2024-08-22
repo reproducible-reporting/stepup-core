@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replace [watchdog](https://github.com/gorakhargosh/watchdog)
   by [asyncinotify](https://github.com/ProCern/asyncinotify)
   to avoid [a long-standing issue in watchdog](https://github.com/gorakhargosh/watchdog/issues/275).
+- :warning: **API-breaking** :warning:
+  When a step is defined with a working directory different from `'./'`,
+  relative paths provided in other arguments to the `step()` function
+  are interpreted relative to the given working directory,
+  not the current working directory of the running process.
 
 
 ### Fixed

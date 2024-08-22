@@ -10,13 +10,13 @@ The [`script()`][stepup.core.api.script] protocol itself is rather simple.
 The following line in `plan.py`:
 
 ```python
-script("sub/executable")
+script("executable", "sub")
 ```
 
 is roughly equivalent to:
 
 ```python
-step("./executable plan", inp="sub/executable", workdir="sub")
+step("./executable plan", inp="executable", workdir="sub")
 ```
 
 Note that the use of a subdirectory is not required.

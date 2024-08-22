@@ -19,7 +19,10 @@
 # --
 """Unit tests for stepup.core.api."""
 
-from stepup.core.api import StepInfo
+import pytest
+from path import Path
+
+from stepup.core.api import StepInfo, translate, translate_back
 
 
 def test_step_info():
@@ -40,3 +43,41 @@ def test_step_info():
     assert info.filter_out("${*pre}.pdf", pre="out?").single() == "out1.pdf"
     assert info.filter_vol("???.???").single() == "hhh.cde"
     assert info.filter_vol("*.${*l}${*l}${*l}", l="?").files() == ("vol1.aaa", "vol1.bbb")
+
+
+@pytest.mark.parametrize("with_stepup_root", [True, False])
+def test_translate(monkeypatch, with_stepup_root):
+    if with_stepup_root:
+        monkeypatch.setenv("STEPUP_ROOT", Path.cwd())
+    monkeypatch.setenv("HERE", "foo/bar")
+    assert translate("somefile.txt") == "foo/bar/somefile.txt"
+    assert translate("somefile.txt", "../") == "foo/somefile.txt"
+    assert translate("somefile.txt", "/egg/") == "/egg/somefile.txt"
+    assert translate("/somefile.txt", "/egg/") == "/somefile.txt"
+    assert translate("/egg/somefile.txt", "../") == "/egg/somefile.txt"
+    assert translate("/somefile.txt", "../") == "/somefile.txt"
+
+
+def test_translate_outside(monkeypatch):
+    monkeypatch.setenv("STEPUP_ROOT", Path.cwd() / "foo")
+    monkeypatch.setenv("HERE", "bar")
+    assert translate("somefile.txt") == "bar/somefile.txt"
+    assert translate("somefile.txt", "../") == "somefile.txt"
+    assert translate("../../foo/somefile.txt") == "somefile.txt"
+    assert translate("somefile.txt", "/egg/") == "/egg/somefile.txt"
+    assert translate("/somefile.txt", "/egg/") == "/somefile.txt"
+    assert translate("/egg/somefile.txt", "../") == "/egg/somefile.txt"
+    assert translate("/somefile.txt", "../") == "/somefile.txt"
+
+
+@pytest.mark.parametrize("with_stepup_root", [True, False])
+def test_translate_back(monkeypatch, with_stepup_root):
+    if with_stepup_root:
+        monkeypatch.setenv("STEPUP_ROOT", Path.cwd())
+    monkeypatch.setenv("HERE", "foo/bar")
+    assert translate_back("foo/bar/somefile.txt") == "somefile.txt"
+    assert translate_back("foo/somefile.txt", "../") == "somefile.txt"
+    assert translate_back("/egg/somefile.txt", "/egg/") == "somefile.txt"
+    assert translate_back("/somefile.txt", "/egg/") == "/somefile.txt"
+    assert translate_back("/egg/somefile.txt", "../") == "/egg/somefile.txt"
+    assert translate_back("/somefile.txt", "../") == "/somefile.txt"

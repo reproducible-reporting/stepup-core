@@ -276,17 +276,17 @@ def step(
     command
         Command to execute (in the working directory of the director).
     inp
-        File(s) required by the step.
+        File(s) required by the step, relative to `workdir`.
         Can be files or directories (trailing slash).
     env
         Environment variable(s) to which the step is sensitive.
         If they change, or when they are (un)defined, the step digest will change,
         such that the step cannot be skipped.
     out
-        File(s) created by the step.
+        File(s) created by the step, relative to `workdir`.
         These can be files or directories (trailing slash).
     vol
-        Volatile file(s) created by the step.
+        Volatile file(s) created by the step, relative to `workdir`.
         These can be files only.
     workdir
         The directory where the command must be executed.
@@ -331,11 +331,11 @@ def step(
         su_out_paths = [subs(out_path) for out_path in out_paths]
         su_vol_paths = [subs(vol_path) for vol_path in vol_paths]
         su_workdir = subs(workdir)
-        tr_inp_paths = [translate(inp_path) for inp_path in su_inp_paths]
-        tr_out_paths = [translate(out_path) for out_path in su_out_paths]
-        tr_vol_paths = [translate(vol_path) for vol_path in su_vol_paths]
-        tr_workdir = translate(su_workdir)
     amend(env=sorted(amended_env_vars))
+    tr_inp_paths = [translate(inp_path, su_workdir) for inp_path in su_inp_paths]
+    tr_out_paths = [translate(out_path, su_workdir) for out_path in su_out_paths]
+    tr_vol_paths = [translate(vol_path, su_workdir) for vol_path in su_vol_paths]
+    tr_workdir = translate(su_workdir)
     # Substitute paths that are translated back to the current directory.
     command = CaseSensitiveTemplate(command).safe_substitute(
         inp=" ".join(su_inp_paths),
@@ -347,7 +347,7 @@ def step(
     # before making them static.
     tr_inp_check = RPC_CLIENT.call.filter_deferred(tr_inp_paths)
     if tr_inp_check is not None:
-        lo_inp_check = [translate_back(inp_path) for inp_path in tr_inp_check]
+        lo_inp_check = [translate_back(inp_path, su_workdir) for inp_path in tr_inp_check]
         check_inp_paths(lo_inp_check)
         RPC_CLIENT.call.confirm_deferred(tr_inp_check)
 
@@ -484,9 +484,7 @@ def plan(subdir: str, block: bool = False) -> StepInfo:
     """
     with subs_env_vars() as subs:
         subdir = subs(subdir)
-    path_subdir = Path(subdir)
-    path_plan = path_subdir / "plan.py"
-    return step("./plan.py", inp=path_plan, workdir=subdir, block=block)
+    return step("./plan.py", inp="plan.py", workdir=subdir, block=block)
 
 
 def copy(src: str, dst: str, optional: bool = False, block: bool = False) -> StepInfo:
@@ -611,12 +609,10 @@ def script(
     with subs_env_vars() as subs:
         executable = subs(executable)
         workdir = subs(workdir)
-    path_workdir = Path(workdir)
-    path_script = path_workdir / executable
     command = f"./{executable} plan"
     if optional:
         command += " --optional"
-    return step(command, inp=[path_script], workdir=path_workdir, block=block)
+    return step(command, inp=[executable], workdir=workdir, block=block)
 
 
 #
@@ -667,15 +663,17 @@ def subs_env_vars() -> Iterator[Callable[[str | None], str | None]]:
     amend(env=env_vars)
 
 
-def translate(path: str) -> Path:
-    """Normalize the path and, if relative, make it relative to `ROOT` by prepending `HERE`.
+def translate(path: str, workdir: str = ".") -> Path:
+    """Normalize the path and, if relative, make it relative to `ROOT`.
 
     If the environment variable `HERE` is not set, it is derived from `STEPUP_ROOT` if set.
 
     Parameters
     ----------
     path
-        The path to translate.
+        The path to translate. If relative, it assumed to be relative to the working directory.
+    workdir
+        The work directory. If relative, it is assumed to be relative to `HERE`
 
     Returns
     -------
@@ -684,37 +682,46 @@ def translate(path: str) -> Path:
     """
     path = mynormpath(path)
     if not path.isabs():
-        stepup_root = Path(os.getenv("STEPUP_ROOT", "./"))
-        here = os.getenv("HERE")
-        if here is None:
-            here = myrelpath("./", stepup_root)
-        path = myrelpath(mynormpath(stepup_root / here / path), stepup_root)
+        workdir = mynormpath(workdir)
+        if workdir.isabs():
+            path = workdir / path
+        else:
+            stepup_root = Path(os.getenv("STEPUP_ROOT", "./"))
+            here = os.getenv("HERE")
+            if here is None:
+                here = myrelpath("./", stepup_root)
+            path = myrelpath(mynormpath(stepup_root / here / workdir / path), stepup_root)
     return path
 
 
-def translate_back(path: str) -> Path:
-    """If relative, make it relative to `HERE`, assuming it is relative to `ROOT`.
+def translate_back(path: str, workdir: str = ".") -> Path:
+    """If relative, make it relative to work directory, assuming it is relative to `ROOT`.
 
     If the environment variable `HERE` is not set, it is derived from `STEPUP_ROOT` if set.
 
     Parameters
     ----------
     path
-        The path to translate.
+        The path to translate. If relative, it is assumed to be relative to `ROOT`.
+    workdir
+        The working directory. If relative, it is assumed to be relative to `HERE`.
 
     Returns
     -------
     back_translated_path
-        A path that can be interpreted in the local working directory.
+        A path that can be interpreted in the working directory.
     """
-    if not path.isabs():
+    path = mynormpath(path)
+    workdir = mynormpath(workdir)
+    if path.isabs():
+        if workdir.isabs() and path.startswith(workdir):
+            path = myrelpath(path, workdir)
+    else:
         here = os.getenv("HERE")
         if here is None:
-            stepup_root = os.getenv("STEPUP_ROOT")
-            if stepup_root is not None:
-                here = myrelpath("./", stepup_root)
-        if here is not None:
-            path = myrelpath(path, here)
+            stepup_root = os.getenv("STEPUP_ROOT", "./")
+            here = myrelpath("./", stepup_root)
+        path = myrelpath(path, here / workdir)
     return path
 
 
