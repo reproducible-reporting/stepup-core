@@ -35,6 +35,8 @@ It has the following use cases:
     print(ngs.results)
     ```
 
+    Unlike ordinary wildcards, named wildcards never match an empty string.
+
 - **Consistency within one pattern:**
     If a pattern uses the same named globs multiple times,
     the matching substring must also be consistent.
@@ -253,6 +255,9 @@ class NGlobSingle:
             if match_ is not None:
                 mapping = match_.groupdict()
                 values = tuple(mapping[name] for name in self._used_names)
+                # Named wildcards are not allowed to match empty strings
+                if any(len(value) == 0 for value in values):
+                    continue
                 paths = self._results.get(values)
                 if paths is None:
                     paths = set()
@@ -741,13 +746,32 @@ def convert_nglob_to_regex(
                     encountered.add(name)
             else:
                 raise ValueError(f"Cannot convert wildcard to regex: {part}")
-            if regex is not None:
+            if regex is not None and len(regex) > 0:
                 if replace:
                     parts[-1] = regex
                 else:
                     parts.append(regex)
         if len(part) > 0:
             last = part
+
+    if allow_names:
+        # Post-process anonymous wildcards:
+        # - when enclosed by separators, '*' and '**; do not match empty strings.
+        for ipart, part in enumerate(parts):
+            if (
+                ipart > 0
+                and ipart < len(parts) - 1
+                and part.endswith("*")
+                and parts[ipart - 1].endswith("/")
+                and parts[ipart + 1].startswith("/")
+            ):
+                parts[ipart] = f"{part[:-1]}+"
+        # - when the pattern ends with '*', it must also match paths with a trailing separator.
+        if parts[-1] == r"[^/]*":
+            if len(parts) >= 2 and parts[-2].endswith("/"):
+                parts[-1] = r"[^/]+"
+            parts.append("/?")
+
     return "".join(parts)
 
 

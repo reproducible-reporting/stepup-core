@@ -28,6 +28,7 @@ import contextlib
 import os
 from collections.abc import Callable, Collection, Iterable, Iterator
 
+import attrs
 from path import Path
 
 from .nglob import NGlobMulti
@@ -45,6 +46,7 @@ __all__ = (
     # Basic API
     "static",
     "glob",
+    "StepInfo",
     "step",
     "pool",
     "amend",
@@ -213,6 +215,48 @@ def _str_to_list(arg: Collection[str] | str) -> list[str]:
     return [arg] if isinstance(arg, str) else list(arg)
 
 
+@attrs.define
+class StepInfo:
+    """The `step()` function returns an instance of this class to help defining follow-up steps.
+
+    This object will not contain any information that is amended while the step is executed.
+    It only holds information known at the time the step is defined.
+    """
+
+    key: str = attrs.field()
+    """The key of the step in StepUp's workflow."""
+
+    inp: list[Path] = attrs.field()
+    """List of input paths of the step."""
+
+    env: list[str] = attrs.field()
+    """List of environment values used by the step."""
+
+    out: list[Path] = attrs.field()
+    """List of output paths of the step."""
+
+    vol: list[Path] = attrs.field()
+    """List of volatile output paths of the step."""
+
+    def filter_inp(self, *patterns: str, **subs: str):
+        """Return an `NGlobMulti` object with matching results from `self.inp`."""
+        ngm = NGlobMulti.from_patterns(patterns, subs)
+        ngm.extend(self.inp)
+        return ngm
+
+    def filter_out(self, *patterns: str, **subs: str):
+        """Return an `NGlobMulti` object with matching results from `self.out`."""
+        ngm = NGlobMulti.from_patterns(patterns, subs)
+        ngm.extend(self.out)
+        return ngm
+
+    def filter_vol(self, *patterns: str, **subs: str):
+        """Return an `NGlobMulti` object with matching results from `self.val`."""
+        ngm = NGlobMulti.from_patterns(patterns, subs)
+        ngm.extend(self.vol)
+        return ngm
+
+
 def step(
     command: str,
     *,
@@ -224,7 +268,7 @@ def step(
     optional: bool = False,
     pool: str | None = None,
     block: bool = False,
-) -> str:
+) -> StepInfo:
     """Add a step to the build graph.
 
     Parameters
@@ -258,8 +302,8 @@ def step(
 
     Returns
     -------
-    step_key
-        The key of the newly created step
+    step_info
+        Holds relevant information of the step, useful for defining follow-up steps.
 
     Notes
     -----
@@ -288,10 +332,14 @@ def step(
         tr_vol_paths = [translate(subs(vol_path)) for vol_path in vol_paths]
         tr_workdir = translate(subs(workdir))
     amend(env=sorted(amended_env_vars))
+    # Substitute paths that are translated back to the current directory.
+    local_inp_paths = [translate_back(inp_path) for inp_path in tr_inp_paths]
+    local_out_paths = [translate_back(out_path) for out_path in tr_out_paths]
+    local_vol_paths = [translate_back(vol_path) for vol_path in tr_vol_paths]
     command = CaseSensitiveTemplate(command).safe_substitute(
-        inp=" ".join(translate_back(inp_path) for inp_path in tr_inp_paths),
-        out=" ".join(translate_back(out_path) for out_path in tr_out_paths),
-        vol=" ".join(translate_back(vol_path) for vol_path in tr_vol_paths),
+        inp=" ".join(local_inp_paths),
+        out=" ".join(local_out_paths),
+        vol=" ".join(local_vol_paths),
     )
 
     # Look for inputs that match deferred globs and check their existence
@@ -303,7 +351,7 @@ def step(
         RPC_CLIENT.call.confirm_deferred(tr_inp_check)
 
     # Finally create the step.
-    return RPC_CLIENT.call.step(
+    step_key = RPC_CLIENT.call.step(
         _get_step_key(),
         command,
         tr_inp_paths,
@@ -315,6 +363,9 @@ def step(
         pool,
         block,
     )
+
+    # Return a StepInfo instance to facilitate the definition of follow-up steps
+    return StepInfo(step_key, local_inp_paths, env_vars, local_out_paths, local_vol_paths)
 
 
 def pool(name: str, size: int):
@@ -413,7 +464,7 @@ def amend(
 #
 
 
-def plan(subdir: str, block: bool = False):
+def plan(subdir: str, block: bool = False) -> StepInfo:
     """Run a `plan.py` script in a subdirectory.
 
     Parameters
@@ -424,15 +475,20 @@ def plan(subdir: str, block: bool = False):
         A trailing slash is added when not present.
     block
         When True, the step will always remain pending.
+
+    Returns
+    -------
+    step_info
+        Holds relevant information of the step, useful for defining follow-up steps.
     """
     with subs_env_vars() as subs:
         subdir = subs(subdir)
     path_subdir = Path(subdir)
     path_plan = path_subdir / "plan.py"
-    step("./plan.py", inp=path_plan, workdir=subdir, block=block)
+    return step("./plan.py", inp=path_plan, workdir=subdir, block=block)
 
 
-def copy(src: str, dst: str, optional: bool = False, block: bool = False):
+def copy(src: str, dst: str, optional: bool = False, block: bool = False) -> StepInfo:
     """Add a step that copies a file.
 
     Parameters
@@ -446,6 +502,11 @@ def copy(src: str, dst: str, optional: bool = False, block: bool = False):
         When True, the file is only copied when needed as input for another step.
     block
         When True, the step will always remain pending.
+
+    Returns
+    -------
+    step_info
+        Holds relevant information of the step, useful for defining follow-up steps.
     """
     amended_env_vars = set()
     with subs_env_vars() as subs:
@@ -454,10 +515,10 @@ def copy(src: str, dst: str, optional: bool = False, block: bool = False):
     path_src = mynormpath(src)
     path_dst = make_path_out(src, dst, None)
     amend(env=amended_env_vars)
-    step("cp -aT ${inp} ${out}", inp=path_src, out=path_dst, optional=optional, block=block)
+    return step("cp -aT ${inp} ${out}", inp=path_src, out=path_dst, optional=optional, block=block)
 
 
-def mkdir(dirname: str, optional: bool = False, block: bool = False):
+def mkdir(dirname: str, optional: bool = False, block: bool = False) -> StepInfo:
     """Make a directory.
 
     Parameters
@@ -470,6 +531,11 @@ def mkdir(dirname: str, optional: bool = False, block: bool = False):
         When True, the directory is only created when needed by other steps.
     block
         When True, the step will always remain pending.
+
+    Returns
+    -------
+    step_info
+        Holds relevant information of the step, useful for defining follow-up steps.
     """
     amended_env_vars = set()
     with subs_env_vars() as subs:
@@ -478,7 +544,7 @@ def mkdir(dirname: str, optional: bool = False, block: bool = False):
         dirname += "/"
     dirname = mynormpath(dirname)
     amend(env=amended_env_vars)
-    step(f"mkdir -p {dirname}", out=dirname, optional=optional, block=block)
+    return step(f"mkdir -p {dirname}", out=dirname, optional=optional, block=block)
 
 
 def getenv(name: str, default: str | None = None, is_path: bool = False) -> str | Path:
@@ -516,7 +582,9 @@ def getenv(name: str, default: str | None = None, is_path: bool = False) -> str 
     return value
 
 
-def script(executable: str, workdir: str = "./", optional: bool = False, block: bool = False):
+def script(
+    executable: str, workdir: str = "./", optional: bool = False, block: bool = False
+) -> StepInfo:
     """Run the executable with a single argument `plan` in a working directory.
 
     Parameters
@@ -533,6 +601,11 @@ def script(executable: str, workdir: str = "./", optional: bool = False, block: 
         The planning itself is never optional.
     block
         When True, the planning will always remain pending.
+
+    Returns
+    -------
+    step_info
+        Holds relevant information of the step, useful for defining follow-up steps.
     """
     with subs_env_vars() as subs:
         executable = subs(executable)
@@ -542,7 +615,7 @@ def script(executable: str, workdir: str = "./", optional: bool = False, block: 
     command = f"./{executable} plan"
     if optional:
         command += " --optional"
-    step(command, inp=[path_script], workdir=path_workdir, block=block)
+    return step(command, inp=[path_script], workdir=path_workdir, block=block)
 
 
 #

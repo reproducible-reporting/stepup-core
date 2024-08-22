@@ -10,6 +10,8 @@ Other parts of StepUp, not documented here, may undergo larger changes and are n
 
 ### ::: stepup.core.api.glob
 
+### ::: stepup.core.api.StepInfo
+
 ### ::: stepup.core.api.step
 
 ### ::: stepup.core.api.pool

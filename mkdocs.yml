@@ -86,6 +86,7 @@ nav:
     - advanced_topics/amending_static_inputs.md
     - advanced_topics/manual_cleaning.md
     - advanced_topics/stepup_root.md
+    - advanced_topics/step_info.md
   - Reference:
     - reference/stepup.core.api.md
     - reference/stepup.core.interact.md

@@ -445,7 +445,7 @@ def test_nglob_to_glob_subs(pattern, subs, normal):
         ),
         ("generic/ch${*foo}/${*md}", r"generic/ch(?P<foo>[^/]*)/(?P<md>[^/]*)"),
         ("generic/${*md}${*ch}/${*md}", "generic/(?P<md>[^/]*)(?P<ch>[^/]*)/(?P=md)"),
-        ("data**", "data[^/]*"),
+        ("data**", "data[^/]*/?"),
     ],
 )
 def test_nglob_to_regex(pattern, regex):
@@ -490,19 +490,19 @@ def _make_files(paths: Collection[str]):
 
 
 def _check_ngm_multi(tmpdir, patterns, subs, paths, used_names, results):
-    ngm1 = NGlobMulti.from_patterns(patterns, subs)
-    assert ngm1.used_names == used_names
-    assert ngm1.subs == subs
-    assert ngm1.has_wildcards
-    ngm1.extend(paths)
-    assert ngm1.results == results
-    assert bool(ngm1) == (len(results) > 0)
     with contextlib.chdir(tmpdir):
         _make_files(paths)
-        ngm2 = NGlobMulti.from_patterns(patterns, subs)
-        ngm2.glob()
-        assert ngm2.results == results
-    return ngm1
+        ngm1 = NGlobMulti.from_patterns(patterns, subs)
+        ngm1.glob()
+        assert ngm1.results == results
+    ngm2 = NGlobMulti.from_patterns(patterns, subs)
+    assert ngm2.used_names == used_names
+    assert ngm2.subs == subs
+    assert ngm2.has_wildcards
+    ngm2.extend(paths)
+    assert ngm2.results == results
+    assert bool(ngm2) == (len(results) > 0)
+    return ngm2
 
 
 def test_nglob_multi_single_nowildcards():
@@ -521,6 +521,13 @@ def test_nglob_multi_single_nonames():
     assert list(ngm) == ["director.log", "worker.log"]
 
 
+def test_nglob_multi_single_subdirs():
+    ngm = NGlobMulti.from_patterns(["sub/*"])
+    ngm.extend(["not", "nono/", "sub/", "sub/file", "sub/other/"])
+    assert ngm.results == {(): [{"sub/file", "sub/other/"}]}
+    assert list(ngm) == ["sub/file", "sub/other/"]
+
+
 def test_nglob_multi_nonames():
     ngm = NGlobMulti.from_patterns(["*.txt", "*.log"])
     ngm.extend(["foo.bar", "worker.log", "director.log", "inp.txt"])
@@ -535,6 +542,16 @@ def test_nglob_multi_single_names():
     assert list(ngm) == [
         NGlobMatch({"f": "a"}, [Path("prefix_a_a.txt")]),
         NGlobMatch({"f": "b"}, [Path("prefix_b_b.txt")]),
+    ]
+
+
+def test_nglob_multi_single_named_not_empty():
+    ngm = NGlobMulti.from_patterns(["prefix_${*f}.txt"])
+    ngm.extend(["prefix_.txt", "prefix_a.txt", "prefix_b.txt"])
+    assert ngm.results == {("a",): [{"prefix_a.txt"}], ("b",): [{"prefix_b.txt"}]}
+    assert list(ngm) == [
+        NGlobMatch({"f": "a"}, [Path("prefix_a.txt")]),
+        NGlobMatch({"f": "b"}, [Path("prefix_b.txt")]),
     ]
 
 
@@ -628,7 +645,7 @@ def test_recursive2(tmpdir):
         subs={},
         paths=["data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"],
         used_names=(),
-        results={},
+        results={(): [{"data/"}]},
     )
 
 
@@ -662,6 +679,17 @@ def test_recursive5(tmpdir):
         paths=["data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"],
         used_names=(),
         results={(): [{"data/sub/part1.txt", "data/part2.txt"}]},
+    )
+
+
+def test_recursive6(tmpdir):
+    _check_ngm_multi(
+        tmpdir,
+        patterns=["**/"],
+        subs={},
+        paths=["data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"],
+        used_names=(),
+        results={(): [{"data/", "data/sub/"}]},
     )
 
 

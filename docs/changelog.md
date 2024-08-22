@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   can include `"stdout"` and/or `"stderr"` items.
   The values of these two fields are paths to which the standard output and/or error
   of the run part of the script are redirected.
+- All API functions that define a step now return a `StepInfo` instance,
+  which may contain useful information (e.g. output paths) to define follow-up steps.
+  This is mainly useful for API extensions that define higher-level functions to create steps,
+  e.g. as in [StepUp RepRep](https://reproducible-reporting.github.io/stepup-reprep/).
+
 
 ### Changed
 
@@ -29,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add trailing slash to `workdir` argument of `stepup.core.api.step()` if it is missing.
 - Fix mistake in worker log filenames.
 - Fix bug in back translation of paths when substituted in a step command.
+- Improve compatibility of nglob with Python's built-in glob.
 
 
 ## [1.2.8] - 2024-06-28 {: #v1.2.8 }
