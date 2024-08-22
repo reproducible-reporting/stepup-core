@@ -18,11 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Migrate `load_module_file` to stepup-reprep.
+- Replace [watchdog](https://github.com/gorakhargosh/watchdog)
+  by [asyncinotify](https://github.com/ProCern/asyncinotify)
+  to avoid [a long-standing issue in watchdog](https://github.com/gorakhargosh/watchdog/issues/275).
+
 
 ### Fixed
 
 - Fix bug in the translation of relative paths before they are sent to the director process.
 - Add trailing slash to `workdir` argument of `stepup.core.api.step()` if it is missing.
+- Fix mistake in worker log filenames.
+- Fix bug in back translation of paths when substituted in a step command.
 
 
 ## [1.2.8] - 2024-06-28 {: #v1.2.8 }

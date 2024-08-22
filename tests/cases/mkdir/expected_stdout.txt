@@ -6,8 +6,8 @@
    SUCCESS │ mkdir -p sub/
      START │ mkdir -p exists/
    SUCCESS │ mkdir -p exists/
-     START │ touch sub/foo.txt
-   SUCCESS │ touch sub/foo.txt
+     START │ echo a > sub/foo.txt
+   SUCCESS │ echo a > sub/foo.txt
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
      PHASE │ watch
   DIRECTOR │ Stopping workers.
