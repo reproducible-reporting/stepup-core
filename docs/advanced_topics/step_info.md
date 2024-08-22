@@ -48,7 +48,7 @@ info = create_fancy_pdf("source/")
 
 # Copy files related to the fancy PDF, e.g. to publish them or back up files.
 mkdir("../public")
-copy(info.filter_out("*.pdf")[0], "../public/")
+copy(info.filter_out("*.pdf").single, "../public/")
 mkdir("../backup")
 for path_inp in info.inp:
     copy(path_inp, "../backup")

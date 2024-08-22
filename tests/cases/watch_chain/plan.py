@@ -7,7 +7,7 @@ info = step("./use_config.py", inp=["use_config.py", "config.json"], out=["outpu
 copy("report.txt", "copy.txt")
 
 # Test info object, only useful for testing
-if list(info.filter_inp("*.py")) != ["use_config.py"]:
+if info.filter_inp("*.py").single() != "use_config.py":
     raise AssertionError("Wrong info.filter_inp")
-if list(info.filter_inp("config.*")) != ["config.json"]:
+if info.filter_inp("config.*").single() != "config.json":
     raise AssertionError("Wrong info.filter_inp")

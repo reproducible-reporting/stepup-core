@@ -8,7 +8,7 @@ glob("ch*/")
 # ignoring inconsistent txt files.
 md_chapter = {}
 for match in glob("ch${*ch}/sec${*ch}_${*sec}_${*name}.txt", ch="[0-9]", sec="[0-9]"):
-    path_txt = match.files[0]
+    path_txt = match.single
     path_md = path_txt[:-3] + "md"
     copy(path_txt, path_md)
     md_chapter.setdefault(match.ch, []).append(path_md)

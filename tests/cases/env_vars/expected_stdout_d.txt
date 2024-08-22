@@ -9,7 +9,7 @@ Same inp hash        plan.py
 ────────────────────────────────────────────────────────────────────────────────
       SKIP │ ./demovars.py
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       extended, digest 58d07c3f, inp_digset 58d07c3f
+Same step hash       extended, digest 14c82f32, inp_digset 14c82f32
 Same inp hash        ./
 Same inp hash        demovars.py
 Same inp hash        variables.json

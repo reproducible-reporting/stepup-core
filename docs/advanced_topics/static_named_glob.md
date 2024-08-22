@@ -54,7 +54,7 @@ Create the following `plan.py`:
 {% include 'advanced_topics/static_named_glob/plan.py' %}
 ```
 
-Note that the substrings matching the named glob patterns are accessible as attributes of the `match` object.
+Note that the substrings matching the named glob patterns are accessible as attributes of the [NGlobMatch][stepup.core.nglob.NGlobMatch] object.
 For example, `match.ch` is the chapter number (as a string).
 
 Make the plan executable and run StepUp:

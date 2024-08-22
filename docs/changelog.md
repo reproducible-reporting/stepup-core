@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which may contain useful information (e.g. output paths) to define follow-up steps.
   This is mainly useful for API extensions that define higher-level functions to create steps,
   e.g. as in [StepUp RepRep](https://reproducible-reporting.github.io/stepup-reprep/).
+- The classes `NGlobMulti` has a new method `single()`
+  and `NGlobMatch` has a new property `single`.
+  These are only valid when there is a unique match,
+  i.e. when the `files` method or property has exactly one path.
 
 
 ### Changed

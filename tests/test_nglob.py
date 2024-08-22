@@ -299,7 +299,8 @@ def test_nglob_multi_iterators_named():
         assert matches[2][2] == "sec_c.pdf"
         assert matches[2].mapping == {"name": "sec", "suffix": "c"}
         assert matches[2].files == ["sec.txt", ["m.log", "n.log"], "sec_c.pdf"]
-
+        with pytest.raises(ValueError):
+            _ = matches[2].single
         with pytest.raises(IndexError):
             _ = matches[0][3]
         with pytest.raises(AttributeError):
@@ -331,6 +332,24 @@ def test_nglob_multi_iterators_named():
     assert not ngm.will_change(set(), {"thi_x.pdf"})
     assert ngm.will_change(set(), {"thi.txt", "thi_x.pdf"})
     assert not ngm.will_change(set(), {"k.loog"})
+
+
+def test_nglob_multi_single_named():
+    subs = {"inp": "prefix_*"}
+    ngm = NGlobMulti.from_patterns(["${*inp}.txt"], subs)
+    assert ngm.subs is subs
+    ngm.extend(["prefix_a.pdf", "prefix_b.txt"])
+    assert ngm.files() == ("prefix_b.txt",)
+    assert next(iter(ngm.matches())).single == "prefix_b.txt"
+    assert ngm.single() == "prefix_b.txt"
+
+
+def test_nglob_multi_single_anonymous():
+    ngm = NGlobMulti.from_patterns(["*.txt"])
+    ngm.extend(["prefix_a.pdf", "prefix_b.txt"])
+    assert ngm.files() == ("prefix_b.txt",)
+    assert next(iter(ngm.matches())).single == "prefix_b.txt"
+    assert ngm.single() == "prefix_b.txt"
 
 
 @pytest.mark.parametrize(

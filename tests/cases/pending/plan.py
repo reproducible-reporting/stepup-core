@@ -12,5 +12,5 @@ if info.out != ["second.txt"]:
     raise AssertionError("Incorrect info.out")
 if info.vol != ["third.txt"]:
     raise AssertionError("Incorrect info.vol")
-if list(info.filter_vol("*.txt")) != ["third.txt"]:
+if info.filter_vol("*.txt").single() != "third.txt":
     raise AssertionError("Wrong info.filter_vol")

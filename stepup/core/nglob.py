@@ -130,6 +130,20 @@ class NGlobMatch:
     ```python
     print(match.foo)
     ```
+
+    When you expect only a single matching file, then the `single` attribute can be used.
+    It will raise an exception when there are zero or multiple matches:
+
+    ```python
+    print(match.single)
+    ```
+
+    In the unfortunate case that your named wildcards are named `single`, `files` or `mapping`,
+    you can access their values through the `mapping` attribute:
+
+    ```python
+    print(match.mapping["single"])
+    ```
     """
 
     _mapping: dict[str, str]
@@ -160,6 +174,22 @@ class NGlobMatch:
         the corresponding item in the returned list is a single path.
         """
         return self._files
+
+    @property
+    def single(self) -> Path:
+        """A single path if there is exactly one match, raises an error otherwise."""
+        if len(self._files) == 0:
+            raise ValueError("No files matched.")
+        if len(self._files) > 1:
+            raise ValueError("Multiple files matched.")
+        result = self._files[0]
+        if isinstance(result, list):
+            if len(result) == 0:
+                raise ValueError("No files matched.")
+            if len(result) > 1:
+                raise ValueError("Multiple files matched.")
+            result = result[0]
+        return result
 
 
 @attrs.define
@@ -610,6 +640,19 @@ class NGlobMulti:
             for path_set in ngs.results.values():
                 result.update(path_set)
         return tuple(sorted(result))
+
+    def single(self) -> Path:
+        """Return the single matching path.
+
+        Raises
+        ------
+        ValueError
+            If there is not exactly one match.
+        """
+        files = self.files()
+        if len(files) != 1:
+            raise ValueError(f"There are {len(files)} matches, not just one.")
+        return files[0]
 
     def __bool__(self):
         """True when there are some items in the `results` attribute."""

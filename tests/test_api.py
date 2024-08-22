@@ -34,9 +34,9 @@ def test_step_info():
     assert info.env[0] == "AAA"
     assert info.out[-1] == "out1.log"
     assert info.vol[2] == "hhh.cde"
-    assert list(info.filter_inp("*.txt")) == ["one.txt", "two.txt"]
-    assert list(info.filter_inp("${*pre}.*", pre="t*").files()) == ["three.py", "two.txt"]
-    assert list(info.filter_out("out1.*")) == ["out1.log", "out1.pdf"]
-    assert list(info.filter_out("${*pre}.pdf", pre="out?").files()) == ["out1.pdf"]
-    assert list(info.filter_vol("???.???")) == ["hhh.cde"]
-    assert list(info.filter_vol("*.${*l}${*l}${*l}", l="?").files()) == ["vol1.aaa", "vol1.bbb"]
+    assert info.filter_inp("*.txt").files() == ("one.txt", "two.txt")
+    assert info.filter_inp("${*pre}.*", pre="t*").files() == ("three.py", "two.txt")
+    assert info.filter_out("out1.*").files() == ("out1.log", "out1.pdf")
+    assert info.filter_out("${*pre}.pdf", pre="out?").single() == "out1.pdf"
+    assert info.filter_vol("???.???").single() == "hhh.cde"
+    assert info.filter_vol("*.${*l}${*l}${*l}", l="?").files() == ("vol1.aaa", "vol1.bbb")

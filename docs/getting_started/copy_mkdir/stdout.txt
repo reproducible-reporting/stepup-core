@@ -7,9 +7,9 @@
    SUCCESS │ echo hello > hello.txt
      START │ mkdir -p sub/
    SUCCESS │ mkdir -p sub/
+   SUCCESS │ ./plan.py
      START │ cp -aT hello.txt sub/hello.txt
    SUCCESS │ cp -aT hello.txt sub/hello.txt
-   SUCCESS │ ./plan.py
   WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!
