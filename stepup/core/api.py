@@ -327,19 +327,20 @@ def step(
         workdir = f"{workdir}/"
     amended_env_vars = set()
     with subs_env_vars() as subs:
-        tr_inp_paths = [translate(subs(inp_path)) for inp_path in inp_paths]
-        tr_out_paths = [translate(subs(out_path)) for out_path in out_paths]
-        tr_vol_paths = [translate(subs(vol_path)) for vol_path in vol_paths]
-        tr_workdir = translate(subs(workdir))
+        su_inp_paths = [subs(inp_path) for inp_path in inp_paths]
+        su_out_paths = [subs(out_path) for out_path in out_paths]
+        su_vol_paths = [subs(vol_path) for vol_path in vol_paths]
+        su_workdir = subs(workdir)
+        tr_inp_paths = [translate(inp_path) for inp_path in su_inp_paths]
+        tr_out_paths = [translate(out_path) for out_path in su_out_paths]
+        tr_vol_paths = [translate(vol_path) for vol_path in su_vol_paths]
+        tr_workdir = translate(su_workdir)
     amend(env=sorted(amended_env_vars))
     # Substitute paths that are translated back to the current directory.
-    local_inp_paths = [translate_back(inp_path) for inp_path in tr_inp_paths]
-    local_out_paths = [translate_back(out_path) for out_path in tr_out_paths]
-    local_vol_paths = [translate_back(vol_path) for vol_path in tr_vol_paths]
     command = CaseSensitiveTemplate(command).safe_substitute(
-        inp=" ".join(local_inp_paths),
-        out=" ".join(local_out_paths),
-        vol=" ".join(local_vol_paths),
+        inp=" ".join(su_inp_paths),
+        out=" ".join(su_out_paths),
+        vol=" ".join(su_vol_paths),
     )
 
     # Look for inputs that match deferred globs and check their existence
@@ -365,7 +366,7 @@ def step(
     )
 
     # Return a StepInfo instance to facilitate the definition of follow-up steps
-    return StepInfo(step_key, local_inp_paths, env_vars, local_out_paths, local_vol_paths)
+    return StepInfo(step_key, su_inp_paths, env_vars, su_out_paths, su_vol_paths)
 
 
 def pool(name: str, size: int):
@@ -660,7 +661,7 @@ def subs_env_vars() -> Iterator[Callable[[str | None], str | None]]:
                 mapping[name] = value
                 env_vars.add(name)
         result = path if len(mapping) == 0 else template.substitute(mapping)
-        return Path(result)
+        return mynormpath(result)
 
     yield subs
     amend(env=env_vars)
