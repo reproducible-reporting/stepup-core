@@ -45,9 +45,13 @@ def main():
 
 async def async_main():
     args = parse_args()
-    if Path(args.root).absolute() != Path.cwd():
+    if args.root.absolute() != Path.cwd():
         print("Changing to", args.root)
-        os.chdir(args.root)
+        args.root.cd()
+
+    # Sanity check before creating a subdirectory
+    if not args.plan_py.is_file():
+        raise RuntimeError(f"File {args.plan_py} does not exist.")
 
     # Create dir
     dir_stepup = Path(".stepup")
@@ -207,10 +211,13 @@ async def keyboard(
 def parse_args():
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(prog="stepup", description="The StepUp build tool")
-    parser.add_argument("plan_py", default="plan.py", help="Top-level build script", nargs="?")
+    parser.add_argument(
+        "plan_py", type=Path, default=Path("plan.py"), help="Top-level build script", nargs="?"
+    )
     parser.add_argument(
         "--root",
-        default=os.getenv("STEPUP_ROOT", os.getcwd()),
+        type=Path,
+        default=Path(os.getenv("STEPUP_ROOT", os.getcwd())),
         help="Directory containing top-level plan.py [default=%(default)s]",
     )
     parser.add_argument(
