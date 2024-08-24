@@ -32,7 +32,7 @@ wait
 
 # Restart the example with a different input
 export ENV_VAR_TEST_STEPUP_INP="static/sub/bar.txt"
-rm -r .stepup/logs
+rm .stepup/*.log
 stepup -w 1 plan.py & # > current_stdout_02.txt &
 
 # Wait for the director and get its socket.

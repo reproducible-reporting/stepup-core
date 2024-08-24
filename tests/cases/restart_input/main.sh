@@ -31,7 +31,7 @@ grep first output.txt
 
 # Run the plan with the second input.
 echo second > input.txt
-rm -r .stepup/logs
+rm .stepup/*.log
 stepup -w 1 plan.py & # > current_stdout_02.txt &
 
 # Wait for the director and get its socket.

@@ -35,7 +35,7 @@ grep inp1 copy.txt
 rm inp1.txt
 echo inp2 > inp2.txt
 echo inp2.txt > subs.txt
-rm -r .stepup/logs
+rm .stepup/*.log
 stepup -e -w 1 plan.py & # > current_stdout_02.txt &
 
 # Wait for the director and get its socket.

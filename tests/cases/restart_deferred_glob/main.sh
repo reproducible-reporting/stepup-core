@@ -33,7 +33,7 @@ grep first static/foo.txt
 grep first bar.txt
 
 # Run the plan again without any changes.
-rm -r .stepup/logs
+rm .stepup/*.log
 stepup -e -w 1 plan.py & # > current_stdout_02.txt &
 
 # Wait for the director and get its socket.
@@ -61,7 +61,7 @@ grep first bar.txt
 
 # Run the plan again with changes.
 echo second > static/foo.txt
-rm -r .stepup/logs
+rm .stepup/*.log
 stepup -e -w 1 plan.py & # > current_stdout_03.txt &
 
 # Wait for the director and get its socket.

@@ -41,9 +41,9 @@ If `cleanup` cannot connect to the StepUp director process, it will keep trying 
 
 ```
 Trying to contact StepUp director process.
-File ./.stepup/logs/director not found.  Waiting 0.1 seconds.
-Socket /tmp/stepup-c9a12bau/director read from ./.stepup/logs/director does not exist. Stepup not running?  Waiting 0.2 seconds.
-Socket /tmp/stepup-c9a12bau/director read from ./.stepup/logs/director does not exist. Stepup not running?  Waiting 0.3 seconds.
+File ./.stepup/director.log not found.  Waiting 0.1 seconds.
+Socket /tmp/stepup-c9a12bau/director read from ./.stepup/director.log does not exist. Stepup not running?  Waiting 0.2 seconds.
+Socket /tmp/stepup-c9a12bau/director read from ./.stepup/director.log does not exist. Stepup not running?  Waiting 0.3 seconds.
 ...
 ```
 

@@ -31,7 +31,7 @@ wait
 [[ -f source_01.txt ]] || exit 1
 
 # second with a different plan.
-rm -r .stepup/logs
+rm .stepup/*.log
 stepup -e -w 1 plan_02.py & # > current_stdout_02.txt &
 
 # Wait for the director and get its socket.

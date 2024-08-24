@@ -564,7 +564,7 @@ class DirectorHandler:
 def get_socket() -> str:
     """Block until the director socket is known and return it."""
     stepup_root = Path(os.getenv("STEPUP_ROOT", "./"))
-    path_director_log = stepup_root / ".stepup/logs/director"
+    path_director_log = stepup_root / ".stepup/director.log"
     secs = 0
     while True:
         time.sleep(secs)

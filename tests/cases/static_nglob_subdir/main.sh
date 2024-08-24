@@ -35,7 +35,7 @@ wait
 
 # Restart with one more input
 echo three > sub/inp3.txt
-rm -r .stepup/logs
+rm .stepup/*.log
 stepup -e -w 1 plan.py & # > current_stdout_02.txt &
 
 # Wait for the director and get its socket.

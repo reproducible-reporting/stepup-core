@@ -43,7 +43,7 @@ grep raw_03 used.txt
 
 # Restart with a different environment variables
 export ENV_VAR_TEST_STEPUP_IDX="1"
-rm -r .stepup/logs
+rm .stepup/*.log
 stepup -e -w 1 plan.py & # > current_stdout_b.txt &
 
 # Wait for the director and get its socket.

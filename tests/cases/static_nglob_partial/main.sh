@@ -75,7 +75,7 @@ wait
 # Modify nglob results and restart
 echo "ty" > tail_y.txt
 echo "tz" > tail_z.txt
-rm -r .stepup/logs
+rm .stepup/*.log
 stepup -e -w 1 plan.py & # > current_stdout_b.txt &
 
 # Wait for the director and get its socket.

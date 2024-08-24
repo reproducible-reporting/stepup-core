@@ -560,7 +560,7 @@ def parse_args():
 async def async_main():
     args = parse_args()
     with contextlib.ExitStack() as stack:
-        ferr = stack.enter_context(open(f".stepup/logs/worker{args.worker_idx}", "w"))
+        ferr = stack.enter_context(open(f".stepup/worker{args.worker_idx}.log", "w"))
         stack.enter_context(contextlib.redirect_stderr(ferr))
         print(f"PID {os.getpid()}", file=sys.stderr)
         async with ReporterClient.socket(args.reporter_socket) as reporter:

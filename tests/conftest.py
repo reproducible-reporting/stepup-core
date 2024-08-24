@@ -52,8 +52,6 @@ async def client(tmpdir) -> Iterator[AsyncRPCClient]:
         dir_stepup = Path(".stepup").absolute()
         dir_sockects = dir_stepup / "sockets"
         dir_sockects.makedirs_p()
-        dir_logs = dir_stepup / "logs"
-        dir_logs.makedirs_p()
         director_socket_path = dir_sockects / "director"
 
         with open("plan.py", "w") as fh:

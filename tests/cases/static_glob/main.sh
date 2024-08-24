@@ -58,7 +58,7 @@ wait
 # Modify nglob results and restart
 echo "Fourth input" > inp4.txt
 rm inp2.txt
-rm -r .stepup/logs
+rm .stepup/*.log
 stepup -e -w 1 plan.py & # > current_stdout_b.txt &
 
 # Wait for the director and get its socket.

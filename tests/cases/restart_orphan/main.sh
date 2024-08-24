@@ -29,7 +29,7 @@ wait
 [[ -f bar.txt ]] || exit 1
 
 # Run the plan.
-rm -r .stepup/logs
+rm .stepup/*.log
 stepup -e -w 1 plan.py & # > current_stdout_02.txt &
 
 # Wait for the director and get its socket.

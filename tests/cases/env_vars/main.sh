@@ -67,7 +67,7 @@ cp current_variables.txt current_variables_03.txt
 
 # Change a variable and restart
 export ENV_VAR_TEST_STEPUP_DFTHYH="CCCC"
-rm -r .stepup/logs
+rm .stepup/*.log
 stepup -e -w 1 plan.py & # > current_stdout_b.txt &
 
 # Wait for the director and get its socket.
@@ -94,7 +94,7 @@ cp current_variables.txt current_variables_04.txt
 
 # unset a variable and restart
 unset ENV_VAR_TEST_STEPUP_AWDFTD
-rm -r .stepup/logs
+rm .stepup/*.log
 stepup -e -w 1 plan.py & # > current_stdout_c.txt &
 
 # Wait for the director and get its socket.
@@ -121,7 +121,7 @@ wait
 
 # Set a variable again and restart
 export ENV_VAR_TEST_STEPUP_AWDFTD="DDDD"
-rm -r .stepup/logs
+rm .stepup/*.log
 stepup -e -w 1 plan.py & # > current_stdout_d.txt &
 
 # Wait for the director and get its socket.

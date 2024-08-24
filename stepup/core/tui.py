@@ -55,9 +55,9 @@ async def async_main():
 
     # Create dir
     dir_stepup = Path(".stepup")
-    dir_logs = dir_stepup / "logs"
-    dir_logs.rmtree_p()
-    dir_logs.makedirs_p()
+    dir_stepup.makedirs_p()
+    for path_log in dir_stepup.glob("*.log"):
+        path_log.remove_p()
 
     with tempfile.TemporaryDirectory(prefix="stepup-") as dir_sockets:
         dir_sockets = Path(dir_sockets)
@@ -92,7 +92,7 @@ async def async_main():
         if not args.interactive:
             argv.append("--non-interactive")
         try:
-            with open(".stepup/logs/director", "w") as log_file:
+            with open(".stepup/director.log", "w") as log_file:
                 process_director = await asyncio.create_subprocess_exec(
                     sys.executable,
                     *argv,

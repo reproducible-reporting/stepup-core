@@ -122,7 +122,7 @@ async def run_example(srcdir, tmpdir, overwrite_expected=False):
                     exp = fh.read().rstrip()
                 pairs.append((path_exp, cur, exp))
     finally:
-        for path_log in sorted(workdir.glob(".stepup/logs/*")):
+        for path_log in sorted(workdir.glob(".stepup/*.log")):
             print()
             print(f"########## {path_log} ##########")
             print()
