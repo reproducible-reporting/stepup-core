@@ -35,6 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   relative paths provided in other arguments to the `step()` function
   are interpreted relative to the given working directory,
   not the current working directory of the running process.
+- The directory `.stepup` is no longer created when running `stepup`
+  without a `plan.py`.
+- The files in `.stepup/logs` have been renamed to `*.log` files under `.stepup`.
 
 
 ### Fixed
