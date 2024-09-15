@@ -81,12 +81,12 @@ async def sc(socket_server_path):
         yield client
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_pipe_simple_args(pc):
     assert await pc.call.echo("hello") == "pipe: hello"
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_stdio_simple_args(ic):
     assert await ic.call.echo("hello") == "stdio: hello"
 
@@ -95,22 +95,22 @@ async def test_stdio_simple_args(ic):
 REASON_SOCKET = "sockets hang in 3.11"
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_socket_simple_args(sc):
     assert await sc.call.echo("hello") == "socket: hello"
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_pipe_simple_kwargs(pc):
     assert await pc.call.echo(msg="hello") == "pipe: hello"
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_stdio_simple_kwargs(ic):
     assert await ic.call.echo(msg="hello") == "stdio: hello"
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_socket_simple_kwargs(sc):
     assert await sc.call.echo(msg="hello") == "socket: hello"
 
@@ -126,79 +126,79 @@ LCG_CASES = [
 ]
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @pytest.mark.parametrize(("args", "kwargs", "result"), LCG_CASES)
 async def test_pipe_lcg_kwargs(pc, args, kwargs, result):
     assert await pc.call.lcg(*args, **kwargs) == result
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @pytest.mark.parametrize(("args", "kwargs", "result"), LCG_CASES)
 async def test_stdio_lcg_kwargs(ic, args, kwargs, result):
     assert await ic.call.lcg(*args, **kwargs) == result
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @pytest.mark.parametrize(("args", "kwargs", "result"), LCG_CASES)
 async def test_socket_lcg_kwargs(sc, args, kwargs, result):
     assert await sc.call.lcg(*args, **kwargs) == result
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_pipe_seq(pc):
     assert await pc.call.echo("hello", 0.1) == "pipe: hello"
     assert await pc.call.echo("world") == "pipe: world"
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_stdio_seq(ic):
     assert await ic.call.echo("hello", 0.1) == "stdio: hello"
     assert await ic.call.echo("world") == "stdio: world"
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_socket_seq(sc):
     assert await sc.call.echo("hello", 0.1) == "socket: hello"
     assert await sc.call.echo("world") == "socket: world"
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_pipe_par1(pc):
     expected = ["pipe: hello", "pipe: world"]
     assert await asyncio.gather(pc.call.echo("hello", 0.1), pc.call.echo("world")) == expected
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_stdio_par1(ic):
     expected = ["stdio: hello", "stdio: world"]
     assert await asyncio.gather(ic.call.echo("hello", 0.1), ic.call.echo("world")) == expected
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_socket_par1(sc):
     expected = ["socket: hello", "socket: world"]
     assert await asyncio.gather(sc.call.echo("hello", 0.1), sc.call.echo("world")) == expected
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_pipe_par2(pc):
     expected = ["pipe: hello", "pipe: world"]
     assert await asyncio.gather(pc.call.echo("hello"), pc.call.echo("world", 0.1)) == expected
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_stdio_par2(ic):
     expected = ["stdio: hello", "stdio: world"]
     assert await asyncio.gather(ic.call.echo("hello"), ic.call.echo("world", 0.1)) == expected
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_socket_par2(sc):
     expected = ["socket: hello", "socket: world"]
     assert await asyncio.gather(sc.call.echo("hello"), sc.call.echo("world", 0.1)) == expected
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_socket_multi_clients(socket_server_path):
     r1, w1 = await asyncio.open_unix_connection(socket_server_path)
     async with AsyncRPCClient(r1, w1) as c1:
@@ -239,13 +239,13 @@ def test_fmt_rpc_call_noargs():
     assert fmt_rpc_call("foo", [], {}) == "foo()"
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_pipe_not_allowed(pc):
     with pytest.raises(RPCError):
         await pc.call.not_allowed()
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_pipe_not_defined(pc):
     with pytest.raises(RPCError):
         await pc.call.not_defined()

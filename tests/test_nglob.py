@@ -397,10 +397,10 @@ def test_nglob_wild(string, matches):
         ("${*generic}/ch${*foo}/*.md", "*/ch*/*.md"),
         ("generic/ch${*foo}/${*md}", "generic/ch*/*"),
         ("generic/${*md}${*ch}/${*md}", "generic/*/*"),
-        ("generic/${*md}?/${*md}", "generic/*/*"),
-        ("generic/**?/?${*md}", "generic/*/*"),
-        ("generic/?**/*?", "generic/*/*"),
-        ("generic/**/*?", "generic/**/*"),
+        ("generic/${*md}?/${*md}", "generic/*?/*"),
+        ("generic/**?/?${*md}", "generic/*?/?*"),
+        ("generic/?**/*?", "generic/?*/*?"),
+        ("generic/**/*?", "generic/**/*?"),
         ("generic/${*md}[a[b]/?[*]", "generic/*[a[b]/?[*]"),
         ("**/${*name}.txt", "**/*.txt"),
         ("foo/**/${*name}.txt", "foo/**/*.txt"),
@@ -422,8 +422,8 @@ def test_nglob_to_glob(pattern, normal):
             "?[ab]*/s_*_*/*.md",
         ),
         ("${*a}${*b}/ab", {"a": "a*"}, "a*/ab"),
-        ("${*a}${*b}/ab", {"a": "a*", "b": "?b"}, "a*b/ab"),
-        ("${*a}${*b}${*a}/ab", {"a": "?a*", "b": "**b*"}, "?a*b*a*/ab"),
+        ("${*a}${*b}/ab", {"a": "a*", "b": "?b"}, "a*?b/ab"),
+        ("${*a}${*b}${*a}/ab", {"a": "?a*", "b": "**b*"}, "?a*b*?a*/ab"),
         ("${*a}/ab", {"a": "**/*a"}, "**/*a/ab"),
     ],
 )
@@ -482,7 +482,7 @@ def test_nglob_to_regex(pattern, regex):
         (
             "latex-${*name}/${*name}.tex",
             {"name": "?*"},
-            r"latex\-(?P<name>[^/]*)/(?P=name)\.tex",
+            r"latex\-(?P<name>[^/][^/]*)/(?P=name)\.tex",
         ),
     ],
 )
@@ -564,8 +564,24 @@ def test_nglob_multi_single_names():
     ]
 
 
-def test_nglob_multi_single_named_not_empty():
+def test_nglob_multi_single_named_empty():
     ngm = NGlobMulti.from_patterns(["prefix_${*f}.txt"])
+    ngm.extend(["prefix_.txt", "prefix_a.txt", "prefix_b.txt"])
+    assert ngm.results == {
+        ("",): [{"prefix_.txt"}],
+        ("a",): [{"prefix_a.txt"}],
+        ("b",): [{"prefix_b.txt"}],
+    }
+    assert list(ngm) == [
+        NGlobMatch({"f": ""}, [Path("prefix_.txt")]),
+        NGlobMatch({"f": "a"}, [Path("prefix_a.txt")]),
+        NGlobMatch({"f": "b"}, [Path("prefix_b.txt")]),
+    ]
+
+
+def test_nglob_multi_single_named_not_empty():
+    ngm = NGlobMulti.from_patterns(["prefix_${*f}.txt"], subs={"f": "?*"})
+    print(ngm.nglob_singles[0]._regex)
     ngm.extend(["prefix_.txt", "prefix_a.txt", "prefix_b.txt"])
     assert ngm.results == {("a",): [{"prefix_a.txt"}], ("b",): [{"prefix_b.txt"}]}
     assert list(ngm) == [
@@ -642,6 +658,18 @@ def test_filter_named2_subs(tmpdir):
     results = {
         ("a", "egg"): [{"a/foo.txt"}, {"other/egg.txt"}],
         ("b", "egg"): [{"b/foo.txt"}, {"other/egg.txt"}],
+    }
+    _check_ngm_multi(tmpdir, patterns, subs, paths, used_names, results)
+
+
+def test_filter_named3(tmpdir):
+    patterns = ["../../general/${*name}-public${*ext}"]
+    paths = ["../../general/.gitignore-public", "../../general/.pre-commit-config-public.yaml"]
+    subs = {}
+    used_names = ("ext", "name")
+    results = {
+        ("", ".gitignore"): [{"../../general/.gitignore-public"}],
+        (".yaml", ".pre-commit-config"): [{"../../general/.pre-commit-config-public.yaml"}],
     }
     _check_ngm_multi(tmpdir, patterns, subs, paths, used_names, results)
 

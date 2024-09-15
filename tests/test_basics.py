@@ -28,7 +28,7 @@ from stepup.core.exceptions import RPCError
 from stepup.core.rpc import AsyncRPCClient
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_unknown_instruction(client: AsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
@@ -36,7 +36,7 @@ async def test_unknown_instruction(client: AsyncRPCClient):
         await client("instruction_that_does_not_exist")
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_missing_argument(client: AsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
@@ -44,7 +44,7 @@ async def test_missing_argument(client: AsyncRPCClient):
         await client("static")
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_wrong_type(client: AsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
@@ -91,7 +91,7 @@ def _check_graph(path, expected):
         assert cur == expected
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_from_scratch(client: AsyncRPCClient, tmpdir: str):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
@@ -141,7 +141,7 @@ file:foo
 """
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_static(client: AsyncRPCClient, tmpdir: str):
     try:
         with open("foo", "w") as fh:
@@ -218,7 +218,7 @@ file:copy.txt
 """
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_copy(client: AsyncRPCClient, tmpdir: str):
     try:
         with open("original.txt", "w") as fh:

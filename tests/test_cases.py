@@ -111,6 +111,6 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "watch_wanted",
     ],
 )
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_example(tmpdir, name: str):
     await run_example(Path("tests/cases") / name, tmpdir, OVERWRITE_EXPECTED)

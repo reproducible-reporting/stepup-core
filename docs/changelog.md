@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-(no changes yet)
+### Fixed
+
+- Fix incorrect parsing of `?*` and `*?` wildcards in the `nglob` module.
 
 ## [1.3.0] - 2024-08-27 {: #v1.3.0 }
 

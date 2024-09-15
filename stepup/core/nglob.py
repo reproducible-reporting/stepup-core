@@ -285,9 +285,6 @@ class NGlobSingle:
             if match_ is not None:
                 mapping = match_.groupdict()
                 values = tuple(mapping[name] for name in self._used_names)
-                # Named wildcards are not allowed to match empty strings
-                if any(len(value) == 0 for value in values):
-                    continue
                 paths = self._results.get(values)
                 if paths is None:
                     paths = set()
@@ -763,17 +760,14 @@ def convert_nglob_to_regex(
             replace = False
             regex = None
             if part == "?":
-                if last not in ["*", "**"]:
-                    regex = r"[^/]"
+                regex = r"[^/]"
             elif part == "*":
                 if last not in ["*", "**"]:
-                    if last == "?":
-                        replace = True
                     regex = r"[^/]*"
             elif part == "**":
                 if last != "**":
                     regex = r".*"
-                    if last in ["*", "?"]:
+                    if last in ["*"]:
                         replace = True
             elif part.startswith("[") and part.endswith("]"):
                 regex = rf"[^{part[2:-1]}]" if part[1] == "!" else rf"[{part[1:-1]}]"
@@ -852,18 +846,13 @@ def convert_nglob_to_glob(pattern: str, subs: dict[str, str] | None = None) -> s
     # Make sure no asterisks are glued together and a few other simplifications.
     texts = []
     for part in parts:
-        if len(texts) == 0:
+        if len(texts) == 0 or part == "?":
             texts.append(part)
-        elif part == "?":
-            if texts[-1] not in ["*", "**"]:
-                texts.append(part)
         elif part == "*":
-            if texts[-1] == "?":
-                texts[-1] = "*"
-            elif texts[-1] not in ["*", "**"]:
+            if texts[-1] not in ["*", "**"]:
                 texts.append("*")
         elif part == "**":
-            if texts[-1] in ["*", "?"]:
+            if texts[-1] in ["*"]:
                 texts[-1] = "**"
             elif texts[-1] != "**":
                 texts.append("**")
