@@ -5,13 +5,26 @@ If you would like to contribute, please read [CONTRIBUTING.md](https://github.co
 
 ## Development Install and Unit Tests
 
-A local installation for testing and development can be installed as follows
+A local installation for testing and development can be installed
+using the following commands:
 
 ```bash
 git clone git@github.com:reproducible-reporting/stepup-core.git
 cd stepup-core
 pre-commit install
 python -m venv venv
+```
+
+Put the following lines in `.envrc`:
+
+```bash
+source venv/bin/activate
+export XDG_CACHE_HOME="${VIRTUAL_ENV}/cache"
+```
+
+Finally, run the following commands:
+
+```bash
 echo 'source venv/bin/activate' > .envrc
 direnv allow
 pip install -U pip
