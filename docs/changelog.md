@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2024-09-17 {: #v1.3.1 }
+
 ### Fixed
 
 - Fix incorrect parsing of `?*` and `*?` wildcards in the `nglob` module.
@@ -183,6 +185,7 @@ Initial release
 
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[1.3.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.3.1
 [1.3.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.3.0
 [1.2.8]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.8
 [1.2.7]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.7
