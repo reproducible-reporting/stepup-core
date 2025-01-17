@@ -35,6 +35,7 @@ pytest -vv
 ## Documentation
 
 The documentation is created using [MkDocs](https://www.mkdocs.org/).
+[mike](https://github.com/jimporter/mike) is used to manage documentation of different versions
 
 Edit the documentation Markdown files with a live preview by running:
 
@@ -68,3 +69,4 @@ so you must have it installed on your system.
 - Mark the release in `docs/changelog.md`.
 - Make a new commit and tag it with `vX.Y.Z`.
 - Trigger the PyPI GitHub Action: `git push origin main --tags`.
+- Publish a documentation version with `mike deploy {version} -u stable -p`

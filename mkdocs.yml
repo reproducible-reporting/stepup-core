@@ -1,5 +1,6 @@
 site_name: StepUp Core
 repo_url: https://github.com/reproducible-reporting/stepup-core
+site_url: https://reproducible-reporting.github.io/stepup-core/
 edit_uri: edit/main/docs/
 site_description: StepUp Core Documentation
 site_author: Toon Verstraelen
@@ -20,8 +21,15 @@ validation:
     absolute_links: warn
     unrecognized_links: warn
 
+extra:
+  version:
+    provider: mike
+    alias: true
+    default: stable
+
 theme:
   name: material
+  custom_dir: overrides
   font:
     text: IBM Plex Sans
     code: Source Code Pro
@@ -101,6 +109,7 @@ exclude_docs: |
   */*/public/*.md
 
 plugins:
+- mike
 - search:
     lang:
       - en

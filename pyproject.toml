@@ -42,6 +42,7 @@ dev = [
     "pytest",
     "pytest-asyncio>=0.24",
     "pytest-xdist",
+    "mike",
     "mkdocs",
     "mkdocstrings[python]",
     "mkdocs-macros-plugin",
