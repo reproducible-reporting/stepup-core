@@ -39,6 +39,10 @@ jobs:
       # Update the site using to the gh-pages branch with mike.
       - name: Get the docs branch
         run: git fetch --depth=1 origin gh-pages
+      - name: Configure Git user for documentation commit
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
       - name: Build mkdocs
         run: mike deploy dev
       - name: Push gh-pages branch to GitHub
