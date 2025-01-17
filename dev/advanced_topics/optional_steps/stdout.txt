@@ -1,0 +1,16 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./generate.py plan --optional
+   SUCCESS │ ./generate.py plan --optional
+     START │ ./plot.py plan
+   SUCCESS │ ./plot.py plan
+     START │ ./generate.py run -- 'logmap_3.200'
+   SUCCESS │ ./generate.py run -- 'logmap_3.200'
+     START │ ./plot.py run
+   SUCCESS │ ./plot.py run
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

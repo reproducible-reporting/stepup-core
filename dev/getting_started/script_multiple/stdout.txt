@@ -1,0 +1,14 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./plot.py plan
+   SUCCESS │ ./plot.py plan
+     START │ ./plot.py run -- 'plot_ebbr'
+   SUCCESS │ ./plot.py run -- 'plot_ebbr'
+     START │ ./plot.py run -- 'plot_ebos'
+   SUCCESS │ ./plot.py run -- 'plot_ebos'
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

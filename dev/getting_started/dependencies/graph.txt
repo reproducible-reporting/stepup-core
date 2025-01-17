@@ -1,0 +1,57 @@
+root:
+             version = v1
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+                path = plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+                path = ./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   file:story.txt
+            supplies   step:./plan.py
+            supplies   step:echo First line. > story.txt; echo Second line. >> story.txt
+            supplies   step:grep First story.txt
+
+step:./plan.py
+             workdir = ./
+             command = ./plan.py
+               state = RUNNING
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:echo First line. > story.txt; echo Second line. >> story.txt
+             creates   step:grep First story.txt
+
+step:echo First line. > story.txt; echo Second line. >> story.txt
+             workdir = ./
+             command = echo First line. > story.txt; echo Second line. >> story.txt
+               state = QUEUED
+          created by   step:./plan.py
+            consumes   file:./
+             creates   file:story.txt
+            supplies   file:story.txt
+
+file:story.txt
+                path = story.txt
+               state = PENDING
+          created by   step:echo First line. > story.txt; echo Second line. >> story.txt
+            consumes   file:./
+            consumes   step:echo First line. > story.txt; echo Second line. >> story.txt
+            supplies   step:grep First story.txt
+
+step:grep First story.txt
+             workdir = ./
+             command = grep First story.txt
+               state = PENDING
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:story.txt

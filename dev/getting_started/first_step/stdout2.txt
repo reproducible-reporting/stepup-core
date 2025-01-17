@@ -1,0 +1,9 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director
+  WORKFLOW │ Loaded from .stepup/workflow.mpk.xz
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+      SKIP │ ./plan.py
+      SKIP │ echo Hello World
+  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!
