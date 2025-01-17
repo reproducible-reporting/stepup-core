@@ -1,0 +1,14 @@
+strict digraph {
+  graph [rankdir=BT bgcolor=transparent]
+  node [penwidth=0 colorscheme=set39 style=filled fillcolor=5]
+  edge [color=dimgray arrowhead=normal]
+  6 [label="*.txt" shape=octagon fillcolor=7]
+  7 [label="foo.txt" shape=rect fillcolor=9]
+  3 [label="plan.py" shape=rect fillcolor=9]
+  1 [label="root" shape=hexagon fillcolor=6]
+  5 [label="./plan.py"]
+  8 [label="cat foo.txt"]
+  2 [label="vacuum" shape=hexagon fillcolor=6]
+  3 -> 5
+  7 -> 8
+}
