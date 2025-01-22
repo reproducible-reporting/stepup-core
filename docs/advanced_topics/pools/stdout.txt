@@ -1,4 +1,4 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp version 1.3.1.post6)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp version 2.0.0)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
   DIRECTOR │ Launched worker 1
@@ -6,17 +6,17 @@
   DIRECTOR │ Launched worker 3
      PHASE │ run
      START │ ./plan.py
-     START │ sleep 0.1; echo A
      START │ sleep 0.1; echo B
    SUCCESS │ ./plan.py
-   SUCCESS │ sleep 0.1; echo A
-─────────────────────────────── Standard output ────────────────────────────────
-A
-────────────────────────────────────────────────────────────────────────────────
-     START │ sleep 0.1; echo C
    SUCCESS │ sleep 0.1; echo B
 ─────────────────────────────── Standard output ────────────────────────────────
 B
+────────────────────────────────────────────────────────────────────────────────
+     START │ sleep 0.1; echo A
+     START │ sleep 0.1; echo C
+   SUCCESS │ sleep 0.1; echo A
+─────────────────────────────── Standard output ────────────────────────────────
+A
 ────────────────────────────────────────────────────────────────────────────────
    SUCCESS │ sleep 0.1; echo C
 ─────────────────────────────── Standard output ────────────────────────────────
