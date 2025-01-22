@@ -10,7 +10,7 @@ The driver also handles scripts that can be executed with different combinations
 A Python script using the driver for multiple cases has the following structure.
 
 ```python
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from stepup.core.script import driver
 
 def cases():
@@ -67,7 +67,7 @@ The script has the following elements:
 
 ## Example
 
-Example source files: [getting_started/script_multiple/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/script_multiple)
+Example source files: [`docs/getting_started/script_multiple/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/script_multiple)
 
 To make the example more engaging,
 it leverages [NumPy](https://numpy.org/) and [Matplotlib](https://matplotlib.org/).
@@ -92,7 +92,7 @@ Make the scripts executable and run StepUp to get the results:
 
 ```bash
 chmod +x plan.py plot.py
-stepup -n -w1
+stepup -n 1
 ```
 
 You should see the following terminal output with the plan and run steps of the plotting script:

@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -23,7 +23,6 @@ import contextlib
 import re
 from collections.abc import Collection
 
-import msgpack
 import pytest
 from path import Path
 
@@ -38,7 +37,6 @@ from stepup.core.nglob import (
     has_wildcards,
     iter_wildcard_names,
 )
-from stepup.core.utils import lookupdict
 
 
 @pytest.mark.parametrize(
@@ -128,9 +126,6 @@ def test_nglob_single_simple(tmpdir):
         },
         ("blub",): {"path/blub/foo1/blub-main.txt", "path/blub/foo2/blub-main.txt"},
     }
-    lookup = lookupdict()
-    data = msgpack.packb(ngs.unstructure(lookup))
-    assert ngs == NGlobSingle.structure(msgpack.unpackb(data), lookup.get_list())
 
 
 def test_nglob_single_simple_subs():
@@ -155,9 +150,6 @@ def test_nglob_single_simple_subs():
         ("1", "other"): {"path/other/foo1/other-main.txt"},
         ("2", "other"): {"path/other/foo2/other-main.txt"},
     }
-    lookup = lookupdict()
-    data = msgpack.packb(ngs.unstructure(lookup))
-    assert ngs == NGlobSingle.structure(msgpack.unpackb(data), lookup.get_list())
 
 
 def test_nglob_single_anonymous():
@@ -176,9 +168,6 @@ def test_nglob_single_anonymous():
     added_values = list(ngs.extend(paths))
     assert added_values == [()]
     assert ngs.results == {(): set(paths)}
-    lookup = lookupdict()
-    data = msgpack.packb(ngs.unstructure(lookup))
-    assert ngs == NGlobSingle.structure(msgpack.unpackb(data), lookup.get_list())
 
 
 @pytest.mark.parametrize(
@@ -232,9 +221,6 @@ def test_nglob_multi_iterators_anonymous():
         _ = match[2]
     with pytest.raises(AttributeError):
         _ = match.anything
-    lookup = lookupdict()
-    data = msgpack.packb(ngm.unstructure(lookup))
-    assert ngm == NGlobMulti.structure(msgpack.unpackb(data), lookup.get_list())
 
     assert ngm.may_change({"m.log"}, set())
     assert ngm.may_change(set(), {"pre_foo.txt"})
@@ -253,10 +239,10 @@ def test_nglob_multi_iterators_anonymous():
     assert match[1] == ["n.log", "z.log"]
     assert ngm == ngm.deepcopy()
 
-    assert ngm.will_change({"z.log"}, set())
-    assert ngm.will_change(set(), {"pre_foo.txt"})
-    assert not ngm.will_change({"k.log"}, set())
-    assert not ngm.will_change(set(), {"pre_fir.txt"})
+    assert ngm.will_change({"z.log"}, set()) is not None
+    assert ngm.will_change(set(), {"pre_foo.txt"}) is not None
+    assert ngm.will_change({"k.log"}, set()) is None
+    assert ngm.will_change(set(), {"pre_fir.txt"}) is None
 
 
 def test_nglob_multi_iterators_named():
@@ -306,10 +292,6 @@ def test_nglob_multi_iterators_named():
         with pytest.raises(AttributeError):
             _ = matches[0].anything
 
-    lookup = lookupdict()
-    data = msgpack.packb(ngm.unstructure(lookup))
-    assert ngm == NGlobMulti.structure(msgpack.unpackb(data), lookup.get_list())
-
     assert ngm.may_change({"sec.txt"}, set())
     assert ngm.may_change({"sec_c.pdf"}, set())
     assert ngm.may_change({"m.log"}, set())
@@ -321,17 +303,18 @@ def test_nglob_multi_iterators_named():
     assert ngm.may_change(set(), {"thi_x.pdf"})
     assert not ngm.may_change(set(), {"k.loog"})
 
-    assert ngm.will_change({"sec.txt"}, set())
-    assert ngm.will_change({"sec_c.pdf"}, set())
-    assert ngm.will_change({"m.log"}, set())
-    assert ngm.will_change({"fir_b.pdf"}, set())
-    assert not ngm.will_change({"sec_d.pdf"}, set())
-    assert not ngm.will_change({"k.log"}, set())
-    assert ngm.will_change(set(), {"k.log"})
-    assert not ngm.will_change(set(), {"thi.txt"})
-    assert not ngm.will_change(set(), {"thi_x.pdf"})
-    assert ngm.will_change(set(), {"thi.txt", "thi_x.pdf"})
-    assert not ngm.will_change(set(), {"k.loog"})
+    assert ngm.will_change({"sec.txt"}, set()) is not None
+    assert ngm.will_change({"sec_c.pdf"}, set()) is not None
+    assert ngm.will_change({"m.log"}, set()) is not None
+    assert ngm.will_change({"fir_b.pdf"}, set()) is not None
+    assert ngm.will_change(set(), {"k.log"}) is not None
+    assert ngm.will_change(set(), {"thi.txt", "thi_x.pdf"}) is not None
+
+    assert ngm.will_change({"sec_d.pdf"}, set()) is None
+    assert ngm.will_change({"k.log"}, set()) is None
+    assert ngm.will_change(set(), {"thi.txt"}) is None
+    assert ngm.will_change(set(), {"thi_x.pdf"}) is None
+    assert ngm.will_change(set(), {"k.loog"}) is None
 
 
 def test_nglob_multi_single_named():
@@ -767,8 +750,10 @@ def test_may_will_change_fullmatch():
     assert not ngm.may_change(set(), {"foo.log"})
     assert ngm.may_change(set(), {"subdir1/"})
     assert ngm.may_change(set(), {"foo1.txt"})
-    assert not ngm.will_change(set(), {"subdir/foo.txt"})
-    assert not ngm.will_change(set(), {"foo.log"})
-    assert not ngm.will_change(set(), {"subdir1/"})
-    assert not ngm.will_change(set(), {"foo2.txt"})
-    assert ngm.will_change(set(), {"subdir1/", "foo2.txt"})
+
+    assert ngm.will_change(set(), {"subdir/foo.txt"}) is None
+    assert ngm.will_change(set(), {"foo.log"}) is None
+    assert ngm.will_change(set(), {"subdir1/"}) is None
+    assert ngm.will_change(set(), {"foo2.txt"}) is None
+
+    assert ngm.will_change(set(), {"subdir1/", "foo2.txt"}) is not None

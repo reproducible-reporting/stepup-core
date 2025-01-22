@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from stepup.core.api import mkdir, plan, static
 
 static("sub/", "sub/plan.py")

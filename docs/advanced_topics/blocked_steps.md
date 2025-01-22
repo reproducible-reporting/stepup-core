@@ -31,7 +31,7 @@ Blocking steps has some consequences:
 
 ## Example
 
-Example source files: [advanced_topics/blocked_steps/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/blocked_steps)
+Example source files: [`docs/advanced_topics/blocked_steps/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/blocked_steps)
 
 The following `plan.py` illustrates the blocking mechanism.
 The copy commands are too simple and cheap to justify blocking,
@@ -45,7 +45,7 @@ Make this plan executable and run it with StepUp:
 
 ```bash
 chmod +x plan.py
-stepup -n -w1
+stepup -n 1
 ```
 
 You should get the following terminal output:

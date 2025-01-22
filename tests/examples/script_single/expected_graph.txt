@@ -1,0 +1,123 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:current_step_info.json
+            supplies   file:plan.py
+            supplies   file:work/
+            supplies   step:./generate.py plan --step-info=../current_step_info.json --optional  # wd=work/
+            supplies   step:./plan.py
+            supplies   step:cp -aT work/test.csv work/copy.csv
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:work/
+             creates   file:work/generate.py
+             creates   step:./generate.py plan --step-info=../current_step_info.json --optional  # wd=work/
+             creates   step:cp -aT work/test.csv work/copy.csv
+
+file:work/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   file:work/config.json
+            supplies   file:work/copy.csv
+            supplies   file:work/generate.py
+            supplies   file:work/stderr.txt
+            supplies   file:work/stdout.txt
+            supplies   file:work/test.csv
+            supplies   step:./generate.py plan --step-info=../current_step_info.json --optional  # wd=work/
+            supplies   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
+            supplies   step:cp -aT work/test.csv work/copy.csv
+
+file:work/generate.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:work/
+            supplies   step:./generate.py plan --step-info=../current_step_info.json --optional  # wd=work/
+            supplies   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
+
+step:./generate.py plan --step-info=../current_step_info.json --optional  # wd=work/
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:work/
+            consumes   file:work/generate.py
+             creates   file:current_step_info.json
+             creates   file:work/config.json
+             creates   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
+            supplies   file:current_step_info.json
+
+file:current_step_info.json
+               state = BUILT
+          created by   step:./generate.py plan --step-info=../current_step_info.json --optional  # wd=work/
+            consumes   file:./
+            consumes   step:./generate.py plan --step-info=../current_step_info.json --optional  # wd=work/
+
+step:cp -aT work/test.csv work/copy.csv
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:work/
+            consumes   file:work/test.csv
+             creates   file:work/copy.csv
+            supplies   file:work/copy.csv
+
+file:work/test.csv
+               state = BUILT
+          created by   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
+            consumes   file:work/
+            consumes   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
+            supplies   step:cp -aT work/test.csv work/copy.csv
+
+file:work/copy.csv
+               state = BUILT
+          created by   step:cp -aT work/test.csv work/copy.csv
+            consumes   file:work/
+            consumes   step:cp -aT work/test.csv work/copy.csv
+
+file:work/config.json
+               state = STATIC
+          created by   step:./generate.py plan --step-info=../current_step_info.json --optional  # wd=work/
+            consumes   file:work/
+            supplies   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
+
+step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
+               state = SUCCEEDED
+           mandatory = IMPLIED
+          created by   step:./generate.py plan --step-info=../current_step_info.json --optional  # wd=work/
+            consumes   file:work/
+            consumes   file:work/config.json
+            consumes   file:work/generate.py
+             creates   file:work/stderr.txt
+             creates   file:work/stdout.txt
+             creates   file:work/test.csv
+            supplies   file:work/stderr.txt
+            supplies   file:work/stdout.txt
+            supplies   file:work/test.csv
+
+file:work/stderr.txt
+               state = BUILT
+          created by   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
+            consumes   file:work/
+            consumes   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
+
+file:work/stdout.txt
+               state = BUILT
+          created by   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
+            consumes   file:work/
+            consumes   step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/

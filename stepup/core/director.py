@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -21,9 +21,10 @@
 
 import argparse
 import asyncio
-import contextlib
+import logging
 import os
-import shutil
+import signal
+import sqlite3
 import sys
 import time
 import traceback
@@ -32,19 +33,26 @@ from decimal import Decimal
 import attrs
 from path import Path
 
-from stepup.core.file import FileState
-from stepup.core.nglob import NGlobMulti
-
+from ._version import __version__
+from .asyncio import wait_for_events
+from .enums import ReturnCode, StepState
 from .exceptions import GraphError
+from .hash import FileHash
+from .nglob import NGlobMulti
 from .reporter import ReporterClient
 from .rpc import allow_rpc, serve_socket_rpc
 from .runner import Runner
 from .scheduler import Scheduler
-from .utils import check_plan, mynormpath, remove_path
+from .startup import startup_from_db
+from .stepinfo import StepInfo
+from .utils import DBLock, check_plan, mynormpath
 from .watcher import Watcher
 from .workflow import Workflow
 
-__all__ = ("interpret_num_workers", "serve", "get_socket")
+__all__ = ("get_socket", "interpret_num_workers", "serve")
+
+
+logger = logging.getLogger(__name__)
 
 
 def main():
@@ -53,22 +61,29 @@ def main():
 
 async def async_main():
     args = parse_args()
+    logging.basicConfig(
+        format="%(asctime)s  %(levelname)8s  %(name)s  ::  %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        level=args.log_level,
+    )
     print(f"SOCKET {args.director_socket}", file=sys.stderr)
-    print(f"PID {os.getpid()}", file=sys.stderr)
+    logger.info("PID %s", os.getpid())
     async with ReporterClient.socket(args.reporter_socket) as reporter:
         num_workers = interpret_num_workers(args.num_workers)
         await reporter.set_num_workers(num_workers)
-        await reporter("DIRECTOR", f"Listening on {args.director_socket}")
+        await reporter(
+            "DIRECTOR", f"Listening on {args.director_socket} (StepUp version {__version__})"
+        )
         try:
-            await serve(
+            returncode = await serve(
                 Path(args.director_socket),
                 num_workers,
-                args.workflow,
                 args.plan,
                 reporter,
                 args.show_perf,
                 args.explain_rerun,
-                args.interactive,
+                args.watch,
+                args.watch_first,
             )
         except Exception as exc:
             tbstr = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
@@ -78,6 +93,7 @@ async def async_main():
         finally:
             await reporter("DIRECTOR", "See you!")
             await reporter.shutdown()
+        sys.exit(returncode.value)
 
 
 def parse_args() -> argparse.Namespace:
@@ -96,20 +112,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--num-workers",
-        "-w",
+        "-n",
         type=Decimal,
         default=Decimal("1.2"),
         help="Number of workers running in parallel. "
         "When given as a real number with digits after the comma, "
         "it is multiplied with the number of available cores. [default=%(default)s]",
-    )
-    parser.add_argument(
-        "--workflow",
-        "-f",
-        default=".stepup/workflow.mpk.xz",
-        help="The workflow database file. If it is present from a previous invocation of StepUp, "
-        "file and step hashes are reused to determine if steps need to be re-executed or not. "
-        "An up-to-date version will be saved each time when switching from run to watch phase.",
     )
     parser.add_argument(
         "--reporter",
@@ -133,14 +141,31 @@ def parse_args() -> argparse.Namespace:
         help="Explain for every step with recording info why it cannot be skipped.",
     )
     parser.add_argument(
-        "--non-interactive",
-        "-n",
-        dest="interactive",
-        default=True,
-        action="store_false",
-        help="Exit when all runnable tasks have completed. Disable watching file changes.",
+        "--watch",
+        "-w",
+        default=False,
+        action="store_true",
+        help="Watch file changes after completing the run phase. "
+        "When not given, the director exists after completing the run phase.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--watch-first",
+        "-W",
+        default=False,
+        action="store_true",
+        help="Exit watch phase and start the runner after the first file change. "
+        "This implies --watch.",
+    )
+    parser.add_argument(
+        "--log-level",
+        default="WARNING",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level. [default=%(default)s]",
+    )
+    args = parser.parse_args()
+    if args.watch_first:
+        args.watch = True
+    return args
 
 
 def interpret_num_workers(num_workers: Decimal) -> int:
@@ -150,24 +175,16 @@ def interpret_num_workers(num_workers: Decimal) -> int:
     return int(num_workers)
 
 
-WORKFLOW_OH_NO = """
-This is most likely a bug.
-Please open an issue at https://github.com/reproducible-reporting/stepup-core/issues
-Copy paste the traceback below and explain how to reproduce the problem.
-The broken workflow file was copied to {}.
-"""
-
-
 async def serve(
     director_socket_path: Path,
     num_workers: int,
-    path_workflow: str,
     path_plan: str,
     reporter: ReporterClient,
     show_perf: bool,
     explain_rerun: bool,
-    interactive: bool,
-):
+    do_watch: bool,
+    do_watch_first: bool,
+) -> ReturnCode:
     """Server program.
 
     Parameters
@@ -176,9 +193,6 @@ async def serve(
         The socket to listen to for remote calls.
     num_workers
         The number of worker processes.
-    path_workflow
-        The path where the workflow file will be written to
-        (and read from if there was a previous run).
     path_plan
         The initial `plan.py` file.
     reporter
@@ -188,169 +202,178 @@ async def serve(
         Show performance details after each completed step.
     explain_rerun
         Let workers explain why steps with recording info cannot be skipped.
-    interactive
+    do_watch
         If True, the director alternates between run and watch phases until
         it receives an RPC to shutdown.
         If False, the director exits after a single run phase.
+    do_watch_first
+        If True, the runner restarts after the watcher sees the first file change.
+
+    Returns
+    -------
+    returncode
+        The exit code of the director process.
     """
     if num_workers < 1:
         raise ValueError(f"Number of workers must be strictly positive, got {num_workers}")
-
-    # Process paths
-    path_workflow = Path(path_workflow)
+    if do_watch_first and not do_watch:
+        raise ValueError("do_watch_first cannot be set without do_watch.")
     check_plan(path_plan)
 
-    # Initialize workflow
-    workflow = None
-    if path_workflow.exists():
-        try:
-            workflow = Workflow.from_file(path_workflow)
-            workflow.check_consistency()
-            workflow.dissolve(not explain_rerun)
-            await reporter("WORKFLOW", f"Loaded from {path_workflow}")
-        except Exception as exc:  # noqa: BLE001
-            traceback_fmt = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
-            path_workflow_bug = path_workflow.parent / "workflow-bug.mpk"
-            shutil.copy(path_workflow, path_workflow_bug)
-            message = WORKFLOW_OH_NO.format(path_workflow_bug)
-            if workflow is not None:
-                path_graph_bug = path_workflow.parent / "graph-bug.txt"
-                with open(path_graph_bug, "w") as fh:
-                    fh.write(workflow.format_str())
-                message += f"The graph is written in text format to {path_graph_bug}.\n"
-            pages = [("Oh no!", message), ("Traceback", traceback_fmt)]
-            await reporter("WORKFLOW", f"Exception while loading workflow {path_workflow}.", pages)
-            workflow = None
-    if workflow is None:
-        dir_workflow = path_workflow.dirname()
-        if len(dir_workflow) > 0 and dir_workflow != ".":
-            dir_workflow.makedirs_p()
-        workflow = Workflow.from_scratch()
-
-    # Create components
+    # Create basic components
+    con = sqlite3.connect(".stepup/graph.db", cached_statements=1024)
+    dblock = DBLock(con)
+    workflow = Workflow(con)
     scheduler = Scheduler(workflow.job_queue, workflow.job_queue_changed)
     scheduler.num_workers = num_workers
-    watcher = Watcher(workflow, reporter, workflow.dir_queue) if interactive else None
+    watcher = Watcher(workflow, dblock, reporter, workflow.dir_queue) if do_watch else None
     runner = Runner(
         watcher,
         scheduler,
         workflow,
-        path_workflow,
+        dblock,
         reporter,
         director_socket_path,
         show_perf,
         explain_rerun,
     )
     stop_event = asyncio.Event()
-    director_handler = DirectorHandler(scheduler, workflow, runner, watcher, path_plan, stop_event)
-    director_handler.define_boot()
+    director_handler = DirectorHandler(
+        scheduler, workflow, dblock, runner, watcher, path_plan, stop_event
+    )
+
+    # Install signal handlers
+    loop = asyncio.get_running_loop()
+    for sig in signal.SIGINT, signal.SIGTERM:
+        loop.add_signal_handler(sig, scheduler.drain)
+
+    # Initialize the workflow
+    new_boot = await director_handler.initialize_boot()
+    if new_boot:
+        await reporter("STARTUP", "(Re)initialized boot script")
+        runner.resume.set()
+    else:
+        await startup_from_db(workflow, dblock, runner, reporter)
 
     # Start tasks and wait for them to complete
-    coroutines = [
-        runner.loop(stop_event, interactive),
-        serve_socket_rpc(director_handler, director_socket_path, stop_event),
-    ]
-    if interactive:
+    exit_event = asyncio.Event()
+    rpc_server = asyncio.create_task(
+        serve_socket_rpc(director_handler, director_socket_path, exit_event)
+    )
+    coroutines = [runner.loop(stop_event)]
+    if watcher is not None:
         coroutines.append(watcher.loop(stop_event))
+        if do_watch_first:
+            coroutines.append(watch_first_loop(watcher, director_handler, stop_event))
     try:
         await asyncio.gather(*coroutines)
     finally:
+        # In case of an exception, set the stop event, so other parts know then can stop waiting.
+        stop_event.set()
+        # Regular shutdown
         await reporter("DIRECTOR", "Stopping workers.")
         await runner.stop_workers()
+        exit_event.set()
+        await rpc_server
         director_socket_path.remove_p()
+    return runner.returncode
 
 
 @attrs.define
 class DirectorHandler:
-    _scheduler: Scheduler = attrs.field()
-    _workflow: Workflow = attrs.field()
-    _runner: Runner = attrs.field()
-    _watcher: Watcher = attrs.field()
-    _path_plan: str = attrs.field()
-    _stop_event: asyncio.Event = attrs.field()
+    scheduler: Scheduler = attrs.field()
+    workflow: Workflow = attrs.field()
+    dblock: DBLock = attrs.field()
+    runner: Runner = attrs.field()
+    watcher: Watcher | None = attrs.field()
+    path_plan: str = attrs.field()
+    stop_event: asyncio.Event = attrs.field()
+    _kill_signals: list[int] = attrs.field(default=[signal.SIGINT, signal.SIGKILL])
 
     #
-    # For building up the workflow
+    # Building the workflow
     #
 
-    def define_boot(self):
-        """Define the initial plan.py as static file and create a step for it."""
-        if Path(self._path_plan).absolute().parent != Path.cwd():
-            raise ValueError("The plan script must be in the current directory.")
-        self.static("root:", [self._path_plan])
-        self.step(
-            "root:",
-            f"./{self._path_plan}",
-            [self._path_plan],
-            [],
-            [],
-            [],
-            "./",
-            False,
-            None,
-            False,
-        )
+    async def initialize_boot(self) -> bool:
+        """Define the initial plan.py as static file and create a step for it.
 
-    @contextlib.contextmanager
-    def _dissolve_if_graph_changed(self):
-        """A context manager that will dissolve the workflow is errors were after making changes."""
-        self._workflow.graph_changed = False
-        try:
-            yield
-        except Exception:
-            if self._workflow.graph_changed:
-                self._scheduler.drain()
-                self._runner.dissolve_after_dump = True
-            raise
-
-    @allow_rpc
-    def static(self, creator_key: str, paths: list[str]):
-        """Add a list of absolute static paths to the workflow.
-
-        They are stored internal as paths relative to STEPUP_ROOT.
+        Returns
+        -------
+        initialized
+            Whether the boot script was (re)initialized.
         """
-        with self._dissolve_if_graph_changed():
-            self._workflow.declare_static(creator_key, paths)
+        if Path(self.path_plan).absolute().parent != Path.cwd():
+            raise ValueError("The plan script must be in the current directory.")
+        async with self.dblock:
+            return self.workflow.initialize_boot(self.path_plan)
 
     @allow_rpc
-    def nglob(self, creator_key: str, ngm_data: list, strings: list[str]):
+    async def missing(self, creator_key: str, paths: list[str]) -> list[tuple[str, FileHash]]:
+        """Add a list of absolute paths to the workflow, to become static.
+
+        They are stored internally as paths relative to STEPUP_ROOT, initially set to misssing.
+        A list of available (cached) paths with file hashes is returned,
+        which need to be updated on the client-side.
+        The client then calls confirm with the updated hashes.
+        """
+        async with self.dblock:
+            creator = self.workflow.find(*creator_key.split(":", maxsplit=1))
+            return self.workflow.declare_missing(creator, paths)
+
+    @allow_rpc
+    async def nglob(
+        self, creator_key: str, patterns: list[str], subs: dict[str, str], paths: list[str]
+    ):
         """Register a glob patterns to be watched."""
-        with self._dissolve_if_graph_changed():
-            ngm = NGlobMulti.structure(ngm_data, strings)
-            self._workflow.register_nglob(creator_key, ngm)
+        ngm = NGlobMulti.from_patterns(patterns, subs)
+        ngm.extend(paths)
+        async with self.dblock:
+            creator = self.workflow.find(*creator_key.split(":", maxsplit=1))
+            self.workflow.register_nglob(creator, ngm)
 
     @allow_rpc
-    def defer(self, creator_key: str, patterns: list[str]):
+    async def defer(self, creator_key: str, patterns: list[str]) -> list[tuple[str, FileHash]]:
         """Register a deferred glob.
 
         Returns
         -------
         to_check
-            A list of paths to check and make static if valid.
+            A list of (path, file_hash) tuples to check and make static if valid.
         """
-        with self._dissolve_if_graph_changed():
-            return self._workflow.defer_glob(creator_key, patterns)
+        to_check = []
+        async with self.dblock:
+            creator = self.workflow.find(*creator_key.split(":", maxsplit=1))
+            for pattern in patterns:
+                to_check.extend(self.workflow.defer_glob(creator, pattern))
+        return to_check
 
     @allow_rpc
-    def filter_deferred(self, paths: list[str]) -> list[str]:
+    async def filter_deferred(self, paths: list[str]) -> list[str]:
         """Test all paths against deferred globs and return matches.
 
         Returns
         -------
         to_check
-            A list of paths whose existence and validity needs to be checked.
+            A list of (path, file_hash) tuples to check and make static if valid.
         """
-        with self._dissolve_if_graph_changed():
-            return self._workflow.filter_deferred(paths)
+        async with self.dblock:
+            return self.workflow.filter_deferred(paths)
 
     @allow_rpc
-    def confirm_deferred(self, paths: list[str]):
-        """Mark missing files as static because they were found to be present."""
-        with self._dissolve_if_graph_changed():
-            self._workflow.confirm_deferred(paths)
+    async def confirm(self, checked: list[tuple[str, FileHash]]):
+        """Mark missing files as static because they were found to be present.
+
+        Parameters
+        ----------
+        checked
+            A list of (path, file_hash) tuples that have been updated and confirmed
+            on the client side.
+        """
+        async with self.dblock:
+            self.workflow.confirm_static(checked)
 
     @allow_rpc
-    def step(
+    async def step(
         self,
         creator_key: str,
         command: str,
@@ -362,42 +385,44 @@ class DirectorHandler:
         optional: bool,
         pool: str | None,
         block: bool,
-    ) -> str:
+    ):
         """Create a step in the workflow.
 
         Notes
         -----
-        This is an RPC wrapper for `Workflow.define_step` with an additional sanity check:
-        - The working directory must exist.
+        This is an RPC wrapper for `Workflow.define_step`.
         """
         if not workdir.endswith(os.sep):
             raise GraphError(f"A working directory must end with a separator, got: {workdir}")
-        with self._dissolve_if_graph_changed():
-            return self._workflow.define_step(
-                creator_key,
+        async with self.dblock:
+            creator = self.workflow.find(*creator_key.split(":", maxsplit=1))
+            self.workflow.define_step(
+                creator,
                 command,
-                inp_paths,
-                env_vars,
-                out_paths,
-                vol_paths,
-                workdir,
-                optional,
-                pool,
-                block,
+                inp_paths=inp_paths,
+                env_vars=env_vars,
+                out_paths=out_paths,
+                vol_paths=vol_paths,
+                workdir=workdir,
+                optional=optional,
+                pool=pool,
+                block=block,
             )
 
     @allow_rpc
-    def pool(self, step_key: str, name: str, size: int):
+    async def pool(self, step_key: str, name: str, size: int):
         """Define a pool with given name and size.
 
         Notes
         -----
-        This is an RPC wrapper for `Scheduler.set_pool`.
+        This is an RPC wrapper for `Scheduler.define_pool`.
         """
-        self._workflow.set_pool(step_key, name, size)
+        async with self.dblock:
+            step = self.workflow.find(*step_key.split(":", maxsplit=1))
+            self.workflow.define_pool(step, name, size)
 
     @allow_rpc
-    def amend(
+    async def amend(
         self,
         step_key: str,
         inp_paths: list[str],
@@ -411,18 +436,41 @@ class DirectorHandler:
         -----
         This is an RPC wrapper for `Workflow.amend_step`.
         """
-        with self._dissolve_if_graph_changed():
-            return self._workflow.amend_step(step_key, inp_paths, env_vars, out_paths, vol_paths)
+        async with self.dblock:
+            step = self.workflow.find(*step_key.split(":", maxsplit=1))
+            return self.workflow.amend_step(
+                step,
+                inp_paths=inp_paths,
+                env_vars=env_vars,
+                out_paths=out_paths,
+                vol_paths=vol_paths,
+            )
+
+    @allow_rpc
+    async def getinfo(self, step_key: str) -> StepInfo:
+        """Return step information, consisent with return values of functions in stepup.core.api.
+
+        For the sake of consistency, amended step arguments are not included.
+        """
+        async with self.dblock:
+            step = self.workflow.find(*step_key.split(":", maxsplit=1))
+            return step.get_step_info()
 
     #
-    # For interactive use
+    # Interactive use
     #
 
     @allow_rpc
     async def shutdown(self):
         """Shut down the director and worker processes."""
-        self._stop_event.set()
-        self._watcher.interrupt.set()
+        self.scheduler.drain()
+        if self.stop_event.is_set():
+            if len(self._kill_signals) > 0:
+                await self.runner.kill_worker_procs(self._kill_signals.pop(0))
+        else:
+            self.stop_event.set()
+        if self.watcher is not None:
+            self.watcher.interrupt.set()
 
     @allow_rpc
     async def drain(self):
@@ -432,133 +480,100 @@ class DirectorHandler:
         -----
         This RPC blocks until all running steps have completed.
         """
-        self._scheduler.drain()
-        await self._watcher.active.wait()
+        self.scheduler.drain()
+        if self.watcher is not None:
+            await wait_for_events(
+                self.watcher.active, self.stop_event, return_when=asyncio.FIRST_COMPLETED
+            )
 
     @allow_rpc
     async def join(self):
         """Block until the runner completed all (runnable) steps and shut down."""
-        await self._watcher.active.wait()
-        await self.shutdown()
+        if self.watcher is not None:
+            await wait_for_events(
+                self.watcher.active, self.stop_event, return_when=asyncio.FIRST_COMPLETED
+            )
+            await self.shutdown()
 
     @allow_rpc
-    def graph(self, prefix: str):
+    async def graph(self, prefix: str):
         """Write out the graph in text format."""
-        with open(f"{prefix}.txt", "w") as fh:
-            print(self._workflow.format_str(), file=fh)
-        with open(f"{prefix}_creator.dot", "w") as fh:
-            print(self._workflow.format_dot_creator(), file=fh)
-        with open(f"{prefix}_supplier.dot", "w") as fh:
-            print(self._workflow.format_dot_supplier(), file=fh)
+        async with self.dblock:
+            with open(f"{prefix}.txt", "w") as fh:
+                print(self.workflow.format_str(), file=fh)
+            with open(f"{prefix}_provenance.dot", "w") as fh:
+                print(self.workflow.format_dot_provenance(), file=fh)
+            with open(f"{prefix}_dependency.dot", "w") as fh:
+                print(self.workflow.format_dot_dependency(), file=fh)
 
     @allow_rpc
-    def from_scratch(self):
-        """Remove all recordings and run everything again.
-
-        Notes
-        -----
-        This has no effect during the run phase.
-        """
-        if not self._watcher.active.is_set():
-            return
-        self._workflow.discard_recordings()
-        self.try_replay()
-
-    @allow_rpc
-    def try_replay(self):
-        """Make all steps pending and try replaying them. When needed, steps are rerun instead.
-
-        Notes
-        -----
-        This has no effect during the run phase.
-        """
-        if not self._watcher.active.is_set():
-            return
-        self._workflow.dissolve()
-        self.define_boot()
-        self.run()
-
-    @allow_rpc
-    def run(self):
+    async def run(self):
         """Run pending steps (based on file changes observed in the watch phase).
 
         Notes
         -----
         This has no effect during the run phase.
         """
-        if not self._watcher.active.is_set():
+        if self.watcher is None or not self.watcher.active.is_set():
             return
-        self._watcher.interrupt.set()
-        self._scheduler.resume()
-        self._runner.resume.set()
-
-    @allow_rpc
-    async def cleanup(self, paths: list[str]) -> tuple[int, int]:
-        """Recursively clean up outputs (consumer files and directories).
-
-        Parameters
-        ----------
-        paths
-            A list of paths to consider for removal.
-
-        Returns
-        -------
-        numf
-            The number of files effectively removed.
-        numd
-            The number of directories effectively removed.
-        """
-        if not self._watcher.active.is_set():
-            raise ValueError("Cleanup is only allowed in the watch phase.")
-        initial_keys = []
-        for path in paths:
-            key = f"file:{path}"
-            if key not in self._workflow.nodes:
-                raise ValueError(f"Path not known to workflow: {path}")
-            initial_keys.append(key)
-        visited = set()
-        for key in initial_keys:
-            self._workflow.walk_consumers(key, visited)
-
-        numf = 0
-        numd = 0
-        for key in sorted(visited, reverse=True):
-            if key.startswith("file:"):
-                file = self._workflow.get_file(key)
-                if file.get_state(self._workflow) not in (FileState.STATIC, FileState.MISSING):
-                    remove_path(file.path)
-                    if file.path.endswith("/"):
-                        numd += 1
-                    else:
-                        numf += 1
-        return numf, numd
+        async with self.dblock:
+            for step in self.workflow.steps(StepState.FAILED):
+                step.mark_pending()
+        self.watcher.interrupt.set()
+        await wait_for_events(
+            self.watcher.processed, self.stop_event, return_when=asyncio.FIRST_COMPLETED
+        )
+        self.scheduler.resume()
+        self.runner.resume.set()
 
     @allow_rpc
     async def watch_update(self, path: str):
         """Block until the watcher observed an update of the file."""
+        if self.watcher is None:
+            return
         path = mynormpath(path)
-        await self._watcher.active.wait()
-        while True:
-            if path in self._watcher.updated:
-                return
-            self._watcher.files_changed.clear()
-            await self._watcher.files_changed.wait()
+        await wait_for_events(
+            self.watcher.active, self.stop_event, return_when=asyncio.FIRST_COMPLETED
+        )
+        event = asyncio.Event()
+        self.watcher.files_changed_events.add(event)
+        try:
+            while True:
+                if path in self.watcher.updated:
+                    return
+                await event.wait()
+                event.clear()
+        finally:
+            self.watcher.files_changed_events.discard(event)
 
     @allow_rpc
     async def watch_delete(self, path: str):
         """Block until the watcher observed the deletion of the file."""
+        if self.watcher is None:
+            return
         path = mynormpath(path)
-        await self._watcher.active.wait()
-        while True:
-            if path in self._watcher.deleted:
-                return
-            self._watcher.files_changed.clear()
-            await self._watcher.files_changed.wait()
+        await wait_for_events(
+            self.watcher.active, self.stop_event, return_when=asyncio.FIRST_COMPLETED
+        )
+        event = asyncio.Event()
+        self.watcher.files_changed_events.add(event)
+        try:
+            while True:
+                if path in self.watcher.deleted:
+                    return
+                await event.wait()
+                event.clear()
+        finally:
+            self.watcher.files_changed_events.discard(event)
 
     @allow_rpc
     async def wait(self):
         """Block until the runner completed all (runnable) steps."""
-        await self._watcher.active.wait()
+        if self.watcher is None:
+            return
+        await wait_for_events(
+            self.watcher.active, self.stop_event, return_when=asyncio.FIRST_COMPLETED
+        )
 
 
 def get_socket() -> str:
@@ -587,6 +602,19 @@ def get_socket() -> str:
             print("Trying to contact StepUp director process.", file=sys.stderr)
         secs += 0.1
         print(f"{message}  Waiting {secs:.1f} seconds.", file=sys.stderr)
+
+
+async def watch_first_loop(watcher: Watcher, director: DirectorHandler, stop_event: asyncio.Event):
+    """When a file of the watcher has changed, call the runner after 0.5 seconds delay."""
+    changed_event = asyncio.Event()
+    watcher.files_changed_events.add(changed_event)
+    while True:
+        await watcher.active.wait()
+        await wait_for_events(changed_event, stop_event, return_when=asyncio.FIRST_COMPLETED)
+        if stop_event.is_set():
+            break
+        await asyncio.sleep(0.5)
+        await director.run()
 
 
 if __name__ == "__main__":

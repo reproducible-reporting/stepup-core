@@ -1,0 +1,57 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:input.txt
+            supplies   file:output.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:cp input.txt wrong.txt
+            supplies   step:touch input.txt
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:cp input.txt wrong.txt
+             creates   step:touch input.txt
+
+step:touch input.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+             creates   file:input.txt
+            supplies   file:input.txt
+
+file:input.txt
+               state = BUILT
+          created by   step:touch input.txt
+            consumes   file:./
+            consumes   step:touch input.txt
+            supplies   step:cp input.txt wrong.txt
+
+step:cp input.txt wrong.txt
+               state = FAILED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:input.txt
+             creates   file:output.txt
+            supplies   file:output.txt
+
+file:output.txt
+               state = OUTDATED
+          created by   step:cp input.txt wrong.txt
+            consumes   file:./
+            consumes   step:cp input.txt wrong.txt

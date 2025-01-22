@@ -70,9 +70,12 @@ nav:
     - getting_started/dependencies.md
     - getting_started/static_files.md
     - getting_started/copy_mkdir.md
+    - getting_started/workdir.md
     - getting_started/static_glob.md
     - getting_started/static_glob_conditional.md
     - getting_started/interactive_usage.md
+    - getting_started/failing_steps.md
+    - getting_started/call.md
     - getting_started/script_single.md
     - getting_started/script_multiple.md
     - getting_started/no_rules.md
@@ -99,6 +102,7 @@ nav:
     - reference/stepup.core.api.md
     - reference/stepup.core.interact.md
     - reference/stepup.core.nglob.md
+    - reference/stepup.core.stepinfo.md
     - reference/interactive.md
   - changelog.md
   - development.md

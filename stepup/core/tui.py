@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -22,10 +22,12 @@
 import argparse
 import asyncio
 import os
+import signal
 import subprocess
 import sys
 import tempfile
 import termios
+import threading
 from decimal import Decimal
 
 import attrs
@@ -34,7 +36,7 @@ from path import Path
 from .asyncio import stoppable_iterator
 from .director import interpret_num_workers
 from .reporter import ReporterClient, ReporterHandler
-from .rpc import AsyncRPCClient, serve_socket_rpc
+from .rpc import SocketSyncRPCClient, serve_socket_rpc
 
 __all__ = ()
 
@@ -66,8 +68,13 @@ async def async_main():
         director_socket_path = dir_sockets / "director"
         reporter_socket_path = dir_sockets / "reporter"
 
-        # Set up the reporter monitor
+        # Install signal handlers
         stop_event = asyncio.Event()
+        loop = asyncio.get_running_loop()
+        for sig in signal.SIGINT, signal.SIGTERM:
+            loop.add_signal_handler(sig, stop_event.set)
+
+        # Set up the reporter monitor
         reporter_handler = ReporterHandler(args.show_perf > 0, stop_event)
         task_reporter = asyncio.create_task(
             serve_socket_rpc(reporter_handler, reporter_socket_path, stop_event),
@@ -77,44 +84,58 @@ async def async_main():
 
         # Launch director as background process
         num_workers = interpret_num_workers(args.num_workers)
-        argv = [
-            "-m",
-            "stepup.core.director",
-            args.plan_py,
-            director_socket_path,
-            f"--num-workers={num_workers}",
-            f"--reporter={reporter_socket_path}",
-        ]
+        argv = []
+        if args.perf is not None:
+            argv.extend(
+                ["perf", "record", "-F", str(args.perf), "-i", "-g", "-o", ".stepup/perf.data"]
+            )
+        argv.append(sys.executable)
+        if args.perf is not None:
+            argv.extend(["-X", "perf"])
+        argv.extend(
+            [
+                "-m",
+                "stepup.core.director",
+                args.plan_py,
+                director_socket_path,
+                f"--num-workers={num_workers}",
+                f"--reporter={reporter_socket_path}",
+                f"--log-level={args.log_level}",
+            ]
+        )
         if args.show_perf > 1:
             argv.append("--show-perf")
         if args.explain_rerun:
             argv.append("--explain-rerun")
-        if not args.interactive:
-            argv.append("--non-interactive")
+        if args.watch:
+            argv.append("--watch")
+        if args.watch_first:
+            argv.append("--watch-first")
+        returncode = 1  # Internal error unless it is overriden later by the director subprocess
         try:
             with open(".stepup/director.log", "w") as log_file:
                 process_director = await asyncio.create_subprocess_exec(
-                    sys.executable,
                     *argv,
                     stdin=subprocess.DEVNULL,
                     stdout=log_file,
                     stderr=subprocess.STDOUT,
                 )
                 # Instantiate keyboard interaction or work non-interactively
-                if args.interactive and sys.stdin.isatty():
+                if sys.stdin.isatty():
                     await wait_for_path(director_socket_path, stop_event)
                     task_keyboard = asyncio.create_task(
                         keyboard(director_socket_path, reporter_socket_path, stop_event),
                         name="keyboard",
                     )
                     tasks.append(task_keyboard)
-                await process_director.wait()
+                returncode = await process_director.wait()
             stop_event.set()
         finally:
             try:
                 await asyncio.gather(*tasks)
             except ConnectionRefusedError:
                 reporter_handler.report("ERROR", "Could not connect to director", [])
+    sys.exit(returncode)
 
 
 async def wait_for_path(path: Path, stop_event: asyncio.Event):
@@ -131,6 +152,9 @@ async def wait_for_path(path: Path, stop_event: asyncio.Event):
 @attrs.define
 class AsyncReadChar:
     old_tcattr: list | None = attrs.field(init=False, default=None)
+    _loop = attrs.field(init=False)
+    _thread: threading.Thread = attrs.field(init=False)
+    _queue: asyncio.Queue = attrs.field(init=False, factory=asyncio.Queue)
 
     async def __aenter__(self):
         # Change stdin settings to read character by character.
@@ -139,6 +163,9 @@ class AsyncReadChar:
         new_tcattr = termios.tcgetattr(fd)
         new_tcattr[3] &= ~(termios.ICANON | termios.ECHO)
         termios.tcsetattr(fd, termios.TCSAFLUSH, new_tcattr)
+        self._loop = asyncio.get_running_loop()
+        self._thread = threading.Thread(target=self._stdio_loop, daemon=True)
+        self._thread.start()
         return self
 
     async def __aexit__(self, exc_type, exc_value, tb):
@@ -146,22 +173,25 @@ class AsyncReadChar:
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, self.old_tcattr)
 
     async def __call__(self) -> str:
-        """Read one character from stdin, using blocking io in a separate thread."""
-        return await asyncio.to_thread(self._read_char)
+        """Get one character from stdin."""
+        return await self._queue.get()
 
-    def _read_char(self) -> str:
-        """Blocking read of single character from sys.stdin.
+    def _stdio_loop(self) -> str:
+        """Blocking read of single character at a time from sys.stdin.
 
         Note that asyncio.StreamReader is not used because it puts stdin (and stdout and stderr)
         in non-blocking mode, which is not compatible with print functions and rich.print.
         (This problem is only noticable when printing large amounts of data.
+
+        This method is intended to be running in a separate deamon thread.
         """
-        return sys.stdin.read(1)
+        while True:
+            char = sys.stdin.read(1)
+            self._loop.call_soon_threadsafe(self._queue.put_nowait, char)
 
 
 KEY_STROKE_HELP = """
-   q = shutdown       d = drain        j = join   g = graph
-   f = from scratch   t = try replay   r = run
+   r = run     q = shutdown     d = drain     j = join     g = graph
 """
 
 
@@ -170,39 +200,36 @@ async def keyboard(
     reporter_socket_path: Path,
     stop_event: asyncio.Event,
 ):
+    quit_messages = [
+        "Waiting for steps to complete before shutdown.",
+        "Second call to shutdown: killing steps with SIGINT.",
+        "Third call to shutdown: killing steps with SIGKILL.",
+    ]
     async with (
         ReporterClient.socket(reporter_socket_path) as reporter,
-        await AsyncRPCClient.socket(director_socket_path) as client,
         AsyncReadChar() as readchar,
     ):
         async for ch in stoppable_iterator(readchar, stop_event):
-            if ch == "q":
-                await reporter("KEYBOARD", "Waiting for workers to complete before shutdown.")
-                await client.call.shutdown()
-                break
-            if ch == "j":
-                await reporter("KEYBOARD", "Waiting for the runner to complete to shutdown.")
-                await client.call.join()
-                break
-            if ch == "d":
+            if ch == "q" and len(quit_messages) > 0:
+                await reporter("KEYBOARD", quit_messages.pop(0))
+                with SocketSyncRPCClient(director_socket_path) as client:
+                    client.call.shutdown()
+            elif ch == "j":
+                await reporter("KEYBOARD", "Waiting for the runner to complete before shutdown.")
+                with SocketSyncRPCClient(director_socket_path) as client:
+                    client.call.join()
+            elif ch == "d":
                 await reporter("KEYBOARD", "Draining the scheduler and waiting for workers.")
-                await client.call.drain()
+                with SocketSyncRPCClient(director_socket_path) as client:
+                    client.call.drain()
             elif ch == "r":
                 await reporter("KEYBOARD", "Restarting the runner.")
-                async with asyncio.timeout(5):
-                    await client.call.run()
+                with SocketSyncRPCClient(director_socket_path) as client:
+                    client.call.run()
             elif ch == "g":
-                async with asyncio.timeout(5):
-                    await client.call.graph("graph")
+                with SocketSyncRPCClient(director_socket_path) as client:
+                    client.call.graph("graph")
                 await reporter("KEYBOARD", "Workflow graph written to graph.txt.")
-            elif ch == "f":
-                await reporter("KEYBOARD", "Discarding hashes and running from scratch.")
-                async with asyncio.timeout(5):
-                    await client.call.from_scratch()
-            elif ch == "t":
-                await reporter("KEYBOARD", "All steps marked pending and trying to replay.")
-                async with asyncio.timeout(5):
-                    await client.call.try_replay()
             else:
                 pages = [("Keys", KEY_STROKE_HELP)]
                 await reporter("KEYBOARD", f"Unsupported key {ch}", pages)
@@ -222,7 +249,7 @@ def parse_args():
     )
     parser.add_argument(
         "--num-workers",
-        "-w",
+        "-n",
         type=Decimal,
         default=Decimal("1.2"),
         help="Number of workers running in parallel. "
@@ -244,14 +271,39 @@ def parse_args():
         help="Explain for every step with recording info why it cannot be skipped.",
     )
     parser.add_argument(
-        "--non-interactive",
-        "-n",
-        dest="interactive",
-        default=True,
-        action="store_false",
-        help="Disable keyboard interaction and quit after runner completes.",
+        "--watch",
+        "-w",
+        default=False,
+        action="store_true",
+        help="StepUp will watch for file changes after all runnable steps have been executed. "
+        "By pressing r, it will rerun steps  that have become pending due to the file changes. "
+        "(Only supported on Linux.)",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--watch-first",
+        "-W",
+        default=False,
+        action="store_true",
+        help="Start the runner after observing the first file change in watch mode. "
+        "This implies --watch. (Only supported on Linux.)",
+    )
+    parser.add_argument(
+        "--perf",
+        default=None,
+        nargs="?",
+        const=500,
+        help="Run the director under perf record, by default at a frequency of 500 Hz.",
+    )
+    parser.add_argument(
+        "--log-level",
+        default="WARNING",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level. [default=%(default)s]",
+    )
+    args = parser.parse_args()
+    if args.watch_first:
+        args.watch = True
+    return args
 
 
 if __name__ == "__main__":

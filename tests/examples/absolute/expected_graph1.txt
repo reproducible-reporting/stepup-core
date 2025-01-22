@@ -1,0 +1,62 @@
+root:
+             creates   file:./
+             creates   file:/
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:cp -aT /tmp/this_is_potentially_unsafe_18731 /tmp/this_is_potentially_unsafe_79824
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:/tmp/
+             creates   file:/tmp/this_is_potentially_unsafe_18731
+             creates   step:cp -aT /tmp/this_is_potentially_unsafe_18731 /tmp/this_is_potentially_unsafe_79824
+
+file:/tmp/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:/
+            supplies   file:/tmp/this_is_potentially_unsafe_18731
+            supplies   file:/tmp/this_is_potentially_unsafe_79824
+            supplies   step:cp -aT /tmp/this_is_potentially_unsafe_18731 /tmp/this_is_potentially_unsafe_79824
+
+file:/
+               state = STATIC
+          created by   root:
+            supplies   file:/tmp/
+
+file:/tmp/this_is_potentially_unsafe_18731
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:/tmp/
+            supplies   step:cp -aT /tmp/this_is_potentially_unsafe_18731 /tmp/this_is_potentially_unsafe_79824
+
+step:cp -aT /tmp/this_is_potentially_unsafe_18731 /tmp/this_is_potentially_unsafe_79824
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:/tmp/
+            consumes   file:/tmp/this_is_potentially_unsafe_18731
+             creates   file:/tmp/this_is_potentially_unsafe_79824
+            supplies   file:/tmp/this_is_potentially_unsafe_79824
+
+file:/tmp/this_is_potentially_unsafe_79824
+               state = BUILT
+          created by   step:cp -aT /tmp/this_is_potentially_unsafe_18731 /tmp/this_is_potentially_unsafe_79824
+            consumes   file:/tmp/
+            consumes   step:cp -aT /tmp/this_is_potentially_unsafe_18731 /tmp/this_is_potentially_unsafe_79824

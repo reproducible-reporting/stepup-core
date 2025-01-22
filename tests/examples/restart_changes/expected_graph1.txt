@@ -1,0 +1,76 @@
+root:
+             creates   file:./
+             creates   file:plan1.py
+             creates   step:./plan1.py
+
+file:plan1.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan1.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:copy1.txt
+            supplies   file:copy_both1.txt
+            supplies   file:plan1.py
+            supplies   file:source1.txt
+            supplies   file:source_both.txt
+            supplies   step:./plan1.py
+            supplies   step:cp source1.txt copy1.txt
+            supplies   step:cp source_both.txt copy_both1.txt
+
+step:./plan1.py
+               state = SUCCEEDED
+          inp_digest = same
+           explained = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan1.py
+             creates   file:source1.txt
+             creates   file:source_both.txt
+             creates   step:cp source1.txt copy1.txt
+             creates   step:cp source_both.txt copy_both1.txt
+
+file:source_both.txt
+               state = STATIC
+          created by   step:./plan1.py
+            consumes   file:./
+            supplies   step:cp source_both.txt copy_both1.txt
+
+step:cp source_both.txt copy_both1.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan1.py
+            consumes   file:./
+            consumes   file:source_both.txt
+             creates   file:copy_both1.txt
+            supplies   file:copy_both1.txt
+
+file:copy_both1.txt
+               state = BUILT
+          created by   step:cp source_both.txt copy_both1.txt
+            consumes   file:./
+            consumes   step:cp source_both.txt copy_both1.txt
+
+step:cp source1.txt copy1.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan1.py
+            consumes   file:./
+            consumes   file:source1.txt
+             creates   file:copy1.txt
+            supplies   file:copy1.txt
+
+file:source1.txt
+               state = STATIC
+          created by   step:./plan1.py
+            consumes   file:./
+            supplies   step:cp source1.txt copy1.txt
+
+file:copy1.txt
+               state = BUILT
+          created by   step:cp source1.txt copy1.txt
+            consumes   file:./
+            consumes   step:cp source1.txt copy1.txt

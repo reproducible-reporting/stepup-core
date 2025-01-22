@@ -1,0 +1,107 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:config.json
+            supplies   file:copy.txt
+            supplies   file:output.txt
+            supplies   file:plan.py
+            supplies   file:report.txt
+            supplies   file:script.log
+            supplies   file:use_config.py
+            supplies   step:./plan.py
+            supplies   step:./use_config.py
+            supplies   step:cp -aT report.txt copy.txt
+            supplies   step:echo All is fine. > script.log
+            supplies   step:echo log written to script.log. > report.txt
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:config.json
+             creates   file:use_config.py
+             creates   step:./use_config.py
+             creates   step:cp -aT report.txt copy.txt
+
+file:config.json
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./use_config.py
+
+file:use_config.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./use_config.py
+
+step:./use_config.py
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:config.json
+            consumes   file:use_config.py
+             creates   file:output.txt
+             creates   step:echo All is fine. > script.log
+             creates   step:echo log written to script.log. > report.txt
+            supplies   file:output.txt
+
+file:output.txt
+               state = BUILT
+          created by   step:./use_config.py
+            consumes   file:./
+            consumes   step:./use_config.py
+
+step:cp -aT report.txt copy.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:report.txt
+             creates   file:copy.txt
+            supplies   file:copy.txt
+
+file:report.txt
+               state = BUILT
+          created by   step:echo log written to script.log. > report.txt
+            consumes   file:./
+            consumes   step:echo log written to script.log. > report.txt
+            supplies   step:cp -aT report.txt copy.txt
+
+file:copy.txt
+               state = BUILT
+          created by   step:cp -aT report.txt copy.txt
+            consumes   file:./
+            consumes   step:cp -aT report.txt copy.txt
+
+step:echo All is fine. > script.log
+               state = SUCCEEDED
+          created by   step:./use_config.py
+            consumes   file:./
+             creates   file:script.log
+            supplies   file:script.log
+
+file:script.log
+               state = BUILT
+          created by   step:echo All is fine. > script.log
+            consumes   file:./
+            consumes   step:echo All is fine. > script.log
+
+step:echo log written to script.log. > report.txt
+               state = SUCCEEDED
+          created by   step:./use_config.py
+            consumes   file:./
+             creates   file:report.txt
+            supplies   file:report.txt

@@ -1,0 +1,18 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Scanning initial database for new nglob matches
+   UPDATED │ tail_y.txt
+   UPDATED │ tail_z.txt
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+   SUCCESS │ paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+     START │ paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
+   SUCCESS │ paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -39,17 +39,17 @@ from .asyncio import stdio, stoppable_iterator
 from .exceptions import RPCError
 
 __all__ = (
-    "fmt_rpc_call",
+    "AsyncRPCClient",
+    "BaseAsyncRPCClient",
+    "BaseSyncRPCClient",
+    "DummyAsyncRPCClient",
+    "DummySyncRPCClient",
+    "SocketSyncRPCClient",
     "allow_rpc",
+    "fmt_rpc_call",
     "serve_rpc",
     "serve_socket_rpc",
     "serve_stdio_rpc",
-    "BaseAsyncRPCClient",
-    "AsyncRPCClient",
-    "DummyAsyncRPCClient",
-    "BaseSyncRPCClient",
-    "SocketSyncRPCClient",
-    "DummySyncRPCClient",
 )
 
 

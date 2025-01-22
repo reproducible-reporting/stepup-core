@@ -1,0 +1,78 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:current_variables.txt
+            supplies   file:demovars.py
+            supplies   file:plan.py
+            supplies   file:printvars.py
+            supplies   file:variables.json
+            supplies   step:./demovars.py
+            supplies   step:./plan.py
+            supplies   step:./printvars.py
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+           explained = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:demovars.py
+             creates   file:printvars.py
+             creates   file:variables.json
+             creates   step:./demovars.py
+
+file:demovars.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./demovars.py
+
+file:printvars.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./printvars.py
+
+file:variables.json
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./demovars.py
+
+step:./demovars.py
+               state = SUCCEEDED
+          inp_digest = same
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:demovars.py
+            consumes   file:variables.json
+             creates   step:./printvars.py
+
+step:./printvars.py
+               state = SUCCEEDED
+             env_var = ENV_VAR_TEST_STEPUP_AWDFTD
+           explained = yes
+          created by   step:./demovars.py
+            consumes   file:./
+            consumes   file:printvars.py
+             creates   file:current_variables.txt
+            supplies   file:current_variables.txt
+
+file:current_variables.txt
+               state = BUILT
+          created by   step:./printvars.py
+            consumes   file:./
+            consumes   step:./printvars.py

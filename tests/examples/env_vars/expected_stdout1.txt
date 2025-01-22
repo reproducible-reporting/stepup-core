@@ -1,0 +1,44 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./demovars.py
+   SUCCESS │ ./demovars.py
+     START │ ./printvars.py
+   SUCCESS │ ./printvars.py
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+   UPDATED │ variables.json
+     PHASE │ run
+    NOSKIP │ ./demovars.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, digest 8c07db7a ➜ 0b594d38, inp_digset 8c07db7a ➜ 0b594d38
+Modified inp hash    variables.json (digest 9fcdaff9 ➜ b38f0cd4, size 35 ➜ 67)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+Same inp hash        demovars.py
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./demovars.py
+   SUCCESS │ ./demovars.py
+    NOSKIP │ ./printvars.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, digest 68e3ee67 ➜ 4cf2fe6c, inp_digset a1f8e5a6 ➜ 64c33960
+Added env var        ENV_VAR_TEST_STEPUP_DFTHYH ='BBBB'
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+Same inp hash        printvars.py
+Same env var         ENV_VAR_TEST_STEPUP_AWDFTD ='AAAA'
+Same out hash        current_variables.txt
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./printvars.py
+   SUCCESS │ ./printvars.py
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+   UPDATED │ variables.json
+ UNCHANGED │ variables.json
+     PHASE │ run
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

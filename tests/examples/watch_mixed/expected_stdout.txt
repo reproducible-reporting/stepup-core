@@ -1,0 +1,32 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cp orig.txt copy1.txt
+   SUCCESS │ cp orig.txt copy1.txt
+     START │ cp copy1.txt copy2.txt
+   SUCCESS │ cp copy1.txt copy2.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+   UPDATED │ plan.py
+   DELETED │ orig.txt
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+   WARNING │ 1 step(s) remained pending due to incomplete requirements
+─────────────────────────────── Orphaned inputs ────────────────────────────────
+             MISSING  orig.txt
+            OUTDATED  copy1.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               cp copy1.txt copy2.txt
+Working directory     ./
+Inputs        STATIC  ./
+            OUTDATED  (copy1.txt)
+Outputs     OUTDATED  copy2.txt
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

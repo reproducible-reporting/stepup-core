@@ -1,0 +1,87 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:first.txt
+            supplies   file:helper.py
+            supplies   file:plan.py
+            supplies   file:second.txt
+            supplies   file:work.py
+            supplies   step:./plan.py
+            supplies   step:./work.py plan
+            supplies   step:./work.py run -- first
+            supplies   step:./work.py run -- second
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:helper.py
+             creates   file:work.py
+             creates   step:./work.py plan
+
+file:helper.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./work.py run -- first
+            supplies   step:./work.py run -- second
+
+file:work.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./work.py plan
+            supplies   step:./work.py run -- first
+            supplies   step:./work.py run -- second
+
+step:./work.py plan
+               state = SUCCEEDED
+          inp_digest = same
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:work.py
+             creates   step:./work.py run -- first
+             creates   step:./work.py run -- second
+
+step:./work.py run -- first
+               state = SUCCEEDED
+          created by   step:./work.py plan
+            consumes   file:./
+            consumes   file:helper.py [amended]
+            consumes   file:work.py
+             creates   file:first.txt
+            supplies   file:first.txt
+
+file:first.txt
+               state = BUILT
+          created by   step:./work.py run -- first
+            consumes   file:./
+            consumes   step:./work.py run -- first
+
+step:./work.py run -- second
+               state = SUCCEEDED
+          created by   step:./work.py plan
+            consumes   file:./
+            consumes   file:helper.py [amended]
+            consumes   file:work.py
+             creates   file:second.txt
+            supplies   file:second.txt
+
+file:second.txt
+               state = BUILT
+          created by   step:./work.py run -- second
+            consumes   file:./
+            consumes   step:./work.py run -- second

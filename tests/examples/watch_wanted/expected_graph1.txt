@@ -1,0 +1,76 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   (file:input1.txt)
+            supplies   (file:input2.txt)
+            supplies   file:output1.txt
+            supplies   file:output2.txt
+            supplies   file:plan.py
+            supplies   file:static.txt
+            supplies   step:./plan.py
+            supplies   step:cp input1.txt output1.txt
+            supplies   step:cp input2.txt output2.txt
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:static.txt
+             creates   step:cp input1.txt output1.txt
+             creates   step:cp input2.txt output2.txt
+
+file:static.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+
+step:cp input1.txt output1.txt
+               state = PENDING
+          created by   step:./plan.py
+            consumes   (file:input1.txt)
+            consumes   file:./
+             creates   file:output1.txt
+            supplies   file:output1.txt
+
+(file:input1.txt)
+               state = AWAITED
+            consumes   file:./
+            supplies   step:cp input1.txt output1.txt
+
+file:output1.txt
+               state = AWAITED
+          created by   step:cp input1.txt output1.txt
+            consumes   file:./
+            consumes   step:cp input1.txt output1.txt
+
+step:cp input2.txt output2.txt
+               state = PENDING
+          created by   step:./plan.py
+            consumes   (file:input2.txt)
+            consumes   file:./
+             creates   file:output2.txt
+            supplies   file:output2.txt
+
+(file:input2.txt)
+               state = AWAITED
+            consumes   file:./
+            supplies   step:cp input2.txt output2.txt
+
+file:output2.txt
+               state = AWAITED
+          created by   step:cp input2.txt output2.txt
+            consumes   file:./
+            consumes   step:cp input2.txt output2.txt

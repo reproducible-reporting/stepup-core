@@ -1,0 +1,17 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cp -aT /tmp/this_is_potentially_unsafe_18731 /tmp/this_is_potentially_unsafe_79824
+   SUCCESS │ cp -aT /tmp/this_is_potentially_unsafe_18731 /tmp/this_is_potentially_unsafe_79824
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+   UPDATED │ /tmp/this_is_potentially_unsafe_18731
+     PHASE │ run
+     START │ cp -aT /tmp/this_is_potentially_unsafe_18731 /tmp/this_is_potentially_unsafe_79824
+   SUCCESS │ cp -aT /tmp/this_is_potentially_unsafe_18731 /tmp/this_is_potentially_unsafe_79824
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

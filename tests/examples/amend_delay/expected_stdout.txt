@@ -1,0 +1,78 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./step.py > log.txt
+RESCHEDULE │ ./step.py > log.txt
+──────────────── Rescheduling due to unavailable amended inputs ────────────────
+tmp1.txt
+────────────────────────────────────────────────────────────────────────────────
+     START │ cp inp1.txt tmp1.txt
+   SUCCESS │ cp inp1.txt tmp1.txt
+     START │ echo Contents of inp2.txt > inp2.txt
+   SUCCESS │ echo Contents of inp2.txt > inp2.txt
+     START │ ./step.py > log.txt
+   SUCCESS │ ./step.py > log.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+   DELETED │ inp2.txt
+     PHASE │ run
+    NOSKIP │ echo Contents of inp2.txt > inp2.txt
+───────────────────────────── Missing output files ─────────────────────────────
+inp2.txt
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, digest 2bca45fc ➜ e7f6c9b0, inp_digset 8c5319e9
+Modified out hash    inp2.txt (digest 42746c66 ➜ UNKNOWN, size 21 ➜ 0, mode -rw-r--r-- ➜ ?---------)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+────────────────────────────────────────────────────────────────────────────────
+     START │ echo Contents of inp2.txt > inp2.txt
+   SUCCESS │ echo Contents of inp2.txt > inp2.txt
+      SKIP │ ./step.py > log.txt
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       explained, digest f4e9f6da, inp_digset 2d6d340d
+Same inp hash        ./
+Same inp hash        inp0.txt
+Same inp hash        inp2.txt
+Same inp hash        step.py
+Same inp hash        tmp1.txt
+Same out hash        log.txt
+────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+   UPDATED │ inp0.txt
+   UPDATED │ inp1.txt
+     PHASE │ run
+ DROPAMEND │ ./step.py > log.txt
+────────────────────── Outdated amended step information ───────────────────────
+Modified step hash   explained, digest f4e9f6da ➜ 407af75d, inp_digset 2d6d340d ➜ 805cf33a
+Modified inp hash    inp0.txt (digest 681fd532 ➜ 2dab5684)
+──────────────────────── Remained the same (or missing) ────────────────────────
+Same inp hash        ./
+Same inp hash        inp2.txt
+Same inp hash        step.py
+Same inp hash        tmp1.txt
+Same out hash        log.txt
+────────────────────────────────────────────────────────────────────────────────
+    NOSKIP │ cp inp1.txt tmp1.txt
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, digest ccf933d0 ➜ 2532fdbe, inp_digset 15a44e73 ➜ 1a69aac7
+Modified inp hash    inp1.txt (digest 6c6e5eb3 ➜ e8869200, size 15 ➜ 16)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+Same out hash        tmp1.txt
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./step.py > log.txt
+RESCHEDULE │ ./step.py > log.txt
+──────────────── Rescheduling due to unavailable amended inputs ────────────────
+tmp1.txt
+────────────────────────────────────────────────────────────────────────────────
+     START │ cp inp1.txt tmp1.txt
+   SUCCESS │ cp inp1.txt tmp1.txt
+     START │ ./step.py > log.txt
+   SUCCESS │ ./step.py > log.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

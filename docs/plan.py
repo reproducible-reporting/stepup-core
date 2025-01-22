@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """StepUp plan to generate all the outputs of the examples."""
 
 from path import Path
@@ -12,7 +12,7 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
     This information is embedded in the comments of `main.sh` and the commands
 
     ```
-    stepup -n -w 1 | sed -f ../../clean_stdout.sed > stdout.txt
+    stepup -n 1 | sed -f ../../clean_stdout.sed > stdout.txt
     # INP: input
     # ROOT: root/ (optional)
     ```
@@ -42,8 +42,10 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
             elif line.startswith("# ROOT:"):
                 root = workdir / line[7:].strip()
                 inp.append(root)
-            elif line.startswith("stepup") and ">" in line:
+            elif "stepup " in line and " > " in line:
                 out.append(workdir / Path(line[line.find(">") + 1 :].strip()))
+            elif line.startswith("# OUT:"):
+                out.append(workdir / line[6:].strip())
     return inp, root, out
 
 

@@ -1,0 +1,20 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   UPDATED │ STEPUP_CALL_FORMAT ='json' ➜ ='pickle'
+   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Scanning initial database for new nglob matches
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./join.py --inp=join_inp.pickle --out=join_out.pickle
+   SUCCESS │ ./join.py --inp=join_inp.pickle --out=join_out.pickle
+     START │ ./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
+   SUCCESS │ ./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
+  DIRECTOR │ Trying to delete 2 outdated output(s).
+     CLEAN │ join_out.json
+     CLEAN │ join_inp.json
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

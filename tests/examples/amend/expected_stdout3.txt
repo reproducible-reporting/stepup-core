@@ -1,0 +1,20 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ inp2.txt
+   STARTUP │ Scanning initial database for new nglob matches
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+    NOSKIP │ echo word2 > inp2.txt
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, digest ecd85c33 ➜ b4a74d28, inp_digset 87ee641b
+Modified out hash    inp2.txt (digest 55af8bcf ➜ 705a962e, size 6 ➜ 16)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+────────────────────────────────────────────────────────────────────────────────
+     START │ echo word2 > inp2.txt
+   SUCCESS │ echo word2 > inp2.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

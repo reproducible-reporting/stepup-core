@@ -10,7 +10,7 @@ which makes previously unknown files static when:
 
 ## Example
 
-Example source files: [advanced_topics/static_deferred_glob/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/static_deferred_glob)
+Example source files: [`docs/advanced_topics/static_deferred_glob/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/static_deferred_glob)
 
 Create two text files with some content: `foo.txt` and `bar.txt`,
 and also the following `plan.py`:
@@ -23,7 +23,7 @@ Run the plan interactively with StepUp:
 
 ```bash
 chmod +x plan.py
-stepup -n -w1
+stepup -n 1
 ```
 
 You should get the following screen output:
@@ -48,13 +48,13 @@ of which most are irrelevant for the build.
 For example, there could be thousands of `.txt` files in this scenario, but
 this would not have any effect on the resources consumed by StepUp.
 
-The **supplier graph**:
+The **dependency graph**:
 
-![graph_supplier.svg](static_deferred_glob/graph_supplier.svg)
+![graph_dependency.svg](static_deferred_glob/graph_dependency.svg)
 
-The **creator graph**:
+The **provenance graph**:
 
-![graph_creator.svg](static_deferred_glob/graph_creator.svg)
+![graph_provenance.svg](static_deferred_glob/graph_provenance.svg)
 
 
 ## Try the Following

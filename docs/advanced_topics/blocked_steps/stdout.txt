@@ -1,15 +1,16 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp version 1.3.1.post6)
+   STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ echo hello > a.txt
    SUCCESS │ echo hello > a.txt
-   WARNING │ 2 steps remain pending due to blocked steps
+   WARNING │ 2 step(s) remained pending due to blocked steps
 ──────────────────────────────── Blocked steps ─────────────────────────────────
 step:cp -aT a.txt b.txt
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ Skipping cleanup due to incomplete build.
-  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
+   WARNING │ Check logs: .stepup/warning.log
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

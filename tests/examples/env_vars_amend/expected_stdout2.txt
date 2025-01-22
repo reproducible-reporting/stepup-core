@@ -1,0 +1,23 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   UPDATED │ ENV_VAR_TEST_STEPUP_SDASFD ='AAAA' ➜ ='BBBB'
+   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Scanning initial database for new nglob matches
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+    NOSKIP │ ./demovars.py > output.txt
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, digest e90d70e6 ➜ e48948a4, inp_digset 9dac94ed ➜ 4a8692bc
+Modified env var     ENV_VAR_TEST_STEPUP_SDASFD ='AAAA' ➜ ='BBBB'
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+Same inp hash        demovars.py
+Same out hash        output.txt
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./demovars.py > output.txt
+   SUCCESS │ ./demovars.py > output.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from stepup.core.api import copy, glob, mkdir, static
 
 static("src/")

@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -28,12 +28,15 @@ import attrs
 from path import Path
 
 __all__ = (
-    "HashWords",
-    "compute_file_digest",
+    "ExplainInfo",
     "FileHash",
+    "HashWords",
     "StepHash",
-    "ExtendedStepHash",
     "compare_step_hashes",
+    "compute_file_digest",
+    "fmt_digest",
+    "fmt_env_value",
+    "report_hash_diff",
 )
 
 
@@ -83,25 +86,50 @@ def compute_file_digest(path: str, follow_symlinks=True) -> bytes:
         return hashlib.file_digest(fh, hashlib.blake2b).digest()
 
 
+def report_hash_diff(
+    label: str, path: str, old_hash: "FileHash", new_hash: "FileHash"
+) -> tuple[bool, tuple[str, str]]:
+    changes = []
+
+    if old_hash.digest != new_hash.digest:
+        changes.append(f"digest {fmt_digest(old_hash.digest)} ➜ {fmt_digest(new_hash.digest)}")
+    if old_hash.size != new_hash.size:
+        changes.append(f"size {old_hash.size} ➜ {new_hash.size}")
+    if old_hash.mode != new_hash.mode:
+        changes.append(f"mode {stat.filemode(old_hash.mode)} ➜ {stat.filemode(new_hash.mode)}")
+    if len(changes) > 0:
+        return True, (f"Modified {label} hash", f"{path} ({', '.join(changes)})")
+    return False, (f"Same {label} hash", path)
+
+
+def fmt_digest(digest: bytes) -> str:
+    if len(digest) == 1:
+        if digest == b"u":
+            return "UNKNOWN"
+        if digest == b"d":
+            return "DIRECTORY"
+        return "?"
+    return digest.hex()[:8]
+
+
+def fmt_env_value(value: str | None) -> str:
+    return "(unset)" if value is None else f"='{value}'"
+
+
 @attrs.define
 class FileHash:
-    _digest: bytes = attrs.field()
-    # for caching the hash
-    _mode: int = attrs.field()
-    _mtime: float = attrs.field()
-    _size: int = attrs.field()
-    _inode: int = attrs.field()
+    # File properties whose changes are relevant
+    _digest: bytes = attrs.field(converter=bytes, repr=fmt_digest)
+    _mode: int = attrs.field(converter=int, repr=stat.filemode)
+    # Properties that are only used to detect changes.
+    # If these have not changed, the digest is not recomputed.
+    _mtime: float = attrs.field(converter=float, repr=False)
+    _size: int = attrs.field(converter=int, repr=False)
+    _inode: int = attrs.field(converter=int, repr=False)
 
     @classmethod
     def unknown(cls):
         return FileHash(b"u", 0, 0.0, 0, 0)
-
-    @classmethod
-    def structure(cls, state) -> Self:
-        return cls(*state)
-
-    def unstructure(self):
-        return [self._digest, self._mode, self._mtime, self._size, self._inode]
 
     def update(self, path: str) -> bool | None:
         """Update the hash given the for the given file on disk.
@@ -153,44 +181,37 @@ class FileHash:
         return changed
 
     @property
+    def digest(self) -> bytes:
+        return self._digest
+
+    @property
     def mode(self) -> int:
         return self._mode
+
+    @property
+    def mtime(self) -> float:
+        return self._mtime
 
     @property
     def size(self) -> int:
         return self._size
 
     @property
-    def digest(self) -> bytes:
-        return self._digest
+    def inode(self) -> int:
+        return self._inode
 
 
-def _compute_step_digest(
-    step_key: str,
-    inp_hashes: list[tuple[str, FileHash]],
-    env_var_values: list[tuple[str, str | None]],
-    out_hashes: list[tuple[str, FileHash]],
-):
-    hw = HashWords()
-    hw.update(step_key)
-    hw.update("__inp_paths__")
-    for path, file_hash in sorted(inp_hashes):
-        hw.update(path)
-        hw.update(file_hash.mode.to_bytes(8))
-        hw.update(file_hash.size.to_bytes(8))
-        hw.update(file_hash.digest)
-    hw.update("__env_vars__")
-    for env_var, value in sorted(env_var_values):
-        hw.update(env_var)
-        hw.update(value)
-    hw.update("__out_paths__")
-    inp_digest = hw.digest()
-    for path, file_hash in sorted(out_hashes):
-        hw.update(path)
-        hw.update(file_hash.mode.to_bytes(8))
-        hw.update(file_hash.size.to_bytes(8))
-        hw.update(file_hash.digest)
-    return hw.digest(), inp_digest, dict(inp_hashes), dict(env_var_values), dict(out_hashes)
+@attrs.define
+class ExplainInfo:
+    """Details of which changes affected the step hash.
+
+    All inputs for the digests are stored,
+    to be able to explain why a step cannot be skipped.
+    """
+
+    inp_hashes: dict[str, FileHash] = attrs.field(factory=dict)
+    env_var_values: dict[str, str | None] = attrs.field(factory=dict)
+    out_hashes: dict[str, FileHash] = attrs.field(factory=dict)
 
 
 @attrs.define
@@ -199,23 +220,42 @@ class StepHash:
 
     _digest: bytes = attrs.field()
     _inp_digest: bytes = attrs.field()
+    _explain_info: ExplainInfo | None = attrs.field(default=None)
 
     @classmethod
-    def structure(cls, state, strings: list[str]):
-        if len(state) == 2:
-            return StepHash(*state)
-        if len(state) == 5:
-            return ExtendedStepHash(
-                state[0],
-                state[1],
-                {strings[path]: FileHash.structure(data) for path, data in state[2]},
-                state[3],
-                {strings[path]: FileHash.structure(data) for path, data in state[4]},
-            )
-        raise TypeError(f"Cannot structure as StepHash: {state}")
-
-    def unstructure(self, lookup: dict[str, int]) -> list:
-        return [self.digest, self.inp_digest]
+    def from_step(
+        cls,
+        step_key: str,
+        extended: bool,
+        inp_hashes: list[tuple[str, FileHash]],
+        env_var_values: list[tuple[str, str | None]],
+        out_hashes: list[tuple[str, FileHash]],
+    ):
+        hw = HashWords()
+        hw.update(step_key)
+        hw.update("__inp_paths__")
+        for path, file_hash in sorted(inp_hashes):
+            hw.update(path)
+            hw.update(file_hash.mode.to_bytes(8))
+            hw.update(file_hash.size.to_bytes(8))
+            hw.update(file_hash.digest)
+        hw.update("__env_vars__")
+        for env_var, value in sorted(env_var_values):
+            hw.update(env_var)
+            hw.update(value)
+        hw.update("__out_paths__")
+        inp_digest = hw.digest()
+        for path, file_hash in sorted(out_hashes):
+            hw.update(path)
+            hw.update(file_hash.mode.to_bytes(8))
+            hw.update(file_hash.size.to_bytes(8))
+            hw.update(file_hash.digest)
+        explain_info = (
+            ExplainInfo(dict(inp_hashes), dict(env_var_values), dict(out_hashes))
+            if extended
+            else None
+        )
+        return cls(hw.digest(), inp_digest, explain_info)
 
     @property
     def digest(self) -> bytes:
@@ -225,54 +265,20 @@ class StepHash:
     def inp_digest(self) -> bytes:
         return self._inp_digest
 
-    def reduce(self) -> Self:
-        return self
+    @property
+    def explain_info(self) -> ExplainInfo | None:
+        return self._explain_info
 
-
-@attrs.define
-class ExtendedStepHash(StepHash):
-    """An extended hash used to detect if a step can be skipped or not.
-
-    All inputs for the digest are also stored, to be able to explain
-    why a step cannot be skipped.
-    """
-
-    inp_hashes: dict[str, FileHash] = attrs.field(factory=dict)
-    env_var_values: dict[str, str | None] = attrs.field(factory=dict)
-    out_hashes: dict[str, FileHash] = attrs.field(factory=dict)
-
-    def unstructure(self, lookup: dict[str, int]) -> list:
-        return [
-            self.digest,
-            self.inp_digest,
-            [(lookup[path], fh.unstructure()) for path, fh in self.inp_hashes.items()],
-            self.env_var_values,
-            [(lookup[path], fh.unstructure()) for path, fh in self.out_hashes.items()],
-        ]
-
-    def reduce(self) -> StepHash:
+    def reduced(self) -> Self:
         return StepHash(self._digest, self._inp_digest)
-
-
-def create_step_hash(
-    step_key: str,
-    extended: bool,
-    inp_hashes: list[tuple[str, FileHash]],
-    env_var_values: list[tuple[str, str | None]],
-    out_hashes: list[tuple[str, FileHash]],
-):
-    args = _compute_step_digest(step_key, inp_hashes, env_var_values, out_hashes)
-    if extended:
-        return ExtendedStepHash(*args)
-    return StepHash(*args[:2])
 
 
 def compare_step_hashes(old_hash: StepHash, new_hash: StepHash) -> tuple[str, str]:
     chl = []
     sml = []
     _compare_step_digests(chl, sml, old_hash, new_hash)
-    if isinstance(old_hash, ExtendedStepHash) and isinstance(new_hash, ExtendedStepHash):
-        _compare_extended_hashes(chl, sml, old_hash, new_hash)
+    if not (old_hash.explain_info is None or new_hash.explain_info is None):
+        _compare_explain_info(chl, sml, old_hash.explain_info, new_hash.explain_info)
     changed = "\n".join(f"{descr:20s} {content}" for descr, content in chl)
     same = "\n".join(f"{descr:20s} {content}" for descr, content in sml)
     return changed, same
@@ -285,27 +291,25 @@ def _compare_step_digests(
     changed = False
 
     if old_hash.__class__ is new_hash.__class__:
-        parts.append(_fmt_class(old_hash))
+        parts.append(_fmt_explained(old_hash))
     else:
-        parts.append(_fmt_class(old_hash) + " ➜ " + _fmt_class(new_hash))
+        parts.append(_fmt_explained(old_hash) + " ➜ " + _fmt_explained(new_hash))
 
     if old_hash.digest == new_hash.digest:
-        parts.append("digest " + _fmt_digest(old_hash.digest))
+        parts.append("digest " + fmt_digest(old_hash.digest))
     else:
         changed = True
-        parts.append(
-            "digest " + _fmt_digest(old_hash.digest) + " ➜ " + _fmt_digest(new_hash.digest)
-        )
+        parts.append("digest " + fmt_digest(old_hash.digest) + " ➜ " + fmt_digest(new_hash.digest))
 
     if old_hash.inp_digest == new_hash.inp_digest:
-        parts.append("inp_digset " + _fmt_digest(old_hash.inp_digest))
+        parts.append("inp_digset " + fmt_digest(old_hash.inp_digest))
     else:
         changed = True
         parts.append(
             "inp_digset "
-            + _fmt_digest(old_hash.inp_digest)
+            + fmt_digest(old_hash.inp_digest)
             + " ➜ "
-            + _fmt_digest(new_hash.inp_digest)
+            + fmt_digest(new_hash.inp_digest)
         )
 
     if changed:
@@ -314,19 +318,19 @@ def _compare_step_digests(
         sml.append(("Same step hash", ", ".join(parts)))
 
 
-def _fmt_class(step_hash: StepHash) -> str:
-    return "extended" if isinstance(step_hash, ExtendedStepHash) else "compact"
+def _fmt_explained(step_hash: StepHash) -> str:
+    return "compact" if step_hash.explain_info is None else "explained"
 
 
-def _compare_extended_hashes(
+def _compare_explain_info(
     chl: list[tuple[str, str]],
     sml: list[tuple[str, str]],
-    old_hash: ExtendedStepHash,
-    new_hash: ExtendedStepHash,
+    old_info: ExplainInfo,
+    new_info: ExplainInfo,
 ):
-    _explain_hash_changes("inp", chl, sml, old_hash.inp_hashes, new_hash.inp_hashes)
-    _explain_env_changes(chl, sml, old_hash.env_var_values, new_hash.env_var_values)
-    _explain_hash_changes("out", chl, sml, old_hash.out_hashes, new_hash.out_hashes)
+    _explain_hash_changes("inp", chl, sml, old_info.inp_hashes, new_info.inp_hashes)
+    _explain_env_changes(chl, sml, old_info.env_var_values, new_info.env_var_values)
+    _explain_hash_changes("out", chl, sml, old_info.out_hashes, new_info.out_hashes)
 
 
 def _explain_hash_changes(
@@ -339,7 +343,7 @@ def _explain_hash_changes(
     for path in sorted(set(old_hashes) | set(new_hashes)):
         if path in old_hashes:
             if path in new_hashes:
-                changed, line = _report_hash_diff(label, path, old_hashes[path], new_hashes[path])
+                changed, line = report_hash_diff(label, path, old_hashes[path], new_hashes[path])
                 if changed:
                     chl.append(line)
                 else:
@@ -352,32 +356,6 @@ def _explain_hash_changes(
             raise AssertionError("This should never happen.")
 
 
-def _report_hash_diff(
-    label: str, path: str, old_hash: FileHash, new_hash: FileHash
-) -> tuple[bool, tuple[str, str]]:
-    changes = []
-
-    if old_hash.digest != new_hash.digest:
-        changes.append(f"digest {_fmt_digest(old_hash.digest)} ➜ {_fmt_digest(new_hash.digest)}")
-    if old_hash.size != new_hash.size:
-        changes.append(f"size {old_hash.size} ➜ {new_hash.size}")
-    if old_hash.mode != new_hash.mode:
-        changes.append(f"mode {stat.filemode(old_hash.mode)} ➜ {stat.filemode(new_hash.mode)}")
-    if len(changes) > 0:
-        return True, (f"Modified {label} hash", f"{path} ({', '.join(changes)})")
-    return False, (f"Same {label} hash", path)
-
-
-def _fmt_digest(digest: bytes) -> str:
-    if len(digest) == 1:
-        if digest == b"u":
-            return "UNKNOWN"
-        if digest == b"d":
-            return "DIRECTORY"
-        return "?"
-    return digest.hex()[:8]
-
-
 def _explain_env_changes(
     chl: list[tuple[str, str]],
     sml: list[tuple[str, str]],
@@ -386,9 +364,9 @@ def _explain_env_changes(
 ):
     for name in sorted(set(old_env) | set(new_env)):
         if name in old_env:
-            old_var = _fmt_env_value(old_env[name])
+            old_var = fmt_env_value(old_env[name])
             if name in new_env:
-                new_var = _fmt_env_value(new_env[name])
+                new_var = fmt_env_value(new_env[name])
                 if old_env[name] == new_env[name]:
                     sml.append(("Same env var", f"{name} {old_var}"))
                 else:
@@ -396,11 +374,7 @@ def _explain_env_changes(
             else:
                 chl.append(("Deleted env var", f"{name} {old_var}"))
         elif name in new_env:
-            new_var = _fmt_env_value(new_env[name])
+            new_var = fmt_env_value(new_env[name])
             chl.append(("Added env var", f"{name} {new_var}"))
         else:
             raise AssertionError("This should never happen.")
-
-
-def _fmt_env_value(value: str | None) -> str:
-    return "(unset)" if value is None else f"='{value}'"

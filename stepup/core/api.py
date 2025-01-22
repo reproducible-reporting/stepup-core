@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -21,46 +21,50 @@
 
 To keep things simple, it is assumed that one Python process only communicates with one director.
 
-This module should not be imported by other stepup.core modules, except for stepup.interact.
+This module should not be imported by other stepup.core modules, safe for some notable exceptions:
+
+- `stepup.core.interact`
+- inside the driver functions in `stepup.core.call` and `stepup.core.script`
 """
 
 import contextlib
+import json
 import os
-from collections.abc import Callable, Collection, Iterable, Iterator
+import pickle
+import shlex
+from collections.abc import Callable, Collection, Iterable, Iterator, Sequence
 
-import attrs
 from path import Path
 
 from .nglob import NGlobMulti
 from .rpc import DummySyncRPCClient, SocketSyncRPCClient
+from .step import FileHash
+from .stepinfo import StepInfo
 from .utils import (
     CaseSensitiveTemplate,
     check_inp_path,
-    lookupdict,
+    format_command,
     make_path_out,
     mynormpath,
-    myrelpath,
+    myparent,
+    translate,
 )
 
 __all__ = (
-    # Basic API
-    "static",
-    "glob",
-    "StepInfo",
-    "step",
-    "pool",
-    "amend",
-    # Composite API
-    "plan",
-    "copy",
-    "mkdir",
-    "getenv",
-    "script",
-    # Utilities for API development
-    "subs_env_vars",
-    "translate",
-    # For stepup.core.interact
     "RPC_CLIENT",
+    "amend",
+    "call",
+    "copy",
+    "getenv",
+    "getinfo",
+    "glob",
+    "mkdir",
+    "plan",
+    "pool",
+    "script",
+    "static",
+    "step",
+    "subs_env_vars",
 )
 
 
@@ -106,10 +110,16 @@ def static(*paths: str | Iterable[str]):
         with subs_env_vars() as subs:
             su_paths = [subs(path) for path in paths]
         # Sanity checks
-        check_inp_paths(su_paths)
-        # Translate paths to directory working dir and make RPC call
-        tr_paths = sorted(translate(path) for path in su_paths)
-        RPC_CLIENT.call.static(_get_step_key(), tr_paths)
+        _check_inp_paths(su_paths)
+        # Translate paths to make them relative to the working directory of the director.
+        tr_paths = sorted(translate(su_path) for su_path in su_paths)
+        # Declare the missing and then confirm the files.
+        to_check = RPC_CLIENT.call.missing(_get_step_key(), tr_paths)
+        if to_check is not None:
+            # When the RPC_CLIENT is a dummy, it always returns None.
+            for tr_path, file_hash in to_check:
+                file_hash.update(translate.back(tr_path))
+            RPC_CLIENT.call.confirm(to_check)
 
 
 def glob(
@@ -176,18 +186,14 @@ def glob(
     with subs_env_vars() as subs_path:
         su_patterns = [subs_path(pattern) for pattern in patterns]
 
+    tr_patterns = [translate(su_pattern) for su_pattern in su_patterns]
     if _defer:
         if _required:
             raise ValueError("Combination of options not supported: _defer=True, _required=True")
         if len(subs) > 0:
             raise ValueError("Named wildcards are not supported in deferred globs.")
-        tr_patterns = [translate(su_pattern) for su_pattern in su_patterns]
-        tr_inp_check = RPC_CLIENT.call.defer(_get_step_key(), tr_patterns)
-        if tr_inp_check is not None:
-            # Verify that matches of the deferred glob exist.
-            lo_inp_check = [translate_back(inp_path) for inp_path in tr_inp_check]
-            check_inp_paths(lo_inp_check)
-            RPC_CLIENT.call.confirm_deferred(tr_inp_check)
+        to_check = RPC_CLIENT.call.defer(_get_step_key(), tr_patterns)
+        _confirm_deferred(to_check)
         return None
 
     # Collect all matches
@@ -199,62 +205,30 @@ def glob(
     # Send static paths
     static_paths = nglob_multi.files()
     if len(static_paths) > 0:
-        check_inp_paths(static_paths)
+        _check_inp_paths(static_paths)
         tr_static_paths = [translate(static_path) for static_path in static_paths]
-        RPC_CLIENT.call.static(_get_step_key(), tr_static_paths)
+        to_check = RPC_CLIENT.call.missing(_get_step_key(), tr_static_paths)
+        if to_check is not None:
+            # When the RPC_CLIENT is a dummy, it always returns None.
+            for tr_path, file_hash in to_check:
+                file_hash.update(translate.back(tr_path))
+            RPC_CLIENT.call.confirm(to_check)
 
-    # Unstructure the nglob_multi and translate all paths before sending it to the director.
-    lookup = lookupdict()
-    ngm_data = nglob_multi.unstructure(lookup)
-    tr_strings = [str(translate(path)) for path in lookup.get_list()]
-    RPC_CLIENT.call.nglob(_get_step_key(), ngm_data, tr_strings)
+    # Translate all the nglob matches with matching paths and send to the director.
+    tr_all_paths = [
+        translate(path)
+        for nglob_single in nglob_multi.nglob_singles
+        for paths in nglob_single.results.values()
+        for path in paths
+    ]
+    RPC_CLIENT.call.nglob(_get_step_key(), tr_patterns, subs, tr_all_paths)
+
+    # Done
     return nglob_multi
 
 
 def _str_to_list(arg: Collection[str] | str) -> list[str]:
     return [arg] if isinstance(arg, str) else list(arg)
-
-
-@attrs.define
-class StepInfo:
-    """The `step()` function returns an instance of this class to help defining follow-up steps.
-
-    This object will not contain any information that is amended while the step is executed.
-    It only holds information known at the time the step is defined.
-    """
-
-    key: str = attrs.field()
-    """The key of the step in StepUp's workflow."""
-
-    inp: list[Path] = attrs.field()
-    """List of input paths of the step."""
-
-    env: list[str] = attrs.field()
-    """List of environment values used by the step."""
-
-    out: list[Path] = attrs.field()
-    """List of output paths of the step."""
-
-    vol: list[Path] = attrs.field()
-    """List of volatile output paths of the step."""
-
-    def filter_inp(self, *patterns: str, **subs: str):
-        """Return an `NGlobMulti` object with matching results from `self.inp`."""
-        ngm = NGlobMulti.from_patterns(patterns, subs)
-        ngm.extend(self.inp)
-        return ngm
-
-    def filter_out(self, *patterns: str, **subs: str):
-        """Return an `NGlobMulti` object with matching results from `self.out`."""
-        ngm = NGlobMulti.from_patterns(patterns, subs)
-        ngm.extend(self.out)
-        return ngm
-
-    def filter_vol(self, *patterns: str, **subs: str):
-        """Return an `NGlobMulti` object with matching results from `self.val`."""
-        ngm = NGlobMulti.from_patterns(patterns, subs)
-        ngm.extend(self.vol)
-        return ngm
 
 
 def step(
@@ -276,29 +250,34 @@ def step(
     command
         Command to execute (in the working directory of the director).
     inp
-        File(s) required by the step, relative to `workdir`.
+        File(s) required by the step.
+        Relative paths are assumed to be relative to `workdir`.
         Can be files or directories (trailing slash).
     env
         Environment variable(s) to which the step is sensitive.
         If they change, or when they are (un)defined, the step digest will change,
         such that the step cannot be skipped.
     out
-        File(s) created by the step, relative to `workdir`.
+        File(s) created by the step.
+        Relative paths are assumed to be relative to `workdir`.
         These can be files or directories (trailing slash).
     vol
-        Volatile file(s) created by the step, relative to `workdir`.
-        These can be files only.
+        Volatile file(s) created by the step
+        Relative paths are assumed to be relative to `workdir`.
+        Directories are not allowed.
     workdir
         The directory where the command must be executed.
         A trailing slash is added when not present.
+        If this is a relative path, it is relative to the work directory of the caller.
         (The default is the current directory.)
     optional
         When set to True, the step is only executed when required by other mandatory steps.
     pool
-        Restricts execution to a pool, optional.
+        If given, the execution of this step is restricted to the pool with the given name.
+        The maximum number of parallel steps running in this pool is determined by the pool size.
     block
         When set to True, the step will always remain pending.
-        This can be used to temporarily prevent part of the workflow from executing.
+        This can be used to temporarily prevent part of the workflow from being executed.
 
     Returns
     -------
@@ -314,9 +293,7 @@ def step(
     Before sending the step to the director the variables `${inp}`, `${out}` and `${vol}`
     in the command are substituted by white-space concatenated list of `inp`, `out` and
     `vol`, respectively.
-    Relative paths in `inp`, `out` and `env` are interpreted in the current working directory.
-    Before substitution, they are rewritten as paths relative to the workdir.
-    (Amended inputs and outputs are never substituted this way because they are yet unknown.)
+    Relative paths in `inp`, `out` and `vol` are relative to the working directory of the new step.
     """
     # Pre-process the arguments for the Director process.
     inp_paths = _str_to_list(inp)
@@ -338,21 +315,19 @@ def step(
     tr_workdir = translate(su_workdir)
     # Substitute paths that are translated back to the current directory.
     command = CaseSensitiveTemplate(command).safe_substitute(
-        inp=" ".join(su_inp_paths),
-        out=" ".join(su_out_paths),
-        vol=" ".join(su_vol_paths),
+        inp=shlex.join(su_inp_paths),
+        out=shlex.join(su_out_paths),
+        vol=shlex.join(su_vol_paths),
     )
 
-    # Look for inputs that match deferred globs and check their existence
-    # before making them static.
-    tr_inp_check = RPC_CLIENT.call.filter_deferred(tr_inp_paths)
-    if tr_inp_check is not None:
-        lo_inp_check = [translate_back(inp_path, su_workdir) for inp_path in tr_inp_check]
-        check_inp_paths(lo_inp_check)
-        RPC_CLIENT.call.confirm_deferred(tr_inp_check)
+    # Look for inputs that match deferred globs.
+    # Check their existence, update their hashes before making them static.
+    if len(tr_inp_paths) > 0:
+        to_check = RPC_CLIENT.call.filter_deferred(tr_inp_paths)
+        _confirm_deferred(to_check)
 
     # Finally create the step.
-    step_key = RPC_CLIENT.call.step(
+    RPC_CLIENT.call.step(
         _get_step_key(),
         command,
         tr_inp_paths,
@@ -366,7 +341,7 @@ def step(
     )
 
     # Return a StepInfo instance to facilitate the definition of follow-up steps
-    return StepInfo(step_key, su_inp_paths, env_vars, su_out_paths, su_vol_paths)
+    return StepInfo(command, tr_workdir, su_inp_paths, env_vars, su_out_paths, su_vol_paths)
 
 
 def pool(name: str, size: int):
@@ -382,13 +357,17 @@ def pool(name: str, size: int):
     RPC_CLIENT.call.pool(_get_step_key(), name, size)
 
 
+class InputNotFoundError(Exception):
+    """Raised when amended inputs are not available yet."""
+
+
 def amend(
     *,
     inp: Collection[str] | str = (),
     env: Collection[str] | str = (),
     out: Collection[str] | str = (),
     vol: Collection[str] | str = (),
-) -> bool:
+):
     """Specify additional inputs and outputs from within a running step.
 
     Parameters
@@ -407,17 +386,22 @@ def amend(
         Volatile files created by the step.
         Can be files or directories (trailing slash).
 
-    Returns
-    -------
-    keep_going
-        True when the additional inputs are available and the step can safely use them.
-        False otherwise, meaning the step can exit early and will be rescheduled later.
+    Raises
+    ------
+    InputNotFoundError
+        When amended inputs are not available yet.
+        There is no need to catch this exception.
+        Instead, just let it fail the calling script,
+        so that it can be rescheduled for later execution.
+        The director has been informed that some of the amended inputs were not available yet.
 
     Notes
     -----
     Environment variables in the `inp`, `out` and `vol` paths are substituted in the same way
     as in the `step()` function. The used variables are added to the env_vars argument.
 
+    Always call amend before using the input files
+    and before creating the output and volatile files.
     """
     # Pre-process the arguments for the Director process.
     inp_paths = _str_to_list(inp)
@@ -435,11 +419,9 @@ def amend(
 
     # Look for inputs that match deferred globs and check their existence
     # before making them static.
-    tr_inp_check = RPC_CLIENT.call.filter_deferred(tr_inp_paths)
-    if tr_inp_check is not None:
-        lo_inp_check = [translate_back(inp_path) for inp_path in tr_inp_check]
-        check_inp_paths(lo_inp_check)
-        RPC_CLIENT.call.confirm_deferred(tr_inp_check)
+    if len(tr_inp_paths) > 0:
+        to_check = RPC_CLIENT.call.filter_deferred(tr_inp_paths)
+        _confirm_deferred(to_check)
 
     # Finally, amend for real.
     keep_going = RPC_CLIENT.call.amend(
@@ -449,15 +431,32 @@ def amend(
         tr_out_paths,
         tr_vol_paths,
     )
-    if keep_going is None:
-        # When the RPC_CLIENT is a dummy, it always returns None.
-        # In this case, we're assuming the users calls the script
-        # manually and made sure all the required files are present.
-        keep_going = True
-    if keep_going:
-        # Double check that all inputs are indeed present.
-        check_inp_paths(su_inp_paths)
-    return keep_going
+    if keep_going is False:
+        raise InputNotFoundError("Amended inputs are not available yet.")
+    # Double check that all inputs are indeed present.
+    _check_inp_paths(su_inp_paths)
+
+
+def getinfo() -> StepInfo:
+    """Get the information of the current step.
+
+    Returns
+    -------
+    step_info
+        Holds relevant information of the step, useful for defining follow-up steps.
+        For consistency with other functions in this module, the `inp`, `out` and `vol`
+        paths are relative to the working directory of the step.
+    """
+    step_info = RPC_CLIENT.call.getinfo(_get_step_key())
+    # Update paths to make them relative to the working directory of the step.
+    step_info.inp = sorted(translate.back(inp) for inp in step_info.inp)
+    step_info.out = sorted(translate.back(out) for out in step_info.out)
+    step_info.vol = sorted(translate.back(vol) for vol in step_info.vol)
+    # Filter required directorie out of the inputs.
+    reqdirs = {myparent(path) for path in step_info.out}
+    reqdirs.update({myparent(path) for path in step_info.vol})
+    step_info.inp = [path for path in step_info.inp if path not in reqdirs]
+    return step_info
 
 
 #
@@ -465,17 +464,39 @@ def amend(
 #
 
 
-def plan(subdir: str, block: bool = False) -> StepInfo:
+def plan(
+    subdir: str,
+    *,
+    inp: Collection[str] | str = (),
+    env: Collection[str] | str = (),
+    out: Collection[str] | str = (),
+    vol: Collection[str] | str = (),
+    optional: bool = False,
+    pool: str | None = None,
+    block: bool = False,
+) -> StepInfo:
     """Run a `plan.py` script in a subdirectory.
 
     Parameters
     ----------
     subdir
         The subdirectory in which another `plan.py` script can be found.
-        The file must be executable and have `#!/usr/bin/env python` as its first line.
+        The file must be executable and have `#!/usr/bin/env python3` as its first line.
         A trailing slash is added when not present.
+    inp, env, out, vol
+        See the [`step()`][stepup.core.api.step] function for more information.
+        (Rarely needed for planning steps.)
+    optional
+        See the [`step()`][stepup.core.api.step] function for more information.
+        (Rarely needed for planning steps.)
+        Use with care, since the nodes created by plan script will be unknown upfront
+        and cannot therefore imply the necessity of an optional plan step.
+    pool
+        See the [`step()`][stepup.core.api.step] function for more information.
+        (Rarely needed for planning steps.)
     block
-        When True, the step will always remain pending.
+        See the [`step()`][stepup.core.api.step] function for more information.
+        (Rarely needed for planning steps.)
 
     Returns
     -------
@@ -484,10 +505,20 @@ def plan(subdir: str, block: bool = False) -> StepInfo:
     """
     with subs_env_vars() as subs:
         subdir = subs(subdir)
-    return step("./plan.py", inp="plan.py", workdir=subdir, block=block)
+    return step(
+        "./plan.py",
+        inp=["plan.py", *_str_to_list(inp)],
+        env=env,
+        out=out,
+        vol=vol,
+        workdir=subdir,
+        optional=optional,
+        pool=pool,
+        block=block,
+    )
 
 
-def copy(src: str, dst: str, optional: bool = False, block: bool = False) -> StepInfo:
+def copy(src: str, dst: str, *, optional: bool = False, block: bool = False) -> StepInfo:
     """Add a step that copies a file.
 
     Parameters
@@ -517,7 +548,7 @@ def copy(src: str, dst: str, optional: bool = False, block: bool = False) -> Ste
     return step("cp -aT ${inp} ${out}", inp=path_src, out=path_dst, optional=optional, block=block)
 
 
-def mkdir(dirname: str, optional: bool = False, block: bool = False) -> StepInfo:
+def mkdir(dirname: str, *, optional: bool = False, block: bool = False) -> StepInfo:
     """Make a directory.
 
     Parameters
@@ -546,7 +577,14 @@ def mkdir(dirname: str, optional: bool = False, block: bool = False) -> StepInfo
     return step(f"mkdir -p {dirname}", out=dirname, optional=optional, block=block)
 
 
-def getenv(name: str, default: str | None = None, is_path: bool = False) -> str | Path:
+def getenv(
+    name: str,
+    default: Path | str | None = None,
+    *,
+    path: bool = False,
+    back: bool = False,
+    multi: bool = False,
+) -> str | Path:
     """Get an environment variable and amend the current step with the variable name.
 
     Parameters
@@ -555,64 +593,340 @@ def getenv(name: str, default: str | None = None, is_path: bool = False) -> str 
         The name of the environment variable, which is retrieved with `os.getenv`.
     default
         The value to return when the environment variable is unset.
-    is_path
+    path
         Set to True if the variable taken from the environment is assumed to be a path.
+        A Path instance will be returned.
         Shell variables are substituted (once) in such paths.
+    back
+        Set to True to translate the path back to the working directory of the caller.
         If the path is relative, it is assumed to be relative to the StepUp's working directory.
-        In this case, translated to become usable from the working directory of the caller.
+        It will be translated to become relative to the working directory of the caller.
+        This implies `path=True`.
+    multi
+        Set to True if the variable is a list of paths.
+        The paths are split on the colon character and returned as a list of `Path` instances.
+        This implies `path=True`.
 
     Returns
     -------
     value
         The value of the environment variable.
-        If `is_path` is set to `True`, this is a `Path` instance.
+        If `path` is set to `True`, this is a `Path` instance.
+        If `back` is set to `True`, this is a translated `Path` instance.
+        If `multi` is set to `True`, this is a list of `Path` instances.
         Otherwise, the result is a string.
+
+    Notes
+    -----
+    The optional arguments of this function have changed in StepUp 2.0.0.
     """
+    path = path or back or multi
     value = os.getenv(name, default)
-    names = [name]
-    if is_path:
-        value = Path(value)
-        if not value.isabs():
-            value = mynormpath(os.getenv("ROOT", ".") / Path(value))
-            names.append("ROOT")
+    amend(env=name)
+    if multi:
+        with subs_env_vars() as subs:
+            value = [subs(item) for item in (value or "").split(":")]
+        if back:
+            value = [translate.back(item) for item in value]
+    elif path:
+        if value is None:
+            raise ValueError(f"Undefined shell variable: {name}. Cannot create path.")
         with subs_env_vars() as subs:
             value = subs(value)
-    amend(env=names)
+        if back:
+            value = translate.back(value)
     return value
 
 
-def script(
-    executable: str, workdir: str = "./", optional: bool = False, block: bool = False
+def call(
+    script: str,
+    *,
+    prefix: str | None = None,
+    fmt: str = "auto",
+    inp: Sequence | str | bool | None = None,
+    env: Collection[str] | str = (),
+    out: Sequence | str | bool | None = None,
+    vol: Collection[str] | str = (),
+    workdir: str = "./",
+    optional: bool = False,
+    pool: str | None = None,
+    block: bool = False,
+    pars: dict[str] | None = None,
+    **kwargs,
 ) -> StepInfo:
-    """Run the executable with a single argument `plan` in a working directory.
+    """Call an executable with a set of serialized arguments.
+
+    This function assumes that the script implements StepUp's
+    [call protocol](../getting_started/call.md).
 
     Parameters
     ----------
-    executable
-        The path of a local executable that will be called with the argument `plan`.
-        The file must be executable.
+    script
+        The path of a local executable script to call.
+        Environment variables are substituted.
+        The path of the script is assumed to be relative to this directory.
+    prefix
+        The prefix used to construct filenames of the input (serialized arguments)
+        and optionally output file (serialized return value).
+        If absent, the prefix is the stem of the executable.
+    fmt
+        The format used for serialization of arguments (and optionally return values).
+        Can be `"auto"`, `"json"` or `"pickle"`.
+        In case `"auto"`, the `"json"` format is used,
+        unless that fails, then `"pickle"` is used as the fallback option.
+        If input or output files are given, the format is deduced from their extension.
+    inp
+        The path of the input file:
+
+        - If `None`: The arguments are JSON serialized and passed to the script on the command line.
+          If the types of the keyword arguments are incompatible with JSON,
+          a pickle file is created whose filename is derived from `prefix`.
+        - If `True`: an input file is always written to a path derived from `prefix` and `fmt`,
+          even if no keyword arguments are given.
+        - If `str`: an input file is always written if some extra `**kwargs` are given,
+          and `fmt` is deduced from the extension.
+          Without keyword arguments, the input file is assumed to be created by another step.
+        - If `Sequence`, the first item is used according one of the previous points,
+          depending of its type.
+          Remaining items are add to the `inp` argument of the `step()` function,
+          and are added to `kwargs['inp']`.
+    env
+        See the [`step()`][stepup.core.api.step] function for more information.
+    out
+        The path of the output file:
+
+        - If `None`: the script may write an output file. (This is the most flexible option.)
+          The output path is derived from `prefix` and `fmt`.
+          The script is called with arguments `--out={path_out}` and `--amend-out`.
+        - If `str`: the script is called with the argument `--out={path_out}`
+          and is expected to create this output file unconditionally.
+          (No `amend(out=path_out)` is needed.)
+        - If `True`, similar to the previous, except that
+          the output path is derived from `prefix` and `fmt`.
+        - If `False`, the script is not called with `--out`
+          and is not expected to write an output file.
+          (This is useful to keep things minimal.)
+        - If `Sequence`, the first item is used according one of the previous points,
+          depending of its type.
+          Remaining items are add to the `out` argument of the `step()` function,
+          and are added to `kwargs['out']`.
+
+    vol
+        See the [`step()`][stepup.core.api.step] function for more information.
     workdir
-        The subdirectory in which the script is to be executed.
-        A trailing slash is added when not present.
-        The path of the executable is assumed to be relative to this directory.
+        See the [`step()`][stepup.core.api.step] function for more information.
     optional
-        When True, the steps planned by the executable are made optional.
-        The planning itself is never optional.
+        See the [`step()`][stepup.core.api.step] function for more information.
+    pool
+        See the [`step()`][stepup.core.api.step] function for more information.
     block
-        When True, the planning will always remain pending.
+        See the [`step()`][stepup.core.api.step] function for more information.
+    pars
+        A dictionary with additional parameters for the script.
+        They will be merged with the arguments in `kwargs`.
+        (This can be useful to pass arguments whose name coincides with the arguments above.)
+    kwargs
+        If given, these are serialized to the input file.
+        If absent, no input file is written unless `inp` is `True`.
+        (This can be used to chain script calls with `inp=True`.)
 
     Returns
     -------
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
+
+    Notes
+    -----
+    This is an experimental feature introduced in StepUp 2.0.0.
+    It may undergo significant revisions in future 2.x releases.
+
+    When the `inp`, `env`, `out` and `vol` arguments contain items,
+    they are also included in the keyword arguments passed to the script.
+    However, they do not count as extra keyword arguments to determine if an input file
+    must be written when `inp` is a string or a sequence of strings.
+
+    When using the call protocol, it is recommended to add the following lines to `.gitignore`:
+
+    ```
+    *_inp.json
+    *_inp.pickle
+    *_out.json
+    *_out.pickle
+    ```
+    """
+    # Preprocess inp and out in case they are lists.
+    if not isinstance(inp, str) and isinstance(inp, Sequence):
+        other_inp = inp[1:]
+        inp = inp[0]
+    else:
+        other_inp = []
+    if not isinstance(out, str) and isinstance(out, Sequence):
+        other_out = out[1:]
+        out = out[0]
+    else:
+        other_out = []
+
+    if fmt not in ["auto", "json", "pickle"]:
+        raise ValueError(f"Invalid format for serialization of arguments: {fmt}.")
+    if inp not in [None, True] and not isinstance(inp, str):
+        raise ValueError("Invalid value for _inp. Must be None, True, str or Sequence[str].")
+    if not (out in [None, True, False] or isinstance(out, str)):
+        raise ValueError("Invalid value for _out. Must be None, True, False, str or Sequence[str].")
+    if prefix is None:
+        prefix = Path(script).stem
+    with subs_env_vars() as subs:
+        script = subs(script)
+        workdir = subs(workdir)
+
+    # Determine the format from given filenames
+    if (isinstance(inp, str) or isinstance(out, str)) and fmt != "auto":
+        raise ValueError("When specifying input or output files, the format cannot be set.")
+    if fmt == "auto":
+        if isinstance(inp, str):
+            fmt = Path(inp).suffix[1:]
+        elif isinstance(out, str):
+            fmt = Path(out).suffix[1:]
+
+    # Write the input file
+    serial = None
+    if pars is not None:
+        kwargs.update(pars)
+    if len(other_inp) > 0:
+        kwargs.setdefault("inp", []).extend(other_inp)
+    if len(other_out) > 0:
+        kwargs.setdefault("out", []).extend(other_out)
+    if len(kwargs) > 0:
+        if fmt in ["json", "auto"]:
+            try:
+                serial = json.dumps(kwargs, indent=None if inp is None else 2)
+                fmt = "json"
+            except TypeError:
+                if fmt == "auto":
+                    fmt = "pickle"
+                else:
+                    raise
+        if fmt == "pickle":
+            serial = pickle.dumps(kwargs)
+
+    if fmt == "auto":
+        fmt = "json"
+    if fmt not in ["json", "pickle"]:
+        raise ValueError(f"Invalid format for serialization of arguments: {fmt}.")
+
+    # Prepare arguments for the step function
+    step_kwargs = {
+        "inp": [*other_inp],
+        "env": env,
+        "out": [*other_out],
+        "vol": vol,
+        "workdir": workdir,
+        "optional": optional,
+        "pool": pool,
+        "block": block,
+    }
+
+    # Input handling
+    command = format_command(script)
+    path_inp = f"{prefix}_inp.{fmt}" if ((fmt == "pickle" and inp is None) or inp is True) else inp
+    if serial is not None:
+        # Provide input some way.
+        if path_inp is None:
+            command += " " + shlex.quote(serial)
+        else:
+            amend(out=path_inp)
+            if isinstance(serial, str):
+                with open(path_inp, "w") as fh:
+                    fh.write(serial)
+            else:
+                with open(path_inp, "bw") as fh:
+                    fh.write(serial)
+    if isinstance(path_inp, str):
+        # There is an input file, either created here or elsewhere.
+        step_kwargs["inp"].insert(0, path_inp)
+        command += f" --inp={shlex.quote(path_inp)}"
+
+    # Output handling
+    path_out = f"{prefix}_out.{fmt}" if (out is None or out is True) else out
+    if isinstance(path_out, str):
+        # The output file is created here.
+        command += f" --out={shlex.quote(path_out)}"
+        if out is None:
+            command += " --amend-out"
+        else:
+            step_kwargs["out"].insert(0, path_out)
+
+    # Finally, create a step
+    step_kwargs.setdefault("inp", []).append(script)
+    return step(command, **step_kwargs)
+
+
+def script(
+    script: str,
+    *,
+    step_info: str | None = None,
+    inp: Collection[str] | str = (),
+    env: Collection[str] | str = (),
+    out: Collection[str] | str = (),
+    vol: Collection[str] | str = (),
+    workdir: str = "./",
+    optional: bool = False,
+    pool: str | None = None,
+    block: bool = False,
+) -> StepInfo:
+    """Run the executable with a single argument `plan` in a working directory.
+
+    This function assumes that the script implements StepUp's
+    [script protocol](../getting_started/script_single.md).
+
+    Parameters
+    ----------
+    script
+        The path of a local executable that will be called with the argument `plan`.
+        The file must be executable.
+        The path of the script is assumed to be relative to this directory.
+    step_info
+        When given, the steps generated in the plan part of the script are written
+        to this `step_info` file. (See [stepup.core.stepinfo][] module for the file format.)
+        This filename is relative to the work directory.
+    inp, env, out, vol
+        See the [`step()`][stepup.core.api.step] function for more information.
+    workdir
+        See the [`step()`][stepup.core.api.step] function for more information.
+    optional
+        See the [`step()`][stepup.core.api.step] function for more information.
+    pool
+        See the [`step()`][stepup.core.api.step] function for more information.
+    block
+        See the [`step()`][stepup.core.api.step] function for more information.
+
+    Returns
+    -------
+    step_info
+        Holds relevant information of the step, useful for defining follow-up steps.
+
+    Notes
+    -----
+    - The arguments `inp`, `env`, `out`, `vol` and `pool` are rarely needed for script steps.
+      They only apply to the plan stage of the script, not the run stage.
+    - The `inp` argument may be useful when the planning is configured by some input files.
+    - The optional argument never applies to the plan stage,
+      and is passed on the the run stage.
     """
     with subs_env_vars() as subs:
-        executable = subs(executable)
+        script = subs(script)
         workdir = subs(workdir)
-    command = f"./{executable} plan"
+    command = format_command(script) + " plan"
+    out = _str_to_list(out)
+    if step_info is not None:
+        command += " --step-info=" + shlex.quote(step_info)
+        out.append(step_info)
     if optional:
         command += " --optional"
-    return step(command, inp=[executable], workdir=workdir, block=block)
+    inp = _str_to_list(inp)
+    inp.append(script)
+    return step(
+        command, inp=inp, env=env, out=out, vol=vol, workdir=workdir, pool=pool, block=block
+    )
 
 
 #
@@ -663,79 +977,32 @@ def subs_env_vars() -> Iterator[Callable[[str | None], str | None]]:
     amend(env=env_vars)
 
 
-def translate(path: str, workdir: str = ".") -> Path:
-    """Normalize the path and, if relative, make it relative to `ROOT`.
-
-    If the environment variable `HERE` is not set, it is derived from `STEPUP_ROOT` if set.
-
-    Parameters
-    ----------
-    path
-        The path to translate. If relative, it assumed to be relative to the working directory.
-    workdir
-        The work directory. If relative, it is assumed to be relative to `HERE`
-
-    Returns
-    -------
-    translated_path
-        A path that can be interpreted in the working directory of the StepUp director.
-    """
-    path = mynormpath(path)
-    if not path.isabs():
-        workdir = mynormpath(workdir)
-        if workdir.isabs():
-            path = workdir / path
-        else:
-            stepup_root = Path(os.getenv("STEPUP_ROOT", "./"))
-            here = os.getenv("HERE")
-            if here is None:
-                here = myrelpath("./", stepup_root)
-            path = myrelpath(mynormpath(stepup_root / here / workdir / path), stepup_root)
-    return path
+#
+# Internal stuff
+#
 
 
-def translate_back(path: str, workdir: str = ".") -> Path:
-    """If relative, make it relative to work directory, assuming it is relative to `ROOT`.
-
-    If the environment variable `HERE` is not set, it is derived from `STEPUP_ROOT` if set.
-
-    Parameters
-    ----------
-    path
-        The path to translate. If relative, it is assumed to be relative to `ROOT`.
-    workdir
-        The working directory. If relative, it is assumed to be relative to `HERE`.
-
-    Returns
-    -------
-    back_translated_path
-        A path that can be interpreted in the working directory.
-    """
-    path = mynormpath(path)
-    workdir = mynormpath(workdir)
-    if path.isabs():
-        if workdir.isabs() and path.startswith(workdir):
-            path = myrelpath(path, workdir)
-    else:
-        here = os.getenv("HERE")
-        if here is None:
-            stepup_root = os.getenv("STEPUP_ROOT", "./")
-            here = myrelpath("./", stepup_root)
-        path = myrelpath(path, here / workdir)
-    return path
+def _confirm_deferred(to_check: list[tuple[str, FileHash]] | None):
+    """Check file, update hashes of existing ones, and send the updates to the director."""
+    if to_check is not None and len(to_check) > 0:
+        # Select matches of the deferred glob that exist and update their hashes.
+        checked = []
+        for tr_path, file_hash in to_check:
+            lo_path = translate.back(tr_path)
+            file_hash.update(lo_path)
+            if file_hash.digest == b"u":
+                raise AssertionError(f"File matched deferred glob but does not exist: {lo_path}")
+            _check_inp_paths([lo_path])
+            checked.append((tr_path, file_hash))
+        RPC_CLIENT.call.confirm(checked)
 
 
-def check_inp_paths(inp_paths: Collection[Path]):
+def _check_inp_paths(inp_paths: Iterable[Path]):
     """Check the validity of the input paths."""
     for inp_path in inp_paths:
         message = check_inp_path(inp_path)
         if message is not None:
             raise ValueError(f"{message}: {inp_path}")
-
-
-#
-# Internal stuff
-#
 
 
 def _get_rpc_client():

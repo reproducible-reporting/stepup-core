@@ -1,0 +1,48 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cp -aT inp1.txt conv1.txt
+   SUCCESS │ cp -aT inp1.txt conv1.txt
+     START │ ./step.py subs1.txt > subs2.txt
+   SUCCESS │ ./step.py subs1.txt > subs2.txt
+     START │ ./step.py subs2.txt > subs3.txt
+   SUCCESS │ ./step.py subs2.txt > subs3.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+   DELETED │ inp1.txt
+   UPDATED │ inp2.txt
+   UPDATED │ subs1.txt
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cp -aT inp2.txt conv2.txt
+   SUCCESS │ cp -aT inp2.txt conv2.txt
+ DROPAMEND │ ./step.py subs1.txt > subs2.txt
+────────────────────── Outdated amended step information ───────────────────────
+Modified step hash   explained, digest 17e12e00 ➜ a6d78868, inp_digset 8293e4ae ➜ e82399fd
+Deleted inp hash     conv1.txt
+Modified inp hash    subs1.txt (digest f927920a ➜ 2ab04a00)
+──────────────────────── Remained the same (or missing) ────────────────────────
+Same inp hash        ./
+Same out hash        subs2.txt
+────────────────────────────────────────────────────────────────────────────────
+ DROPAMEND │ ./step.py subs2.txt > subs3.txt
+────────────────────── Outdated amended step information ───────────────────────
+Modified step hash   explained, digest 92fd431c ➜ 5ea425fb, inp_digset c04b2fe4 ➜ 6300498b
+Deleted inp hash     conv1.txt
+──────────────────────── Remained the same (or missing) ────────────────────────
+Same inp hash        ./
+Same inp hash        subs2.txt
+Same out hash        subs3.txt
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./step.py subs1.txt > subs2.txt
+   SUCCESS │ ./step.py subs1.txt > subs2.txt
+     START │ ./step.py subs2.txt > subs3.txt
+   SUCCESS │ ./step.py subs2.txt > subs3.txt
+  DIRECTOR │ Trying to delete 1 outdated output(s).
+     CLEAN │ conv1.txt
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

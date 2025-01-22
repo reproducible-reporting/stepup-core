@@ -1,0 +1,15 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./work.py plan --step-info=current_step_info.json
+   SUCCESS │ ./work.py plan --step-info=current_step_info.json
+     START │ ./work.py run -- -5.0 > stdout-5.0.txt 2> stderr-5.0.txt
+   SUCCESS │ ./work.py run -- -5.0 > stdout-5.0.txt 2> stderr-5.0.txt
+     START │ ./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
+   SUCCESS │ ./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

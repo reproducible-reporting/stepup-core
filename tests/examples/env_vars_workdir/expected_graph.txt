@@ -1,0 +1,56 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   file:sub/
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+             env_var = INP_VAR_TEST_STEPUP_WORKDIR [amended]
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:sub/
+             creates   file:sub/input.txt
+             creates   step:cat input.txt > output.txt  # wd=sub/
+
+file:sub/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   file:sub/input.txt
+            supplies   file:sub/output.txt
+            supplies   step:cat input.txt > output.txt  # wd=sub/
+
+file:sub/input.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:sub/
+            supplies   step:cat input.txt > output.txt  # wd=sub/
+
+step:cat input.txt > output.txt  # wd=sub/
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:sub/
+            consumes   file:sub/input.txt
+             creates   file:sub/output.txt
+            supplies   file:sub/output.txt
+
+file:sub/output.txt
+               state = BUILT
+          created by   step:cat input.txt > output.txt  # wd=sub/
+            consumes   file:sub/
+            consumes   step:cat input.txt > output.txt  # wd=sub/

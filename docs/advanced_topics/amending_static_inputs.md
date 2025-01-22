@@ -21,7 +21,7 @@ Make `plan.py` executable and run it as follows:
 
 ```bash
 chmod +x plan.py
-stepup -n -w1
+stepup -n 1
 ```
 
 You should get the following terminal output:

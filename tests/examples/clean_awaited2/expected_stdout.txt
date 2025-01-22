@@ -1,0 +1,27 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cp -aT input.txt output.txt
+   SUCCESS │ cp -aT input.txt output.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+   UPDATED │ output.txt
+   DELETED │ input.txt
+     PHASE │ run
+   WARNING │ 1 step(s) remained pending due to incomplete requirements
+──────────────────────────────── Missing inputs ────────────────────────────────
+             MISSING  input.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               cp -aT input.txt output.txt
+Working directory     ./
+Inputs        STATIC  ./
+             MISSING  input.txt
+Outputs      AWAITED  output.txt
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

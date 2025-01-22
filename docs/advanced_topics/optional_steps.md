@@ -1,6 +1,6 @@
 # Optional Steps
 
-By default, StepUp will build all steps created.
+By default, StepUp will build all steps.
 As an exception, steps can be made optional by adding the `optional=True` option.
 This is the opposite of most build tools, where steps are only executed when they are *targets*.
 
@@ -8,7 +8,7 @@ The reason for this difference is that conventional build tools work with rigid 
 By accepting command-line arguments with target steps, they introduce some flexibility:
 this lets the user control which part of the graph is executed.
 
-StepUp offers such flexibility in a different way.
+StepUp offers such flexibility differently.
 The basic premise is that all outdated or missing outputs need to be (re)built.
 It is the responsibility of the build tool to figure out which steps need executing.
 This responsibility should not be shifted to users by expecting them to specify targets.
@@ -27,12 +27,17 @@ These are supported by StepUp as follows:
 - As shown in the [next tutorial](blocked_steps.md), one may also **block steps**,
   as a temporary measure to speed up the edit-build cycle.
 
+Steps that define other steps, declare static files, or otherwise extend the workflow,
+should not be made optional.
+Until such steps are executed, StepUp has no idea what output these steps will generate,
+which it would need to decide that an optional step is required by another step.
+
 
 ## Example
 
-Example source files: [advanced_topics/optional_steps/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/optional_steps)
+Example source files: [`docs/advanced_topics/optional_steps/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/optional_steps)
 
-The example below uses the `script()` feature introduced in
+The example below uses the [`script()`][stepup.core.api.script] feature introduced in
 [Script (Single Case)](../getting_started/script_single.md) and
 [Script (Multiple Cases)](../getting_started/script_multiple.md)
 to create a somewhat entertaining example.
@@ -61,7 +66,7 @@ Finally, make the scripts executable and run StepUp:
 
 ```bash
 chmod +x generate.py plot.py plan.py
-stepup -n -w1
+stepup -n 1
 ```
 
 You should get the following output:

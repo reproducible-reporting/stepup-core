@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -25,6 +25,7 @@ import pytest
 from path import Path
 
 from stepup.core.exceptions import RPCError
+from stepup.core.hash import FileHash
 from stepup.core.rpc import AsyncRPCClient
 
 
@@ -41,7 +42,7 @@ async def test_missing_argument(client: AsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
-        await client("static")
+        await client("missing")
 
 
 @pytest.mark.asyncio
@@ -49,33 +50,28 @@ async def test_wrong_type(client: AsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
-        await client("static", 5)
+        await client("missing", 5)
 
 
 FROM_SCRATCH_GRAPH = """\
 root:
-             version = v1
              creates   file:./
              creates   file:plan.py
              creates   step:./plan.py
 
 file:plan.py
-                path = plan.py
                state = STATIC
           created by   root:
             consumes   file:./
             supplies   step:./plan.py
 
 file:./
-                path = ./
                state = STATIC
           created by   root:
             supplies   file:plan.py
             supplies   step:./plan.py
 
 step:./plan.py
-             workdir = ./
-             command = ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -87,36 +83,35 @@ step:./plan.py
 def _check_graph(path, expected):
     with open(path) as fh:
         cur = fh.read()
-        cur = re.sub(r" {10}(inp_| {4})digest = [ 0-9a-f]{71}\n {21}= [ 0-9a-f]{71}\n", "", cur)
+        cur = re.sub(
+            r" {10}(inp_| {4})digest = ([ 0-9a-f]{71}\n {21}= [ 0-9a-f]{71}|same)\n", "", cur
+        )
         assert cur == expected
 
 
 @pytest.mark.asyncio
-async def test_from_scratch(client: AsyncRPCClient, tmpdir: str):
+async def test_from_scratch(client: AsyncRPCClient, path_tmp: Path):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     await client("wait")
-    prefix_graph = Path(tmpdir) / "graph"
+    prefix_graph = path_tmp / "graph"
     await client("graph", prefix_graph)
     _check_graph(prefix_graph + ".txt", FROM_SCRATCH_GRAPH)
 
 
 STATIC_GRAPH = """\
 root:
-             version = v1
              creates   file:./
              creates   file:plan.py
              creates   step:./plan.py
 
 file:plan.py
-                path = plan.py
                state = STATIC
           created by   root:
             consumes   file:./
             supplies   step:./plan.py
 
 file:./
-                path = ./
                state = STATIC
           created by   root:
             supplies   file:foo
@@ -124,8 +119,6 @@ file:./
             supplies   step:./plan.py
 
 step:./plan.py
-             workdir = ./
-             command = ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -133,8 +126,7 @@ step:./plan.py
              creates   file:foo
 
 file:foo
-                path = foo
-               state = STATIC
+               state = MISSING
           created by   step:./plan.py
             consumes   file:./
 
@@ -142,37 +134,35 @@ file:foo
 
 
 @pytest.mark.asyncio
-async def test_static(client: AsyncRPCClient, tmpdir: str):
+async def test_missing(client: AsyncRPCClient, path_tmp: Path):
     try:
         with open("foo", "w") as fh:
             fh.write("bar")
         step_key_plan = "step:./plan.py"
-        await client("static", step_key_plan, ["foo"])
+        to_check = await client("missing", step_key_plan, ["foo"])
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
     await client("wait")
-    prefix_graph = Path(tmpdir) / "graph"
+    prefix_graph = path_tmp / "graph"
     await client("graph", prefix_graph)
+    assert to_check == [("foo", FileHash.unknown())]
     _check_graph(prefix_graph + ".txt", STATIC_GRAPH)
 
 
 COPY_GRAPH = """\
 root:
-             version = v1
              creates   file:./
              creates   file:plan.py
              creates   step:./plan.py
 
 file:plan.py
-                path = plan.py
                state = STATIC
           created by   root:
             consumes   file:./
             supplies   step:./plan.py
 
 file:./
-                path = ./
                state = STATIC
           created by   root:
             supplies   file:copy.txt
@@ -182,8 +172,6 @@ file:./
             supplies   step:cp -v original.txt copy.txt
 
 step:./plan.py
-             workdir = ./
-             command = ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -192,8 +180,6 @@ step:./plan.py
              creates   step:cp -v original.txt copy.txt
 
 step:cp -v original.txt copy.txt
-             workdir = ./
-             command = cp -v original.txt copy.txt
                state = SUCCEEDED
           created by   step:./plan.py
             consumes   file:./
@@ -202,14 +188,12 @@ step:cp -v original.txt copy.txt
             supplies   file:copy.txt
 
 file:original.txt
-                path = original.txt
                state = STATIC
           created by   step:./plan.py
             consumes   file:./
             supplies   step:cp -v original.txt copy.txt
 
 file:copy.txt
-                path = copy.txt
                state = BUILT
           created by   step:cp -v original.txt copy.txt
             consumes   file:./
@@ -219,12 +203,12 @@ file:copy.txt
 
 
 @pytest.mark.asyncio
-async def test_copy(client: AsyncRPCClient, tmpdir: str):
+async def test_copy(client: AsyncRPCClient, path_tmp: Path):
     try:
         with open("original.txt", "w") as fh:
             fh.write("Hello world!")
         step_key_plan = "step:./plan.py"
-        step_key_copy = await client(
+        await client(
             "step",
             step_key_plan,
             "cp -v original.txt copy.txt",
@@ -237,12 +221,15 @@ async def test_copy(client: AsyncRPCClient, tmpdir: str):
             None,
             False,
         )
-        assert step_key_copy == "step:cp -v original.txt copy.txt"
-        await client("static", step_key_plan, ["original.txt"])
+        to_check = await client("missing", step_key_plan, ["original.txt"])
+        assert to_check == [("original.txt", FileHash.unknown())]
+        file_hash = FileHash.unknown()
+        file_hash.update("original.txt")
+        await client("confirm", [("original.txt", file_hash)])
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
     await client("wait")
-    prefix_graph = Path(tmpdir) / "graph"
+    prefix_graph = path_tmp / "graph"
     await client("graph", prefix_graph)
     _check_graph(prefix_graph + ".txt", COPY_GRAPH)

@@ -1,0 +1,19 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./step.py
+      FAIL │ ./step.py
+────────────────────────────────── Step info ───────────────────────────────────
+Command               ./step.py
+Return code           126
+──────────────────────────────── Standard error ────────────────────────────────
+(stripped)
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ 1 step(s) failed.
+   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

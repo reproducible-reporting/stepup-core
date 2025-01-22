@@ -1,0 +1,21 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+   WARNING │ 1 step(s) remained pending due to incomplete requirements
+─────────────────────────────── Orphaned inputs ────────────────────────────────
+             AWAITED  sub/blub/
+             AWAITED  sub/
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               mkdir -p sub/blub/pup/
+Working directory     ./
+Inputs        STATIC  ./
+             AWAITED  (sub/blub/)
+Outputs      AWAITED  sub/blub/pup/
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

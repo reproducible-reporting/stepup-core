@@ -19,7 +19,7 @@ These variables can be useful in the following cases:
 
 ## Example
 
-Example source files: [advanced_topics/here_and_root/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/here_and_root)
+Example source files: [`docs/advanced_topics/here_and_root/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/here_and_root)
 
 This example represents a minimal out-of-source build, which is nevertheless involving several files, due to the inherent complexity of out-of-source builds.
 
@@ -39,7 +39,7 @@ Make the scripts executable and run everything as follows:
 
 ```bash
 chmod +x plan.py sub/plan.py
-stepup -n -w1
+stepup -n 1
 ```
 
 You should get the following terminal output:
@@ -61,19 +61,21 @@ Then you can get this path in any `plan.py` as follows:
 
 ```python
 from stepup.core.api import getenv
-dst = getenv("DST", is_path=True)
+dst = getenv("DST", back=True)
 ```
 
-The `is_path=True` option implies that the variable is a path defined globally.
-If it is a relative path, it will be interpreted relative to the working directory where StepUp was started and will be translated to the working directory of the script calling `getenv`.
+The `back=True` option implies that the variable is a path defined globally.
+If it is a relative path, it will be interpreted relative to the working directory where
+StepUp was started and will be translated to the working directory of the script calling
+[`getenv()`][stepup.core.api.getenv].
 Any variables present in the environment variable will also be substituted once.
 
 
 ## Try the Following
 
 - Modify the scripts `plan.py` and `sub/plan.py` to utilize a `DST` variable as explained above.
-  To achieve this, define `DST` externally, for instance, by starting StepUp as `DST='../public/${HERE}' stepup -n -w1`.
+  To achieve this, define `DST` externally, for instance, by starting StepUp as `DST='../public/${HERE}' stepup -n 1`.
 
 - As a follow-up to the previous point, run StepUp with a different `DST` value.
-  For example: `DST='../out/${HERE}' stepup -n -w1`.
+  For example: `DST='../out/${HERE}' stepup -n 1`.
   You will see that all old output files get cleaned up after the new output is created.

@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -20,29 +20,30 @@
 """Watch for file changes and update the workflow accordingly."""
 
 import asyncio
-import enum
 
 import attrs
 from asyncinotify import Inotify, Mask, Watch
 from path import Path
 
 from .asyncio import stoppable_iterator
+from .enums import Change, DirWatch
 from .file import FileState
+from .hash import FileHash
 from .reporter import ReporterClient
+from .utils import DBLock
 from .workflow import Workflow
 
 __all__ = ("Watcher",)
-
-
-class Change(enum.Enum):
-    UPDATED = 41
-    DELETED = 42
 
 
 @attrs.define
 class Watcher:
     # The workflow to report file events to.
     workflow: Workflow = attrs.field()
+
+    # Lock for workflow database access.
+    # (This is only used for workflow calls that may change the database.)
+    dblock: DBLock = attrs.field()
 
     # The reporter to send progress information to.
     reporter: ReporterClient = attrs.field()
@@ -52,8 +53,12 @@ class Watcher:
     # is a directory to remove from the watcher. When `False`, it should be added.
     dir_queue: asyncio.Queue = attrs.field()
 
-    # The active event is set when the Watcher is ready to watch file system events.
+    # The active event is set when the Watcher is watching file system events.
     active: asyncio.Event = attrs.field(factory=asyncio.Event)
+
+    # The processed event is set when the Watcher has passed all information to the workflow,
+    # after which the run phase can start.
+    processed: asyncio.Event = attrs.field(factory=asyncio.Event)
 
     # The interrupt event is set when other parts of StepUp want to interrupt the watcher.
     interrupt: asyncio.Event = attrs.field(factory=asyncio.Event)
@@ -68,7 +73,7 @@ class Watcher:
 
     # Event set to True when a relevant file event was recorded.
     # This is used by the watch_update and watch_delete functions.
-    files_changed: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+    files_changed_events: set[asyncio.Event] = attrs.field(init=False, factory=set)
 
     async def loop(self, stop_event: asyncio.Event):
         """The main watcher loop.
@@ -92,12 +97,15 @@ class Watcher:
 
     async def watch_changes(self, change_queue: asyncio.Queue):
         """Watch file events. They are sent to the workflow right before the runner is restarted."""
-        self.files_changed.clear()
+        self.processed.clear()
+        for event in self.files_changed_events:
+            event.clear()
 
         # Process changes to static files picked up during watch phase.
         while not change_queue.empty():
             change, path = change_queue.get_nowait()
-            if self.workflow.file_states.get(f"file:{path}") == FileState.STATIC:
+            file = self.workflow.find("file", path)
+            if file is not None and file.get_state() == FileState.STATIC:
                 await self.record_change(change, path)
 
         # Wait for new changes to show up.
@@ -106,13 +114,38 @@ class Watcher:
         async for change, path in stoppable_iterator(change_queue.get, self.interrupt):
             await self.record_change(change, path)
 
+        # Check whether updated files are actually different from their last known state.
+        # If not, they are not sent to the workflow.
+        unchanged = set()
+        new_file_hashes = []
+        for path in self.updated:
+            file = self.workflow.find("file", path)
+            if file is None:
+                continue
+            file_hash = file.get_hash()
+            if file_hash is None:
+                file_hash = FileHash.unknown()
+            change = file_hash.update(path)
+            if change is True:
+                if file.get_state() in (FileState.STATIC, FileState.MISSING):
+                    new_file_hashes.append((path, file_hash))
+                continue
+            await self.reporter("UNCHANGED", path)
+            unchanged.add(path)
+        self.updated.difference_update(unchanged)
+
         # Feed all updates to the worker and clean up.
         self.active.clear()
-        self.workflow.process_watcher_changes(self.deleted, self.updated)
+        async with self.dblock:
+            if len(new_file_hashes) > 0:
+                self.workflow.update_file_hashes(new_file_hashes)
+            self.workflow.process_watcher_changes(self.deleted, self.updated)
         self.deleted.clear()
         self.updated.clear()
-        self.files_changed.clear()
+        for event in self.files_changed_events:
+            event.clear()
         self.interrupt.clear()
+        self.processed.set()
 
     async def record_change(self, change: Change, path: Path):
         """Record a single event taken from the change_queue."""
@@ -121,18 +154,20 @@ class Watcher:
                 await self.reporter("DELETED", path)
                 self.deleted.add(path)
                 self.updated.discard(path)
-                self.files_changed.set()
+                for event in self.files_changed_events:
+                    event.set()
         elif change == Change.UPDATED and path not in self.updated:  # noqa: SIM102
             if self.workflow.is_relevant(path):
                 await self.reporter("UPDATED", path)
                 self.deleted.discard(path)
                 self.updated.add(path)
-                self.files_changed.set()
+                for event in self.files_changed_events:
+                    event.set()
                 # When a directory is added, create a watcher early,
                 # to catch events in this directory.
                 # All files already present are also considered to be updated.
                 if path.endswith("/"):
-                    self.dir_queue.put_nowait((False, path))
+                    self.dir_queue.put_nowait((DirWatch.START, path))
                     for sub_path in path.iterdir():
                         await self.record_change(Change.UPDATED, sub_path)
 
@@ -144,8 +179,9 @@ class AsyncInotifyWrapper:
     dir_queue: asyncio.Queue = attrs.field()
     """The dir_queue provides directories to (un)watch.
 
-    Each item is a tuple `(remove, path)`, where `remove` is True when the path
-    not longer needs to be watched.
+    Each item is a tuple `(dir_watch, path)`,
+    where `dir_watch` is an instance of `DirWatch`
+    to specify whether to start or stop watching a directory.
     """
 
     inotify: Inotify | None = attrs.field(init=False, default=None)
@@ -196,8 +232,8 @@ class AsyncInotifyWrapper:
         stop_event
             Event to interrupt processing items from the dir_queue.
         """
-        async for remove, path in stoppable_iterator(self.dir_queue.get, self.stop_event):
-            if remove:
+        async for dir_watch, path in stoppable_iterator(self.dir_queue.get, self.stop_event):
+            if dir_watch == DirWatch.STOP:
                 watch = self.watches.pop(path, None)
                 if watch is not None:
                     self.inotify.rm_watch(watch)

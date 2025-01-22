@@ -1,0 +1,73 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:README.md
+            supplies   file:backup.md
+            supplies   file:bar.txt
+            supplies   file:foo.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:cp -aT README.md backup.md
+            supplies   step:cp -aT foo.txt bar.txt
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:README.md
+             creates   file:foo.txt
+             creates   step:cp -aT README.md backup.md
+             creates   step:cp -aT foo.txt bar.txt
+
+file:README.md
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp -aT README.md backup.md
+
+file:foo.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp -aT foo.txt bar.txt
+
+step:cp -aT foo.txt bar.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:foo.txt
+             creates   file:bar.txt
+            supplies   file:bar.txt
+
+file:bar.txt
+               state = BUILT
+          created by   step:cp -aT foo.txt bar.txt
+            consumes   file:./
+            consumes   step:cp -aT foo.txt bar.txt
+
+step:cp -aT README.md backup.md
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:README.md
+             creates   file:backup.md
+            supplies   file:backup.md
+
+file:backup.md
+               state = BUILT
+          created by   step:cp -aT README.md backup.md
+            consumes   file:./
+            consumes   step:cp -aT README.md backup.md

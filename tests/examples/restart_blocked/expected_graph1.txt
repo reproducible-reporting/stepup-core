@@ -1,0 +1,94 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:expensive.py
+            supplies   file:final.txt
+            supplies   file:initial.txt
+            supplies   file:input.txt
+            supplies   file:output.txt
+            supplies   file:plan.py
+            supplies   step:./expensive.py
+            supplies   step:./plan.py
+            supplies   step:cp -aT initial.txt input.txt
+            supplies   step:cp -aT output.txt final.txt
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:expensive.py
+             creates   file:initial.txt
+             creates   step:./expensive.py
+             creates   step:cp -aT initial.txt input.txt
+             creates   step:cp -aT output.txt final.txt
+
+file:expensive.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./expensive.py
+
+file:initial.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp -aT initial.txt input.txt
+
+step:cp -aT initial.txt input.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:initial.txt
+             creates   file:input.txt
+            supplies   file:input.txt
+
+file:input.txt
+               state = BUILT
+          created by   step:cp -aT initial.txt input.txt
+            consumes   file:./
+            consumes   step:cp -aT initial.txt input.txt
+            supplies   step:./expensive.py
+
+step:./expensive.py
+               state = PENDING
+               block = True
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:expensive.py
+            consumes   file:input.txt
+             creates   file:output.txt
+            supplies   file:output.txt
+
+file:output.txt
+               state = AWAITED
+          created by   step:./expensive.py
+            consumes   file:./
+            consumes   step:./expensive.py
+            supplies   step:cp -aT output.txt final.txt
+
+step:cp -aT output.txt final.txt
+               state = PENDING
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:output.txt
+             creates   file:final.txt
+            supplies   file:final.txt
+
+file:final.txt
+               state = AWAITED
+          created by   step:cp -aT output.txt final.txt
+            consumes   file:./
+            consumes   step:cp -aT output.txt final.txt

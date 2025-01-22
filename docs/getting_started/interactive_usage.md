@@ -1,19 +1,21 @@
 # Interactive Usage
 
+!!! note
+
+    The command-line options related to interactive usage have changed in StepUp 2.0.0
+
+
 All previous tutorials have run StepUp non-interactively, for the sake of simplicity.
 In practice, this is mainly useful when building projects in batch jobs, e.g., in the cloud.
 When working on a project, interactive usage is more efficient and convenient,
 but requires a little more explanation.
-(For this reason, most of the tutorials use the non-interactive option.)
 
 The [Static Glob](static_glob.md) tutorial is a good example to demonstrate the interactive use of StepUp.
 Running StepUp as follows will not exit the terminal user interface:
 
 ```bash
-stepup
+stepup -w
 ```
-
-In fact, running the `stepup` command without any arguments is the recommended way to run StepUp in most cases.
 
 After the line `PHASE │ watch` appears, StepUp just waits for changes to the (static) files.
 
@@ -33,8 +35,7 @@ to display the supported keys with interactive commands:
 ```
 ───────────────────────────────────── Keys ─────────────────────────────────────
 
-   q = shutdown       d = drain        j = join   g = graph
-   f = from scratch   t = try replay   r = run
+   r = run     q = shutdown     d = drain     j = join     g = graph
 
 ────────────────────────────────────────────────────────────────────────────────
 ```
@@ -64,3 +65,14 @@ Running `./plan.py` again will, in turn, create a new step to copy `src/spam.txt
 The following recording shows the terminal output when starting StepUp from scratch with two workers, changing `src/foo.txt` and re-running, followed by adding `src/spam.txt` and re-running:
 
 <script src="https://asciinema.org/a/657277.js" id="asciicast-657277" async="true"></script>
+
+
+## Watch mode with automatic re-run
+
+If you prefer to avoid switching back and forth between the terminal and the editor,
+you can use the `-W` option instead of `-w`.
+This will automatically re-run the steps half a second after the first file change:
+
+```bash
+stepup -W
+```

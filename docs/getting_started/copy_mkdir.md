@@ -9,7 +9,7 @@ The example below will also be used in the [Automatic Cleaning](automatic_cleani
 
 ## Example
 
-Example source files: [getting_started/copy_mkdir/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/copy_mkdir)
+Example source files: [`docs/getting_started/copy_mkdir/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/copy_mkdir)
 
 Create a file `plan.py` with the following contents:
 
@@ -21,7 +21,7 @@ Make it executable and run it with StepUp as follows:
 
 ```bash
 chmod +x plan.py
-stepup -n -w1
+stepup -n 1
 ```
 You should get the following output:
 
@@ -33,9 +33,9 @@ You should get the following output:
 ## Notes
 
 - StepUp expects all directories to end with a trailing delimiter (`/`).
-  In the example above, `mkdir` and `copy` have a `sub/` argument, which is a directory.
+  In the example above, `mkdir()` and `copy()` have a `sub/` argument, which is a directory.
   This imposes some clarity on the `plan.py` file and improves readability.
 
-- The second argument of `copy` can also be a file.
+- The second argument of `copy()` can also be a file.
   For example, replace `sub/` with `sub/hello.txt`, and you will get exactly the same result.
   You can also use a different filename, such as `sub/hi.txt`.

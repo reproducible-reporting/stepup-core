@@ -1,0 +1,13 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ helper.py (digest 0aba7559 ➜ 0ca8755c, size 38 ➜ 39)
+   STARTUP │ Scanning initial database for new nglob matches
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./work.py --out=work_out.json --amend-out
+   SUCCESS │ ./work.py --out=work_out.json --amend-out
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

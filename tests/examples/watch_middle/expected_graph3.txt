@@ -1,0 +1,66 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:another.txt
+            supplies   file:between.txt
+            supplies   file:original.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:cp between.txt another.txt
+            supplies   step:cp original.txt between.txt
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:original.txt
+             creates   step:cp between.txt another.txt
+             creates   step:cp original.txt between.txt
+
+file:another.txt
+               state = BUILT
+          created by   step:cp between.txt another.txt
+            consumes   file:./
+            consumes   step:cp between.txt another.txt
+
+file:original.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp original.txt between.txt
+
+step:cp between.txt another.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:between.txt
+             creates   file:another.txt
+            supplies   file:another.txt
+
+file:between.txt
+               state = BUILT
+          created by   step:cp original.txt between.txt
+            consumes   file:./
+            consumes   step:cp original.txt between.txt
+            supplies   step:cp between.txt another.txt
+
+step:cp original.txt between.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:original.txt
+             creates   file:between.txt
+            supplies   file:between.txt

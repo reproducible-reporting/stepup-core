@@ -1,0 +1,15 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./plan.py  # wd=bar/
+   SUCCESS │ ./plan.py  # wd=bar/
+     START │ cp -aT ../inp.txt ../out.txt  # wd=bar/
+   SUCCESS │ cp -aT ../inp.txt ../out.txt  # wd=bar/
+     START │ cp -aT ../foo/inp.txt ../foo/out.txt  # wd=bar/
+   SUCCESS │ cp -aT ../foo/inp.txt ../foo/out.txt  # wd=bar/
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

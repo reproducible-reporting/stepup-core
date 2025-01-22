@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -25,14 +25,14 @@ import attrs
 
 if TYPE_CHECKING:
     from .scheduler import Scheduler
+    from .step import Step
     from .worker import WorkerClient
-    from .workflow import Workflow
 
 
-__all__ = ("Job", "SetPoolJob", "ValidateAmendedJob", "TryReplayJob", "RunJob")
+__all__ = ("ExecuteJob", "Job", "SetPoolJob", "TrySkipJob", "ValidateAmendedJob")
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class Job:
     @property
     def pool(self) -> str | None:
@@ -46,11 +46,11 @@ class Job:
         """Return a coroutine, of which the runner will make an asyncio.Task."""
         raise NotImplementedError
 
-    def finalize(self, result, scheduler: "Scheduler", workflow: "Workflow"):
+    def finalize(self, result, scheduler: "Scheduler"):
         raise NotImplementedError
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class SetPoolJob(Job):
     """This is a stub: the scheduler uses it to set the pool, never executes on the worker."""
 
@@ -67,11 +67,11 @@ class SetPoolJob(Job):
         return (self._pool, self._size)
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class ValidateAmendedJob(Job):
     """Validate that amended inputs have not changed yet, or schedule for rerun."""
 
-    _step_key: str = attrs.field()
+    _step: "Step" = attrs.field()
     _pool: str | None = attrs.field()
 
     @property
@@ -83,51 +83,57 @@ class ValidateAmendedJob(Job):
 
     @property
     def name(self) -> str:
-        return f"validate amended {self._step_key}"
+        return f"ValidateAmended {self._step.label}"
 
     def coro(self, worker: "WorkerClient"):
-        return worker.validate_amended_job(self._step_key)
+        return worker.validate_amended_job(self._step)
 
-    def finalize(self, must_run: bool, scheduler: "Scheduler", workflow: "Workflow"):
+    def finalize(self, must_run: bool, scheduler: "Scheduler"):
         if must_run:
-            run_job = RunJob(self._step_key, self._pool)
+            run_job = ExecuteJob(self._step, self._pool)
             scheduler.inqueue.put_nowait(run_job)
             scheduler.changed.set()
 
 
-@attrs.define
-class TryReplayJob(Job):
-    """Simulate the execution of a job, if inputs and outputs have not changed."""
+@attrs.define(frozen=True)
+class TrySkipJob(Job):
+    """Check if the outputs of the step are still valid. If so, just skip the execution.
 
-    _step_key: str = attrs.field()
+    The two main difference with a ExecuteJob are:
+    1. The job is not actually executed.
+    2. The job is not scheduled to run in a pool.
+
+    The second point is the reason skipping a step and running a step are not done in a single job.
+    This way, skipping jobs does not congest any pool.
+    """
+
+    _step: "Step" = attrs.field()
     _pool: str | None = attrs.field()
 
     @property
     def pool(self) -> str | None:
-        # A replay never has pool restrictions.
-        # The pool attribute is only used to schedule a real run in the correct
-        # pool when a simple replay does not work due to changed inputs etc.
+        # A skip never has pool restrictions.
         return None
 
     @property
     def name(self) -> str:
-        return f"replay {self._step_key}"
+        return f"TrySkip {self._step.label}"
 
     def coro(self, worker: "WorkerClient"):
-        return worker.try_replay_job(self._step_key)
+        return worker.try_skip_job(self._step)
 
-    def finalize(self, must_run: bool, scheduler: "Scheduler", workflow: "Workflow"):
+    def finalize(self, must_run: bool, scheduler: "Scheduler"):
         if must_run:
-            run_job = RunJob(self._step_key, self._pool)
+            run_job = ExecuteJob(self._step, self._pool)
             scheduler.inqueue.put_nowait(run_job)
             scheduler.changed.set()
 
 
-@attrs.define
-class RunJob(Job):
+@attrs.define(frozen=True)
+class ExecuteJob(Job):
     """Actually execute a job."""
 
-    _step_key: str = attrs.field()
+    _step: "Step" = attrs.field()
     _pool: str | None = attrs.field()
 
     @property
@@ -136,12 +142,12 @@ class RunJob(Job):
 
     @property
     def name(self) -> str:
-        return f"run {self._step_key}"
+        return f"Execute {self._step.label}"
 
     def coro(self, worker: "WorkerClient"):
-        return worker.run_job(self._step_key)
+        return worker.run_job(self._step)
 
-    def finalize(self, _, scheduler: "Scheduler", workflow: "Workflow"):
+    def finalize(self, _, scheduler: "Scheduler"):
         # When a run job has completed, it does not need to create a follow-up job.
         # This is the last possible job for a given step to run.
         pass

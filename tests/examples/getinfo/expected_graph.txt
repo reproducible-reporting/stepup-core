@@ -1,0 +1,130 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:README.md
+            supplies   file:inp1.txt
+            supplies   file:out0.txt
+            supplies   file:out2.txt
+            supplies   file:plan.py
+            supplies   file:sub/
+            supplies   file:vol1.txt
+            supplies   file:vol2.txt
+            supplies   step:./getinfo.py  # wd=sub/
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:README.md
+             creates   file:inp1.txt
+             creates   file:sub/
+             creates   file:sub/getinfo.py
+             creates   file:sub/inp0.txt
+             creates   step:./getinfo.py  # wd=sub/
+
+file:README.md
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./getinfo.py  # wd=sub/
+
+file:inp1.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./getinfo.py  # wd=sub/
+
+file:sub/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   file:sub/getinfo.py
+            supplies   file:sub/inp0.txt
+            supplies   file:sub/out1.txt
+            supplies   file:sub/vol0.txt
+            supplies   step:./getinfo.py  # wd=sub/
+
+file:sub/getinfo.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:sub/
+
+file:sub/inp0.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:sub/
+            supplies   step:./getinfo.py  # wd=sub/
+
+step:./getinfo.py  # wd=sub/
+               state = SUCCEEDED
+             env_var = BAR
+                     = EGG [amended]
+                     = FOO
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:README.md
+            consumes   file:inp1.txt [amended]
+            consumes   file:sub/
+            consumes   file:sub/inp0.txt
+             creates   file:out0.txt
+             creates   file:out2.txt
+             creates   file:sub/out1.txt
+             creates   file:sub/vol0.txt
+             creates   file:vol1.txt
+             creates   file:vol2.txt
+            supplies   file:out0.txt
+            supplies   file:out2.txt [amended]
+            supplies   file:sub/out1.txt
+            supplies   file:sub/vol0.txt
+            supplies   file:vol1.txt
+            supplies   file:vol2.txt [amended]
+
+file:out0.txt
+               state = BUILT
+          created by   step:./getinfo.py  # wd=sub/
+            consumes   file:./
+            consumes   step:./getinfo.py  # wd=sub/
+
+file:sub/out1.txt
+               state = BUILT
+          created by   step:./getinfo.py  # wd=sub/
+            consumes   file:sub/
+            consumes   step:./getinfo.py  # wd=sub/
+
+file:sub/vol0.txt
+               state = VOLATILE
+          created by   step:./getinfo.py  # wd=sub/
+            consumes   file:sub/
+            consumes   step:./getinfo.py  # wd=sub/
+
+file:vol1.txt
+               state = VOLATILE
+          created by   step:./getinfo.py  # wd=sub/
+            consumes   file:./
+            consumes   step:./getinfo.py  # wd=sub/
+
+file:out2.txt
+               state = BUILT
+          created by   step:./getinfo.py  # wd=sub/
+            consumes   file:./
+            consumes   step:./getinfo.py  # wd=sub/
+
+file:vol2.txt
+               state = VOLATILE
+          created by   step:./getinfo.py  # wd=sub/
+            consumes   file:./
+            consumes   step:./getinfo.py  # wd=sub/

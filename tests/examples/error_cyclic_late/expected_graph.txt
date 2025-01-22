@@ -1,0 +1,45 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   (file:first)
+            supplies   file:plan.py
+            supplies   file:second
+            supplies   step:./plan.py
+            supplies   step:cat first > second
+
+step:./plan.py
+               state = FAILED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:cat first > second
+
+step:cat first > second
+               state = PENDING
+          created by   step:./plan.py
+            consumes   (file:first)
+            consumes   file:./
+             creates   file:second
+            supplies   file:second
+
+(file:first)
+               state = AWAITED
+            consumes   file:./
+            supplies   step:cat first > second
+
+file:second
+               state = AWAITED
+          created by   step:cat first > second
+            consumes   file:./
+            consumes   step:cat first > second

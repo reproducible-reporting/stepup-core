@@ -1,0 +1,62 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:analyzed.txt
+            supplies   file:data.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:cat analyzed.txt
+            supplies   step:grep -i foo data.txt > analyzed.txt
+
+step:./plan.py
+               state = SUCCEEDED
+                 ngm = ['data.txt'] {}
+          inp_digest = same
+           explained = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:data.txt
+             creates   step:cat analyzed.txt
+             creates   step:grep -i foo data.txt > analyzed.txt
+
+file:analyzed.txt
+               state = BUILT
+          created by   step:grep -i foo data.txt > analyzed.txt
+            consumes   file:./
+            consumes   step:grep -i foo data.txt > analyzed.txt
+            supplies   step:cat analyzed.txt
+
+step:cat analyzed.txt
+               state = SUCCEEDED
+          inp_digest = same
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:analyzed.txt
+
+file:data.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:grep -i foo data.txt > analyzed.txt
+
+step:grep -i foo data.txt > analyzed.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:data.txt
+             creates   file:analyzed.txt
+            supplies   file:analyzed.txt

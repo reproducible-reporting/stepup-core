@@ -1,0 +1,102 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:bunch.py
+            supplies   file:plan.py
+            supplies   file:sub/
+            supplies   step:./bunch.py
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:bunch.py
+             creates   step:./bunch.py
+
+file:bunch.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./bunch.py
+
+step:./bunch.py
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:bunch.py
+             creates   file:sub/
+             creates   file:sub/one/
+             creates   file:sub/one/bar/
+             creates   file:sub/one/bar/text
+             creates   file:sub/other/
+             creates   file:sub/other/foo/
+             creates   file:sub/other/foo/text
+            supplies   file:sub/
+            supplies   file:sub/one/ [amended]
+            supplies   file:sub/one/bar/ [amended]
+            supplies   file:sub/one/bar/text [amended]
+            supplies   file:sub/other/
+            supplies   file:sub/other/foo/
+            supplies   file:sub/other/foo/text
+
+file:sub/
+               state = BUILT
+          created by   step:./bunch.py
+            consumes   file:./
+            consumes   step:./bunch.py
+            supplies   file:sub/one/
+            supplies   file:sub/other/
+
+file:sub/other/
+               state = BUILT
+          created by   step:./bunch.py
+            consumes   file:sub/
+            consumes   step:./bunch.py
+            supplies   file:sub/other/foo/
+
+file:sub/other/foo/
+               state = BUILT
+          created by   step:./bunch.py
+            consumes   file:sub/other/
+            consumes   step:./bunch.py
+            supplies   file:sub/other/foo/text
+
+file:sub/other/foo/text
+               state = BUILT
+          created by   step:./bunch.py
+            consumes   file:sub/other/foo/
+            consumes   step:./bunch.py
+
+file:sub/one/
+               state = BUILT
+          created by   step:./bunch.py
+            consumes   file:sub/
+            consumes   step:./bunch.py
+            supplies   file:sub/one/bar/
+
+file:sub/one/bar/
+               state = BUILT
+          created by   step:./bunch.py
+            consumes   file:sub/one/
+            consumes   step:./bunch.py
+            supplies   file:sub/one/bar/text
+
+file:sub/one/bar/text
+               state = BUILT
+          created by   step:./bunch.py
+            consumes   file:sub/one/bar/
+            consumes   step:./bunch.py

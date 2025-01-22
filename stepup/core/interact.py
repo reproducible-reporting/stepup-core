@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -98,7 +98,7 @@ The following `keybindings.json` file will bind `ctrl+d` to run the task:
 
 from .api import RPC_CLIENT, translate
 
-__all__ = ("run", "cleanup", "graph", "watch_update", "watch_delete", "wait", "join")
+__all__ = ("cleanup", "graph", "join", "run", "wait", "watch_delete", "watch_update")
 
 
 def run():

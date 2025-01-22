@@ -1,0 +1,66 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:add.py
+            supplies   file:add1_out.json
+            supplies   file:add2_out.json
+            supplies   file:plan.py
+            supplies   step:./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
+            supplies   step:./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:add.py
+             creates   step:./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
+             creates   step:./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out
+
+file:add.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
+            supplies   step:./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out
+
+step:./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:add.py
+             creates   file:add1_out.json
+            supplies   file:add1_out.json [amended]
+
+step:./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:add.py
+             creates   file:add2_out.json
+            supplies   file:add2_out.json [amended]
+
+file:add1_out.json
+               state = BUILT
+          created by   step:./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
+            consumes   file:./
+            consumes   step:./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
+
+file:add2_out.json
+               state = BUILT
+          created by   step:./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out
+            consumes   file:./
+            consumes   step:./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out

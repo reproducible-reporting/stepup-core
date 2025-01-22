@@ -9,7 +9,7 @@ One cannot modify environment variables while StepUp is running.
 
 ## Example
 
-Example source files: [advanced_topics/environment_variables/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/environment_variables)
+Example source files: [`docs/advanced_topics/environment_variables/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/environment_variables)
 
 Create the following `plan.py`:
 
@@ -21,7 +21,7 @@ Make it executable and run StepUp with a specific value of the variable:
 
 ```bash
 chmod +x plan.py
-MYVAR=foo stepup -n -w1
+MYVAR=foo stepup -n 1
 ```
 
 You will see the following output:
@@ -38,8 +38,8 @@ as discussed in the [tutorial on dependencies](../getting_started/dependencies.m
 
 ## Try the Following
 
-- Repeat `MYVAR=foo stepup -n -w1` without making changes.
+- Repeat `MYVAR=foo stepup -n 1` without making changes.
   You will see that the `echo` step is skipped as expected.
 
-- Now run `MYVAR=bar stepup -n -w1`.
+- Now run `MYVAR=bar stepup -n 1`.
   This time, the variable change will cause the step to be executed.

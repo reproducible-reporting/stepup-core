@@ -1,0 +1,63 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+   WARNING │ 2 step(s) remained pending due to incomplete requirements
+─────────────────────────────── Orphaned inputs ────────────────────────────────
+             AWAITED  input1.txt
+             AWAITED  input2.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               cp input1.txt output1.txt
+Working directory     ./
+Inputs        STATIC  ./
+             AWAITED  (input1.txt)
+Outputs      AWAITED  output1.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               cp input2.txt output2.txt
+Working directory     ./
+Inputs        STATIC  ./
+             AWAITED  (input2.txt)
+Outputs      AWAITED  output2.txt
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+   DELETED │ plan.py
+     PHASE │ run
+   WARNING │ 3 step(s) remained pending due to incomplete requirements
+──────────────────────────────── Missing inputs ────────────────────────────────
+             MISSING  plan.py
+─────────────────────────────── Orphaned inputs ────────────────────────────────
+             AWAITED  input1.txt
+             AWAITED  input2.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               ./plan.py
+Working directory     ./
+Declares        STATIC  static.txt
+Inputs       MISSING  plan.py
+              STATIC  ./
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               cp input1.txt output1.txt
+Working directory     ./
+Inputs        STATIC  ./
+             AWAITED  (input1.txt)
+Outputs      AWAITED  output1.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               cp input2.txt output2.txt
+Working directory     ./
+Inputs        STATIC  ./
+             AWAITED  (input2.txt)
+Outputs      AWAITED  output2.txt
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+   UPDATED │ plan.py
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

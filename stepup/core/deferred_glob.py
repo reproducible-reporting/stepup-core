@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -19,18 +19,14 @@
 # --
 """Deferred patterns for static files."""
 
-from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING
 
 import attrs
 
 from .cascade import Node
-from .nglob import NGlobMulti
-from .utils import classproperty
 
 if TYPE_CHECKING:
-    from .workflow import Workflow
-
+    pass
 
 __all__ = ("DeferredGlob",)
 
@@ -39,50 +35,21 @@ __all__ = ("DeferredGlob",)
 class DeferredGlob(Node):
     """A pattern to make files static when they are used as input."""
 
-    _ngm: NGlobMulti = attrs.field()
-
-    #
-    # Getters
-    #
-
-    @classproperty
-    def kind(cls):  # noqa: N805
+    @classmethod
+    def kind(cls) -> str:
+        """Lower-case prefix of the key string representing a node."""
         return "dg"
 
-    @property
-    def ngm(self) -> NGlobMulti:
-        return self._ngm
+    def add_supplier(self, supplier: Node) -> int:
+        raise NotImplementedError("A deferred glob does not use suppliers.")
 
-    #
-    # Initialization, serialization and formatting
-    #
+    def lost_product(self):
+        """React to a product node being orphaned.
 
-    @staticmethod
-    def valid_ngm(ngm: NGlobMulti):
-        return len(ngm.used_names) == 0 and len(ngm.subs) == 0
-
-    @classmethod
-    def key_tail(cls, data: dict[str, Any], strings: list[str] | None = None) -> str:
-        """Subclasses must implement the key tail and accept both JSON or attrs dicts."""
-        ngm = data.get("_ngm")
-        if ngm is None:
-            ngm_data = data.get("g")
-            if ngm_data is None:
-                raise ValueError(f"Cannot derive key_tail from the data argument: {data}")
-            ngm = NGlobMulti.structure(ngm_data, strings)
-        if not cls.valid_ngm(ngm):
-            raise ValueError("Deferred globs cannot contain named wildcards")
-        return " ".join(repr(ngs.pattern) for ngs in ngm.nglob_singles)
-
-    @classmethod
-    def structure(cls, workflow: "Workflow", strings: list[str], data: dict) -> Self:
-        ngm = NGlobMulti.structure(data["g"], strings)
-        if not cls.valid_ngm(ngm):
-            raise ValueError("Deferred globs cannot contain named wildcards")
-        return cls(ngm)
-
-    def unstructure(self, workflow: "Workflow", lookup: dict[str, int]) -> dict:
-        return {"g": self.ngm.unstructure(lookup)}
-
-    def format_properties(self, workflow: "Workflow") -> Iterator[tuple[str, str]]:
-        yield from []
+        Completely remove this deferred glob, making reuse impossible.
+        """
+        for product in self.products():
+            product.orphan()
+        self.orphan()
+        self.clean()
+        self.con.execute("DELETE FROM node WHERE i = ?", (self.i,))

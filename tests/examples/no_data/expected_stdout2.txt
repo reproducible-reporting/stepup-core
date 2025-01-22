@@ -1,0 +1,15 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Scanning initial database for new nglob matches
+   UPDATED │ data.txt
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ grep -i foo data.txt > analyzed.txt
+   SUCCESS │ grep -i foo data.txt > analyzed.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

@@ -1,0 +1,98 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:data+0.3.txt
+            supplies   file:data-1.2.txt
+            supplies   file:helper.py
+            supplies   file:plan.py
+            supplies   file:settings.py
+            supplies   file:work.py
+            supplies   step:./plan.py
+            supplies   step:./work.py plan
+            supplies   step:./work.py run -- +0.3
+            supplies   step:./work.py run -- -1.2
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:helper.py
+             creates   file:settings.py
+             creates   file:work.py
+             creates   step:./work.py plan
+
+file:helper.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./work.py plan
+            supplies   step:./work.py run -- +0.3
+            supplies   step:./work.py run -- -1.2
+
+file:settings.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./work.py plan
+
+file:work.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./work.py plan
+            supplies   step:./work.py run -- +0.3
+            supplies   step:./work.py run -- -1.2
+
+step:./work.py plan
+               state = SUCCEEDED
+          inp_digest = same
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:helper.py [amended]
+            consumes   file:settings.py [amended]
+            consumes   file:work.py
+             creates   step:./work.py run -- +0.3
+             creates   step:./work.py run -- -1.2
+
+step:./work.py run -- +0.3
+               state = SUCCEEDED
+          created by   step:./work.py plan
+            consumes   file:./
+            consumes   file:helper.py [amended]
+            consumes   file:work.py
+             creates   file:data+0.3.txt
+            supplies   file:data+0.3.txt
+
+file:data+0.3.txt
+               state = BUILT
+          created by   step:./work.py run -- +0.3
+            consumes   file:./
+            consumes   step:./work.py run -- +0.3
+
+step:./work.py run -- -1.2
+               state = SUCCEEDED
+          created by   step:./work.py plan
+            consumes   file:./
+            consumes   file:helper.py [amended]
+            consumes   file:work.py
+             creates   file:data-1.2.txt
+            supplies   file:data-1.2.txt
+
+file:data-1.2.txt
+               state = BUILT
+          created by   step:./work.py run -- -1.2
+            consumes   file:./
+            consumes   step:./work.py run -- -1.2

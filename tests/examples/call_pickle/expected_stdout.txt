@@ -1,0 +1,16 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./work.py --inp=work_inp.pickle --out=work_out.pickle --amend-out
+   SUCCESS │ ./work.py --inp=work_inp.pickle --out=work_out.pickle --amend-out
+     START │ python -c 'import pickle; print(pickle.load(open("work_out.pickle", "rb")))'
+   SUCCESS │ python -c 'import pickle; print(pickle.load(open("work_out.pickle", "rb")))'
+─────────────────────────────── Standard output ────────────────────────────────
+4.2
+────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

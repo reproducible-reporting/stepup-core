@@ -1,0 +1,20 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ plan.py (digest 41247fbf ➜ b95fa7fb, size 262 ➜ 250)
+   STARTUP │ Scanning initial database for new nglob matches
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./expensive.py
+   SUCCESS │ ./expensive.py
+─────────────────────────────── Standard output ────────────────────────────────
+The initial file.
+────────────────────────────────────────────────────────────────────────────────
+     START │ cp -aT output.txt final.txt
+   SUCCESS │ cp -aT output.txt final.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

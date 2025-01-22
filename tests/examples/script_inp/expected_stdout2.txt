@@ -1,0 +1,19 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ config.txt (digest b44f3e9e ➜ 41683e13, size 9 ➜ 11)
+   STARTUP │ Scanning initial database for new nglob matches
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./script.py plan
+   SUCCESS │ ./script.py plan
+     START │ ./script.py run -- egg
+   SUCCESS │ ./script.py run -- egg
+     START │ ./script.py run -- spam
+   SUCCESS │ ./script.py run -- spam
+  DIRECTOR │ Trying to delete 2 outdated output(s).
+     CLEAN │ out_foo.txt
+     CLEAN │ out_bar.txt
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

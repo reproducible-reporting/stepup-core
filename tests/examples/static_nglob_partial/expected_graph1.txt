@@ -1,0 +1,67 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:head_x.txt
+            supplies   file:head_y.txt
+            supplies   file:paste_x.txt
+            supplies   file:plan.py
+            supplies   file:tail_x.txt
+            supplies   step:./plan.py
+            supplies   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+
+step:./plan.py
+               state = SUCCEEDED
+                 ngm = ['head_${*char}.txt', 'tail_${*char}.txt'] {'char': '?'}
+          inp_digest = same
+           explained = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:head_x.txt
+             creates   file:head_y.txt
+             creates   file:tail_x.txt
+             creates   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+
+file:head_x.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+
+file:head_y.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+
+file:tail_x.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+
+step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:head_x.txt
+            consumes   file:tail_x.txt
+             creates   file:paste_x.txt
+            supplies   file:paste_x.txt
+
+file:paste_x.txt
+               state = BUILT
+          created by   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+            consumes   file:./
+            consumes   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt

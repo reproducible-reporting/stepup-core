@@ -27,7 +27,7 @@ Named globs are often useful when working with files distributed over multiple d
 
 ## Example
 
-Example source files: [advanced_topics/static_named_glob/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/static_named_glob)
+Example source files: [`docs/advanced_topics/static_named_glob/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/static_named_glob)
 
 In the example below, each directory represents a chapter from course notes, containing source files for individual sections.
 In a realistic setting, one could envision building a PDF presentations from LaTeX sources instead.
@@ -61,7 +61,7 @@ Make the plan executable and run StepUp:
 
 ```bash
 chmod +x plan.py
-stepup -n -w1
+stepup -n 1
 ```
 
 You should get the following output:

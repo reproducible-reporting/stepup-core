@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -25,7 +25,10 @@ import contextlib
 import os
 import resource
 import shlex
+import signal
 import sys
+from copy import copy
+from functools import partial
 from time import perf_counter
 
 import attrs
@@ -33,15 +36,17 @@ from path import Path
 
 from stepup.core.utils import check_inp_path
 
+from .enums import StepState
 from .exceptions import RPCError
 from .file import FileState
-from .hash import FileHash, StepHash, compare_step_hashes, create_step_hash
+from .hash import FileHash, StepHash, compare_step_hashes, report_hash_diff
 from .reporter import ReporterClient
 from .rpc import AsyncRPCClient, allow_rpc, serve_stdio_rpc
-from .step import Step, StepState
+from .step import Step
+from .utils import DBLock
 from .workflow import Workflow
 
-__all__ = ("WorkerClient", "WorkerStep", "WorkerHandler")
+__all__ = ("WorkerClient", "WorkerHandler", "WorkerStep")
 
 
 #
@@ -55,6 +60,9 @@ class WorkerClient:
 
     # The workflow that the client is interacting with.
     workflow: Workflow = attrs.field()
+
+    # Lock for workflow database access.
+    dblock: DBLock = attrs.field()
 
     # A reporter to send progress and terminal output to.
     reporter: ReporterClient = attrs.field()
@@ -104,12 +112,12 @@ class WorkerClient:
     # Functions called by jobs
     #
 
-    async def validate_amended_job(self, step_key: str) -> bool:
+    async def validate_amended_job(self, step: Step) -> bool:
         """Test if the inputs (hashes) have changed, which would invalidate the amended step info.
 
         Parameters
         ----------
-        step_key
+        step
             The step whose amended inputs need validation.
 
         Returns
@@ -118,40 +126,44 @@ class WorkerClient:
             True if the amended inputs are invalid.
             This can be fixed by running the step again.
         """
-        # Create the step.
-        step = self.workflow.get_step(step_key)
-        if step.hash is None:
-            # When there is no hash, we cannot check if the inputs have changed.
-            # It needs to run anyway
-            step.clean_before_run(self.workflow)
-            step.discard_recording()
-            return True
+        async with self.dblock:
+            step_hash = step.get_hash()
+            if step_hash is None:
+                # When there is no hash, we cannot check if the inputs have changed.
+                # It needs to run anyway.
+                step.clean_before_run()
+                return True
 
         # Compute the hash and check for changes in inputs
         await self.new_step(step)
-        new_step_hash = await self.update_hashes(step, log_missing_out=False)
+        new_step_hash = await self.compute_step_hash(
+            step, log_missing_out=False, update_out_hashes=False
+        )
         if new_step_hash is None:
-            raise AssertionError("update_hashes returned None")
-        if step.hash.inp_digest != new_step_hash.inp_digest:
+            raise AssertionError("compute_step_hash returned None")
+        if step_hash.inp_digest != new_step_hash.inp_digest:
             # Inputs have changed, so must run.
-            await self.client.call.outdated_amended(step.hash, new_step_hash)
-            step.clean_before_run(self.workflow)
-            step.discard_recording()
+            await self.client.call.outdated_amended(step_hash, new_step_hash)
+            async with self.dblock:
+                step.clean_before_run()
+                step.delete_hash()
             return True
 
         # No inputs have changed, send back to scheduler without making a fuzz.
-        step.set_state(self.workflow, StepState.PENDING)
-        await self.reporter.update_step_counts(self.workflow.get_step_counters())
+        async with self.dblock:
+            step.set_state(StepState.PENDING)
+            step.queue_if_appropriate()
+            step_counts = self.workflow.get_step_counts()
+        await self.reporter.update_step_counts(step_counts)
         await self.client.call.valid_amended()
-        step.queue_if_appropriate(self.workflow)
         return False
 
-    async def try_replay_job(self, step_key: str) -> bool:
-        """Try skipping a step and replaying the recorded actions.
+    async def try_skip_job(self, step: Step) -> bool:
+        """Try skipping a step.
 
         Parameters
         ----------
-        step_key
+        step
             The step to skip (if outputs are up to date).
 
         Returns
@@ -159,61 +171,67 @@ class WorkerClient:
         must_run
             True if skipping failed and the steps needs to be rescheduled for running immediately.
         """
-        step = self.workflow.get_step(step_key)
-        if step.hash is None:
-            raise AssertionError("Step without hash cannot be replayed")
-        if step.recording is None:
-            raise AssertionError("Step without recording cannot be replayed")
+        async with self.dblock:
+            step_hash = step.get_hash()
+        if step_hash is None:
+            raise AssertionError("Step without hash cannot be skipped")
         await self.new_step(step)
         if not await self.inputs_valid(step):
-            return False
-        new_step_hash = await self.update_hashes(step, log_missing_out=True)
+            return True
+        new_step_hash = await self.compute_step_hash(
+            step, log_missing_out=True, update_out_hashes=False
+        )
         if new_step_hash is None:
-            raise AssertionError("update_hashes returned None")
+            raise AssertionError("compute_step_hash returned None")
         # If files changes or outputs are missing, skipping is not possible
         success = await self.client.call.get_success()
-        if step.hash.digest != new_step_hash.digest or not success:
-            await self.client.call.noskip(step.hash, new_step_hash)
+        if step_hash.digest != new_step_hash.digest or not success:
+            await self.client.call.noskip(step_hash, new_step_hash)
             return True
         # All checks passed. No need to run the step, just simulate the creation of the products.
-        step.clean_before_run(self.workflow)
-        step.replay_amend(self.workflow)
-        step.replay_rest(self.workflow)
-        await self.reporter.update_step_counts(self.workflow.get_step_counters())
-        await self.client.call.skip(step.hash)
+        await self.client.call.skip(step_hash)
+        step.completed(True, new_step_hash)
+        async with self.dblock:
+            step_counts = self.workflow.get_step_counts()
+        await self.reporter.update_step_counts(step_counts)
         return False
 
-    async def run_job(self, step_key: str):
+    async def run_job(self, step: Step):
         """Run a step.
 
         Parameters
         ----------
-        step_key
+        step
             The step to run.
         """
         # Create the step
-        step = self.workflow.get_step(step_key)
         await self.new_step(step)
         if not await self.inputs_valid(step):
             return
 
         # Run the step
-        step.set_state(self.workflow, StepState.RUNNING)
-        await self.reporter.update_step_counts(self.workflow.get_step_counters())
-        step.clean_before_run(self.workflow)
+        async with self.dblock:
+            step.set_state(StepState.RUNNING)
+            step.clean_before_run()
+            step_counts = self.workflow.get_step_counts()
+        await self.reporter.update_step_counts(step_counts)
         await self.client.call.run()
 
         # Check the result.
         # Always updating hashes, even for failed commands:
         # This way, outputs can be removed safely if they are not needed anymore.
-        new_step_hash = await self.update_hashes(step, log_missing_out=True)
+        new_step_hash = await self.compute_step_hash(
+            step, log_missing_out=True, update_out_hashes=True
+        )
         success = await self.client.call.get_success()
-        missing_amended = step.completed(self.workflow, success, new_step_hash)
-        await self.reporter.update_step_counts(self.workflow.get_step_counters())
+        async with self.dblock:
+            rescheduled_info = step.completed(success, new_step_hash)
+            step_counts = self.workflow.get_step_counts()
+        await self.reporter.update_step_counts(step_counts)
 
         # Report reason for rescheduling if relevant
-        if len(missing_amended) > 0:
-            await self.client.call.list_rescheduled(missing_amended)
+        if rescheduled_info != "":
+            await self.client.call.rescheduled(rescheduled_info)
         await self.client.call.report()
 
     #
@@ -222,36 +240,66 @@ class WorkerClient:
 
     async def new_step(self, step: Step):
         """Let the worker know what step it will be working on."""
-        await self.client.call.new_step(step.key, step.command, Path(step.workdir))
+        async with self.dblock:
+            command, workdir = step.get_command_workdir()
+        await self.client.call.new_step(step.key(), command, workdir)
 
     async def inputs_valid(self, step: Step):
-        """Return True all inputs are present, files are files and directories are directories."""
-        inp_paths = step.get_inp_paths(self.workflow, state=True)
+        """Return True when all inputs are present and valid.
+
+        Files must be existing files and directories must be existing directories."""
+        async with self.dblock:
+            inp_paths = list(step.inp_paths(yield_state=True))
         if not await self.client.call.inputs_valid(inp_paths):
-            rescheduled = step.completed(self.workflow, False, None)
-            if rescheduled:
+            async with self.dblock:
+                rescheduled_info = step.completed(False, None)
+                step_counts = self.workflow.get_step_counts()
+            if rescheduled_info != "":
                 raise AssertionError("Step rescheduled while inputs are invalid.")
-            await self.reporter.update_step_counts(self.workflow.get_step_counters())
+            await self.reporter.update_step_counts(step_counts)
             await self.client.call.report()
             return False
         return True
 
-    async def update_hashes(self, step: Step, *, log_missing_out: bool) -> StepHash:
-        """Compute new step hash, with updated file hashes and env vars."""
-        new_inp_hashes, new_out_hashes, new_step_hash = await self.client.call.update_hashes(
-            step.get_inp_paths(self.workflow, file_hash=True),
-            step.get_out_paths(self.workflow, file_hash=True),
-            list(step.initial_env_vars | step.amended_env_vars),
+    async def compute_step_hash(
+        self, step: Step, *, log_missing_out: bool, update_out_hashes: bool
+    ) -> StepHash:
+        """Compute new step hash, with updated file hashes and env vars.
+
+        Parameters
+        ----------
+        step
+            The step to compute the hash for.
+        log_missing_out
+            Log missing output files, which should have been created by the step.
+        update_out_hashes
+            Update the hashes of the output files, only relevant after a successful or failed run.
+
+        Returns
+        -------
+        new_step_hash
+            The newly computed hash of the step.
+        """
+        async with self.dblock:
+            inp_paths = list(step.inp_paths(yield_hash=True))
+            out_paths = list(step.out_paths(yield_hash=True))
+            env_vars = list(step.env_vars())
+        changed_out_hashes, new_step_hash = await self.client.call.compute_step_hash(
+            inp_paths,
+            out_paths,
+            env_vars,
             log_missing_out,
         )
-        for path, file_hash in new_inp_hashes:
-            self.workflow.set_file_hash(path, file_hash)
-        for path, file_hash in new_out_hashes:
-            self.workflow.set_file_hash(path, file_hash)
+        if update_out_hashes:
+            async with self.dblock:
+                self.workflow.update_file_hashes(changed_out_hashes)
         return new_step_hash
 
     async def shutdown(self):
         await self.client.call.shutdown()
+
+    async def kill(self, sig: int):
+        await self.client.call.kill(sig)
 
 
 #
@@ -272,7 +320,7 @@ class WorkerStep:
     perf_info: str = attrs.field(init=False, default="")
     inp_missing: list = attrs.field(init=False, factory=list)
     out_missing: list = attrs.field(init=False, factory=list)
-    inp_amend_missing: list = attrs.field(init=False, factory=list)
+    rescheduled_info: str = attrs.field(init=False, default="")
     returncode: int | None = attrs.field(init=False, default=None)
     success: bool = attrs.field(init=False, default=True)
 
@@ -297,9 +345,17 @@ class WorkerHandler:
         self.stop_event.set()
 
     @allow_rpc
+    def kill(self, sig: int):
+        if self.step is not None and self.step.proc is not None:
+            self.step.proc.send_signal(sig)
+
+    @allow_rpc
     async def new_step(self, step_key: str, command: str, workdir: Path):
         if self.step is not None:
-            raise RPCError("Worker cannot initiate two steps at the same time.")
+            raise RPCError(
+                "Worker cannot initiate two steps at the same time. "
+                f"Still working on {self.step.command}"
+            )
         self.step = WorkerStep(step_key, command, workdir)
 
     @allow_rpc
@@ -329,21 +385,50 @@ class WorkerHandler:
         return len(inp_missing) == 0
 
     @allow_rpc
-    def update_hashes(
+    def compute_step_hash(
         self,
         old_inp_hashes: list[tuple[str, FileHash]],
         old_out_hashes: list[tuple[str, FileHash]],
         env_vars: list[str],
         log_missing_out: bool,
     ) -> tuple[list[tuple[str, FileHash]], list[tuple[str, FileHash]], StepHash]:
-        """Recompute file and step hashes."""
+        """Recompute file and step hashes.
+
+        Parameters
+        ----------
+        old_inp_hashes
+            List of tuples of input paths and their file hashes.
+            These should be up to date. If any changes are observed, something went wrong.
+        old_out_hashes
+            List of tuples of output paths and their file hashes.
+            These hashes may change because the outputs may have been updated or removed.
+        env_vars
+            List of environment variable names to include in the hash.
+        log_missing_out
+            Log missing output files, which should have been created by the step.
+
+        Returns
+        -------
+        new_out_hashes
+            List of tuples of output paths and their file hashes.
+            These are the updated hashes of the output files.
+            Unchanged ones are not included.
+        step_hash
+            The newly computed hash of the step.
+        """
         # Have inputs changed?
         inp_hashes = []
-        new_inp_hashes = []
         for path, file_hash in old_inp_hashes:
+            old_file_hash = copy(file_hash)
             changed = file_hash.update(path)
-            if changed is True:
-                new_inp_hashes.append((path, file_hash))
+            # If the step succeeded, the input file hash should be up-to-date.
+            # A step may fail due to missing amended inputs, in which case
+            # these new inputs have no up-to-date hashes yet.
+            if changed is True and self.step.success:
+                raise AssertionError(
+                    "Input file hash changed unexpectedly: "
+                    + report_hash_diff("", path, old_file_hash, file_hash)[1][1]
+                )
             inp_hashes.append((path, file_hash))
         # Have outputs changed?
         out_hashes = []
@@ -359,10 +444,10 @@ class WorkerHandler:
             out_hashes.append((path, file_hash))
         # Update step hash
         env_var_values = [(env_var, os.environ.get(env_var)) for env_var in env_vars]
-        step_hash = create_step_hash(
+        step_hash = StepHash.from_step(
             self.step.key, self.explain_rerun, inp_hashes, env_var_values, out_hashes
         )
-        return new_inp_hashes, new_out_hashes, step_hash
+        return new_out_hashes, step_hash
 
     @allow_rpc
     async def outdated_amended(self, old_hash: StepHash, new_hash: StepHash):
@@ -412,9 +497,11 @@ class WorkerHandler:
             env=env,
             cwd=self.step.workdir,
         )
+        self.step.proc = proc
 
         # Process results of the step.
         self.step.stdout, self.step.stderr = await proc.communicate()
+        self.step.proc = None
         self.step.returncode = proc.returncode
         if self.show_perf:
             ru_final = resource.getrusage(resource.RUSAGE_CHILDREN)
@@ -435,8 +522,11 @@ class WorkerHandler:
         return self.step.success
 
     @allow_rpc
-    async def list_rescheduled(self, inp_paths: set[str]):
-        self.step.inp_amend_missing = sorted(inp_paths)
+    async def rescheduled(self, rescheduled_info: str):
+        self.step.rescheduled_info = rescheduled_info
+        # Erase other error info to keep the screen output concise.
+        self.step.success = True
+        self.step.stderr = b""
 
     @allow_rpc
     async def report(self):
@@ -450,11 +540,11 @@ class WorkerHandler:
             pages.append(("Step info", "\n".join(lines)))
         if len(self.step.perf_info) > 0:
             pages.append(("Performance details", self.step.perf_info))
-        if len(self.step.inp_amend_missing) > 0:
+        if self.step.rescheduled_info != "":
             pages.append(
                 (
                     "Rescheduling due to unavailable amended inputs",
-                    "\n".join(self.step.inp_amend_missing),
+                    self.step.rescheduled_info,
                 )
             )
         else:
@@ -470,7 +560,7 @@ class WorkerHandler:
         stderr = self.step.stderr.decode("utf-8", errors="ignore").rstrip()
         if len(stderr) > 0:
             pages.append(("Standard error", stderr))
-        if len(self.step.inp_amend_missing) > 0:
+        if self.step.rescheduled_info != "":
             action = "RESCHEDULE"
         elif self.step.success:
             action = "SUCCESS"
@@ -552,7 +642,7 @@ def parse_args():
         "-e",
         default=False,
         action="store_true",
-        help="Explain for every step with recording info why it cannot be skipped.",
+        help="Explain for every step why it cannot be skipped.",
     )
     return parser.parse_args()
 
@@ -564,9 +654,15 @@ async def async_main():
         stack.enter_context(contextlib.redirect_stderr(ferr))
         print(f"PID {os.getpid()}", file=sys.stderr)
         async with ReporterClient.socket(args.reporter_socket) as reporter:
+            # Create the worker handler for the RPC server (and to handle signals).
             handler = WorkerHandler(
                 args.director_socket, reporter, args.show_perf, args.explain_rerun
             )
+            # Install signal handlers
+            loop = asyncio.get_running_loop()
+            for sig in signal.SIGINT, signal.SIGTERM:
+                loop.add_signal_handler(sig, partial(handler.kill, sig))
+            # Serve RPC
             await serve_stdio_rpc(handler)
 
 

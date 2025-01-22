@@ -10,13 +10,13 @@ Other parts of StepUp, not documented here, may undergo larger changes and are n
 
 ### ::: stepup.core.api.glob
 
-### ::: stepup.core.api.StepInfo
-
 ### ::: stepup.core.api.step
 
 ### ::: stepup.core.api.pool
 
 ### ::: stepup.core.api.amend
+
+### ::: stepup.core.api.getinfo
 
 
 ## Composite API
@@ -29,11 +29,11 @@ Other parts of StepUp, not documented here, may undergo larger changes and are n
 
 ### ::: stepup.core.api.getenv
 
+### ::: stepup.core.api.call
+
 ### ::: stepup.core.api.script
 
 
 ## Utilities for API extensions
 
 ### ::: stepup.core.api.subs_env_vars
-
-### ::: stepup.core.api.translate

@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -25,10 +25,10 @@ import os
 import sys
 
 __all__ = (
-    "wait_for_events",
-    "stoppable_iterator",
-    "stdio",
     "pipe",
+    "stdio",
+    "stoppable_iterator",
+    "wait_for_events",
 )
 
 

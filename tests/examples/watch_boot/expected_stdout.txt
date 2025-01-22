@@ -1,0 +1,24 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ echo "test 1" > first.txt
+   SUCCESS │ echo "test 1" > first.txt
+     START │ cp first.txt final.txt
+   SUCCESS │ cp first.txt final.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+   UPDATED │ plan.py
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ echo "test 2" > second.txt
+   SUCCESS │ echo "test 2" > second.txt
+     START │ cp second.txt final.txt
+   SUCCESS │ cp second.txt final.txt
+  DIRECTOR │ Trying to delete 1 outdated output(s).
+     CLEAN │ first.txt
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

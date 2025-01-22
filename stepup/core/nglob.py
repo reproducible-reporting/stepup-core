@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -85,7 +85,7 @@ import copy
 import glob
 import re
 from collections.abc import Collection, Iterable, Iterator
-from typing import Any, Self
+from typing import Self
 
 import attrs
 from path import Path
@@ -106,11 +106,12 @@ RE_NAMED_WILD = re.compile("(" + "|".join(RE_WILD_PARTS) + ")")
 
 __all__ = (
     "NGlobMatch",
-    "NGlobSingle",
     "NGlobMulti",
-    "convert_nglob_to_regex",
+    "NGlobSingle",
     "convert_nglob_to_glob",
+    "convert_nglob_to_regex",
     "has_wildcards",
+    "iter_wildcard_names",
 )
 
 
@@ -202,21 +203,6 @@ class NGlobSingle:
     _used_names: tuple[str, ...] = attrs.field(init=False)
     _glob_pattern: str = attrs.field(init=False)
     _regex: re.Pattern = attrs.field(init=False)
-
-    @classmethod
-    def structure(cls, state, strings: list[str]):
-        """Create an instance from the result of the `unstructure` method."""
-        results = {
-            tuple(values): {Path(strings[path]) for path in paths} for values, paths in state["r"]
-        }
-        return cls(strings[state["p"]], state["s"], results)
-
-    def unstructure(self, lookup: dict[str, int]) -> dict[str, Any]:
-        """Return a serializable representation of the instance."""
-        results = [
-            (key, [lookup[path] for path in sorted(paths)]) for key, paths in self._results.items()
-        ]
-        return {"p": lookup[self.pattern], "s": self.subs, "r": results}
 
     @_used_names.default
     def _default_used_names(self) -> tuple[str, ...]:
@@ -323,7 +309,7 @@ class NGlobSingle:
                     yield values
 
     def glob(self) -> Iterator[tuple[str, ...]]:
-        """Extend the results with paths obtained through the built-in glob module.
+        """Extend the results with paths obtained through Python's built-in glob module.
 
         Yields
         ------
@@ -400,30 +386,6 @@ class NGlobMulti:
             if has_anonymous_wildcards(pattern):
                 return True
         return False
-
-    @classmethod
-    def structure(cls, state: list, strings: list[str]) -> Self:
-        """Create an instance from the result of the `unstructure` method."""
-        subs = state[1].copy()
-        for ngs_data in state[0]:
-            ngs_data["s"] = subs
-        ngss = tuple(NGlobSingle.structure(ngs_data, strings) for ngs_data in state[0])
-        result = cls(ngss)
-        for i, ngs in enumerate(ngss):
-            for values in ngs.results:
-                result._extend_consistent(i, values)
-        return result
-
-    def unstructure(self, lookup: dict[str, int]) -> list:
-        """Return a serializable representation of the instance."""
-        data = [
-            [ngs.unstructure(lookup) for ngs in self._nglob_singles],
-            self._subs.copy(),
-        ]
-        # A little hacky way to make the result more compact.
-        for ngs_data in data[0]:
-            del ngs_data["s"]
-        return data
 
     @classmethod
     def from_patterns(cls, patterns: Iterable[str], subs: dict[str, str] | None = None) -> Self:
@@ -664,7 +626,7 @@ class NGlobMulti:
     def may_match(self, path):
         """Return True if the path matches one of the NGlobSingle instances.
 
-        This means that it may be path contributing to a consistent match of NGlobMulti.
+        This means that it may be a path contributing to a consistent match of NGlobMulti.
         When added, it will show up in the result of the `files` method,
         and it may affect the outcome of the `matches` method.
         """
@@ -699,7 +661,7 @@ class NGlobMulti:
                     return True
         return False
 
-    def will_change(self, deleted: Collection[str], updated: Collection[str]) -> bool:
+    def will_change(self, deleted: Collection[str], updated: Collection[str]) -> Self | None:
         """Determine whether the results will change after deleting or adding files.
 
         Parameters
@@ -711,13 +673,14 @@ class NGlobMulti:
 
         Returns
         -------
-        will_change
-            True if the NGlobMulti results will change.
+        evolved
+            a new modified copy with the changes if any.
+            None otherwise.
         """
         evolved = self.deepcopy()
         evolved.extend(updated)
         evolved.reduce(deleted)
-        return not evolved.equals(self)
+        return None if evolved.equals(self) else evolved
 
 
 def convert_nglob_to_regex(

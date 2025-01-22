@@ -1,0 +1,22 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+   WARNING │ 1 step(s) remained pending due to incomplete requirements
+─────────────────────────────── Orphaned inputs ────────────────────────────────
+             AWAITED  sub/dir/nested/
+             AWAITED  sub/dir/
+             AWAITED  sub/
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               echo hello > sub/dir/nested/hello.txt
+Working directory     ./
+Inputs        STATIC  ./
+             AWAITED  (sub/dir/nested/)
+Outputs      AWAITED  sub/dir/nested/hello.txt
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

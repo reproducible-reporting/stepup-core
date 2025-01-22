@@ -1,0 +1,107 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:conv2.txt
+            supplies   file:inp2.txt
+            supplies   file:plan.py
+            supplies   file:step.py
+            supplies   file:subs1.txt
+            supplies   file:subs2.txt
+            supplies   file:subs3.txt
+            supplies   step:./plan.py
+            supplies   step:./step.py subs1.txt > subs2.txt
+            supplies   step:./step.py subs2.txt > subs3.txt
+            supplies   step:cp -aT inp2.txt conv2.txt
+
+step:./plan.py
+               state = SUCCEEDED
+                 ngm = ['inp*.txt'] {}
+          inp_digest = same
+           explained = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:inp2.txt
+             creates   file:step.py
+             creates   file:subs1.txt
+             creates   step:./step.py subs1.txt > subs2.txt
+             creates   step:./step.py subs2.txt > subs3.txt
+             creates   step:cp -aT inp2.txt conv2.txt
+
+file:step.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+
+file:subs1.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./step.py subs1.txt > subs2.txt
+
+step:./step.py subs1.txt > subs2.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:conv2.txt [amended]
+            consumes   file:subs1.txt
+             creates   file:subs2.txt
+            supplies   file:subs2.txt
+
+file:subs2.txt
+               state = BUILT
+          created by   step:./step.py subs1.txt > subs2.txt
+            consumes   file:./
+            consumes   step:./step.py subs1.txt > subs2.txt
+            supplies   step:./step.py subs2.txt > subs3.txt
+
+step:./step.py subs2.txt > subs3.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:conv2.txt [amended]
+            consumes   file:subs2.txt
+             creates   file:subs3.txt
+            supplies   file:subs3.txt
+
+file:subs3.txt
+               state = BUILT
+          created by   step:./step.py subs2.txt > subs3.txt
+            consumes   file:./
+            consumes   step:./step.py subs2.txt > subs3.txt
+
+file:inp2.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp -aT inp2.txt conv2.txt
+
+step:cp -aT inp2.txt conv2.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:inp2.txt
+             creates   file:conv2.txt
+            supplies   file:conv2.txt
+
+file:conv2.txt
+               state = BUILT
+          created by   step:cp -aT inp2.txt conv2.txt
+            consumes   file:./
+            consumes   step:cp -aT inp2.txt conv2.txt
+            supplies   step:./step.py subs1.txt > subs2.txt
+            supplies   step:./step.py subs2.txt > subs3.txt

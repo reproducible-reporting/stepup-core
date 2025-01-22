@@ -1,0 +1,25 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./demo.py
+RESCHEDULE │ ./demo.py
+──────────────── Rescheduling due to unavailable amended inputs ────────────────
+nonexisting/
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ 1 step(s) remained pending due to incomplete requirements
+─────────────────────────────── Orphaned inputs ────────────────────────────────
+             AWAITED  nonexisting/
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               ./demo.py
+Working directory     ./
+Inputs        STATIC  ./
+             AWAITED  (nonexisting/) [amended]
+Outputs     VOLATILE  nonexisting/foo.out [amended]
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

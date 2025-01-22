@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -21,19 +21,19 @@
 
 import asyncio
 import contextlib
-from collections import Counter
+from collections.abc import AsyncGenerator
 from time import perf_counter
-from typing import Self
 
 import attrs
+from path import Path
 from rich.console import Console
 from rich.markup import escape as escape_markup
 from rich.progress import BarColumn, MofNCompleteColumn, TaskID, TextColumn
 from rich.progress import Progress as ProgressBar
 from rich.theme import Theme
 
+from .enums import StepState
 from .rpc import AsyncRPCClient, BaseAsyncRPCClient, DummyAsyncRPCClient, allow_rpc
-from .step import StepState
 
 __all__ = ("ReporterClient", "ReporterHandler")
 
@@ -45,7 +45,7 @@ class ReporterClient:
 
     @classmethod
     @contextlib.asynccontextmanager
-    async def socket(cls, path: str | None) -> Self:
+    async def socket(cls, path: str | None) -> AsyncGenerator["ReporterClient", None]:
         if path is None:
             yield cls(path, DummyAsyncRPCClient())
         else:
@@ -64,9 +64,13 @@ class ReporterClient:
         if self.client is not None:
             await self.client.call.set_num_workers(num_workers)
 
-    async def update_step_counts(self, step_counter: Counter[StepState, int]):
+    async def update_step_counts(self, step_counter: dict[StepState, int]):
         if self.client is not None:
             await self.client.call.update_step_counts(step_counter)
+
+    async def check_logs(self):
+        if self.client is not None:
+            await self.client.call.check_logs()
 
     async def shutdown(self):
         if self.client is not None:
@@ -88,7 +92,7 @@ class ReporterHandler:
     show_perf: bool = attrs.field()
     stop_event: asyncio.Event = attrs.field(factory=asyncio.Event)
     _num_workers: int = attrs.field(init=False, default=0)
-    _step_counts: Counter[StepState, int] = attrs.field(init=False, factory=Counter)
+    _step_counts: dict[StepState, int] = attrs.field(init=False, factory=dict)
     _num_digits: int = attrs.field(init=False, default=3)
     console: Console = attrs.field(init=False)
     progress_bar: ProgressBar = attrs.field(init=False)
@@ -115,6 +119,7 @@ class ReporterHandler:
             MofNCompleteColumn(),
             transient=True,
             console=self.console,
+            auto_refresh=False,
         )
         progress_bar.start()
         return progress_bar
@@ -135,13 +140,16 @@ class ReporterHandler:
     @allow_rpc
     def report(self, action: str, description: str, pages: list[tuple[str, str]]):
         # Progress bar
-        nsuc = self._step_counts[StepState.SUCCEEDED]
-        nrun = self._step_counts[StepState.RUNNING]
-        npen = self._step_counts[StepState.PENDING] + self._step_counts[StepState.QUEUED]
+        nsuc = self._step_counts.get(StepState.SUCCEEDED, 0)
+        nrun = self._step_counts.get(StepState.RUNNING, 0)
+        npen = self._step_counts.get(StepState.PENDING, 0) + self._step_counts.get(
+            StepState.QUEUED, 0
+        )
         nd = max(self._num_digits, len(str(nsuc)), len(str(nrun)), len(str(npen)))
         self._num_digits = nd
         self.progress_bar.update(self.task_id_running, completed=nrun, total=self._num_workers)
         self.progress_bar.update(self.task_id_step, completed=nsuc, total=nsuc + nrun + npen)
+        self.progress_bar.refresh()
 
         # Action info
         action_color = {
@@ -152,15 +160,17 @@ class ReporterHandler:
             "DELETED": "yellow",
             "UPDATED": "yellow",
             "SKIP": "cyan",
-            "NOSKIP": "cyan",
+            "NOSKIP": "yellow",
             "RESCHEDULE": "yellow",
             "DROPAMEND": "yellow",
             "WARNING": "yellow",
+            "UNCHANGED": "cyan",
             "PHASE": "white",
         }.get(action, "magenta")
         descr_color = {"START": "grey82"}.get(action, "grey46")
 
         # Print action with extra info
+        description = escape_markup(description)
         line = f"[bold {action_color}]{action:>10s}[/] │ [{descr_color}]{description}[/]"
         if self.show_perf:
             now = perf_counter()
@@ -178,10 +188,38 @@ class ReporterHandler:
         if len(pages) > 0:
             self.console.rule()
 
+        # File logging
+        if action == "PHASE" and description == "run":
+            # Delete the log files when rerunning the build.
+            for path_log in [".stepup/fail.log", ".stepup/warning.log", ".stepup/success.log"]:
+                Path(path_log).remove_p()
+        path_log = (
+            ".stepup/fail.log"
+            if action == "FAIL"
+            else (".stepup/warning.log" if action == "WARNING" else ".stepup/success.log")
+        )
+        with open(path_log, "a") as file:
+            console = Console(file=file, width=80)
+            console.print(line, no_wrap=True, soft_wrap=True)
+            for title, page in pages:
+                console.rule(title)
+                console.print(page, soft_wrap=True)
+
     @allow_rpc
     def set_num_workers(self, num_workers: int):
         self._num_workers = num_workers
 
     @allow_rpc
-    def update_step_counts(self, step_counts: Counter[StepState, int]):
+    def update_step_counts(self, step_counts: dict[StepState, int]):
         self._step_counts = step_counts
+
+    @allow_rpc
+    def check_logs(self):
+        """Check for the presence of fail/warning logs and report them."""
+        paths_log = [
+            path_log
+            for path_log in [".stepup/fail.log", ".stepup/warning.log"]
+            if Path(path_log).exists()
+        ]
+        if len(paths_log) > 0:
+            self.report("WARNING", "Check logs: {}".format(" ".join(paths_log)), [])

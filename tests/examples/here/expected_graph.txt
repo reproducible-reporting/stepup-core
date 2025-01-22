@@ -1,0 +1,121 @@
+root:
+             creates   file:../
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:../
+            supplies   file:plan.py
+            supplies   file:www/
+            supplies   step:./plan.py
+            supplies   step:mkdir -p ../public/
+            supplies   step:mkdir -p ../public/www/
+
+step:./plan.py
+               state = SUCCEEDED
+             env_var = PUBLIC [amended]
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:www/
+             creates   file:www/plan.py
+             creates   step:./plan.py  # wd=www/
+             creates   step:mkdir -p ../public/
+             creates   step:mkdir -p ../public/www/
+
+file:www/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   file:www/index.md
+            supplies   file:www/plan.py
+            supplies   step:./plan.py  # wd=www/
+            supplies   step:cp -aT index.md ../../public/www/index.md  # wd=www/
+
+file:www/plan.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:www/
+            supplies   step:./plan.py  # wd=www/
+
+step:mkdir -p ../public/
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:../
+            consumes   file:./
+             creates   file:../public/
+            supplies   file:../public/
+
+file:../
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   file:../public/
+            supplies   step:mkdir -p ../public/
+
+file:../public/
+               state = BUILT
+          created by   step:mkdir -p ../public/
+            consumes   file:../
+            consumes   step:mkdir -p ../public/
+            supplies   file:../public/www/
+            supplies   step:mkdir -p ../public/www/
+
+step:mkdir -p ../public/www/
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:../public/
+            consumes   file:./
+             creates   file:../public/www/
+            supplies   file:../public/www/
+
+file:../public/www/
+               state = BUILT
+          created by   step:mkdir -p ../public/www/
+            consumes   file:../public/
+            consumes   step:mkdir -p ../public/www/
+            supplies   file:../public/www/index.md
+            supplies   step:cp -aT index.md ../../public/www/index.md  # wd=www/
+
+step:./plan.py  # wd=www/
+               state = SUCCEEDED
+             env_var = HERE [amended]
+                     = PUBLIC [amended]
+                     = ROOT [amended]
+          inp_digest = same
+          created by   step:./plan.py
+            consumes   file:www/
+            consumes   file:www/plan.py
+             creates   file:www/index.md
+             creates   step:cp -aT index.md ../../public/www/index.md  # wd=www/
+
+file:www/index.md
+               state = STATIC
+          created by   step:./plan.py  # wd=www/
+            consumes   file:www/
+            supplies   step:cp -aT index.md ../../public/www/index.md  # wd=www/
+
+step:cp -aT index.md ../../public/www/index.md  # wd=www/
+               state = SUCCEEDED
+          created by   step:./plan.py  # wd=www/
+            consumes   file:../public/www/
+            consumes   file:www/
+            consumes   file:www/index.md
+             creates   file:../public/www/index.md
+            supplies   file:../public/www/index.md
+
+file:../public/www/index.md
+               state = BUILT
+          created by   step:cp -aT index.md ../../public/www/index.md  # wd=www/
+            consumes   file:../public/www/
+            consumes   step:cp -aT index.md ../../public/www/index.md  # wd=www/

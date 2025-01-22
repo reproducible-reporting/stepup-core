@@ -6,15 +6,18 @@ In exceptional situations, the automatic cleaning may not be sufficient,
 and a more manual solution may be required.
 Examples of such situations are:
 
-- A dependency has changed that StepUp cannot track, such as an upgrade of a system-wide tool used in your workflow.
-  In this situation, StepUp will not make the affected steps pending, and you may want to remove the affected outputs to rebuild them.
+- A dependency has changed that StepUp cannot track,
+  such as an upgrade of a system-wide tool used in your workflow.
+  In this situation, StepUp will not make the affected steps pending,
+  and you may want to remove the affected outputs to rebuild them.
 
-- You are planning a rather drastic reorganization of your project, including renaming some directories containing output files.
+- You are planning a rather drastic reorganization of your project,
+  including renaming some directories containing output files.
   When directories are renamed, StepUp can no longer clean up old outputs in the renamed directories.
   In this situation, you will want to clean up outputs manually before renaming directories.
 
 Simply removing outputs with the `rm` command is possible but quickly becomes tedious for larger projects.
-The `cleanup` program, a companion to `stepup`, can selectively remove a large number of outputs with minimal end-user effort.
+The `cleanup` program, a companion to `stepup`, can selectively remove numerous outputs with minimal end-user effort.
 You need to pass as arguments the files whose (indirect) outputs you want to remove.
 Such arguments can be one of the two things:
 
@@ -25,29 +28,19 @@ Such arguments can be one of the two things:
    Furthermore, if the directory is created in the build, it will also be removed.
 
 Files are removed recursively, so outputs of outputs are also cleaned up.
-`cleanup` will only remove files with status `PENDING`, `BUILT` or `VOLATILE`.
-Static files, i.e., files you have created, are never removed.
+`cleanup` will only remove files with status `OUTDATED`, `BUILT` or `VOLATILE`.
+`STATIC` or `AWAITED` files, i.e., files that are not the result of step execution, are never removed.
+In addition, `cleanup` compares the hash of a file to the last known hash,
+to make sure it only removes that contain changes made afterward without StepUp.
 
-There are a few gotchas you should be aware of:
+By default, you need to run `cleanup` in the top-level directory where you also started `stepup`.
+This requirement can be lifted by defining the `STEPUP_ROOT` environment variable,
+as explained in the [next tutorial](stepup_root.md).
 
-1. The `cleanup` script sends a list of paths to be cleaned to the director process.
-   The director takes care of analyzing the workflow to decide which files need to be removed.
-   For this reason, an instance of `stepup` must be running for `cleanup` to work.
+!!! note
 
-1. By default, you need to run `cleanup` in the top-level directory where you also started `stepup`.
-   This requirement can be lifted by defining the top-level directory in the `STEPUP_ROOT` environment variable, as explained in the [next tutorial](stepup_root.md).
+    As StepUp 2.0.0, `cleanup` also works when `stepup` is not running.
 
-If `cleanup` cannot connect to the StepUp director process, it will keep trying and print warning messages, for example:
-
-```
-Trying to contact StepUp director process.
-File ./.stepup/director.log not found.  Waiting 0.1 seconds.
-Socket /tmp/stepup-c9a12bau/director read from ./.stepup/director.log does not exist. Stepup not running?  Waiting 0.2 seconds.
-Socket /tmp/stepup-c9a12bau/director read from ./.stepup/director.log does not exist. Stepup not running?  Waiting 0.3 seconds.
-...
-```
-
-When you see this, either start `stepup` in a second terminal or interrupt `cleanup` with Ctrl-C.
 
 ## Try the Following
 

@@ -1,0 +1,85 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:config.txt
+            supplies   file:out_bar.txt
+            supplies   file:out_foo.txt
+            supplies   file:plan.py
+            supplies   file:script.py
+            supplies   step:./plan.py
+            supplies   step:./script.py plan
+            supplies   step:./script.py run -- bar
+            supplies   step:./script.py run -- foo
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:config.txt
+             creates   file:script.py
+             creates   step:./script.py plan
+
+file:config.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./script.py plan
+
+file:script.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./script.py plan
+            supplies   step:./script.py run -- bar
+            supplies   step:./script.py run -- foo
+
+step:./script.py plan
+               state = SUCCEEDED
+          inp_digest = same
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:config.txt
+            consumes   file:script.py
+             creates   step:./script.py run -- bar
+             creates   step:./script.py run -- foo
+
+step:./script.py run -- foo
+               state = SUCCEEDED
+          created by   step:./script.py plan
+            consumes   file:./
+            consumes   file:script.py
+             creates   file:out_foo.txt
+            supplies   file:out_foo.txt
+
+file:out_foo.txt
+               state = BUILT
+          created by   step:./script.py run -- foo
+            consumes   file:./
+            consumes   step:./script.py run -- foo
+
+step:./script.py run -- bar
+               state = SUCCEEDED
+          created by   step:./script.py plan
+            consumes   file:./
+            consumes   file:script.py
+             creates   file:out_bar.txt
+            supplies   file:out_bar.txt
+
+file:out_bar.txt
+               state = BUILT
+          created by   step:./script.py run -- bar
+            consumes   file:./
+            consumes   step:./script.py run -- bar

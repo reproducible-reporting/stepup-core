@@ -1,0 +1,22 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ plan.py (digest d2122958 ➜ ec13a3f4, size 254 ➜ 101)
+   DELETED │ inp.txt
+   STARTUP │ Scanning initial database for new nglob matches
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+ DROPAMEND │ ./plan.py
+────────────────────── Outdated amended step information ───────────────────────
+Modified step hash   compact, digest fffd91ab ➜ cf6b8624, inp_digset d1732098 ➜ 4e0ca487
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ echo bye > out2.txt
+   SUCCESS │ echo bye > out2.txt
+  DIRECTOR │ Trying to delete 2 outdated output(s).
+     CLEAN │ out1.txt
+     CLEAN │ out.txt
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -19,568 +19,760 @@
 # --
 """A `Step` is a shell command that can be executed and that has inputs and outputs."""
 
-import enum
-from collections.abc import Collection, Iterator
-from typing import TYPE_CHECKING, Any, Self
+import logging
+import os
+import pickle
+from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 import attrs
+from path import Path
 
 from .cascade import Node
-from .file import FileState
-from .hash import ExtendedStepHash, StepHash
-from .job import RunJob, TryReplayJob, ValidateAmendedJob
+from .deferred_glob import DeferredGlob
+from .enums import FileState, Mandatory, StepState
+from .file import File, FileHash
+from .hash import StepHash
+from .job import ExecuteJob, TrySkipJob, ValidateAmendedJob
 from .nglob import NGlobMulti
+from .stepinfo import StepInfo
 from .utils import format_digest
 
 if TYPE_CHECKING:
     from .workflow import Workflow
 
 
-__all__ = ("Mandatory", "StepState", "StepRecording", "Step")
+__all__ = ("Step",)
 
 
-class StepState(enum.Enum):
-    PENDING = 21
-    QUEUED = 22
-    RUNNING = 23
-    SUCCEEDED = 24
-    FAILED = 25
+logger = logging.getLogger(__name__)
 
 
-class Mandatory(enum.Enum):
-    YES = 31
-    IMPLIED = 32
-    NO = 33
+STEP_SCHEMA = """
+CREATE TABLE IF NOT EXISTS step (
+    node INTEGER PRIMARY KEY,
+    state INTEGER NOT NULL CHECK(state >= 21 AND state <= 25),
+    pool TEXT,
+    block INTEGER NOT NULL CHECK(block IN (0, 1)),
+    mandatory INTEGER NOT NULL CHECK(mandatory >= 31 AND mandatory <= 33),
+    validate_amended INTEGER NOT NULL CHECK(block IN (0, 1)),
+    rescheduled_info TEXT NOT NULL,
+    FOREIGN KEY (node) REFERENCES node(i)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS step_state_mandator ON step(state, mandatory);
 
+CREATE TABLE IF NOT EXISTS pool_definition (
+    node INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    size INTEGER NOT NULL CHECK(size > 0),
+    PRIMARY KEY(node, name)
+) WITHOUT ROWID;
 
-@attrs.define
-class StepRecording:
-    """All info to repeat the consequences of a step without actually executing it."""
+CREATE TABLE IF NOT EXISTS nglob_multi (
+    i INTEGER PRIMARY KEY,
+    node INTEGER NOT NULL,
+    data BLOB NOT NULL,
+    FOREIGN KEY (node) REFERENCES node(i)
+);
+CREATE INDEX IF NOT EXISTS nglob_multi_node ON nglob_multi(node);
 
-    # Needed for checking the recording validity
-    key: str = attrs.field()
-    initial_inp_paths: list[str] = attrs.field(factory=list)
-    initial_env_vars: set[str] = attrs.field(factory=set)
-    initial_out_paths: list[str] = attrs.field(factory=list)
-    initial_vol_paths: list[str] = attrs.field(factory=list)
-    # Amended while running the step
-    amend_args: dict = attrs.field(factory=dict)
-    # Created while running the step
-    static_paths: list[str] = attrs.field(factory=list)
-    missing_paths: list[str] = attrs.field(factory=list)
-    steps_args: list[dict] = attrs.field(factory=list)
-    nglob_multis: list[NGlobMulti] = attrs.field(factory=list)
-    deferred_glob_args: list[list[str]] = attrs.field(factory=list)
-    defined_pools: dict[str, int] = attrs.field(factory=dict)
+CREATE TABLE IF NOT EXISTS amended_dep (
+    i INTEGER PRIMARY KEY,
+    FOREIGN KEY (i) REFERENCES dependency(i) ON DELETE CASCADE
+) WITHOUT ROWID;
+
+CREATE TABLE IF NOT EXISTS env_var (
+    node INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    value TEXT,
+    amended INTEGER NOT NULL CHECK(amended IN (0, 1)),
+    PRIMARY KEY (node, name)
+    FOREIGN KEY (node) REFERENCES node(i)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS env_var_node ON env_var(node);
+
+CREATE TABLE IF NOT EXISTS step_hash (
+    node INTEGER PRIMARY KEY,
+    digest BLOB NOT NULL,
+    inp_digest BLOB NOT NULL,
+    explain_info BLOB,
+    FOREIGN KEY (node) REFERENCES node(i)
+);
+"""
+
+EXISTS_MANDATORY_CONSUMER_STEPS = f"""
+SELECT EXISTS (SELECT 1 FROM step AS step1
+JOIN dependency AS dep1 ON step1.node = dep1.supplier
+JOIN file ON dep1.consumer = file.node
+JOIN dependency AS dep2 ON file.node = dep2.supplier
+JOIN step AS step2 ON step2.node = dep2.consumer
+JOIN node AS node2 ON node2.i = dep2.consumer
+WHERE step1.node = ?
+AND step2.mandatory != {Mandatory.NO.value}
+AND NOT node2.orphan
+)
+"""
+
+SELECT_SUPPLYING_STEPS = """
+SELECT node.i, node.label FROM node
+JOIN step ON node.i = step.node
+JOIN dependency AS dep1 ON dep1.supplier = node.i
+JOIN file ON file.node = dep1.consumer
+JOIN dependency AS dep2 ON dep2.supplier = dep1.consumer
+WHERE dep2.consumer = ?
+"""
+
+KEEP_RECORDING_TIME = 2 * 24 * 3600
 
 
 @attrs.define
 class Step(Node):
-    # - Core attributes
-    #   - Shell command to execute in this step
-    _command: str = attrs.field()
-    #   - Work directory where the step command is executed
-    _workdir: str = attrs.field()
-    #   - If set, concurrency is limited by the pool size (see scheduler module)
-    _pool: str | None = attrs.field(kw_only=True, default=None)
-    #   - When True, the step will behave as it never has all dependencies satisfied.
-    #     This is convenient for lowering the build time when working on intermediate steps.
-    _block: bool = attrs.field(kw_only=True, default=False)
-
-    # - Augment information in Workflow instance
-    #   - From amend(inp=...)
-    _amended_suppliers: set[str] = attrs.field(kw_only=True, factory=set)
-    #   - From amend(out=..., vol=...)
-    _amended_consumers: set[str] = attrs.field(kw_only=True, factory=set)
-
-    # - Extra information, not in Workflow instance
-    #   - env var names when step was defined
-    _initial_env_vars: set[str] = attrs.field(kw_only=True, factory=set)
-    #   - env var names amended while executing
-    _amended_env_vars: set[str] = attrs.field(kw_only=True, factory=set)
-    #   - named globs used while running step
-    _nglob_multis: list[NGlobMulti] = attrs.field(kw_only=True, factory=list)
-    #   - pools defined by this step
-    _defined_pools: dict[str, int] = attrs.field(kw_only=True, factory=dict)
-
-    # - Related to execution
-    #   - List of missing amended files causing reschedule
-    reschedule_due_to: set[str] = attrs.field(init=False, factory=set)
-    #   - Flag to validate the amended inputs, e.g. because inputs may have changed.
-    validate_amended: bool = attrs.field(init=False, default=True)
-
-    # - Attributes for skipping steps whose inputs and outputs have not changed on disk.
-    #   - Digests of executed step (inputs, outputs, ...)
-    _hash: StepHash | None = attrs.field(kw_only=True, default=None)
-    #   - All information needed to replay a job without executing it
-    _recording: StepRecording | None = attrs.field(kw_only=True, default=None)
+    @property
+    def workflow(self) -> "Workflow":
+        return self.cascade
 
     #
-    # Getters
-    #
-
-    @property
-    def workdir(self) -> str:
-        return self._workdir
-
-    @property
-    def command(self) -> str:
-        return self._command
-
-    @property
-    def pool(self) -> str | None:
-        return self._pool
-
-    @property
-    def block(self) -> bool:
-        return self._block
-
-    @property
-    def initial_env_vars(self) -> set[str]:
-        return self._initial_env_vars
-
-    @property
-    def amended_suppliers(self) -> set[str]:
-        return self._amended_suppliers
-
-    @property
-    def amended_consumers(self) -> set[str]:
-        return self._amended_consumers
-
-    @property
-    def amended_env_vars(self) -> set[str]:
-        return self._amended_env_vars
-
-    @property
-    def nglob_multis(self) -> list[NGlobMulti]:
-        return self._nglob_multis
-
-    @property
-    def defined_pools(self) -> dict[str, int]:
-        return self._defined_pools
-
-    @property
-    def hash(self) -> StepHash:
-        return self._hash
-
-    @property
-    def recording(self) -> StepRecording:
-        return self._recording
-
-    #
-    # Initialization, serialization and formatting
+    # Override from base class
     #
 
     @classmethod
-    def key_tail(cls, data: dict[str, Any], strings: list[str] | None = None) -> str:
-        """Subclasses must implement the key tail and accept both JSON or attrs dicts."""
-        result = data.get("_command", data.get("m"))
-        workdir = data.get("_workdir")
-        if workdir is None:
-            workdir = strings[data.get("w")]
+    def schema(cls) -> str | None:
+        """Return node-specific SQL commands to initialize the database."""
+        return STEP_SCHEMA
+
+    @classmethod
+    def create_label(cls, label: str, command: str, workdir: str, **kwargs):
+        """Optionally override the user-provided label when creating a node."""
+        if label != "":
+            raise ValueError(
+                "Do not provide a label when creating a step. "
+                "It will be derived from other arguments."
+            )
+        if "  # wd=" in command:
+            raise ValueError("Do not provide a workdir comment in the command string.")
+        label = command
         if workdir != "./":
-            result += f"  # wd={workdir}"
-        return result
+            label += f"  # wd={workdir}"
+        return label
 
-    @classmethod
-    def structure(cls, workflow: "Workflow", strings: list[str], data: dict) -> Self:
-        state = StepState(data.pop("s"))
-        mandatory = Mandatory(data.pop("t", Mandatory.YES))
-        kwargs = {
-            "workdir": strings[data["w"]],
-            "command": data["m"],
-        }
-        pool = data.get("p")
-        if pool is not None:
-            kwargs["pool"] = pool
-        kwargs["block"] = data.get("b", False)
-        initial_env_vars = data.get("i")
-        if initial_env_vars is not None:
-            kwargs["initial_env_vars"] = set(initial_env_vars)
-        for short, name in ("as", "amended_suppliers"), ("ac", "amended_consumers"):
-            idxs = data.get(short)
-            if idxs is not None:
-                kwargs[name] = {strings[idx] for idx in idxs}
-        amended_env_vars = data.get("ai")
-        if amended_env_vars is not None:
-            kwargs["amended_env_vars"] = set(amended_env_vars)
-        ngm_datas = data.get("g")
-        if ngm_datas is not None:
-            kwargs["nglob_multis"] = [
-                NGlobMulti.structure(ngm_data, strings) for ngm_data in ngm_datas
-            ]
-        hash_ = data.get("h")
-        if hash_ is not None:
-            kwargs["hash"] = StepHash.structure(hash_, strings)
-        defined_pools = data.get("dp")
-        if defined_pools is not None:
-            kwargs["defined_pools"] = defined_pools
-        step = cls(**kwargs)
-        workflow.step_states[step.key] = state
-        workflow.step_mandatory[step.key] = mandatory
-        if ngm_datas is not None:
-            workflow.step_keys_with_nglob.add(step.key)
-        return step
+    def initialize(
+        self,
+        pool: str | None = None,
+        block: bool = False,
+        mandatory: Mandatory = Mandatory.YES,
+        **kwargs,
+    ):
+        """Create extra information in the database about this node."""
+        self.con.execute(
+            "INSERT OR REPLACE INTO step VALUES(:node, :state, :pool, :block, :mandatory, 1, '')",
+            {
+                "node": self.i,
+                "pool": pool,
+                "block": int(block),
+                "state": StepState.PENDING.value,
+                "mandatory": mandatory.value,
+            },
+        )
 
-    def unstructure(self, workflow: "Workflow", lookup: dict[str, int]) -> dict:
-        data = {
-            "w": lookup[self._workdir],
-            "m": self._command,
-            "s": self.get_state(workflow).value,
-        }
-        mandatory = self.get_mandatory(workflow)
-        if mandatory != Mandatory.YES:
-            data["t"] = mandatory.value
-        if self._pool is not None:
-            data["p"] = self._pool
-        if self._block:
-            data["b"] = True
-        if len(self._initial_env_vars) > 0:
-            data["i"] = sorted(self._initial_env_vars)
-        if len(self._amended_suppliers) > 0:
-            data["as"] = sorted(lookup[key] for key in self._amended_suppliers)
-        if len(self._amended_consumers) > 0:
-            data["ac"] = sorted(lookup[key] for key in self._amended_consumers)
-        if len(self._amended_env_vars) > 0:
-            data["ai"] = sorted(self._amended_env_vars)
-        if len(self._nglob_multis) > 0:
-            data["g"] = [nglob_multi.unstructure(lookup) for nglob_multi in self._nglob_multis]
-        if len(self.defined_pools) > 0:
-            data["dp"] = self.defined_pools.copy()
-        if self._hash is not None:
-            data["h"] = self._hash.unstructure(lookup)
-        return data
+    def validate(self):
+        """Validate extra information about this node is present in the database."""
+        row = self.con.execute("SELECT 1 FROM step WHERE node = ?", (self.i,)).fetchone()
+        if row is None:
+            raise ValueError(f"Step node {self.key()} has no row in the file table.")
 
-    def format_properties(self, workflow: "Workflow") -> Iterator[tuple[str, str]]:
-        yield "workdir", self._workdir
-        yield "command", self._command
-        yield "state", str(self.get_state(workflow).name)
-        mandatory = self.get_mandatory(workflow)
+    def format_properties(self) -> Iterator[tuple[str, str]]:
+        """Iterate over key-value pairs that represent the properties of the node."""
+        state, pool, block, mandatory, _ = self.properties()
+        yield "state", state.name
         if mandatory != Mandatory.YES:
             yield "mandatory", mandatory.name
-        if self._pool is not None:
-            yield "pool", self._pool
-        if self._block:
-            yield "block", self._block
+        if pool is not None:
+            yield "pool", pool
+        if block:
+            yield "block", block
+
+        sql = "SELECT name, amended FROM env_var WHERE node = ?"
         label = "env_var"
-        for env_var in sorted(self._initial_env_vars):
-            yield label, env_var
+        for env_var, amended in self.con.execute(sql, (self.i,)):
+            yield label, f"{env_var} [amended]" if amended else env_var
             label = ""
-        label = "consumes (amended)"
-        for supplier in sorted(self._amended_suppliers):
-            yield label, supplier
-            label = ""
-        label = "supplies (amended)"
-        for product in sorted(self._amended_consumers):
-            yield label, product
-            label = ""
-        label = "env_var (amended)"
-        for env_var in sorted(self._amended_env_vars):
-            yield label, env_var
-            label = ""
-        for ngm in self._nglob_multis:
+
+        for row in self.con.execute("SELECT data FROM nglob_multi WHERE node = ?", (self.i,)):
+            ngm = pickle.loads(row[0])
             yield "ngm", f"{[ngs.pattern for ngs in ngm.nglob_singles]} {ngm.subs}"
-        for pool, size in sorted(self.defined_pools.items()):
-            yield "defined pool", f"{pool}={size}"
-        if self._hash is not None:
-            l1, l2 = format_digest(self._hash.digest)
+
+        for pool, size in self.pool_definitions():
+            yield "defines pool", f"{pool}={size}"
+
+        step_hash = self.get_hash()
+        if step_hash is not None:
+            l1, l2 = format_digest(step_hash.digest)
             yield "digest", l1
             yield "", l2
-            l1, l2 = format_digest(self._hash.inp_digest)
-            yield "inp_digest", l1
-            yield "", l2
-            if isinstance(self._hash, ExtendedStepHash):
-                yield "extended hash", "yes"
+            if step_hash.digest == step_hash.inp_digest:
+                yield "inp_digest", "same"
+            else:
+                l1, l2 = format_digest(step_hash.inp_digest)
+                yield "inp_digest", l1
+                yield "", l2
+            if step_hash.explain_info is not None:
+                yield "explained", "yes"
+
+    def _update_orphan(self):
+        """Update the node or the graph when this node loses its creator node."""
+        # This step can no longer be implied mandatory.
+        self.check_undo_mandatory()
+
+    def clean(self):
+        """Perform a cleanup right before the orphaned node is removed from the graph."""
+        self.del_suppliers()
+        for consumer in self.consumers(include_orphans=True):
+            consumer.del_suppliers([self])
+        self.con.execute("DELETE FROM step WHERE node = ?", (self.i,))
+        self.con.execute("DELETE FROM env_var WHERE node = ?", (self.i,))
+        self.con.execute("DELETE FROM nglob_multi WHERE node = ?", (self.i,))
+        self.con.execute("DELETE FROM pool_definition WHERE node = ?", (self.i,))
+        self.con.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))
+
+    def add_supplier(self, supplier: Node) -> int:
+        """Add a supplier-consumer relation.
+
+        Parameters
+        ----------
+        supplier
+            Other node that supplies to thise node.
+
+        Returns
+        -------
+        idep
+            The identifier in the dependency table.
+        """
+        idep = super().add_supplier(supplier)
+        if self.get_mandatory() != Mandatory.NO:
+            for step in supplier.suppliers(kind="step"):
+                step.check_imply_mandatory()
+        return idep
+
+    def del_suppliers(self, suppliers: list[Node] | None = None):
+        """Delete given suppliers.
+
+        Without arguments, all suppliers of the current node are deleted.
+        """
+        # Get a list of suppliers to process if needed.
+        # It is better not to pass this list to the super method,
+        # because it will just to the same in a less efficient way.
+        _suppliers = suppliers
+        if suppliers is None:
+            _suppliers = list(self.suppliers(include_orphans=True))
+        # Call the super method to remove the actual dependencies
+        super().del_suppliers(suppliers)
+        # Update the mandatory status of the step and propagate to other steps.
+        if self.get_mandatory != Mandatory.NO:
+            steps = set()
+            for supplier in _suppliers:
+                for step in supplier.suppliers(kind="step"):
+                    steps.add(step)
+            for step in steps:
+                step.check_undo_mandatory()
+
+    def lost_product(self):
+        """React to a product node being orphaned.
+
+        Completely remove this step, making reuse impossible.
+        """
+        for consumer in self.consumers(include_orphans=True):
+            consumer.del_suppliers([self])
+        for product in self.products():
+            product.orphan()
+        self.orphan()
+        self.clean()
+        self.con.execute("DELETE FROM node WHERE i = ?", (self.i,))
 
     #
-    # Overridden from base class
+    # Getters and setters
     #
 
-    def recycle(self, workflow: "Workflow", old: Self | None):
-        if old is not None:
-            self._hash = old._hash
-            self._recording = old._recording
+    def _dependencies(
+        self,
+        kind: str | None = None,
+        include_orphans: bool = False,
+        yield_str: bool = False,
+        do_suppliers: bool = True,
+    ) -> Iterator[Node | tuple[int, str]]:
+        iterator = super()._dependencies(kind, include_orphans, yield_str, do_suppliers)
+        if yield_str:
+            # TODO: make more efficient with executemany
+            sql = "SELECT 1 FROM amended_dep WHERE i = ?"
+            for idep, node_str in iterator:
+                amended = self.con.execute(sql, (idep,)).fetchone() is not None
+                yield idep, f"{node_str} [amended]" if amended else node_str
+        else:
+            yield from iterator
 
-    def orphan(self, workflow: "Workflow"):
-        if self.get_mandatory(workflow) != Mandatory.NO:
-            self.undo_mandatory_suppliers(workflow)
+    def properties(self) -> tuple[str, Path, StepState, str, bool, Mandatory]:
+        row = self.con.execute(
+            "SELECT state, pool, block, mandatory, validate_amended FROM step WHERE node = ?",
+            (self.i,),
+        ).fetchone()
+        state_i, pool, block, mandatory_i, validate_amended = row
+        return (
+            StepState(state_i),
+            pool,
+            bool(block),
+            Mandatory(mandatory_i),
+            bool(validate_amended),
+        )
 
-    def cleanup(self, workflow: "Workflow"):
-        workflow.step_states.discard(self.key, insist=True)
-        workflow.step_keys_with_nglob.discard(self.key)
-        workflow.step_mandatory.discard(self.key)
-        self._nglob_multis.clear()
+    #
+    # Getters and setters
+    #
+
+    def get_command_workdir(self) -> tuple[str, str]:
+        """Return the command and workdir of this step."""
+        parts = self.label.split("  # wd=", maxsplit=1)
+        return parts[0], Path(parts[1]) if len(parts) == 2 else Path("./")
+
+    def get_state(self) -> StepState:
+        row = self.con.execute("SELECT state FROM step WHERE node = ?", (self.i,)).fetchone()
+        return StepState(row[0])
+
+    def set_state(self, state: StepState):
+        self.con.execute("UPDATE step SET state = ? WHERE node = ?", (state.value, self.i))
+
+    def get_rescheduled_info(self) -> str:
+        sql = "SELECT rescheduled_info FROM step WHERE node = ?"
+        return self.con.execute(sql, (self.i,)).fetchone()[0]
+
+    def set_rescheduled_info(self, info: str):
+        self.con.execute("UPDATE step SET rescheduled_info = ? WHERE node = ?", (info, self.i))
+
+    def get_validate_amended(self) -> bool:
+        sql = "SELECT validate_amended FROM step WHERE node = ?"
+        return bool(self.con.execute(sql, (self.i,)).fetchone()[0])
+
+    def set_validate_amended(self, value: bool = True):
+        sql = "UPDATE step SET validate_amended = ? WHERE node = ?"
+        self.con.execute(sql, (int(value), self.i))
+
+    #
+    # Get step information
+    #
+
+    def get_step_info(self) -> StepInfo:
+        """Return a `StepInfo` object with information about this step.
+
+        Amended information is not included for consistency with
+        the information that is available when defining a step.
+        """
+        command, workdir = self.get_command_workdir()
+        return StepInfo(
+            command,
+            workdir,
+            self.inp_paths(amended=False),
+            self.env_vars(amended=False),
+            self.out_paths(amended=False),
+            self.vol_paths(amended=False),
+        )
 
     #
     # Mandatory / Optional
     #
 
-    def get_mandatory(self, workflow: "Workflow"):
-        return workflow.step_mandatory[self.key]
+    def get_mandatory(self) -> Mandatory:
+        row = self.con.execute("SELECT mandatory FROM step WHERE node = ?", (self.i,)).fetchone()
+        return Mandatory(row[0])
 
-    def set_mandatory(self, workflow: "Workflow", mandatory: Mandatory):
-        workflow.step_mandatory[self.key] = mandatory
+    def set_mandatory(self, mandatory: Mandatory):
+        self.con.execute("UPDATE step SET mandatory = ? WHERE node = ?", (mandatory.value, self.i))
 
-    def infer_mandatory(self, workflow: "Workflow") -> bool:
-        """Decide if Mandatory.NO should become Mandatory.IMPLIED.
+    def check_imply_mandatory(self):
+        """Try to set this step to Mandatory.IMPLIED and propagate to other optional suppliers."""
+        # Scan all direct step dependencies for (implied) mandatory ones.
+        if (
+            self.get_mandatory() == Mandatory.NO
+            and not self.is_orphan()
+            and self.con.execute(EXISTS_MANDATORY_CONSUMER_STEPS, (self.i,)).fetchone()[0] > 0
+        ):
+            self.set_mandatory(Mandatory.IMPLIED)
+            for i, label in self.con.execute(SELECT_SUPPLYING_STEPS, (self.i,)):
+                step = Step(self.cascade, i, label)
+                step.check_imply_mandatory()
+            self.queue_if_appropriate()
 
-        Returns
-        -------
-        implied_or_yes
-            True when the step must is mandatory or (has become) implied.
-        """
-        if self.get_mandatory(workflow) != Mandatory.NO:
-            return True
-        # Get a list of steps using the outputs of this step.
-        step_keys = set()
-        for file_key in workflow.get_products(self.key, kind="file"):
-            step_keys.update(workflow.get_consumers(file_key, kind="step"))
-        implied = False
-        for step_key in step_keys:
-            step = workflow.get_step(step_key)
-            if step.infer_mandatory(workflow):
-                implied = True
-        if implied:
-            self.imply_mandatory(workflow)
-        return implied
-
-    def imply_mandatory(self, workflow: "Workflow"):
-        """Make this step Mandatory.IMPLIED and propagate this to its suppliers."""
-        if self.get_mandatory(workflow) != Mandatory.NO:
-            raise AssertionError("imply_mandatory called for a step that is already mandatory.")
-        self.set_mandatory(workflow, Mandatory.IMPLIED)
-        self.imply_mandatory_suppliers(workflow)
-        self.queue_if_appropriate(workflow)
-
-    def imply_mandatory_suppliers(
-        self, workflow: "Workflow", file_keys: Collection[str] | None = None
-    ):
-        """Make supplying steps Mandatory.IMPLIED (if they were Mandatory.NO)."""
-        if self.get_mandatory(workflow) == Mandatory.NO:
-            raise AssertionError(
-                "imply_mandatory_suppliers called for a step that is not mandatory."
-            )
-        if file_keys is None:
-            file_keys = workflow.get_suppliers(self.key, kind="file")
-        step_keys = set()
-        for file_key in file_keys:
-            creator_key = workflow.get_creator(file_key)
-            if creator_key.startswith("step:"):
-                step_keys.add(creator_key)
-        for step_key in step_keys:
-            step = workflow.get_step(step_key)
-            if step.get_mandatory(workflow) == Mandatory.NO:
-                step.imply_mandatory(workflow)
-
-    def undo_mandatory(self, workflow: "Workflow"):
-        if self.get_mandatory(workflow) != Mandatory.IMPLIED:
-            raise AssertionError(
-                "undo_mandatory called for a step that is not implied to be mandatory."
-            )
-        self.undo_mandatory_suppliers(workflow)
-        self.set_mandatory(workflow, Mandatory.NO)
-
-    def undo_mandatory_suppliers(self, workflow: "Workflow"):
-        """Make supplying steps Mandatory.NO (if they were Mandatory.IMPLIED)."""
-        if self.get_mandatory(workflow) == Mandatory.NO:
-            raise AssertionError(
-                "undo_mandatory_suppliers called for a step that is not mandatory."
-            )
-        step_keys = set()
-        for file_key in workflow.get_suppliers(self.key, kind="file"):
-            creator_key = workflow.get_creator(file_key)
-            if creator_key.startswith("step:"):
-                step_keys.add(creator_key)
-        for step_key in step_keys:
-            step = workflow.get_step(step_key)
-            if step.get_mandatory(workflow) == Mandatory.IMPLIED:
-                step.undo_mandatory(workflow)
+    def check_undo_mandatory(self):
+        """Try to set this node to Mandatory.NO and propagate to other optional suppliers."""
+        implied = (
+            not self.is_orphan()
+            and self.con.execute(EXISTS_MANDATORY_CONSUMER_STEPS, (self.i,)).fetchone()[0] > 0
+        )
+        if not implied:
+            if self.get_mandatory() == Mandatory.IMPLIED:
+                self.set_mandatory(Mandatory.NO)
+            for i, label in self.con.execute(SELECT_SUPPLYING_STEPS, (self.i,)):
+                step = Step(self.cascade, i, label)
+                step.check_undo_mandatory()
 
     #
-    # Path getters
+    # Env vars
     #
 
-    @staticmethod
-    def _get_paths(
-        workflow: "Workflow",
-        file_keys: list[str],
-        state=False,
-        file_hash=False,
-        orphan=False,
-        filter_states: tuple[FileState, ...] | None = None,
-    ) -> list:
-        result = []
-        for file_key in file_keys:
-            file = workflow.get_file(file_key)
-            if filter_states is None or file.get_state(workflow) in filter_states:
-                row = [file.path]
-                if state:
-                    row.append(file.get_state(workflow))
-                if file_hash:
-                    row.append(file.hash)
-                if orphan:
-                    row.append(workflow.is_orphan(file_key))
-                result.append(row)
-        if not (state or file_hash or orphan):
-            result = [row[0] for row in result]
-        return result
+    def add_env_vars(self, env_vars):
+        rows = [(self.i, name, os.getenv(name)) for name in env_vars]
+        self.con.executemany("INSERT OR REPLACE INTO env_var VALUES (?, ?, ?, 0)", rows)
 
-    def get_inp_paths(
+    def amend_env_vars(self, env_vars):
+        rows = [(self.i, name, os.getenv(name)) for name in env_vars]
+        self.con.executemany("INSERT OR IGNORE INTO env_var VALUES (?, ?, ?, 1)", rows)
+
+    #
+    # Pool definitions
+    #
+
+    def define_pool(self, pool: str, size: int):
+        # If the pool has already been defined, it should have the same size.
+        sql = "SELECT size FROM pool_definition WHERE name = ?"
+        for (old_size,) in self.con.execute(sql, (pool,)):
+            # Checking one is in principle sufficient, but let's play it safe an check them all.
+            if old_size != size:
+                raise ValueError(
+                    f"Pool with old size {old_size} defined with different new size {size}"
+                )
+        self.con.execute(
+            "INSERT OR IGNORE INTO pool_definition VALUES (?, ?, ?)", (self.i, pool, size)
+        )
+
+    #
+    # Iterators
+    #
+
+    def _paths(
         self,
-        workflow: "Workflow",
-        *,
-        state=False,
-        file_hash=False,
-        orphan=False,
-        only_initial=False,
-    ) -> list:
-        file_keys = workflow.get_suppliers(self.key, kind="file", include_orphans=True)
-        if only_initial:
-            file_keys = [fk for fk in file_keys if fk not in self._amended_suppliers]
-        return self._get_paths(workflow, file_keys, state, file_hash, orphan)
+        relation: str,
+        yield_state: bool = False,
+        yield_hash: bool = False,
+        yield_orphan: bool = False,
+        yield_amended: bool = False,
+        amended: bool | None = None,
+        filter_states: tuple[FileState, ...] = (),
+    ) -> Iterator:
+        """Iterate over paths of this step using various criteria."""
+        # Which relation?
+        data = {"node": self.i}
+        if relation == "product":
+            if yield_amended or amended is not None:
+                raise ValueError("Cannot combine amended with product relation.")
+            sql = "WITH relevant AS (SELECT i AS node FROM node WHERE creator = :node)"
+        elif relation == "supplier":
+            sql = (
+                "WITH relevant AS "
+                "(SELECT supplier AS node, i AS idep FROM dependency WHERE consumer = :node)"
+            )
+        elif relation == "consumer":
+            sql = (
+                "WITH relevant AS "
+                "(SELECT consumer AS node, i AS idep FROM dependency WHERE supplier = :node)"
+            )
+        else:
+            raise ValueError(f"Unrecognized relation argument: '{relation}'")
+        join = "JOIN node ON node.i = relevant.node"
 
-    def get_out_paths(
+        # Which fields to yield?
+        fields = ["label"]
+        join_file = False
+        if yield_state:
+            fields.append("state")
+            join_file = True
+        if yield_hash:
+            fields.extend(["digest", "mode", "mtime", "size", "inode"])
+            join_file = True
+        if yield_orphan:
+            fields.append("orphan")
+        if yield_amended:
+            fields.append("EXISTS (SELECT 1 FROM amended_dep WHERE amended_dep.i = relevant.idep)")
+        if len(filter_states) > 0:
+            join_file = True
+        if join_file:
+            join += " JOIN file ON file.node = relevant.node"
+        where = "WHERE kind = 'file'"
+
+        # Exclude orphaned paths if not yielding orphan
+        if not yield_orphan:
+            where += " AND NOT orphan"
+
+        # Select only the initial files (not amended)
+        if amended is not None:
+            if amended:
+                join += " JOIN amended_dep ON amended_dep.i = relevant.idep"
+            else:
+                where += (
+                    " AND NOT EXISTS (SELECT 1 FROM amended_dep"
+                    " WHERE amended_dep.i = relevant.idep)"
+                )
+
+        # Filter certain states
+        if len(filter_states) > 0:
+            where_states = []
+            for i, state in enumerate(filter_states):
+                where_states.append(f"state = :state_{i}")
+                data[f"state_{i}"] = state.value
+            where += f" AND ({' OR '.join(where_states)})"
+
+        sql += f" SELECT {', '.join(fields)} FROM relevant {join} {where}"
+        for row in self.con.execute(sql, data):
+            record = [row[0]]
+            i = 1
+            if yield_state:
+                record.append(FileState(row[i]))
+                i += 1
+            if yield_hash:
+                record.append(FileHash(*row[i : i + 5]))
+                i += 5
+            if yield_orphan:
+                record.append(bool(row[i]))
+                i += 1
+            if yield_amended:
+                record.append(bool(row[i]))
+            yield record[0] if len(record) == 1 else tuple(record)
+
+    def inp_paths(
         self,
-        workflow: "Workflow",
         *,
-        state=False,
-        file_hash=False,
-        only_initial=False,
-    ) -> list:
-        file_keys = workflow.get_consumers(self.key, kind="file")
-        if only_initial:
-            file_keys = [fk for fk in file_keys if fk not in self._amended_consumers]
-        filter_states = (FileState.PENDING, FileState.BUILT)
-        return self._get_paths(workflow, file_keys, state, file_hash, False, filter_states)
+        yield_state: bool = False,
+        yield_hash: bool = False,
+        yield_orphan: bool = False,
+        yield_amended: bool = False,
+        amended: bool | None = None,
+    ) -> Iterator:
+        """Iterate over input files of this step."""
+        yield from self._paths(
+            "supplier", yield_state, yield_hash, yield_orphan, yield_amended, amended
+        )
 
-    def get_vol_paths(
+    def out_paths(
         self,
-        workflow: "Workflow",
         *,
-        file_hash=False,
-        only_initial=False,
-    ) -> list:
-        file_keys = workflow.get_consumers(self.key, kind="file")
-        if only_initial:
-            file_keys = [fk for fk in file_keys if fk not in self._amended_consumers]
-        filter_states = (FileState.VOLATILE,)
-        return self._get_paths(workflow, file_keys, False, file_hash, False, filter_states)
+        yield_state: bool = False,
+        yield_hash: bool = False,
+        yield_orphan: bool = False,
+        yield_amended: bool = False,
+        amended: bool | None = None,
+    ) -> Iterator:
+        """Iterate over output files of this step."""
+        yield from self._paths(
+            "consumer",
+            yield_state,
+            yield_hash,
+            yield_orphan,
+            yield_amended,
+            amended,
+            (FileState.AWAITED, FileState.BUILT, FileState.OUTDATED),
+        )
 
-    def get_static_paths(self, workflow: "Workflow", *, file_hash=False) -> list:
-        """Return a list of STATIC paths created by this step.
+    def vol_paths(
+        self,
+        *,
+        yield_hash: bool = False,
+        yield_orphan: bool = False,
+        yield_amended: bool = False,
+        amended: bool | None = None,
+    ) -> Iterator:
+        """Iterate over volatile output files of this step."""
+        yield from self._paths(
+            "consumer",
+            False,
+            yield_hash,
+            yield_orphan,
+            yield_amended,
+            amended,
+            (FileState.VOLATILE,),
+        )
 
-        Patterns
-        --------
-        workflow
-            The workflow in which the step is defined.
-        file_hash
-            If True, a list with path and file_hash tuples is returned.
-            If False, just a list of paths is returned.
-        """
-        file_keys = workflow.get_products(self.key, kind="file")
-        filter_states = (FileState.STATIC,)
-        return self._get_paths(workflow, file_keys, False, file_hash, False, filter_states)
+    def static_paths(self, *, yield_hash: bool = False) -> Iterator:
+        """Iterate over static paths created by this step."""
+        yield from self._paths(
+            "product", False, yield_hash, False, False, None, (FileState.STATIC,)
+        )
 
-    def get_missing_paths(self, workflow: "Workflow", *, file_hash=False) -> list:
-        """Return a list of MISSING paths created by this step.
+    def missing_paths(self, *, yield_hash: bool = False) -> Iterator:
+        """Iterate over missing paths created by this step."""
+        yield from self._paths(
+            "product", False, yield_hash, False, False, None, (FileState.MISSING,)
+        )
 
-        Patterns
-        --------
-        workflow
-            The workflow in which the step is defined.
-        file_hash
-            If True, a list with path and file_hash tuples is returned.
-            If False, just a list of paths is returned.
-        """
-        file_keys = workflow.get_products(self.key, kind="file")
-        filter_states = (FileState.MISSING,)
-        return self._get_paths(workflow, file_keys, False, file_hash, False, filter_states)
+    def env_vars(self, *, amended: bool | None = None, yield_amended: bool = False):
+        """Iterate over used environment variable names (not values)."""
+        if yield_amended:
+            sql = "SELECT name, amended FROM env_var WHERE node = ?"
+        else:
+            sql = "SELECT name FROM env_var WHERE node = ?"
+        if amended is not None:
+            sql += " AND"
+            if not amended:
+                sql += " NOT"
+            sql += " amended = 1"
+        for row in self.con.execute(sql, (self.i,)):
+            if yield_amended:
+                yield row[0], bool(row[1])
+            else:
+                yield row[0]
 
-    #
-    # Step state
-    #
+    def nglob_multis(self) -> Iterator[NGlobMulti]:
+        """Iterate of nglob_multis used by this step."""
+        for row in self.con.execute("SELECT data FROM nglob_multi WHERE node = ?", (self.i,)):
+            yield pickle.loads(row[0])
 
-    def get_state(self, workflow: "Workflow") -> StepState:
-        return workflow.step_states[self.key]
-
-    def set_state(self, workflow: "Workflow", new_state: StepState):
-        workflow.step_states[self.key] = new_state
+    def pool_definitions(self):
+        sql = "SELECT name, size FROM pool_definition WHERE node = ?"
+        yield from self.con.execute(sql, (self.i,))
 
     #
     # Run phase
     #
 
-    def queue_if_appropriate(self, workflow: "Workflow"):
-        if self._block:
+    def queue_if_appropriate(self):
+        state, pool, block, mandatory, validate_amended = self.properties()
+        if block:
             return
-        if self.get_mandatory(workflow) == Mandatory.NO:
+        if mandatory == Mandatory.NO:
             return
-        if workflow.is_orphan(self.key):
+        if self.is_orphan():
             return
-        if self.get_state(workflow) != StepState.PENDING:
+        if state != StepState.PENDING:
+            return
+        creator = self.creator()
+        if isinstance(creator, Step) and creator.get_state() not in (
+            StepState.SUCCEEDED,
+            StepState.RUNNING,
+        ):
             return
         has_amended_pending = any(
-            workflow.get_file(file_key).get_state(workflow)
-            not in (FileState.STATIC, FileState.BUILT)
-            for file_key in self._amended_suppliers
+            orphan or state not in (FileState.STATIC, FileState.BUILT)
+            for _, state, orphan in self.inp_paths(
+                yield_state=True, yield_orphan=True, amended=True
+            )
         )
-        if has_amended_pending and self.validate_amended:
-            job = ValidateAmendedJob(self._key, self._pool)
+        if has_amended_pending and validate_amended:
+            job = ValidateAmendedJob(self, pool)
         else:
-            for file_key in workflow.get_suppliers(self.key, kind="file", include_orphans=True):
-                if workflow.is_orphan(file_key):
-                    if self._recording is None:
-                        # If there is no recording that could undo
-                        # the orphaned state, the step cannot be queued
-                        return
-                    if file_key[5:] not in self._recording.static_paths:
-                        # If the orphaned file is not a recorded static
-                        # file, the step cannot be queued.
-                        return
-                else:
-                    state = workflow.get_file(file_key).get_state(workflow)
-                    if state not in (FileState.BUILT, FileState.STATIC):
-                        return
-            if self._hash is None or self._recording is None:
-                job = RunJob(self._key, self._pool)
-            else:
-                job = TryReplayJob(self._key, self._pool)
-        self.set_state(workflow, StepState.QUEUED)
-        self.reschedule_due_to = set()
-        self.validate_amended = False
-        workflow.job_queue.put_nowait(job)
-        workflow.job_queue_changed.set()
+            for _, file_state, is_orphan in self.inp_paths(yield_state=True, yield_orphan=True):
+                if is_orphan:
+                    # input not added to the graph yet
+                    return
+                if file_state not in (FileState.BUILT, FileState.STATIC):
+                    # input not up-to-date yet
+                    return
+            job = ExecuteJob(self, pool) if self.get_hash() is None else TrySkipJob(self, pool)
+        logger.info("Queue %s", job.name)
+        self.set_state(StepState.QUEUED)
+        self.set_rescheduled_info("")
+        self.set_validate_amended(False)
+        self.workflow.job_queue.put_nowait(job)
+        self.workflow.job_queue_changed.set()
 
-    def clean_before_run(self, workflow: "Workflow"):
-        """Drop amended inputs and (volatile) outputs.
+    def clean_before_run(self):
+        """Remove all inforation that is expected to be set when running a step.
 
-        This method is called right before (re)running a step.
-        Running the step will effectively recreate
-        the same or different amended inputs and (volatile) outputs.
+        This method is called right before (re)running a step and cleans up leftovers
+        that may still hang around from a previous (failed or aborted) execution.
+
+        The following are removed:
+
+        - reschedule_info
+        - amended inputs and (volatile outputs)
+        - amended environment variables
+        - pool definitions
+
+        The following are orphaned:
+
+        - nglob_multis
+        - created steps
+        - static file definitions
+        - deferred globs
+
+        The following are marked as outdated:
+
+        - output files that are in state BUILT
         """
-        for supplier_key in self._amended_suppliers:
-            workflow.consumers.discard(supplier_key, self._key, insist=True)
-        self._amended_suppliers.clear()
-        for consumer_key in sorted(self._amended_consumers):
-            consumer = workflow.get_file(consumer_key)
-            file_state = consumer.get_state(workflow)
-            if file_state not in (FileState.PENDING, FileState.VOLATILE):
-                raise AssertionError(
-                    f"Consumer of step is {file_state.name} when cleaning step before run."
-                )
-            workflow.suppliers.discard(consumer_key, self.key, insist=True)
-            workflow.orphan(consumer_key)
-        self._amended_consumers.clear()
-        self._amended_env_vars.clear()
-        self._nglob_multis = []
+        # Clear rescheduled_info
+        self.set_rescheduled_info("")
 
-    def completed(self, workflow: "Workflow", success: bool, new_hash: StepHash | None) -> set[str]:
+        # Drop amended suppliers.
+        rows = list(
+            self.con.execute(
+                "SELECT dependency.i, node.i, node.label, node.kind FROM dependency "
+                "JOIN node ON node.i = supplier "
+                "JOIN amended_dep ON amended_dep.i = dependency.i WHERE consumer = ?",
+                (self.i,),
+            )
+        )
+        self.con.executemany("DELETE FROM amended_dep WHERE i = ?", ((row[0],) for row in rows))
+        self.del_suppliers(
+            [self.cascade.node_classes[kind](self.workflow, i, label) for _, i, label, kind in rows]
+        )
+
+        # Drop amended environment variables
+        self.con.execute("DELETE FROM env_var WHERE node = ? AND amended = 1", (self.i,))
+
+        # Drop pool definitions
+        self.con.execute("DELETE FROM pool_definition WHERE node = ?", (self.i,))
+
+        # Drop nglob_multis
+        self.con.execute("DELETE FROM nglob_multi WHERE node = ?", (self.i,))
+
+        # Drop amended consumers and orphan the corresponding consumer nodes.
+        records_consumer = list(
+            self.con.execute(
+                "SELECT dependency.i, consumer, label, kind FROM dependency "
+                "JOIN amended_dep ON amended_dep.i = dependency.i "
+                "JOIN node ON consumer = node.i "
+                "WHERE supplier = ?",
+                (self.i,),
+            )
+        )
+        ideps_consumer = [(row[0],) for row in records_consumer]
+        self.con.executemany("DELETE FROM amended_dep WHERE i = ?", ideps_consumer)
+        for _, i, label, kind in records_consumer:
+            node = self.cascade.node_classes[kind](self.cascade, i, label)
+            node.del_suppliers([self])
+            node.orphan()
+
+        # Orphan steps created by this step
+        sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'step'"
+        for i, label in self.con.execute(sql, (self.i,)):
+            step = Step(self.workflow, i, label)
+            step.orphan()
+
+        # Orphan static file definitions
+        sql = (
+            "SELECT i, label FROM node JOIN file ON node.i = file.node "
+            "WHERE creator = ? AND state in (?, ?)"
+        )
+        data = (self.i, FileState.STATIC.value, FileState.MISSING.value)
+        for i, label in self.con.execute(sql, data):
+            file = File(self.workflow, i, label)
+            file.orphan()
+
+        # Orphan deferred globs
+        sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'dg'"
+        for i, label in self.con.execute(sql, (self.i,)):
+            dg = DeferredGlob(self.workflow, i, label)
+            dg.orphan()
+
+        # Mark BUILT outputs OUTDATED.
+        sql = (
+            "SELECT i, label FROM node JOIN file ON node.i = file.node "
+            "WHERE creator = ? AND state = ?"
+        )
+        data = (self.i, FileState.BUILT.value)
+        for i, label in self.con.execute(sql, data):
+            file = File(self.workflow, i, label)
+            file.mark_outdated()
+
+    def completed(self, success: bool, new_hash: StepHash | None) -> str | None:
         """Set a step as completed (succeeded or failed) and trigger the consequences.
 
         Parameters
         ----------
-        workflow
-            The workflow in which to trigger the consequences.
         success
             True if the step completed without error, False otherwise.
         new_hash
@@ -590,186 +782,90 @@ class Step(Node):
 
         Returns
         -------
-        reschedule_due_to
-            A set of missing files that caused the step to be rescheduled, if any.
+        reschedule_info
+            A string listing the reasons for rescheduling the step.
         """
-        self._hash = new_hash
-        if len(self.reschedule_due_to) > 0:
+        rescheduled_info = self.get_rescheduled_info()
+        if rescheduled_info != "":
+            logger.info("Reschedule step: %s", self.label)
             if new_hash is None:
                 raise ValueError("Step rescheduled without new_hash")
-            self.set_state(workflow, StepState.PENDING)
+            self.set_state(StepState.PENDING)
+            self.delete_hash()
             # The missing inputs may have appeared by the time the step ended,
             # so we need to check if we can put the step back on the queue right away.
-            missing = self.reschedule_due_to.copy()
-            self.queue_if_appropriate(workflow)
-            return missing
+            self.queue_if_appropriate()
+            return rescheduled_info
         if success:
+            logger.info("Success step: %s", self.label)
             if new_hash is None:
                 raise ValueError("Step succeeded without new_hash")
-            self.set_state(workflow, StepState.SUCCEEDED)
-            for file_key in workflow.get_products(self._key, kind="file"):
-                file = workflow.get_file(file_key)
-                if file.get_state(workflow) == FileState.PENDING:
-                    file.set_state(workflow, FileState.BUILT)
-                file.release_pending(workflow)
-            self._hash = new_hash
-            self.update_recording(workflow)
+            self.set_state(StepState.SUCCEEDED)
+            for file in self.products(kind="file"):
+                if file.get_state() in (FileState.AWAITED, FileState.OUTDATED):
+                    file.set_state(FileState.BUILT)
+                    file.release_pending()
+            for step in self.products(kind="step"):
+                step.queue_if_appropriate()
+            self.set_hash(new_hash)
         else:
-            self.discard_recording()
-            self.set_state(workflow, StepState.FAILED)
-        return []
+            logger.info("Fail step: %s", self.label)
+            self.set_state(StepState.FAILED)
+            for file in self.products(kind="file"):
+                if file.get_state() in (FileState.AWAITED, FileState.BUILT):
+                    file.set_state(FileState.OUTDATED)
+            self.delete_hash()
+        return ""
 
-    def update_recording(self, workflow: "Workflow"):
-        """Derive the recording from the (fully intact) step in its workflow."""
-        recording = StepRecording(self._key)
+    def get_hash(self) -> StepHash | None:
+        sql = "SELECT digest, inp_digest, explain_info FROM step_hash WHERE node = ?"
+        row = self.con.execute(sql, (self.i,)).fetchone()
+        if row is None:
+            return None
+        return StepHash(row[0], row[1], None if row[2] is None else pickle.loads(row[2]))
 
-        for inp_path in self.get_inp_paths(workflow):
-            file_key = f"file:{inp_path}"
-            if file_key in self.amended_suppliers:
-                recording.amend_args.setdefault("inp_paths", []).append(inp_path)
-            else:
-                recording.initial_inp_paths.append(inp_path)
+    def set_hash(self, step_hash: StepHash):
+        data = (
+            self.i,
+            step_hash.digest,
+            step_hash.inp_digest,
+            pickle.dumps(step_hash.explain_info),
+        )
+        self.con.execute("INSERT OR REPLACE INTO step_hash VALUES (?, ?, ?, ?)", data)
 
-        recording.initial_env_vars = set(self._initial_env_vars)
-        recording.amend_args["env_vars"] = set(self._amended_env_vars)
+    def delete_hash(self):
+        self.con.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))
 
-        for out_path in self.get_out_paths(workflow):
-            file_key = f"file:{out_path}"
-            if file_key in self.amended_consumers:
-                recording.amend_args.setdefault("out_paths", []).append(out_path)
-            else:
-                recording.initial_out_paths.append(out_path)
-
-        for vol_path in self.get_vol_paths(workflow):
-            file_key = f"file:{vol_path}"
-            if file_key in self.amended_consumers:
-                recording.amend_args.setdefault("vol_paths", []).append(vol_path)
-            else:
-                recording.initial_vol_paths.append(vol_path)
-
-        if len(recording.amend_args) > 0:
-            recording.amend_args["step_key"] = self.key
-            recording.amend_args.setdefault("inp_paths", [])
-            recording.amend_args.setdefault("out_paths", [])
-            recording.amend_args.setdefault("vol_paths", [])
-
-        recording.static_paths.extend(self.get_static_paths(workflow))
-        recording.missing_paths.extend(self.get_missing_paths(workflow))
-        for sub_step_key in workflow.get_products(self.key, kind="step"):
-            sub_step = workflow.get_step(sub_step_key)
-            step_args = {
-                "creator_key": self.key,
-                "command": sub_step.command,
-                "inp_paths": sub_step.get_inp_paths(workflow, only_initial=True),
-                "env_vars": sub_step.initial_env_vars.copy(),
-                "out_paths": sub_step.get_out_paths(workflow, only_initial=True),
-                "vol_paths": sub_step.get_vol_paths(workflow, only_initial=True),
-                "workdir": sub_step.workdir,
-                "optional": sub_step.get_mandatory(workflow) != Mandatory.YES,
-                "pool": sub_step.pool,
-            }
-            recording.steps_args.append(step_args)
-        for ngm in self.nglob_multis:
-            recording.nglob_multis.append(ngm)
-        for dg_key in workflow.get_products(self.key, "dg"):
-            dg = workflow.get_deferred_glob(dg_key)
-            patterns = [ngs.pattern for ngs in dg.ngm.nglob_singles]
-            recording.deferred_glob_args.append(patterns)
-        recording.defined_pools = self._defined_pools.copy()
-        self._recording = recording
-
-    def replay_amend(self, workflow: "Workflow"):
-        """Restore amended paths from a previous execution.
-
-        This should be done as early as possible, to keep the rest of the workflow informed.
-        """
-        # Don't bother if there is no recording.
-        if self._recording is None:
-            return
-        if self._recording.key != self.key:
-            raise ValueError("The recorded key is not consistent with the step key")
-        if (
-            len(self._amended_consumers) != 0
-            or len(self._amended_suppliers) != 0
-            or len(self._amended_env_vars) != 0
-        ):
-            raise ValueError("Cannot restore amended info if step is already amended")
-        if (
-            self._recording.initial_inp_paths == self.get_inp_paths(workflow, only_initial=True)
-            and self._recording.initial_env_vars == self.initial_env_vars
-            and self._recording.initial_out_paths == self.get_out_paths(workflow, only_initial=True)
-            and self._recording.initial_vol_paths == self.get_vol_paths(workflow, only_initial=True)
-        ):
-            if len(self._recording.amend_args) > 0:
-                workflow.amend_step(**self._recording.amend_args)
-        else:
-            self.discard_recording()
-
-    def discard_recording(self):
-        self._hash = None
-        self._recording = None
-
-    def replay_rest(self, workflow: "Workflow"):
-        """Restore all consequences of step execution, other than amend.
-
-        This is suitable when inputs and outputs (file contents) have not changed.
-        """
-        if self._recording is None:
-            raise ValueError("The recording is not defined")
-        if self._recording.key != self.key:
-            raise ValueError("The recorded key is not consistent with the step key")
-        for file_key in workflow.get_products(self.key, kind="file"):
-            file = workflow.get_file(file_key)
-            if file.get_state(workflow) in (FileState.MISSING, FileState.BUILT):
-                raise ValueError("Upon replay, output files cannot be MISSING or BUILT")
-        recording = self._recording
-        # Restore as if the step executed
-        for pool, size in recording.defined_pools.items():
-            workflow.set_pool(self.key, pool, size)
-        workflow.declare_static(self.key, recording.static_paths)
-        workflow.declare_static(self.key, recording.missing_paths, verified=False)
-        for step_args in recording.steps_args:
-            workflow.define_step(**step_args)
-        for ngm in recording.nglob_multis:
-            workflow.register_nglob(self.key, ngm)
-        for patterns in recording.deferred_glob_args:
-            paths = workflow.defer_glob(self.key, patterns)
-            # We're assuming all paths exist since the replay was allowed.
-            workflow.confirm_deferred(paths)
-        # Mark the step as succeeded and mark outputs as BUILT
-        self.set_state(workflow, StepState.SUCCEEDED)
-        for file_key in workflow.get_products(self.key, kind="file"):
-            file = workflow.get_file(file_key)
-            if file.get_state(workflow) == FileState.PENDING:
-                file.set_state(workflow, FileState.BUILT)
-            file.release_pending(workflow)
-
-    def register_nglob(self, workflow, nglob_multi):
-        self.nglob_multis.append(nglob_multi)
-        workflow.step_keys_with_nglob.add(self.key)
+    def register_nglob(self, nglob_multi):
+        data = (self.i, pickle.dumps(nglob_multi))
+        self.con.execute("INSERT INTO nglob_multi(node, data) VALUES (?, ?)", data)
 
     #
     # Watch phase
     #
 
-    def make_pending(self, workflow: "Workflow", *, input_changed: bool = False):
-        self.validate_amended |= input_changed
-        if self.get_state(workflow) != StepState.PENDING:
-            self.set_state(workflow, StepState.PENDING)
+    def mark_pending(self, *, input_changed: bool = False):
+        """Set succeeded or failed step pending (again).
+
+        There can be many reasons for making a step pending,
+        e.g. inputs changes, outputs disappaered, environment variables changed.
+
+        Parameters
+        ----------
+        input_changed
+            Set to True when one of the inputs or environment variables (may) have changed.
+            The changes will be checked and if relevant, amended step arguments will be
+            refreshed, because they can be affected by the changes in inputs.
+        """
+        if input_changed:
+            self.set_validate_amended()
+        state = self.get_state()
+        if state == StepState.RUNNING:
+            raise RuntimeError("Cannot make a running step pending")
+        if state in (StepState.SUCCEEDED, StepState.FAILED):
+            logger.info("Mark %s step PENDING: %s", state.name, self.label)
+            self.set_state(StepState.PENDING)
             # First make all consumers (output files) pending
-            for key in workflow.get_consumers(self.key):
-                if key.startswith("file:"):
-                    file = workflow.get_file(key)
-                    if file.get_state(workflow) == FileState.BUILT:
-                        file.make_pending(workflow)
-            # Then orphan all products that are not (volatile) output files
-            for key in workflow.get_products(self.key):
-                if key.startswith("file:"):
-                    file = workflow.get_file(key)
-                    if file.get_state(workflow) in (
-                        FileState.BUILT,
-                        FileState.PENDING,
-                        FileState.VOLATILE,
-                    ):
-                        continue
-                workflow.orphan(key)
+            for file in self.consumers(kind="file"):
+                if file.get_state() == FileState.BUILT:
+                    file.mark_outdated()

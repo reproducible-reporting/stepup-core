@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -21,24 +21,33 @@
 
 import asyncio
 import contextlib
+import hashlib
 import os
+import sqlite3
 import stat
-from collections.abc import Iterator
+from collections.abc import AsyncGenerator, Iterator
 
 import pytest
 import pytest_asyncio
 from path import Path
 
 from stepup.core.director import serve
+from stepup.core.enums import StepState
+from stepup.core.file import File
+from stepup.core.hash import FileHash
+from stepup.core.job import ExecuteJob
 from stepup.core.reporter import ReporterClient
 from stepup.core.rpc import AsyncRPCClient
+from stepup.core.workflow import Workflow
 
 pytest.register_assert_rewrite("stepup.core.pytest")
 
 BOOT_UNTIL_DONE = """\
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from path import Path
 from time import sleep
+with open("STARTED.txt", "w") as fh:
+    fh.write("started")
 while not Path("DONE.txt").is_file():
     sleep(0.1)
 print("Found DONE.txt. Stopping.")
@@ -46,7 +55,7 @@ print("Found DONE.txt. Stopping.")
 
 
 @pytest_asyncio.fixture()
-async def client(tmpdir) -> Iterator[AsyncRPCClient]:
+async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
     # Launch stepup in background
     with contextlib.chdir(tmpdir):
         dir_stepup = Path(".stepup").absolute()
@@ -59,9 +68,11 @@ async def client(tmpdir) -> Iterator[AsyncRPCClient]:
         os.chmod("plan.py", stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
         reporter = ReporterClient()
         director = asyncio.create_task(
-            serve(director_socket_path, 1, "graph.mpk", "plan.py", reporter, False, False, True)
+            serve(director_socket_path, 1, "plan.py", reporter, False, False, True, False)
         )
         while not director_socket_path.exists():
+            await asyncio.sleep(0.1)
+        while not Path("STARTED.txt").is_file():
             await asyncio.sleep(0.1)
         async with await AsyncRPCClient.socket(director_socket_path) as result:
             try:
@@ -74,3 +85,50 @@ async def client(tmpdir) -> Iterator[AsyncRPCClient]:
 @pytest.fixture
 def path_tmp(tmpdir: str) -> Path:
     return Path(tmpdir)
+
+
+def fake_hash(path):
+    return FileHash(
+        b"d" if path.endswith("/") else hashlib.blake2b(path.encode("utf8")).digest(), 0, 0.0, 0, 0
+    )
+
+
+def declare_static(workflow, creator, paths):
+    """Declare a list of static files and confirm them.
+
+    This a heavily simplified version of the stepup.core.api.static function.
+    This is solely used for testing the workflow.
+    """
+    workflow.declare_missing(creator, paths)
+    checked = [(path, fake_hash(path)) for path in paths]
+    workflow.confirm_static(checked)
+    return [workflow.find("file", path) for path in paths]
+
+
+@pytest.fixture
+def wfs() -> Iterator[Workflow]:
+    """A workflow from scratch, no plan.py"""
+    workflow = Workflow(sqlite3.Connection(":memory:"))
+    yield workflow
+    workflow.check_consistency()
+
+
+@pytest.fixture
+def wfp() -> Iterator[Workflow]:
+    """A workflow with a boots step plan.py"""
+    workflow = Workflow(sqlite3.Connection(":memory:"))
+    with workflow.con:
+        root = workflow.root
+        declare_static(workflow, root, ["plan.py"])
+        plan = workflow.define_step(root, "./plan.py", inp_paths=["plan.py"])
+        nodes = list(workflow.nodes())
+        assert nodes[0] == root
+        for node in nodes[1:3]:
+            assert isinstance(node, File)
+        assert nodes[-1] == plan
+        # Simulate running the plan
+        assert workflow.job_queue.get_nowait() == ExecuteJob(plan, None)
+        plan.set_state(StepState.RUNNING)
+    yield workflow
+    with workflow.con:
+        workflow.check_consistency()

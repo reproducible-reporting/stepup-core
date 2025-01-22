@@ -25,7 +25,6 @@ export XDG_CACHE_HOME="${VIRTUAL_ENV}/cache"
 Finally, run the following commands:
 
 ```bash
-echo 'source venv/bin/activate' > .envrc
 direnv allow
 pip install -U pip
 pip install -e .[dev]
@@ -57,7 +56,7 @@ If you wish to regenerate the output of the examples, run `stepup` in the `docs`
 
 ```bash
 cd docs
-stepup -n
+stepup
 ```
 
 Note that some scripts use [Graphviz](https://graphviz.org/) to generate diagrams,

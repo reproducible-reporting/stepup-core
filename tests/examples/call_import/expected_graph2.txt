@@ -1,0 +1,57 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:helper.py
+            supplies   file:plan.py
+            supplies   file:work.py
+            supplies   file:work_out.json
+            supplies   step:./plan.py
+            supplies   step:./work.py --out=work_out.json --amend-out
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:helper.py
+             creates   file:work.py
+             creates   step:./work.py --out=work_out.json --amend-out
+
+file:helper.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./work.py --out=work_out.json --amend-out
+
+file:work.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./work.py --out=work_out.json --amend-out
+
+step:./work.py --out=work_out.json --amend-out
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:helper.py [amended]
+            consumes   file:work.py
+             creates   file:work_out.json
+            supplies   file:work_out.json [amended]
+
+file:work_out.json
+               state = BUILT
+          created by   step:./work.py --out=work_out.json --amend-out
+            consumes   file:./
+            consumes   step:./work.py --out=work_out.json --amend-out

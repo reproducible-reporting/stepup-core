@@ -1,0 +1,23 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Scanning initial database for changed files
+   DELETED │ copy.txt
+   STARTUP │ Scanning initial database for new nglob matches
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+    NOSKIP │ cp -aT original.txt copy.txt
+───────────────────────────── Missing output files ─────────────────────────────
+copy.txt
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, digest 62a4a24b ➜ 9e949306, inp_digset b013fd77
+Modified out hash    copy.txt (digest 9d30180e ➜ UNKNOWN, size 10 ➜ 0, mode -rw-r--r-- ➜ ?---------)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+Same inp hash        original.txt
+────────────────────────────────────────────────────────────────────────────────
+     START │ cp -aT original.txt copy.txt
+   SUCCESS │ cp -aT original.txt copy.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

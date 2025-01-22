@@ -1,0 +1,13 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./add.py --inp=add_inp.json --out=add_out.json --amend-out
+   SUCCESS │ ./add.py --inp=add_inp.json --out=add_out.json --amend-out
+     START │ ./square.py --inp=add_out.json --out=square_out.json --amend-out
+   SUCCESS │ ./square.py --inp=add_out.json --out=square_out.json --amend-out
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

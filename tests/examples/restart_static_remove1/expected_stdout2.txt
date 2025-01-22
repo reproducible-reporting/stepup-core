@@ -1,0 +1,19 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ plan.py (digest f381940c ➜ c68af031, size 154 ➜ 116)
+   DELETED │ foo.txt
+   STARTUP │ Scanning initial database for new nglob matches
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+    NOSKIP │ ./plan.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   compact, digest 37558936 ➜ 099f76e8, inp_digset 37558936 ➜ 099f76e8
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+  DIRECTOR │ Trying to delete 1 outdated output(s).
+     CLEAN │ bar.txt
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

@@ -1,0 +1,30 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./use_config.py
+   SUCCESS │ ./use_config.py
+     START │ echo All is fine. > script.log
+   SUCCESS │ echo All is fine. > script.log
+     START │ echo log written to script.log. > report.txt
+   SUCCESS │ echo log written to script.log. > report.txt
+     START │ cp -aT report.txt copy.txt
+   SUCCESS │ cp -aT report.txt copy.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+   UPDATED │ config.json
+     PHASE │ run
+     START │ ./use_config.py
+   SUCCESS │ ./use_config.py
+     START │ echo All is fine. > other.log
+   SUCCESS │ echo All is fine. > other.log
+     START │ echo log written to other.log. > report.txt
+   SUCCESS │ echo log written to other.log. > report.txt
+     START │ cp -aT report.txt copy.txt
+   SUCCESS │ cp -aT report.txt copy.txt
+  DIRECTOR │ Trying to delete 1 outdated output(s).
+     CLEAN │ script.log
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

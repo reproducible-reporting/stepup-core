@@ -1,0 +1,76 @@
+root:
+             creates   file:./
+             creates   file:plan2.py
+             creates   step:./plan2.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:copy2.txt
+            supplies   file:copy_both2.txt
+            supplies   file:plan2.py
+            supplies   file:source2.txt
+            supplies   file:source_both.txt
+            supplies   step:./plan2.py
+            supplies   step:cp source2.txt copy2.txt
+            supplies   step:cp source_both.txt copy_both2.txt
+
+file:source_both.txt
+               state = STATIC
+          created by   step:./plan2.py
+            consumes   file:./
+            supplies   step:cp source_both.txt copy_both2.txt
+
+file:plan2.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan2.py
+
+step:./plan2.py
+               state = SUCCEEDED
+          inp_digest = same
+           explained = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan2.py
+             creates   file:source2.txt
+             creates   file:source_both.txt
+             creates   step:cp source2.txt copy2.txt
+             creates   step:cp source_both.txt copy_both2.txt
+
+step:cp source_both.txt copy_both2.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan2.py
+            consumes   file:./
+            consumes   file:source_both.txt
+             creates   file:copy_both2.txt
+            supplies   file:copy_both2.txt
+
+file:copy_both2.txt
+               state = BUILT
+          created by   step:cp source_both.txt copy_both2.txt
+            consumes   file:./
+            consumes   step:cp source_both.txt copy_both2.txt
+
+file:source2.txt
+               state = STATIC
+          created by   step:./plan2.py
+            consumes   file:./
+            supplies   step:cp source2.txt copy2.txt
+
+step:cp source2.txt copy2.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan2.py
+            consumes   file:./
+            consumes   file:source2.txt
+             creates   file:copy2.txt
+            supplies   file:copy2.txt
+
+file:copy2.txt
+               state = BUILT
+          created by   step:cp source2.txt copy2.txt
+            consumes   file:./
+            consumes   step:cp source2.txt copy2.txt

@@ -1,7 +1,19 @@
 # Script (Single Case)
 
-StepUp Core implements a simple *script protocol* for defining scripts that combine planning and execution in a single source file.
+StepUp Core implements a simple *script protocol*
+for defining scripts that combine planning and execution in a single source file.
 This can be more convenient than putting a lot of detail in the `plan.py` file.
+
+The script and [call](call.md) protocols are similar in that they both simplify planning step.
+To help you decide which one to use, consider the following:
+
+- The **call protocol** is most convenient when you have a single script
+  that can be run with different parameters.
+  The script itself does not need to know about the parameters upfront.
+
+- The **script protocol** is most convenient when you prefer to have all the details of the script,
+  including the planning (inputs, outputs, ...) and execution, in a single source file.
+  Such self-contained scripts are easier to understand and maintain.
 
 
 ## Script Protocol
@@ -10,7 +22,7 @@ The [`script()`][stepup.core.api.script] protocol itself is rather simple.
 The following line in `plan.py`:
 
 ```python
-script("executable", "sub")
+script("executable", workdir="sub")
 ```
 
 is roughly equivalent to:
@@ -20,19 +32,37 @@ step("./executable plan", inp="executable", workdir="sub")
 ```
 
 Note that the use of a subdirectory is not required.
-The `./executable plan` step is expected to define additional steps to actually run something useful with the executable.
+The `./executable plan` step is expected to define additional steps
+to actually run something useful with the executable.
 A common scenario is to plan a single `./executable run` step with appropriate inputs and outputs.
 
 When the `optional=True` keyword argument is given to the `script()` function,
 it executes `./executable plan --optional`.
-The script protocol requires that all *run* steps created by this planning step should then receive the `optional=True` keyword argument.
+The script protocol requires that all *run* steps created by this planning step
+should then receive the `optional=True` keyword argument.
 Note that the *plan* step itself is never an optional step:
 It is always executed.
+
+The `script()` function also supports the `step_info="some_file.json` argument.
+This results in an extra argument `--step-info=some_file.json` for `./executable plan`.
+The planning of the run scripts is then expected to
+write all the information about the created run steps to this JSON file.
+In complex workflows, it may be useful to load this JSON file with
+[load_step_info][stepup.core.stepinfo.load_step_info].
+Consult the section on [StepInfo Objects](../advanced_topics/step_info.md)
+to learn how to use these objects.
+
+In addition, the `script()` function also supports all the arguments of `step()`,
+which it simply passes on when creating the `./executable plan` step.
+
+!!! note
+
+    The `step_info` argument, and support for all `step()` arguments were added in StepUp 2.0.0.
 
 
 ## Script driver
 
-StepUp implements a `driver` function in the module `stepup.core.script` that greatly facilitates
+StepUp implements a `driver()` function in the module `stepup.core.script` that greatly facilitates
 writing Python scripts that adhere to the script protocol.
 
 It can be used in two ways:
@@ -48,7 +78,7 @@ A Python script using the driver for a single case has the following structure.
 
 
 ```python
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from stepup.core.script import driver
 
 def info():
@@ -68,29 +98,29 @@ if __name__ == "__main__":
     driver()
 ```
 
-- The `info` function provides the data necessary to plan the execution of the script.
+- The `info()` function provides the data necessary to plan the execution of the script.
   It is executed when calling the script as `./script.py plan`.
 
     !!! note
 
         All dictionary items are optional.
-        The `info` function can even return an empty dictionary.
+        The `info()` function can even return an empty dictionary.
         The keys `inp`, `out`, `static`, `stdout` and `stderr` affect the planning the run part,
         as explained in the comments above.
 
-- The `run` function is called to perform the useful work and
+- The `run()` function is called to perform the useful work and
   is executed when the script is executed as `./script.py run`.
 
     !!! note
 
-        The `run` function can have any argument defined in the dictionary returned by `info`,
+        The `run()` function can have any argument defined in the dictionary returned by `info()`,
         but it does not have to specify all of them.
-        The argument list of `run` can contain fewer arguments (or even none at all).
+        The argument list of `run()` can contain fewer arguments (or even none at all).
 
 
 ## Example
 
-Example source files: [getting_started/script_single/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/script_single)
+Example source files: [`docs/getting_started/script_single/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/script_single)
 
 Consider a script that has parameters defined in a config file `config.json`,
 which may be used by multiple script, e.g. for reasons of consistency.
@@ -117,7 +147,7 @@ Finally, make the Python scripts executable and give StepUp a spin:
 
 ```bash
 chmod +x generate.py plan.py
-stepup -n -w1
+stepup -n 1
 ```
 
 You should see the following output on screen:
@@ -138,10 +168,10 @@ As expected, this creates two files: `cos.npy` and `sin.npy`.
 - Delete one of the outputs and rerun StepUp.
   Again, the planning is skipped and the computation is repeated to recreate the missing output.
 
-- Create a new module `utils.py` with a `compute` function to calculate the cosine and sine arrays
+- Create a new module `utils.py` with a `compute()` function to calculate the cosine and sine arrays
   with parameters `nstep` and `freq`.
-  Import this module into `generate.py`, use it in `run` and re-run StepUp.
+  Import this module into `generate.py`, use it in `run()` and re-run StepUp.
   This will automatically make `utils.py` an input for the planning and running of `generate.py`.
   Test this by making a small change to `utils.py` and re-running it.
-  (Note that local imports inside the `run` function will not be identified automatically and
+  (Note that local imports inside the `run()` function will not be identified automatically and
   are therefore not recommended.)

@@ -1,0 +1,27 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   UPDATED │ ENV_VAR_TEST_STEPUP_IDX ='3' ➜ ='1'
+   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Scanning initial database for new nglob matches
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+    NOSKIP │ ./plan.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, digest a82ec837 ➜ af3a70ef, inp_digset a82ec837 ➜ af3a70ef
+Modified env var     ENV_VAR_TEST_STEPUP_IDX ='3' ➜ ='1'
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+Same inp hash        plan.py
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cp -aT raw1.txt converted1.txt
+   SUCCESS │ cp -aT raw1.txt converted1.txt
+     START │ cp -aT converted1.txt used.txt
+   SUCCESS │ cp -aT converted1.txt used.txt
+  DIRECTOR │ Trying to delete 1 outdated output(s).
+     CLEAN │ converted3.txt
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

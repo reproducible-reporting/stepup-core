@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -19,502 +19,605 @@
 # --
 """Unit tests for stepup.core.cascade."""
 
-import tempfile
-import typing
+import sqlite3
+from collections.abc import Iterator
 
 import attrs
-import msgpack
 import pytest
-from path import Path
 
-from stepup.core.cascade import Cascade, Node, Root, Vacuum
-from stepup.core.exceptions import GraphError
-
-
-def check_cascade_unstructure(cascade: Cascade) -> Cascade:
-    state = cascade.unstructure()
-    data = msgpack.packb(state)
-    cls = cascade.__class__
-    cascade2 = cls.structure(msgpack.unpackb(data))
-    assert cascade2.unstructure() == state
-    if "root:" in cascade.nodes:
-        with tempfile.TemporaryDirectory("stepup-pytest") as dn:
-            path = Path(dn) / "cascade.mpk"
-            cascade.to_file(path)
-            cascade3 = cls.from_file(path)
-        assert cascade3.unstructure() == state
-        return cascade3
-    return cascade2
+from stepup.core.cascade import Cascade, Node, Root
+from stepup.core.exceptions import CyclicError, GraphError
 
 
-def test_empty():
-    cascade = Cascade()
-    assert cascade.node_classes == {"root": Root, "vacuum": Vacuum}
-    assert cascade.unstructure() == {"nodes": [], "products": [], "consumers": []}
-    assert cascade.get_nodes() == []
+@pytest.fixture
+def cascade():
+    con = sqlite3.Connection(":memory:")
+    return Cascade(con)
 
 
 FROM_SCRATCH_FORMAT_STR = """\
 root:
-             version = v1
 """
 
 
-def test_from_scratch():
-    cascade = Cascade.from_scratch()
-    assert cascade.node_classes == {"root": Root, "vacuum": Vacuum}
-    expected = {
-        "nodes": [{"c": "root", "v": "v1"}, {"c": "vacuum"}],
-        "products": [[0, 0], [0, 1]],
-        "consumers": [],
-    }
-    assert cascade.unstructure() == expected
-    check_cascade_unstructure(cascade)
-    root = cascade.get_root()
-    assert root.version == "v1"
+def test_from_scratch(cascade):
+    assert cascade.root.i == 1
+    assert cascade.root.creator() == cascade.root
+    assert cascade.root.creator(return_orphan=True) == (cascade.root, False)
+    with pytest.raises(attrs.exceptions.FrozenInstanceError):
+        cascade.root.i = 3
     assert cascade.format_str() == FROM_SCRATCH_FORMAT_STR
-    assert cascade.get_nodes() == [cascade.nodes["root:"], cascade.nodes["vacuum:"]]
-    assert not cascade.is_orphan("root:")
-    assert not cascade.is_orphan("vacuum:")
+    assert list(cascade.nodes()) == [Root(cascade, 1, "")]
 
 
-def test_no_node_class():
-    cascade = Cascade()
-    with pytest.raises(KeyError):
-        cascade.supply("foo:1", "foo:2")
+def test_supply_missing_nodes(cascade):
+    fake3 = Node(cascade, 3, "fake3")
+    fake4 = Node(cascade, 4, "fake3")
+    with pytest.raises(GraphError):
+        fake3.add_supplier(cascade.root)
+    with pytest.raises(GraphError):
+        cascade.root.add_supplier(fake4)
+    with pytest.raises(GraphError):
+        fake3.add_supplier(fake4)
+
+
+def test_no_node_class(cascade):
     with pytest.raises(TypeError):
-        cascade.create(Foo("bar"), None)
+        cascade.create("foo", cascade.root, "bla")
+
+
+FOO_SCHEMA = """
+CREATE TABLE IF NOT EXISTS log (msg TEXT);
+CREATE TABLE IF NOT EXISTS foo (
+    node INTEGER PRIMARY KEY,
+    value INTEGER,
+    FOREIGN KEY (node) REFERENCES node(i)
+) WITHOUT ROWID;
+"""
 
 
 @attrs.define
 class Foo(Node):
-    _name: str = attrs.field()
-    other: int = attrs.field(default=5)
+    @classmethod
+    def kind(cls) -> str:
+        """Lower-case prefix of the key string representing a node."""
+        return "f"
 
     @classmethod
-    def key_tail(cls, data: dict[str, typing.Any], strings: list[str] | None = None) -> str:
-        return data.get("_name", data.get("n"))
+    def schema(cls) -> str | None:
+        """Return node-specific SQL commands to initialize the database."""
+        return FOO_SCHEMA
+
+    def initialize(self, value: int | None = None):
+        """Create extra information in the database about this node."""
+        if value is not None:
+            self.con.execute(
+                "INSERT INTO foo VALUES(:node, :value) ON CONFLICT "
+                "DO UPDATE SET value = :value WHERE node = :node",
+                {"node": self.i, "value": value},
+            )
+        self.con.execute("INSERT INTO log VALUES(?)", (f"init {self.key()}",))
+
+    def validate(self):
+        """Validate extra information about this node is present in the database."""
+        row = self.con.execute("SELECT 1 FROM foo WHERE node = ?", (self.i,)).fetchone()
+        if row is None:
+            raise ValueError(f"Foo node {self.key()} has no value.")
+
+    def format_properties(self) -> Iterator[tuple[str, str]]:
+        """Iterate over key-value pairs that represent the properties of the node."""
+        row = self.con.execute("SELECT value FROM foo WHERE node = ?", (self.i,)).fetchone()
+        yield "value", str(row[0])
+
+    def _update_orphan(self):
+        """Update the node or the graph when this node loses its creator node."""
+        self.con.execute("INSERT INTO log VALUES(?)", (f"orphan {self.key()}",))
+
+    def clean(self):
+        """Perform a cleanup right before the orphaned node is removed from the graph."""
+        self.con.execute("DELETE FROM foo WHERE node = ?", (self.i,))
+        self.con.execute("INSERT INTO log VALUES(?)", (f"clean {self.key()}",))
+
+    def act(self, message: str):
+        self.con.execute("INSERT INTO log VALUES(?)", (f"act {self.key()} {message}",))
+
+    def get_value(self) -> int:
+        """Return the value associated with this Foo node."""
+        row = self.con.execute("SELECT value FROM foo where node = ?", (self.i,)).fetchone()
+        return row[0]
+
+
+@attrs.define(eq=False)
+class LogCascade(Cascade):
+    @staticmethod
+    def default_node_classes() -> list[type[Node]]:
+        return [*Cascade.default_node_classes(), Foo]
 
     @property
-    def name(self):
-        return self._name
+    def application_id(self) -> int:
+        return 768739999
 
-    @classmethod
-    def structure(cls, cascade: "LogCascade", strings: list[str], data: dict) -> typing.Self:
-        kwargs = {"name": data["n"]}
-        if "o" in data:
-            kwargs["other"] = data["o"]
-        return cls(**kwargs)
-
-    def unstructure(self, cascade: "LogCascade", lookup: dict[str, int]) -> dict:
-        data = {"n": self._name}
-        if self.other != 5:
-            data["o"] = self.other
-        return data
-
-    def format_properties(self, cascade: "LogCascade") -> typing.Iterator[tuple[str, str]]:
-        yield "name", self._name
-        if self.other != 5:
-            yield "other", str(self.other)
-
-    def recycle(self, cascade: "LogCascade", old: "Foo"):
-        if old is None:
-            cascade.log.append(f"new {self.key}")
-        else:
-            cascade.log.append(f"recycle {self.key}")
-
-    def orphan(self, cascade: "LogCascade"):
-        cascade.log.append(f"orphan {self.key}")
-
-    def cleanup(self, cascade: "LogCascade"):
-        cascade.log.append(f"clean {self.key}")
-
-    def act(self, cascade: "LogCascade", message: str):
-        cascade.log.append(f"act {self.key} {message}")
+    @property
+    def schema_version(self) -> int:
+        return 1
 
 
-@attrs.define
-class LogCascade(Cascade):
-    log: list[str] = attrs.field(init=False, factory=list)
-
-    @staticmethod
-    def default_node_classes() -> dict[str, type[Node]]:
-        result = Cascade.default_node_classes()
-        result["foo"] = Foo
-        return result
+@pytest.fixture
+def lc():
+    con = sqlite3.Connection(":memory:")
+    return LogCascade(con)
 
 
 SINGLETON1_FORMAT_STR = """\
 root:
-             version = v1
-             creates   foo:one
+             creates   f:one
 
-foo:one
-                name = one
+f:one
+               value = 1
           created by   root:
 """
 
 
 SINGLETON2_FORMAT_STR = """\
 root:
-             version = v1
+
+(f:one)
+               value = 1
 """
 
 
-def test_singleton():
-    cascade = LogCascade.from_scratch()
-    assert cascade.node_classes == {"root": Root, "vacuum": Vacuum, "foo": Foo}
-    check_cascade_unstructure(cascade)
-    foo = Foo("one")
-    key = cascade.create(foo, "root:")
-    assert key == "foo:one"
-    assert cascade.unstructure() == {
-        "nodes": [{"c": "root", "v": "v1"}, {"c": "vacuum"}, {"c": "foo", "n": "one"}],
-        "products": [[0, 0], [0, 1], [0, 2]],
-        "consumers": [],
-    }
-    check_cascade_unstructure(cascade)
-    assert foo.name == "one"
-    with pytest.raises(AttributeError):
-        foo.name = "new"
-    foo.act(cascade, "hello")
-    assert cascade.get_consumers(key) == []
-    assert cascade.get_suppliers(key) == []
-    assert cascade.get_creator(key) == "root:"
-    assert cascade.get_products(key) == []
-    assert cascade.format_str() == SINGLETON1_FORMAT_STR
-    cascade.orphan("foo:one")
-    check_cascade_unstructure(cascade)
-    cascade.clean()
-    check_cascade_unstructure(cascade)
-    assert cascade.log == ["new foo:one", "act foo:one hello", "orphan foo:one", "clean foo:one"]
-    assert cascade.format_str() == SINGLETON2_FORMAT_STR
+SINGLETON3_FORMAT_STR = """\
+root:
+"""
+
+
+def test_singleton(lc):
+    assert lc.root.creator() == lc.root
+    assert lc.root.creator(return_orphan=True) == (lc.root, False)
+    foo = lc.create("f", lc.root, "one", value=1)
+    assert foo.key() == "f:one"
+    assert foo.i == 2
+    assert foo.label == "one"
+    foo.act("hello")
+    assert len(list(foo.consumers())) == 0
+    assert len(list(foo.suppliers())) == 0
+    assert len(list(foo.products())) == 0
+    assert foo.creator() == lc.root
+    assert foo.creator(return_orphan=True) == (lc.root, False)
+    assert lc.format_str() == SINGLETON1_FORMAT_STR
+    foo.orphan()
+    assert foo.is_orphan()
+    assert foo.creator() is None
+    assert foo.creator(return_orphan=True) == (None, None)
+    assert lc.format_str() == SINGLETON2_FORMAT_STR
+    foo = lc.create("f", lc.root, "one")
+    assert lc.format_str() == SINGLETON1_FORMAT_STR
+    foo.orphan()
+    foo = lc.create("f", lc.root, "one", value=-1)
+    assert foo.get_value() == -1
+    foo.orphan()
+    lc.clean()
+    rows = lc.con.execute("SELECT msg FROM log").fetchall()
+    msgs = [row[0] for row in rows]
+    assert msgs == [
+        "init f:one",
+        "act f:one hello",
+        "orphan f:one",
+        "init f:one",
+        "orphan f:one",
+        "init f:one",
+        "orphan f:one",
+        "clean f:one",
+    ]
+    assert lc.format_str() == SINGLETON3_FORMAT_STR
 
     # Validate sanity checking
-    foo = Foo("one")
     with pytest.raises(TypeError):
-        cascade.create(foo, None)
-    cascade.create(foo, "root:")
-    with pytest.raises(ValueError):
-        cascade.create(foo, "root:")
-    with pytest.raises(ValueError):
-        cascade.create(Foo("one"), "root:")
+        lc.create("Foo", lc.root, "one", value=123)
+    lc.create("f", lc.root, "one", value=123)
+    with pytest.raises(GraphError):
+        lc.create("f", lc.root, "one", value=1234)
 
 
 CHAIN1_FORMAT_STR = """\
 root:
-             version = v1
-             creates   foo:one
-             creates   foo:zero
+             creates   f:one
+             creates   f:zero
 
-foo:zero
-                name = zero
+f:zero
+               value = 0
           created by   root:
-             creates   foo:four
-            supplies   (foo:two)
+             creates   f:four
+            supplies   (f:two)
 
-foo:one
-                name = one
+f:one
+               value = 1
           created by   root:
-            supplies   (foo:two)
+            supplies   (f:two)
 
-(foo:two)
-                name = two
-               other = 2
-            consumes   foo:one
-            consumes   foo:zero
-            supplies   foo:four
+(f:two)
+               value = 2
+            consumes   f:one
+            consumes   f:zero
+             creates   (f:three)
+            supplies   f:four
 
-(foo:three)
-                name = three
+(f:three)
+               value = 3
+          created by   (f:two)
 
-foo:four
-                name = four
-          created by   foo:zero
-            consumes   (foo:two)
+f:four
+               value = 4
+          created by   f:zero
+            consumes   (f:two)
 """
 
 
-def test_chain():
+def test_chain(lc):
     # Prepare cascade object for testing
-    cascade = LogCascade.from_scratch()
-    foo0 = Foo("zero")
-    foo1 = Foo("one")
-    foo2 = Foo("two", other=2)
-    foo3 = Foo("three")
-    foo4 = Foo("four", other=5)
-    key0 = cascade.create(foo0, "root:")
-    key1 = cascade.create(foo1, "root:")
-    key2 = cascade.create(foo2, "root:")
-    key3 = cascade.create(foo3, key2)
-    key4 = cascade.create(foo4, key0)
-    assert key0 == "foo:zero"
-    assert key1 == "foo:one"
-    assert key2 == "foo:two"
-    assert key3 == "foo:three"
-    assert key4 == "foo:four"
-    cascade.supply(key0, key2)
-    cascade.supply(key1, key2)
-    cascade.supply(key2, key4)
-    check_cascade_unstructure(cascade)
-    assert cascade.get_nodes() == [
-        foo4,
-        foo1,
-        foo3,
-        foo2,
-        foo0,
-        cascade.nodes["root:"],
-        cascade.nodes["vacuum:"],
-    ]
-    assert cascade.get_nodes(kind="foo") == [foo4, foo1, foo3, foo2, foo0]
+    foo0 = lc.create("f", lc.root, "zero", value=0)
+    foo1 = lc.create("f", lc.root, "one", value=1)
+    foo2 = lc.create("f", lc.root, "two", value=2)
+    foo3 = lc.create("f", foo2, "three", value=3)
+    foo4 = lc.create("f", foo0, "four", value=4)
+    assert foo0.key() == "f:zero"
+    assert foo1.key() == "f:one"
+    assert foo2.key() == "f:two"
+    assert foo3.key() == "f:three"
+    assert foo4.key() == "f:four"
+    foo2.add_supplier(foo0)
+    foo2.add_supplier(foo1)
+    foo4.add_supplier(foo2)
 
-    # Directly test getter methods
-    assert cascade.get_creator(key3) == key2
-    assert cascade.get_creator(key4) == key0
-    assert cascade.get_products(key2) == [key3]
-    assert cascade.get_products(key0) == [key4]
-    assert cascade.get_consumers(key0) == [key2]
-    assert cascade.get_consumers(key1) == [key2]
-    assert cascade.get_consumers(key2) == [key4]
-    assert cascade.get_consumers(key3) == []
-    assert cascade.get_consumers(key4) == []
-    assert cascade.get_suppliers(key0) == []
-    assert cascade.get_suppliers(key1) == []
-    assert cascade.get_suppliers(key2) == [key1, key0]
-    assert cascade.get_suppliers(key3) == []
-    assert cascade.get_suppliers(key4) == [key2]
-    assert not cascade.is_orphan("foo:two")
-    assert not cascade.is_orphan("foo:three")
+    # Test nodes
+    assert list(lc.nodes()) == [lc.root, foo0, foo1, foo2, foo3, foo4]
+    assert set(lc.nodes(kind="f")) == {foo0, foo1, foo2, foo3, foo4}
 
-    cascade.orphan("foo:two")
-    assert cascade.is_orphan("foo:two")
-    assert cascade.is_orphan("foo:three")
-    check_cascade_unstructure(cascade)
-    assert cascade.unstructure() == {
-        "nodes": [
-            {"c": "root", "v": "v1"},
-            {"c": "vacuum"},
-            {"c": "foo", "n": "zero"},
-            {"c": "foo", "n": "one"},
-            {"c": "foo", "n": "two", "o": 2},
-            {"c": "foo", "n": "three"},
-            {"c": "foo", "n": "four"},
-        ],
-        "products": [[0, 0], [0, 1], [0, 2], [0, 3], [1, 4], [1, 5], [2, 6]],
-        "consumers": [[2, 4], [3, 4], [4, 6]],
-    }
-    assert cascade.format_str() == CHAIN1_FORMAT_STR
-    assert cascade.get_nodes(kind="foo") == [foo4, foo1, foo0]
-    assert cascade.get_nodes(kind="foo", include_orphans=True) == [foo4, foo1, foo3, foo2, foo0]
+    # Test creator
+    assert foo3.creator() == foo2
+    assert foo3.creator(return_orphan=True) == (foo2, False)
+    assert foo4.creator() == foo0
+    assert foo4.creator(return_orphan=True) == (foo0, False)
 
-    # key0
-    assert cascade.get_consumers(key0) == []
-    assert cascade.get_suppliers(key0) == []
-    assert cascade.get_creator(key0) == "root:"
-    assert cascade.get_products(key0) == ["foo:four"]
-    # key1
-    assert cascade.get_consumers(key1) == []
-    assert cascade.get_suppliers(key1) == []
-    assert cascade.get_creator(key1) == "root:"
-    assert cascade.get_products(key1) == []
-    # key2
-    assert cascade.get_consumers(key2) == ["foo:four"]
-    assert cascade.get_suppliers(key2) == ["foo:one", "foo:zero"]
-    assert cascade.get_creator(key2) == "vacuum:"
-    assert cascade.get_products(key2) == []
-    # key3
-    assert cascade.get_consumers(key3) == []
-    assert cascade.get_suppliers(key3) == []
-    assert cascade.get_creator(key3) == "vacuum:"
-    assert cascade.get_products(key3) == []
-    # key4
-    assert cascade.get_consumers(key4) == []
-    assert cascade.get_suppliers(key4) == []
-    assert cascade.get_creator(key4) == "foo:zero"
-    assert cascade.get_products(key4) == []
-    cascade.orphan("foo:zero")
-    check_cascade_unstructure(cascade)
-    cascade.clean()
-    check_cascade_unstructure(cascade)
-    assert cascade.unstructure() == {
-        "nodes": [{"c": "root", "v": "v1"}, {"c": "vacuum"}, {"c": "foo", "n": "one"}],
-        "products": [[0, 0], [0, 1], [0, 2]],
-        "consumers": [],
-    }
-    assert cascade.log == [
-        "new foo:zero",
-        "new foo:one",
-        "new foo:two",
-        "new foo:three",
-        "new foo:four",
-        "orphan foo:two",
-        "orphan foo:three",
-        "orphan foo:zero",
-        "orphan foo:four",
-        "clean foo:four",
-        "clean foo:three",
-        "clean foo:two",
-        "clean foo:zero",
+    # Test products
+    assert list(foo2.products()) == [foo3]
+    assert list(foo0.products()) == [foo4]
+
+    # Test consumers
+    assert list(foo0.consumers()) == [foo2]
+    assert list(foo1.consumers()) == [foo2]
+    assert list(foo2.consumers()) == [foo4]
+    assert list(foo3.consumers()) == []
+    assert list(foo4.consumers()) == []
+
+    # Test suppliers
+    assert list(foo0.suppliers()) == []
+    assert list(foo1.suppliers()) == []
+    assert list(foo2.suppliers()) == [foo0, foo1]
+    assert list(foo3.suppliers()) == []
+    assert list(foo4.suppliers()) == [foo2]
+
+    # Modify the graph and test result
+    foo2.orphan()
+    assert foo2.is_orphan()
+    assert foo3.is_orphan()
+    assert lc.format_str() == CHAIN1_FORMAT_STR
+    assert set(lc.nodes(kind="f")) == {foo0, foo1, foo4}
+    assert set(lc.nodes(kind="f", include_orphans=True)) == {foo0, foo1, foo2, foo3, foo4}
+
+    # foo0
+    assert list(foo0.consumers()) == []
+    assert list(foo0.suppliers()) == []
+    assert foo0.creator() == lc.root
+    assert list(foo0.products()) == [foo4]
+    # foo1
+    assert list(foo1.consumers()) == []
+    assert list(foo1.suppliers()) == []
+    assert foo1.creator() == lc.root
+    assert list(foo1.products()) == []
+    # foo2
+    assert list(foo2.consumers()) == [foo4]
+    assert list(foo2.suppliers()) == [foo0, foo1]
+    assert foo2.is_orphan()
+    assert foo2.creator() is None
+    assert foo2.creator(return_orphan=True) == (None, None)
+    assert list(foo2.products()) == [foo3]
+    # foo3
+    assert list(foo3.consumers()) == []
+    assert list(foo3.suppliers()) == []
+    assert foo3.is_orphan()
+    assert foo3.creator() == foo2
+    assert foo3.creator(return_orphan=True) == (foo2, True)
+    assert list(foo3.products()) == []
+    # foo4
+    assert list(foo4.consumers()) == []
+    assert list(foo4.suppliers()) == []
+    assert foo4.creator() == foo0
+    assert foo4.creator(return_orphan=True) == (foo0, False)
+    assert list(foo4.products()) == []
+
+    # Orphan, clean, and check log messages
+    foo0.orphan()
+    lc.clean()
+    rows = lc.con.execute("SELECT msg FROM log").fetchall()
+    msgs = [row[0] for row in rows]
+    assert msgs == [
+        "init f:zero",
+        "init f:one",
+        "init f:two",
+        "init f:three",
+        "init f:four",
+        "orphan f:two",
+        "orphan f:three",
+        "orphan f:zero",
+        "orphan f:four",
+        "clean f:three",
+        "clean f:four",
+        "clean f:two",
+        "clean f:zero",
     ]
 
 
 CLEAN_CONSUMER1_FORMAT_STR = """\
 root:
-             version = v1
-             creates   foo:3
+             creates   f:3
 
-(foo:0)
-                name = 0
+(f:0)
+               value = 0
+             creates   (f:1)
+             creates   (f:2)
 
-(foo:1)
-                name = 1
-            supplies   foo:3
+(f:1)
+               value = 1
+          created by   (f:0)
+            supplies   f:3
 
-(foo:2)
-                name = 2
-            supplies   foo:3
+(f:2)
+               value = 2
+          created by   (f:0)
+            supplies   f:3
 
-foo:3
-                name = 3
+f:3
+               value = 3
           created by   root:
-            consumes   (foo:1)
-            consumes   (foo:2)
+            consumes   (f:1)
+            consumes   (f:2)
 """
 
 
-CLEAN_CONSUMER2_FORMAT_STR = """\
-root:
-             version = v1
-             creates   foo:3
-
-(foo:1)
-                name = 1
-            supplies   foo:3
-
-(foo:2)
-                name = 2
-            supplies   foo:3
-
-foo:3
-                name = 3
-          created by   root:
-            consumes   (foo:1)
-            consumes   (foo:2)
-"""
-
-
-def test_clean_consumers():
+def test_clean_consumers(lc):
     """Orphan nodes only get removed when they have no consumers."""
-    cascade = LogCascade.from_scratch()
-    cascade.create(Foo("0"), "root:")
-    cascade.create(Foo("1"), "foo:0")
-    cascade.create(Foo("2"), "foo:0")
-    cascade.create(Foo("3"), "root:")
-    cascade.supply("foo:1", "foo:3")
-    cascade.supply("foo:2", "foo:3")
-    cascade.orphan("foo:0")
-    assert cascade.format_str() == CLEAN_CONSUMER1_FORMAT_STR
-    cascade.clean()
-    assert "foo:0" not in cascade.nodes
-    assert "foo:1" in cascade.nodes
-    assert "foo:2" in cascade.nodes
-    assert "foo:3" in cascade.nodes
-    assert cascade.format_str() == CLEAN_CONSUMER2_FORMAT_STR
-    cascade.orphan("foo:3")
-    cascade.clean()
-    assert "foo:0" not in cascade.nodes
-    assert "foo:3" not in cascade.nodes
-    assert "foo:1" not in cascade.nodes
-    assert "foo:2" not in cascade.nodes
-    assert cascade.format_str() == FROM_SCRATCH_FORMAT_STR
+    foo0 = lc.create("f", lc.root, "0", value=0)
+    foo1 = lc.create("f", foo0, "1", value=1)
+    foo2 = lc.create("f", foo0, "2", value=2)
+    foo3 = lc.create("f", lc.root, "3", value=3)
+    foo3.add_supplier(foo1)
+    foo3.add_supplier(foo2)
+    foo0.orphan()
+    assert lc.format_str() == CLEAN_CONSUMER1_FORMAT_STR
+    lc.clean()
+    assert list(lc.nodes(kind="f", include_orphans=True)) == [foo0, foo1, foo2, foo3]
+    assert lc.format_str() == CLEAN_CONSUMER1_FORMAT_STR
+    foo3.orphan()
+    lc.clean()
+    assert len(list(lc.nodes(kind="f", include_orphans=True))) == 0
+    assert lc.format_str() == FROM_SCRATCH_FORMAT_STR
 
 
-def test_recycle_consumers():
+def test_recycle_consumers(lc):
     """When an orphan node with consumers is recycled, the consumer relations remain."""
-    cascade = LogCascade.from_scratch()
-    cascade.create(Foo("0", other=10), "root:")
-    cascade.create(Foo("1"), "root:")
-    cascade.create(Foo("2"), "root:")
-    cascade.supply("foo:0", "foo:1")
-    cascade.supply("foo:0", "foo:2")
-    assert cascade.get_consumers("foo:0") == ["foo:1", "foo:2"]
-    assert cascade.nodes["foo:0"].other == 10
-    cascade.orphan("foo:0")
-    assert cascade.get_consumers("foo:0") == ["foo:1", "foo:2"]
-    assert cascade.nodes["foo:0"].other == 10
-    cascade.create(Foo("0", other=8), "root:")
-    assert cascade.nodes["foo:0"].other == 8
-    assert cascade.get_consumers("foo:0") == ["foo:1", "foo:2"]
+    foo0 = lc.create("f", lc.root, "0", value=0)
+    foo1 = lc.create("f", lc.root, "1", value=1)
+    foo2 = lc.create("f", lc.root, "2", value=2)
+    foo1.add_supplier(foo0)
+    foo2.add_supplier(foo0)
+    assert list(foo0.consumers()) == [foo1, foo2]
+    foo0.orphan()
+    assert list(foo0.consumers()) == [foo1, foo2]
+    lc.create("f", lc.root, "0")
+    assert list(foo0.consumers()) == [foo1, foo2]
 
 
-def test_clean_nested():
-    cascade = LogCascade.from_scratch()
-    cascade.create(Foo("0"), "vacuum:")
-    cascade.create(Foo("1"), "vacuum:")
-    cascade.create(Foo("2"), "vacuum:")
-    cascade.create(Foo("3"), "root:")
-    cascade.supply("foo:0", "foo:1")
-    cascade.supply("foo:1", "foo:2")
-    cascade.supply("foo:2", "foo:3")
-    cascade.clean()
-    assert "foo:0" in cascade.nodes
-    cascade.orphan("foo:3")
-    cascade.clean()
-    assert "foo:0" not in cascade.nodes
+def test_clean_nested(lc):
+    foo0 = lc.create("f", None, "0", value=0)
+    foo1 = lc.create("f", None, "1", value=1)
+    foo2 = lc.create("f", None, "2", value=2)
+    foo3 = lc.create("f", lc.root, "3", value=3)
+
+    # Test is_alive method
+    assert foo0.is_alive()
+    assert foo1.is_alive()
+    assert foo2.is_alive()
+    assert foo3.is_alive()
+
+    foo1.add_supplier(foo0)
+    foo2.add_supplier(foo1)
+    foo3.add_supplier(foo2)
+    lc.clean()
+    assert lc.find("f", "3") == foo3
+    assert lc.find("f", "3", return_orphan=True) == (foo3, False)
+    assert lc.find("f", "0") == foo0
+    assert lc.find("f", "0", return_orphan=True) == (foo0, True)
+    foo3.orphan()
+    assert lc.find("f", "3") == foo3
+    assert lc.find("f", "3", return_orphan=True) == (foo3, True)
+    assert lc.find("f", "0") == foo0
+    assert lc.find("f", "0", return_orphan=True) == (foo0, True)
+    lc.clean()
+    assert lc.find("f", "3") is None
+    assert lc.find("f", "3", return_orphan=True) == (None, None)
+    assert lc.find("f", "0") is None
+    assert lc.find("f", "0", return_orphan=True) == (None, None)
+
+    # Test is_alive method
+    assert not foo0.is_alive()
+    assert not foo1.is_alive()
+    assert not foo2.is_alive()
+    assert not foo3.is_alive()
 
 
-def test_cyclic1():
-    cascade = LogCascade.from_scratch()
-    cascade.create(Foo("0"), "vacuum:")
-    cascade.create(Foo("1"), "foo:0")
-    cascade.supply("foo:1", "foo:0")
-    assert "foo:1" in cascade.suppliers["foo:0"]
+def test_create_orphan(lc):
+    foo1 = lc.create("f", None, "some", value=0)
+    assert foo1.is_orphan()
+    assert foo1.get_value() == 0
+    foo2 = lc.create("f", None, "some", value=10)
+    assert foo1 == foo2
+    assert foo1.is_orphan()
+    assert foo2.is_orphan()
+    assert foo1.get_value() == 10
+    assert foo2.get_value() == 10
 
 
-def test_cyclic2():
-    cascade = LogCascade.from_scratch()
-    cascade.create(Foo("0"), "root:")
-    cascade.create(Foo("1"), "root:")
-    cascade.supply("foo:0", "foo:1")
+def test_create_orphan_with_products_a(lc):
+    foo0 = lc.create("f", None, "0", value=0)
+    foo1 = lc.create("f", foo0, "1", value=1)
+    assert foo0.is_orphan()
+    assert foo1.is_orphan()
+    foo0_bis = lc.create("f", None, "0", value=0)
+    assert foo0 == foo0_bis
+    assert foo0.is_orphan()
+    assert foo0_bis.is_orphan()
+    assert foo1.creator() is None
+
+
+def test_create_orphan_with_products_b(lc):
+    foo0 = lc.create("f", None, "0", value=0)
+    foo1 = lc.create("f", foo0, "1", value=1)
+    assert foo0.is_orphan()
+    assert foo1.is_orphan()
+    foo0_bis = lc.create("f", lc.root, "0", value=0)
+    assert foo0 == foo0_bis
+    assert not foo0.is_orphan()
+    assert not foo0_bis.is_orphan()
+    assert foo1.creator() is None
+
+
+def test_create_orphan_try_cyclic(lc):
+    foo0 = lc.create("f", None, "0", value=0)
+    foo1 = lc.create("f", foo0, "1", value=1)
+    assert foo0.is_orphan()
+    assert foo1.is_orphan()
+    foo0_bis = lc.create("f", foo1, "0", value=0)
+    assert foo0.is_orphan()
+    assert foo1.is_orphan()
+    assert foo0_bis.is_orphan()
+    assert foo1.creator() is None
+
+
+def test_duplicate_dependency(lc):
+    foo0 = lc.create("f", lc.root, "0", value=0)
+    foo1 = lc.create("f", foo0, "1", value=1)
+    foo0.add_supplier(foo1)
     with pytest.raises(GraphError):
-        cascade.supply("foo:1", "foo:0")
+        foo0.add_supplier(foo1)
 
 
-def test_walk_consumers():
-    cascade = LogCascade.from_scratch()
-    cascade.create(Foo("0"), "root:")
-    cascade.create(Foo("1"), "root:")
-    cascade.create(Foo("2"), "root:")
-    cascade.create(Foo("3"), "root:")
-    cascade.supply("foo:0", "foo:1")
-    cascade.supply("foo:1", "foo:2")
-    cascade.supply("foo:1", "foo:3")
-    visited = set()
-    cascade.walk_consumers("foo:0", visited)
-    assert visited == {"foo:0", "foo:1", "foo:2", "foo:3"}
-    visited = set()
-    cascade.walk_consumers("foo:1", visited)
-    assert visited == {"foo:1", "foo:2", "foo:3"}
-    visited = set()
-    cascade.walk_consumers("foo:3", visited)
-    assert visited == {"foo:3"}
+def test_cyclic1(lc):
+    foo0 = lc.create("f", lc.root, "0", value=0)
+    foo1 = lc.create("f", foo0, "1", value=1)
+    foo0.add_supplier(foo1)
+    assert list(foo0.suppliers()) == [foo1]
 
 
-def test_walk_suppliers():
-    cascade = LogCascade.from_scratch()
-    cascade.create(Foo("0"), "root:")
-    cascade.create(Foo("1"), "root:")
-    cascade.create(Foo("2"), "root:")
-    cascade.create(Foo("3"), "root:")
-    cascade.supply("foo:0", "foo:1")
-    cascade.supply("foo:1", "foo:2")
-    cascade.supply("foo:1", "foo:3")
-    visited = set()
-    cascade.walk_suppliers("foo:0", visited)
-    assert visited == {"foo:0"}
-    visited = set()
-    cascade.walk_suppliers("foo:1", visited)
-    assert visited == {"foo:0", "foo:1"}
-    visited = set()
-    cascade.walk_suppliers("foo:3", visited)
-    assert visited == {"foo:0", "foo:1", "foo:3"}
+def test_cyclic2(lc):
+    foo0 = lc.create("f", lc.root, "0", value=0)
+    foo1 = lc.create("f", lc.root, "1", value=1)
+    foo1.add_supplier(foo0)
+    with pytest.raises(CyclicError):
+        foo0.add_supplier(foo1)
+
+
+def test_cyclic3(lc):
+    foo0 = lc.create("f", lc.root, "0", value=0)
+    foo1 = lc.create("f", lc.root, "1", value=1)
+    foo2 = lc.create("f", lc.root, "2", value=2)
+    foo1.add_supplier(foo0)
+    foo2.add_supplier(foo1)
+    with pytest.raises(CyclicError):
+        foo0.add_supplier(foo2)
+
+
+def test_walk_consumers(lc):
+    # foo0 --> foo1 --> foo2
+    #      --> foo3
+    foo0 = lc.create("f", lc.root, "0", value=0)
+    foo1 = lc.create("f", lc.root, "1", value=1)
+    foo2 = lc.create("f", lc.root, "2", value=2)
+    foo3 = lc.create("f", lc.root, "3", value=3)
+    foo1.add_supplier(foo0)
+    foo2.add_supplier(foo1)
+    foo3.add_supplier(foo0)
+    assert set(lc.walk_consumers([foo0.i])) == {foo0.i, foo1.i, foo2.i, foo3.i}
+    assert set(lc.walk_consumers([foo1.i])) == {foo1.i, foo2.i}
+    assert set(lc.walk_consumers([foo3.i])) == {foo3.i}
+    assert set(lc.walk_consumers([foo1.i, foo3.i])) == {foo1.i, foo3.i, foo2.i}
+
+
+def test_load_existing(path_tmp):
+    con1 = sqlite3.Connection(path_tmp / "lc.db")
+    with con1:
+        lc = LogCascade(con1)
+        graph = lc.format_str()
+    con1.close()
+
+    con2 = sqlite3.Connection(path_tmp / "lc.db")
+    with con2:
+        lc = LogCascade(con2)
+        assert lc.format_str() == graph
+    con2.close()
+
+
+def test_relocate_tree(lc):
+    # Create a LogCasecade with the following topology:
+    # foo0 +-> foo1 +-> foo2
+    #      |        +-> foo3
+    #      +-> foo4
+    foo0 = lc.create("f", lc.root, "0", value=0)
+    foo1 = lc.create("f", foo0, "1", value=1)
+    foo2 = lc.create("f", foo1, "2", value=2)
+    lc.create("f", foo1, "3", value=3)
+    foo4 = lc.create("f", foo0, "4", value=4)
+    foo2.add_supplier(foo1)
+    foo2.add_supplier(foo4)
+
+    # Orphan the foo1 node and attach it to the foo4 node.
+    # The new topology is:
+    # foo0 --> foo4 --> foo1 +-> foo2
+    #                        +-> foo3
+    foo1.orphan()
+    foo1.recreate(foo4)
+    assert lc.format_str() == RELOCATE_FORMAT_STR
+
+
+RELOCATE_FORMAT_STR = """\
+root:
+             creates   f:0
+
+f:0
+               value = 0
+          created by   root:
+             creates   f:4
+
+f:1
+               value = 1
+          created by   f:4
+             creates   f:2
+             creates   f:3
+            supplies   f:2
+
+f:2
+               value = 2
+          created by   f:1
+            consumes   f:1
+            consumes   f:4
+
+f:3
+               value = 3
+          created by   f:1
+
+f:4
+               value = 4
+          created by   f:0
+             creates   f:1
+            supplies   f:2
+"""

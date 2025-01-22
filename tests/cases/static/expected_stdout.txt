@@ -1,8 +1,0 @@
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-  WORKFLOW │ Dumped to .stepup/workflow.mpk.xz
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!

@@ -1,0 +1,15 @@
+{
+  "command": "./generate.py run > stdout.txt 2> stderr.txt",
+  "workdir": "work/",
+  "inp": [
+    "config.json",
+    "generate.py"
+  ],
+  "env": [],
+  "out": [
+    "stderr.txt",
+    "stdout.txt",
+    "test.csv"
+  ],
+  "vol": []
+}

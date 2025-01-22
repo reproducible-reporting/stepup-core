@@ -1,0 +1,4 @@
+                Files      Dirs
+Not found:          1         0
+Not removed:        0         0
+Removed:            2         1

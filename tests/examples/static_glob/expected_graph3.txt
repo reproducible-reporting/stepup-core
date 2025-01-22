@@ -1,0 +1,77 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:inp3.txt
+            supplies   file:inp4.txt
+            supplies   file:out3.txt
+            supplies   file:out4.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:cp -aT inp3.txt out3.txt
+            supplies   step:cp -aT inp4.txt out4.txt
+
+step:./plan.py
+               state = SUCCEEDED
+                 ngm = ['inp*.txt'] {}
+          inp_digest = same
+           explained = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:inp3.txt
+             creates   file:inp4.txt
+             creates   step:cp -aT inp3.txt out3.txt
+             creates   step:cp -aT inp4.txt out4.txt
+
+file:inp3.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp -aT inp3.txt out3.txt
+
+step:cp -aT inp3.txt out3.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:inp3.txt
+             creates   file:out3.txt
+            supplies   file:out3.txt
+
+file:out3.txt
+               state = BUILT
+          created by   step:cp -aT inp3.txt out3.txt
+            consumes   file:./
+            consumes   step:cp -aT inp3.txt out3.txt
+
+file:inp4.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp -aT inp4.txt out4.txt
+
+step:cp -aT inp4.txt out4.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:inp4.txt
+             creates   file:out4.txt
+            supplies   file:out4.txt
+
+file:out4.txt
+               state = BUILT
+          created by   step:cp -aT inp4.txt out4.txt
+            consumes   file:./
+            consumes   step:cp -aT inp4.txt out4.txt

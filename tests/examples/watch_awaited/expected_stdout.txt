@@ -1,0 +1,34 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+   WARNING │ 1 step(s) remained pending due to incomplete requirements
+─────────────────────────────── Orphaned inputs ────────────────────────────────
+             AWAITED  inp.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               cp -aT inp.txt out.txt
+Working directory     ./
+Inputs        STATIC  ./
+             AWAITED  (inp.txt)
+Outputs      AWAITED  out.txt
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+     PHASE │ run
+   WARNING │ 1 step(s) remained pending due to incomplete requirements
+─────────────────────────────── Orphaned inputs ────────────────────────────────
+             AWAITED  inp.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               cp -aT inp.txt out.txt
+Working directory     ./
+Inputs        STATIC  ./
+             AWAITED  (inp.txt)
+Outputs      AWAITED  out.txt
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

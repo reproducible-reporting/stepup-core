@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -24,6 +24,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 
 from path import Path
 
@@ -41,11 +42,11 @@ STDERR_BEGIN = "─────────────────────�
 STDERR_END = "────────────────────────────────────────────────────────────────────────────────"
 
 
-async def run_example(srcdir, tmpdir, overwrite_expected=False):
+async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     """Run an example use case in a temporary directory and check the outputs.
 
     The script ``main.sh`` in the example is the entry point for the test case.
-    It must have one or more lines ``stepup ...  & # > current_reporter{suffix_p}.txt &``,
+    It must have one or more lines ``stepup ...  & # > current_stdout{something}.txt &``,
     from which the substring `& # ` is removed before testing, to keep the output for comparison
     to the expected reporter.
 
@@ -61,7 +62,7 @@ async def run_example(srcdir, tmpdir, overwrite_expected=False):
     overwrite_expected
         Update the expected outputs in the source with the outputs from the tmpdir.
     """
-    workdir = Path(tmpdir) / "example"
+    workdir = tmpdir / "example"
     shutil.copytree(srcdir, workdir)
 
     # Rewrite the script to redirect the input and output of stepup.
@@ -76,7 +77,7 @@ async def run_example(srcdir, tmpdir, overwrite_expected=False):
         "./main.sh",
         stdin=subprocess.DEVNULL,
         cwd=workdir,
-        env=os.environ | {"PYTHONUNBUFFERED": "yes"},
+        env=os.environ | {"PYTHONUNBUFFERED": "yes", "COLUMNS": "80"},
     )
     try:
         async with asyncio.timeout(30):
@@ -84,7 +85,7 @@ async def run_example(srcdir, tmpdir, overwrite_expected=False):
 
         pairs = []
 
-        for path_exp in sorted(workdir.glob("expected*.txt")):
+        for path_exp in sorted(workdir.glob("expected*.*")):
             fn_exp = path_exp.basename()
             path_cur = workdir / ("current" + fn_exp[8:])
             with open(path_cur) as fh:
@@ -96,6 +97,10 @@ async def run_example(srcdir, tmpdir, overwrite_expected=False):
             cur = re.sub(r" {2}DIRECTOR │ Listening on .*\n", "", cur)
             # - Exact line numbers in exceptions change often, not important
             cur = re.sub(r", line \d+, in ", ", line ---, in ", cur)
+            # - Remove new types of traceback output not present in Python 3.11
+            cur = re.sub(r"^    \.{3}<\d+ lines>\.{3}\n", "", cur, flags=re.MULTILINE)
+            cur = re.sub(r"^    \)\n", "", cur, flags=re.MULTILINE)
+            cur = re.sub(r"    \~*\^*\n", "", cur, flags=re.MULTILINE)
             # - Remove trailing whitespace
             cur = re.sub(r"[ \t]+?(\n|\Z)", r"\1", cur)
             # - Remove digests, change often, content of results must be tested explicitly.
@@ -134,3 +139,31 @@ async def run_example(srcdir, tmpdir, overwrite_expected=False):
         assert cur == exp, path_exp
 
     assert stepup_proc.returncode == 0
+
+
+async def run_plan(srcdir: Path, tmpdir: Path):
+    """Copy a plan.py script to a temporary directory and run it as an ordinary Python script.
+
+    Parameters
+    ----------
+    srcdir
+        The source directory of the example, with a `plan.py` script.
+    tmpdir
+        The temporary directory to use.
+
+    Notes
+    -----
+    This is not the intended way of using `plan.py` scripts.
+    They are normally processed by StepUp instead of running them directly.
+    Nevertheless, they should still work without generating exceptions, for debugging purposes.
+    """
+    workdir = tmpdir / "example"
+    shutil.copytree(srcdir, workdir)
+    plan_proc = await asyncio.create_subprocess_shell(
+        f"{sys.executable} plan.py",
+        stdin=subprocess.DEVNULL,
+        cwd=workdir,
+        env=os.environ | {"PYTHONUNBUFFERED": "yes"},
+    )
+    await plan_proc.wait()
+    assert plan_proc.returncode == 0

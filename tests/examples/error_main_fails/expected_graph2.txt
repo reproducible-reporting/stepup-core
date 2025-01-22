@@ -1,0 +1,37 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   (file:output.txt)
+            supplies   (step:touch output.txt)
+            supplies   file:plan.py
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = FAILED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+
+(step:touch output.txt)
+               state = SUCCEEDED
+           explained = yes
+            consumes   file:./
+             creates   (file:output.txt)
+            supplies   (file:output.txt)
+
+(file:output.txt)
+               state = BUILT
+          created by   (step:touch output.txt)
+            consumes   (step:touch output.txt)
+            consumes   file:./

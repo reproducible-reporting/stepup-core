@@ -1,0 +1,16 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./work.py --inp=work_inp.json --out=work_out.json --amend-out
+   SUCCESS │ ./work.py --inp=work_inp.json --out=work_out.json --amend-out
+     START │ cat work_out.json
+   SUCCESS │ cat work_out.json
+─────────────────────────────── Standard output ────────────────────────────────
+42
+────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

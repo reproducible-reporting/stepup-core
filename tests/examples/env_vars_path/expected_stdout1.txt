@@ -1,0 +1,17 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ grep variable README.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+      FAIL │ grep variable README.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+────────────────────────────────── Step info ───────────────────────────────────
+Command               grep variable README.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+Return code           2
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ 1 step(s) failed.
+   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

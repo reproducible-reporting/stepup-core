@@ -1,5 +1,5 @@
 # StepUp Script extends StepUp with scripts that combine planning and running.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Script.
 #
@@ -22,6 +22,7 @@
 import argparse
 import inspect
 import os
+import shlex
 import sys
 from collections.abc import Iterator
 from typing import Any
@@ -29,6 +30,9 @@ from typing import Any
 import attrs
 from parse import parse
 from path import Path
+
+from .stepinfo import dump_step_info
+from .utils import format_command
 
 __all__ = ("driver",)
 
@@ -269,7 +273,7 @@ def driver(obj: Any = None):
 def parse_args(script_path: str) -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        prog=script_path, description=f"StepUp driver for script {script_path}."
+        prog=script_path, description=f"StepUp script driver for {script_path}."
     )
     sub_parsers = parser.add_subparsers(dest="cmd")
     sub_parsers.required = True
@@ -278,6 +282,9 @@ def parse_args(script_path: str) -> argparse.Namespace:
     plan_parser = sub_parsers.add_parser(
         "plan",
         description="Submit a plan for executing the script to the director.",
+    )
+    plan_parser.add_argument(
+        "--step-info", help="Path to a file where step information of the run steps is written."
     )
     plan_parser.add_argument(
         "-o", "--optional", default=False, action="store_true", help="Make the run steps optional."
@@ -303,44 +310,41 @@ def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrap
     # Local import because the StepUp client is not always needed.
     from stepup.core.api import amend, static, step
 
-    # Get paths for top-level local imports of the script.
-    # These are treated as dependencies for the run function of the script.
-    top_mod_paths = _get_local_import_paths(script_path)
-
     # Plan the script.
+    step_info = None
     if wrapper.has_single:
-        if not amend(inp=top_mod_paths):
-            return
         static_paths, inp_paths, out_paths, stdout_path, stderr_path = wrapper.get_plan()
-        inp_paths.extend(top_mod_paths)
+        amend(inp=_get_local_import_paths(script_path))
         inp_paths.append(script_path)
         static(*static_paths)
-        command = _add_redirects(f"./{script_path} run", out_paths, stdout_path, stderr_path)
-        step(command, inp=inp_paths, out=out_paths, optional=args.optional)
+        command = format_command(script_path) + " run"
+        command = _add_redirects(command, out_paths, stdout_path, stderr_path)
+        step_info = step(command, inp=inp_paths, out=out_paths, optional=args.optional)
     if wrapper.has_cases:
         # First collect all cases
         cases = list(wrapper.generate_cases())
-        # Include local imports, used to generate the cases, as inputs for the plan step.
-        plan_mod_paths = _get_local_import_paths(script_path)
-        if not amend(inp=plan_mod_paths):
-            return
+        amend(inp=_get_local_import_paths(script_path))
         # Then create steps for all cases
+        step_info = [] if step_info is None else [step_info]
         for case_args, case_kwargs in cases:
             argstr = wrapper.format(*case_args, **case_kwargs)
             static_paths, inp_paths, out_paths, stdout_path, stderr_path = wrapper.get_case_plan(
                 *case_args, **case_kwargs
             )
-            inp_paths.extend(top_mod_paths)
             inp_paths.append(script_path)
             static(*static_paths)
-            command = f"./{script_path} run -- '{argstr}'"
+            command = format_command(script_path) + " run -- " + shlex.quote(argstr)
             command = _add_redirects(command, out_paths, stdout_path, stderr_path)
-            step(
-                command,
-                inp=inp_paths,
-                out=out_paths,
-                optional=args.optional,
+            step_info.append(
+                step(
+                    command,
+                    inp=inp_paths,
+                    out=out_paths,
+                    optional=args.optional,
+                )
             )
+    if args.step_info is not None:
+        dump_step_info(args.step_info, step_info)
 
 
 def _driver_cases(script_path: str, wrapper: ScriptWrapper):
@@ -355,17 +359,22 @@ def _driver_cases(script_path: str, wrapper: ScriptWrapper):
 
 def _driver_run(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapper):
     """Call the `run` function with the appropriate arguments."""
+    # Local import because the StepUp client is not always needed.
+    from stepup.core.api import amend
+
     if args.string == "":
         if not wrapper.has_single:
             raise RuntimeError(f"Script has no info function: {script_path}")
         info = wrapper.filter_info(wrapper.get_info())
         wrapper.run(**info)
+        amend(inp=_get_local_import_paths(script_path))
         return
     if not wrapper.has_cases:
         raise RuntimeError(f"Script has no case_info function: {script_path}")
     case_args, case_kwargs = wrapper.parse(args.string)
     info = wrapper.filter_info(wrapper.get_case_info(*case_args, **case_kwargs))
     wrapper.run(**info)
+    amend(inp=_get_local_import_paths(script_path))
 
 
 def _get_path_list(name: str, info: dict, script_path: str, func_name: str) -> list[str]:

@@ -1,0 +1,15 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./script.py plan
+   SUCCESS │ ./script.py plan
+     START │ ./script.py run -- foo
+   SUCCESS │ ./script.py run -- foo
+     START │ ./script.py run -- bar
+   SUCCESS │ ./script.py run -- bar
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

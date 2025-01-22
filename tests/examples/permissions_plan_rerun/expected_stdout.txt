@@ -1,0 +1,28 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./plan.py  # wd=sub/
+      FAIL │ ./plan.py  # wd=sub/
+────────────────────────────────── Step info ───────────────────────────────────
+Command               ./plan.py
+Working directory     sub/
+Return code           126
+──────────────────────────────── Standard error ────────────────────────────────
+(stripped)
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ 1 step(s) failed.
+   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+     PHASE │ watch
+   UPDATED │ sub/plan.py
+     PHASE │ run
+     START │ ./plan.py  # wd=sub/
+   SUCCESS │ ./plan.py  # wd=sub/
+     START │ touch done.txt  # wd=sub/
+   SUCCESS │ touch done.txt  # wd=sub/
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

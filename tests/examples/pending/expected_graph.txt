@@ -1,0 +1,55 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   (file:first.txt)
+            supplies   file:plan.py
+            supplies   file:second.txt
+            supplies   file:third.txt
+            supplies   step:./plan.py
+            supplies   step:cp -v first.txt second.txt
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:cp -v first.txt second.txt
+
+step:cp -v first.txt second.txt
+               state = PENDING
+          created by   step:./plan.py
+            consumes   (file:first.txt)
+            consumes   file:./
+             creates   file:second.txt
+             creates   file:third.txt
+            supplies   file:second.txt
+            supplies   file:third.txt
+
+(file:first.txt)
+               state = AWAITED
+            consumes   file:./
+            supplies   step:cp -v first.txt second.txt
+
+file:second.txt
+               state = AWAITED
+          created by   step:cp -v first.txt second.txt
+            consumes   file:./
+            consumes   step:cp -v first.txt second.txt
+
+file:third.txt
+               state = VOLATILE
+          created by   step:cp -v first.txt second.txt
+            consumes   file:./
+            consumes   step:cp -v first.txt second.txt

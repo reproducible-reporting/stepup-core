@@ -1,0 +1,73 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:exists/
+            supplies   file:plan.py
+            supplies   file:sub/
+            supplies   step:./plan.py
+            supplies   step:echo a > sub/foo.txt
+            supplies   step:mkdir -p exists/
+            supplies   step:mkdir -p sub/
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:echo a > sub/foo.txt
+             creates   step:mkdir -p exists/
+             creates   step:mkdir -p sub/
+
+step:mkdir -p sub/
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+             creates   file:sub/
+            supplies   file:sub/
+
+file:sub/
+               state = BUILT
+          created by   step:mkdir -p sub/
+            consumes   file:./
+            consumes   step:mkdir -p sub/
+            supplies   file:sub/foo.txt
+            supplies   step:echo a > sub/foo.txt
+
+step:echo a > sub/foo.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:sub/
+             creates   file:sub/foo.txt
+            supplies   file:sub/foo.txt
+
+file:sub/foo.txt
+               state = BUILT
+          created by   step:echo a > sub/foo.txt
+            consumes   file:sub/
+            consumes   step:echo a > sub/foo.txt
+
+step:mkdir -p exists/
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+             creates   file:exists/
+            supplies   file:exists/
+
+file:exists/
+               state = BUILT
+          created by   step:mkdir -p exists/
+            consumes   file:./
+            consumes   step:mkdir -p exists/

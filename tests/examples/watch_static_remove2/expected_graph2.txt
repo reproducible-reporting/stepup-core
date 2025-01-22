@@ -1,0 +1,39 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:out2.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:echo bye > out2.txt
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:echo bye > out2.txt
+
+step:echo bye > out2.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+             creates   file:out2.txt
+            supplies   file:out2.txt
+
+file:out2.txt
+               state = BUILT
+          created by   step:echo bye > out2.txt
+            consumes   file:./
+            consumes   step:echo bye > out2.txt

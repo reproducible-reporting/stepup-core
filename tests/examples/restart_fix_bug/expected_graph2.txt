@@ -1,0 +1,48 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:README.md
+            supplies   file:out.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:echo 'I was here' > out.txt
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+           explained = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:README.md
+             creates   step:echo 'I was here' > out.txt
+
+file:README.md
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+
+step:echo 'I was here' > out.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+             creates   file:out.txt
+            supplies   file:out.txt
+
+file:out.txt
+               state = BUILT
+          created by   step:echo 'I was here' > out.txt
+            consumes   file:./
+            consumes   step:echo 'I was here' > out.txt

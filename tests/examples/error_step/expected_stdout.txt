@@ -1,0 +1,21 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ rm .sjdksjdfkjasdfkdjsak
+      FAIL │ rm .sjdksjdfkjasdfkdjsak
+────────────────────────────────── Step info ───────────────────────────────────
+Command               rm .sjdksjdfkjasdfkdjsak
+Return code           1
+───────────────────────── Expected outputs not created ─────────────────────────
+oops.txt
+──────────────────────────────── Standard error ────────────────────────────────
+(stripped)
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ 1 step(s) failed.
+   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

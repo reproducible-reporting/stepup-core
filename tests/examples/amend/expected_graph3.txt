@@ -1,0 +1,78 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:inp1.txt
+            supplies   file:inp2.txt
+            supplies   file:out1.txt
+            supplies   file:out2.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:./step.py
+            supplies   step:echo word2 > inp2.txt
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+           explained = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:inp1.txt
+             creates   step:./step.py
+             creates   step:echo word2 > inp2.txt
+
+file:inp1.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./step.py
+
+step:./step.py
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:inp1.txt
+            consumes   file:inp2.txt [amended]
+             creates   file:out1.txt
+             creates   file:out2.txt
+            supplies   file:out1.txt
+            supplies   file:out2.txt [amended]
+
+file:out1.txt
+               state = BUILT
+          created by   step:./step.py
+            consumes   file:./
+            consumes   step:./step.py
+
+step:echo word2 > inp2.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+             creates   file:inp2.txt
+            supplies   file:inp2.txt
+
+file:inp2.txt
+               state = BUILT
+          created by   step:echo word2 > inp2.txt
+            consumes   file:./
+            consumes   step:echo word2 > inp2.txt
+            supplies   step:./step.py
+
+file:out2.txt
+               state = BUILT
+          created by   step:./step.py
+            consumes   file:./
+            consumes   step:./step.py

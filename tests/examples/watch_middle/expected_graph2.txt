@@ -1,0 +1,66 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = MISSING
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:another.txt
+            supplies   file:copy.txt
+            supplies   file:original.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:cp copy.txt another.txt
+            supplies   step:cp original.txt copy.txt
+
+step:./plan.py
+               state = PENDING
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:original.txt
+             creates   step:cp copy.txt another.txt
+             creates   step:cp original.txt copy.txt
+
+step:cp copy.txt another.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:copy.txt
+             creates   file:another.txt
+            supplies   file:another.txt
+
+file:copy.txt
+               state = BUILT
+          created by   step:cp original.txt copy.txt
+            consumes   file:./
+            consumes   step:cp original.txt copy.txt
+            supplies   step:cp copy.txt another.txt
+
+file:another.txt
+               state = BUILT
+          created by   step:cp copy.txt another.txt
+            consumes   file:./
+            consumes   step:cp copy.txt another.txt
+
+step:cp original.txt copy.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:original.txt
+             creates   file:copy.txt
+            supplies   file:copy.txt
+
+file:original.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp original.txt copy.txt

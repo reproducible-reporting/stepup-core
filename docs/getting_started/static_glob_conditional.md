@@ -23,7 +23,7 @@ because it would raise an exception when the file does not exist.
 
 ## Example
 
-Example source files: [getting_started/static_glob_conditional/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/static_glob_conditional)
+Example source files: [`docs/getting_started/static_glob_conditional/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/static_glob_conditional)
 
 Let's simulate a scenario where `dataset/`, if it exists, is remote storage with a huge dataset.
 Plan A is to extract useful information from the dataset.
@@ -59,7 +59,7 @@ To run the example, make the scripts executable and fire up StepUp in non-intera
 
 ```bash
 chmod +x expensive.py plan.py
-stepup -n -w1
+stepup -n 1
 ```
 
 You should get the following output:
@@ -72,7 +72,7 @@ Now, simulate the situation where the dataset is absent by renaming the director
 
 ```bash
 mv dataset tmp
-stepup -n -w1
+stepup -n 1
 ```
 
 The new output reveals that the dataset is completely ignored while the file `average.txt` is still used:
@@ -88,8 +88,8 @@ Since the file `average.txt` did not change, the step `cat average.txt` is skipp
 
 - For simplity's sake, the example involves few calculations.
   In a more realistic setting, the step `cat average.txt` is replaced by several scripts that
-  make graphs of the information extracted from the large dataset.
-  Tweaking these graphs for clarity usually takes some iterations,
+  make visualizations of the information extracted from the large dataset.
+  Tweaking these visualizations for clarity usually takes some iterations,
   for which access to the large dataset is not necessary.
 
 - A StepUp project practically always resides in a Git repository.

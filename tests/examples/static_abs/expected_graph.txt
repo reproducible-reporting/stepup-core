@@ -1,0 +1,49 @@
+root:
+             creates   file:./
+             creates   file:/
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:/usr/
+             creates   file:/usr/bin/
+             creates   file:/usr/bin/env
+
+file:/usr/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:/
+            supplies   file:/usr/bin/
+
+file:/
+               state = STATIC
+          created by   root:
+            supplies   file:/usr/
+
+file:/usr/bin/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:/usr/
+            supplies   file:/usr/bin/env
+
+file:/usr/bin/env
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:/usr/bin/

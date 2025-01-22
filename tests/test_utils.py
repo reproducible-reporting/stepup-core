@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -23,6 +23,7 @@ import pytest
 from path import Path
 
 from stepup.core.utils import (
+    Translate,
     make_path_out,
     myabsolute,
     mynormpath,
@@ -115,3 +116,41 @@ def test_make_path_out():
         make_path_out("foo.pdf", None, ".pdf")
     with pytest.raises(ValueError):
         make_path_out("foo.pdf", None, None)
+
+
+@pytest.mark.parametrize("with_stepup_root", [True, False])
+def test_translate(monkeypatch, with_stepup_root):
+    translate = Translate(Path.cwd(), "foo/bar") if with_stepup_root else Translate(here="foo/bar")
+    assert translate("somefile.txt") == "foo/bar/somefile.txt"
+    assert translate("somefile.txt", "../") == "foo/somefile.txt"
+    assert translate("somefile.txt", "/egg/") == "/egg/somefile.txt"
+    assert translate("/somefile.txt", "/egg/") == "/somefile.txt"
+    assert translate("/egg/somefile.txt", "../") == "/egg/somefile.txt"
+    assert translate("/somefile.txt", "../") == "/somefile.txt"
+
+
+def test_translate_outside(monkeypatch):
+    translate = Translate(Path.cwd() / "foo", "bar")
+    assert translate("somefile.txt") == "bar/somefile.txt"
+    assert translate("somefile.txt", "../") == "somefile.txt"
+    assert translate("../../foo/somefile.txt") == "somefile.txt"
+    assert translate("somefile.txt", "/egg/") == "/egg/somefile.txt"
+    assert translate("/somefile.txt", "/egg/") == "/somefile.txt"
+    assert translate("/egg/somefile.txt", "../") == "/egg/somefile.txt"
+    assert translate("/somefile.txt", "../") == "/somefile.txt"
+
+
+@pytest.mark.parametrize("with_stepup_root", [True, False])
+def test_translate_back(with_stepup_root):
+    translate = Translate(Path.cwd(), "foo/bar") if with_stepup_root else Translate(here="foo/bar")
+    assert translate.back("foo/bar/somefile.txt") == "somefile.txt"
+    assert translate.back("foo/somefile.txt", "../") == "somefile.txt"
+    assert translate.back("/egg/somefile.txt", "/egg/") == "somefile.txt"
+    assert translate.back("/somefile.txt", "/egg/") == "/somefile.txt"
+    assert translate.back("/egg/somefile.txt", "../") == "/egg/somefile.txt"
+    assert translate.back("/somefile.txt", "../") == "/somefile.txt"
+
+
+def test_translate_back_outside():
+    translate = Translate("/home/dude/project/source/", "../../bar/egg")
+    assert translate.back("../public") == "../../project/public"

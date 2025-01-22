@@ -1,0 +1,56 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   (file:sub/)
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:echo hello > sub/dir/nested/hello.txt
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:echo hello > sub/dir/nested/hello.txt
+
+step:echo hello > sub/dir/nested/hello.txt
+               state = PENDING
+          created by   step:./plan.py
+            consumes   (file:sub/dir/nested/)
+            consumes   file:./
+             creates   file:sub/dir/nested/hello.txt
+            supplies   file:sub/dir/nested/hello.txt
+
+(file:sub/dir/nested/)
+               state = AWAITED
+            consumes   (file:sub/dir/)
+            supplies   file:sub/dir/nested/hello.txt
+            supplies   step:echo hello > sub/dir/nested/hello.txt
+
+(file:sub/dir/)
+               state = AWAITED
+            consumes   (file:sub/)
+            supplies   (file:sub/dir/nested/)
+
+(file:sub/)
+               state = AWAITED
+            consumes   file:./
+            supplies   (file:sub/dir/)
+
+file:sub/dir/nested/hello.txt
+               state = AWAITED
+          created by   step:echo hello > sub/dir/nested/hello.txt
+            consumes   (file:sub/dir/nested/)
+            consumes   step:echo hello > sub/dir/nested/hello.txt

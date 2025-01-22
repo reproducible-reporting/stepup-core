@@ -1,0 +1,26 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   UPDATED │ ENV_VAR_TEST_STEPUP_PREFIX ='README' ➜ ='FOO'
+   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Scanning initial database for new nglob matches
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+    NOSKIP │ ./plan.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, digest 70df0869 ➜ b65d1108, inp_digset 70df0869 ➜ b65d1108
+Modified env var     ENV_VAR_TEST_STEPUP_PREFIX ='README' ➜ ='FOO'
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+Same inp hash        plan.py
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+   SUCCESS │ grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+  DIRECTOR │ Trying to delete 2 outdated output(s).
+     CLEAN │ README-stdout.txt
+     CLEAN │ README-stderr.txt
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

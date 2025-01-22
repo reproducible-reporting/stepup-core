@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -19,14 +19,15 @@
 # --
 """A `File` is StepUp's node for an input or output file of a step."""
 
-import enum
+import logging
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING
 
 import attrs
 from path import Path
 
 from .cascade import Node
+from .enums import DirWatch, FileState
 from .hash import FileHash
 from .utils import format_digest
 
@@ -34,185 +35,219 @@ if TYPE_CHECKING:
     from .workflow import Workflow
 
 
-__all__ = ("FileState", "File")
+__all__ = ("File",)
 
 
-class FileState(enum.Enum):
-    # Declared static by the user: hand-made, don't overwrite or delete
-    STATIC = 11
+logger = logging.getLogger(__name__)
 
-    # Declared as an output of a step, but step did not complete (succesfully) yet.
-    PENDING = 12
 
-    # Declared as an output of a step and step has completed.
-    BUILT = 13
-
-    # Declared static bu the user, but then deleted by the user.
-    MISSING = 14
-
-    # Declared as volatile output of a step:
-    # - same cleaning as built files.
-    # - cannot be used as input.
-    # - no hashes are computed.
-    VOLATILE = 15
+FILE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS file (
+    node INTEGER PRIMARY KEY,
+    state INTEGER NOT NULL CHECK(state >= 11 AND state <= 16),
+    digest BLOB NOT NULL,
+    mode INTEGER NOT NULL CHECK(mode >= 0),
+    mtime REAL NOT NULL CHECK(mtime >= 0),
+    size INTEGER NOT NULL CHECK(size >= 0),
+    inode INTEGER NOT NULL,
+    FOREIGN KEY (node) REFERENCES node(i)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS file_state ON file(state);
+"""
 
 
 @attrs.define
 class File(Node):
     """A concrete file on the filesystem (may also be a directory)."""
 
-    _path: Path = attrs.field(converter=Path)
-    hash: FileHash = attrs.field(factory=FileHash.unknown)
+    @property
+    def workflow(self) -> "Workflow":
+        return self.cascade
 
     #
-    # Getters
+    # Override from base class
+    #
+
+    @classmethod
+    def schema(cls) -> str | None:
+        """Return node-specific SQL commands to initialize the database."""
+        return FILE_SCHEMA
+
+    def initialize(self, state: FileState):
+        """Create extra information in the database about this node."""
+        # If the file was previously BUILT or OUTDATED, and created again as AWAITED,
+        # it should copy that state
+        if state == FileState.AWAITED:
+            row = self.con.execute("SELECT state FROM file WHERE node = ?", (self.i,)).fetchone()
+            if row is not None and row[0] in (FileState.BUILT.value, FileState.OUTDATED.value):
+                state = FileState(row[0])
+        # Add/update row in the file table.
+        self.con.execute(
+            "INSERT INTO file VALUES(:node, :state, :digest, 0, 0.0, 0, 0) ON CONFLICT "
+            "DO UPDATE SET state = :state WHERE node = :node",
+            {"node": self.i, "state": state.value, "digest": b"u"},
+        )
+        # If the state is BUILT, mark it as OUTDATED to force a rebuild.
+        if state == FileState.BUILT:
+            self.mark_outdated()
+
+    def validate(self):
+        """Validate extra information about this node is present in the database."""
+        row = self.con.execute("SELECT 1 FROM file WHERE node = ?", (self.i,)).fetchone()
+        if row is None:
+            raise ValueError(f"File node {self.key()} has no row in the file table.")
+
+    def format_properties(self) -> Iterator[tuple[str, str]]:
+        """Iterate over key-value pairs that represent the properties of the node."""
+        yield "state", str(self.get_state().name)
+        file_hash = self.get_hash()
+        if len(file_hash.digest) > 1:
+            l1, l2 = format_digest(file_hash.digest)
+            yield "digest", l1
+            yield "", l2
+
+    def clean(self):
+        """Perform a cleanup right before the orphaned node is removed from the graph."""
+        if self.path.endswith("/"):
+            self.workflow.dir_queue.put_nowait((DirWatch.STOP, self.path))
+        state = self.get_state()
+        if state == FileState.VOLATILE:
+            self.workflow.to_be_deleted.append((self.path, None))
+        elif state in (FileState.BUILT, FileState.OUTDATED):
+            file_hash = self.get_hash()
+            if file_hash.digest != b"u":
+                self.workflow.to_be_deleted.append((self.path, file_hash))
+        self.con.execute("DELETE FROM file WHERE node = ?", (self.i,))
+
+    def add_supplier(self, supplier: Node) -> int:
+        """Add a supplier-consumer relation.
+
+        Parameters
+        ----------
+        supplier
+            Other node that supplies to thise node.
+
+        Returns
+        -------
+        idep
+            The identifier in the dependency table.
+        """
+        idep = super().add_supplier(supplier)
+        if supplier.kind() == "step":
+            supplier.check_imply_mandatory()
+        return idep
+
+    def del_suppliers(self, suppliers: list[Node] | None = None):
+        """Delete given suppliers.
+
+        Without arguments, all suppliers of the current node are deleted.
+        """
+        # Get a list of suppliers to process if needed
+        _suppliers = suppliers
+        if suppliers is None:
+            _suppliers = list(self.suppliers(include_orphans=True))
+        super().del_suppliers(suppliers)
+        for supplier in _suppliers:
+            if supplier.kind() == "step":
+                supplier.check_undo_mandatory()
+
+    #
+    # Getters and setters
     #
 
     @property
     def path(self) -> Path:
-        return self._path
+        return Path(self.label)
 
-    #
-    # Initialization, serialization and formatting
-    #
+    def get_state(self) -> FileState:
+        row = self.con.execute("SELECT state FROM file WHERE node = ?", (self.i,)).fetchone()
+        return FileState(row[0])
 
-    @classmethod
-    def key_tail(cls, data: dict[str, Any], strings: list[str] | None = None) -> str:
-        """Subclasses must implement the key tail and accept both JSON or attrs dicts."""
-        path = data.get("_path")
-        if path is None:
-            path = strings[data.get("p")]
-        return path
+    def set_state(self, state: FileState):
+        if state in (FileState.MISSING, FileState.AWAITED):
+            sql = (
+                "UPDATE file SET state = ?, digest = ?, mode = 0, mtime = 0, size = 0, inode = 0 "
+                "WHERE node = ?"
+            )
+            data = (state.value, b"u", self.i)
+        else:
+            sql = "UPDATE file SET state = ? WHERE node = ?"
+            data = (state.value, self.i)
+        self.con.execute(sql, data)
 
-    @classmethod
-    def structure(cls, workflow: "Workflow", strings: list[str], data: dict) -> Self:
-        state = FileState(data.pop("s"))
-        file = cls(path=strings[data["p"]], hash=FileHash.structure(data["h"]))
-        file.set_state(workflow, state)
-        return file
-
-    def unstructure(self, workflow: "Workflow", lookup: dict[str, int]) -> dict:
-        return {
-            "p": lookup[self._path],
-            "s": self.get_state(workflow).value,
-            "h": self.hash.unstructure(),
-        }
-
-    def format_properties(self, workflow: "Workflow") -> Iterator[tuple[str, str]]:
-        yield "path", str(self._path)
-        yield "state", str(self.get_state(workflow).name)
-        if len(self.hash.digest) > 1:
-            l1, l2 = format_digest(self.hash.digest)
-            yield "digest", l1
-            yield "", l2
-
-    #
-    # Overridden from base class
-    #
-
-    def recycle(self, workflow: "Workflow", old: Self | None):
-        if old is not None:
-            # Recycle hash
-            self.hash = old.hash
-
-    def orphan(self, workflow: "Workflow"):
-        for step_key in workflow.get_consumers(self.key, kind="step"):
-            step = workflow.get_step(step_key)
-            step.make_pending(workflow)
-            # When inputs of a step are orphaned,
-            # amended information becomes unreliable because the orphaned
-            # nodes may have been created by the step.
-            step.clean_before_run(workflow)
-
-    def cleanup(self, workflow: "Workflow"):
-        if self._path.endswith("/"):
-            workflow.dir_queue.put_nowait((True, self._path))
-        state = self.get_state(workflow)
-        if state == FileState.VOLATILE:
-            workflow.to_be_deleted.append((self._path, None))
-        elif state in (FileState.PENDING, FileState.BUILT) and self.hash.digest != b"u":
-            workflow.to_be_deleted.append((self._path, self.hash))
-        workflow.file_states.discard(self.key, insist=True)
-
-    #
-    # File state
-    #
-
-    def get_state(self, workflow: "Workflow") -> FileState:
-        return workflow.file_states[self.key]
-
-    def set_state(self, workflow: "Workflow", new_state: FileState):
-        workflow.file_states[self.key] = new_state
+    def get_hash(self) -> FileHash:
+        sql = "SELECT digest, mode, mtime, size, inode FROM file WHERE node = ?"
+        row = self.con.execute(sql, (self.i,)).fetchone()
+        return FileHash(*row)
 
     #
     # Run phase
     #
 
-    def release_pending(self, workflow: "Workflow"):
+    def release_pending(self):
         """Check all steps using this one as input and queue them if possible.
 
         In case of a directory, also notify the watcher by putting it on the dir_queue.
         """
-        if self.get_state(workflow) in [FileState.STATIC, FileState.BUILT]:
-            for step_key in sorted(workflow.get_consumers(self.key, kind="step")):
-                step = workflow.get_step(step_key)
-                step.validate_amended = True
-                step.queue_if_appropriate(workflow)
-            if self._path.endswith("/"):
-                workflow.dir_queue.put_nowait((False, self.path))
+        if self.get_state() in [FileState.STATIC, FileState.BUILT]:
+            for step in self.consumers(kind="step"):
+                step.set_validate_amended()
+                step.queue_if_appropriate()
+            if self.path.endswith("/"):
+                self.workflow.dir_queue.put_nowait((DirWatch.START, self.path))
 
     #
     # Watch phase
     #
 
-    def watcher_deleted(self, workflow: "Workflow"):
-        """Modify the graph to account for the fact this was deleted.
-
-        Hashes are not removed in case the file is restored by the user with the same contents.
-        """
-        if self._path.endswith("/"):
-            workflow.dir_queue.put_nowait((True, self._path))
-        state = self.get_state(workflow)
+    def watcher_deleted(self):
+        """Modify the graph to account for the fact this file was deleted."""
+        if self.path.endswith("/"):
+            self.workflow.dir_queue.put_nowait((DirWatch.STOP, self.path))
+        state = self.get_state()
         if state == FileState.MISSING:
-            raise ValueError(f"Cannot delete a path that is already MISSING: {self._path}")
+            raise ValueError(f"Cannot delete a path that is already MISSING: {self.path}")
         if state == FileState.STATIC:
-            self.set_state(workflow, FileState.MISSING)
-        elif state == FileState.BUILT:
-            self.set_state(workflow, FileState.PENDING)
+            self.set_state(FileState.MISSING)
+        elif state in (FileState.BUILT, FileState.OUTDATED):
+            self.set_state(FileState.AWAITED)
             # Request rerun of creator
-            workflow.get_step(workflow.get_creator(self.key)).make_pending(workflow)
+            self.creator().mark_pending()
         else:
-            # No action needed when a PENDING or VOLATILE file is deleted.
+            # No action needed when a AWAITED or VOLATILE file is deleted.
             return
         # Make all consumers pending
-        for step_key in workflow.get_consumers(self.key, kind="step"):
-            workflow.get_step(step_key).make_pending(workflow)
+        for step in self.consumers(kind="step"):
+            step.mark_pending()
 
-    def watcher_updated(self, workflow: "Workflow"):
+    def watcher_updated(self):
         """Modify the graph to account for the fact that this file changed on disk.
 
         Hashes are not updated until needed, to allow for reverting the file in its original
         form. (This is more common than one may thing, e.g. when switching Git branches.)
         """
-        state = self.get_state(workflow)
+        state = self.get_state()
         if state == FileState.MISSING:
-            self.set_state(workflow, FileState.STATIC)
+            self.set_state(FileState.STATIC)
             state = FileState.STATIC
         if state == FileState.STATIC:
-            # Make all consumers pending
-            for step_key in workflow.get_consumers(self.key, kind="step"):
-                workflow.get_step(step_key).make_pending(workflow, input_changed=True)
-        else:
-            # Make the creator pending again, as to make sure the file is rebuilt.
-            creator_key = workflow.get_creator(self.key)
-            if creator_key.startswith("step:"):
-                workflow.get_step(creator_key).make_pending(workflow)
+            # Mark all consumers pending
+            for step in self.consumers(kind="step"):
+                step.mark_pending(input_changed=True)
+        elif state in (FileState.BUILT, FileState.OUTDATED):
+            # The new state becomes AWAITED because it was changed externally, not our result.
+            self.set_state(FileState.AWAITED)
+            # Mark the creator pending again, as to make sure the file is rebuilt.
+            creator = self.creator()
+            if creator.kind() == "step":
+                creator.mark_pending()
 
-    def make_pending(self, workflow: "Workflow"):
-        state = self.get_state(workflow)
+    def mark_outdated(self):
+        state = self.get_state()
         if state == FileState.BUILT:
-            self.set_state(workflow, FileState.PENDING)
-            for step_key in workflow.get_consumers(self.key, kind="step"):
-                workflow.get_step(step_key).make_pending(workflow, input_changed=True)
-        elif state != FileState.PENDING:
+            logger.info("Mark %s file OUTDATED: %s", state, self.path)
+            self.set_state(FileState.OUTDATED)
+            for step in self.consumers(kind="step"):
+                step.mark_pending(input_changed=True)
+        elif state != FileState.OUTDATED:
             raise ValueError(f"Cannot make file pending when its state is {state}")

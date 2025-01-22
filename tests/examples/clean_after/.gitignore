@@ -1,0 +1,7 @@
+.stepup
+current_*
+sub/
+sub/inp.txt
+sub/out.txt
+sub/unknown.txt
+other/

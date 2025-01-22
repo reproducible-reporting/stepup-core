@@ -1,0 +1,65 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+─────────────────────────────── Standard output ────────────────────────────────
+Planning ch 1 intro
+Planning sec 1 blabla
+Planning sec 2 some-more
+Planning ch 2 theory
+Planning sec 2 advanced
+Planning sec 1 basics
+Planning ch 3 conclusions
+Planning sec 2 outlook
+Planning sec 1 summary
+────────────────────────────────────────────────────────────────────────────────
+     START │ cp -aT ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
+   SUCCESS │ cp -aT ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
+     START │ cp -aT ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
+   SUCCESS │ cp -aT ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
+     START │ cp -aT ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
+   SUCCESS │ cp -aT ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
+     START │ cp -aT ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
+   SUCCESS │ cp -aT ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
+     START │ cp -aT ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+   SUCCESS │ cp -aT ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+     START │ cp -aT ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
+   SUCCESS │ cp -aT ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
+     START │ cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
+   SUCCESS │ cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
+     START │ cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
+   SUCCESS │ cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
+     START │ cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
+   SUCCESS │ cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
+     START │ cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+   SUCCESS │ cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+   DELETED │ ch-2-theory/sec-2-2-advanced.txt
+   UPDATED │ ch-2-theory/sec-2-2-original.txt
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+─────────────────────────────── Standard output ────────────────────────────────
+Planning ch 1 intro
+Planning sec 1 blabla
+Planning sec 2 some-more
+Planning ch 2 theory
+Planning sec 1 basics
+Planning sec 2 original
+Planning ch 3 conclusions
+Planning sec 2 outlook
+Planning sec 1 summary
+────────────────────────────────────────────────────────────────────────────────
+     START │ cp -aT ch-2-theory/sec-2-2-original.txt ch-2-theory/sec-2-2-original.md
+   SUCCESS │ cp -aT ch-2-theory/sec-2-2-original.txt ch-2-theory/sec-2-2-original.md
+     START │ cat ch-2-theory/sec-2-1-basics.md ch-2-theory/sec-2-2-original.md > ch-2-theory/ch-2-compiled.md
+   SUCCESS │ cat ch-2-theory/sec-2-1-basics.md ch-2-theory/sec-2-2-original.md > ch-2-theory/ch-2-compiled.md
+     START │ cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+   SUCCESS │ cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+  DIRECTOR │ Trying to delete 1 outdated output(s).
+     CLEAN │ ch-2-theory/sec-2-2-advanced.md
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

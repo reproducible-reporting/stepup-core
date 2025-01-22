@@ -7,7 +7,7 @@ This informs StepUp that it does not need to wait for other steps whose outputs 
 
 ## Example
 
-Example source files: [getting_started/static_files/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/static_files)
+Example source files: [`docs/getting_started/static_files/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/static_files)
 
 Create a file `limerick.txt` with the following contents:
 
@@ -28,7 +28,7 @@ Make the plan executable and run it with StepUp as follows:
 
 ```bash
 chmod +x plan.py
-stepup -n -w1
+stepup -n 1
 ```
 You should get the following output:
 
@@ -42,12 +42,12 @@ The file `numbered.txt` will contain a copy of the limerick with line numbers.
 
 ## Try the Following
 
-- Replace `gloom` by `boom` in `limerick.txt` and run `stepup -n -w1` again.
+- Replace `gloom` by `boom` in `limerick.txt` and run `stepup -n 1` again.
   The line numbering is repeated, but the step `./plan.py` is skipped as it did not change.
 
-- Change the order of `static` and `step` in `plan.py` and run `stepup -n -w1` again.
+- Change the order of `static()` and `step()` in `plan.py` and run `stepup -n 1` again.
   This has no apparent effect, but the step is only sent to the worker process after the director
   is informed that the file `limerick.txt` is static.
 
-- Comment out the `static` function call and run `stepup -n -w1` again.
+- Comment out the `static()` function call and run `stepup -n 1` again.
   StepUp will refuse to execute the line numbering step and will show a warning explaining why.

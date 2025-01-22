@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# Copyright (C) 2024 Toon Verstraelen
+# © 2024–2025 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -19,27 +19,31 @@
 # --
 """Small utilities used throughout."""
 
+import asyncio
 import os
 import re
+import shlex
+import sqlite3
 import string
 
+import attrs
 from path import Path
 
 __all__ = (
-    # Path manipulation
-    "mynormpath",
-    "myrelpath",
-    "myabsolute",
-    "myparent",
-    "make_path_out",
-    "remove_path",
-    # Miscellaneous
-    "classproperty",
-    "lookupdict",
     "CaseSensitiveTemplate",
-    "check_plan",
+    "DBLock",
     "check_inp_path",
+    "check_plan",
+    "classproperty",
+    "format_command",
     "format_digest",
+    "make_path_out",
+    "myabsolute",
+    "mynormpath",
+    "myparent",
+    "myrelpath",
+    "remove_path",
+    "translate",
 )
 
 
@@ -134,8 +138,9 @@ def make_path_out(path_in: str, out: str | None, ext: str | None) -> Path:
     return path_out
 
 
-def remove_path(path: Path) -> bool:
+def remove_path(path: str) -> bool:
     """Remove a file or directory. Return `True` of the file was removed."""
+    path = Path(path)
     if path.endswith("/"):
         try:
             path.rmdir()
@@ -171,24 +176,6 @@ class classproperty(property):  # noqa: N801
         super().__delete__(type(obj))
 
 
-class lookupdict(dict):  # noqa: N801
-    """Dictionary assigning enumerated values to keys."""
-
-    def __missing__(self, key):
-        if not isinstance(key, str):
-            raise TypeError("lookupdict only supports string keys")
-        size = len(self)
-        self[str(key)] = size
-        return size
-
-    def get_list(self):
-        """Return all items in the lookup dictionary as a list."""
-        result = [None] * len(self)
-        for key, idx in self.items():
-            result[idx] = key
-        return result
-
-
 class CaseSensitiveTemplate(string.Template):
     """A case sensitive Template class suitable for StepUp.
 
@@ -207,7 +194,7 @@ def check_plan(path_plan: str):
     if not os.access(path_plan, os.X_OK):
         raise ValueError(f"File is not executable: {path_plan}")
     with open(path_plan) as fh:
-        shebang = "#!/usr/bin/env python"
+        shebang = "#!/usr/bin/env python3"
         if not fh.readline().rstrip() == shebang:
             raise ValueError(f"First line of plan differs from '{shebang}': {path_plan}")
 
@@ -229,3 +216,97 @@ def format_digest(digest: bytes) -> tuple[str, str]:
         " ".join(hexdigest[i : i + 8] for i in range(0, 64, 8)),
         " ".join(hexdigest[i : i + 8] for i in range(64, 128, 8)),
     )
+
+
+def format_command(executable: str) -> str:
+    """Format a relative path to a local executable for execution in a shell."""
+    if executable.startswith("/"):
+        raise ValueError(f"Executable is not a relative path: {executable}")
+    return shlex.quote(executable if executable.startswith(("./", "../")) else f"./{executable}")
+
+
+@attrs.define
+class DBLock:
+    """Exclusive asyncio lock for SQLite database access."""
+
+    _con: sqlite3.Connection = attrs.field()
+    _lock: asyncio.Lock = attrs.field(factory=asyncio.Lock)
+
+    async def __aenter__(self):
+        await self._lock.acquire()
+
+    async def __aexit__(self, exc_type, exc, tb):
+        if exc is None:
+            self._con.commit()
+        else:
+            self._con.rollback()
+        self._lock.release()
+
+
+@attrs.define
+class Translate:
+    """Singleton for translating paths from the current directory to the director and back.
+
+    By creating an instance, environment variables are usedfix the path of the StepUp root,
+    simplifying the logic of the actual translation.
+    If the environment variable `HERE` is not set, it is derived from `STEPUP_ROOT` if set.
+    If that is not set, it is assumed that the current directory is `STEPUP_ROOT`.
+    For these, the relative path from the current directory is derived and assigned do `self.root`.
+    """
+
+    root: Path = attrs.field(default=Path(os.getenv("STEPUP_ROOT", os.getcwd())), converter=Path)
+    here: Path = attrs.field(converter=Path)
+
+    @here.default
+    def _default_here(self):
+        return Path(os.getenv("HERE", myrelpath("./", self.root)))
+
+    def __call__(self, path: str, workdir: str = ".") -> Path:
+        """Normalize the path and, if relative, make it relative to `self.root`.
+
+        Parameters
+        ----------
+        path
+            The path to translate. If relative, it assumed to be relative to the working directory.
+        workdir
+            The work directory. If relative, it is assumed to be relative to `self.here`
+
+        Returns
+        -------
+        translated_path
+            A path that can be interpreted in the working directory of the StepUp director.
+        """
+        path = mynormpath(path)
+        if not path.isabs():
+            workdir = mynormpath(workdir)
+            path = workdir / path
+            if not workdir.isabs():
+                path = myrelpath(mynormpath(self.root / self.here / path), self.root)
+        return path
+
+    def back(self, path: str, workdir: str = ".") -> Path:
+        """If relative, make it relative to work directory, assuming it is relative to `self.root`.
+
+        Parameters
+        ----------
+        path
+            The path to translate. If relative, it is assumed to be relative to `ROOT`.
+        workdir
+            The working directory. If relative, it is assumed to be relative to `HERE`.
+
+        Returns
+        -------
+        back_translated_path
+            A path that can be interpreted in the working directory.
+        """
+        path = mynormpath(path)
+        workdir = mynormpath(workdir)
+        if path.isabs():
+            if workdir.isabs() and path.startswith(workdir):
+                path = myrelpath(path, workdir)
+        else:
+            path = myrelpath(self.root / path, self.root / self.here / workdir)
+        return path
+
+
+translate = Translate()

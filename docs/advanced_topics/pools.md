@@ -24,7 +24,7 @@ for which the pool size is 1.
 
 ## Example
 
-Example source files: [advanced_topics/pools/](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/pools)
+Example source files: [`docs/advanced_topics/pools/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/pools)
 
 The example here illustrates the use of a pool in a simple test case.
 The steps can run easily in parallel, so you can experiment with the pool size.
@@ -42,7 +42,7 @@ Make the plan executable and run it with StepUp:
 
 ```bash
 chmod +x plan.py
-stepup -n -w4
+stepup -n 4
 ```
 
 You should get the following output:
@@ -58,14 +58,11 @@ the third `sleep+echo` is only started after the previous two have finished.
 
 ## Try the Following
 
-- Run `stepup -n -w4` again without making changes.
+- Run `stepup -n 4` again without making changes.
   Skipping of steps requires some computation and comparison of hashes,
   which is done by worker processes.
   However, these hash computations are never subject to pool size restrictions.
 
 - Change the pool size to `1` or `3` and verify that the output matches your expectations.
   When you try this, StepUp will continue skipping steps.
-  To forcibly re-execute steps, you have two options:
-
-    1. Remove the file `.stepup/workflow.mpk.xz` and start StepUp.
-    2. Run StepUp interactively (without `-n`) and use the `f` key to start the workflow from scratch.
+  To forcibly re-execute steps, you can remove the file `.stepup/graph.db` and restart StepUp.
