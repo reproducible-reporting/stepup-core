@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.1] - 2025-01-22 {: #v2.0.1 }
 
-(Version 2.0.0 was yanked due to a packaging issue)
+(Version 2.0.0 was yanked due to a packaging issue.)
 
 ### Added
 
