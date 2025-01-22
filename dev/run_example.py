@@ -1,6 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Run one example and amend (volatile) outputs."""
 
+import sqlite3
 import subprocess
 import sys
 
@@ -8,7 +9,8 @@ from path import Path
 
 from stepup.core.api import amend
 from stepup.core.file import FileState
-from stepup.core.workflow import Workflow
+
+SQL = "SELECT label, state FROM node JOIN file ON node.i = file.node"
 
 
 def main():
@@ -19,16 +21,16 @@ def main():
 
     root = Path(root)
     path_stepup = root / ".stepup/"
-    path_workflow = path_stepup / "workflow.mpk.xz"
-    workflow = Workflow.from_file(path_workflow)
+    path_graph = path_stepup / "graph.db"
+    con = sqlite3.Connection(f"file:{path_graph}?mode=ro", uri=True)
     out = [path_stepup]
-    vol = [path_workflow]
-    for file in workflow.get_files():
-        state = file.get_state(workflow)
+    vol = [path_graph]
+    for path, state_i in con.execute(SQL):
+        state = FileState(state_i)
         if state == FileState.BUILT:
-            out.append(root / file.path)
+            out.append(root / path)
         elif state == FileState.VOLATILE:
-            vol.append(root / file.path)
+            vol.append(root / path)
     amend(out=out, vol=vol)
 
 

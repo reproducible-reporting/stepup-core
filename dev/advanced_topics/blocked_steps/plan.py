@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from stepup.core.api import copy, step
 
 step("echo hello > ${out}", out="a.txt")
