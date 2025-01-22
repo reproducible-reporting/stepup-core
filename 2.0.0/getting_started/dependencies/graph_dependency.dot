@@ -1,0 +1,13 @@
+strict digraph {
+  graph [rankdir=BT bgcolor=transparent]
+  node [penwidth=0 colorscheme=set39 style=filled fillcolor=5]
+  edge [color=dimgray arrowhead=normal]
+  2 [label="plan.py" shape=rect fillcolor=9]
+  6 [label="story.txt" shape=rect fillcolor=9]
+  4 [label="./plan.py"]
+  5 [label="echo First line. >\nstory.txt; echo\nSecond line. >>\nstory.txt"]
+  7 [label="grep First story.txt"]
+  2 -> 4
+  5 -> 6
+  6 -> 7
+}
