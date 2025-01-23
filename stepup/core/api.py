@@ -584,7 +584,7 @@ def getenv(
     path: bool = False,
     back: bool = False,
     multi: bool = False,
-) -> str | Path:
+) -> str | Path | list[Path]:
     """Get an environment variable and amend the current step with the variable name.
 
     Parameters
