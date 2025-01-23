@@ -8,7 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-(no changes yet)
+### Fixed
+
+- A bug is fixed in the logic to determine the type of job to run for a given step.
+  Some steps were executed while not all required inputs were present.
+
 
 ## [2.0.1] - 2025-01-22 {: #v2.0.1 }
 

@@ -631,6 +631,8 @@ class Step(Node):
 
     def queue_if_appropriate(self):
         state, pool, block, mandatory, validate_amended = self.properties()
+
+        # Check basics that would prohibit scheduling impossible.
         if block:
             return
         if mandatory == Mandatory.NO:
@@ -639,29 +641,48 @@ class Step(Node):
             return
         if state != StepState.PENDING:
             return
+
+        # Do not start a step if its creator is not in a good state.
+        # This is mainly to prevent premature scheduling upon startup.
         creator = self.creator()
         if isinstance(creator, Step) and creator.get_state() not in (
             StepState.SUCCEEDED,
             StepState.RUNNING,
         ):
             return
-        has_amended_pending = any(
-            orphan or state not in (FileState.STATIC, FileState.BUILT)
-            for _, state, orphan in self.inp_paths(
-                yield_state=True, yield_orphan=True, amended=True
-            )
-        )
-        if has_amended_pending and validate_amended:
-            job = ValidateAmendedJob(self, pool)
-        else:
-            for _, file_state, is_orphan in self.inp_paths(yield_state=True, yield_orphan=True):
-                if is_orphan:
-                    # input not added to the graph yet
-                    return
-                if file_state not in (FileState.BUILT, FileState.STATIC):
-                    # input not up-to-date yet
-                    return
-            job = ExecuteJob(self, pool) if self.get_hash() is None else TrySkipJob(self, pool)
+
+        # Check whether initial and amended inputs are ready.
+        initial_inputs_ready = True
+        amended_inputs_ready = True
+        for _, file_state, is_orphan, is_amended in self.inp_paths(
+            yield_state=True, yield_orphan=True, yield_amended=True
+        ):
+            ready = not is_orphan and file_state in (FileState.BUILT, FileState.STATIC)
+            if not ready:
+                if is_amended:
+                    amended_inputs_ready = False
+                    if not initial_inputs_ready:
+                        break
+                else:
+                    initial_inputs_ready = False
+                    if not amended_inputs_ready:
+                        break
+
+        # Determine the appropriate job to queue.
+        job = None
+        if initial_inputs_ready:
+            if amended_inputs_ready:
+                job = ExecuteJob(self, pool) if self.get_hash() is None else TrySkipJob(self, pool)
+            elif validate_amended:
+                # If the initial inputs are ready, but the amended inputs are not,
+                # we need to validate the amended inputs first.
+                # They may not be available, but if the initial inputs have changed,
+                # they may also no longer be needed. Almost a catch 22.
+                job = ValidateAmendedJob(self, pool)
+        if job is None:
+            return
+
+        # Queue the job.
         logger.info("Queue %s", job.name)
         self.set_state(StepState.QUEUED)
         self.set_rescheduled_info("")

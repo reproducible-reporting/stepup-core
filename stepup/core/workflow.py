@@ -938,7 +938,7 @@ class Workflow(Cascade):
             raise ValueError("Added and deleted files are not mutually exclusive.")
 
         # Process all deletions
-        for path in deleted:
+        for path in sorted(deleted):
             # Handle deleted files that were used or created by steps.
             file = self.find("file", path)
             if file is None:
@@ -946,7 +946,7 @@ class Workflow(Cascade):
             file.watcher_deleted()
 
         # Process all updates
-        for path in updated:
+        for path in sorted(updated):
             file = self.find("file", path)
             # If updated the file is known, it must have changed (or a MISSING file was added).
             if file is not None:

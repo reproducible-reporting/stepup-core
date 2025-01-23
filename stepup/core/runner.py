@@ -324,7 +324,8 @@ async def report_completion(
             pending_pages.append(("PENDING Step", "\n".join(lines)))
 
         if num_pending > 0:
-            returncode = ReturnCode.PENDING
+            if returncode != ReturnCode.FAILED:
+                returncode = ReturnCode.PENDING
             lead = f"{num_pending} step(s) remained pending due to"
             if len(block_lines) > 0:
                 block_page = ("Blocked steps", "\n".join(block_lines))

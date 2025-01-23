@@ -1,0 +1,106 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:asource1.txt
+            supplies   file:asource2.txt
+            supplies   file:data1.txt
+            supplies   file:data2.txt
+            supplies   file:log.txt
+            supplies   file:plan.py
+            supplies   file:step.py
+            supplies   step:./plan.py
+            supplies   step:./step.py > log.txt
+            supplies   step:cp -aT asource1.txt data1.txt
+            supplies   step:cp -aT asource2.txt data2.txt
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+           explained = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:asource1.txt
+             creates   file:asource2.txt
+             creates   file:step.py
+             creates   step:./step.py > log.txt
+             creates   step:cp -aT asource1.txt data1.txt
+             creates   step:cp -aT asource2.txt data2.txt
+
+step:./step.py > log.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:data1.txt
+            consumes   file:data2.txt [amended]
+            consumes   file:step.py
+             creates   file:log.txt
+            supplies   file:log.txt
+
+file:data1.txt
+               state = BUILT
+          created by   step:cp -aT asource1.txt data1.txt
+            consumes   file:./
+            consumes   step:cp -aT asource1.txt data1.txt
+            supplies   step:./step.py > log.txt
+
+file:step.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./step.py > log.txt
+
+file:log.txt
+               state = BUILT
+          created by   step:./step.py > log.txt
+            consumes   file:./
+            consumes   step:./step.py > log.txt
+
+file:asource1.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp -aT asource1.txt data1.txt
+
+file:asource2.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp -aT asource2.txt data2.txt
+
+step:cp -aT asource1.txt data1.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:asource1.txt
+             creates   file:data1.txt
+            supplies   file:data1.txt
+
+step:cp -aT asource2.txt data2.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:asource2.txt
+             creates   file:data2.txt
+            supplies   file:data2.txt
+
+file:data2.txt
+               state = BUILT
+          created by   step:cp -aT asource2.txt data2.txt
+            consumes   file:./
+            consumes   step:cp -aT asource2.txt data2.txt
+            supplies   step:./step.py > log.txt

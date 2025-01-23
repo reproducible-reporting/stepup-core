@@ -20,6 +20,7 @@
 """Startup sequence after opening the database and configuring internal data structures."""
 
 import glob
+import logging
 import os
 from copy import copy
 
@@ -35,6 +36,9 @@ from .utils import DBLock
 from .workflow import Workflow
 
 __all__ = ("startup_from_db",)
+
+
+logger = logging.getLogger(__name__)
 
 
 async def startup_from_db(
@@ -107,15 +111,20 @@ async def startup_from_db(
 
     # Check for file changes and new glob matches
     await reporter("STARTUP", "Scanning initial database for changed files")
-    await scan_file_changes(workflow, dblock, reporter)
+    deleted, updated = await scan_file_changes(workflow, dblock, reporter)
     await reporter("STARTUP", "Scanning initial database for new nglob matches")
-    await scan_nglob_changes(workflow, dblock, reporter)
+    updated_nglob = await scan_nglob_changes(workflow, dblock, reporter)
 
-    # Fire up the runner
+    # Update the workflow and fire up the runner
+    logger.info("Startup sequence completed")
+    async with dblock:
+        workflow.process_watcher_changes(deleted, updated | updated_nglob)
     runner.resume.set()
 
 
-async def scan_file_changes(workflow: Workflow, dblock: DBLock, reporter: ReporterClient):
+async def scan_file_changes(
+    workflow: Workflow, dblock: DBLock, reporter: ReporterClient
+) -> tuple[set[str], set[str]]:
     """Check all files in the workflow for changes."""
     sql = (
         "SELECT label, state, digest, mode, mtime, size, inode "
@@ -126,7 +135,7 @@ async def scan_file_changes(workflow: Workflow, dblock: DBLock, reporter: Report
     async with dblock:
         rows = con.execute(sql, data).fetchall()
     if len(rows) == 0:
-        return
+        return None
 
     deleted = set()
     updated = set()
@@ -154,10 +163,12 @@ async def scan_file_changes(workflow: Workflow, dblock: DBLock, reporter: Report
 
     async with dblock:
         workflow.update_file_hashes(changed_hashes)
-        workflow.process_watcher_changes(deleted, updated)
+    return deleted, updated
 
 
-async def scan_nglob_changes(workflow: Workflow, dblock: DBLock, reporter: ReporterClient):
+async def scan_nglob_changes(
+    workflow: Workflow, dblock: DBLock, reporter: ReporterClient
+) -> set[str]:
     """Look for new matches in nglobs used by some jobs."""
     # Load all nglob_multis
     async with dblock:
@@ -193,5 +204,4 @@ async def scan_nglob_changes(workflow: Workflow, dblock: DBLock, reporter: Repor
         await reporter("UPDATED", new_path)
 
     # Feed back to the workflow
-    async with dblock:
-        workflow.process_watcher_changes({}, set(new_paths))
+    return set(new_paths)

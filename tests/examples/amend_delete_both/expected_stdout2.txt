@@ -1,0 +1,45 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Scanning initial database for changed files
+   DELETED │ asource1.txt
+   DELETED │ data1.txt
+   DELETED │ log.txt
+   DELETED │ data2.txt
+   STARTUP │ Scanning initial database for new nglob matches
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+    NOSKIP │ cp -aT asource2.txt data2.txt
+───────────────────────────── Missing output files ─────────────────────────────
+data2.txt
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, digest 61a97a5c ➜ 59a861c0, inp_digset ea1edf68
+Modified out hash    data2.txt (digest 28b7cc0a ➜ UNKNOWN, size 25 ➜ 0, mode -rw-r--r-- ➜ ?---------)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+Same inp hash        asource2.txt
+────────────────────────────────────────────────────────────────────────────────
+     START │ cp -aT asource2.txt data2.txt
+   SUCCESS │ cp -aT asource2.txt data2.txt
+   WARNING │ 2 step(s) remained pending due to incomplete requirements
+──────────────────────────────── Missing inputs ────────────────────────────────
+             MISSING  asource1.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               ./step.py > log.txt
+Working directory     ./
+Inputs        STATIC  ./
+             AWAITED  data1.txt
+              STATIC  step.py
+               BUILT  data2.txt [amended]
+Outputs      AWAITED  log.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               cp -aT asource1.txt data1.txt
+Working directory     ./
+Inputs        STATIC  ./
+             MISSING  asource1.txt
+Outputs      AWAITED  data1.txt
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

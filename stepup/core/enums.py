@@ -71,7 +71,7 @@ class StepState(enum.Enum):
     # The step is being executed by a worker.
     RUNNING = 23
 
-    # The step has completed succesfully (exit code 0).
+    # The step has completed successfully (exit code 0).
     SUCCEEDED = 24
 
     # The step has failed (exit code non-zero).

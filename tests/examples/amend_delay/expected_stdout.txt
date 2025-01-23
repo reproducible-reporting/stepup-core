@@ -31,7 +31,7 @@ Same inp hash        ./
    SUCCESS │ echo Contents of inp2.txt > inp2.txt
       SKIP │ ./step.py > log.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, digest f4e9f6da, inp_digset 2d6d340d
+Same step hash       explained, digest c7f98c5a, inp_digset 9eb6c047
 Same inp hash        ./
 Same inp hash        inp0.txt
 Same inp hash        inp2.txt
@@ -46,7 +46,7 @@ Same out hash        log.txt
      PHASE │ run
  DROPAMEND │ ./step.py > log.txt
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, digest f4e9f6da ➜ 407af75d, inp_digset 2d6d340d ➜ 805cf33a
+Modified step hash   explained, digest c7f98c5a ➜ e426db2b, inp_digset 9eb6c047 ➜ 0d3688ba
 Modified inp hash    inp0.txt (digest 681fd532 ➜ 2dab5684)
 ──────────────────────── Remained the same (or missing) ────────────────────────
 Same inp hash        ./

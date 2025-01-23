@@ -28,17 +28,17 @@ Modified inp hash    subs1.txt (digest f927920a ➜ 2ab04a00)
 Same inp hash        ./
 Same out hash        subs2.txt
 ────────────────────────────────────────────────────────────────────────────────
- DROPAMEND │ ./step.py subs2.txt > subs3.txt
-────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, digest 92fd431c ➜ 5ea425fb, inp_digset c04b2fe4 ➜ 6300498b
-Deleted inp hash     conv1.txt
-──────────────────────── Remained the same (or missing) ────────────────────────
-Same inp hash        ./
-Same inp hash        subs2.txt
-Same out hash        subs3.txt
-────────────────────────────────────────────────────────────────────────────────
      START │ ./step.py subs1.txt > subs2.txt
    SUCCESS │ ./step.py subs1.txt > subs2.txt
+ DROPAMEND │ ./step.py subs2.txt > subs3.txt
+────────────────────── Outdated amended step information ───────────────────────
+Modified step hash   explained, digest 92fd431c ➜ c076a19b, inp_digset c04b2fe4 ➜ e913fb0f
+Deleted inp hash     conv1.txt
+Modified inp hash    subs2.txt (digest f927920a ➜ 2ab04a00)
+──────────────────────── Remained the same (or missing) ────────────────────────
+Same inp hash        ./
+Same out hash        subs3.txt
+────────────────────────────────────────────────────────────────────────────────
      START │ ./step.py subs2.txt > subs3.txt
    SUCCESS │ ./step.py subs2.txt > subs3.txt
   DIRECTOR │ Trying to delete 1 outdated output(s).
