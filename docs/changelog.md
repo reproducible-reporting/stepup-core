@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from `optional=False` to `optional=True`.
 - Occasionally, `.stepup/` was not created yet
   when the reporter tried writing to `.stepup/success.log`.
+- When multiple steps were changed and StepUp is restarted,
+  steps created by a by another modified step were executed before the creating step.
+  This is fixed.
 
 
 ## [2.0.1] - 2025-01-22 {: #v2.0.1 }

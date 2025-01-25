@@ -32,6 +32,7 @@ from stepup.core.file import File
 from stepup.core.hash import ExplainInfo, FileHash, StepHash
 from stepup.core.job import ExecuteJob, TrySkipJob, ValidateAmendedJob
 from stepup.core.nglob import NGlobMulti
+from stepup.core.step import HAS_UNCERTAIN_CREATORS, RECURSE_PRODUCTS_PENDING, Step
 from stepup.core.workflow import Workflow
 
 TEST_FILE_GRAPH = """\
@@ -2058,3 +2059,53 @@ def test_consistency_succeeded_step(wfp):
         wfp.check_consistency()
     # Manually revert the output file to BUILT, because wfp will get checked by fixture...
     wfp.con.execute("UPDATE file SET state = ? WHERE node = ?", (FileState.BUILT.value, out.i))
+
+
+def test_sql_has_uncertain_creators(wfp):
+    plan = wfp.find("step", "./plan.py")
+    prog = wfp.define_step(plan, "prog")
+    assert wfp.con.execute(HAS_UNCERTAIN_CREATORS, (prog.i,)).fetchone()[0] == 0
+    work = wfp.define_step(prog, "work")
+    assert wfp.con.execute(HAS_UNCERTAIN_CREATORS, (work.i,)).fetchone()[0] == 1
+    prog.set_state(StepState.RUNNING)
+    assert wfp.con.execute(HAS_UNCERTAIN_CREATORS, (work.i,)).fetchone()[0] == 0
+
+
+def test_sql_recurse_products_pending_simple(wfp):
+    plan = wfp.find("step", "./plan.py")
+    prog = wfp.define_step(plan, "prog", inp_paths=["data.txt"])
+    assert prog.get_state() == StepState.PENDING
+    rows = wfp.con.execute(RECURSE_PRODUCTS_PENDING, (plan.i,)).fetchall()
+    assert len(rows) == 1
+    assert Step(wfp, *rows[0]) == prog
+    rows = wfp.con.execute(RECURSE_PRODUCTS_PENDING, (prog.i,)).fetchall()
+    assert len(rows) == 0
+
+
+def test_sql_recurse_products_pending_tree(wfp):
+    # Create a tree of steps
+    plan = wfp.find("step", "./plan.py")
+    foo = wfp.define_step(plan, "foo", inp_paths=["data.txt"])
+    assert foo.get_state() == StepState.PENDING
+    bar = wfp.define_step(foo, "bar")
+    assert bar.get_state() == StepState.PENDING
+    egg = wfp.define_step(bar, "egg", inp_paths=["data.txt"])
+    assert egg.get_state() == StepState.PENDING
+    spam = wfp.define_step(bar, "spam")
+    assert spam.get_state() == StepState.PENDING
+    step1 = wfp.define_step(spam, "step1", inp_paths=["data.txt"])
+    assert step1.get_state() == StepState.PENDING
+    step2 = wfp.define_step(spam, "step2", inp_paths=["data.txt"])
+    assert step2.get_state() == StepState.PENDING
+    step2.set_mandatory(Mandatory.NO)
+
+    # Set the states so that there should be two pending steps that are potentially queuable.
+    foo.set_state(StepState.RUNNING)
+    bar.set_state(StepState.SUCCEEDED)
+    spam.set_state(StepState.RUNNING)
+
+    # Get the queuable pending steps.
+    rows = wfp.con.execute(RECURSE_PRODUCTS_PENDING, (plan.i,)).fetchall()
+    assert len(rows) == 2
+    assert Step(wfp, *rows[0]) == egg
+    assert Step(wfp, *rows[1]) == step1

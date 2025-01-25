@@ -1003,7 +1003,10 @@ class Workflow(Cascade):
                 step.mark_pending(input_changed=True)
 
         # Queue pending steps that can be executed.
-        sql = "SELECT i, label FROM node JOIN step ON node.i = step.node WHERE step.state = ?"
-        for i, label in self.con.execute(sql, (StepState.PENDING.value,)):
+        sql = (
+            "SELECT i, label, orphan FROM node JOIN step ON node.i = step.node WHERE step.state = ?"
+        )
+        for i, label, is_orphan in self.con.execute(sql, (StepState.PENDING.value,)):
             step = Step(self, i, label)
+            logger.error("queueing %s", step.key(is_orphan))
             step.queue_if_appropriate()

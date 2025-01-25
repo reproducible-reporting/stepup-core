@@ -1,0 +1,33 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Scanning initial database for changed files
+   DELETED │ inp1.txt
+   UPDATED │ inp3.txt (digest bedfbb90 ➜ 3be587a7)
+   STARTUP │ Scanning initial database for new nglob matches
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+   WARNING │ 2 step(s) remained pending due to incomplete requirements
+─────────────────────────────── Orphaned inputs ────────────────────────────────
+             MISSING  inp1.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               ./step1.py
+Working directory     ./
+Inputs        STATIC  ./
+              STATIC  step1.py
+             MISSING  (inp1.txt)
+Outputs     OUTDATED  out1.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               ./step3.py
+Working directory     ./
+Inputs        STATIC  ./
+              STATIC  step3.py
+              STATIC  inp3.txt
+Outputs     OUTDATED  out3.txt
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

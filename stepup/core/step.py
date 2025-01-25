@@ -122,7 +122,36 @@ JOIN dependency AS dep2 ON dep2.supplier = dep1.consumer
 WHERE dep2.consumer = ?
 """
 
-KEEP_RECORDING_TIME = 2 * 24 * 3600
+# Check if any of the (recursive) creators of a step does not allow it to be queued yet.
+HAS_UNCERTAIN_CREATORS = f"""
+WITH RECURSIVE trace(i, label, creator, certain) AS (
+    SELECT i, label, creator,
+    state in ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
+    FROM node JOIN step ON node.i = step.node
+    WHERE i = (SELECT creator FROM node WHERE i = ?)
+    UNION
+    SELECT node.i, node.label, node.creator,
+    step.state in ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
+    FROM node JOIN step ON node.i = step.node JOIN trace ON trace.creator = node.i
+    WHERE trace.certain AND node.kind = 'step'
+)
+SELECT EXISTS (SELECT 1 FROM trace WHERE NOT certain)
+"""
+
+# Find all product steps (recursively) that are pending, without recursing past pending steps.
+# Only mandatory or required steps are considered.
+RECURSE_PRODUCTS_PENDING = f"""
+WITH RECURSIVE tree(i, label, creator, state) AS (
+    SELECT i, label, creator, state FROM node
+    JOIN step ON node.i = step.node
+    WHERE creator = ? AND step.mandatory != {Mandatory.NO.value}
+    UNION
+    SELECT node.i, node.label, node.creator, step.state FROM node
+    JOIN step ON node.i = step.node JOIN tree ON node.creator = tree.i
+    WHERE tree.state != {StepState.PENDING.value} AND step.mandatory != {Mandatory.NO.value}
+)
+SELECT i, label FROM tree WHERE state = {StepState.PENDING.value}
+"""
 
 
 @attrs.define
@@ -657,13 +686,8 @@ class Step(Node):
         if state != StepState.PENDING:
             return
 
-        # Do not start a step if its creator is not in a good state.
-        # This is mainly to prevent premature scheduling upon startup.
-        creator = self.creator()
-        if isinstance(creator, Step) and creator.get_state() not in (
-            StepState.SUCCEEDED,
-            StepState.RUNNING,
-        ):
+        # Do not start a step if any of its (recursive) creators are not in a valid state.
+        if self.con.execute(HAS_UNCERTAIN_CREATORS, (self.i,)).fetchone()[0]:
             return
 
         # Check whether initial and amended inputs are ready.
@@ -831,11 +855,17 @@ class Step(Node):
             if new_hash is None:
                 raise ValueError("Step succeeded without new_hash")
             self.set_state(StepState.SUCCEEDED)
+            # Pending steps that use outputs of the current step may possibly be queued.
             for file in self.products(kind="file"):
                 if file.get_state() in (FileState.AWAITED, FileState.OUTDATED):
                     file.set_state(FileState.BUILT)
                     file.release_pending()
-            for step in self.products(kind="step"):
+            # Pending steps that are created by this step may possibly be queued.
+            # Such steps need to be searched recursively, because they are only queued
+            # when all their (recursive) creators are in a valid state.
+            # (This is mostly relevant for skipped steps.)
+            for i, label in self.con.execute(RECURSE_PRODUCTS_PENDING, (self.i,)):
+                step = Step(self.workflow, i, label)
                 step.queue_if_appropriate()
             self.set_hash(new_hash)
         else:

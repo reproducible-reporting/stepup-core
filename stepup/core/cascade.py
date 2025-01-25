@@ -328,7 +328,8 @@ class Node:
         old_creator = self.creator()
         if old_creator is not None:
             raise ValueError(
-                f"New creator must be a top-level orphaned node. It's creator is {old_creator}."
+                "Node.recreate can only be called on a top-level orphaned node. "
+                f"It's creator is {old_creator}."
             )
         self.con.execute(
             "UPDATE node SET creator = ?, orphan = FALSE WHERE i = ?", (new_creator.i, self.i)

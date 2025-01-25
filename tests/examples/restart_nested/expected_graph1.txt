@@ -1,0 +1,127 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:inp1.txt
+            supplies   file:inp2.txt
+            supplies   file:inp3.txt
+            supplies   file:out1.txt
+            supplies   file:out2.txt
+            supplies   file:out3.txt
+            supplies   file:plan.py
+            supplies   file:step1.py
+            supplies   file:step2.py
+            supplies   file:step3.py
+            supplies   step:./plan.py
+            supplies   step:./step1.py
+            supplies   step:./step2.py
+            supplies   step:./step3.py
+
+step:./plan.py
+               state = SUCCEEDED
+                 ngm = ['inp?.txt'] {}
+                 ngm = ['step?.py'] {}
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:inp1.txt
+             creates   file:inp2.txt
+             creates   file:inp3.txt
+             creates   file:step1.py
+             creates   file:step2.py
+             creates   file:step3.py
+             creates   step:./step1.py
+
+file:inp1.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./step1.py
+
+file:inp2.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./step2.py
+
+file:inp3.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./step3.py
+
+file:step1.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./step1.py
+
+file:step2.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./step2.py
+
+file:step3.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./step3.py
+
+step:./step1.py
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:inp1.txt
+            consumes   file:step1.py
+             creates   file:out1.txt
+             creates   step:./step2.py
+            supplies   file:out1.txt
+
+file:out1.txt
+               state = BUILT
+          created by   step:./step1.py
+            consumes   file:./
+            consumes   step:./step1.py
+
+step:./step2.py
+               state = SUCCEEDED
+          created by   step:./step1.py
+            consumes   file:./
+            consumes   file:inp2.txt
+            consumes   file:step2.py
+             creates   file:out2.txt
+             creates   step:./step3.py
+            supplies   file:out2.txt
+
+file:out2.txt
+               state = BUILT
+          created by   step:./step2.py
+            consumes   file:./
+            consumes   step:./step2.py
+
+step:./step3.py
+               state = SUCCEEDED
+          created by   step:./step2.py
+            consumes   file:./
+            consumes   file:inp3.txt
+            consumes   file:step3.py
+             creates   file:out3.txt
+            supplies   file:out3.txt
+
+file:out3.txt
+               state = BUILT
+          created by   step:./step3.py
+            consumes   file:./
+            consumes   step:./step3.py
