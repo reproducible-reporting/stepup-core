@@ -1,11 +1,13 @@
 # This workflow is adapted from:
 # https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
-# Changed made:
-# - Remove emoticons
-# - Update some actions to more recent versions
 
 name: release
-on: push
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
 
 env:
   # This is not critical
@@ -82,15 +84,21 @@ jobs:
         inputs: >-
           ./dist/*.tar.gz
           ./dist/*.whl
+    - name: Extract the version from the tag
+      run: |
+        TAG="${{ github.ref }}"
+        TAG="${TAG#refs/tags/}"
+        echo "TAG=${TAG}" >> $GITHUB_ENV
+        VERSION="${TAG#v}"
+        echo "VERSION=${VERSION}" >> $GITHUB_ENV
+        echo "MAJMIN=${VERSION%.*}" >> $GITHUB_ENV
     - name: Prepare release notes
       run: |
-        TAG="${{ github.event.release.tag_name }}""
-        echo "TAG=${TAG}" >> $GITHUB_ENV
-        echo "VERSION=${TAG#v}" >> $GITHUB_ENV
         # Extract the release notes from the changelog
         sed -n "/## \[${VERSION}\] -/, /## /{ /##/!p }" docs/changelog.md > notes.md
         # Add a link to the release notes
-        echo "See [docs/changelog/#v${VERSION}](https://reproducible-reporting.github.io/${{ github.event.repository.name }}/${VERSION}/changelog/#v${VERSION})" for more details. >> notes.md
+        URL="https://reproducible-reporting.github.io/${{ github.event.repository.name }}/${MAJMIN}/changelog/#${TAG}"
+        echo "See [docs/changelog/#${TAG}](${URL}) for more details." >> notes.md
         # Remove leading and trailing empty lines
         sed -e :a -e '/./,$!d;/^\n*$/{$d;N;};/\n$/ba' -i notes.md
     - name: Create GitHub Release
@@ -98,7 +106,7 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
       run: >-
         gh release create "${TAG}"
-        --repo '${{ github.repository }}'
+        --repo "${{ github.repository }}"
         --title "Release ${VERSION}"
         --notes-file notes.md
     - name: Upload artifact signatures to GitHub Release
@@ -109,7 +117,8 @@ jobs:
       # sigstore-produced signatures and certificates.
       run: >-
         gh release upload
-        '${{ github.ref_name }}' dist/**
+        "${{ github.ref_name }}"
+        dist/**
         --repo '${{ github.repository }}'
 
   publish-to-testpypi:
