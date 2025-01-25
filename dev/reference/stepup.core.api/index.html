@@ -2848,7 +2848,7 @@ and before creating the output and volatile files.</p>
 </span><span id="__span-0-409"><a id="__codelineno-0-409" name="__codelineno-0-409"></a>    <span class="n">out_paths</span> <span class="o">=</span> <span class="n">_str_to_list</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
 </span><span id="__span-0-410"><a id="__codelineno-0-410" name="__codelineno-0-410"></a>    <span class="n">vol_paths</span> <span class="o">=</span> <span class="n">_str_to_list</span><span class="p">(</span><span class="n">vol</span><span class="p">)</span>
 </span><span id="__span-0-411"><a id="__codelineno-0-411" name="__codelineno-0-411"></a>    <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">collection</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">collection</span> <span class="ow">in</span> <span class="p">[</span><span class="n">inp_paths</span><span class="p">,</span> <span class="n">env_vars</span><span class="p">,</span> <span class="n">out_paths</span><span class="p">,</span> <span class="n">vol_paths</span><span class="p">]):</span>
-</span><span id="__span-0-412"><a id="__codelineno-0-412" name="__codelineno-0-412"></a>        <span class="k">return</span> <span class="kc">True</span>
+</span><span id="__span-0-412"><a id="__codelineno-0-412" name="__codelineno-0-412"></a>        <span class="k">return</span>
 </span><span id="__span-0-413"><a id="__codelineno-0-413" name="__codelineno-0-413"></a>    <span class="n">env_vars</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">env_vars</span><span class="p">)</span>
 </span><span id="__span-0-414"><a id="__codelineno-0-414" name="__codelineno-0-414"></a>    <span class="k">with</span> <span class="n">subs_env_vars</span><span class="p">()</span> <span class="k">as</span> <span class="n">subs</span><span class="p">:</span>
 </span><span id="__span-0-415"><a id="__codelineno-0-415" name="__codelineno-0-415"></a>        <span class="n">su_inp_paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">subs</span><span class="p">(</span><span class="n">inp_path</span><span class="p">)</span> <span class="k">for</span> <span class="n">inp_path</span> <span class="ow">in</span> <span class="n">inp_paths</span><span class="p">]</span>
@@ -3659,7 +3659,7 @@ Otherwise, the result is a string.</p>
 
 
 <h3 id="stepup.core.api.call" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">stepup</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="p">(),</span> <span class="n">out</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vol</span><span class="o">=</span><span class="p">(),</span> <span class="n">workdir</span><span class="o">=</span><span class="s1">&#39;./&#39;</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pool</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">block</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pars</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">stepup</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">executable</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="p">(),</span> <span class="n">out</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vol</span><span class="o">=</span><span class="p">(),</span> <span class="n">workdir</span><span class="o">=</span><span class="s1">&#39;./&#39;</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pool</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">block</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pars</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
 
 <a href="#stepup.core.api.call" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -3667,20 +3667,20 @@ Otherwise, the result is a string.</p>
     <div class="doc doc-contents first">
 
         <p>Call an executable with a set of serialized arguments.</p>
-<p>This function assumes that the script implements StepUp&rsquo;s
+<p>This function assumes that the executable implements StepUp&rsquo;s
 <a href="../../getting_started/call/">call protocol</a>.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-            <b><code>script</code></b>
+            <b><code>executable</code></b>
               (<code>str</code>)
           –
           <div class="doc-md-description">
             <p>The path of a local executable script to call.
 Environment variables are substituted.
-The path of the script is assumed to be relative to this directory.</p>
+The path of the executable is assumed to be relative to this directory.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
@@ -4093,7 +4093,7 @@ must be written when <code>inp</code> is a string or a sequence of strings.</p>
 <span class="normal"><a href="#__codelineno-0-858">858</a></span>
 <span class="normal"><a href="#__codelineno-0-859">859</a></span>
 <span class="normal"><a href="#__codelineno-0-860">860</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-641"><a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="k">def</span><span class="w"> </span><span class="nf">call</span><span class="p">(</span>
-</span><span id="__span-0-642"><a id="__codelineno-0-642" name="__codelineno-0-642"></a>    <span class="n">script</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="__span-0-642"><a id="__codelineno-0-642" name="__codelineno-0-642"></a>    <span class="n">executable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
 </span><span id="__span-0-643"><a id="__codelineno-0-643" name="__codelineno-0-643"></a>    <span class="o">*</span><span class="p">,</span>
 </span><span id="__span-0-644"><a id="__codelineno-0-644" name="__codelineno-0-644"></a>    <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-645"><a id="__codelineno-0-645" name="__codelineno-0-645"></a>    <span class="n">fmt</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span><span class="p">,</span>
@@ -4110,15 +4110,15 @@ must be written when <code>inp</code> is a string or a sequence of strings.</p>
 </span><span id="__span-0-656"><a id="__codelineno-0-656" name="__codelineno-0-656"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StepInfo</span><span class="p">:</span>
 </span><span id="__span-0-657"><a id="__codelineno-0-657" name="__codelineno-0-657"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Call an executable with a set of serialized arguments.</span>
 </span><span id="__span-0-658"><a id="__codelineno-0-658" name="__codelineno-0-658"></a>
-</span><span id="__span-0-659"><a id="__codelineno-0-659" name="__codelineno-0-659"></a><span class="sd">    This function assumes that the script implements StepUp&#39;s</span>
+</span><span id="__span-0-659"><a id="__codelineno-0-659" name="__codelineno-0-659"></a><span class="sd">    This function assumes that the executable implements StepUp&#39;s</span>
 </span><span id="__span-0-660"><a id="__codelineno-0-660" name="__codelineno-0-660"></a><span class="sd">    [call protocol](../getting_started/call.md).</span>
 </span><span id="__span-0-661"><a id="__codelineno-0-661" name="__codelineno-0-661"></a>
 </span><span id="__span-0-662"><a id="__codelineno-0-662" name="__codelineno-0-662"></a><span class="sd">    Parameters</span>
 </span><span id="__span-0-663"><a id="__codelineno-0-663" name="__codelineno-0-663"></a><span class="sd">    ----------</span>
-</span><span id="__span-0-664"><a id="__codelineno-0-664" name="__codelineno-0-664"></a><span class="sd">    script</span>
+</span><span id="__span-0-664"><a id="__codelineno-0-664" name="__codelineno-0-664"></a><span class="sd">    executable</span>
 </span><span id="__span-0-665"><a id="__codelineno-0-665" name="__codelineno-0-665"></a><span class="sd">        The path of a local executable script to call.</span>
 </span><span id="__span-0-666"><a id="__codelineno-0-666" name="__codelineno-0-666"></a><span class="sd">        Environment variables are substituted.</span>
-</span><span id="__span-0-667"><a id="__codelineno-0-667" name="__codelineno-0-667"></a><span class="sd">        The path of the script is assumed to be relative to this directory.</span>
+</span><span id="__span-0-667"><a id="__codelineno-0-667" name="__codelineno-0-667"></a><span class="sd">        The path of the executable is assumed to be relative to this directory.</span>
 </span><span id="__span-0-668"><a id="__codelineno-0-668" name="__codelineno-0-668"></a><span class="sd">    prefix</span>
 </span><span id="__span-0-669"><a id="__codelineno-0-669" name="__codelineno-0-669"></a><span class="sd">        The prefix used to construct filenames of the input (serialized arguments)</span>
 </span><span id="__span-0-670"><a id="__codelineno-0-670" name="__codelineno-0-670"></a><span class="sd">        and optionally output file (serialized return value).</span>
@@ -4227,9 +4227,9 @@ must be written when <code>inp</code> is a string or a sequence of strings.</p>
 </span><span id="__span-0-773"><a id="__codelineno-0-773" name="__codelineno-0-773"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">out</span> <span class="ow">in</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">]</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="nb">str</span><span class="p">)):</span>
 </span><span id="__span-0-774"><a id="__codelineno-0-774" name="__codelineno-0-774"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid value for _out. Must be None, True, False, str or Sequence[str].&quot;</span><span class="p">)</span>
 </span><span id="__span-0-775"><a id="__codelineno-0-775" name="__codelineno-0-775"></a>    <span class="k">if</span> <span class="n">prefix</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-776"><a id="__codelineno-0-776" name="__codelineno-0-776"></a>        <span class="n">prefix</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">script</span><span class="p">)</span><span class="o">.</span><span class="n">stem</span>
+</span><span id="__span-0-776"><a id="__codelineno-0-776" name="__codelineno-0-776"></a>        <span class="n">prefix</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">executable</span><span class="p">)</span><span class="o">.</span><span class="n">stem</span>
 </span><span id="__span-0-777"><a id="__codelineno-0-777" name="__codelineno-0-777"></a>    <span class="k">with</span> <span class="n">subs_env_vars</span><span class="p">()</span> <span class="k">as</span> <span class="n">subs</span><span class="p">:</span>
-</span><span id="__span-0-778"><a id="__codelineno-0-778" name="__codelineno-0-778"></a>        <span class="n">script</span> <span class="o">=</span> <span class="n">subs</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+</span><span id="__span-0-778"><a id="__codelineno-0-778" name="__codelineno-0-778"></a>        <span class="n">executable</span> <span class="o">=</span> <span class="n">subs</span><span class="p">(</span><span class="n">executable</span><span class="p">)</span>
 </span><span id="__span-0-779"><a id="__codelineno-0-779" name="__codelineno-0-779"></a>        <span class="n">workdir</span> <span class="o">=</span> <span class="n">subs</span><span class="p">(</span><span class="n">workdir</span><span class="p">)</span>
 </span><span id="__span-0-780"><a id="__codelineno-0-780" name="__codelineno-0-780"></a>
 </span><span id="__span-0-781"><a id="__codelineno-0-781" name="__codelineno-0-781"></a>    <span class="c1"># Determine the format from given filenames</span>
@@ -4280,7 +4280,7 @@ must be written when <code>inp</code> is a string or a sequence of strings.</p>
 </span><span id="__span-0-826"><a id="__codelineno-0-826" name="__codelineno-0-826"></a>    <span class="p">}</span>
 </span><span id="__span-0-827"><a id="__codelineno-0-827" name="__codelineno-0-827"></a>
 </span><span id="__span-0-828"><a id="__codelineno-0-828" name="__codelineno-0-828"></a>    <span class="c1"># Input handling</span>
-</span><span id="__span-0-829"><a id="__codelineno-0-829" name="__codelineno-0-829"></a>    <span class="n">command</span> <span class="o">=</span> <span class="n">format_command</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+</span><span id="__span-0-829"><a id="__codelineno-0-829" name="__codelineno-0-829"></a>    <span class="n">command</span> <span class="o">=</span> <span class="n">format_command</span><span class="p">(</span><span class="n">executable</span><span class="p">)</span>
 </span><span id="__span-0-830"><a id="__codelineno-0-830" name="__codelineno-0-830"></a>    <span class="n">path_inp</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_inp.</span><span class="si">{</span><span class="n">fmt</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="p">((</span><span class="n">fmt</span> <span class="o">==</span> <span class="s2">&quot;pickle&quot;</span> <span class="ow">and</span> <span class="n">inp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">inp</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">)</span> <span class="k">else</span> <span class="n">inp</span>
 </span><span id="__span-0-831"><a id="__codelineno-0-831" name="__codelineno-0-831"></a>    <span class="k">if</span> <span class="n">serial</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="__span-0-832"><a id="__codelineno-0-832" name="__codelineno-0-832"></a>        <span class="c1"># Provide input some way.</span>
@@ -4310,7 +4310,7 @@ must be written when <code>inp</code> is a string or a sequence of strings.</p>
 </span><span id="__span-0-856"><a id="__codelineno-0-856" name="__codelineno-0-856"></a>            <span class="n">step_kwargs</span><span class="p">[</span><span class="s2">&quot;out&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">path_out</span><span class="p">)</span>
 </span><span id="__span-0-857"><a id="__codelineno-0-857" name="__codelineno-0-857"></a>
 </span><span id="__span-0-858"><a id="__codelineno-0-858" name="__codelineno-0-858"></a>    <span class="c1"># Finally, create a step</span>
-</span><span id="__span-0-859"><a id="__codelineno-0-859" name="__codelineno-0-859"></a>    <span class="n">step_kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;inp&quot;</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+</span><span id="__span-0-859"><a id="__codelineno-0-859" name="__codelineno-0-859"></a>    <span class="n">step_kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;inp&quot;</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">executable</span><span class="p">)</span>
 </span><span id="__span-0-860"><a id="__codelineno-0-860" name="__codelineno-0-860"></a>    <span class="k">return</span> <span class="n">step</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="o">**</span><span class="n">step_kwargs</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
@@ -4322,7 +4322,7 @@ must be written when <code>inp</code> is a string or a sequence of strings.</p>
 
 
 <h3 id="stepup.core.api.script" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">stepup</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">script</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">step_info</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">(),</span> <span class="n">env</span><span class="o">=</span><span class="p">(),</span> <span class="n">out</span><span class="o">=</span><span class="p">(),</span> <span class="n">vol</span><span class="o">=</span><span class="p">(),</span> <span class="n">workdir</span><span class="o">=</span><span class="s1">&#39;./&#39;</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pool</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">block</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">stepup</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">script</span><span class="p">(</span><span class="n">executable</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">step_info</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">(),</span> <span class="n">env</span><span class="o">=</span><span class="p">(),</span> <span class="n">out</span><span class="o">=</span><span class="p">(),</span> <span class="n">vol</span><span class="o">=</span><span class="p">(),</span> <span class="n">workdir</span><span class="o">=</span><span class="s1">&#39;./&#39;</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pool</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">block</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 <a href="#stepup.core.api.script" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -4330,14 +4330,14 @@ must be written when <code>inp</code> is a string or a sequence of strings.</p>
     <div class="doc doc-contents first">
 
         <p>Run the executable with a single argument <code>plan</code> in a working directory.</p>
-<p>This function assumes that the script implements StepUp&rsquo;s
+<p>This function assumes that the executable implements StepUp&rsquo;s
 <a href="../../getting_started/script_single/">script protocol</a>.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-            <b><code>script</code></b>
+            <b><code>executable</code></b>
               (<code>str</code>)
           –
           <div class="doc-md-description">
@@ -4353,7 +4353,7 @@ The path of the script is assumed to be relative to this directory.</p>
 )
           –
           <div class="doc-md-description">
-            <p>When given, the steps generated in the plan part of the script are written
+            <p>When given, the steps generated in the plan part of the executable are written
 to this <code>step_info</code> file. (See <a class="autorefs autorefs-internal" href="../stepup.core.stepinfo/#stepup.core.stepinfo">stepup.core.stepinfo</a> module for the file format.)
 This filename is relative to the work directory.</p>
           </div>
@@ -4532,7 +4532,7 @@ This filename is relative to the work directory.</p>
 <span class="normal"><a href="#__codelineno-0-927">927</a></span>
 <span class="normal"><a href="#__codelineno-0-928">928</a></span>
 <span class="normal"><a href="#__codelineno-0-929">929</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-863"><a id="__codelineno-0-863" name="__codelineno-0-863"></a><span class="k">def</span><span class="w"> </span><span class="nf">script</span><span class="p">(</span>
-</span><span id="__span-0-864"><a id="__codelineno-0-864" name="__codelineno-0-864"></a>    <span class="n">script</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="__span-0-864"><a id="__codelineno-0-864" name="__codelineno-0-864"></a>    <span class="n">executable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
 </span><span id="__span-0-865"><a id="__codelineno-0-865" name="__codelineno-0-865"></a>    <span class="o">*</span><span class="p">,</span>
 </span><span id="__span-0-866"><a id="__codelineno-0-866" name="__codelineno-0-866"></a>    <span class="n">step_info</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-867"><a id="__codelineno-0-867" name="__codelineno-0-867"></a>    <span class="n">inp</span><span class="p">:</span> <span class="n">Collection</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="p">(),</span>
@@ -4546,17 +4546,17 @@ This filename is relative to the work directory.</p>
 </span><span id="__span-0-875"><a id="__codelineno-0-875" name="__codelineno-0-875"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StepInfo</span><span class="p">:</span>
 </span><span id="__span-0-876"><a id="__codelineno-0-876" name="__codelineno-0-876"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Run the executable with a single argument `plan` in a working directory.</span>
 </span><span id="__span-0-877"><a id="__codelineno-0-877" name="__codelineno-0-877"></a>
-</span><span id="__span-0-878"><a id="__codelineno-0-878" name="__codelineno-0-878"></a><span class="sd">    This function assumes that the script implements StepUp&#39;s</span>
+</span><span id="__span-0-878"><a id="__codelineno-0-878" name="__codelineno-0-878"></a><span class="sd">    This function assumes that the executable implements StepUp&#39;s</span>
 </span><span id="__span-0-879"><a id="__codelineno-0-879" name="__codelineno-0-879"></a><span class="sd">    [script protocol](../getting_started/script_single.md).</span>
 </span><span id="__span-0-880"><a id="__codelineno-0-880" name="__codelineno-0-880"></a>
 </span><span id="__span-0-881"><a id="__codelineno-0-881" name="__codelineno-0-881"></a><span class="sd">    Parameters</span>
 </span><span id="__span-0-882"><a id="__codelineno-0-882" name="__codelineno-0-882"></a><span class="sd">    ----------</span>
-</span><span id="__span-0-883"><a id="__codelineno-0-883" name="__codelineno-0-883"></a><span class="sd">    script</span>
+</span><span id="__span-0-883"><a id="__codelineno-0-883" name="__codelineno-0-883"></a><span class="sd">    executable</span>
 </span><span id="__span-0-884"><a id="__codelineno-0-884" name="__codelineno-0-884"></a><span class="sd">        The path of a local executable that will be called with the argument `plan`.</span>
 </span><span id="__span-0-885"><a id="__codelineno-0-885" name="__codelineno-0-885"></a><span class="sd">        The file must be executable.</span>
 </span><span id="__span-0-886"><a id="__codelineno-0-886" name="__codelineno-0-886"></a><span class="sd">        The path of the script is assumed to be relative to this directory.</span>
 </span><span id="__span-0-887"><a id="__codelineno-0-887" name="__codelineno-0-887"></a><span class="sd">    step_info</span>
-</span><span id="__span-0-888"><a id="__codelineno-0-888" name="__codelineno-0-888"></a><span class="sd">        When given, the steps generated in the plan part of the script are written</span>
+</span><span id="__span-0-888"><a id="__codelineno-0-888" name="__codelineno-0-888"></a><span class="sd">        When given, the steps generated in the plan part of the executable are written</span>
 </span><span id="__span-0-889"><a id="__codelineno-0-889" name="__codelineno-0-889"></a><span class="sd">        to this `step_info` file. (See [stepup.core.stepinfo][] module for the file format.)</span>
 </span><span id="__span-0-890"><a id="__codelineno-0-890" name="__codelineno-0-890"></a><span class="sd">        This filename is relative to the work directory.</span>
 </span><span id="__span-0-891"><a id="__codelineno-0-891" name="__codelineno-0-891"></a><span class="sd">    inp, env, out, vol</span>
@@ -4584,9 +4584,9 @@ This filename is relative to the work directory.</p>
 </span><span id="__span-0-913"><a id="__codelineno-0-913" name="__codelineno-0-913"></a><span class="sd">      and is passed on the the run stage.</span>
 </span><span id="__span-0-914"><a id="__codelineno-0-914" name="__codelineno-0-914"></a><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="__span-0-915"><a id="__codelineno-0-915" name="__codelineno-0-915"></a>    <span class="k">with</span> <span class="n">subs_env_vars</span><span class="p">()</span> <span class="k">as</span> <span class="n">subs</span><span class="p">:</span>
-</span><span id="__span-0-916"><a id="__codelineno-0-916" name="__codelineno-0-916"></a>        <span class="n">script</span> <span class="o">=</span> <span class="n">subs</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+</span><span id="__span-0-916"><a id="__codelineno-0-916" name="__codelineno-0-916"></a>        <span class="n">executable</span> <span class="o">=</span> <span class="n">subs</span><span class="p">(</span><span class="n">executable</span><span class="p">)</span>
 </span><span id="__span-0-917"><a id="__codelineno-0-917" name="__codelineno-0-917"></a>        <span class="n">workdir</span> <span class="o">=</span> <span class="n">subs</span><span class="p">(</span><span class="n">workdir</span><span class="p">)</span>
-</span><span id="__span-0-918"><a id="__codelineno-0-918" name="__codelineno-0-918"></a>    <span class="n">command</span> <span class="o">=</span> <span class="n">format_command</span><span class="p">(</span><span class="n">script</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; plan&quot;</span>
+</span><span id="__span-0-918"><a id="__codelineno-0-918" name="__codelineno-0-918"></a>    <span class="n">command</span> <span class="o">=</span> <span class="n">format_command</span><span class="p">(</span><span class="n">executable</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; plan&quot;</span>
 </span><span id="__span-0-919"><a id="__codelineno-0-919" name="__codelineno-0-919"></a>    <span class="n">out</span> <span class="o">=</span> <span class="n">_str_to_list</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
 </span><span id="__span-0-920"><a id="__codelineno-0-920" name="__codelineno-0-920"></a>    <span class="k">if</span> <span class="n">step_info</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="__span-0-921"><a id="__codelineno-0-921" name="__codelineno-0-921"></a>        <span class="n">command</span> <span class="o">+=</span> <span class="s2">&quot; --step-info=&quot;</span> <span class="o">+</span> <span class="n">shlex</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="n">step_info</span><span class="p">)</span>
@@ -4594,7 +4594,7 @@ This filename is relative to the work directory.</p>
 </span><span id="__span-0-923"><a id="__codelineno-0-923" name="__codelineno-0-923"></a>    <span class="k">if</span> <span class="n">optional</span><span class="p">:</span>
 </span><span id="__span-0-924"><a id="__codelineno-0-924" name="__codelineno-0-924"></a>        <span class="n">command</span> <span class="o">+=</span> <span class="s2">&quot; --optional&quot;</span>
 </span><span id="__span-0-925"><a id="__codelineno-0-925" name="__codelineno-0-925"></a>    <span class="n">inp</span> <span class="o">=</span> <span class="n">_str_to_list</span><span class="p">(</span><span class="n">inp</span><span class="p">)</span>
-</span><span id="__span-0-926"><a id="__codelineno-0-926" name="__codelineno-0-926"></a>    <span class="n">inp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+</span><span id="__span-0-926"><a id="__codelineno-0-926" name="__codelineno-0-926"></a>    <span class="n">inp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">executable</span><span class="p">)</span>
 </span><span id="__span-0-927"><a id="__codelineno-0-927" name="__codelineno-0-927"></a>    <span class="k">return</span> <span class="n">step</span><span class="p">(</span>
 </span><span id="__span-0-928"><a id="__codelineno-0-928" name="__codelineno-0-928"></a>        <span class="n">command</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="n">inp</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">out</span><span class="p">,</span> <span class="n">vol</span><span class="o">=</span><span class="n">vol</span><span class="p">,</span> <span class="n">workdir</span><span class="o">=</span><span class="n">workdir</span><span class="p">,</span> <span class="n">pool</span><span class="o">=</span><span class="n">pool</span><span class="p">,</span> <span class="n">block</span><span class="o">=</span><span class="n">block</span>
 </span><span id="__span-0-929"><a id="__codelineno-0-929" name="__codelineno-0-929"></a>    <span class="p">)</span>
