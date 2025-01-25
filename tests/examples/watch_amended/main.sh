@@ -60,11 +60,11 @@ graph("current_graph4")
 join()
 EOD
 
-# Check the result, should not be affected.
-grep bye out.txt
-
 # Wait for background processes, if any.
 wait
+
+# Check the result, should not be affected.
+grep bye out.txt
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1

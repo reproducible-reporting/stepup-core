@@ -20,6 +20,7 @@ Put the following lines in `.envrc`:
 ```bash
 source venv/bin/activate
 export XDG_CACHE_HOME="${VIRTUAL_ENV}/cache"
+export STEPUP_STRICT="1"
 ```
 
 Finally, run the following commands:

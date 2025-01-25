@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A bug is fixed in the logic to determine the type of job to run for a given step.
   Some steps were executed while not all required inputs were present.
+- A bug is fixed that caused optional steps not to be executed again, when their inputs
+  had changed or their outputs were removed.
+- A bug is fixed that caused outputs of steps to be removed when they were changed
+  from `optional=False` to `optional=True`.
+- Occasionally, `.stepup/` was not created yet
+  when the reporter tried writing to `.stepup/success.log`.
 
 
 ## [2.0.1] - 2025-01-22 {: #v2.0.1 }

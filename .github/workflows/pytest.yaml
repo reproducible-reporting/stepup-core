@@ -28,4 +28,5 @@ jobs:
       - name: Install development version
         run: pip install -e .[dev]
       - name: Run pytest
-        run: pytest -vv
+        # Enfore strict checks instead of trying to repair fixable issues.
+        run: STEPUP_STRICT=1 pytest -vv

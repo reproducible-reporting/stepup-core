@@ -77,7 +77,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
         "./main.sh",
         stdin=subprocess.DEVNULL,
         cwd=workdir,
-        env=os.environ | {"PYTHONUNBUFFERED": "yes", "COLUMNS": "80"},
+        env=os.environ | {"PYTHONUNBUFFERED": "yes", "COLUMNS": "80", "STEPUP_STRICT": "1"},
     )
     try:
         async with asyncio.timeout(30):

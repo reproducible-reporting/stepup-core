@@ -218,10 +218,23 @@ class Step(Node):
             if step_hash.explain_info is not None:
                 yield "explained", "yes"
 
-    def _update_orphan(self):
-        """Update the node or the graph when this node loses its creator node."""
-        # This step can no longer be implied mandatory.
-        self.check_undo_mandatory()
+    def _make_orphan(self):
+        """Update the node or the graph when it becomes orphan."""
+        # This step can no longer be required.
+        self.undo_required()
+        # Also check whether supplying steps are no longer be required.
+        for i, label in self.con.execute(SELECT_SUPPLYING_STEPS, (self.i,)):
+            step = Step(self.cascade, i, label)
+            step.undo_required()
+
+    def _undo_orphan(self):
+        """Update the node or the graph when the node is recreated."""
+        # This step may become required.
+        self.make_required()
+        # Also check if supplying steps become required.
+        for i, label in self.con.execute(SELECT_SUPPLYING_STEPS, (self.i,)):
+            step = Step(self.cascade, i, label)
+            step.make_required()
 
     def clean(self):
         """Perform a cleanup right before the orphaned node is removed from the graph."""
@@ -250,7 +263,7 @@ class Step(Node):
         idep = super().add_supplier(supplier)
         if self.get_mandatory() != Mandatory.NO:
             for step in supplier.suppliers(kind="step"):
-                step.check_imply_mandatory()
+                step.make_required()
         return idep
 
     def del_suppliers(self, suppliers: list[Node] | None = None):
@@ -273,10 +286,10 @@ class Step(Node):
                 for step in supplier.suppliers(kind="step"):
                     steps.add(step)
             for step in steps:
-                step.check_undo_mandatory()
+                step.undo_required()
 
-    def lost_product(self):
-        """React to a product node being orphaned.
+    def detach(self):
+        """Clean up an orphaned node because it loses a product node.
 
         Completely remove this step, making reuse impossible.
         """
@@ -385,32 +398,34 @@ class Step(Node):
     def set_mandatory(self, mandatory: Mandatory):
         self.con.execute("UPDATE step SET mandatory = ? WHERE node = ?", (mandatory.value, self.i))
 
-    def check_imply_mandatory(self):
-        """Try to set this step to Mandatory.IMPLIED and propagate to other optional suppliers."""
-        # Scan all direct step dependencies for (implied) mandatory ones.
+    def make_required(self):
+        """Try to set this step to Mandatory.REQUIRED and propagate to other optional suppliers."""
+        # Scan all direct step dependencies for mandatory or required ones.
+        logger.info(
+            "Number of mandatory consumer steps: %s",
+            self.con.execute(EXISTS_MANDATORY_CONSUMER_STEPS, (self.i,)).fetchone()[0],
+        )
         if (
             self.get_mandatory() == Mandatory.NO
             and not self.is_orphan()
             and self.con.execute(EXISTS_MANDATORY_CONSUMER_STEPS, (self.i,)).fetchone()[0] > 0
         ):
-            self.set_mandatory(Mandatory.IMPLIED)
+            self.set_mandatory(Mandatory.REQUIRED)
             for i, label in self.con.execute(SELECT_SUPPLYING_STEPS, (self.i,)):
                 step = Step(self.cascade, i, label)
-                step.check_imply_mandatory()
+                step.make_required()
             self.queue_if_appropriate()
 
-    def check_undo_mandatory(self):
+    def undo_required(self):
         """Try to set this node to Mandatory.NO and propagate to other optional suppliers."""
-        implied = (
-            not self.is_orphan()
-            and self.con.execute(EXISTS_MANDATORY_CONSUMER_STEPS, (self.i,)).fetchone()[0] > 0
-        )
-        if not implied:
-            if self.get_mandatory() == Mandatory.IMPLIED:
-                self.set_mandatory(Mandatory.NO)
+        if self.get_mandatory() == Mandatory.REQUIRED and (
+            self.is_orphan()
+            or self.con.execute(EXISTS_MANDATORY_CONSUMER_STEPS, (self.i,)).fetchone()[0] == 0
+        ):
+            self.set_mandatory(Mandatory.NO)
             for i, label in self.con.execute(SELECT_SUPPLYING_STEPS, (self.i,)):
                 step = Step(self.cascade, i, label)
-                step.check_undo_mandatory()
+                step.undo_required()
 
     #
     # Env vars
@@ -652,35 +667,29 @@ class Step(Node):
             return
 
         # Check whether initial and amended inputs are ready.
-        initial_inputs_ready = True
         amended_inputs_ready = True
         for _, file_state, is_orphan, is_amended in self.inp_paths(
             yield_state=True, yield_orphan=True, yield_amended=True
         ):
-            ready = not is_orphan and file_state in (FileState.BUILT, FileState.STATIC)
-            if not ready:
-                if is_amended:
+            if is_orphan or file_state not in (FileState.BUILT, FileState.STATIC):
+                if is_amended and validate_amended:
                     amended_inputs_ready = False
-                    if not initial_inputs_ready:
-                        break
                 else:
-                    initial_inputs_ready = False
-                    if not amended_inputs_ready:
-                        break
+                    # We are sure that the step cannot be started due to one of two conditions:
+                    # - Initial input is not ready.
+                    # - Amended input is not ready and not going to validate it.
+                    return
 
         # Determine the appropriate job to queue.
-        job = None
-        if initial_inputs_ready:
-            if amended_inputs_ready:
-                job = ExecuteJob(self, pool) if self.get_hash() is None else TrySkipJob(self, pool)
-            elif validate_amended:
-                # If the initial inputs are ready, but the amended inputs are not,
-                # we need to validate the amended inputs first.
-                # They may not be available, but if the initial inputs have changed,
-                # they may also no longer be needed. Almost a catch 22.
-                job = ValidateAmendedJob(self, pool)
-        if job is None:
-            return
+        if amended_inputs_ready:
+            # All inputs are good to go.
+            job = ExecuteJob(self, pool) if self.get_hash() is None else TrySkipJob(self, pool)
+        else:
+            # If the initial inputs are ready, but the amended inputs are not,
+            # we need to validate the amended inputs first.
+            # They may not be available, but if the initial inputs have changed,
+            # they may also no longer be needed. Almost a catch 22.
+            job = ValidateAmendedJob(self, pool)
 
         # Queue the job.
         logger.info("Queue %s", job.name)

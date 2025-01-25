@@ -83,9 +83,9 @@ class Mandatory(enum.Enum):
     YES = 31
 
     # The step is optional but (indirectly) required by a mandatory step.
-    IMPLIED = 32
+    REQUIRED = 32
 
-    # The step is optional and not required by another mandatory or implied step.
+    # The step is optional and not required by another mandatory or required step.
     NO = 33
 
 

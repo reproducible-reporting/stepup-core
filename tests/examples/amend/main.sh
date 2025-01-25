@@ -37,6 +37,9 @@ graph("current_graph2")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ -f step.py ]] || exit 1
@@ -44,9 +47,6 @@ EOD
 [[ -f inp2.txt ]] || exit 1
 grep word1 out1.txt
 grep word2 out2.txt
-
-# Wait for background processes, if any.
-wait
 
 # Restart StepUp without changes
 rm .stepup/*.log
@@ -65,6 +65,9 @@ graph("current_graph3")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ -f step.py ]] || exit 1
@@ -72,9 +75,6 @@ EOD
 [[ -f inp2.txt ]] || exit 1
 grep word1 out1.txt
 grep word2 out2.txt
-
-# Wait for background processes, if any.
-wait
 
 # Restart StepUp with changes
 echo "word2 and other" > inp2.txt
@@ -94,6 +94,9 @@ graph("current_graph4")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ -f step.py ]] || exit 1
@@ -101,6 +104,3 @@ EOD
 [[ -f inp2.txt ]] || exit 1
 grep word1 out1.txt
 grep word2 out2.txt
-
-# Wait for background processes, if any.
-wait

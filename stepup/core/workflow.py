@@ -69,15 +69,41 @@ class Workflow(Cascade):
 
     def check_consistency(self):
         """Check whether the initial graph satisfies all constraints."""
+        strict = os.getenv("STEPUP_STRICT") is not None
         super().check_consistency()
-        for node in self.nodes():
-            if node.kind() == "file":
-                parent = self.get_parent(node.label, allow_orphan=True)
-                if parent is not None:
-                    sql = "SELECT 1 FROM dependency WHERE supplier = ? AND consumer = ?"
-                    row = self._con.execute(sql, (parent.i, node.i)).fetchone()
-                    if row is None:
-                        raise ValueError(f"File is not consumer of its parent: {node.label}")
+
+        # Verify that all files have a parent directory as supplying node.
+        sql = (
+            "SELECT node.label, parent.label FROM node "
+            "LEFT JOIN dependency ON node.i = consumer "
+            "LEFT JOIN node AS parent ON parent.i = supplier "
+            "WHERE node.kind = 'file' AND parent.kind = 'file' "
+        )
+        for path, parent_path in self.con.execute(sql):
+            if parent_path != myparent(path):
+                raise GraphError(f"File {path!r} has unexpected parent {parent_path!r}")
+
+        # Verify that all succeeded steps only have BUILT outputs.
+        sql = (
+            "SELECT file.state, fnode.label, snode.i, snode.label FROM node AS fnode "
+            "JOIN file ON fnode.i = file.node JOIN dependency ON fnode.i = consumer "
+            "JOIN node AS snode ON snode.i = supplier JOIN step ON step.node = snode.i "
+            "WHERE step.state = ? AND file.state NOT IN (?, ?)"
+        )
+        data = (StepState.SUCCEEDED.value, FileState.BUILT.value, FileState.VOLATILE.value)
+        to_mark_pending = set()
+        for file_state_value, flabel, si, slabel in self.con.execute(sql, data):
+            file_state = FileState(file_state_value)
+            if strict:
+                raise GraphError(
+                    f"{file_state.name} output of succeeded step: path_out={flabel} step={slabel}"
+                )
+            logger.error(
+                "%s output of succeeded step: path_out=%s step=%s", file_state.name, flabel, slabel
+            )
+            to_mark_pending.add(Step(self, si, slabel))
+        for step in to_mark_pending:
+            step.mark_pending(input_changed=True)
 
     def initialize_boot(self, path_plan: str) -> bool:
         """Initialize the (new) boot script.
@@ -724,13 +750,18 @@ class Workflow(Cascade):
         if old_vol_paths != vol_paths:
             return None
 
-        # We have a match, restore the step and update the pool and block settings.
-        old_step.recreate(creator)
-        old_step.set_mandatory(Mandatory.NO if optional else Mandatory.YES)
-        old_step.check_imply_mandatory()
+        # We have a match!
+
+        # Update the mandatory, pool and block settings.
         self.con.execute(
-            "UPDATE step SET pool = ?, block = ? WHERE node = ?", (pool, block, old_step.i)
+            "UPDATE step SET mandatory = ?, pool = ?, block = ? WHERE node = ?",
+            (Mandatory.NO.value if optional else Mandatory.YES.value, pool, block, old_step.i),
         )
+
+        # Restore the step and its products (recursively).
+        old_step.recreate(creator)
+
+        # Try to queue the step again.
         old_step.queue_if_appropriate()
         logger.info("Reuse orphaned step: %s", old_step.label)
         return old_step
@@ -887,6 +918,14 @@ class Workflow(Cascade):
         )
         for path, digest, mode, mtime, size, inode in cur:
             self.to_be_deleted.append((path, FileHash(digest, mode, mtime, size, inode)))
+        # Set optional step PENDING if they were executed and are no longer mandatory.
+        for i, label in self.con.execute(
+            "SELECT i, label FROM node JOIN step ON node.i = step.node "
+            "WHERE mandatory = ? AND state != ?",
+            (Mandatory.NO.value, StepState.PENDING.value),
+        ):
+            step = Step(self, i, label)
+            step.mark_pending(input_changed=True)
         super().clean()
 
     #

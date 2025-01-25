@@ -65,6 +65,9 @@ graph("current_graph3")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ -f inp0.txt ]] || exit 1
@@ -72,6 +75,3 @@ EOD
 [[ -f tmp1.txt ]] || exit 1
 [[ -f inp2.txt ]] || exit 1
 [[ -f log.txt ]] || exit 1
-
-# Wait for background processes, if any.
-wait

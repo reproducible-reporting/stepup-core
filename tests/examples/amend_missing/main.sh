@@ -20,9 +20,9 @@ graph("current_graph")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ -f step.py ]] || exit 1
-
-# Wait for background processes, if any.
-wait

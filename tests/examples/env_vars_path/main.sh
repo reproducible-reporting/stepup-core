@@ -21,13 +21,13 @@ graph("current_graph1")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ -f README-stdout.txt ]] || exit 1
 [[ -f README-stderr.txt ]] || exit 1
-
-# Wait for background processes, if any.
-wait
 
 # Restart the example with a different variable
 export ENV_VAR_TEST_STEPUP_PREFIX="FOO"
@@ -47,12 +47,12 @@ graph("current_graph2")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ ! -f README-stdout.txt ]] || exit 1
 [[ ! -f README-stderr.txt ]] || exit 1
 [[ -f FOO-stdout.txt ]] || exit 1
 [[ -f FOO-stderr.txt ]] || exit 1
-
-# Wait for background processes, if any.
-wait

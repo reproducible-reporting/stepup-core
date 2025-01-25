@@ -66,6 +66,20 @@ def test_no_node_class(cascade):
         cascade.create("foo", cascade.root, "bla")
 
 
+def test_check_consistency_root1(cascade):
+    # Manually set creator field of root node to None
+    cascade.con.execute("UPDATE node SET creator = NULL WHERE i = 1")
+    with pytest.raises(GraphError):
+        cascade.check_consistency()
+
+
+def test_check_consistency_root2(cascade):
+    # Manually set root to orphan
+    cascade.con.execute("UPDATE node SET orphan = TRUE WHERE i = 1")
+    with pytest.raises(GraphError):
+        cascade.check_consistency()
+
+
 FOO_SCHEMA = """
 CREATE TABLE IF NOT EXISTS log (msg TEXT);
 CREATE TABLE IF NOT EXISTS foo (
@@ -109,9 +123,13 @@ class Foo(Node):
         row = self.con.execute("SELECT value FROM foo WHERE node = ?", (self.i,)).fetchone()
         yield "value", str(row[0])
 
-    def _update_orphan(self):
+    def _make_orphan(self):
         """Update the node or the graph when this node loses its creator node."""
-        self.con.execute("INSERT INTO log VALUES(?)", (f"orphan {self.key()}",))
+        self.con.execute("INSERT INTO log VALUES(?)", (f"make orphan {self.key()}",))
+
+    def _undo_orphan(self):
+        """Update the node or the graph when this node loses its creator node."""
+        self.con.execute("INSERT INTO log VALUES(?)", (f"undo orphan {self.key()}",))
 
     def clean(self):
         """Perform a cleanup right before the orphaned node is removed from the graph."""
@@ -202,11 +220,11 @@ def test_singleton(lc):
     assert msgs == [
         "init f:one",
         "act f:one hello",
-        "orphan f:one",
+        "make orphan f:one",
         "init f:one",
-        "orphan f:one",
+        "make orphan f:one",
         "init f:one",
-        "orphan f:one",
+        "make orphan f:one",
         "clean f:one",
     ]
     assert lc.format_str() == SINGLETON3_FORMAT_STR
@@ -253,8 +271,45 @@ f:four
 """
 
 
+CHAIN2_FORMAT_STR = """\
+root:
+             creates   f:one
+
+(f:zero)
+               value = 0
+             creates   (f:four)
+            supplies   f:two
+
+f:one
+               value = 1
+          created by   root:
+             creates   f:two
+            supplies   f:two
+
+f:two
+               value = 2
+          created by   f:one
+            consumes   (f:zero)
+            consumes   f:one
+             creates   f:three
+            supplies   (f:four)
+
+f:three
+               value = 3
+          created by   f:two
+
+(f:four)
+               value = 4
+          created by   (f:zero)
+            consumes   f:two
+"""
+
+
 def test_chain(lc):
     # Prepare cascade object for testing
+    # root +-> foo0 --> foo4
+    #      +-> foo1
+    #      +-> foo2 --> foo3
     foo0 = lc.create("f", lc.root, "zero", value=0)
     foo1 = lc.create("f", lc.root, "one", value=1)
     foo2 = lc.create("f", lc.root, "two", value=2)
@@ -336,8 +391,10 @@ def test_chain(lc):
     assert foo4.creator(return_orphan=True) == (foo0, False)
     assert list(foo4.products()) == []
 
-    # Orphan, clean, and check log messages
+    # Orphan, recreate, clean, and check log messages
     foo0.orphan()
+    foo2.recreate(foo1)
+    assert lc.format_str() == CHAIN2_FORMAT_STR
     lc.clean()
     rows = lc.con.execute("SELECT msg FROM log").fetchall()
     msgs = [row[0] for row in rows]
@@ -347,14 +404,13 @@ def test_chain(lc):
         "init f:two",
         "init f:three",
         "init f:four",
-        "orphan f:two",
-        "orphan f:three",
-        "orphan f:zero",
-        "orphan f:four",
-        "clean f:three",
+        "make orphan f:two",
+        "make orphan f:three",
+        "make orphan f:zero",
+        "make orphan f:four",
+        "undo orphan f:two",
+        "undo orphan f:three",
         "clean f:four",
-        "clean f:two",
-        "clean f:zero",
     ]
 
 
@@ -621,3 +677,27 @@ f:4
              creates   f:1
             supplies   f:2
 """
+
+
+def test_check_consistency_creator(lc):
+    # Manually set creator field of foo0 node to None.
+    foo0 = lc.create("f", lc.root, "0", value=0)
+    lc.con.execute("UPDATE node SET creator = NULL WHERE i = ?", (foo0.i,))
+    with pytest.raises(GraphError):
+        lc.check_consistency()
+
+
+def test_check_consistency_orphan(lc):
+    # Manually make foo0 an orphan while it has a creator.
+    foo0 = lc.create("f", lc.root, "0", value=0)
+    lc.con.execute("UPDATE node SET orphan = TRUE WHERE i = ?", (foo0.i,))
+    with pytest.raises(GraphError):
+        lc.check_consistency()
+
+
+def test_check_consistency_second_root(lc):
+    # Manually make foo0 its own creator
+    foo0 = lc.create("f", lc.root, "0", value=0)
+    lc.con.execute("UPDATE node SET creator = ? WHERE i = ?", (foo0.i, foo0.i))
+    with pytest.raises(GraphError):
+        lc.check_consistency()

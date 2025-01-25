@@ -53,13 +53,13 @@ graph("current_graph3")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ -f input.txt ]] || exit 1
 grep bye output.txt
-
-# Wait for background processes, if any.
-wait
 
 # Do nothig and run again
 stepup -w -n 1 plan.py & # > current_stdout2.txt &
@@ -77,11 +77,11 @@ graph("current_graph4")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ -f input.txt ]] || exit 1
 grep bye output.txt
 grep BUILT current_graph4.txt
-
-# Wait for background processes, if any.
-wait

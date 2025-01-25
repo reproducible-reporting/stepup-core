@@ -37,13 +37,13 @@ graph("current_graph2")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ -f original.txt ]] || exit 1
 [[ -f analyzed.txt ]] || exit 1
-
-# Wait for background processes, if any.
-wait
 
 # Create file again and restart
 cp original.txt data.txt
@@ -63,11 +63,11 @@ graph("current_graph3")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ -f original.txt ]] || exit 1
 [[ -f data.txt ]] || exit 1
 [[ -f analyzed.txt ]] || exit 1
-
-# Wait for background processes, if any.
-wait

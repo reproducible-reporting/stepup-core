@@ -104,7 +104,7 @@ file:converted2.txt
 
 step:cp -aT raw3.txt converted3.txt
                state = SUCCEEDED
-           mandatory = IMPLIED
+           mandatory = REQUIRED
            explained = yes
           created by   step:./plan.py
             consumes   file:./

@@ -44,6 +44,9 @@ graph("current_graph2")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ ! -f out1.txt ]] || exit 1
@@ -51,9 +54,6 @@ grep Second inp2.txt
 grep Third inp3.txt
 grep Second out2.txt
 grep Third out3.txt
-
-# Wait for background processes, if any.
-wait
 
 # Modify nglob results and restart
 echo "Fourth input" > inp4.txt
@@ -73,6 +73,9 @@ graph("current_graph3")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ ! -f out1.txt ]] || exit 1
@@ -81,6 +84,3 @@ grep Third inp3.txt
 grep Fourth inp4.txt
 grep Third out3.txt
 grep Fourth out4.txt
-
-# Wait for background processes, if any.
-wait

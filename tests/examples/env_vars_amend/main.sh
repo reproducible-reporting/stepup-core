@@ -23,12 +23,12 @@ graph("current_graph1")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 grep AAAA output.txt
-
-# Wait for background processes, if any.
-wait
 
 # Rerstart with changed variable
 export ENV_VAR_TEST_STEPUP_SDASFD="BBBB"
@@ -47,9 +47,9 @@ graph("current_graph2")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 grep BBBB output.txt
-
-# Wait for background processes, if any.
-wait

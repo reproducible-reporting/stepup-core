@@ -98,7 +98,7 @@ file:work/config.json
 
 step:./generate.py run > stdout.txt 2> stderr.txt  # wd=work/
                state = SUCCEEDED
-           mandatory = IMPLIED
+           mandatory = REQUIRED
           created by   step:./generate.py plan --step-info=../current_step_info.json --optional  # wd=work/
             consumes   file:work/
             consumes   file:work/config.json

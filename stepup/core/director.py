@@ -158,6 +158,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--log-level",
+        "-l",
         default="WARNING",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level. [default=%(default)s]",

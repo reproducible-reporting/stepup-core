@@ -9,7 +9,7 @@
 # of the License, or (at your option) any later version.
 #
 # StepUp Core is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# but WITHOUT ANY WARRANTY; without even the REQUIRED warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
@@ -1482,7 +1482,7 @@ def test_optional_imply(wfp):
     step2 = wfp.define_step(plan, "prog2", inp_paths=["foo"], out_paths=["bar"])
     assert step2.get_mandatory() == Mandatory.YES
     assert step2.get_state() == StepState.PENDING
-    assert step1.get_mandatory() == Mandatory.IMPLIED
+    assert step1.get_mandatory() == Mandatory.REQUIRED
     assert step1.get_state() == StepState.QUEUED
 
     # Simulate scheduler
@@ -1508,7 +1508,7 @@ def test_optional_imply(wfp):
     assert is_orphan
     assert bar.get_state() == FileState.BUILT
 
-    # Run clean
+    # - run clean
     wfp.update_file_hashes(
         [
             ("foo", FileHash(b"f" * 64, 0, 0.0, 0, 0)),
@@ -1518,7 +1518,7 @@ def test_optional_imply(wfp):
     wfp.clean()
     foo, is_orphan = wfp.find("file", "foo", return_orphan=True)
     assert not is_orphan
-    assert foo.get_state() == FileState.BUILT
+    assert foo.get_state() == FileState.OUTDATED
     assert len(wfp.to_be_deleted) == 2
     assert wfp.to_be_deleted[0][0] == "foo"
     assert wfp.to_be_deleted[1][0] == "bar"
@@ -1536,9 +1536,9 @@ def test_optional_imply_chain(wfp):
     step3 = wfp.define_step(plan, "prog3", inp_paths=["bar"])
     assert step3.get_mandatory() == Mandatory.YES
     assert step3.get_state() == StepState.PENDING
-    assert step2.get_mandatory() == Mandatory.IMPLIED
+    assert step2.get_mandatory() == Mandatory.REQUIRED
     assert step2.get_state() == StepState.PENDING
-    assert step1.get_mandatory() == Mandatory.IMPLIED
+    assert step1.get_mandatory() == Mandatory.REQUIRED
     assert step1.get_state() == StepState.QUEUED
 
     # Simulate scheduler
@@ -1570,7 +1570,7 @@ def test_optional_infer(wfp):
     assert step1.get_mandatory() == Mandatory.YES
     assert step1.get_state() == StepState.PENDING
     step2 = wfp.define_step(plan, "prog2", out_paths=["foo"], optional=True)
-    assert step2.get_mandatory() == Mandatory.IMPLIED
+    assert step2.get_mandatory() == Mandatory.REQUIRED
     assert step2.get_state() == StepState.QUEUED
 
 
@@ -1583,9 +1583,9 @@ def test_optional_infer_chained(wfp):
     assert step2.get_mandatory() == Mandatory.NO
     assert step2.get_state() == StepState.PENDING
     step3 = wfp.define_step(plan, "prog3", inp_paths=["bar"], out_paths=["foo"], optional=True)
-    assert step3.get_mandatory() == Mandatory.IMPLIED
+    assert step3.get_mandatory() == Mandatory.REQUIRED
     assert step3.get_state() == StepState.PENDING
-    assert step2.get_mandatory() == Mandatory.IMPLIED
+    assert step2.get_mandatory() == Mandatory.REQUIRED
     assert step2.get_state() == StepState.QUEUED
     assert step1.get_mandatory() == Mandatory.YES
     assert step1.get_state() == StepState.PENDING
@@ -2033,3 +2033,28 @@ def test_deferred_glob_lost_child(wfp):
 
     # Check that step of prog is gone
     assert list(wfp.nodes(kind="dg", include_orphans=True)) == []
+
+
+def test_consistency_parent(wfp):
+    declare_static(wfp, wfp.find("step", "./plan.py"), ["local.txt"])
+    # Manually change local.txt to sub/local.txt
+    wfp.con.execute("UPDATE node SET label = 'sub/local.txt' WHERE label = 'local.txt'")
+    with pytest.raises(GraphError):
+        wfp.check_consistency()
+    # Manually set it back, because wfp will get checked by fixture...
+    wfp.con.execute("UPDATE node SET label = 'local.txt' WHERE label = 'sub/local.txt'")
+
+
+def test_consistency_succeeded_step(wfp):
+    plan = wfp.find("step", "./plan.py")
+    step = wfp.define_step(plan, "prog", out_paths=["out.txt"])
+    step.completed(True, StepHash(b"prog", b"zzz"))
+    assert step.get_state() == StepState.SUCCEEDED
+    out = wfp.find("file", "out.txt")
+    assert out.get_state() == FileState.BUILT
+    # Manually change the output file to AWAITED
+    wfp.con.execute("UPDATE file SET state = ? WHERE node = ?", (FileState.AWAITED.value, out.i))
+    with pytest.raises(GraphError):
+        wfp.check_consistency()
+    # Manually revert the output file to BUILT, because wfp will get checked by fixture...
+    wfp.con.execute("UPDATE file SET state = ? WHERE node = ?", (FileState.BUILT.value, out.i))

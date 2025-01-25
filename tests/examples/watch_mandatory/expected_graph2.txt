@@ -30,7 +30,7 @@ step:./plan.py
 
 step:echo hello > foo.txt
                state = SUCCEEDED
-           mandatory = IMPLIED
+           mandatory = REQUIRED
           created by   step:./plan.py
             consumes   file:./
              creates   file:foo.txt

@@ -134,7 +134,7 @@ class File(Node):
         """
         idep = super().add_supplier(supplier)
         if supplier.kind() == "step":
-            supplier.check_imply_mandatory()
+            supplier.make_required()
         return idep
 
     def del_suppliers(self, suppliers: list[Node] | None = None):
@@ -149,7 +149,11 @@ class File(Node):
         super().del_suppliers(suppliers)
         for supplier in _suppliers:
             if supplier.kind() == "step":
-                supplier.check_undo_mandatory()
+                supplier.undo_required()
+
+    def detach(self):
+        """Clean up an orphaned node because it loses a product node."""
+        raise AssertionError("A file node never has products, so it cannot be detaced.")
 
     #
     # Getters and setters

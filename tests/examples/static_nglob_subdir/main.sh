@@ -51,6 +51,9 @@ graph("current_graph2")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ -f sub/plan.py ]] || exit 1
@@ -63,6 +66,3 @@ EOD
 grep one sub/out1.txt
 grep two sub/out2.txt
 grep three sub/out3.txt
-
-# Wait for background processes, if any.
-wait

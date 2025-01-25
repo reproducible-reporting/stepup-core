@@ -1,0 +1,76 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:data.txt
+            supplies   file:optional.txt
+            supplies   file:plan.py
+            supplies   file:work.out
+            supplies   file:work.py
+            supplies   step:./plan.py
+            supplies   step:./work.py
+            supplies   step:cp -aT data.txt optional.txt
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:data.txt
+             creates   file:work.py
+             creates   step:./work.py
+             creates   step:cp -aT data.txt optional.txt
+
+file:data.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp -aT data.txt optional.txt
+
+file:work.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./work.py
+
+step:cp -aT data.txt optional.txt
+               state = SUCCEEDED
+           mandatory = REQUIRED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:data.txt
+             creates   file:optional.txt
+            supplies   file:optional.txt
+
+file:optional.txt
+               state = BUILT
+          created by   step:cp -aT data.txt optional.txt
+            consumes   file:./
+            consumes   step:cp -aT data.txt optional.txt
+            supplies   step:./work.py
+
+step:./work.py
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:optional.txt [amended]
+            consumes   file:work.py
+             creates   file:work.out
+            supplies   file:work.out
+
+file:work.out
+               state = BUILT
+          created by   step:./work.py
+            consumes   file:./
+            consumes   step:./work.py

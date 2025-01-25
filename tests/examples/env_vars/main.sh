@@ -110,14 +110,14 @@ graph("current_graph5")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 grep -v AAAA current_variables.txt
 grep CCCC current_variables.txt
 cp current_variables.txt current_variables5.txt
-
-# Wait for background processes, if any.
-wait
 
 # Set a variable again and restart
 export ENV_VAR_TEST_STEPUP_AWDFTD="DDDD"
@@ -137,11 +137,11 @@ graph("current_graph6")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 grep DDDD current_variables.txt
 grep CCCC current_variables.txt
 cp current_variables.txt current_variables_06.txt
-
-# Wait for background processes, if any.
-wait

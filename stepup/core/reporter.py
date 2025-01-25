@@ -193,11 +193,12 @@ class ReporterHandler:
             # Delete the log files when rerunning the build.
             for path_log in [".stepup/fail.log", ".stepup/warning.log", ".stepup/success.log"]:
                 Path(path_log).remove_p()
-        path_log = (
+        path_log = Path(
             ".stepup/fail.log"
             if action == "FAIL"
             else (".stepup/warning.log" if action == "WARNING" else ".stepup/success.log")
         )
+        path_log.parent.makedirs_p()
         with open(path_log, "a") as file:
             console = Console(file=file, width=80)
             console.print(line, no_wrap=True, soft_wrap=True)

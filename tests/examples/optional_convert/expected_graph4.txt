@@ -1,0 +1,151 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:converted1.txt
+            supplies   file:converted2.txt
+            supplies   file:converted3.txt
+            supplies   file:converted4.txt
+            supplies   file:plan.py
+            supplies   file:raw1.txt
+            supplies   file:raw2.txt
+            supplies   file:raw3.txt
+            supplies   file:raw4.txt
+            supplies   file:used.txt
+            supplies   step:./plan.py
+            supplies   step:cp -aT converted3.txt used.txt
+            supplies   step:cp -aT raw1.txt converted1.txt
+            supplies   step:cp -aT raw2.txt converted2.txt
+            supplies   step:cp -aT raw3.txt converted3.txt
+            supplies   step:cp -aT raw4.txt converted4.txt
+
+step:./plan.py
+               state = SUCCEEDED
+             env_var = ENV_VAR_TEST_STEPUP_IDX [amended]
+                 ngm = ['raw*.txt'] {}
+          inp_digest = same
+           explained = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:raw1.txt
+             creates   file:raw2.txt
+             creates   file:raw3.txt
+             creates   file:raw4.txt
+             creates   step:cp -aT converted3.txt used.txt
+             creates   step:cp -aT raw1.txt converted1.txt
+             creates   step:cp -aT raw2.txt converted2.txt
+             creates   step:cp -aT raw3.txt converted3.txt
+             creates   step:cp -aT raw4.txt converted4.txt
+
+file:raw1.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp -aT raw1.txt converted1.txt
+
+file:raw2.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp -aT raw2.txt converted2.txt
+
+file:raw3.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp -aT raw3.txt converted3.txt
+
+file:raw4.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:cp -aT raw4.txt converted4.txt
+
+step:cp -aT raw1.txt converted1.txt
+               state = PENDING
+           mandatory = NO
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:raw1.txt
+             creates   file:converted1.txt
+            supplies   file:converted1.txt
+
+file:converted1.txt
+               state = AWAITED
+          created by   step:cp -aT raw1.txt converted1.txt
+            consumes   file:./
+            consumes   step:cp -aT raw1.txt converted1.txt
+
+step:cp -aT raw2.txt converted2.txt
+               state = PENDING
+           mandatory = NO
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:raw2.txt
+             creates   file:converted2.txt
+            supplies   file:converted2.txt
+
+file:converted2.txt
+               state = AWAITED
+          created by   step:cp -aT raw2.txt converted2.txt
+            consumes   file:./
+            consumes   step:cp -aT raw2.txt converted2.txt
+
+step:cp -aT raw3.txt converted3.txt
+               state = SUCCEEDED
+           mandatory = REQUIRED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:raw3.txt
+             creates   file:converted3.txt
+            supplies   file:converted3.txt
+
+file:converted3.txt
+               state = BUILT
+          created by   step:cp -aT raw3.txt converted3.txt
+            consumes   file:./
+            consumes   step:cp -aT raw3.txt converted3.txt
+            supplies   step:cp -aT converted3.txt used.txt
+
+step:cp -aT raw4.txt converted4.txt
+               state = PENDING
+           mandatory = NO
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:raw4.txt
+             creates   file:converted4.txt
+            supplies   file:converted4.txt
+
+file:converted4.txt
+               state = AWAITED
+          created by   step:cp -aT raw4.txt converted4.txt
+            consumes   file:./
+            consumes   step:cp -aT raw4.txt converted4.txt
+
+file:used.txt
+               state = BUILT
+          created by   step:cp -aT converted3.txt used.txt
+            consumes   file:./
+            consumes   step:cp -aT converted3.txt used.txt
+
+step:cp -aT converted3.txt used.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:converted3.txt
+             creates   file:used.txt
+            supplies   file:used.txt

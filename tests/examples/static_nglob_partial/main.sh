@@ -62,15 +62,15 @@ graph("current_graph3")
 join()
 EOD
 
+# Wait for background processes, if any.
+wait
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ ! -f paste_ignored.txt ]] || exit 1
 grep 'hx tx' paste_x.txt
 [[ ! -f paste_y.txt ]] || exit 1
 [[ ! -f paste_z.txt ]] || exit 1
-
-# Wait for background processes, if any.
-wait
 
 # Modify nglob results and restart
 echo "ty" > tail_y.txt

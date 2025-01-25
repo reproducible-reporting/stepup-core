@@ -46,7 +46,7 @@ file:test1.txt
 
 step:echo test2 > test2.txt
                state = SUCCEEDED
-           mandatory = IMPLIED
+           mandatory = REQUIRED
           created by   step:./plan.py
             consumes   file:./
              creates   file:test2.txt

@@ -138,7 +138,7 @@ class Node:
     - `validate` to check if the necessary rows outside the default Cascade tables are made.
     - `format_properties` to define the properties of the node.
     - `update_orphan` to make changes when a node lost its creator node.
-    - `lost_product` is called when an orphaned node loses a product node.
+    - `detach` is called when an orphaned node must be cleaned up because it loses a product node.
     - `clean` to decide if an orphan node can be removed and to release resources.
     """
 
@@ -183,11 +183,18 @@ class Node:
         """Iterate over key-value pairs that represent the properties of the node."""
         yield from []
 
-    def _update_orphan(self):
-        """Update the node or the graph when this node loses its creator node."""
+    def _make_orphan(self):
+        """Update the node or the graph when it becomes orphan."""
 
-    def lost_product(self):
-        """Update an orphaned node after it loses a product node."""
+    def _undo_orphan(self):
+        """Update the node or the graph when the node is recreated."""
+
+    def detach(self):
+        """Clean up an orphaned node because it loses a product node.
+
+        Implementations in subclasses should remove all related info,
+        all edges, and make sure the node is deleted or orphaned.
+        """
         raise NotImplementedError
 
     def clean(self):
@@ -306,24 +313,31 @@ class Node:
         if creator_i is not None:
             self.con.execute("UPDATE node SET creator = NULL, orphan = TRUE WHERE i = ?", (self.i,))
             if not is_orphan:
-                self._update_orphan()
+                self._make_orphan()
                 # Propagate the orphan=TRUE property to all product nodes.
                 for i, kind, label in self.con.execute(RECURSE_ORPHAN, (self.i, True)):
                     node = self.cascade.node_classes[kind](self.cascade, i, label)
-                    node._update_orphan()
+                    node._make_orphan()
 
     def recreate(self, new_creator: Self):
         """Reconnect the node to a new creator node.
 
         This method is used to reattach an orphaned node to a new creator node.
+        It can only be called when the node has no (orphaned) creator.
         """
-        if not self.is_orphan():
-            raise ValueError("New creator must be orphaned")
+        old_creator = self.creator()
+        if old_creator is not None:
+            raise ValueError(
+                f"New creator must be a top-level orphaned node. It's creator is {old_creator}."
+            )
         self.con.execute(
             "UPDATE node SET creator = ?, orphan = FALSE WHERE i = ?", (new_creator.i, self.i)
         )
+        self._undo_orphan()
         # Propagate the orphan=FALSE property to all product nodes.
-        self.con.execute(RECURSE_ORPHAN, (self.i, False))
+        for i, kind, label in self.con.execute(RECURSE_ORPHAN, (self.i, False)):
+            node = self.cascade.node_classes[kind](self.cascade, i, label)
+            node._undo_orphan()
 
     def add_supplier(self, supplier: Self) -> int:
         """Add a supplier-consumer relation.
@@ -388,9 +402,9 @@ class Root(Node):
         """Perform a cleanup right before the orphaned node is removed from the graph."""
         raise AssertionError("Root node cannot be cleaned")
 
-    def lost_product(self):
-        """Update an orphaned node after it loses a product node."""
-        raise AssertionError("Root node cannot be orphan, which is implied by lost_product")
+    def detach(self):
+        """Clean up an orphaned node because it loses a product node."""
+        raise AssertionError("Root node cannot be detached because that would mean it is orphaned.")
 
 
 @attrs.define
@@ -524,16 +538,18 @@ class Cascade:
         """Check whether the graph satisfies all constraints."""
         if self._root.creator() != self._root:
             raise GraphError("Invalid cascade: root node does not create itself")
+        if self._root.is_orphan():
+            raise GraphError("Invalid cascade: root node cannot be orphan")
         sql = (
             "SELECT node.i, node.kind, node.label, node.creator, node.orphan, cnode.orphan FROM "
             "node LEFT JOIN node AS cnode ON node.creator = cnode.i"
         )
         for row in self.con.execute(sql):
             i, kind, label, creator_i, is_orphan, corphan = row
-            creator_is_orphan = creator_i is None or corphan
             if i > 1 and creator_i == i:
                 node = self._node_classes[kind](self, i, label)
                 raise GraphError(f"Non-root node is its own creator: {node.key()}")
+            creator_is_orphan = creator_i is None or corphan
             if is_orphan:
                 if not creator_is_orphan:
                     node = self._node_classes[kind](self, i, label)
@@ -704,9 +720,9 @@ class Cascade:
                 "UPDATE node SET creator = ?, orphan = ? WHERE i = ?",
                 (creator_i, is_orphan, node.i),
             )
-            # Inform the old creator (if any) that it lost a product.
+            # Clean up the old creator (if any) that it lost a product.
             if old_creator is not None and old_creator_is_orphan:
-                old_creator.lost_product()
+                old_creator.detach()
             # Cut all ties to suppliers, so this node starts from a clean slate.
             node.del_suppliers()
             # Since this node is recreated, it cannot have created other nodes (yet).

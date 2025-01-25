@@ -43,8 +43,8 @@ class DeferredGlob(Node):
     def add_supplier(self, supplier: Node) -> int:
         raise NotImplementedError("A deferred glob does not use suppliers.")
 
-    def lost_product(self):
-        """React to a product node being orphaned.
+    def detach(self):
+        """Clean up an orphaned node because it loses a product node.
 
         Completely remove this deferred glob, making reuse impossible.
         """

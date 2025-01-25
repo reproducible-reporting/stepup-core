@@ -1,0 +1,121 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:bar.txt
+            supplies   file:egg.txt
+            supplies   file:foo1.txt
+            supplies   file:foo2.txt
+            supplies   file:plan.py
+            supplies   file:spam.txt
+            supplies   step:./plan.py
+            supplies   step:cat bar.txt > egg.txt
+            supplies   step:cat egg.txt > spam.txt
+            supplies   step:cat foo1.txt foo2.txt > bar.txt
+            supplies   step:echo inp1 > foo1.txt
+            supplies   step:echo inp2 > foo2.txt
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+           explained = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:cat bar.txt > egg.txt
+             creates   step:cat egg.txt > spam.txt
+             creates   step:cat foo1.txt foo2.txt > bar.txt
+             creates   step:echo inp1 > foo1.txt
+             creates   step:echo inp2 > foo2.txt
+
+step:echo inp1 > foo1.txt
+               state = SUCCEEDED
+           mandatory = REQUIRED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+             creates   file:foo1.txt
+            supplies   file:foo1.txt
+
+file:foo1.txt
+               state = BUILT
+          created by   step:echo inp1 > foo1.txt
+            consumes   file:./
+            consumes   step:echo inp1 > foo1.txt
+            supplies   step:cat foo1.txt foo2.txt > bar.txt
+
+step:echo inp2 > foo2.txt
+               state = SUCCEEDED
+           mandatory = REQUIRED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+             creates   file:foo2.txt
+            supplies   file:foo2.txt
+
+file:foo2.txt
+               state = BUILT
+          created by   step:echo inp2 > foo2.txt
+            consumes   file:./
+            consumes   step:echo inp2 > foo2.txt
+            supplies   step:cat foo1.txt foo2.txt > bar.txt
+
+step:cat foo1.txt foo2.txt > bar.txt
+               state = SUCCEEDED
+           mandatory = REQUIRED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:foo1.txt
+            consumes   file:foo2.txt
+             creates   file:bar.txt
+            supplies   file:bar.txt
+
+file:bar.txt
+               state = BUILT
+          created by   step:cat foo1.txt foo2.txt > bar.txt
+            consumes   file:./
+            consumes   step:cat foo1.txt foo2.txt > bar.txt
+            supplies   step:cat bar.txt > egg.txt
+
+step:cat bar.txt > egg.txt
+               state = SUCCEEDED
+           mandatory = REQUIRED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:bar.txt
+             creates   file:egg.txt
+            supplies   file:egg.txt
+
+file:egg.txt
+               state = BUILT
+          created by   step:cat bar.txt > egg.txt
+            consumes   file:./
+            consumes   step:cat bar.txt > egg.txt
+            supplies   step:cat egg.txt > spam.txt
+
+step:cat egg.txt > spam.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:egg.txt
+             creates   file:spam.txt
+            supplies   file:spam.txt
+
+file:spam.txt
+               state = BUILT
+          created by   step:cat egg.txt > spam.txt
+            consumes   file:./
+            consumes   step:cat egg.txt > spam.txt

@@ -104,6 +104,7 @@ nav:
     - reference/stepup.core.nglob.md
     - reference/stepup.core.stepinfo.md
     - reference/interactive.md
+    - reference/environment_variables.md
   - changelog.md
   - development.md
   - license.md
