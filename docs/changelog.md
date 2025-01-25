@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+(no changes yet)
+
+## [2.0.2] - 2025-01-25 {: #v2.0.2 }
+
+This release fixes several bugs.
+
+### Added
+
+- Environment variable `STEPUP_STRICT` to enforce strict mode.
+  This disables automatic fixes in the database that can only be caused by bugs.
+
 ### Fixed
 
 - A bug is fixed in the logic to determine the type of job to run for a given step.
@@ -307,6 +318,7 @@ Initial release
 
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[2.0.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.2
 [2.0.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.1
 [1.3.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.3.1
 [1.3.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.3.0

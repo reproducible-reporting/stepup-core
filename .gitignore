@@ -6,6 +6,7 @@ site/
 venv/
 .ruff_cache
 .pytest_cache
+notes.md
 
 # Python and packaging
 __pycache__
