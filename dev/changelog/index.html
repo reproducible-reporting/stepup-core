@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/changelog/">
       
       
-        <link rel="prev" href="../reference/interactive/">
+        <link rel="prev" href="../reference/environment_variables/">
       
       
         <link rel="next" href="../development/">
@@ -1221,6 +1221,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/environment_variables/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Variables
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2208,6 +2229,12 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <ul>
 <li>A bug is fixed in the logic to determine the type of job to run for a given step.
   Some steps were executed while not all required inputs were present.</li>
+<li>A bug is fixed that caused optional steps not to be executed again, when their inputs
+  had changed or their outputs were removed.</li>
+<li>A bug is fixed that caused outputs of steps to be removed when they were changed
+  from <code>optional=False</code> to <code>optional=True</code>.</li>
+<li>Occasionally, <code>.stepup/</code> was not created yet
+  when the reporter tried writing to <code>.stepup/success.log</code>.</li>
 </ul>
 <h2 id="v2.0.1"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.1">2.0.1</a> - 2025-01-22<a class="headerlink" href="#v2.0.1" title="Permanent link">&para;</a></h2>
 <p>(Version 2.0.0 was yanked due to a packaging issue.)</p>
