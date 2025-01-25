@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - When multiple steps were changed and StepUp is restarted,
   steps created by a by another modified step were executed before the creating step.
   This is fixed.
+- Fix a few issues found by deepsource.io.
 
 
 ## [2.0.1] - 2025-01-22 {: #v2.0.1 }

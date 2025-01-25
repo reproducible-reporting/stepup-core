@@ -98,14 +98,10 @@ async def _recv_rpc_message(reader: asyncio.StreamReader) -> tuple[int | None, b
     try:
         call_id = int.from_bytes(await reader.readexactly(8))
         size = int.from_bytes(await reader.readexactly(8))
-        if size == 0:
-            body = None
-        else:
-            body = await reader.readexactly(size)
+        body = None if size == 0 else await reader.readexactly(size)
     except asyncio.IncompleteReadError:
         return None, None
-    else:
-        return call_id, body
+    return call_id, body
 
 
 async def _send_rpc_message(writer: asyncio.StreamWriter, call_id: int, message: bytes | None):

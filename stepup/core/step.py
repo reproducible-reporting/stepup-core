@@ -309,7 +309,7 @@ class Step(Node):
         # Call the super method to remove the actual dependencies
         super().del_suppliers(suppliers)
         # Update the mandatory status of the step and propagate to other steps.
-        if self.get_mandatory != Mandatory.NO:
+        if self.get_mandatory() != Mandatory.NO:
             steps = set()
             for supplier in _suppliers:
                 for step in supplier.suppliers(kind="step"):

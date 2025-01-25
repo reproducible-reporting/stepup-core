@@ -409,7 +409,7 @@ def amend(
     out_paths = _str_to_list(out)
     vol_paths = _str_to_list(vol)
     if all(len(collection) == 0 for collection in [inp_paths, env_vars, out_paths, vol_paths]):
-        return True
+        return
     env_vars = set(env_vars)
     with subs_env_vars() as subs:
         su_inp_paths = [subs(inp_path) for inp_path in inp_paths]
@@ -639,7 +639,7 @@ def getenv(
 
 
 def call(
-    script: str,
+    executable: str,
     *,
     prefix: str | None = None,
     fmt: str = "auto",
@@ -656,15 +656,15 @@ def call(
 ) -> StepInfo:
     """Call an executable with a set of serialized arguments.
 
-    This function assumes that the script implements StepUp's
+    This function assumes that the executable implements StepUp's
     [call protocol](../getting_started/call.md).
 
     Parameters
     ----------
-    script
+    executable
         The path of a local executable script to call.
         Environment variables are substituted.
-        The path of the script is assumed to be relative to this directory.
+        The path of the executable is assumed to be relative to this directory.
     prefix
         The prefix used to construct filenames of the input (serialized arguments)
         and optionally output file (serialized return value).
@@ -773,9 +773,9 @@ def call(
     if not (out in [None, True, False] or isinstance(out, str)):
         raise ValueError("Invalid value for _out. Must be None, True, False, str or Sequence[str].")
     if prefix is None:
-        prefix = Path(script).stem
+        prefix = Path(executable).stem
     with subs_env_vars() as subs:
-        script = subs(script)
+        executable = subs(executable)
         workdir = subs(workdir)
 
     # Determine the format from given filenames
@@ -826,7 +826,7 @@ def call(
     }
 
     # Input handling
-    command = format_command(script)
+    command = format_command(executable)
     path_inp = f"{prefix}_inp.{fmt}" if ((fmt == "pickle" and inp is None) or inp is True) else inp
     if serial is not None:
         # Provide input some way.
@@ -856,12 +856,12 @@ def call(
             step_kwargs["out"].insert(0, path_out)
 
     # Finally, create a step
-    step_kwargs.setdefault("inp", []).append(script)
+    step_kwargs.setdefault("inp", []).append(executable)
     return step(command, **step_kwargs)
 
 
 def script(
-    script: str,
+    executable: str,
     *,
     step_info: str | None = None,
     inp: Collection[str] | str = (),
@@ -875,17 +875,17 @@ def script(
 ) -> StepInfo:
     """Run the executable with a single argument `plan` in a working directory.
 
-    This function assumes that the script implements StepUp's
+    This function assumes that the executable implements StepUp's
     [script protocol](../getting_started/script_single.md).
 
     Parameters
     ----------
-    script
+    executable
         The path of a local executable that will be called with the argument `plan`.
         The file must be executable.
         The path of the script is assumed to be relative to this directory.
     step_info
-        When given, the steps generated in the plan part of the script are written
+        When given, the steps generated in the plan part of the executable are written
         to this `step_info` file. (See [stepup.core.stepinfo][] module for the file format.)
         This filename is relative to the work directory.
     inp, env, out, vol
@@ -913,9 +913,9 @@ def script(
       and is passed on the the run stage.
     """
     with subs_env_vars() as subs:
-        script = subs(script)
+        executable = subs(executable)
         workdir = subs(workdir)
-    command = format_command(script) + " plan"
+    command = format_command(executable) + " plan"
     out = _str_to_list(out)
     if step_info is not None:
         command += " --step-info=" + shlex.quote(step_info)
@@ -923,7 +923,7 @@ def script(
     if optional:
         command += " --optional"
     inp = _str_to_list(inp)
-    inp.append(script)
+    inp.append(executable)
     return step(
         command, inp=inp, env=env, out=out, vol=vol, workdir=workdir, pool=pool, block=block
     )

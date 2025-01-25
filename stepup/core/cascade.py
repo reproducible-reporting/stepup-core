@@ -426,11 +426,12 @@ class ConnectionWrapper:
         if self._explain:
             print(sql, file=sys.stderr)
             nodes = {}
-            from anytree import Node, RenderTree
+            from anytree import Node as TreeNode
+            from anytree import RenderTree
 
             for step in self._con.execute(f"EXPLAIN QUERY PLAN {sql}", data):
                 node_id, parent_id, _, detail = step
-                nodes[node_id] = Node(f"({node_id}) {detail}", parent=nodes.get(parent_id))
+                nodes[node_id] = TreeNode(f"({node_id}) {detail}", parent=nodes.get(parent_id))
             root_nodes = [node for node in nodes.values() if node.parent is None]
             for root in root_nodes:
                 for pre, _, node in RenderTree(root):
@@ -763,6 +764,6 @@ class Cascade:
             for i, kind, label in self._con.execute(query):
                 node = self._node_classes[kind](self, i, label)
                 cleaned_some = True
-                node.clean()
                 node.del_suppliers()
+                node.clean()
                 self._con.execute("DELETE FROM node where i = ?", (i,))
