@@ -3,3 +3,4 @@ current*
 hop2.txt
 sub/hop3.txt
 plan.py
+!sub/plan.py
