@@ -37,6 +37,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: python-package-distributions
+        path: dist/
     - name: Run release notes script
       run: >-
         .github/scripts/release-notes.sh
