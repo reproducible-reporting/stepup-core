@@ -40,7 +40,7 @@ jobs:
         path: dist/
     - name: Run release notes script
       run: >-
-        .github/scripts/release-notes.sh
+        .github/scripts/extract-notes.sh
         "${{ github.repository_owner }}"
         "${{ github.repository }}"
         "${{ github.ref }}"
