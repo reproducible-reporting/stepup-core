@@ -1511,10 +1511,11 @@ because it facilitates reviewing documentation changes.</p>
 so you must have it installed on your system.</p>
 <h2 id="how-to-make-a-release">How to Make a Release<a class="headerlink" href="#how-to-make-a-release" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Mark the release in <code>docs/changelog.md</code>.</li>
+<li>Mark the release in <code>docs/changelog.md</code>.
+  Do not forget to extend the links at the bottom of the file.</li>
 <li>Make a new commit and tag it with <code>vX.Y.Z</code>.</li>
 <li>Trigger the PyPI GitHub Action: <code>git push origin main --tags</code>.</li>
-<li>Publish a documentation version with <code>mike deploy {version} -u stable -p</code></li>
+<li>Publish a documentation version with <code>mike deploy {major.minor} -u stable -p</code></li>
 </ul>
 
 
