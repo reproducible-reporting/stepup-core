@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Usage: .github/scripts/extract-notes.sh OWNER SLUG GITREF
+# Usage: .github/scripts/extract-notes.sh OWNER/SLUG GITREF
 
-OWNER=${1}
-SLUG=${2}
+IFS='/'; read -ra REPOSITORY <<<"${1}"
+OWNER=${REPOSITORY[0]}
+SLUG=${REPOSITORY[1]}
 GITREF=${3}
 
 if [[ "${GITREF}" == "refs/tags/"* ]]; then
@@ -10,9 +11,9 @@ if [[ "${GITREF}" == "refs/tags/"* ]]; then
     VERSION="${TAG#v}"
     MAJMIN=${VERSION%.*}
 else
-    TAG="0.0.0"
+    TAG="unreleased"
     VERSION="Unreleased"
-    MAJMIN="0.0"
+    MAJMIN="dev"
 fi
 
 # Extract the release notes from the changelog

@@ -41,7 +41,6 @@ jobs:
     - name: Run release notes script
       run: >-
         .github/scripts/extract-notes.sh
-        "${{ github.repository_owner }}"
         "${{ github.repository }}"
         "${{ github.ref }}"
     - name: Store the release notes
