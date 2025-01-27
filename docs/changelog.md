@@ -8,7 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-(no changes yet)
+This release fixes several bugs.
+
+### Fixed
+
+- It was previously not possible to reattach an orphaned step to a different creator
+  when this step was not a top-level orphan.
+  This limitation has been lifted, because it is a fully legitimate use case.
+
 
 ## [2.0.2] - 2025-01-25 {: #v2.0.2 }
 

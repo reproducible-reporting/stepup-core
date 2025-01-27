@@ -323,17 +323,28 @@ class Node:
         """Reconnect the node to a new creator node.
 
         This method is used to reattach an orphaned node to a new creator node.
-        It can only be called when the node has no (orphaned) creator.
+
+        Raises
+        ------
+        ValueError
+            If the node is not orphaned or the new creator is orphaned.
+        TypeError
+            If the new_creator is not an instance of Node.
         """
-        old_creator = self.creator()
-        if old_creator is not None:
-            raise ValueError(
-                "Node.recreate can only be called on a top-level orphaned node. "
-                f"It's creator is {old_creator}."
-            )
+        if not self.is_orphan():
+            raise ValueError("Node.recreate can only be called on an orphaned node.")
+        if not isinstance(new_creator, Node):
+            raise TypeError(f"Argument new_creator must be a Node, got {type(new_creator)}")
+        if new_creator.is_orphan():
+            raise ValueError("New creator node must not be orphaned.")
+        old_creator, old_creator_is_orphan = self.creator(return_orphan=True)
         self.con.execute(
             "UPDATE node SET creator = ?, orphan = FALSE WHERE i = ?", (new_creator.i, self.i)
         )
+        if old_creator is not None:
+            if not old_creator_is_orphan:
+                raise GraphError("Old creator of orphaned node is not orphaned.")
+            old_creator.detach()
         self._undo_orphan()
         # Propagate the orphan=FALSE property to all product nodes.
         for i, kind, label in self.con.execute(RECURSE_ORPHAN, (self.i, False)):
@@ -723,7 +734,9 @@ class Cascade:
                 (creator_i, is_orphan, node.i),
             )
             # Clean up the old creator (if any) that it lost a product.
-            if old_creator is not None and old_creator_is_orphan:
+            if old_creator is not None:
+                if not old_creator_is_orphan:
+                    raise GraphError("Old creator of orphaned node is not orphaned.")
                 old_creator.detach()
             # Cut all ties to suppliers, so this node starts from a clean slate.
             node.del_suppliers()

@@ -105,6 +105,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "plan_inp",
         "pool",
         "pool_restart",
+        "recreate_elsewhere",
         "replay_deferred",
         "replay_nglob",
         "replay_static",

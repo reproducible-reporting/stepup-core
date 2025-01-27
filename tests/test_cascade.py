@@ -131,6 +131,10 @@ class Foo(Node):
         """Update the node or the graph when this node loses its creator node."""
         self.con.execute("INSERT INTO log VALUES(?)", (f"undo orphan {self.key()}",))
 
+    def detach(self):
+        """Detach this node from the graph."""
+        self.con.execute("INSERT INTO log VALUES(?)", (f"detach {self.key()}",))
+
     def clean(self):
         """Perform a cleanup right before the orphaned node is removed from the graph."""
         self.con.execute("DELETE FROM foo WHERE node = ?", (self.i,))
@@ -701,3 +705,74 @@ def test_check_consistency_second_root(lc):
     lc.con.execute("UPDATE node SET creator = ? WHERE i = ?", (foo0.i, foo0.i))
     with pytest.raises(GraphError):
         lc.check_consistency()
+
+
+RELOCATE_NESTED_FORMAT_STR = """\
+root:
+             creates   f:0
+
+f:0
+               value = 0
+          created by   root:
+             creates   f:4
+
+(f:1)
+               value = 1
+             creates   (f:3)
+            supplies   f:2
+
+f:2
+               value = 2
+          created by   f:4
+            consumes   (f:1)
+            consumes   f:4
+
+(f:3)
+               value = 3
+          created by   (f:1)
+
+f:4
+               value = 4
+          created by   f:0
+             creates   f:2
+            supplies   f:2
+"""
+
+
+def test_relocate_nested_orphan(lc):
+    # Create a LogCasecade with the following topology:
+    # foo0 +-> foo1 +-> foo2
+    #      |        +-> foo3
+    #      +-> foo4
+    foo0 = lc.create("f", lc.root, "0", value=0)
+    foo1 = lc.create("f", foo0, "1", value=1)
+    foo2 = lc.create("f", foo1, "2", value=2)
+    lc.create("f", foo1, "3", value=3)
+    foo4 = lc.create("f", foo0, "4", value=4)
+    foo2.add_supplier(foo1)
+    foo2.add_supplier(foo4)
+
+    # Orphan the foo1 node and attach foo2 to foo4.
+    # The new topology is:
+    # foo0 --> foo4 --> foo2
+    foo1.orphan()
+    foo2.recreate(foo4)
+    print(lc.format_str())
+    assert lc.format_str() == RELOCATE_NESTED_FORMAT_STR
+
+    lc.clean()
+    rows = lc.con.execute("SELECT msg FROM log").fetchall()
+    msgs = [row[0] for row in rows]
+    assert msgs == [
+        "init f:0",
+        "init f:1",
+        "init f:2",
+        "init f:3",
+        "init f:4",
+        "make orphan f:1",
+        "make orphan f:2",
+        "make orphan f:3",
+        "detach f:1",
+        "undo orphan f:2",
+        "clean f:3",
+    ]
