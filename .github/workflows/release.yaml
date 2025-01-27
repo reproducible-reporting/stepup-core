@@ -37,7 +37,17 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: python-package-distributions
-        path: dist/
+    - name: Run release notes script
+      run: >-
+        .github/scripts/release-notes.sh
+        "${{ github.repository_owner }}"
+        "${{ github.repository }}"
+        "${{ github.ref }}"
+    - name: Store the release notes
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-notes
+        path: notes.md
 
   publish-to-pypi:
     name: Publish Python distribution to PyPI
@@ -78,36 +88,24 @@ jobs:
       with:
         name: python-package-distributions
         path: dist/
+    - name: Download the release notes
+      uses: actions/download-artifact@v4
+      with:
+        name: python-package-distributions
+        path: notes.md
     - name: Sign the dists with Sigstore
       uses: sigstore/gh-action-sigstore-python@v2.1.1
       with:
         inputs: >-
           ./dist/*.tar.gz
           ./dist/*.whl
-    - name: Extract the version from the tag
-      run: |
-        TAG="${{ github.ref }}"
-        TAG="${TAG#refs/tags/}"
-        echo "TAG=${TAG}" >> $GITHUB_ENV
-        VERSION="${TAG#v}"
-        echo "VERSION=${VERSION}" >> $GITHUB_ENV
-        echo "MAJMIN=${VERSION%.*}" >> $GITHUB_ENV
-    - name: Prepare release notes
-      run: |
-        # Extract the release notes from the changelog
-        sed -n "/## \[${VERSION}\] -/, /## /{ /##/!p }" docs/changelog.md > notes.md
-        # Add a link to the release notes
-        URL="https://reproducible-reporting.github.io/${{ github.event.repository.name }}/${MAJMIN}/changelog/#${TAG}"
-        echo "See [docs/changelog/#${TAG}](${URL}) for more details." >> notes.md
-        # Remove leading and trailing empty lines
-        sed -e :a -e '/./,$!d;/^\n*$/{$d;N;};/\n$/ba' -i notes.md
     - name: Create GitHub Release
       env:
         GITHUB_TOKEN: ${{ github.token }}
       run: >-
-        gh release create "${TAG}"
+        gh release create "${{ github.ref_name }}"
         --repo "${{ github.repository }}"
-        --title "Release ${VERSION}"
+        --title "Release ${{ github.ref_name }}"
         --notes-file notes.md
     - name: Upload artifact signatures to GitHub Release
       env:
