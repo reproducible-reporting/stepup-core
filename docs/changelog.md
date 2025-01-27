@@ -328,6 +328,7 @@ Initial release
 
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[2.0.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.3
 [2.0.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.2
 [2.0.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.1
 [1.3.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.3.1
