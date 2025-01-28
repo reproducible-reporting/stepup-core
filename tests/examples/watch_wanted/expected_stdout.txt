@@ -34,7 +34,7 @@ Outputs      AWAITED  output2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Command               ./plan.py
 Working directory     ./
-Declares        STATIC  static.txt
+Declares      STATIC  static.txt
 Inputs       MISSING  plan.py
               STATIC  ./
 ───────────────────────────────── PENDING Step ─────────────────────────────────

@@ -293,7 +293,7 @@ async def report_completion(
 
             prefix = "Declares"
             for path in step.static_paths():
-                lines.append(f"{prefix}        STATIC  {path}")
+                lines.append(f"{prefix}      STATIC  {path}")
                 prefix = "        "
 
             prefix = "Declares"

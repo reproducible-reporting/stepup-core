@@ -17,7 +17,7 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Command               ./plan.py
 Working directory     ./
-Declares        STATIC  original.txt
+Declares      STATIC  original.txt
 Inputs       MISSING  plan.py
               STATIC  ./
 ────────────────────────────────────────────────────────────────────────────────
