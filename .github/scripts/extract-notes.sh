@@ -4,9 +4,9 @@
 IFS='/'; read -ra REPOSITORY <<<"${1}"
 OWNER=${REPOSITORY[0]}
 SLUG=${REPOSITORY[1]}
-GITREF=${3}
+GITREF=${2}
 
-if [[ "${GITREF}" == "refs/tags/"* ]]; then
+if [[ "${GITREF}" == refs/tags/* ]]; then
     TAG="${GITREF#refs/tags/}"
     VERSION="${TAG#v}"
     MAJMIN=${VERSION%.*}
