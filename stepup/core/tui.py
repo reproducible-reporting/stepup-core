@@ -29,6 +29,7 @@ import tempfile
 import termios
 import threading
 from decimal import Decimal
+from importlib.metadata import version as get_version
 
 import attrs
 from path import Path
@@ -237,15 +238,24 @@ async def keyboard(
 
 def parse_args():
     """Parse command-line arguments."""
+    version = get_version("stepup")
     parser = argparse.ArgumentParser(prog="stepup", description="The StepUp build tool")
     parser.add_argument(
         "plan_py", type=Path, default=Path("plan.py"), help="Top-level build script", nargs="?"
     )
     parser.add_argument(
-        "--root",
-        type=Path,
-        default=Path(os.getenv("STEPUP_ROOT", os.getcwd())),
-        help="Directory containing top-level plan.py [default=%(default)s]",
+        "--explain-rerun",
+        "-e",
+        default=False,
+        action="store_true",
+        help="Explain for every step with recording info why it cannot be skipped.",
+    )
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default="WARNING",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level. [default=%(default)s]",
     )
     parser.add_argument(
         "--num-workers",
@@ -257,19 +267,26 @@ def parse_args():
         "it is multiplied with the number of available cores. [default=%(default)s]",
     )
     parser.add_argument(
+        "--perf",
+        default=None,
+        nargs="?",
+        const=500,
+        help="Run the director under perf record, by default at a frequency of 500 Hz.",
+    )
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=Path(os.getenv("STEPUP_ROOT", os.getcwd())),
+        help="Directory containing top-level plan.py [default=%(default)s]",
+    )
+    parser.add_argument(
         "--show-perf",
         "-s",
         default=0,
         action="count",
         help="Show the performance info on each line. Repeat for more detailed info.",
     )
-    parser.add_argument(
-        "--explain-rerun",
-        "-e",
-        default=False,
-        action="store_true",
-        help="Explain for every step with recording info why it cannot be skipped.",
-    )
+    parser.add_argument("--version", "-V", action="version", version="%(prog)s " + version)
     parser.add_argument(
         "--watch",
         "-w",
@@ -287,20 +304,7 @@ def parse_args():
         help="Start the runner after observing the first file change in watch mode. "
         "This implies --watch. (Only supported on Linux.)",
     )
-    parser.add_argument(
-        "--perf",
-        default=None,
-        nargs="?",
-        const=500,
-        help="Run the director under perf record, by default at a frequency of 500 Hz.",
-    )
-    parser.add_argument(
-        "--log-level",
-        "-l",
-        default="WARNING",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level. [default=%(default)s]",
-    )
+
     args = parser.parse_args()
     if args.watch_first:
         args.watch = True

@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-(nothing yet)
+(Nothing yet.)
+
+
+## [2.0.4] - 2025-01-28 {: #v2.0.4 }
+
+This release fixes very minor issues. It is mainly for testing release automation.
+
+### Fixed
+
+- Use `importlib.metadata` instead of `_version.py` to get the version number.
+- Add `--version` option to `stepup` command.
+- Improve screen output consistency.
+
 
 ## [2.0.3] - 2025-01-27 {: #v2.0.3 }
 
@@ -328,6 +340,7 @@ Initial release
 
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[2.0.4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.4
 [2.0.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.3
 [2.0.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.2
 [2.0.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.1
