@@ -29,11 +29,11 @@ import sys
 import time
 import traceback
 from decimal import Decimal
+from importlib.metadata import version as get_version
 
 import attrs
 from path import Path
 
-from ._version import __version__
 from .asyncio import wait_for_events
 from .enums import ReturnCode, StepState
 from .exceptions import GraphError
@@ -71,9 +71,8 @@ async def async_main():
     async with ReporterClient.socket(args.reporter_socket) as reporter:
         num_workers = interpret_num_workers(args.num_workers)
         await reporter.set_num_workers(num_workers)
-        await reporter(
-            "DIRECTOR", f"Listening on {args.director_socket} (StepUp version {__version__})"
-        )
+        version = get_version("stepup")
+        await reporter("DIRECTOR", f"Listening on {args.director_socket} (StepUp {version})")
         try:
             returncode = await serve(
                 Path(args.director_socket),

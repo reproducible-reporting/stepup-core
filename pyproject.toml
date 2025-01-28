@@ -96,6 +96,5 @@ ignore = [
 packages = ["stepup.core"]
 
 [tool.setuptools_scm]
-version_file = "stepup/core/_version.py"
 version_scheme = "post-release"
 local_scheme = "no-local-version"
