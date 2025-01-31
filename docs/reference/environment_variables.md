@@ -4,7 +4,7 @@ The following environment variables can be used to configure StepUp.
 
 - `STEPUP_ROOT`: The root directory containing the top-level `plan.py` file.
   If not set, StepUp will look for this file in the current directory.
-- `STEPUP_STRICT`: Set to any value to enable strict checks.
+- `STEPUP_STRICT`: Set to `"1"` to enable strict checks.
   This will make StepUp fail on some internal inconsistency checks,
   rather than applying corrections to overcome the inconsistencies.
   (Every such inconsistency is due to a bug, which should be fixed eventually.)

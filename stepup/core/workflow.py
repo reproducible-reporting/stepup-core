@@ -40,7 +40,7 @@ from .hash import FileHash
 from .job import SetPoolJob
 from .nglob import NGlobMulti, convert_nglob_to_regex, iter_wildcard_names
 from .step import Step
-from .utils import myparent
+from .utils import myparent, string_to_bool
 
 __all__ = ("Workflow",)
 
@@ -69,7 +69,7 @@ class Workflow(Cascade):
 
     def check_consistency(self):
         """Check whether the initial graph satisfies all constraints."""
-        strict = os.getenv("STEPUP_STRICT") is not None
+        strict = string_to_bool(os.getenv("STEPUP_STRICT", "0"))
         super().check_consistency()
 
         # Verify that all files have a parent directory as supplying node.

@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 (Nothing yet.)
 
 
+## [2.0.5] - 2025-01-28 {: #v2.0.5 }
+
+This is a minor release, just adding a utility function.
+
+
+### Changed
+
+- Use `string_to_bool` to interpret the environment variable `STEPUP_STRICT`.
+  E.g., setting it to `"0"` will disable strict mode.
+
+
 ## [2.0.4] - 2025-01-28 {: #v2.0.4 }
 
 This release fixes very minor issues. It is mainly for testing release automation.
@@ -340,6 +351,7 @@ Initial release
 
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[2.0.5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.5
 [2.0.4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.4
 [2.0.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.3
 [2.0.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.2

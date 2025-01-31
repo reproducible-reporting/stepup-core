@@ -43,6 +43,7 @@ __all__ = (
     "myparent",
     "myrelpath",
     "remove_path",
+    "string_to_bool",
     "translate",
 )
 
@@ -310,3 +311,45 @@ class Translate:
 
 
 translate = Translate()
+
+
+def string_to_bool(v: str | bool) -> bool:
+    """Convert a string to a boolean value, and return a boolean value unchanged.
+
+    Parameters
+    ----------
+    v : str or bool
+        The value to convert to a boolean.
+
+    Returns
+    -------
+    bool
+        The boolean representation of the input value.
+
+    Raises
+    ------
+    ValueError
+        If the string cannot be interpreted as a boolean value.
+    TypeError
+        If the input is not a string or boolean.
+
+    Examples
+    --------
+    >>> str2bool('yes')
+    True
+    >>> str2bool('no')
+    False
+    >>> str2bool(True)
+    True
+    >>> str2bool(False)
+    False
+    """
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, str):
+        if v.lower() in ("yes", "true", "t", "y", "1"):
+            return True
+        if v.lower() in ("no", "false", "f", "n", "0"):
+            return False
+        raise ValueError(f"Cannot interpret '{v}' as a boolean value.")
+    raise TypeError(f"Expected a boolean value or string. Got {type(v).__name__}")
