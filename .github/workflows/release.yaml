@@ -26,7 +26,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: "3.11"
+        python-version: '3.11'
     - name: Install pypa/build
       run: >-
         python -m pip install build
@@ -41,8 +41,8 @@ jobs:
     - name: Run release notes script
       run: >-
         .github/scripts/extract-notes.sh
-        "${{ github.repository }}"
-        "${{ github.ref }}"
+        '${{ github.repository }}'
+        '${{ github.ref }}'
     - name: Store the release notes
       uses: actions/upload-artifact@v4
       with:
@@ -102,9 +102,9 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
       run: >-
-        gh release create "${{ github.ref_name }}"
-        --repo "${{ github.repository }}"
-        --title "Release ${{ github.ref_name }}"
+        gh release create '${{ github.ref_name }}'
+        --repo '${{ github.repository }}'
+        --title 'Release ${{ github.ref_name }}'
         --notes-file notes.md
     - name: Upload artifact signatures to GitHub Release
       env:
@@ -114,7 +114,7 @@ jobs:
       # sigstore-produced signatures and certificates.
       run: >-
         gh release upload
-        "${{ github.ref_name }}"
+        '${{ github.ref_name }}'
         dist/**
         --repo '${{ github.repository }}'
 

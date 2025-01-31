@@ -7,10 +7,24 @@ on:
     # Run on the main branch ...
     - main
     tags-ignore:
-    # ... but not for tags (avoids duplicate work).
+    # ... but not for tags (avoids duplicate work) ...
     - '**'
+    paths:
+    # ... and only if relevant files have changed.
+    - stepup/**
+    - docs/**
+    - mkdocs.yaml
+    - pyproject.toml
+    - .github/workflows/mkdocs.yaml
   pull_request:
-  # Run tests on pull requests
+  # Run tests on pull requests ...
+    paths:
+    # ... only if relevant files have changed.
+    - stepup/**
+    - docs/**
+    - mkdocs.yaml
+    - pyproject.toml
+    - .github/workflows/mkdocs.yaml
 
 permissions:
   contents: write
@@ -18,7 +32,7 @@ permissions:
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: false
 
 jobs:
@@ -41,8 +55,8 @@ jobs:
         run: git fetch --depth=1 origin gh-pages
       - name: Configure Git user for documentation commit
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
       - name: Build mkdocs
         run: mike deploy dev
       - name: Push gh-pages branch to GitHub

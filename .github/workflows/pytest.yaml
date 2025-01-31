@@ -5,17 +5,29 @@ on:
     # Run tests for change on the main branch ...
     - main
     tags-ignore:
-    # ... but not for tags (avoids duplicate work).
+    # ... but not for tags (avoids duplicate work) ...
     - '**'
+    paths:
+    # ... and only if relevant files have changed.
+    - stepup/**
+    - tests/**
+    - pyproject.toml
+    - .github/workflows/pytest.yaml
   pull_request:
-  # Run tests on pull requests
+  # Run tests on pull requests ...
+    paths:
+    # ... only if relevant files have changed.
+    - stepup/**
+    - tests/**
+    - pyproject.toml
+    - .github/workflows/pytest.yaml
 
 jobs:
   tests:
     strategy:
       matrix:
-        python-version: ["3.11", "3.13"]
-    runs-on: "ubuntu-latest"
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
