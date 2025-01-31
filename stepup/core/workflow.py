@@ -1008,5 +1008,5 @@ class Workflow(Cascade):
         )
         for i, label, is_orphan in self.con.execute(sql, (StepState.PENDING.value,)):
             step = Step(self, i, label)
-            logger.error("queueing %s", step.key(is_orphan))
+            logger.info("queueing %s", step.key(is_orphan))
             step.queue_if_appropriate()
