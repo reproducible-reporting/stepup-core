@@ -19,41 +19,48 @@
 # --
 """Unit tests for stepup.core.cleanup."""
 
-from conftest import declare_static
+from conftest import declare_static, fake_hash
 
 from stepup.core.cleanup import search_consuming_paths
 from stepup.core.enums import FileState
 from stepup.core.hash import FileHash
+from stepup.core.workflow import Workflow
 
 
-def test_cleanup_simple1(wfp):
+def test_cleanup_simple1(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
     wfp.define_step(plan, "cp bar.txt foo.txt", inp_paths=["bar.txt"], out_paths=["foo.txt"])
     assert search_consuming_paths(wfp.con, ["bar.txt"]) == []
 
 
-def test_cleanup_simple2(wfp):
+def test_cleanup_simple2(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
     declare_static(wfp, plan, ["bar.txt"])
     wfp.define_step(plan, "cp bar.txt foo.txt", inp_paths=["bar.txt"], out_paths=["foo.txt"])
     wfp.find("file", "foo.txt").set_state(FileState.BUILT)
-    assert search_consuming_paths(wfp.con, ["bar.txt"]) == [("foo.txt", FileHash.unknown())]
+    file_hash = fake_hash("foo.txt")
+    wfp.update_file_hashes([("foo.txt", file_hash)])
+    assert search_consuming_paths(wfp.con, ["bar.txt"]) == [("foo.txt", file_hash)]
 
 
-def test_cleanup_simple3(wfp):
+def test_cleanup_simple3(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
     declare_static(wfp, plan, ["bar.txt"])
     wfp.define_step(plan, "cp bar.txt foo.txt", inp_paths=["bar.txt"], out_paths=["foo.txt"])
     wfp.find("file", "foo.txt").set_state(FileState.OUTDATED)
-    assert search_consuming_paths(wfp.con, ["bar.txt"]) == [("foo.txt", FileHash.unknown())]
+    file_hash = fake_hash("foo.txt")
+    wfp.update_file_hashes([("foo.txt", file_hash)])
+    assert search_consuming_paths(wfp.con, ["bar.txt"]) == [("foo.txt", file_hash)]
 
 
-def test_cleanup_simple4(wfp):
+def test_cleanup_simple4(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
     wfp.define_step(plan, "prog1", inp_paths=["bar.txt"], out_paths=["foo.txt"])
     wfp.find("file", "foo.txt").set_state(FileState.BUILT)
+    file_hash = fake_hash("foo.txt")
+    wfp.update_file_hashes([("foo.txt", file_hash)])
     wfp.define_step(plan, "prog2", inp_paths=["foo.txt"], vol_paths=["egg.txt"])
     assert search_consuming_paths(wfp.con, ["bar.txt"]) == [
-        ("foo.txt", FileHash.unknown()),
+        ("foo.txt", file_hash),
         ("egg.txt", FileHash.unknown()),
     ]

@@ -83,6 +83,26 @@ class Workflow(Cascade):
             if parent_path != myparent(path):
                 raise GraphError(f"File {path!r} has unexpected parent {parent_path!r}")
 
+        # Verify that all BUILT and STATIC files have a hash.
+        sql = (
+            "SELECT i, state, label FROM node JOIN file ON node.i = file.node "
+            "WHERE state IN (?, ?) and digest = ?"
+        )
+        data = (FileState.BUILT.value, FileState.STATIC.value, b"u")
+        file_hashes = []
+        for i, file_state_value, path in self.con.execute(sql, data):
+            file_state = FileState(file_state_value)
+            if strict:
+                raise GraphError(f"{file_state.name} file without hash: {path}")
+            logger.error(f"{file_state.name} file without hash: %s", path)
+            File(self, i, path).mark_outdated()
+            file_hash = FileHash.unknown()
+            file_hash.update(path)
+            file_hashes.append((path, file_hash))
+        if file_hashes:
+            logger.error("Fixing %s file hashes", len(file_hashes))
+            self.update_file_hashes(file_hashes)
+
         # Verify that all succeeded steps only have BUILT outputs.
         sql = (
             "SELECT file.state, fnode.label, snode.i, snode.label FROM node AS fnode "
@@ -555,7 +575,8 @@ class Workflow(Cascade):
                 "UPDATE temp.checked SET node = node.i FROM node WHERE node.label = path"
             )
 
-            # Get the files that need to be confirmed and check that they are indeed missing.
+            # Get the files that need to be confirmed,
+            # which makes it possible for the caller to verify their state.
             result = None
             if return_files:
                 result = [
