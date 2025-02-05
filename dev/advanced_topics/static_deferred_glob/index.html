@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.2">
     
     
       
@@ -30,7 +30,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.a40c8224.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.d7758b05.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -100,7 +100,7 @@
   </a>
 
             </div>
-            <script>var el=document.querySelector("[data-md-component=outdated]"),outdated=__md_get("__outdated",sessionStorage);!0===outdated&&el&&(el.hidden=!1)</script>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
           </aside>
         
       </div>
@@ -1485,7 +1485,9 @@
 
 
 <h1 id="static-deferred-glob">Static Deferred Glob<a class="headerlink" href="#static-deferred-glob" title="Permanent link">&para;</a></h1>
-<p>When dealing with massive datasets comprising tens of thousands of files, it doesn&rsquo;t make sense to render all of them as static when only a handful will actually be utilized.
+<p>When dealing with massive datasets comprising tens of thousands of files,
+it doesn&rsquo;t make sense to render all of them as static
+when only a handful will actually be utilized.
 StepUp addresses this issue with the <em>deferred glob</em> feature,
 which makes previously unknown files static when:</p>
 <ol>
@@ -1526,7 +1528,8 @@ and also the following <code>plan.py</code>:</p>
 </span></code></pre></div>
 <p>As expected, <code>foo.txt</code> is used as a static file.
 Of course, this would also have been the case without the <code>_defer=True</code> option.
-The key difference is that with <code>_defer=True</code>, StepUp does not create a list of all matching <code>*.txt</code> files.
+The key difference is that with <code>_defer=True</code>,
+StepUp does not create a list of all matching <code>*.txt</code> files.
 This can be seen when examining the file <code>graph.txt</code>, which has no trace of <code>bar.txt</code>:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>root:
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>             creates   file:./
@@ -1575,7 +1578,8 @@ This can be seen when examining the file <code>graph.txt</code>, which has no tr
 </span><span id="__span-3-45"><a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a>            consumes   file:./
 </span><span id="__span-3-46"><a id="__codelineno-3-46" name="__codelineno-3-46" href="#__codelineno-3-46"></a>            consumes   file:foo.txt
 </span></code></pre></div>
-<p>The node <code>dg:'*.txt;</code> in the graph (green octagon in the figures below) is the result of adding the <code>_defer=True</code> option.
+<p>The node <code>dg:'*.txt;</code> in the graph (green octagon in the figures below)
+is the result of adding the <code>_defer=True</code> option.
 This node will create static files as they are needed by other steps.
 The deferred glob is ideal when there are a large number of files that could match the pattern,
 of which most are irrelevant for the build.
@@ -1651,7 +1655,7 @@ this would not have any effect on the resources consumed by StepUp.</p>
     <script id="__config" type="application/json">{"base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.5090c770.min.js"></script>
+      <script src="../../assets/javascripts/bundle.f13b1293.min.js"></script>
       
     
   </body>

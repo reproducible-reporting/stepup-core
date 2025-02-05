@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.2">
     
     
       
@@ -30,7 +30,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.a40c8224.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.d7758b05.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -100,7 +100,7 @@
   </a>
 
             </div>
-            <script>var el=document.querySelector("[data-md-component=outdated]"),outdated=__md_get("__outdated",sessionStorage);!0===outdated&&el&&(el.hidden=!1)</script>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
           </aside>
         
       </div>
@@ -1499,13 +1499,16 @@ That said, some legitimate exceptions exist, in which ignoring steps is a desira
 These are supported by StepUp as follows:</p>
 <ul>
 <li>
-<p>One can define <strong>steps conditionally</strong>, e.g., as in the tutorial <a href="../../getting_started/static_glob_conditional/">Static Glob Conditional</a>.
+<p>One can define <strong>steps conditionally</strong>, e.g.,
+  as in the tutorial <a href="../../getting_started/static_glob_conditional/">Static Glob Conditional</a>.
   Such conditionals are controlled by external factors and
   are picked up by your <code>plan.py</code> without manual interventions.</p>
 </li>
 <li>
 <p>One can make <strong>steps optional</strong>, as in this tutorial.
-  This is useful when multiple steps are defined in a loop, as in the <a href="../../getting_started/static_glob/">Static Glob</a> tutorial, of which not all steps are required for the end result.
+  This is useful when multiple steps are defined in a loop,
+  as in the <a href="../../getting_started/static_glob/">Static Glob</a> tutorial,
+  of which not all steps are required for the end result.
   Use this feature wisely:
   It is obviously inefficient to define a few thousand steps of which only a handful are needed.</p>
 </li>
@@ -1526,7 +1529,9 @@ which it would need to decide that an optional step is required by another step.
 to create a somewhat entertaining example.
 However, practically all step-generating functions support the <code>optional</code> argument,
 and can thus be made optional in the same way.</p>
-<p>Create a first script <code>generate.py</code> that generates sequences of the <a href="https://en.wikipedia.org/wiki/Logistic_map">logistic map</a> for different values of the parameter <em>r</em>:</p>
+<p>Create a first script <code>generate.py</code> that generates sequences
+of the <a href="https://en.wikipedia.org/wiki/Logistic_map">logistic map</a>
+for different values of the parameter <em>r</em>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.script</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
@@ -1617,9 +1622,11 @@ and can thus be made optional in the same way.</p>
 </span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>  DIRECTOR │ Stopping workers.
 </span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>  DIRECTOR │ See you!
 </span></code></pre></div>
-<p>Note that, in this case, it would be trivial to modify the <code>generate.py</code> script to only generate the sequence of interest.
+<p>Note that, in this case, it would be trivial to modify the <code>generate.py</code> script
+to only generate the sequence of interest.
 Whenever such a simpler approach is possible, it is always preferable.
-However, in more complex use cases, it is not always possible to figure out which steps are going to be needed or not.
+However, in more complex use cases, it is not always possible
+to figure out which steps are going to be needed or not.
 In such situations, optional steps can be convenient.</p>
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
@@ -1686,7 +1693,7 @@ In such situations, optional steps can be convenient.</p>
     <script id="__config" type="application/json">{"base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.5090c770.min.js"></script>
+      <script src="../../assets/javascripts/bundle.f13b1293.min.js"></script>
       
     
   </body>

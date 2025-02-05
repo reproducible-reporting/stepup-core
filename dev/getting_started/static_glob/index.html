@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.2">
     
     
       
@@ -30,7 +30,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.a40c8224.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.d7758b05.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -100,7 +100,7 @@
   </a>
 
             </div>
-            <script>var el=document.querySelector("[data-md-component=outdated]"),outdated=__md_get("__outdated",sessionStorage);!0===outdated&&el&&(el.hidden=!1)</script>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
           </aside>
         
       </div>
@@ -1485,11 +1485,16 @@
 
 
 <h1 id="static-glob">Static Glob<a class="headerlink" href="#static-glob" title="Permanent link">&para;</a></h1>
-<p>Explicitly declaring static files with the <code>static()</code> function from the previous tutorial becomes tedious when dealing with many static files.
-To simplify matters, StepUp supports <a href="https://en.wikipedia.org/wiki/Glob_(programming)">&ldquo;glob&rdquo;</a> patterns, i.e., wildcards such as <code>*</code> and <code>?</code>.</p>
-<p>The <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function is similar to <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.static"><code>static()</code></a> and supports globbing, including some non-standard glob techniques discussed in the following tutorials.</p>
+<p>Explicitly declaring static files with the <code>static()</code> function from the previous tutorial
+becomes tedious when dealing with many static files.
+To simplify matters, StepUp supports <a href="https://en.wikipedia.org/wiki/Glob_(programming)">&ldquo;glob&rdquo;</a>
+patterns, i.e., wildcards such as <code>*</code> and <code>?</code>.</p>
+<p>The <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function is similar to <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.static"><code>static()</code></a>
+and supports globbing, including some non-standard glob techniques
+discussed in the following tutorials.</p>
 <p>Here, only the basic usage of <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> is covered.
-In the <a href="../static_glob_conditional/">following tutorial</a>, the use of <code>glob()</code> in conditionals is discussed.
+In the <a href="../static_glob_conditional/">following tutorial</a>,
+the use of <code>glob()</code> in conditionals is discussed.
 See <a href="../../advanced_topics/static_named_glob/">Static Named Glob</a> and
 <a href="../../advanced_topics/static_deferred_glob/">Static Deferred Glob</a> for more advanced use cases.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
@@ -1533,7 +1538,9 @@ Hence, they cannot be outputs of other steps.
 <li>
 <p>Run StepUp again without making any changes.
   You will notice that the <code>./plan.py</code> step is executed again despite not having changed it.
-  When StepUp starts from scratch, it has to assume that new files could have been added (since the last run) that match the glob pattern.
+  When StepUp starts from scratch,
+  it has to assume that new files could have been added (since the last run) and
+  that match the glob pattern.
   Hence, a step calling the <code>glob()</code> function cannot be skipped.
   (This can be avoided when using StepUp interactively. More on that later.)</p>
 </li>
@@ -1596,7 +1603,7 @@ Hence, they cannot be outputs of other steps.
     <script id="__config" type="application/json">{"base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.5090c770.min.js"></script>
+      <script src="../../assets/javascripts/bundle.f13b1293.min.js"></script>
       
     
   </body>

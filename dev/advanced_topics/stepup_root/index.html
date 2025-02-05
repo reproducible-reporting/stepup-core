@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.2">
     
     
       
@@ -30,7 +30,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.a40c8224.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.d7758b05.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -100,7 +100,7 @@
   </a>
 
             </div>
-            <script>var el=document.querySelector("[data-md-component=outdated]"),outdated=__md_get("__outdated",sessionStorage);!0===outdated&&el&&(el.hidden=!1)</script>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
           </aside>
         
       </div>
@@ -1412,17 +1412,21 @@
 <h1 id="the-stepup_root-variable">The STEPUP_ROOT variable<a class="headerlink" href="#the-stepup_root-variable" title="Permanent link">&para;</a></h1>
 <p>If you are working on a large project with several subdirectories,
 it may be useful to define the <code>STEPUP_ROOT</code> environment variable.
-It should contain the absolute path of the top-level directory where you would normally call the <code>stepup</code> and <code>cleanup</code> commands.
+It should contain the absolute path of the top-level directory
+where you would normally call the <code>stepup</code> and <code>cleanup</code> commands.
 (The top-level directory contains the <code>.stepup</code> subdirectory and the top-level <code>plan.py</code>.)</p>
-<p>With <code>STEPUP_ROOT</code> set, it is no longer necessary to change to the top-level directory before running <code>stepup</code> and <code>cleanup</code>.
+<p>With <code>STEPUP_ROOT</code> set, it is no longer necessary to change to the top-level directory
+before running <code>stepup</code> and <code>cleanup</code>.
 Also, the <code>cleanup</code> arguments will be interpreted correctly in subdirectories.</p>
 <p>You can manually set <code>STEPUP_ROOT</code> in the top-level directory as follows:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">STEPUP_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PWD</span><span class="si">}</span><span class="s2">&quot;</span>
 </span></code></pre></div>
 <p>However, this can be tedious, as it has to be set each time you open a new terminal window.
 It is much easier to set such variables using <a href="https://direnv.net/">direnv</a>.
-Once direnv is configured on your system, you can create an <code>.envrc</code> file with the above <code>export</code> line in the top-level directory.
-Each time you change to the project directory or any of its subdirectories, the <code>STEPUP_ROOT</code> directory will automatically be set correctly.</p>
+Once direnv is configured on your system,
+you can create an <code>.envrc</code> file with the above <code>export</code> line in the top-level directory.
+Each time you change to the project directory or any of its subdirectories,
+the <code>STEPUP_ROOT</code> directory will automatically be set correctly.</p>
 
 
 
@@ -1476,7 +1480,7 @@ Each time you change to the project directory or any of its subdirectories, the 
     <script id="__config" type="application/json">{"base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.5090c770.min.js"></script>
+      <script src="../../assets/javascripts/bundle.f13b1293.min.js"></script>
       
     
   </body>

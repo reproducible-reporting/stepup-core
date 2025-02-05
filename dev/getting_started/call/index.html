@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.2">
     
     
       
@@ -30,7 +30,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.a40c8224.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.d7758b05.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -100,7 +100,7 @@
   </a>
 
             </div>
-            <script>var el=document.querySelector("[data-md-component=outdated]"),outdated=__md_get("__outdated",sessionStorage);!0===outdated&&el&&(el.hidden=!1)</script>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
           </aside>
         
       </div>
@@ -1553,14 +1553,20 @@ When the executable script produces a &ldquo;return value&rdquo;,
 it should write this to an output file, either in JSON or PICKLE format.</p>
 <p>Because of the delayed execution, the <code>call()</code> function cannot return this value.
 If you are familiar with Python&rsquo;s builtin <code>concurrent.futures</code> module,
-you can think of the output file of the script as the <code>Future</code> object that is returned by <code>concurrent.futures.Executor.submit()</code>.
-The <code>call()</code> function returns a <a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo"><code>StepInfo</code></a> object from which you can extract the output file path.</p>
+you can think of the output file of the script as the <code>Future</code> object that is returned by
+<code>concurrent.futures.Executor.submit()</code>.
+The <code>call()</code> function returns a <a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo"><code>StepInfo</code></a> object
+from which you can extract the output file path.</p>
 <p>To fully support the <code>call()</code> protocol, the executable must be able to handle the following options:</p>
 <ul>
-<li><code>JSON_INP</code>: The JSON-encoded parameters passed on the command-line</li>
-<li><code>--inp=PATH_INP</code>: As an alternative to the previous, a file with parameters in JSON or PICKLE format.</li>
-<li><code>--out=PATH_OUT</code>: The output file to use (if there is a return value), either in JSON or PICKLE format.</li>
-<li><code>--amend-out</code>: If given, the executable must call <code>amend(out=PATH_OUT)</code> before writing the output file.</li>
+<li><code>JSON_INP</code>:
+  The JSON-encoded parameters passed on the command-line</li>
+<li><code>--inp=PATH_INP</code>:
+  As an alternative to the previous, a file with parameters in JSON or PICKLE format.</li>
+<li><code>--out=PATH_OUT</code>:
+  The output file to use (if there is a return value), either in JSON or PICKLE format.</li>
+<li><code>--amend-out</code>:
+  If given, the executable must call <code>amend(out=PATH_OUT)</code> before writing the output file.</li>
 </ul>
 <h2 id="call-driver">Call driver<a class="headerlink" href="#call-driver" title="Permanent link">&para;</a></h2>
 <p>StepUp implements a <code>driver()</code> function in the module <code>stepup.core.call</code> that greatly facilitates
@@ -1568,7 +1574,9 @@ writing Python scripts that adhere to the call protocol.
 The usage of this <code>driver()</code> function is illustrated in the example below.</p>
 <p>Note that the <code>driver()</code> function also detects local modules that are imported in the script,
 and amends these as required inputs.
-Changes to modules imported in your Python script will automatically trigger a re-run of the script.</p>
+Changes to modules imported in your Python script will automatically trigger a re-run of the script.
+By default, only the modules inside <code>STEPUP_ROOT</code> are treated as dependencies.
+You can specify additional directories in the <code>STEPUP_EXTERNAL_SOURCES</code> environment variable.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/call"><code>docs/getting_started/call/</code></a></p>
 <p>First create a <code>wavegen.py</code> script as follows:</p>
@@ -1624,7 +1632,8 @@ Changes to modules imported in your Python script will automatically trigger a r
   This is useful for debugging and testing.</li>
 <li>
 <p>Scripts that adhere to the call protocol can be reused across the entire workflow.
-  If you want to place it in the top-level directory and execute it in any other directory, you can use the <a href="../../advanced_topics/here_and_root/"><code>ROOT</code></a> variable:</p>
+  If you want to place it in the top-level directory and execute it in any other directory,
+  you can use the <a href="../../advanced_topics/here_and_root/"><code>ROOT</code></a> variable:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">call</span><span class="p">(</span><span class="s2">&quot;$</span><span class="si">{ROOT}</span><span class="s2">/wavegen.py&quot;</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="mi">235</span><span class="p">,</span> <span class="n">duration</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">&quot;sine.json&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 </li>
@@ -1682,7 +1691,7 @@ Changes to modules imported in your Python script will automatically trigger a r
     <script id="__config" type="application/json">{"base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.5090c770.min.js"></script>
+      <script src="../../assets/javascripts/bundle.f13b1293.min.js"></script>
       
     
   </body>

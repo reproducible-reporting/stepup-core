@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.2">
     
     
       
@@ -30,7 +30,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.a40c8224.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.d7758b05.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -100,7 +100,7 @@
   </a>
 
             </div>
-            <script>var el=document.querySelector("[data-md-component=outdated]"),outdated=__md_get("__outdated",sessionStorage);!0===outdated&&el&&(el.hidden=!1)</script>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
           </aside>
         
       </div>
@@ -1470,7 +1470,8 @@
 <p>Occasionally, it may be convenient to declare a static file and then use it as input in the same script.
 As of StepUp 1.2.0, this is allowed and no longer treated as a cyclic dependency.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
-<p>Create the following <code>plan.py</code>, which declares a static file, amends it as input, and then opens it to print it to the standard output.</p>
+<p>Create the following <code>plan.py</code>, which declares a static file, amends it as input,
+and then opens it to print it to the standard output.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">amend</span><span class="p">,</span> <span class="n">static</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
@@ -1481,7 +1482,9 @@ As of StepUp 1.2.0, this is allowed and no longer treated as a cyclic dependency
 </span></code></pre></div>
 <p>Also create a <code>config.txt</code> file with some contents.</p>
 <p>In more realistic scenarios, <code>config.txt</code> may be used to decide which steps to add etc.
-For a more elaborate example, take a look at the <a href="https://github.com/reproducible-reporting/stepup-core/blob/main/docs/plan.py"><code>plan.py</code></a> that is used to run all tutorial examples.</p>
+For a more elaborate example, take a look at the
+<a href="https://github.com/reproducible-reporting/stepup-core/blob/main/docs/plan.py"><code>plan.py</code></a>
+that is used to run all tutorial examples.</p>
 <p>Make <code>plan.py</code> executable and run it as follows:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>stepup<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
@@ -1553,7 +1556,7 @@ For a more elaborate example, take a look at the <a href="https://github.com/rep
     <script id="__config" type="application/json">{"base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.5090c770.min.js"></script>
+      <script src="../../assets/javascripts/bundle.f13b1293.min.js"></script>
       
     
   </body>
