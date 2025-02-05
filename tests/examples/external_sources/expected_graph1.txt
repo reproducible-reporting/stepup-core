@@ -1,0 +1,75 @@
+root:
+             creates   file:../
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:../
+            supplies   file:plan.py
+            supplies   file:worker.py
+            supplies   file:worker_out.json
+            supplies   step:./plan.py
+            supplies   step:./worker.py --out=worker_out.json --amend-out
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   dg:../pkgs/**
+             creates   file:worker.py
+             creates   step:./worker.py --out=worker_out.json --amend-out
+
+file:worker.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./worker.py --out=worker_out.json --amend-out
+
+dg:../pkgs/**
+          created by   step:./plan.py
+             creates   file:../pkgs/
+             creates   file:../pkgs/helper.py
+
+step:./worker.py --out=worker_out.json --amend-out
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:../pkgs/helper.py [amended]
+            consumes   file:./
+            consumes   file:worker.py
+             creates   file:worker_out.json
+            supplies   file:worker_out.json [amended]
+
+file:../pkgs/
+               state = STATIC
+          created by   dg:../pkgs/**
+            consumes   file:../
+            supplies   file:../pkgs/helper.py
+
+file:../
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   file:../pkgs/
+
+file:../pkgs/helper.py
+               state = STATIC
+          created by   dg:../pkgs/**
+            consumes   file:../pkgs/
+            supplies   step:./worker.py --out=worker_out.json --amend-out
+
+file:worker_out.json
+               state = BUILT
+          created by   step:./worker.py --out=worker_out.json --amend-out
+            consumes   file:./
+            consumes   step:./worker.py --out=worker_out.json --amend-out

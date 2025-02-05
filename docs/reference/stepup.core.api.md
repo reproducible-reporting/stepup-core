@@ -2,7 +2,8 @@
 
 You can expect reasonable stability of the API documented here over the future releases of StepUp.
 (No hard promises, since StepUp is still very young.)
-Other parts of StepUp, not documented here, may undergo larger changes and are not intended to be API stable.
+Other parts of StepUp, not documented here,
+may undergo larger changes and are not intended to be API stable.
 
 ## Basic API
 
@@ -18,7 +19,6 @@ Other parts of StepUp, not documented here, may undergo larger changes and are n
 
 ### ::: stepup.core.api.getinfo
 
-
 ## Composite API
 
 ### ::: stepup.core.api.plan
@@ -32,7 +32,6 @@ Other parts of StepUp, not documented here, may undergo larger changes and are n
 ### ::: stepup.core.api.call
 
 ### ::: stepup.core.api.script
-
 
 ## Utilities for API extensions
 

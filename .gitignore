@@ -17,3 +17,11 @@ _version.py
 
 # StepUp Core specifics
 docs/.stepup
+
+# Temporary files
+*.swp
+
+# NodeJS (for markdownlint)
+node_modules/
+package-lock.json
+package.json

@@ -6,7 +6,7 @@ As a rule, StepUp will always try to execute all steps, and not doing so is the 
 
 A valid reason for ignoring some steps is illustrated in the following schematic:
 
-```
+```text
      File           In development            File                 Costly
 |-------------|      |----------|      |-----------------|      |----------|
 |  input.txt  |  =>  |  Step 1  |  =>  |  converted.txt  |  =>  |  Step 2  |
@@ -19,15 +19,17 @@ This can be verified by analyzing the file `converted.txt` or with unit tests.
 
 To avoid executing `Step 2` at every iteration in the development of `Step 1`,
 you can **block** this step.
-All step-creating functions accept an optional `block=True` keyword argument to prevent them from being executed.
+All step-creating functions accept an optional `block=True` keyword argument
+to prevent them from being executed.
 Blocking steps is a temporary measure, meant to be reverted once you're done with `Step 1`.
 
 Blocking steps has some consequences:
 
-- Blocked steps remain in the PENDING state, meaning that outdated output files are not cleaned up automatically.
-- At the end of the *run phase*, a list of blocked steps is shown, to remind the user that some steps are blocked.
+- Blocked steps remain in the `PENDING` state,
+  meaning that outdated output files are not cleaned up automatically.
+- At the end of the *run phase*, a list of blocked steps is shown,
+  to remind the user that some steps are blocked.
 - Subsequent steps, which use outputs of blocked or pending steps, also remain pending.
-
 
 ## Example
 
@@ -50,10 +52,9 @@ stepup -n 1
 
 You should get the following terminal output:
 
-```
+```text
 {% include 'advanced_topics/blocked_steps/stdout.txt' %}
 ```
-
 
 ## Try the Following
 

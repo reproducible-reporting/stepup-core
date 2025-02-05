@@ -18,7 +18,6 @@ the function [`getenv()`][stepup.core.api.getenv] is recommended:
 It returns the value of the variable and calls `amend()`
 to tell the director that the current step depends on this variable.
 
-
 ## Example
 
 Example source files: [`docs/advanced_topics/variable_substitution/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/variable_substitution)
@@ -44,19 +43,20 @@ MYVAR=foo stepup -n 1
 
 You should get the following terminal output:
 
-```
+```text
 {% include 'advanced_topics/variable_substitution/stdout.txt' %}
 ```
 
 The file `dst_foo.txt` will contain the following:
 
-```
+```text
 {% include 'advanced_topics/variable_substitution/dst_foo.txt' %}
 ```
 
-As shown in this example, the function [`getenv()`][stepup.core.api.getenv] returns `None` when a variable does not exist (or any other default you specify).
-When using variables like `${MYVAR}` in path-like arguments, the variable must exist or an exception is raised.
-
+As shown in this example, the function [`getenv()`][stepup.core.api.getenv]
+returns `None` when a variable does not exist (or any other default you specify).
+When using variables like `${MYVAR}` in path-like arguments,
+the variable must exist or an exception is raised.
 
 ## Try the Following
 

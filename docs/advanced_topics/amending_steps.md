@@ -43,7 +43,6 @@ This will avoid the following problems:
 To the best of our knowledge, there is no equivalent of `amend()` in other build tools.
 Some features in Ninja cover what can be achieved with `amend()`.
 
-
 ## Example
 
 Example source files: [`docs/advanced_topics/amending_steps/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/amending_steps)
@@ -76,7 +75,7 @@ stepup -n 1
 
 You should get the following terminal output:
 
-```
+```text
 {% include 'advanced_topics/amending_steps/stdout.txt' %}
 ```
 
@@ -84,7 +83,6 @@ The output shows that `./step.py` first stops early due to the missing file `inp
 Once this required input becomes clear,
 StepUp schedules the optional step to generate the requested input.
 Later, StepUp runs `./step.py` again.
-
 
 ## Try the Following
 

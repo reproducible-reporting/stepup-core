@@ -25,6 +25,7 @@ import re
 import shlex
 import sqlite3
 import string
+from collections.abc import Collection
 
 import attrs
 from path import Path
@@ -34,7 +35,6 @@ __all__ = (
     "DBLock",
     "check_inp_path",
     "check_plan",
-    "classproperty",
     "format_command",
     "format_digest",
     "make_path_out",
@@ -165,18 +165,6 @@ def remove_path(path: str) -> bool:
 #
 
 
-# Adapted from https://stackoverflow.com/a/39542816/494584
-class classproperty(property):  # noqa: N801
-    def __get__(self, obj, objtype=None):
-        return super().__get__(objtype)
-
-    def __set__(self, obj, value):
-        super().__set__(type(obj), value)
-
-    def __delete__(self, obj):
-        super().__delete__(type(obj))
-
-
 class CaseSensitiveTemplate(string.Template):
     """A case sensitive Template class suitable for StepUp.
 
@@ -224,6 +212,38 @@ def format_command(executable: str) -> str:
     if executable.startswith("/"):
         raise ValueError(f"Executable is not a relative path: {executable}")
     return shlex.quote(executable if executable.startswith(("./", "../")) else f"./{executable}")
+
+
+def filter_dependencies(paths: Collection[str]) -> set[Path]:
+    """Select only paths under `STEPUP_ROOT` or any of `STEPUP_EXTERNAL_SOURCES` and make relative.
+
+    Parameters
+    ----------
+    paths
+        A collection of paths to filter.
+
+    Returns
+    -------
+    filtered_paths
+        A collection of relative paths that are under `STEPUP_ROOT`
+        or any of `STEPUP_EXTERNAL_SOURCES`.
+    """
+    # Get paths for all local imports.
+    sources_roots = [Path(os.environ.get("STEPUP_ROOT", Path.cwd())).normpath() / ""]
+    external_sources = os.environ.get("STEPUP_EXTERNAL_SOURCES")
+    if external_sources is not None:
+        sources_roots.extend(
+            Path(source).expanduser().normpath() / "" for source in external_sources.split(":")
+        )
+
+    result = set()
+    for path in paths:
+        abspath = myabsolute(path)
+        for source_root in sources_roots:
+            if abspath.startswith(source_root):
+                result.add(myrelpath(path))
+                break
+    return result
 
 
 @attrs.define

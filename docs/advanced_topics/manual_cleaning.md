@@ -13,11 +13,14 @@ Examples of such situations are:
 
 - You are planning a rather drastic reorganization of your project,
   including renaming some directories containing output files.
-  When directories are renamed, StepUp can no longer clean up old outputs in the renamed directories.
+  When directories are renamed,
+  StepUp can no longer clean up old outputs in the renamed directories.
   In this situation, you will want to clean up outputs manually before renaming directories.
 
-Simply removing outputs with the `rm` command is possible but quickly becomes tedious for larger projects.
-The `cleanup` program, a companion to `stepup`, can selectively remove numerous outputs with minimal end-user effort.
+Simply removing outputs with the `rm` command is possible
+but quickly becomes tedious for larger projects.
+The `cleanup` program, a companion to `stepup`,
+can selectively remove numerous outputs with minimal end-user effort.
 You need to pass as arguments the files whose (indirect) outputs you want to remove.
 Such arguments can be one of the two things:
 
@@ -29,7 +32,8 @@ Such arguments can be one of the two things:
 
 Files are removed recursively, so outputs of outputs are also cleaned up.
 `cleanup` will only remove files with status `OUTDATED`, `BUILT` or `VOLATILE`.
-`STATIC` or `AWAITED` files, i.e., files that are not the result of step execution, are never removed.
+`STATIC` or `AWAITED` files, i.e.,
+files that are not the result of step execution, are never removed.
 In addition, `cleanup` compares the hash of a file to the last known hash,
 to make sure it only removes that contain changes made afterward without StepUp.
 
@@ -41,10 +45,10 @@ as explained in the [next tutorial](stepup_root.md).
 
     As StepUp 2.0.0, `cleanup` also works when `stepup` is not running.
 
-
 ## Try the Following
 
-- The [Static Named Glob](static_named_glob.md) tutorial provides a good test case for experimenting with `cleanup`.
+- The [Static Named Glob](static_named_glob.md) tutorial provides a good test case
+  for experimenting with `cleanup`.
   For this example, run `stepup` without any arguments.
   Then open a second terminal in the same directory and run `cleanup ch3/sec3_1_applications.txt`.
   You will see that the following files have been deleted:

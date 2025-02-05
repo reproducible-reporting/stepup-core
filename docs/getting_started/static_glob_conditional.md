@@ -20,7 +20,6 @@ else:
 A similar conditional would not work with the [`static()`][stepup.core.api.static] function
 because it would raise an exception when the file does not exist.
 
-
 ## Example
 
 Example source files: [`docs/getting_started/static_glob_conditional/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/static_glob_conditional)
@@ -41,7 +40,8 @@ Create the following `plan.py`:
 ```
 
 For this example, the script `expensive.py` is not expensive at all.
-It just serves as an illustration of a more realistic scenario where this script may do some non-tritial work.
+It just serves as an illustration of a more realistic scenario
+where this script may do some non-tritial work.
 In this example, `expensive.py` just computes the average of all numbers in `dataset/bigfile.txt`
 and writes out the result to `average.txt`:
 
@@ -51,7 +51,7 @@ and writes out the result to `average.txt`:
 
 Now put some values in `dataset/bigfile.txt`, e.g.:
 
-```
+```text
 {% include 'getting_started/static_glob_conditional/dataset/bigfile.txt' %}
 ```
 
@@ -64,7 +64,7 @@ stepup -n 1
 
 You should get the following output:
 
-```
+```text
 {% include 'getting_started/static_glob_conditional/stdout1.txt' %}
 ```
 
@@ -75,14 +75,14 @@ mv dataset tmp
 stepup -n 1
 ```
 
-The new output reveals that the dataset is completely ignored while the file `average.txt` is still used:
+The new output reveals that the dataset is completely ignored
+while the file `average.txt` is still used:
 
-```
+```text
 {% include 'getting_started/static_glob_conditional/stdout2.txt' %}
 ```
 
 Since the file `average.txt` did not change, the step `cat average.txt` is skipped.
-
 
 ## Practical Considerations
 
@@ -99,5 +99,7 @@ Since the file `average.txt` did not change, the step `cat average.txt` is skipp
     - Not all collaborators may have access to the dataset,
       but you still want them to be able to reproduce the workflow.
 
-    - In the long run, the large dataset might be removed because it is too big and old to keep around.
-      The extracted data then become a relevant and compact subset that can be easily stored for longer periods.
+    - In the long run, the large dataset might be removed
+      because it is too big and old to keep around.
+      The extracted data then become a relevant and compact subset
+      that can be easily stored for longer periods.

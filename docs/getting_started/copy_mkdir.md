@@ -2,10 +2,10 @@
 
 Copying a file or making a directory can be planned using the [`copy()`][stepup.core.api.copy]
 and [`mkdir()`][stepup.core.api.mkdir] functions, respectively.
-These functions perform a few sanity checks and then create a step with the corresponding shell command.
+These functions perform a few sanity checks and
+then create a step with the corresponding shell command.
 
 The example below will also be used in the [Automatic Cleaning](automatic_cleaning.md) tutorial.
-
 
 ## Example
 
@@ -23,12 +23,12 @@ Make it executable and run it with StepUp as follows:
 chmod +x plan.py
 stepup -n 1
 ```
+
 You should get the following output:
 
-```
+```text
 {% include 'getting_started/copy_mkdir/stdout.txt' %}
 ```
-
 
 ## Notes
 

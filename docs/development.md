@@ -2,7 +2,6 @@
 
 If you would like to contribute, please read [CONTRIBUTING.md](https://github.com/reproducible-reporting/.github/blob/main/CONTRIBUTING.md).
 
-
 ## Development Install and Unit Tests
 
 A local installation for testing and development can be installed
@@ -50,7 +49,6 @@ and edit Markdown files in your IDE.
 Please, use [Semantic Line Breaks](https://sembr.org/)
 because it facilitates reviewing documentation changes.
 
-
 ## Tutorial Example Outputs
 
 If you wish to regenerate the output of the examples, run `stepup` in the `docs` directory:
@@ -62,7 +60,6 @@ stepup
 
 Note that some scripts use [Graphviz](https://graphviz.org/) to generate diagrams,
 so you must have it installed on your system.
-
 
 ## How to Make a Release
 

@@ -14,7 +14,6 @@ as long as they adhere to the "call protocol" described below.
 StepUp provides a `driver()` function in the module `stepup.core.call`
 to facilitate the implementation of Python scripts that adhere to the call protocol
 
-
 ## Call protocol
 
 In its simplest form, the following `call()` in a `plan.py` script
@@ -43,16 +42,21 @@ it should write this to an output file, either in JSON or PICKLE format.
 
 Because of the delayed execution, the `call()` function cannot return this value.
 If you are familiar with Python's builtin `concurrent.futures` module,
-you can think of the output file of the script as the `Future` object that is returned by `concurrent.futures.Executor.submit()`.
-The `call()` function returns a [`StepInfo`][stepup.core.stepinfo.StepInfo] object from which you can extract the output file path.
+you can think of the output file of the script as the `Future` object that is returned by
+`concurrent.futures.Executor.submit()`.
+The `call()` function returns a [`StepInfo`][stepup.core.stepinfo.StepInfo] object
+from which you can extract the output file path.
 
 To fully support the `call()` protocol, the executable must be able to handle the following options:
 
-- `JSON_INP`: The JSON-encoded parameters passed on the command-line
-- `--inp=PATH_INP`: As an alternative to the previous, a file with parameters in JSON or PICKLE format.
-- `--out=PATH_OUT`: The output file to use (if there is a return value), either in JSON or PICKLE format.
-- `--amend-out`: If given, the executable must call `amend(out=PATH_OUT)` before writing the output file.
-
+- `JSON_INP`:
+  The JSON-encoded parameters passed on the command-line
+- `--inp=PATH_INP`:
+  As an alternative to the previous, a file with parameters in JSON or PICKLE format.
+- `--out=PATH_OUT`:
+  The output file to use (if there is a return value), either in JSON or PICKLE format.
+- `--amend-out`:
+  If given, the executable must call `amend(out=PATH_OUT)` before writing the output file.
 
 ## Call driver
 
@@ -63,7 +67,8 @@ The usage of this `driver()` function is illustrated in the example below.
 Note that the `driver()` function also detects local modules that are imported in the script,
 and amends these as required inputs.
 Changes to modules imported in your Python script will automatically trigger a re-run of the script.
-
+By default, only the modules inside `STEPUP_ROOT` are treated as dependencies.
+You can specify additional directories in the `STEPUP_EXTERNAL_SOURCES` environment variable.
 
 ## Example
 
@@ -90,10 +95,9 @@ stepup -n 1
 
 You should see the following output on screen:
 
-```
+```text
 {% include 'getting_started/call/stdout.txt' %}
 ```
-
 
 ## Practical considerations
 
@@ -105,7 +109,8 @@ You should see the following output on screen:
 - Scripts that use the `driver()` function can be run as standalone scripts.
   This is useful for debugging and testing.
 - Scripts that adhere to the call protocol can be reused across the entire workflow.
-  If you want to place it in the top-level directory and execute it in any other directory, you can use the [`ROOT`](../advanced_topics/here_and_root.md) variable:
+  If you want to place it in the top-level directory and execute it in any other directory,
+  you can use the [`ROOT`](../advanced_topics/here_and_root.md) variable:
 
     ```python
     call("${ROOT}/wavegen.py", freq=235, duration=1.0, out="sine.json")

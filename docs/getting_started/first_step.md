@@ -3,7 +3,6 @@
 The goal of the first tutorial is to introduce the basic usage of StepUp.
 For the sake of simplicity, a minimal workflow will be defined that does very little.
 
-
 ## Example
 
 Example source files: [`docs/getting_started/first_step/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/first_step)
@@ -27,7 +26,6 @@ Make this file executable with `chmod +x plan.py`.
    (StepUp will not provide any standard input.
    It does capture standard output and error, as shown below.)
 
-
 In the same directory, run:
 
 ```bash
@@ -38,14 +36,16 @@ stepup -n 1
 
 You should see the following output, with colors if your virtual terminal supports them:
 
-```txt
+```text
 {% include 'getting_started/first_step/stdout1.txt' %}
 ```
 
 Let's analyze the output:
 
 - The first three lines are part of StepUp startup sequence.
-  The address `/tmp/stepup-########/director` is a [Unix domain socket](https://en.wikipedia.org/wiki/Unix_domain_socket) through which the director receives instructions from other processes to define the workflow.
+  The address `/tmp/stepup-########/director`
+  is a [Unix domain socket](https://en.wikipedia.org/wiki/Unix_domain_socket)
+  through which the director receives instructions from other processes to define the workflow.
   (The hash signs represent random characters.)
 - The `START` and `SUCCESS` lines are shown for steps executed by StepUp:
     - The step `./plan.py` is created by default and runs the script that you just created.
@@ -62,7 +62,7 @@ stepup -n 1
 
 You will see a slightly different output:
 
-```txt
+```text
 {% include 'getting_started/first_step/stdout2.txt' %}
 ```
 
@@ -75,7 +75,6 @@ by comparing a [Blake2 hash](https://en.wikipedia.org/wiki/BLAKE_(hash_function)
 of input files, used environment variables and produced outputs.
 When you manually remove `.stepup/graph.db`,
 StepUp will not know anymore that it already executed some steps and runs all of them again.
-
 
 ## Try the Following
 

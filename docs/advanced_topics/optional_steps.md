@@ -15,12 +15,15 @@ This responsibility should not be shifted to users by expecting them to specify 
 That said, some legitimate exceptions exist, in which ignoring steps is a desirable feature.
 These are supported by StepUp as follows:
 
-- One can define **steps conditionally**, e.g., as in the tutorial [Static Glob Conditional](../getting_started/static_glob_conditional.md).
+- One can define **steps conditionally**, e.g.,
+  as in the tutorial [Static Glob Conditional](../getting_started/static_glob_conditional.md).
   Such conditionals are controlled by external factors and
   are picked up by your `plan.py` without manual interventions.
 
 - One can make **steps optional**, as in this tutorial.
-  This is useful when multiple steps are defined in a loop, as in the [Static Glob](../getting_started/static_glob.md) tutorial, of which not all steps are required for the end result.
+  This is useful when multiple steps are defined in a loop,
+  as in the [Static Glob](../getting_started/static_glob.md) tutorial,
+  of which not all steps are required for the end result.
   Use this feature wisely:
   It is obviously inefficient to define a few thousand steps of which only a handful are needed.
 
@@ -31,7 +34,6 @@ Steps that define other steps, declare static files, or otherwise extend the wor
 should not be made optional.
 Until such steps are executed, StepUp has no idea what output these steps will generate,
 which it would need to decide that an optional step is required by another step.
-
 
 ## Example
 
@@ -44,7 +46,9 @@ to create a somewhat entertaining example.
 However, practically all step-generating functions support the `optional` argument,
 and can thus be made optional in the same way.
 
-Create a first script `generate.py` that generates sequences of the [logistic map](https://en.wikipedia.org/wiki/Logistic_map) for different values of the parameter *r*:
+Create a first script `generate.py` that generates sequences
+of the [logistic map](https://en.wikipedia.org/wiki/Logistic_map)
+for different values of the parameter *r*:
 
 ```python
 {% include 'advanced_topics/optional_steps/generate.py' %}
@@ -71,15 +75,16 @@ stepup -n 1
 
 You should get the following output:
 
-```
+```text
 {% include 'advanced_topics/optional_steps/stdout.txt' %}
 ```
 
-Note that, in this case, it would be trivial to modify the `generate.py` script to only generate the sequence of interest.
+Note that, in this case, it would be trivial to modify the `generate.py` script
+to only generate the sequence of interest.
 Whenever such a simpler approach is possible, it is always preferable.
-However, in more complex use cases, it is not always possible to figure out which steps are going to be needed or not.
+However, in more complex use cases, it is not always possible
+to figure out which steps are going to be needed or not.
 In such situations, optional steps can be convenient.
-
 
 ## Try the Following
 

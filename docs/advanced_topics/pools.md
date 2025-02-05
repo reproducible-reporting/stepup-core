@@ -21,7 +21,6 @@ Steps are assigned to a pool by defining them with the `pool=name` keyword argum
 For StepUp, mainly the first use case (working around concurrency bugs) is relevant,
 for which the pool size is 1.
 
-
 ## Example
 
 Example source files: [`docs/advanced_topics/pools/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/pools)
@@ -35,8 +34,8 @@ Create the following `plan.py`:
 {% include 'advanced_topics/pools/plan.py' %}
 ```
 
-The `sleep` command ensures that each step lasts long enough to guarantee they will run in parallel when allowed.
-
+The `sleep` command ensures that each step lasts long enough
+to guarantee they will run in parallel when allowed.
 
 Make the plan executable and run it with StepUp:
 
@@ -47,14 +46,13 @@ stepup -n 4
 
 You should get the following output:
 
-```
+```text
 {% include 'advanced_topics/pools/stdout.txt' %}
 ```
 
 Initially, the `./plan.py` step and two `sleep+echo` commands are running in parallel.
 Despite having four workers,
 the third `sleep+echo` is only started after the previous two have finished.
-
 
 ## Try the Following
 

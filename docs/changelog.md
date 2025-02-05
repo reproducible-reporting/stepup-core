@@ -1,27 +1,44 @@
+<!-- markdownlint-disable no-duplicate-heading -->
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev/effver/).
+(Changes to features documented as "experimental" will not increment macro and meso version numbers.)
 
-## [Unreleased]
+## [Unreleased][]
 
-(Nothing yet.)
+(nothing yet)
 
+## [2.0.6][] - 2025-02-05 {: #v2.0.6 }
 
-## [2.0.5] - 2025-01-28 {: #v2.0.5 }
+This release introduces the `STEPUP_EXTERNAL_SOURCES` environment variable
+for more fine-grained control over automatic dependency tracking.
+
+### Added
+
+- The `STEPUP_EXTERNAL_SOURCES` environment variable can be set to
+  a colon-separated list of directories with source files outside `STEPUP_ROOT`.
+  The `script` and `call` drivers use this to decide which imported Python modules
+  to consider as inputs to a step.
+
+### Changed
+
+- Switch from [SemVer](https://semver.org/spec/v2.0.0.html) to
+  [EffVer](https://jacobtomlinson.dev/effver/).
+
+## [2.0.5][] - 2025-01-28 {: #v2.0.5 }
 
 This is a minor release, just adding a utility function.
-
 
 ### Changed
 
 - Use `string_to_bool` to interpret the environment variable `STEPUP_STRICT`.
   E.g., setting it to `"0"` will disable strict mode.
 
-
-## [2.0.4] - 2025-01-28 {: #v2.0.4 }
+## [2.0.4][] - 2025-01-28 {: #v2.0.4 }
 
 This release fixes very minor issues. It is mainly for testing release automation.
 
@@ -31,8 +48,7 @@ This release fixes very minor issues. It is mainly for testing release automatio
 - Add `--version` option to `stepup` command.
 - Improve screen output consistency.
 
-
-## [2.0.3] - 2025-01-27 {: #v2.0.3 }
+## [2.0.3][] - 2025-01-27 {: #v2.0.3 }
 
 This release fixes one pesky bug.
 
@@ -42,8 +58,7 @@ This release fixes one pesky bug.
   when this step was not a top-level orphan.
   This limitation has been lifted, because it is a fully legitimate use case.
 
-
-## [2.0.2] - 2025-01-25 {: #v2.0.2 }
+## [2.0.2][] - 2025-01-25 {: #v2.0.2 }
 
 This release fixes several bugs.
 
@@ -67,8 +82,7 @@ This release fixes several bugs.
   This is fixed.
 - Fix a few issues found by deepsource.io.
 
-
-## [2.0.1] - 2025-01-22 {: #v2.0.1 }
+## [2.0.1][] - 2025-01-22 {: #v2.0.1 }
 
 (Version 2.0.0 was yanked due to a packaging issue.)
 
@@ -89,10 +103,9 @@ This release fixes several bugs.
 - The "call" protocol is added as a light alternative to the "script" protocol.
   It can be used through the new [`call()`][stepup.core.api.call] function.
 - [`getinfo()`][stepup.core.api.getinfo] function to retrieve the
-  [StepInfo][stepup.core.stepinfo.StepInfo] object of the current step.
+  [`StepInfo`][stepup.core.stepinfo.StepInfo] object of the current step.
 - Cleanly exit the director process upon several types of exceptions (instead of hanging).
 - Gracefully handle `SIGINT` and `SIGTERM`, e.g. pressing `ctrl-c` in the terminal.
-
 
 ### Changed
 
@@ -155,7 +168,6 @@ This release fixes several bugs.
     - Improved tracking of file changes.
       Unexpected changes to input files of steps in the run phase will cause an exception.
 
-
 ### Removed
 
 - StepUp no longer uses `msgpack` and uses pickling for serialization instead.
@@ -165,22 +177,21 @@ This release fixes several bugs.
 - The `f` (from scratch) and `t` (try replay) keys have been removed
   from the terminal user interface.
 
-
 ### Fixed
 
-- When static file has been deleted (missing) and later restored, the restored file was not noticed when restarting StepUp. This is fixed.
+- When static file has been deleted (missing) and later restored,
+  the restored file was not noticed when restarting StepUp. This is fixed.
 - Tests have been made compatible with Python 3.13.
 - Files with whitespace are handled correctly.
   (That being said, we don't recommend using files with whitespace.)
 
-
-## [1.3.1] - 2024-09-17 {: #v1.3.1 }
+## [1.3.1][] - 2024-09-17 {: #v1.3.1 }
 
 ### Fixed
 
 - Fix incorrect parsing of `?*` and `*?` wildcards in the `nglob` module.
 
-## [1.3.0] - 2024-08-27 {: #v1.3.0 }
+## [1.3.0][] - 2024-08-27 {: #v1.3.0 }
 
 ### Added
 
@@ -198,7 +209,6 @@ This release fixes several bugs.
   These are only valid when there is a unique match,
   i.e. when the `files()` method or property has exactly one path.
 
-
 ### Changed
 
 - Migrate `load_module_file` to stepup-reprep.
@@ -214,7 +224,6 @@ This release fixes several bugs.
   without a `plan.py`.
 - The files in `.stepup/logs` have been renamed to `*.log` files under `.stepup`.
 
-
 ### Fixed
 
 - Fix bug in the translation of relative paths before they are sent to the director process.
@@ -223,15 +232,13 @@ This release fixes several bugs.
 - Fix bug in back translation of paths when substituted in a step command.
 - Improve compatibility of nglob with Python's built-in glob.
 
-
-## [1.2.8] - 2024-06-28 {: #v1.2.8 }
+## [1.2.8][] - 2024-06-28 {: #v1.2.8 }
 
 ### Fixed
 
 - Modify the script driver so that `info()` and `case_info()` may return empty dictionaries.
 
-
-## [1.2.7] - 2024-06-24 {: #v1.2.7 }
+## [1.2.7][] - 2024-06-24 {: #v1.2.7 }
 
 ### Fixed
 
@@ -239,21 +246,17 @@ This release fixes several bugs.
   The RPC server (created with `asyncio.start_unix_server`) closes before all requests are handled.
   A stop event is now included for all RPC handlers
   to wait with stopping the server until every request is handled.
-  This is a known issue fixed in Python 3.12.1:
-  https://github.com/python/cpython/issues/120866
+  This is a [known issue fixed in Python 3.12.1](https://github.com/python/cpython/issues/120866).
 
-
-## [1.2.6] - 2024-06-13 {: #v1.2.6 }
+## [1.2.6][] - 2024-06-13 {: #v1.2.6 }
 
 ### Fixed
 
 - Do not watch files when running StepUp non-interactively.
-  This makes non-interactive mode a workaround for a nasty watchdog bug,
-  which crops up when working on larger StepUp projects.
-  See https://github.com/gorakhargosh/watchdog/issues/275
+  This makes non-interactive mode a workaround for
+  [a nasty watchdog bug](https://github.com/gorakhargosh/watchdog/issues/275).
 
-
-## [1.2.5] - 2024-06-13 {: #v1.2.5 }
+## [1.2.5][] - 2024-06-13 {: #v1.2.5 }
 
 ### Fixed
 
@@ -267,8 +270,7 @@ This release fixes several bugs.
 - Minor documentation improvements
 - Minor code cleanups
 
-
-## [1.2.4] - 2024-05-27 {: #v1.2.4 }
+## [1.2.4][] - 2024-05-27 {: #v1.2.4 }
 
 ### Changed
 
@@ -280,8 +282,7 @@ This release fixes several bugs.
 - Make recursive glob consistent with Python's built-in glob in `step.core.nglob`.
 - Pool definitions are stored in workflow and replayed correctly when a step is skipped.
 
-
-## [1.2.3] - 2024-05-19 {: #v1.2.3 }
+## [1.2.3][] - 2024-05-19 {: #v1.2.3 }
 
 ### Changed
 
@@ -292,8 +293,7 @@ This release fixes several bugs.
 
 - Improve hash computation of a symbolic links in `stepup.core.hash`.
 
-
-## [1.2.2] - 2024-05-16 {: #v1.2.2 }
+## [1.2.2][] - 2024-05-16 {: #v1.2.2 }
 
 ### Changed
 
@@ -304,15 +304,13 @@ This release fixes several bugs.
 - Make `cleanup` command work in project subdirectories when `STEPUP_ROOT` is set.
 - Avoid useless wait when running a `plan.py` script outside of `stepup`.
 
-
-## [1.2.1] - 2024-05-07 {: #v1.2.1 }
+## [1.2.1][] - 2024-05-07 {: #v1.2.1 }
 
 ### Fixed
 
 - Fixed packaging mistake that confused PyCharm and Pytest.
 
-
-## [1.2.0] - 2024-05-02 {: #v1.2.0 }
+## [1.2.0][] - 2024-05-02 {: #v1.2.0 }
 
 ### Added
 
@@ -344,13 +342,12 @@ This release fixes several bugs.
 - Raise `ConnectionResetError` in `SocketSyncRPCClient` instead of blocking forever when
   the director process crashes.
 
-
-## [1.0.0] - 2024-04-25 {: #v1.0.0 }
+## [1.0.0][] - 2024-04-25 {: #v1.0.0 }
 
 Initial release
 
-
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[2.0.6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.6
 [2.0.5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.5
 [2.0.4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.4
 [2.0.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.3

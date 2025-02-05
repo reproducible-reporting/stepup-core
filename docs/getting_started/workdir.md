@@ -29,12 +29,11 @@ stepup -n 1
 
 You should get the following terminal output:
 
-```
+```text
 {% include 'getting_started/workdir/stdout.txt' %}
 ```
 
 This will create an output file `out/hello.txt`
-
 
 ## Further reading
 

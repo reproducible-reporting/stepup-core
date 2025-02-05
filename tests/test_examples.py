@@ -77,6 +77,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "error_overlap_deferred",
         "error_static_dir",
         "error_step",
+        "external_sources",
         "getinfo",
         "here",
         "makedirs",

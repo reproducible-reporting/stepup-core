@@ -1,9 +1,9 @@
 # Distributed Plans
 
-When your project grows, defining the entire workflow in a single `plan.py` file may become inconvenient.
+When your project grows, defining the entire workflow
+in a single `plan.py` file may become inconvenient.
 Especially when working with nested directories for different parts of the project,
 it may be convenient to distribute the workflow over multiple `plan.py` files.
-
 
 ## Example
 
@@ -31,10 +31,9 @@ chmod +x plan.py sub/plan.py
 
 You will get the following output:
 
-```
+```text
 {% include 'getting_started/distributed_plans/stdout.txt' %}
 ```
-
 
 ## Practical Considerations
 

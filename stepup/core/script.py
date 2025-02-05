@@ -21,7 +21,6 @@
 
 import argparse
 import inspect
-import os
 import shlex
 import sys
 from collections.abc import Iterator
@@ -32,7 +31,7 @@ from parse import parse
 from path import Path
 
 from .stepinfo import dump_step_info
-from .utils import format_command
+from .utils import filter_dependencies, format_command
 
 __all__ = ("driver",)
 
@@ -396,15 +395,19 @@ def _get_optional_path(name: str, info: dict, script_path: str, func_name: str) 
 
 
 def _get_local_import_paths(script_path: Path) -> list[str]:
-    """Get all local files from `sys.modules`, exclude files outside `STEPUP_ROOT`."""
-    # Get paths for all local imports.
-    stepup_root = Path(os.environ.get("STEPUP_ROOT", Path.cwd())).normpath() / ""
-    mod_paths = set()
-    for module in sys.modules.values():
-        mod_path = getattr(module, "__file__", None)
-        if mod_path is not None and mod_path.startswith(stepup_root):
-            mod_paths.add(Path(mod_path).relpath())
+    """Get all local files from `sys.modules`.
 
+    Files are only included if they are in `STEPUP_ROOT` or inside one of the paths in
+    `STEPUP_EXTERNAL_SOURCES`.
+    """
+
+    def iter_module_paths():
+        for module in sys.modules.values():
+            mod_path = getattr(module, "__file__", None)
+            if mod_path is not None:
+                yield mod_path
+
+    mod_paths = filter_dependencies(iter_module_paths())
     # The script path is already included in the inputs.
     mod_paths.discard(script_path)
     return sorted(mod_paths)

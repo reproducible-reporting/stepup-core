@@ -1,11 +1,12 @@
 # Environment Variables
 
 When defining a step, one can specify the environment variables it uses (not their values).
-When starting StepUp with a different value for any of these variables, StepUp will know that it has to repeat the step instead of skipping it.
+When starting StepUp with a different value for any of these variables,
+StepUp will know that it has to repeat the step instead of skipping it.
 
-One can only change an environment variable by stopping StepUp, changing the variable, and then starting StepUp again.
+One can only change an environment variable by stopping StepUp,
+changing the variable, and then starting StepUp again.
 One cannot modify environment variables while StepUp is running.
-
 
 ## Example
 
@@ -26,7 +27,7 @@ MYVAR=foo stepup -n 1
 
 You will see the following output:
 
-```
+```text
 {% include 'advanced_topics/environment_variables/stdout.txt' %}
 ```
 
@@ -34,7 +35,6 @@ The variable substitution is performed in the subshell of the worker.
 StepUp will not try to substitute `${MYVAR}` before starting the step.
 The special variables `${inp}` and `${out}` are exceptions to this rule,
 as discussed in the [tutorial on dependencies](../getting_started/dependencies.md).
-
 
 ## Try the Following
 

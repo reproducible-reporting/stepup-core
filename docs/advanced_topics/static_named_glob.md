@@ -4,38 +4,40 @@ Conventional glob patterns support a handful of different wildcards.
 For advanced use cases, StepUp also supports an in-house extension called "named glob".
 For example, the following pattern will only match files with matching strings at the placeholders.
 
-```
+```text
 prefix_${*name}_something_${*name}.txt
 ```
 
 The following will match:
 
-```
+```text
 prefix_aaa_something_aaa.txt
 prefix_bbb_something_bbb.txt
 ```
 
 The following won't:
 
-```
+```text
 prefix_aaa_something_bbb.txt
 prefix_bbb_something_aaa.txt
 ```
 
-Named globs are often useful when working with files distributed over multiple directories, each having a central file that repeats a part of the directory name.
-
+Named globs are often useful when working with files distributed over multiple directories,
+each having a central file that repeats a part of the directory name.
 
 ## Example
 
 Example source files: [`docs/advanced_topics/static_named_glob/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/static_named_glob)
 
-In the example below, each directory represents a chapter from course notes, containing source files for individual sections.
+In the example below, each directory represents a chapter from course notes,
+containing source files for individual sections.
 In a realistic setting, one could envision building a PDF presentations from LaTeX sources instead.
-To keep the example independent of StepUp RepRep, text files will be copied to Markdown files, which will then be concatenated.
+To keep the example independent of StepUp RepRep,
+text files will be copied to Markdown files, which will then be concatenated.
 
 Create the following directory layout with markdown files:
 
-```
+```text
 ch1/
 ch1/sec1_1_introduction.txt
 ch1/sec1_2_objectives.txt
@@ -54,7 +56,8 @@ Create the following `plan.py`:
 {% include 'advanced_topics/static_named_glob/plan.py' %}
 ```
 
-Note that the substrings matching the named glob patterns are accessible as attributes of the [NGlobMatch][stepup.core.nglob.NGlobMatch] object.
+Note that the substrings matching the named glob patterns are accessible as attributes of
+the [`NGlobMatch`][stepup.core.nglob.NGlobMatch] object.
 For example, `match.ch` is the chapter number (as a string).
 
 Make the plan executable and run StepUp:
@@ -66,6 +69,6 @@ stepup -n 1
 
 You should get the following output:
 
-```
+```text
 {% include 'advanced_topics/static_named_glob/stdout.txt' %}
 ```

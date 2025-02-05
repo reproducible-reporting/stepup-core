@@ -15,7 +15,6 @@ To help you decide which one to use, consider the following:
   including the planning (inputs, outputs, ...) and execution, in a single source file.
   Such self-contained scripts are easier to understand and maintain.
 
-
 ## Script Protocol
 
 The [`script()`][stepup.core.api.script] protocol itself is rather simple.
@@ -48,7 +47,7 @@ This results in an extra argument `--step-info=some_file.json` for `./executable
 The planning of the run scripts is then expected to
 write all the information about the created run steps to this JSON file.
 In complex workflows, it may be useful to load this JSON file with
-[load_step_info][stepup.core.stepinfo.load_step_info].
+[`load_step_info()`][stepup.core.stepinfo.load_step_info].
 Consult the section on [StepInfo Objects](../advanced_topics/step_info.md)
 to learn how to use these objects.
 
@@ -58,7 +57,6 @@ which it simply passes on when creating the `./executable plan` step.
 !!! note
 
     The `step_info` argument, and support for all `step()` arguments were added in StepUp 2.0.0.
-
 
 ## Script driver
 
@@ -71,11 +69,14 @@ It can be used in two ways:
 
 2. To run the same script with multiple combinations of inputs and outputs ([next tutorial](script_multiple.md)).
 
+In both cases, the script driver will detect local modules that are imported in the script,
+and amend these as required inputs.
+By default, only the modules inside `STEPUP_ROOT` are treated as dependencies.
+You can specify additional directories in the `STEPUP_EXTERNAL_SOURCES` environment variable.
 
 ## Single Case Script Driver
 
 A Python script using the driver for a single case has the following structure.
-
 
 ```python
 #!/usr/bin/env python3
@@ -117,7 +118,6 @@ if __name__ == "__main__":
         but it does not have to specify all of them.
         The argument list of `run()` can contain fewer arguments (or even none at all).
 
-
 ## Example
 
 Example source files: [`docs/getting_started/script_single/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/script_single)
@@ -152,14 +152,13 @@ stepup -n 1
 
 You should see the following output on screen:
 
-```
+```text
 {% include 'getting_started/script_single/stdout.txt' %}
 ```
 
 As expected, this creates two files: `cos.npy` and `sin.npy`.
 
-
-## Try the Following:
+## Try the Following
 
 - Modify the file `config.json` and re-run StepUp.
   The planning is skipped because the script itself did not change.

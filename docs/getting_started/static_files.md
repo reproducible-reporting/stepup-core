@@ -2,8 +2,8 @@
 
 When steps use input files written by you, this must be explicitly stated in `plan.py`
 by declaring the human-written files as *static files*.
-This informs StepUp that it does not need to wait for other steps whose outputs are the required files.
-
+This informs StepUp that it does not need to wait for other steps
+whose outputs are the required files.
 
 ## Example
 
@@ -11,7 +11,7 @@ Example source files: [`docs/getting_started/static_files/`](https://github.com/
 
 Create a file `limerick.txt` with the following contents:
 
-```
+```text
 {% include 'getting_started/static_files/limerick.txt' %}
 ```
 
@@ -30,15 +30,15 @@ Make the plan executable and run it with StepUp as follows:
 chmod +x plan.py
 stepup -n 1
 ```
+
 You should get the following output:
 
-```
+```text
 {% include 'getting_started/static_files/stdout.txt' %}
 ```
 
 As expected, StepUp does not wait for another step to create `limerick.txt` because the file is static.
 The file `numbered.txt` will contain a copy of the limerick with line numbers.
-
 
 ## Try the Following
 

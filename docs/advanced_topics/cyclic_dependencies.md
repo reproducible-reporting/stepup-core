@@ -9,7 +9,6 @@ In theory, one could also have cycles in the provenance graph,
 but it is not possible to create such loops with the functions in
 [stepup.core.api](../reference/stepup.core.api.md).
 
-
 ## Example
 
 Create the following `plan.py`, which is StepUp's equivalent of a snake biting its own tail:
@@ -27,6 +26,6 @@ stepup -n 1
 
 You will get the following terminal output showing that this plan won't work.
 
-```
+```text
 {% include 'advanced_topics/cyclic_dependencies/stdout.txt' %}
 ```

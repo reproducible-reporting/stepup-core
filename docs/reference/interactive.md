@@ -8,14 +8,13 @@
     - Keyboard interaction is always available, irrespective of the command-line options.
     - The `f` and `t` keys have been removed.
 
-
 By default, StepUp performs a single pass execution of the workflow.
 You can use StepUp interactively by adding
 `-w` (manual re-run) or `-W` (automatic re-run) to the command line.
 When pressing a key on the keyboard, StepUp responds by executing a corresponding command.
 If the key is not associated with any command, the following help message appears:
 
-```
+```text
 ───────────────────────────────────── Keys ─────────────────────────────────────
 
    r = run     q = shutdown     d = drain     j = join     g = graph

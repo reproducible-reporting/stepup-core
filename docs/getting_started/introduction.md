@@ -8,11 +8,12 @@ The following initial competencies are assumed:
 - Working with a virtual terminal.
 - Editing text files.
 
-Note that the examples in the tutorials are all small and use StepUp in serial mode (`-n 1`) and non-interactively.
+Note that the examples in the tutorials are all small and use StepUp
+in serial mode (`-n 1`) and non-interactively.
 We believe this offers the best learning experience.
 However, StepUp really shines in more complex use cases and when used interactively.
-Once you know how StepUp works, you can impress yourself by effortlessly mastering the daunting complexity of your projects. :)
-
+Once you know how StepUp works, you can impress yourself by effortlessly mastering
+the daunting complexity of your projects. :)
 
 ## Tutorial source files
 
@@ -23,13 +24,11 @@ Each directory contains a script named `main.sh`,
 which simply runs the example in non-interactive mode,
 generating the outputs that are included in the documentation.
 
-
 ## StepUp architecture
 
 The tutorials use terminology defined in the small architecture overview given below.
 This overview summarizes the internals of StepUp, omitting many details for the sake of clarity.
 It provides just enough background to get a basic understanding of its core concepts.
-
 
 ### Workflow (graphs)
 
@@ -37,7 +36,6 @@ StepUp keeps track of what it needs to do and what it has already done in a work
 This workflow is represented by *two*
 [direct acyclic graphs (DAGs)](https://en.wikipedia.org/wiki/Directed_acyclic_graph),
 which comprise the same nodes.
-
 
 #### Nodes
 
@@ -47,11 +45,13 @@ The nodes of the graph can be instances of the following main classes:
   working directory, command, arguments, inputs, outputs, etc.
   A step can also be in one of the following states:
 
-    - `PENDING`: the step cannot yet be scheduled because some inputs have not been declared or built yet.
+    - `PENDING`: the step cannot yet be scheduled
+      because some inputs have not been declared or built yet.
     - `QUEUED`: all inputs are available and the step is waiting to be executed.
     - `RUNNING`: the step is being executed by one of the workers.
     - `SUCCEEDED`: the step has been successfully completed.
-    - `FAILED`: the subprocess exited with a non-zero exit code or some output files were not created.
+    - `FAILED`: the subprocess exited with a non-zero exit code or
+      some output files were not created.
 
 - A `File` defines a path and a status, which can be any of the following:
 
@@ -72,8 +72,8 @@ The nodes of the graph can be instances of the following main classes:
 There are also a few special nodes:
 
 - The `Root` node is the top-level node, of which there is only one.
-- A `DeferredGlob` node contains a [glob](https://en.wikipedia.org/wiki/Glob_(programming)) pattern of files that are made static when they are used as input.
-
+- A `DeferredGlob` node contains a [glob](https://en.wikipedia.org/wiki/Glob_(programming))
+  pattern of files that are made static when they are used as input.
 
 #### Edges
 
@@ -81,7 +81,8 @@ The StepUp workflow has two types of directed edges (arrows) connecting pairs of
 Each type of edge is used to define a graph with its own rules and logic.
 
 - The **"dependency graph"** consists of **"supplier ➜ consumer"** edges.
-  In this graph, an edge points from a node that provides *something* to a node that uses that *something*.
+  In this graph, an edge points from a node
+  that provides *something* to a node that uses that *something*.
   A few examples:
 
     - If a step uses a file as its input, it is the consumer of that file.
@@ -90,13 +91,14 @@ Each type of edge is used to define a graph with its own rules and logic.
       (The only exceptions are `./` and `/`.)
     - A step is the consumer of its working directory.
 
-    The following diagram from the [Dependencies tutorial](dependencies.md) illustrates this type of edge.
+    The following diagram from the [Dependencies tutorial](dependencies.md)
+    illustrates this type of edge.
     (Directories are not included, steps are blue ellipses, files are grey rectangles.)
 
     ![graph_dependency.svg](dependencies/graph_dependency.svg)
 
-    The build algorithm in StepUp will traverse *up*wards through this graph as it executes the steps,
-    similarly to [tup](https://gittup.org/tup/).
+    The build algorithm in StepUp will traverse *up*wards through this graph
+    as it executes the steps, similarly to [tup](https://gittup.org/tup/).
 
 - The **"provenance graph"** consists of **"creator ➜ product"** edges.
   An edge is added to this graph whenever a new node is created.
@@ -111,11 +113,11 @@ Each type of edge is used to define a graph with its own rules and logic.
     - The initial `plan.py` step has the `Root` node as its creator.
     - Only the `Root` node is its own creator, making it the top-level node by construction.
 
-    The following graph from the [Dependencies tutorial](dependencies.md) illustrates this type of edge.
+    The following graph from the [Dependencies tutorial](dependencies.md)
+    illustrates this type of edge.
     (Steps are blue ellipses, files are grey rectangles, root is an orange hexagon.)
 
     ![graph_provenance.svg](dependencies/graph_provenance.svg)
-
 
 ### Processes
 
@@ -123,8 +125,10 @@ The following diagram illustrates how the components of StepUp interact. Legend:
 
 - White boxes: your fingers and eyes
 - Grey boxes: processes
-    - The **terminal user interface** is the part of StepUp that you interact with when you run the `stepup` command.
-    - The **director** holds the workflow data structure and is responsible for scheduling steps and watching for file changes.
+    - The **terminal user interface** is the part of StepUp that you interact with
+      when you run the `stepup` command.
+    - The **director** holds the workflow data structure and is responsible
+      for scheduling steps and watching for file changes.
     - The **worker** processes execute steps and compute file and step hashes.
 - Grey arrows: standard input and standard output.
 - Yellow arrows: startup of subprocesses

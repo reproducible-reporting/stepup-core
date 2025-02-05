@@ -2,7 +2,6 @@
 
 This tutorial demonstrates how StepUp tracks dependencies.
 
-
 ## Example
 
 Example source files: [`docs/getting_started/dependencies/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/dependencies)
@@ -16,7 +15,8 @@ The following `plan.py` defines two steps, with the second making use of the out
 The placeholders `${inp}` and `${out}` are replaced by the `inp` and `out` keyword arguments.
 (This happens early, before the steps are sent to the director process.)
 
-The [`graph()`][stepup.core.interact.graph] function writes the graph in a few formats, which are used for visualization below.
+The [`graph()`][stepup.core.interact.graph] function writes the graph in a few formats,
+which are used for visualization below.
 
 Now run StepUp with two workers:
 
@@ -26,7 +26,7 @@ stepup -n 2
 
 You will see the following output:
 
-```
+```text
 {% include 'getting_started/dependencies/stdout.txt' %}
 ```
 
@@ -37,18 +37,19 @@ Note, however, that the `echo` commands are already started before `./plan.py` h
 This is the expected behavior: even without a complete overview of all the build steps,
 StepUp will start the steps for which it has sufficient information.
 
-
 ## Graphs
 
 The `plan.py` script writes a few files to analyze and visualize the graphs StepUp uses internally.
 The file `graph.txt` is a detailed human-readable version of `.stepup/graph.db`:
 
-```
+```text
 {% include 'getting_started/dependencies/graph.txt' %}
 ```
 
-This text format may not always be the most convenient way to understand how StepUp connects all the steps and files.
-A more intuitive picture can be created with [GraphViz](https://graphviz.org/) using the `.dot` files as input.
+This text format may not always be the most convenient way
+to understand how StepUp connects all the steps and files.
+A more intuitive picture can be created with [GraphViz](https://graphviz.org/)
+using the `.dot` files as input.
 The figures below were created using the following commands:
 
 ```bash
@@ -59,7 +60,6 @@ dot -v graph_dependency.dot -Tsvg -o graph_dependency.svg
 The workflow in StepUp consists of two graphs involving (a subset of) the same set of nodes:
 the **supplier graph** and the **creator graph**.
 
-
 ### Dependency Graph
 
 This graph shows how information is passed from one node to the next as the steps are executed.
@@ -69,7 +69,6 @@ This graph shows how information is passed from one node to the next as the step
 This is an intuitive graph showing the execution flow.
 A similar graph is used by most other build tools.
 Not shown in this diagram are the directories, which StepUp treats in the same way as files.
-
 
 ### Provenance Graph
 
@@ -88,9 +87,10 @@ In this example, there are three nodes that create other nodes:
     - The initial `./plan.py` step (with working directory `./`.)
     - The working directory `./` is created just like any other directory that is used.
 
-- The `./plan.py` step creates two nodes, see the two `step()` function calls in the `plan.py` script above.
+- The `./plan.py` step creates two nodes,
+  see the two `step()` function calls in the `plan.py` script above.
     - The `grep` step.
-      - The `echo` step.
+        - The `echo` step.
 
 - The `echo` step creates one output file: `story.txt`.
 
@@ -117,7 +117,6 @@ Example:
   and will be removed after a complete and successful build.
 - The new `plan.py` can also define new nodes, which simply extend the graph.
 - Nodes that are recreated with different properties will override any existing orphaned nodes.
-
 
 ## Try the Following
 

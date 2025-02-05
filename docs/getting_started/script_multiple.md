@@ -4,7 +4,6 @@ In the [previous tutorial](script_single.md), the script protocol and driver
 were illustrated with a single use case of a script.
 The driver also handles scripts that can be executed with different combinations of inputs.
 
-
 ## Multiple Cases Script Driver
 
 A Python script using the driver for multiple cases has the following structure.
@@ -38,7 +37,8 @@ if __name__ == "__main__":
 
 The script has the following elements:
 
-- The generator `cases()` takes no arguments and yields cases that correspond to different ways of running the script.
+- The generator `cases()` takes no arguments and yields cases
+  that correspond to different ways of running the script.
   Here, the cases are simple integers `1` and `2`, but richer data are also supported.
   The `item` in `yield item` is translated into an `args` list and a `kwargs` dictionary as follows:
 
@@ -64,7 +64,6 @@ The script has the following elements:
 
 - The function `run()` works in the same way as for the single case script driver.
 
-
 ## Example
 
 Example source files: [`docs/getting_started/script_multiple/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/script_multiple)
@@ -74,7 +73,6 @@ it leverages [NumPy](https://numpy.org/) and [Matplotlib](https://matplotlib.org
 The same plotting function is applied to two datasets of hourly temperatures recorded at
 the airports of Brussels and Ostend in February 2024, downloaded from the
 [ASOS network hosted by Iowa State University](https://mesonet.agron.iastate.edu/request/download.phtml).
-
 
 Create a script `plan.py` that just calls the plotting script:
 
@@ -97,7 +95,7 @@ stepup -n 1
 
 You should see the following terminal output with the plan and run steps of the plotting script:
 
-```
+```text
 {% include 'getting_started/script_multiple/stdout.txt' %}
 ```
 
@@ -105,7 +103,6 @@ This produces the following figures:
 
 ![EBBR](script_multiple/plot_ebbr.png)
 ![EBOS](script_multiple/plot_ebos.png)
-
 
 ## Try the Following
 

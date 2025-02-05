@@ -24,6 +24,7 @@ from path import Path
 
 from stepup.core.utils import (
     Translate,
+    filter_dependencies,
     make_path_out,
     myabsolute,
     mynormpath,
@@ -154,3 +155,37 @@ def test_translate_back(with_stepup_root):
 def test_translate_back_outside():
     translate = Translate("/home/dude/project/source/", "../../bar/egg")
     assert translate.back("../public") == "../../project/public"
+
+
+def test_filter_dependencies(monkeypatch, path_tmp):
+    (path_tmp / "project/sub").makedirs()
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp / "project")
+    abs_paths = [path_tmp / "project/foo", path_tmp / "project/sub/down/bar"]
+    monkeypatch.chdir(path_tmp / "project/sub")
+    assert filter_dependencies(abs_paths) == {"../foo", "down/bar"}
+
+
+def test_filter_dependencies_external(monkeypatch, path_tmp):
+    (path_tmp / "project").makedirs()
+    (path_tmp / "pkgs").makedirs()
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp / "project")
+    monkeypatch.setenv("STEPUP_EXTERNAL_SOURCES", path_tmp / "pkgs")
+    abs_paths = [path_tmp / "pkgs/helper.py", path_tmp / "other.py"]
+    monkeypatch.chdir(path_tmp / "project")
+    assert filter_dependencies(abs_paths) == {"../pkgs/helper.py"}
+
+
+def test_filter_dependencies_external2(monkeypatch, path_tmp):
+    (path_tmp / "project").makedirs()
+    (path_tmp / "pkgs").makedirs()
+    (path_tmp / "templates").makedirs()
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp / "project")
+    ext_sources = [path_tmp / "pkgs", path_tmp / "templates"]
+    monkeypatch.setenv("STEPUP_EXTERNAL_SOURCES", ":".join(ext_sources))
+    abs_paths = [
+        path_tmp / "pkgs/helper.py",
+        path_tmp / "other.py",
+        path_tmp / "templates/fancy.typ",
+    ]
+    monkeypatch.chdir(path_tmp / "project")
+    assert filter_dependencies(abs_paths) == {"../pkgs/helper.py", "../templates/fancy.typ"}

@@ -14,7 +14,6 @@ StepUp already comes with a few built-in "rules" defined int this way:
 Some of these were already discussed in the previous tutorials,
 and their source code offers some inspiration for writing your own.
 
-
 ## Example
 
 Example source files: [`docs/getting_started/no_rules/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/no_rules)
@@ -37,6 +36,6 @@ stepup -n 1
 
 This will show the following output:
 
-```
+```text
 {% include 'getting_started/no_rules/stdout.txt' %}
 ```
