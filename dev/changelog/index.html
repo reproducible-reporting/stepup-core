@@ -1353,7 +1353,16 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v2.0.7" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.0.7 - 2025-02-06
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.0.7 - 2025-02-06">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1978,7 +1987,16 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v2.0.7" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.0.7 - 2025-02-06
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.0.7 - 2025-02-06">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2552,10 +2570,14 @@
 and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-based Versioning</a>.
 (Changes to features documented as &ldquo;experimental&rdquo; will not increment macro and meso version numbers.)</p>
 <h2 id="unreleased"><a href="https://github.com/reproducible-reporting/stepup-core">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<p>(nothing yet)</p>
+<h2 id="v2.0.7"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.7">2.0.7</a> - 2025-02-06<a class="headerlink" href="#v2.0.7" title="Permanent link">&para;</a></h2>
+<p>This release fixes two recursive glob issues.</p>
 <h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Fixed issues with directories matching <code>glob("...", _defer=True)</code>,
   which are later used as parent directories in various scenarios.</li>
+<li>Fix bug in recursive glob to match <code>data/inp.txt</code> with the pattern <code>data/**/inp.txt</code></li>
 </ul>
 <h2 id="v2.0.6"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.6">2.0.6</a> - 2025-02-05<a class="headerlink" href="#v2.0.6" title="Permanent link">&para;</a></h2>
 <p>This release introduces the <code>STEPUP_EXTERNAL_SOURCES</code> environment variable
