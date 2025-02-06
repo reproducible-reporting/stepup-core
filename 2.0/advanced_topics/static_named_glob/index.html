@@ -1432,12 +1432,15 @@ For example, the following pattern will only match files with matching strings a
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>prefix_aaa_something_bbb.txt
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>prefix_bbb_something_aaa.txt
 </span></code></pre></div>
-<p>Named globs are often useful when working with files distributed over multiple directories, each having a central file that repeats a part of the directory name.</p>
+<p>Named globs are often useful when working with files distributed over multiple directories,
+each having a central file that repeats a part of the directory name.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/static_named_glob"><code>docs/advanced_topics/static_named_glob/</code></a></p>
-<p>In the example below, each directory represents a chapter from course notes, containing source files for individual sections.
+<p>In the example below, each directory represents a chapter from course notes,
+containing source files for individual sections.
 In a realistic setting, one could envision building a PDF presentations from LaTeX sources instead.
-To keep the example independent of StepUp RepRep, text files will be copied to Markdown files, which will then be concatenated.</p>
+To keep the example independent of StepUp RepRep,
+text files will be copied to Markdown files, which will then be concatenated.</p>
 <p>Create the following directory layout with markdown files:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>ch1/
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>ch1/sec1_1_introduction.txt
@@ -1471,7 +1474,8 @@ To keep the example independent of StepUp RepRep, text files will be copied to M
 </span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="k">for</span> <span class="n">ch</span><span class="p">,</span> <span class="n">paths_md</span> <span class="ow">in</span> <span class="n">md_chapter</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
 </span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    <span class="n">step</span><span class="p">(</span><span class="s2">&quot;cat $</span><span class="si">{inp}</span><span class="s2"> &gt; $</span><span class="si">{out}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="n">paths_md</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;public/ch</span><span class="si">{</span><span class="n">ch</span><span class="si">}</span><span class="s2">.md&quot;</span><span class="p">)</span>
 </span></code></pre></div>
-<p>Note that the substrings matching the named glob patterns are accessible as attributes of the <a class="autorefs autorefs-internal" href="../../reference/stepup.core.nglob/#stepup.core.nglob.NGlobMatch">NGlobMatch</a> object.
+<p>Note that the substrings matching the named glob patterns are accessible as attributes of
+the <a class="autorefs autorefs-internal" href="../../reference/stepup.core.nglob/#stepup.core.nglob.NGlobMatch"><code>NGlobMatch</code></a> object.
 For example, <code>match.ch</code> is the chapter number (as a string).</p>
 <p>Make the plan executable and run StepUp:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py

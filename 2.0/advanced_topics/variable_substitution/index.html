@@ -1495,8 +1495,10 @@ to tell the director that the current step depends on this variable.</p>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>Read from stdin:
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>This is src_foo
 </span></code></pre></div>
-<p>As shown in this example, the function <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.getenv"><code>getenv()</code></a> returns <code>None</code> when a variable does not exist (or any other default you specify).
-When using variables like <code>${MYVAR}</code> in path-like arguments, the variable must exist or an exception is raised.</p>
+<p>As shown in this example, the function <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.getenv"><code>getenv()</code></a>
+returns <code>None</code> when a variable does not exist (or any other default you specify).
+When using variables like <code>${MYVAR}</code> in path-like arguments,
+the variable must exist or an exception is raised.</p>
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Run StepUp without defining <code>MYVAR</code>: <code>stepup -n 1</code>.

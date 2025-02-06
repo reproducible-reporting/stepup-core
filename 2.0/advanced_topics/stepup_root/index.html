@@ -1365,17 +1365,21 @@
 <h1 id="the-stepup_root-variable">The STEPUP_ROOT variable<a class="headerlink" href="#the-stepup_root-variable" title="Permanent link">&para;</a></h1>
 <p>If you are working on a large project with several subdirectories,
 it may be useful to define the <code>STEPUP_ROOT</code> environment variable.
-It should contain the absolute path of the top-level directory where you would normally call the <code>stepup</code> and <code>cleanup</code> commands.
+It should contain the absolute path of the top-level directory
+where you would normally call the <code>stepup</code> and <code>cleanup</code> commands.
 (The top-level directory contains the <code>.stepup</code> subdirectory and the top-level <code>plan.py</code>.)</p>
-<p>With <code>STEPUP_ROOT</code> set, it is no longer necessary to change to the top-level directory before running <code>stepup</code> and <code>cleanup</code>.
+<p>With <code>STEPUP_ROOT</code> set, it is no longer necessary to change to the top-level directory
+before running <code>stepup</code> and <code>cleanup</code>.
 Also, the <code>cleanup</code> arguments will be interpreted correctly in subdirectories.</p>
 <p>You can manually set <code>STEPUP_ROOT</code> in the top-level directory as follows:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">STEPUP_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PWD</span><span class="si">}</span><span class="s2">&quot;</span>
 </span></code></pre></div>
 <p>However, this can be tedious, as it has to be set each time you open a new terminal window.
 It is much easier to set such variables using <a href="https://direnv.net/">direnv</a>.
-Once direnv is configured on your system, you can create an <code>.envrc</code> file with the above <code>export</code> line in the top-level directory.
-Each time you change to the project directory or any of its subdirectories, the <code>STEPUP_ROOT</code> directory will automatically be set correctly.</p>
+Once direnv is configured on your system,
+you can create an <code>.envrc</code> file with the above <code>export</code> line in the top-level directory.
+Each time you change to the project directory or any of its subdirectories,
+the <code>STEPUP_ROOT</code> directory will automatically be set correctly.</p>
 
 
 

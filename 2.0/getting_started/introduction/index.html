@@ -1541,10 +1541,12 @@ The following initial competencies are assumed:</p>
 <li>Working with a virtual terminal.</li>
 <li>Editing text files.</li>
 </ul>
-<p>Note that the examples in the tutorials are all small and use StepUp in serial mode (<code>-n 1</code>) and non-interactively.
+<p>Note that the examples in the tutorials are all small and use StepUp
+in serial mode (<code>-n 1</code>) and non-interactively.
 We believe this offers the best learning experience.
 However, StepUp really shines in more complex use cases and when used interactively.
-Once you know how StepUp works, you can impress yourself by effortlessly mastering the daunting complexity of your projects. :)</p>
+Once you know how StepUp works, you can impress yourself by effortlessly mastering
+the daunting complexity of your projects. :)</p>
 <h2 id="tutorial-source-files">Tutorial source files<a class="headerlink" href="#tutorial-source-files" title="Permanent link">&para;</a></h2>
 <p>Input files for each tutorial are stored in a corresponding subdirectory under
 <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started"><code>docs/getting_started/</code></a>
@@ -1569,11 +1571,13 @@ which comprise the same nodes.</p>
   working directory, command, arguments, inputs, outputs, etc.
   A step can also be in one of the following states:</p>
 <ul>
-<li><code>PENDING</code>: the step cannot yet be scheduled because some inputs have not been declared or built yet.</li>
+<li><code>PENDING</code>: the step cannot yet be scheduled
+  because some inputs have not been declared or built yet.</li>
 <li><code>QUEUED</code>: all inputs are available and the step is waiting to be executed.</li>
 <li><code>RUNNING</code>: the step is being executed by one of the workers.</li>
 <li><code>SUCCEEDED</code>: the step has been successfully completed.</li>
-<li><code>FAILED</code>: the subprocess exited with a non-zero exit code or some output files were not created.</li>
+<li><code>FAILED</code>: the subprocess exited with a non-zero exit code or
+  some output files were not created.</li>
 </ul>
 </li>
 <li>
@@ -1598,7 +1602,8 @@ which comprise the same nodes.</p>
 <p>There are also a few special nodes:</p>
 <ul>
 <li>The <code>Root</code> node is the top-level node, of which there is only one.</li>
-<li>A <code>DeferredGlob</code> node contains a <a href="https://en.wikipedia.org/wiki/Glob_(programming)">glob</a> pattern of files that are made static when they are used as input.</li>
+<li>A <code>DeferredGlob</code> node contains a <a href="https://en.wikipedia.org/wiki/Glob_(programming)">glob</a>
+  pattern of files that are made static when they are used as input.</li>
 </ul>
 <h4 id="edges">Edges<a class="headerlink" href="#edges" title="Permanent link">&para;</a></h4>
 <p>The StepUp workflow has two types of directed edges (arrows) connecting pairs of nodes.
@@ -1606,7 +1611,8 @@ Each type of edge is used to define a graph with its own rules and logic.</p>
 <ul>
 <li>
 <p>The <strong>&ldquo;dependency graph&rdquo;</strong> consists of <strong>&ldquo;supplier ➜ consumer&rdquo;</strong> edges.
-  In this graph, an edge points from a node that provides <em>something</em> to a node that uses that <em>something</em>.
+  In this graph, an edge points from a node
+  that provides <em>something</em> to a node that uses that <em>something</em>.
   A few examples:</p>
 <ul>
 <li>If a step uses a file as its input, it is the consumer of that file.</li>
@@ -1615,11 +1621,12 @@ Each type of edge is used to define a graph with its own rules and logic.</p>
   (The only exceptions are <code>./</code> and <code>/</code>.)</li>
 <li>A step is the consumer of its working directory.</li>
 </ul>
-<p>The following diagram from the <a href="../dependencies/">Dependencies tutorial</a> illustrates this type of edge.
+<p>The following diagram from the <a href="../dependencies/">Dependencies tutorial</a>
+illustrates this type of edge.
 (Directories are not included, steps are blue ellipses, files are grey rectangles.)</p>
 <p><img alt="graph_dependency.svg" src="../dependencies/graph_dependency.svg" /></p>
-<p>The build algorithm in StepUp will traverse <em>up</em>wards through this graph as it executes the steps,
-similarly to <a href="https://gittup.org/tup/">tup</a>.</p>
+<p>The build algorithm in StepUp will traverse <em>up</em>wards through this graph
+as it executes the steps, similarly to <a href="https://gittup.org/tup/">tup</a>.</p>
 </li>
 <li>
 <p>The <strong>&ldquo;provenance graph&rdquo;</strong> consists of <strong>&ldquo;creator ➜ product&rdquo;</strong> edges.
@@ -1635,7 +1642,8 @@ similarly to <a href="https://gittup.org/tup/">tup</a>.</p>
 <li>The initial <code>plan.py</code> step has the <code>Root</code> node as its creator.</li>
 <li>Only the <code>Root</code> node is its own creator, making it the top-level node by construction.</li>
 </ul>
-<p>The following graph from the <a href="../dependencies/">Dependencies tutorial</a> illustrates this type of edge.
+<p>The following graph from the <a href="../dependencies/">Dependencies tutorial</a>
+illustrates this type of edge.
 (Steps are blue ellipses, files are grey rectangles, root is an orange hexagon.)</p>
 <p><img alt="graph_provenance.svg" src="../dependencies/graph_provenance.svg" /></p>
 </li>
@@ -1645,8 +1653,10 @@ similarly to <a href="https://gittup.org/tup/">tup</a>.</p>
 <ul>
 <li>White boxes: your fingers and eyes</li>
 <li>Grey boxes: processes<ul>
-<li>The <strong>terminal user interface</strong> is the part of StepUp that you interact with when you run the <code>stepup</code> command.</li>
-<li>The <strong>director</strong> holds the workflow data structure and is responsible for scheduling steps and watching for file changes.</li>
+<li>The <strong>terminal user interface</strong> is the part of StepUp that you interact with
+  when you run the <code>stepup</code> command.</li>
+<li>The <strong>director</strong> holds the workflow data structure and is responsible
+  for scheduling steps and watching for file changes.</li>
 <li>The <strong>worker</strong> processes execute steps and compute file and step hashes.</li>
 </ul>
 </li>

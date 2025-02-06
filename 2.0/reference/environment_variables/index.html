@@ -1371,6 +1371,11 @@
   This will make StepUp fail on some internal inconsistency checks,
   rather than applying corrections to overcome the inconsistencies.
   (Every such inconsistency is due to a bug, which should be fixed eventually.)</li>
+<li><code>STEPUP_EXTERNAL_SOURCES</code>: a colon-separated list of directories outside <code>STEPUP_ROOT</code>
+  where automatically detected dependencies should be retained and converted to relative paths.
+  This is useful when you have source files that are not part of the StepUp project.
+  For example, if you are developing a Python library and used it in a StepUp project,
+  changes to the development version of the library will cause stepup to re-run the affected steps.</li>
 </ul>
 <p>We recommend using tools like <a href="https://direnv.net/">direnv</a> to manage these variables.
 Once <code>direnv</code> is installed and configured, you can create a <code>.envrc</code> file

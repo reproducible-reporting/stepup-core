@@ -1437,11 +1437,16 @@
 
 
 <h1 id="static-glob">Static Glob<a class="headerlink" href="#static-glob" title="Permanent link">&para;</a></h1>
-<p>Explicitly declaring static files with the <code>static()</code> function from the previous tutorial becomes tedious when dealing with many static files.
-To simplify matters, StepUp supports <a href="https://en.wikipedia.org/wiki/Glob_(programming)">&ldquo;glob&rdquo;</a> patterns, i.e., wildcards such as <code>*</code> and <code>?</code>.</p>
-<p>The <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function is similar to <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.static"><code>static()</code></a> and supports globbing, including some non-standard glob techniques discussed in the following tutorials.</p>
+<p>Explicitly declaring static files with the <code>static()</code> function from the previous tutorial
+becomes tedious when dealing with many static files.
+To simplify matters, StepUp supports <a href="https://en.wikipedia.org/wiki/Glob_(programming)">&ldquo;glob&rdquo;</a>
+patterns, i.e., wildcards such as <code>*</code> and <code>?</code>.</p>
+<p>The <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function is similar to <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.static"><code>static()</code></a>
+and supports globbing, including some non-standard glob techniques
+discussed in the following tutorials.</p>
 <p>Here, only the basic usage of <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> is covered.
-In the <a href="../static_glob_conditional/">following tutorial</a>, the use of <code>glob()</code> in conditionals is discussed.
+In the <a href="../static_glob_conditional/">following tutorial</a>,
+the use of <code>glob()</code> in conditionals is discussed.
 See <a href="../../advanced_topics/static_named_glob/">Static Named Glob</a> and
 <a href="../../advanced_topics/static_deferred_glob/">Static Deferred Glob</a> for more advanced use cases.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
@@ -1485,7 +1490,9 @@ Hence, they cannot be outputs of other steps.
 <li>
 <p>Run StepUp again without making any changes.
   You will notice that the <code>./plan.py</code> step is executed again despite not having changed it.
-  When StepUp starts from scratch, it has to assume that new files could have been added (since the last run) that match the glob pattern.
+  When StepUp starts from scratch,
+  it has to assume that new files could have been added (since the last run) and
+  that match the glob pattern.
   Hence, a step calling the <code>glob()</code> function cannot be skipped.
   (This can be avoided when using StepUp interactively. More on that later.)</p>
 </li>

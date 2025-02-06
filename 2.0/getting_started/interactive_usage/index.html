@@ -1481,7 +1481,8 @@
 In practice, this is mainly useful when building projects in batch jobs, e.g., in the cloud.
 When working on a project, interactive usage is more efficient and convenient,
 but requires a little more explanation.</p>
-<p>The <a href="../static_glob/">Static Glob</a> tutorial is a good example to demonstrate the interactive use of StepUp.
+<p>The <a href="../static_glob/">Static Glob</a> tutorial is a good example
+to demonstrate the interactive use of StepUp.
 Running StepUp as follows will not exit the terminal user interface:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>stepup<span class="w"> </span>-w
 </span></code></pre></div>
@@ -1501,17 +1502,21 @@ to display the supported keys with interactive commands:</p>
 </span></code></pre></div>
 <p>Now press (lower case) <code>r</code> to run steps whose (indirect) inputs have changed.
 The new file <code>src/foo.txt</code> is copied again to <code>dst/foo.txt</code>, while other steps are ignored.</p>
-<p>The interactive commands are described in detail in the <a href="../../reference/interactive/">Interactive Command Reference</a>.</p>
+<p>The interactive commands are described in detail
+in the <a href="../../reference/interactive/">Interactive Command Reference</a>.</p>
 <h2 id="add-a-new-file-that-matches-globsrctxt">Add a New File That Matches <code>glob("src/*.txt")</code><a class="headerlink" href="#add-a-new-file-that-matches-globsrctxt" title="Permanent link">&para;</a></h2>
 <p>Create a new file <code>src/spam.txt</code> with content of your choice while StepUp is still running.
 You will see at least the following:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>    UPDATED │ src/spam.txt
 </span></code></pre></div>
 <p>Now press (lower case) <code>r</code> again.
-The <code>./plan.py</code> step is executed again because a new file has appeared that matches a glob pattern used in <code>plan.py</code>.
+The <code>./plan.py</code> step is executed again because a new file has appeared
+that matches a glob pattern used in <code>plan.py</code>.
 Running <code>./plan.py</code> again will, in turn, create a new step to copy <code>src/spam.txt</code> to <code>dst/spam.txt</code>.</p>
 <h2 id="screen-recording">Screen Recording<a class="headerlink" href="#screen-recording" title="Permanent link">&para;</a></h2>
-<p>The following recording shows the terminal output when starting StepUp from scratch with two workers, changing <code>src/foo.txt</code> and re-running, followed by adding <code>src/spam.txt</code> and re-running:</p>
+<p>The following recording shows the terminal output when starting StepUp from scratch
+with two workers, changing <code>src/foo.txt</code> and re-running,
+followed by adding <code>src/spam.txt</code> and re-running:</p>
 <script src="https://asciinema.org/a/657277.js" id="asciicast-657277" async="true"></script>
 
 <h2 id="watch-mode-with-automatic-re-run">Watch mode with automatic re-run<a class="headerlink" href="#watch-mode-with-automatic-re-run" title="Permanent link">&para;</a></h2>

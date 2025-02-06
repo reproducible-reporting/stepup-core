@@ -1480,7 +1480,8 @@ However, there may be reasons why this is not always possible or desirable:</p>
 </span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="n">step</span><span class="p">(</span><span class="s2">&quot;cat average.txt&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;average.txt&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>For this example, the script <code>expensive.py</code> is not expensive at all.
-It just serves as an illustration of a more realistic scenario where this script may do some non-tritial work.
+It just serves as an illustration of a more realistic scenario
+where this script may do some non-tritial work.
 In this example, <code>expensive.py</code> just computes the average of all numbers in <code>dataset/bigfile.txt</code>
 and writes out the result to <code>average.txt</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="ch">#!/usr/bin/env python3</span>
@@ -1528,7 +1529,8 @@ and writes out the result to <code>average.txt</code>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>mv<span class="w"> </span>dataset<span class="w"> </span>tmp
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>stepup<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
-<p>The new output reveals that the dataset is completely ignored while the file <code>average.txt</code> is still used:</p>
+<p>The new output reveals that the dataset is completely ignored
+while the file <code>average.txt</code> is still used:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.0.3.post4)
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>   STARTUP │ Making failed steps pending
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>   STARTUP │ Watching 2 director(y|ies) from initial database
@@ -1565,8 +1567,10 @@ and writes out the result to <code>average.txt</code>:</p>
   but you still want them to be able to reproduce the workflow.</p>
 </li>
 <li>
-<p>In the long run, the large dataset might be removed because it is too big and old to keep around.
-  The extracted data then become a relevant and compact subset that can be easily stored for longer periods.</p>
+<p>In the long run, the large dataset might be removed
+  because it is too big and old to keep around.
+  The extracted data then become a relevant and compact subset
+  that can be easily stored for longer periods.</p>
 </li>
 </ul>
 </li>

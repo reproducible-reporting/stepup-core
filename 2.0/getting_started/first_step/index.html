@@ -1485,7 +1485,9 @@ For the sake of simplicity, a minimal workflow will be defined that does very li
 <p>Let&rsquo;s analyze the output:</p>
 <ul>
 <li>The first three lines are part of StepUp startup sequence.
-  The address <code>/tmp/stepup-########/director</code> is a <a href="https://en.wikipedia.org/wiki/Unix_domain_socket">Unix domain socket</a> through which the director receives instructions from other processes to define the workflow.
+  The address <code>/tmp/stepup-########/director</code>
+  is a <a href="https://en.wikipedia.org/wiki/Unix_domain_socket">Unix domain socket</a>
+  through which the director receives instructions from other processes to define the workflow.
   (The hash signs represent random characters.)</li>
 <li>The <code>START</code> and <code>SUCCESS</code> lines are shown for steps executed by StepUp:<ul>
 <li>The step <code>./plan.py</code> is created by default and runs the script that you just created.</li>

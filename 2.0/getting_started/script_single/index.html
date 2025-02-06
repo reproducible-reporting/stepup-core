@@ -684,7 +684,7 @@
         <li class="md-nav__item">
   <a href="#try-the-following" class="md-nav__link">
     <span class="md-ellipsis">
-      Try the Following:
+      Try the Following
     </span>
   </a>
   
@@ -1461,7 +1461,7 @@
         <li class="md-nav__item">
   <a href="#try-the-following" class="md-nav__link">
     <span class="md-ellipsis">
-      Try the Following:
+      Try the Following
     </span>
   </a>
   
@@ -1531,7 +1531,7 @@ This results in an extra argument <code>--step-info=some_file.json</code> for <c
 The planning of the run scripts is then expected to
 write all the information about the created run steps to this JSON file.
 In complex workflows, it may be useful to load this JSON file with
-<a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.load_step_info">load_step_info</a>.
+<a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.load_step_info"><code>load_step_info()</code></a>.
 Consult the section on <a href="../../advanced_topics/step_info/">StepInfo Objects</a>
 to learn how to use these objects.</p>
 <p>In addition, the <code>script()</code> function also supports all the arguments of <code>step()</code>,
@@ -1552,6 +1552,10 @@ writing Python scripts that adhere to the script protocol.</p>
 <p>To run the same script with multiple combinations of inputs and outputs (<a href="../script_multiple/">next tutorial</a>).</p>
 </li>
 </ol>
+<p>In both cases, the script driver will detect local modules that are imported in the script,
+and amend these as required inputs.
+By default, only the modules inside <code>STEPUP_ROOT</code> are treated as dependencies.
+You can specify additional directories in the <code>STEPUP_EXTERNAL_SOURCES</code> environment variable.</p>
 <h2 id="single-case-script-driver">Single Case Script Driver<a class="headerlink" href="#single-case-script-driver" title="Permanent link">&para;</a></h2>
 <p>A Python script using the driver for a single case has the following structure.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="ch">#!/usr/bin/env python3</span>
@@ -1662,7 +1666,7 @@ serialized in a JSON file:</p>
 </span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>  DIRECTOR │ See you!
 </span></code></pre></div>
 <p>As expected, this creates two files: <code>cos.npy</code> and <code>sin.npy</code>.</p>
-<h2 id="try-the-following">Try the Following:<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
+<h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
 <p>Modify the file <code>config.json</code> and re-run StepUp.

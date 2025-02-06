@@ -1422,8 +1422,10 @@
 <p>StepUp follows the same cleanup strategy as <a href="https://gittup.org/tup/index.html">tup</a>:
 If a step is removed or modified so that an output file is no longer created,
 StepUp will remove this output.
-This is also similar to <a href="https://ninja-build.org/">Ninja</a>&rsquo;s <code>cleandead</code> command, but it is not optional in StepUp.</p>
-<p>The main advantage of automatic cleaning is that it eliminates potential bugs and confusion related to old output files that are no longer relevant.</p>
+This is also similar to <a href="https://ninja-build.org/">Ninja</a>&rsquo;s <code>cleandead</code> command,
+but it is not optional in StepUp.</p>
+<p>The main advantage of automatic cleaning is that it eliminates potential bugs and confusion
+related to old output files that are no longer relevant.</p>
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <p>To illustrate the automatic cleanup, take the files from the example <a href="../copy_mkdir/">Copy and mkdir</a>
 and start StepUp in interactive mode.

@@ -1434,12 +1434,15 @@ Examples of such situations are:</p>
 <li>
 <p>You are planning a rather drastic reorganization of your project,
   including renaming some directories containing output files.
-  When directories are renamed, StepUp can no longer clean up old outputs in the renamed directories.
+  When directories are renamed,
+  StepUp can no longer clean up old outputs in the renamed directories.
   In this situation, you will want to clean up outputs manually before renaming directories.</p>
 </li>
 </ul>
-<p>Simply removing outputs with the <code>rm</code> command is possible but quickly becomes tedious for larger projects.
-The <code>cleanup</code> program, a companion to <code>stepup</code>, can selectively remove numerous outputs with minimal end-user effort.
+<p>Simply removing outputs with the <code>rm</code> command is possible
+but quickly becomes tedious for larger projects.
+The <code>cleanup</code> program, a companion to <code>stepup</code>,
+can selectively remove numerous outputs with minimal end-user effort.
 You need to pass as arguments the files whose (indirect) outputs you want to remove.
 Such arguments can be one of the two things:</p>
 <ol>
@@ -1454,7 +1457,8 @@ Such arguments can be one of the two things:</p>
 </ol>
 <p>Files are removed recursively, so outputs of outputs are also cleaned up.
 <code>cleanup</code> will only remove files with status <code>OUTDATED</code>, <code>BUILT</code> or <code>VOLATILE</code>.
-<code>STATIC</code> or <code>AWAITED</code> files, i.e., files that are not the result of step execution, are never removed.
+<code>STATIC</code> or <code>AWAITED</code> files, i.e.,
+files that are not the result of step execution, are never removed.
 In addition, <code>cleanup</code> compares the hash of a file to the last known hash,
 to make sure it only removes that contain changes made afterward without StepUp.</p>
 <p>By default, you need to run <code>cleanup</code> in the top-level directory where you also started <code>stepup</code>.
@@ -1467,7 +1471,8 @@ as explained in the <a href="../stepup_root/">next tutorial</a>.</p>
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
-<p>The <a href="../static_named_glob/">Static Named Glob</a> tutorial provides a good test case for experimenting with <code>cleanup</code>.
+<p>The <a href="../static_named_glob/">Static Named Glob</a> tutorial provides a good test case
+  for experimenting with <code>cleanup</code>.
   For this example, run <code>stepup</code> without any arguments.
   Then open a second terminal in the same directory and run <code>cleanup ch3/sec3_1_applications.txt</code>.
   You will see that the following files have been deleted:</p>

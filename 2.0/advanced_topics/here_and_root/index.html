@@ -1437,23 +1437,30 @@
 
 
 <h1 id="here-and-root-variables">HERE and ROOT variables<a class="headerlink" href="#here-and-root-variables" title="Permanent link">&para;</a></h1>
-<p>When a worker runs a step, it defines several environment variables, including <code>HERE</code> and <code>ROOT</code>, which can be relevant for writing advanced scripts.
-(The workers also define variables starting with <code>STEPUP_</code>, but these are only useful to StepUp itself, not to end users.)</p>
+<p>When a worker runs a step, it defines several environment variables,
+including <code>HERE</code> and <code>ROOT</code>, which can be relevant for writing advanced scripts.
+(The workers also define variables starting with <code>STEPUP_</code>,
+but these are only useful to StepUp itself, not to end users.)</p>
 <p>The two variables are defined as follows:</p>
 <ul>
-<li><code>HERE</code> contains the relative path from the directory where StepUp was started to the current working directory of the step.</li>
-<li><code>ROOT</code> contains the opposite: the relative directory from the current working directory to the directory where StepUp was started.</li>
+<li><code>HERE</code> contains the relative path from the directory where StepUp was started
+  to the current working directory of the step.</li>
+<li><code>ROOT</code> contains the opposite: the relative directory from the current working directory
+  to the directory where StepUp was started.</li>
 </ul>
 <p>Hence, <code>HERE/ROOT</code> and <code>ROOT/HERE</code> normalize to the current directory: <code>./</code>.</p>
 <p>These variables can be useful in the following cases:</p>
 <ul>
 <li>For out-of-source builds, where you want to replicate the directory structure of the source material.
   (See example below.)</li>
-<li>To reference a local script that is stored in the top-level directory of your project: <code>${ROOT}/script.py</code></li>
+<li>To reference a local script that is stored in the top-level directory of your project:
+  <code>${ROOT}/script.py</code></li>
 </ul>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/here_and_root"><code>docs/advanced_topics/here_and_root/</code></a></p>
-<p>This example represents a minimal out-of-source build, which is nevertheless involving several files, due to the inherent complexity of out-of-source builds.</p>
+<p>This example represents a minimal out-of-source build,
+which is nevertheless involving several files,
+due to the inherent complexity of out-of-source builds.</p>
 <p>Create a <code>source/</code> directory with the following <code>source/plan.py</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span> <span class="nn">stepup.core.api</span> <span class="kn">import</span> <span class="n">mkdir</span><span class="p">,</span> <span class="n">plan</span><span class="p">,</span> <span class="n">static</span>
@@ -1462,7 +1469,8 @@
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">mkdir</span><span class="p">(</span><span class="s2">&quot;../public/&quot;</span><span class="p">)</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">plan</span><span class="p">(</span><span class="s2">&quot;sub/&quot;</span><span class="p">)</span>
 </span></code></pre></div>
-<p>Also create a <code>source/sub/</code> directory with a file <code>source/sub/example.txt</code> (arbitrary contents) and the following <code>source/sub/plan.py</code>:</p>
+<p>Also create a <code>source/sub/</code> directory with a file <code>source/sub/example.txt</code> (arbitrary contents)
+and the following <code>source/sub/plan.py</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="ch">#!/usr/bin/env python3</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span> <span class="nn">stepup.core.api</span> <span class="kn">import</span> <span class="n">copy</span><span class="p">,</span> <span class="n">mkdir</span><span class="p">,</span> <span class="n">static</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
@@ -1494,8 +1502,10 @@
 </span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>  DIRECTOR │ Stopping workers.
 </span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>  DIRECTOR │ See you!
 </span></code></pre></div>
-<p>The top-level <code>plan.py</code> provides some infrastructure: some static files and creating the public directory where the outputs will be created.</p>
-<p>The script <code>sub/plan.py</code> uses the <code>ROOT</code> and <code>HERE</code> variables in a way that is independent of the location of this <code>sub/plan.py</code>.
+<p>The top-level <code>plan.py</code> provides some infrastructure:
+some static files and creating the public directory where the outputs will be created.</p>
+<p>The script <code>sub/plan.py</code> uses the <code>ROOT</code> and <code>HERE</code> variables in a way
+that is independent of the location of this <code>sub/plan.py</code>.
 It may therefore be fixed in an environment variable, for example:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">DST</span><span class="o">=</span><span class="s1">&#39;../public/${HERE}&#39;</span>
 </span></code></pre></div>
@@ -1512,7 +1522,8 @@ Any variables present in the environment variable will also be substituted once.
 <ul>
 <li>
 <p>Modify the scripts <code>plan.py</code> and <code>sub/plan.py</code> to utilize a <code>DST</code> variable as explained above.
-  To achieve this, define <code>DST</code> externally, for instance, by starting StepUp as <code>DST='../public/${HERE}' stepup -n 1</code>.</p>
+  To achieve this, define <code>DST</code> externally, for instance,
+  by starting StepUp as <code>DST='../public/${HERE}' stepup -n 1</code>.</p>
 </li>
 <li>
 <p>As a follow-up to the previous point, run StepUp with a different <code>DST</code> value.

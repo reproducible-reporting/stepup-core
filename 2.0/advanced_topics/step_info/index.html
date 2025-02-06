@@ -1424,11 +1424,11 @@
 <p>This feature was introduced in StepUp 1.3.0.</p>
 </div>
 <p>The <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function always return
-an instance of <a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo">StepInfo</a>.
+an instance of <a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo"><code>StepInfo</code></a>.
 This object holds arguments used to define the step,
 which may be useful for creating follow-up steps.
 All API functions that create a step by calling the <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function
-also return the <a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo">StepInfo</a> object.</p>
+also return the <a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo"><code>StepInfo</code></a> object.</p>
 <p>Especially for higher-level API functions that create more advanced steps,
 such as the ones in <a href="https://reproducible-reporting.github.io/stepup-reprep/">StepUp RepRep</a>,
 it can be convenient to access the paths constructed inside the API function
@@ -1439,8 +1439,8 @@ The main difference to the arguments passed in,
 is that environment variables are substituted in the paths.</p>
 <p>In addition, <code>StepInfo</code> has three methods: <code>filter_inp()</code>, <code>filter_out()</code> and <code>filter_vol()</code>,
 which can be used to get a subset of paths.
-These functions take the same arguments as those of the <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.glob">glob</a> function
-and also return an <a class="autorefs autorefs-internal" href="../../reference/stepup.core.nglob/#stepup.core.nglob">NGlobMulti</a> instance.</p>
+These functions take the same arguments as those of the <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function
+and also return an <a class="autorefs autorefs-internal" href="../../reference/stepup.core.nglob/#stepup.core.nglob"><code>NGlobMulti</code></a> instance.</p>
 <p>Note that the <code>StepInfo</code> object will only contain information known at the time the step is defined.
 Amended information (inputs, outputs, &hellip;) cannot be retrieved from <code>StepInfo</code> objects.
 Also note that relative paths in <code>inp</code>, <code>out</code> and <code>vol</code> are relative to the working directory.</p>

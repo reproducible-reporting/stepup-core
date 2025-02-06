@@ -1451,12 +1451,15 @@ In practice, it takes several iterations to get <code>Step 1</code> working prop
 This can be verified by analyzing the file <code>converted.txt</code> or with unit tests.</p>
 <p>To avoid executing <code>Step 2</code> at every iteration in the development of <code>Step 1</code>,
 you can <strong>block</strong> this step.
-All step-creating functions accept an optional <code>block=True</code> keyword argument to prevent them from being executed.
+All step-creating functions accept an optional <code>block=True</code> keyword argument
+to prevent them from being executed.
 Blocking steps is a temporary measure, meant to be reverted once you&rsquo;re done with <code>Step 1</code>.</p>
 <p>Blocking steps has some consequences:</p>
 <ul>
-<li>Blocked steps remain in the PENDING state, meaning that outdated output files are not cleaned up automatically.</li>
-<li>At the end of the <em>run phase</em>, a list of blocked steps is shown, to remind the user that some steps are blocked.</li>
+<li>Blocked steps remain in the <code>PENDING</code> state,
+  meaning that outdated output files are not cleaned up automatically.</li>
+<li>At the end of the <em>run phase</em>, a list of blocked steps is shown,
+  to remind the user that some steps are blocked.</li>
 <li>Subsequent steps, which use outputs of blocked or pending steps, also remain pending.</li>
 </ul>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
