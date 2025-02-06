@@ -193,7 +193,7 @@ def glob(
         if len(subs) > 0:
             raise ValueError("Named wildcards are not supported in deferred globs.")
         to_check = RPC_CLIENT.call.defer(_get_step_key(), tr_patterns)
-        _confirm_deferred(to_check)
+        _check_deferred(to_check)
         return None
 
     # Collect all matches
@@ -320,14 +320,8 @@ def step(
         vol=shlex.join(su_vol_paths),
     )
 
-    # Look for inputs that match deferred globs.
-    # Check their existence, update their hashes before making them static.
-    if len(tr_inp_paths) > 0:
-        to_check = RPC_CLIENT.call.filter_deferred(tr_inp_paths)
-        _confirm_deferred(to_check)
-
     # Finally create the step.
-    RPC_CLIENT.call.step(
+    to_check = RPC_CLIENT.call.step(
         _get_step_key(),
         command,
         tr_inp_paths,
@@ -339,6 +333,9 @@ def step(
         pool,
         block,
     )
+
+    # Check the existence of files matching deferred globs.
+    _check_deferred(to_check)
 
     # Return a StepInfo instance to facilitate the definition of follow-up steps
     return StepInfo(command, tr_workdir, su_inp_paths, env_vars, su_out_paths, su_vol_paths)
@@ -417,22 +414,20 @@ def amend(
         tr_out_paths = [translate(subs(out_path)) for out_path in out_paths]
         tr_vol_paths = [translate(subs(vol_path)) for vol_path in vol_paths]
 
-    # Look for inputs that match deferred globs and check their existence
-    # before making them static.
-    if len(tr_inp_paths) > 0:
-        to_check = RPC_CLIENT.call.filter_deferred(tr_inp_paths)
-        _confirm_deferred(to_check)
-
     # Finally, amend for real.
-    keep_going = RPC_CLIENT.call.amend(
-        _get_step_key(),
+    step_key = _get_step_key()
+    amend_result = RPC_CLIENT.call.amend(
+        step_key,
         tr_inp_paths,
         sorted(env_vars),
         tr_out_paths,
         tr_vol_paths,
     )
-    if keep_going is False:
-        raise InputNotFoundError("Amended inputs are not available yet.")
+    if amend_result is not None:
+        keep_going, to_check = amend_result
+        if keep_going is False:
+            raise InputNotFoundError("Amended inputs are not available yet.")
+        _check_deferred(to_check, step_key)
     # Double check that all inputs are indeed present.
     _check_inp_paths(su_inp_paths)
 
@@ -982,19 +977,32 @@ def subs_env_vars() -> Iterator[Callable[[str | None], str | None]]:
 #
 
 
-def _confirm_deferred(to_check: list[tuple[str, FileHash]] | None):
+class DeferredNotConfirmedError(Exception):
+    """Raised deferred glob matches cannot be confirmed."""
+
+
+def _check_deferred(to_check: list[tuple[str, FileHash]] | None, step_key: str | None = None):
     """Check file, update hashes of existing ones, and send the updates to the director."""
     if to_check is not None and len(to_check) > 0:
         # Select matches of the deferred glob that exist and update their hashes.
         checked = []
+        errors = ["Invalid deferred glob matches:"]
         for tr_path, file_hash in to_check:
             lo_path = translate.back(tr_path)
             file_hash.update(lo_path)
             if file_hash.digest == b"u":
-                raise AssertionError(f"File matched deferred glob but does not exist: {lo_path}")
-            _check_inp_paths([lo_path])
-            checked.append((tr_path, file_hash))
-        RPC_CLIENT.call.confirm(checked)
+                errors.append("{tr_path} (MISSING)")
+            elif file_hash.digest == b"d" and not tr_path.endswith("/"):
+                errors.append("{tr_path} (NO TRAILING SEPARATOR)")
+            else:
+                checked.append((tr_path, file_hash))
+        if len(checked) > 0:
+            RPC_CLIENT.call.confirm(checked)
+        if len(errors) > 1:
+            message = "\n".join(errors)
+            if step_key is not None:
+                RPC_CLIENT.call.reschedule_step(step_key, message)
+            raise DeferredNotConfirmedError(message)
 
 
 def _check_inp_paths(inp_paths: Iterable[Path]):

@@ -3,12 +3,6 @@ root:
              creates   file:plan.py
              creates   step:./plan.py
 
-file:plan.py
-               state = STATIC
-          created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
-
 file:./
                state = STATIC
           created by   root:
@@ -26,6 +20,12 @@ file:./
             supplies   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
             supplies   step:paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
             supplies   step:paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED

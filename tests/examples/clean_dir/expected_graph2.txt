@@ -3,12 +3,6 @@ root:
              creates   file:plan.py
              creates   step:./plan.py
 
-file:plan.py
-               state = STATIC
-          created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
-
 file:./
                state = STATIC
           created by   root:
@@ -19,6 +13,12 @@ file:./
             supplies   step:cp -aT sub/tmp.txt sub/out.txt
             supplies   step:echo hello > sub/inp.txt
             supplies   step:mkdir -p sub/
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED

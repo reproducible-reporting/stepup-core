@@ -10,6 +10,19 @@ Return code           1
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ 1 step(s) failed.
+   WARNING │ 1 step(s) remained pending due to incomplete requirements
+──────────────────────────────── Missing inputs ────────────────────────────────
+             MISSING  static/foo/bar/
+             MISSING  static/foo/
+             MISSING  static/
+             MISSING  static/foo/bar/README.md
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               cat static/foo/bar/README.md
+Working directory     ./
+Inputs        STATIC  ./
+             MISSING  static/foo/bar/
+             MISSING  static/foo/bar/README.md
+────────────────────────────────────────────────────────────────────────────────
    WARNING │ Skipping cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
      PHASE │ watch

@@ -3,18 +3,18 @@ root:
              creates   file:plan.py
              creates   step:./plan.py
 
-file:plan.py
-               state = STATIC
-          created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
-
 file:./
                state = STATIC
           created by   root:
             supplies   file:data/
             supplies   file:plan.py
             supplies   file:scripts/
+            supplies   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
             supplies   step:./plan.py
 
 step:./plan.py
@@ -50,6 +50,7 @@ file:scripts/
           created by   step:./plan.py
             consumes   file:./
             supplies   file:scripts/repeat.py
+            supplies   step:../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
 
 file:scripts/repeat.py
                state = STATIC
@@ -78,6 +79,7 @@ step:../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}
           created by   step:./plan.py  # wd=data/
             consumes   file:data/
             consumes   file:data/single.txt
+            consumes   file:scripts/
             consumes   file:scripts/repeat.py
              creates   file:data/multi.txt
             supplies   file:data/multi.txt

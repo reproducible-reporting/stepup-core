@@ -99,8 +99,8 @@ def declare_static(workflow, creator, paths):
     This a heavily simplified version of the stepup.core.api.static function.
     This is solely used for testing the workflow.
     """
-    workflow.declare_missing(creator, paths)
-    checked = [(path, fake_hash(path)) for path in paths]
+    missing = workflow.declare_missing(creator, paths)
+    checked = [(path, fake_hash(path)) for path, _ in missing]
     workflow.confirm_static(checked)
     return [workflow.find("file", path) for path in paths]
 
@@ -109,6 +109,7 @@ def declare_static(workflow, creator, paths):
 def wfs() -> Iterator[Workflow]:
     """A workflow from scratch, no plan.py"""
     workflow = Workflow(sqlite3.Connection(":memory:"))
+    declare_static(workflow, workflow.root, ["./"])
     yield workflow
     workflow.check_consistency()
 
@@ -119,8 +120,9 @@ def wfp() -> Iterator[Workflow]:
     workflow = Workflow(sqlite3.Connection(":memory:"))
     with workflow.con:
         root = workflow.root
-        declare_static(workflow, root, ["plan.py"])
-        plan = workflow.define_step(root, "./plan.py", inp_paths=["plan.py"])
+        declare_static(workflow, root, ["./", "plan.py"])
+        workflow.define_step(root, "./plan.py", inp_paths=["plan.py"])
+        plan = workflow.find("step", "./plan.py")
         nodes = list(workflow.nodes())
         assert nodes[0] == root
         for node in nodes[1:3]:

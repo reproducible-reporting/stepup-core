@@ -4,12 +4,6 @@ root:
              creates   file:plan.py
              creates   step:./plan.py
 
-file:plan.py
-               state = STATIC
-          created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
-
 file:./
                state = STATIC
           created by   root:
@@ -19,6 +13,12 @@ file:./
             supplies   file:worker_out.json
             supplies   step:./plan.py
             supplies   step:./worker.py --out=worker_out.json --amend-out
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
@@ -50,6 +50,12 @@ step:./worker.py --out=worker_out.json --amend-out
              creates   file:worker_out.json
             supplies   file:worker_out.json [amended]
 
+file:../pkgs/helper.py
+               state = STATIC
+          created by   dg:../pkgs/**
+            consumes   file:../pkgs/
+            supplies   step:./worker.py --out=worker_out.json --amend-out
+
 file:../pkgs/
                state = STATIC
           created by   dg:../pkgs/**
@@ -61,12 +67,6 @@ file:../
           created by   root:
             consumes   file:./
             supplies   file:../pkgs/
-
-file:../pkgs/helper.py
-               state = STATIC
-          created by   dg:../pkgs/**
-            consumes   file:../pkgs/
-            supplies   step:./worker.py --out=worker_out.json --amend-out
 
 file:worker_out.json
                state = BUILT

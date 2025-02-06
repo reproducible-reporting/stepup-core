@@ -348,18 +348,6 @@ class DirectorHandler:
         return to_check
 
     @allow_rpc
-    async def filter_deferred(self, paths: list[str]) -> list[str]:
-        """Test all paths against deferred globs and return matches.
-
-        Returns
-        -------
-        to_check
-            A list of (path, file_hash) tuples to check and make static if valid.
-        """
-        async with self.dblock:
-            return self.workflow.filter_deferred(paths)
-
-    @allow_rpc
     async def confirm(self, checked: list[tuple[str, FileHash]]):
         """Mark missing files as static because they were found to be present.
 
@@ -385,18 +373,23 @@ class DirectorHandler:
         optional: bool,
         pool: str | None,
         block: bool,
-    ):
+    ) -> list[tuple[str, FileHash]]:
         """Create a step in the workflow.
 
         Notes
         -----
         This is an RPC wrapper for `Workflow.define_step`.
+
+        Returns
+        -------
+        to_check
+            A list of (path, file_hash) tuples to check and make static if valid.
         """
         if not workdir.endswith(os.sep):
             raise GraphError(f"A working directory must end with a separator, got: {workdir}")
         async with self.dblock:
             creator = self.workflow.find(*creator_key.split(":", maxsplit=1))
-            self.workflow.define_step(
+            return self.workflow.define_step(
                 creator,
                 command,
                 inp_paths=inp_paths,
@@ -429,12 +422,22 @@ class DirectorHandler:
         env_vars: set[str],
         out_paths: list[str],
         vol_paths: list[str],
-    ) -> bool:
+    ) -> tuple[bool, list[tuple[str, FileHash]]]:
         """Amend a step.
 
         Notes
         -----
         This is an RPC wrapper for `Workflow.amend_step`.
+
+        Returns
+        -------
+        keep_going
+            Whether the step is still runnable after amending.
+        to_check
+            A list of `(path, file_hash)` tuples to check and make static if valid.
+            This is only relevant when `keep_going` is `True`.
+            If some of the deferred matches cannot be confirmed,
+            the caller has to change `keep_going` to `False`.
         """
         async with self.dblock:
             step = self.workflow.find(*step_key.split(":", maxsplit=1))
@@ -445,6 +448,13 @@ class DirectorHandler:
                 out_paths=out_paths,
                 vol_paths=vol_paths,
             )
+
+    @allow_rpc
+    async def reschedule_step(self, step_key: str, reason: str):
+        """Reschedule a step for the given reason."""
+        async with self.dblock:
+            step = self.workflow.find(*step_key.split(":", maxsplit=1))
+            step.set_rescheduled_info(reason)
 
     @allow_rpc
     async def getinfo(self, step_key: str) -> StepInfo:

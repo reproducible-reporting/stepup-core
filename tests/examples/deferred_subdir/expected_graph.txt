@@ -3,17 +3,17 @@ root:
              creates   file:plan.py
              creates   step:./plan.py
 
-file:plan.py
-               state = STATIC
-          created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
-
 file:./
                state = STATIC
           created by   root:
             supplies   file:plan.py
             supplies   file:sub/
+            supplies   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
             supplies   step:./plan.py
 
 step:./plan.py
@@ -55,12 +55,6 @@ dg:sub/u*.txt
           created by   step:./plan.py  # wd=sub/
              creates   file:sub/used.txt
 
-file:sub/used.txt
-               state = STATIC
-          created by   dg:sub/u*.txt
-            consumes   file:sub/
-            supplies   step:cp -aT used.txt copy.txt  # wd=sub/
-
 step:cp -aT used.txt copy.txt  # wd=sub/
                state = SUCCEEDED
           created by   step:./plan.py  # wd=sub/
@@ -68,6 +62,12 @@ step:cp -aT used.txt copy.txt  # wd=sub/
             consumes   file:sub/used.txt
              creates   file:sub/copy.txt
             supplies   file:sub/copy.txt
+
+file:sub/used.txt
+               state = STATIC
+          created by   dg:sub/u*.txt
+            consumes   file:sub/
+            supplies   step:cp -aT used.txt copy.txt  # wd=sub/
 
 file:sub/copy.txt
                state = BUILT

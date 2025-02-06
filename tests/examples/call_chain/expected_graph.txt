@@ -3,12 +3,6 @@ root:
              creates   file:plan.py
              creates   step:./plan.py
 
-file:plan.py
-               state = STATIC
-          created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
-
 file:./
                state = STATIC
           created by   root:
@@ -21,6 +15,12 @@ file:./
             supplies   step:./add.py --inp=add_inp.json --out=add_out.json --amend-out
             supplies   step:./plan.py
             supplies   step:./square.py --inp=add_out.json --out=square_out.json --amend-out
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED

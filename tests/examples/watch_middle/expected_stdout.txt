@@ -18,8 +18,8 @@
 Command               ./plan.py
 Working directory     ./
 Declares      STATIC  original.txt
-Inputs       MISSING  plan.py
-              STATIC  ./
+Inputs        STATIC  ./
+             MISSING  plan.py
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ Skipping cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/warning.log

@@ -19,6 +19,7 @@
 Command               cp -aT sub/message.txt message.txt
 Working directory     ./
 Inputs        STATIC  ./
+             MISSING  sub/
              MISSING  sub/message.txt
 Outputs      AWAITED  message.txt
 ────────────────────────────────────────────────────────────────────────────────

@@ -7,10 +7,11 @@
      PHASE │ run
     NOSKIP │ cp -aT static/foo.txt bar.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, digest 40686cd4 ➜ 6479f342, inp_digset 9d394a1e ➜ a5e3d119
+Modified step hash   explained, digest 13498f2f ➜ 381fb017, inp_digset 4123a251 ➜ 2af8b7c4
 Modified inp hash    static/foo.txt (digest 5d470882 ➜ 4e2397d6, size 6 ➜ 7)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
+Same inp hash        static/
 Same out hash        bar.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ cp -aT static/foo.txt bar.txt

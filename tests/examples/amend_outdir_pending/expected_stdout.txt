@@ -6,6 +6,7 @@
      START │ ./demo.py
 RESCHEDULE │ ./demo.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
+Missing inputs and/or required directories:
 nonexisting/
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ 1 step(s) remained pending due to incomplete requirements

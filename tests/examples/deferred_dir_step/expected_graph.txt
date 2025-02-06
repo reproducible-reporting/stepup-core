@@ -1,0 +1,95 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:dir_inp/
+            supplies   file:dir_out/
+            supplies   file:dir_vol/
+            supplies   file:dir_work/
+            supplies   file:plan.py
+            supplies   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   dg:dir_*/
+             creates   file:dir_inp/inp.txt
+             creates   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work/
+
+dg:dir_*/
+          created by   step:./plan.py
+             creates   file:dir_inp/
+             creates   file:dir_out/
+             creates   file:dir_vol/
+             creates   file:dir_work/
+
+step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work/
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:dir_inp/
+            consumes   file:dir_inp/inp.txt
+            consumes   file:dir_out/
+            consumes   file:dir_vol/
+            consumes   file:dir_work/
+             creates   file:dir_out/out.txt
+             creates   file:dir_vol/vol.txt
+            supplies   file:dir_out/out.txt
+            supplies   file:dir_vol/vol.txt
+
+file:dir_inp/
+               state = STATIC
+          created by   dg:dir_*/
+            consumes   file:./
+            supplies   file:dir_inp/inp.txt
+            supplies   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work/
+
+file:dir_out/
+               state = STATIC
+          created by   dg:dir_*/
+            consumes   file:./
+            supplies   file:dir_out/out.txt
+            supplies   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work/
+
+file:dir_vol/
+               state = STATIC
+          created by   dg:dir_*/
+            consumes   file:./
+            supplies   file:dir_vol/vol.txt
+            supplies   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work/
+
+file:dir_work/
+               state = STATIC
+          created by   dg:dir_*/
+            consumes   file:./
+            supplies   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work/
+
+file:dir_inp/inp.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:dir_inp/
+            supplies   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work/
+
+file:dir_out/out.txt
+               state = BUILT
+          created by   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work/
+            consumes   file:dir_out/
+            consumes   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work/
+
+file:dir_vol/vol.txt
+               state = VOLATILE
+          created by   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work/
+            consumes   file:dir_vol/
+            consumes   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work/

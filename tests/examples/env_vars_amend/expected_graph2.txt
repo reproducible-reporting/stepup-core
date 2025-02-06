@@ -3,12 +3,6 @@ root:
              creates   file:plan.py
              creates   step:./plan.py
 
-file:plan.py
-               state = STATIC
-          created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
-
 file:./
                state = STATIC
           created by   root:
@@ -16,6 +10,12 @@ file:./
             supplies   file:output.txt
             supplies   file:plan.py
             supplies   step:./demovars.py > output.txt
+            supplies   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
             supplies   step:./plan.py
 
 step:./plan.py

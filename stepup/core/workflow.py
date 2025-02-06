@@ -48,6 +48,45 @@ __all__ = ("Workflow",)
 logger = logging.getLogger(__name__)
 
 
+RECURSE_DEFERRED_INPUTS = f"""
+WITH RECURSIVE missing(i, label, creator_kind) AS (
+    SELECT node.i, node.label, cnode.kind FROM node
+    JOIN node AS cnode ON node.creator = cnode.i
+    JOIN file ON node.i = file.node
+    JOIN dependency ON node.i = supplier
+    WHERE consumer = ? AND node.kind = 'file' AND file.state = {FileState.MISSING.value}
+    UNION
+    SELECT node.i, node.label, cnode.kind FROM node
+    JOIN node AS cnode ON node.creator = cnode.i
+    JOIN file ON node.i = file.node
+    JOIN dependency ON node.i = supplier
+    JOIN missing ON consumer = missing.i
+    WHERE node.kind = 'file' AND file.state = {FileState.MISSING.value}
+)
+SELECT i, label FROM missing WHERE creator_kind = 'dg'
+"""
+
+
+@attrs.define
+class SupplyInfo:
+    """Result of the `supply_file` method, for internal use only."""
+
+    file: Node = attrs.field()
+    """A new or existing file."""
+
+    available: bool = attrs.field()
+    """Whether the requested path is BUILT or STATIC, i.e. readily available for use as input."""
+
+    deferred: list[Node] = attrs.field()
+    """A list of MISSING file nodes whose existence and validity must be checked.
+
+    These are typically parent directories of the file that are new matches of a deferred glob.
+    """
+
+    new_idep: int | None = attrs.field()
+    """Dependency identifier when the relation is new, None otherwise."""
+
+
 @attrs.define(eq=False)
 class Workflow(Cascade):
     # Steps ready for scheduling and execution.
@@ -275,7 +314,7 @@ class Workflow(Cascade):
         if node.is_orphan():
             raise ValueError(f"{argname} is orphan: '{node.key()}'")
 
-    def supply_parent(self, file: File) -> tuple[Node | None, bool, bool]:
+    def supply_parent(self, file: File) -> SupplyInfo | None:
         """Create or find a parent directory file node.
 
         Parameters
@@ -285,16 +324,13 @@ class Workflow(Cascade):
 
         Returns
         -------
-        parent
-            A parent file object
-        available
-            True when the requested parent is BUILT or STATIC.
-        new_relation
-            True when the requested relation is new.
+        suply_info
+            Information about the supplied file object or `None` when no parent is needed.
+            (This exception only occurs when the parent is './' or '/'.)
         """
         parent_path = myparent(file.path)
         if parent_path is None:
-            return None, True, False
+            return None
         return self.supply_file(file, parent_path, new=False)
 
     def matching_deferred_glob(self, path: str) -> DeferredGlob | None:
@@ -313,7 +349,7 @@ class Workflow(Cascade):
     def always_static(path: str) -> bool:
         return path in ["./", "/"] or path == "../" * (len(path) // 3)
 
-    def supply_file(self, node: Node, path: str, new: bool = True) -> tuple[Node, bool, bool]:
+    def supply_file(self, node: Node, path: str, new: bool = True) -> SupplyInfo:
         """Find an existing file or create on orphan file, and make it a supplier of node.
 
         Parameters
@@ -323,30 +359,48 @@ class Workflow(Cascade):
         path
             The file that should supply to the step.
         new
-            When True the (file, step) relationship must be new.
-            If not, a ValueError is raised.
+            When `True` the (file, step) relationship must be new.
+            If not, a `GraphError` is raised.
 
         Returns
         -------
-        file
-            The key of the created / recycled file.
-        available
-            True when the requested path is BUILT or STATIC.
-        new_idep
-            dependency identifier when the relation is new.
-            None otherwise.
+        suply_info
+            Information about the supplied file object.
+
+        Raises
+        ------
+        GraphError
+            When the path is volatile.
+            When the path exists while it is expected to be new.
         """
         available = False
         file, is_orphan = self.find("file", path, return_orphan=True)
+        deferred = []
         if file is None or is_orphan:
             if self.always_static(path):
                 file = self.create("file", self.root, path, state=FileState.MISSING)
-                file_hash = FileHash.unknown()
-                file_hash.update(path)
-                self.confirm_static([(path, file_hash)])
+                deferred.append(file)
+                available = True
             else:
-                file = self.create("file", None, path, state=FileState.AWAITED)
-            self.supply_parent(file)
+                dg = self.matching_deferred_glob(path)
+                if dg is None:
+                    file = self.create("file", None, path, state=FileState.AWAITED)
+                else:
+                    file = self.create("file", dg, path, state=FileState.MISSING)
+                    deferred.append(file)
+                    # If the file matches a deferred glob, it will become static
+                    # and can be considered available unless the existence cannot
+                    # be confirmed later.
+                    available = True
+            parent_info = self.supply_parent(file)
+            if parent_info is not None:
+                parent_state = parent_info.file.get_state()
+                if available and parent_state not in (FileState.MISSING, FileState.STATIC):
+                    raise GraphError(
+                        f"MISSING file without suitable parent node: {path} "
+                        f"(Parent state {parent_state.name}.)"
+                    )
+                deferred.extend(parent_info.deferred)
         else:
             state = file.get_state()
             if state == FileState.VOLATILE:
@@ -364,9 +418,11 @@ class Workflow(Cascade):
             raise GraphError(f"Supplying file already exists: {path}")
         else:
             new_idep = None
-        return file, available, new_idep
+        return SupplyInfo(file, available, deferred, new_idep)
 
-    def create_file(self, creator: Node, path: str, file_state: FileState) -> Node:
+    def create_file(
+        self, creator: Node, path: str, file_state: FileState
+    ) -> tuple[Node, list[Node]]:
         """Create (or recycle) a file with a STATIC, PENDING or VOLATILE file state.
 
         Parameters
@@ -383,20 +439,39 @@ class Workflow(Cascade):
         -------
         file
             The key of the created / recycled file.
+        deferred_parents
+            a list of MISSING file nodes whose existence and validity must be checked.
+            This is populated when parent directories of the file
+            are new matches of a deferred glob.
         """
+        # Consistency checks before creating the file.
         if file_state == FileState.BUILT:
             raise ValueError("Cannot create a BUILT file. It must be AWAITED first.")
+        if file_state == FileState.STATIC:
+            raise ValueError("Cannot create a STATIC file. It must be MISSING first.")
         if file_state == FileState.VOLATILE and path.endswith(os.sep):
             raise GraphError("A volatile output cannot be a directory.")
         if not (creator.kind() == "dg" or self.matching_deferred_glob(path) is None):
             raise GraphError("Cannot manually add a file that matches a deferred glob.")
-        if file_state != FileState.STATIC and self.always_static(path):
+        if file_state != FileState.MISSING and self.always_static(path):
             raise GraphError(f"Path is created as {file_state} but must be static: {path}")
+
         file = self.create("file", creator, path, state=file_state)
+
+        # Do not allow volatile files to have consumers.
         if file_state == FileState.VOLATILE and any(file.consumers()):
             raise GraphError(f"An input to an existing step cannot be volatile: {path}")
-        parent, _, _ = self.supply_parent(file)
-        parent_state = None if parent is None else parent.get_state()
+
+        # Make sure the file has a parent node.
+        parent_info = self.supply_parent(file)
+        if parent_info is None:
+            parent_state = None
+            deferred_parents = []
+        else:
+            parent_state = parent_info.file.get_state()
+            deferred_parents = parent_info.deferred
+
+        # Consisytency checks for static and missing files.
         if file_state == FileState.STATIC:
             if not (parent_state is None or parent_state == FileState.STATIC):
                 raise GraphError(f"Static path does not have a static parent path node: {path}")
@@ -404,40 +479,10 @@ class Workflow(Cascade):
         elif file_state == FileState.MISSING:
             if not (parent_state is None or parent_state in (FileState.STATIC, FileState.MISSING)):
                 raise GraphError(
-                    f"Missing path does not have a static or missing parent path node: {path}"
+                    f"Missing path does not have a static or missing parent path node: {path} "
+                    f"(Parent state is {parent_state.name}.)"
                 )
-        return file
-
-    def get_parent(self, path: str, allow_orphan: bool = False) -> Node | None:
-        """Get the a parent File object, if relevant for consistency checking.
-
-        Parameters
-        ----------
-        path
-            The path whose parent is requested.
-        allow_orphan
-            Set to True if an orphan parent path node is acceptable.
-
-        Raises
-        ------
-        ValueError
-            When the path or parent path are non-trivial and the parent path key could not be found.
-
-        Returns
-        -------
-        parent
-            This is None when the path or parent path are always static.
-            In all other cases, the parent file object is returned.
-        """
-        if self.always_static(path):
-            return None
-        parent_path = myparent(path)
-        if self.always_static(parent_path):
-            return None
-        parent, is_orphan = self.find("file", parent_path, return_orphan=True)
-        if parent is None or (is_orphan and not allow_orphan):
-            raise ValueError(f"Path does not have a parent path node: {path}")
-        return parent
+        return file, deferred_parents
 
     def declare_missing(self, creator: Node, paths=Collection[str]) -> list[tuple[str, FileHash]]:
         """Declare a files as missing, with the intention to later confirm them as static.
@@ -462,36 +507,24 @@ class Workflow(Cascade):
         # Sort paths to get parent directories before files containing them.
         paths = sorted(set(paths))
         # Define the files and create a list of (path, file_hash) tuples.
-        files = [
-            self.create_file(creator, path, FileState.MISSING)
-            for path in paths
-            if not self.always_static(path)
-        ]
+        missing = []
+        for path in paths:
+            file, missing_parents = self.create_file(creator, path, FileState.MISSING)
+            missing.append(file)
+            missing.extend(missing_parents)
         # Collect a list of paths and file hashes to be checked.
-        self.con.execute("DROP TABLE IF EXISTS temp.missing")
-        try:
-            self.con.execute("CREATE TABLE temp.missing(node INTEGER PRIMARY KEY)")
-            sql = "INSERT INTO temp.missing VALUES (?)"
-            self.con.executemany(sql, ((file.i,) for file in files))
-            to_check = []
-            sql = (
-                "SELECT label, digest, mtime, mode, size, inode FROM temp.missing "
-                "JOIN node ON node.i = temp.missing.node "
-                "JOIN file ON file.node = temp.missing.node"
-            )
-            for path, digest, mtime, mode, size, inode in self.con.execute(sql):
-                to_check.append((path, FileHash(digest, mtime, mode, size, inode)))
-        finally:
-            self.con.execute("DROP TABLE IF EXISTS temp.missing")
-        return to_check
+        return self._build_to_check(missing)
 
-    def filter_deferred(self, paths: Collection[str]) -> list[tuple[str, FileHash]]:
-        """Add all paths that match a deferred glob as missing, to be comfirned as static later.
+    def _build_to_check(self, deferred: Collection[Node]) -> list[tuple[str, FileHash]]:
+        """Convert a list of MISSING file nodes to a list of (path, file_hash) tuples.
+
+        This list is intended to be returned to the caller, so the validity of the files
+        can be checked and confirmed as static in a follow-up RPC call.
 
         Parameters
         ----------
-        paths
-            The list of paths to test against available deferred globs in the graph.
+        deferred
+            MISSING file nodes that match a deferred glob.
 
         Returns
         -------
@@ -500,24 +533,22 @@ class Workflow(Cascade):
             These must be sent back to the client where the hashes can be checked
             and which then calls `confirm_static` with the updated hashes.
         """
-        matching = {}
-        for path in paths:
-            # All parents of the path must be checked.
-            all_paths = []
-            while path is not None:
-                file, is_orphan = self.find("file", path, return_orphan=True)
-                if not (file is None or is_orphan):
-                    break
-                all_paths.insert(0, path)
-                path = myparent(path)
-            for path_up in all_paths:
-                dg = self.matching_deferred_glob(path_up)
-                if dg is not None:
-                    matching.setdefault(dg, []).append(path_up)
-        to_check = []
-        for dg, matching_paths in matching.items():
-            to_check.extend(self.declare_missing(dg, matching_paths))
-        return to_check
+        self.con.execute("DROP TABLE IF EXISTS temp.missing")
+        try:
+            self.con.execute("CREATE TABLE temp.missing(node INTEGER PRIMARY KEY)")
+            sql = "INSERT INTO temp.missing VALUES (?)"
+            self.con.executemany(sql, ((file.i,) for file in deferred))
+            sql = (
+                "SELECT label, digest, mtime, mode, size, inode FROM temp.missing "
+                "JOIN node ON node.i = temp.missing.node "
+                "JOIN file ON file.node = temp.missing.node"
+            )
+            return [
+                (path, FileHash(digest, mtime, mode, size, inode))
+                for path, digest, mtime, mode, size, inode in self.con.execute(sql)
+            ]
+        finally:
+            self.con.execute("DROP TABLE IF EXISTS temp.missing")
 
     def confirm_static(self, checked: Collection[tuple[str, FileHash]]):
         """Make missing files static with updated hashes.
@@ -614,7 +645,7 @@ class Workflow(Cascade):
         optional: bool = False,
         pool: str | None = None,
         block: bool = False,
-    ) -> Node:
+    ) -> list[tuple[File, FileState]]:
         """Define a new step.
 
         Parameters
@@ -645,8 +676,10 @@ class Workflow(Cascade):
 
         Returns
         -------
-        step
-            The newly created step (or existing if it was previously orphaned).
+        to_check
+            A list of paths and file_hashes.
+            These must be sent back to the client where the hashes can be checked
+            and which then calls `confirm_static` with the updated hashes.
         """
         self._check_node(creator, "creator", allow_root=True)
 
@@ -666,15 +699,15 @@ class Workflow(Cascade):
 
         # Deduce required directories
         reqdirs = {workdir}
+        reqdirs.update(myparent(inp_path) for inp_path in inp_paths)
         reqdirs.update(myparent(out_path) for out_path in out_paths)
         reqdirs.update(myparent(vol_path) for vol_path in vol_paths)
-        reqdirs.difference_update(inp_paths)
         reqdirs.difference_update(out_paths)
         reqdirs.difference_update(vol_paths)
         reqdirs = sorted(reqdirs)
 
         # If a matching orphaned step is found, reuse it, instead of creating a new one.
-        old_step = self._recreate_step(
+        old_deferred = self._recreate_step(
             command,
             workdir,
             inp_paths,
@@ -687,8 +720,8 @@ class Workflow(Cascade):
             block,
             creator,
         )
-        if old_step is not None:
-            return old_step
+        if old_deferred is not None:
+            return self._build_to_check(old_deferred)
 
         # Create new step
         step = self.create(
@@ -701,27 +734,34 @@ class Workflow(Cascade):
             mandatory=Mandatory.NO if optional else Mandatory.YES,
         )
 
+        # Keep track of all missing files that match a deferred glob and need to be confirmed.
+        deferred = set()
+
         # Supply required directories
         for reqdir in sorted(reqdirs):
-            self.supply_file(step, reqdir, new=False)
+            deferred.update(self.supply_file(step, reqdir, new=False).deferred)
 
         # Supply inp_paths
         for inp_path in inp_paths:
             # Input coinciding with reqdirs are ignored.
             if inp_path not in reqdirs:
-                self.supply_file(step, inp_path)
+                deferred.update(self.supply_file(step, inp_path).deferred)
 
         # Process vars
         step.add_env_vars(env_vars)
 
         # Create out_paths
         for out_path in out_paths:
-            file = self.create_file(step, out_path, FileState.AWAITED)
+            file, deferred_parents = self.create_file(step, out_path, FileState.AWAITED)
+            if len(deferred_parents) > 0:
+                raise AssertionError(f"Unexpected missing parents of output path: {out_path}")
             file.add_supplier(step)
 
         # Create vol_paths
         for vol_path in vol_paths:
-            file = self.create_file(step, vol_path, FileState.VOLATILE)
+            file, deferred_parents = self.create_file(step, vol_path, FileState.VOLATILE)
+            if len(deferred_parents) > 0:
+                raise AssertionError(f"Unexpected missing parents of volatile path: {out_path}")
             file.add_supplier(step)
 
         # Determine if the step needs executing and queue if relevant.
@@ -729,7 +769,7 @@ class Workflow(Cascade):
             step.queue_if_appropriate()
 
         logger.info("Define step: %s", step.label)
-        return step
+        return self._build_to_check(deferred)
 
     def _recreate_step(
         self,
@@ -744,8 +784,15 @@ class Workflow(Cascade):
         pool: str | None,
         block: bool,
         creator: Node,
-    ) -> Node | None:
-        """Recreate a step if it was orphaned and the step arguments are compatible."""
+    ) -> set[Node] | None:
+        """Recreate a step if it was orphaned and the step arguments are compatible.
+
+        Returns
+        -------
+        deferred
+            If the step can be reused, a possibly empty list is returned with
+            MISSING file nodes that match a deferred glob and need to be confirmed.
+        """
         label = Step.create_label("", command, workdir)
         old_step, is_orphan = self.find("step", label, return_orphan=True)
 
@@ -782,10 +829,17 @@ class Workflow(Cascade):
         # Restore the step and its products (recursively).
         old_step.recreate(creator)
 
+        # Look for missing inputs and their parents and determine which match a deferred glob.
+        # These still need to be checked.
+        deferred = {
+            File(self, i, label)
+            for i, label in self.con.execute(RECURSE_DEFERRED_INPUTS, (old_step.i,))
+        }
+
         # Try to queue the step again.
         old_step.queue_if_appropriate()
         logger.info("Reuse orphaned step: %s", old_step.label)
-        return old_step
+        return deferred
 
     def define_pool(self, step: Step, pool: str, size: int):
         """Set the pool size and keep the information in the step to support replay."""
@@ -801,7 +855,7 @@ class Workflow(Cascade):
         env_vars: Collection[str] = (),
         out_paths: Collection[str] = (),
         vol_paths: Collection[str] = (),
-    ) -> bool:
+    ) -> tuple[bool, list[tuple[File, FileState]]]:
         """Amend step information.
 
         Parameters
@@ -820,8 +874,14 @@ class Workflow(Cascade):
         Returns
         -------
         keep_going
-            True when inputs are readily available.
+            True when known inputs are readily available.
             False otherwise, meaning the step needs to be rescheduled.
+        to_check
+            A list of paths and file_hashes.
+            These must be sent back to the client where the hashes can be checked
+            and which then calls `confirm_static` with the updated hashes.
+            (This is only relevant when keep_going is True.
+            If some to_check files turn out to be missing, keep_going should be changed to False.)
         """
         self._check_node(step, "step")
 
@@ -829,7 +889,12 @@ class Workflow(Cascade):
         inp_paths = sorted(set(inp_paths))
         out_paths = sorted(set(out_paths))
         vol_paths = sorted(set(vol_paths))
+
+        # Keep track of missing files, of which there are two different types:
+        # - missing = certainly not available
+        # - deferred = not available but matching a deferred glob, existence needs to be checked.
         missing = set()
+        deferred = set()
 
         # Supply required directories
         reqdirs = set()
@@ -840,39 +905,49 @@ class Workflow(Cascade):
         reqdirs.difference_update(step.out_paths())
         reqdirs.difference_update(step.vol_paths())
         for reqdir in sorted(reqdirs):
-            file, available, new_idep = self.supply_file(step, reqdir, new=False)
-            if not available:
+            info = self.supply_file(step, reqdir, new=False)
+            if not info.available:
                 missing.add(reqdir)
-            if new_idep is not None:
-                self._amend_dep(new_idep)
+            if info.new_idep is not None:
+                self._amend_dep(info.new_idep)
+            deferred.update(info.deferred)
 
         # Process inp_paths
         new_inp_files = []
         for inp_path in inp_paths:
-            file, available, new_idep = self.supply_file(step, inp_path, new=False)
-            if not available:
+            info = self.supply_file(step, inp_path, new=False)
+            if not info.available:
                 missing.add(inp_path)
-            if new_idep is not None:
-                self._amend_dep(new_idep)
-                new_inp_files.append(file)
+            if info.new_idep is not None:
+                self._amend_dep(info.new_idep)
+                new_inp_files.append(info.file)
+            deferred.update(info.deferred)
 
         # Process vars
         step.amend_env_vars(env_vars)
 
         # Create out_paths
         for out_path in out_paths:
-            file = self.create_file(step, out_path, FileState.AWAITED)
+            file, deferred_parents = self.create_file(step, out_path, FileState.AWAITED)
+            if len(deferred_parents) > 0:
+                raise AssertionError(f"Unexpected missing parents of output path: {out_path}")
             new_idep = file.add_supplier(step)
             self._amend_dep(new_idep)
 
         # Create vol_paths
         for vol_path in vol_paths:
-            file = self.create_file(step, vol_path, FileState.VOLATILE)
+            file, deferred_parents = self.create_file(step, vol_path, FileState.VOLATILE)
+            if len(deferred_parents) > 0:
+                raise AssertionError(f"Unexpected missing parents of volatile path: {out_path}")
             new_idep = file.add_supplier(step)
             self._amend_dep(new_idep)
 
-        step.set_rescheduled_info("\n".join(sorted(missing)))
-        return len(missing) == 0
+        step.set_rescheduled_info(
+            ""
+            if len(missing) == 0
+            else f"Missing inputs and/or required directories:\n{'\n'.join(sorted(missing))}"
+        )
+        return len(missing) == 0, self._build_to_check(deferred)
 
     def _amend_dep(self, idep):
         self.con.execute("INSERT INTO amended_dep VALUES (?)", (idep,))

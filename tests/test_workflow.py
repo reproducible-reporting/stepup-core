@@ -33,12 +33,17 @@ from stepup.core.hash import ExplainInfo, FileHash, StepHash
 from stepup.core.job import ExecuteJob, TrySkipJob, ValidateAmendedJob
 from stepup.core.nglob import NGlobMulti
 from stepup.core.step import HAS_UNCERTAIN_CREATORS, RECURSE_PRODUCTS_PENDING, Step
-from stepup.core.workflow import Workflow
+from stepup.core.workflow import RECURSE_DEFERRED_INPUTS, Workflow
 
 TEST_FILE_GRAPH = """\
 root:
              creates   file:./
              creates   file:script.sh
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:script.sh
 
 file:script.sh
                state = STATIC
@@ -46,11 +51,6 @@ file:script.sh
                      = fbe38c6f 8518c164 fddd51a7 efd34f8b cf1737f0 daad3bd3 c0c62048 330eab2e
           created by   root:
             consumes   file:./
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:script.sh
 """
 
 
@@ -79,6 +79,13 @@ root:
              creates   file:./
              creates   step:cp foo.txt sub/bar.txt
 
+file:./
+               state = STATIC
+          created by   root:
+            supplies   (file:foo.txt)
+            supplies   (file:sub/)
+            supplies   step:cp foo.txt sub/bar.txt
+
 step:cp foo.txt sub/bar.txt
                state = PENDING
           created by   root:
@@ -87,13 +94,6 @@ step:cp foo.txt sub/bar.txt
             consumes   file:./
              creates   file:sub/bar.txt
             supplies   file:sub/bar.txt
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   (file:foo.txt)
-            supplies   (file:sub/)
-            supplies   step:cp foo.txt sub/bar.txt
 
 (file:sub/)
                state = AWAITED
@@ -119,6 +119,15 @@ root:
              creates   file:./
              creates   step:cp foo.txt sub/bar.txt
 
+file:./
+               state = STATIC
+          created by   root:
+            supplies   (file:foo.txt)
+            supplies   (file:spam.txt)
+            supplies   (file:sub/)
+            supplies   file:egg.csv
+            supplies   step:cp foo.txt sub/bar.txt
+
 step:cp foo.txt sub/bar.txt
                state = RUNNING
           created by   root:
@@ -130,15 +139,6 @@ step:cp foo.txt sub/bar.txt
              creates   file:sub/bar.txt
             supplies   file:egg.csv [amended]
             supplies   file:sub/bar.txt
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   (file:foo.txt)
-            supplies   (file:spam.txt)
-            supplies   (file:sub/)
-            supplies   file:egg.csv
-            supplies   step:cp foo.txt sub/bar.txt
 
 (file:sub/)
                state = AWAITED
@@ -173,9 +173,11 @@ file:egg.csv
 def test_step(wfs: Workflow):
     # Normal case
     with wfs.con:
-        step = wfs.define_step(
+        to_check = wfs.define_step(
             wfs.root, "cp foo.txt sub/bar.txt", inp_paths=["foo.txt"], out_paths=["sub/bar.txt"]
         )
+        assert to_check == []
+        step = wfs.find("step", "cp foo.txt sub/bar.txt")
         assert step.key() == "step:cp foo.txt sub/bar.txt"
         command, workdir = step.get_command_workdir()
         assert command == "cp foo.txt sub/bar.txt"
@@ -208,9 +210,13 @@ def test_step(wfs: Workflow):
         step.set_state(StepState.RUNNING)
         assert step.get_rescheduled_info() == ""
     with wfs.con:
-        keep_going = wfs.amend_step(step, inp_paths=["spam.txt"], out_paths=["egg.csv"])
+        keep_going, to_check = wfs.amend_step(step, inp_paths=["spam.txt"], out_paths=["egg.csv"])
+        assert to_check == []
         assert not keep_going
-        assert step.get_rescheduled_info() == "spam.txt"
+        assert step.get_rescheduled_info().splitlines() == [
+            "Missing inputs and/or required directories:",
+            "spam.txt",
+        ]
         assert set(step.inp_paths(yield_orphan=True)) == {
             ("./", False),
             ("sub/", True),
@@ -241,6 +247,13 @@ root:
              creates   file:./
              creates   step:cp foo.txt bar.txt
 
+file:./
+               state = STATIC
+          created by   root:
+            supplies   (file:foo.txt)
+            supplies   file:bar.txt
+            supplies   step:cp foo.txt bar.txt
+
 step:cp foo.txt bar.txt
                state = PENDING
           created by   root:
@@ -248,13 +261,6 @@ step:cp foo.txt bar.txt
             consumes   file:./
              creates   file:bar.txt
             supplies   file:bar.txt
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   (file:foo.txt)
-            supplies   file:bar.txt
-            supplies   step:cp foo.txt bar.txt
 
 (file:foo.txt)
                state = AWAITED
@@ -274,6 +280,13 @@ root:
              creates   file:foo.txt
              creates   step:cp foo.txt bar.txt
 
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:bar.txt
+            supplies   file:foo.txt
+            supplies   step:cp foo.txt bar.txt
+
 step:cp foo.txt bar.txt
                state = QUEUED
           created by   root:
@@ -281,13 +294,6 @@ step:cp foo.txt bar.txt
             consumes   file:foo.txt
              creates   file:bar.txt
             supplies   file:bar.txt
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:bar.txt
-            supplies   file:foo.txt
-            supplies   step:cp foo.txt bar.txt
 
 file:foo.txt
                state = STATIC
@@ -310,6 +316,13 @@ root:
              creates   file:foo.txt
              creates   step:cp foo.txt bar.txt
 
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:bar.txt
+            supplies   file:foo.txt
+            supplies   step:cp foo.txt bar.txt
+
 step:cp foo.txt bar.txt
                state = SUCCEEDED
               digest = 78787878 78787878 78787878 78787878 78787878 78787878 78787878 78787878
@@ -322,13 +335,6 @@ step:cp foo.txt bar.txt
             consumes   file:foo.txt
              creates   file:bar.txt
             supplies   file:bar.txt
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:bar.txt
-            supplies   file:foo.txt
-            supplies   step:cp foo.txt bar.txt
 
 file:foo.txt
                state = STATIC
@@ -353,6 +359,13 @@ root:
              creates   file:foo.txt
              creates   step:cp foo.txt bar.txt
 
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:bar.txt
+            supplies   file:foo.txt
+            supplies   step:cp foo.txt bar.txt
+
 step:cp foo.txt bar.txt
                state = PENDING
               digest = 78787878 78787878 78787878 78787878 78787878 78787878 78787878 78787878
@@ -365,13 +378,6 @@ step:cp foo.txt bar.txt
             consumes   file:foo.txt
              creates   file:bar.txt
             supplies   file:bar.txt
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:bar.txt
-            supplies   file:foo.txt
-            supplies   step:cp foo.txt bar.txt
 
 file:foo.txt
                state = STATIC
@@ -395,10 +401,12 @@ def test_simple_example(wfs: Workflow):
     # Create a runnable step and check the queue
     assert wfs.job_queue.qsize() == 0
     with wfs.con:
-        step = wfs.define_step(
+        to_check = wfs.define_step(
             wfs.root, "cp foo.txt bar.txt", inp_paths=["foo.txt"], out_paths=["bar.txt"]
         )
+        assert to_check == []
         assert wfs.format_str() == TEST_SIMPLE_EXAMPLE_GRAPH1
+        step = wfs.find("step", "cp foo.txt bar.txt")
 
     # Declare the static input and check graph
     with wfs.con:
@@ -442,7 +450,9 @@ def test_simple_example(wfs: Workflow):
 
 
 def test_define_boot_input_static(wfs: Workflow):
-    echo = wfs.define_step(wfs.root, "echo", inp_paths=["foo.txt"])
+    to_check = wfs.define_step(wfs.root, "echo", inp_paths=["foo.txt"])
+    assert to_check == []
+    echo = wfs.find("step", "echo")
     declare_static(wfs, wfs.root, ["foo.txt"])
     foo = wfs.find("file", "foo.txt")
     assert echo.creator() is not None
@@ -460,7 +470,9 @@ def test_command_workdir_string(wfs: Workflow):
 
 def test_define_boot_static_input(wfs: Workflow):
     (foo,) = declare_static(wfs, wfs.root, ["foo.txt"])
-    echo = wfs.define_step(wfs.root, "echo", inp_paths=["foo.txt"])
+    to_check = wfs.define_step(wfs.root, "echo", inp_paths=["foo.txt"])
+    assert to_check == []
+    echo = wfs.find("step", "echo")
     assert echo.creator().i is not None
     rootdir = wfs.find("file", "./")
     assert list(foo.consumers()) == [echo]
@@ -471,7 +483,9 @@ def test_define_boot_static_input(wfs: Workflow):
 
 def test_redefine_boot(wfs: Workflow):
     with wfs.con:
-        step = wfs.define_step(wfs.root, "echo 1")
+        to_check = wfs.define_step(wfs.root, "echo 1")
+        assert to_check == []
+        step = wfs.find("step", "echo 1")
     with pytest.raises(GraphError), wfs.con:
         wfs.define_step(wfs.root, "echo 2")
     with wfs.con:
@@ -491,7 +505,9 @@ def test_define_boot_input_orphan(wfs: Workflow):
 def test_redefine_step(wfp: Workflow):
     with wfp.con:
         plan = wfp.find("step", "./plan.py")
-        echo = wfp.define_step(plan, "echo")
+        to_check = wfp.define_step(plan, "echo")
+        assert to_check == []
+        echo = wfp.find("step", "echo")
         assert echo.get_state() == StepState.QUEUED
         assert list(wfp.nodes(kind="step")) == [plan, echo]
     with pytest.raises(GraphError), wfp.con:
@@ -504,7 +520,9 @@ def test_redefine_step(wfp: Workflow):
 
 def test_define_step_input_static(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    cat = wfp.define_step(plan, "cat given", inp_paths=["given"])
+    to_check = wfp.define_step(plan, "cat given", inp_paths=["given"])
+    assert to_check == []
+    cat = wfp.find("step", "cat given")
     assert cat.get_state() == StepState.PENDING
     declare_static(wfp, plan, ["given"])
     assert cat.get_state() == StepState.QUEUED
@@ -513,18 +531,21 @@ def test_define_step_input_static(wfp: Workflow):
 def test_define_step_static_input(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
     declare_static(wfp, plan, ["given"])
-    cat = wfp.define_step(plan, "cat given", inp_paths=["given"])
+    wfp.define_step(plan, "cat given", inp_paths=["given"])
+    cat = wfp.find("step", "cat given")
     assert cat.get_state() == StepState.QUEUED
 
 
 def test_define_step_input_pending(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    cat = wfp.define_step(plan, "cat given", inp_paths=["given"])
+    wfp.define_step(plan, "cat given", inp_paths=["given"])
+    cat = wfp.find("step", "cat given")
     assert cat.get_state() == StepState.PENDING
     file, is_orphan = wfp.find("file", "given", return_orphan=True)
     assert is_orphan
     assert file.get_state() == FileState.AWAITED
-    touch = wfp.define_step(plan, "touch given", out_paths=["given"])
+    wfp.define_step(plan, "touch given", out_paths=["given"])
+    touch = wfp.find("step", "touch given")
     assert touch.get_state() == StepState.QUEUED
     assert file.get_state() == FileState.AWAITED
     wfp.update_file_hashes([("given", fake_hash("given"))])
@@ -536,12 +557,14 @@ def test_define_step_input_pending(wfp: Workflow):
 
 def test_define_step_pending_input(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    touch = wfp.define_step(plan, "touch given", out_paths=["given"])
+    wfp.define_step(plan, "touch given", out_paths=["given"])
+    touch = wfp.find("step", "touch given")
     assert touch.get_state() == StepState.QUEUED
     file, is_orphan = wfp.find("file", "given", return_orphan=True)
     assert not is_orphan
     assert file.get_state() == FileState.AWAITED
-    cat = wfp.define_step(plan, "cat given", inp_paths=["given"])
+    wfp.define_step(plan, "cat given", inp_paths=["given"])
+    cat = wfp.find("step", "cat given")
     assert cat.get_state() == StepState.PENDING
     assert file.get_state() == FileState.AWAITED
     assert touch.get_state() == StepState.QUEUED
@@ -554,7 +577,8 @@ def test_define_step_pending_input(wfp: Workflow):
 
 def test_define_step_built_input(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    touch = wfp.define_step(plan, "touch given", out_paths=["given"])
+    wfp.define_step(plan, "touch given", out_paths=["given"])
+    touch = wfp.find("step", "touch given")
     assert touch.get_state() == StepState.QUEUED
     file, is_orphan = wfp.find("file", "given", return_orphan=True)
     assert not is_orphan
@@ -563,14 +587,16 @@ def test_define_step_built_input(wfp: Workflow):
     touch.completed(True, StepHash(b"mock", b"zzz"))
     assert touch.get_state() == StepState.SUCCEEDED
     assert file.get_state() == FileState.BUILT
-    cat = wfp.define_step(plan, "cat given", inp_paths=["given"])
+    wfp.define_step(plan, "cat given", inp_paths=["given"])
+    cat = wfp.find("step", "cat given")
     assert cat.get_state() == StepState.QUEUED
 
 
 def test_define_step_volatile_input(wfp: Workflow):
     with wfp.con:
         plan = wfp.find("step", "./plan.py")
-        touch = wfp.define_step(plan, "touch given", vol_paths=["given"])
+        wfp.define_step(plan, "touch given", vol_paths=["given"])
+        touch = wfp.find("step", "touch given")
         assert touch.get_state() == StepState.QUEUED
         file, is_orphan = wfp.find("file", "given", return_orphan=True)
         assert not is_orphan
@@ -589,7 +615,8 @@ def test_define_step_volatile_input(wfp: Workflow):
 
 def test_define_step_input_volatile(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    cat = wfp.define_step(plan, "cat given", inp_paths=["given"])
+    wfp.define_step(plan, "cat given", inp_paths=["given"])
+    cat = wfp.find("step", "cat given")
     assert cat.get_state() == StepState.PENDING
     file, is_orphan = wfp.find("file", "given", return_orphan=True)
     assert is_orphan
@@ -607,9 +634,14 @@ def test_file_state_static_overlap(wfp: Workflow):
     with pytest.raises(GraphError), wfp.con:
         wfp.define_step(plan, "touch given", vol_paths=["given"])
     with wfp.con:
-        step = wfp.define_step(plan, "echo", inp_paths=["some"], out_paths=["other"])
+        wfp.define_step(plan, "echo", inp_paths=["some"], out_paths=["other"])
+        step = wfp.find("step", "echo")
         step.set_state(StepState.RUNNING)
-        assert not wfp.amend_step(step, inp_paths=["inp"], out_paths=["out"], vol_paths=["vol"])
+        keep_going, to_check = wfp.amend_step(
+            step, inp_paths=["inp"], out_paths=["out"], vol_paths=["vol"]
+        )
+        assert not keep_going
+        assert to_check == []
         # Amending an existing input is tolerated.
         wfp.amend_step(step, inp_paths=["some"])
     with pytest.raises(GraphError), wfp.con:
@@ -627,11 +659,14 @@ def test_file_state_output_overlap(wfp: Workflow):
     with pytest.raises(GraphError), wfp.con:
         wfp.define_step(plan, "touch given", vol_paths=["given"])
     with wfp.con:
-        step = wfp.define_step(plan, "echo", inp_paths=["some"], out_paths=["other"])
+        wfp.define_step(plan, "echo", inp_paths=["some"], out_paths=["other"])
+        step = wfp.find("step", "echo")
         step.set_state(StepState.RUNNING)
-        assert not wfp.amend_step(
+        keep_going, to_check = wfp.amend_step(
             step, inp_paths=["inp", "given"], out_paths=["out"], vol_paths=["vol"]
         )
+        assert not keep_going
+        assert to_check == []
     with pytest.raises(GraphError), wfp.con:
         wfp.amend_step(step, out_paths=["given"])
     with pytest.raises(GraphError), wfp.con:
@@ -647,9 +682,14 @@ def test_file_state_volatile_overlap(wfp: Workflow):
     with pytest.raises(GraphError), wfp.con:
         wfp.define_step(plan, "touch given", out_paths=["given"])
     with wfp.con:
-        step = wfp.define_step(plan, "echo", inp_paths=["some"], out_paths=["other"])
+        wfp.define_step(plan, "echo", inp_paths=["some"], out_paths=["other"])
+        step = wfp.find("step", "echo")
         step.set_state(StepState.RUNNING)
-        assert not wfp.amend_step(step, inp_paths=["inp"], out_paths=["out"], vol_paths=["vol"])
+        keep_going, to_check = wfp.amend_step(
+            step, inp_paths=["inp"], out_paths=["out"], vol_paths=["vol"]
+        )
+        assert not keep_going
+        assert to_check == []
     with pytest.raises(GraphError), wfp.con:
         wfp.amend_step(step, inp_paths=["given"])
     with pytest.raises(GraphError), wfp.con:
@@ -666,14 +706,16 @@ def test_volatile_directory(wfp: Workflow):
 
 def test_define_queued_step_no_pool(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "touch given", vol_paths=["given"])
+    wfp.define_step(plan, "touch given", vol_paths=["given"])
+    step = wfp.find("step", "touch given")
     assert step.get_state() == StepState.QUEUED
     assert wfp.job_queue.get_nowait() == ExecuteJob(step, None)
 
 
 def test_define_queued_step_pool(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "touch given", out_paths=["given"], pool="aa")
+    wfp.define_step(plan, "touch given", out_paths=["given"], pool="aa")
+    step = wfp.find("step", "touch given")
     assert step.get_state() == StepState.QUEUED
     assert wfp.job_queue.get_nowait() == ExecuteJob(step, "aa")
 
@@ -684,14 +726,6 @@ root:
              creates   file:plan.py
              creates   step:./plan.py
 
-file:plan.py
-               state = STATIC
-              digest = 8fe904f2 160696a3 602d6d9e afff3e1f a6771dfd be57f45a 80f530e7 f0aa16c8
-                     = f9767600 18bbe38f 4825c676 9b873603 f41723f7 f31946b8 519a22cd 93210ccb
-          created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
-
 file:./
                state = STATIC
           created by   root:
@@ -700,6 +734,14 @@ file:./
             supplies   file:plan.py
             supplies   step:./plan.py
             supplies   step:cat < inp > out
+
+file:plan.py
+               state = STATIC
+              digest = 8fe904f2 160696a3 602d6d9e afff3e1f a6771dfd be57f45a 80f530e7 f0aa16c8
+                     = f9767600 18bbe38f 4825c676 9b873603 f41723f7 f31946b8 519a22cd 93210ccb
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
 
 step:./plan.py
                state = RUNNING
@@ -743,7 +785,8 @@ def test_define_queued_step_skip(wfp: Workflow):
     # Define workflow
     plan = wfp.find("step", "./plan.py")
     declare_static(wfp, plan, ["inp"])
-    step = wfp.define_step(plan, "cat < inp > out", inp_paths=["inp"], out_paths=["out"])
+    wfp.define_step(plan, "cat < inp > out", inp_paths=["inp"], out_paths=["out"])
+    step = wfp.find("step", "cat < inp > out")
 
     # Simulate run (first get the plan step and ignore it)
     assert wfp.job_queue.get_nowait() == ExecuteJob(step, None)
@@ -776,17 +819,23 @@ def test_define_queued_step_skip_extra(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
     declare_static(wfp, plan, ["ainp", "ainp2"])
     wfp.job_queue_changed.clear()
-    foo = wfp.define_step(plan, "foo > log", env_vars=["VAR"], out_paths=["log"])
+    wfp.define_step(plan, "foo > log", env_vars=["VAR"], out_paths=["log"])
+    foo = wfp.find("step", "foo > log")
     assert foo.get_state() == StepState.QUEUED
     assert wfp.job_queue_changed.is_set()
-    bar = wfp.define_step(foo, "bar > spam", inp_paths=["log"], env_vars=["X"], vol_paths=["spam"])
+    wfp.define_step(foo, "bar > spam", inp_paths=["log"], env_vars=["X"], vol_paths=["spam"])
+    bar = wfp.find("step", "bar > spam")
     assert bar.get_state() == StepState.PENDING
     plan.completed(True, StepHash(b"plan_ok", b"zzz"))
 
     # Simulate run
     # foo
     assert wfp.job_queue.get_nowait() == ExecuteJob(foo, None)
-    wfp.amend_step(foo, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"])
+    keep_going, to_check = wfp.amend_step(
+        foo, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"]
+    )
+    assert keep_going
+    assert to_check == []
     wfp.update_file_hashes([("log", fake_hash("log")), ("aout", fake_hash("aout"))])
     foo.completed(True, StepHash(b"foo_ok", b"zzz"))
     assert foo.get_state() == StepState.SUCCEEDED
@@ -842,7 +891,8 @@ def test_skip_step_amended_orphaned_input(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
     (ainp,) = declare_static(wfp, plan, ["ainp"])
     wfp.job_queue_changed.clear()
-    foo = wfp.define_step(plan, "foo > log", out_paths=["log"])
+    wfp.define_step(plan, "foo > log", out_paths=["log"])
+    foo = wfp.find("step", "foo > log")
     assert foo.get_state() == StepState.QUEUED
     assert list(foo.out_paths()) == ["log"]
     assert wfp.job_queue_changed.is_set()
@@ -878,7 +928,8 @@ def test_skip_ngm(wfp: Workflow):
     # Prepare jobs for normal run
     plan = wfp.find("step", "./plan.py")
     wfp.job_queue_changed.clear()
-    foo = wfp.define_step(plan, "foo")
+    wfp.define_step(plan, "foo")
+    foo = wfp.find("step", "foo")
     assert foo.get_state() == StepState.QUEUED
     assert wfp.job_queue_changed.is_set()
     plan.completed(True, StepHash(b"plan_ok", b"ee"))
@@ -925,13 +976,16 @@ def test_hash_completed_success(wfp: Workflow):
 
 def test_amend_step(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "blub > log", vol_paths=["log"])
+    wfp.define_step(plan, "blub > log", vol_paths=["log"])
+    step = wfp.find("step", "blub > log")
     assert step.get_state() == StepState.QUEUED
     assert wfp.job_queue.get_nowait() == ExecuteJob(step, None)
     assert wfp.amend_step(step)
-    assert not wfp.amend_step(
+    keep_going, to_check = wfp.amend_step(
         step, inp_paths=["inp1", "inp2"], out_paths=["out3"], vol_paths=["vol4"]
     )
+    assert not keep_going
+    assert to_check == []
     assert set(step.inp_paths(yield_orphan=True, amended=True)) == {("inp1", True), ("inp2", True)}
     assert set(step.out_paths(amended=True)) == {"out3"}
     assert set(step.vol_paths(amended=True)) == {"vol4"}
@@ -951,14 +1005,6 @@ root:
              creates   file:plan.py
              creates   step:./plan.py
 
-file:plan.py
-               state = STATIC
-              digest = 8fe904f2 160696a3 602d6d9e afff3e1f a6771dfd be57f45a 80f530e7 f0aa16c8
-                     = f9767600 18bbe38f 4825c676 9b873603 f41723f7 f31946b8 519a22cd 93210ccb
-          created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
-
 file:./
                state = STATIC
           created by   root:
@@ -971,6 +1017,14 @@ file:./
             supplies   file:vol
             supplies   step:./plan.py
             supplies   step:cat < inp > out 2> vol
+
+file:plan.py
+               state = STATIC
+              digest = 8fe904f2 160696a3 602d6d9e afff3e1f a6771dfd be57f45a 80f530e7 f0aa16c8
+                     = f9767600 18bbe38f 4825c676 9b873603 f41723f7 f31946b8 519a22cd 93210ccb
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
 
 step:./plan.py
                state = RUNNING
@@ -1050,9 +1104,10 @@ def test_define_queued_step_skip_amended(wfp: Workflow):
     # Define workflow
     plan = wfp.find("step", "./plan.py")
     declare_static(wfp, plan, ["inp", "ainp"])
-    step = wfp.define_step(
+    wfp.define_step(
         plan, "cat < inp > out 2> vol", inp_paths=["inp"], out_paths=["out"], vol_paths=["vol"]
     )
+    step = wfp.find("step", "cat < inp > out 2> vol")
 
     # Simulate run (first get the plan step and ignore it)
     assert wfp.job_queue.get_nowait() == ExecuteJob(step, None)
@@ -1103,14 +1158,6 @@ root:
              creates   file:plan.py
              creates   step:./plan.py
 
-file:plan.py
-               state = STATIC
-              digest = 8fe904f2 160696a3 602d6d9e afff3e1f a6771dfd be57f45a 80f530e7 f0aa16c8
-                     = f9767600 18bbe38f 4825c676 9b873603 f41723f7 f31946b8 519a22cd 93210ccb
-          created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
-
 file:./
                state = STATIC
           created by   root:
@@ -1118,6 +1165,14 @@ file:./
             supplies   file:plan.py
             supplies   step:./plan.py
             supplies   step:touch log
+
+file:plan.py
+               state = STATIC
+              digest = 8fe904f2 160696a3 602d6d9e afff3e1f a6771dfd be57f45a 80f530e7 f0aa16c8
+                     = f9767600 18bbe38f 4825c676 9b873603 f41723f7 f31946b8 519a22cd 93210ccb
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
 
 step:./plan.py
                state = RUNNING
@@ -1144,7 +1199,8 @@ file:log
 
 def test_register_nglob(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "touch log", vol_paths=["log"])
+    wfp.define_step(plan, "touch log", vol_paths=["log"])
+    step = wfp.find("step", "touch log")
     ngm = NGlobMulti.from_patterns(["*.txt"])
     wfp.register_nglob(step, ngm)
     assert list(wfp.steps(StepState.RUNNING)) == [plan]
@@ -1181,9 +1237,10 @@ def test_watcher_update(wfp: Workflow):
         )
         _ngm.extend(["aa1_foo.txt", "aa1_bar.txt", "bb7_foo.txt", "cc5_foo.txt"])
         wfp.register_nglob(plan, _ngm)
-        work = wfp.define_step(
+        wfp.define_step(
             plan, "work", inp_paths=["aa1_foo.txt"], out_paths=["aa1_bar.txt"], vol_paths=["log"]
         )
+        work = wfp.find("step", "work")
         plan.completed(True, StepHash(b"ok", b"inp_ok"))
         aa1_bar = wfp.find("file", "aa1_bar.txt")
         assert aa1_bar.creator() == work
@@ -1260,7 +1317,8 @@ def test_watcher_deleted_static_orphan(wfp: Workflow):
 
 def test_watcher_updated_built_orphan(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "touch foo.txt", out_paths=["foo.txt"])
+    wfp.define_step(plan, "touch foo.txt", out_paths=["foo.txt"])
+    step = wfp.find("step", "touch foo.txt")
     step.orphan()
     assert step.get_state() == StepState.QUEUED
     wfp.process_watcher_changes({}, {"foo.txt"})
@@ -1269,7 +1327,8 @@ def test_watcher_updated_built_orphan(wfp: Workflow):
 
 def test_watcher_deleted_built_orphan(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "touch foo.txt", out_paths=["foo.txt"])
+    wfp.define_step(plan, "touch foo.txt", out_paths=["foo.txt"])
+    step = wfp.find("step", "touch foo.txt")
     step.orphan()
     assert step.get_state() == StepState.QUEUED
     wfp.process_watcher_changes({"foo.txt"}, {})
@@ -1277,16 +1336,20 @@ def test_watcher_deleted_built_orphan(wfp: Workflow):
 
 
 def test_directory_usage(wfs: Workflow):
-    assert wfs.dir_queue.empty()
-    declare_static(wfs, wfs.root, ["foo.txt"])
     assert wfs.dir_queue.get_nowait() == (DirWatch.START, "./")
     assert wfs.dir_queue.empty()
-    wfs.find("file", "foo.txt").orphan()
+    declare_static(wfs, wfs.root, ["foo.txt"])
     assert wfs.dir_queue.empty()
-    wfs.find("file", "./").orphan()
+    declare_static(wfs, wfs.root, ["sub/", "sub/bar.txt"])
+    assert wfs.dir_queue.get_nowait() == (DirWatch.START, "sub/")
     assert wfs.dir_queue.empty()
+    for path in "sub/", "sub/bar.txt", "foo.txt", "./":
+        wfs.find("file", path).orphan()
+        assert wfs.dir_queue.empty()
     wfs.clean()
+    assert wfs.dir_queue.get_nowait() == (DirWatch.STOP, "sub/")
     assert wfs.dir_queue.get_nowait() == (DirWatch.STOP, "./")
+    assert wfs.dir_queue.empty()
 
 
 def test_parent_stays_alive(wfp: Workflow):
@@ -1308,7 +1371,8 @@ def test_parent_stays_alive(wfp: Workflow):
 def test_to_be_deleted(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
     declare_static(wfp, plan, ["static"])
-    blub1 = wfp.define_step(plan, "blub1", out_paths=["built", "gone"])
+    wfp.define_step(plan, "blub1", out_paths=["built", "gone"])
+    blub1 = wfp.find("step", "blub1")
     wfp.define_step(plan, "blub2", vol_paths=["volatile"])
     wfp.define_step(plan, "blub3", out_paths=["pending"])
     wfp.define_step(plan, "mkdir sub", out_paths=["sub/"])
@@ -1334,8 +1398,10 @@ def test_to_be_deleted(wfp: Workflow):
 def test_watcher_deleted(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
     (tst,) = declare_static(wfp, wfp.root, ["tst"])
-    step1 = wfp.define_step(plan, "bla1", out_paths=["prr"])
-    step2 = wfp.define_step(plan, "bla2", inp_paths=["prr"])
+    wfp.define_step(plan, "bla1", out_paths=["prr"])
+    step1 = wfp.find("step", "bla1")
+    wfp.define_step(plan, "bla2", inp_paths=["prr"])
+    step2 = wfp.find("step", "bla2")
 
     # Static
     tst.watcher_deleted()
@@ -1360,9 +1426,12 @@ def test_watcher_deleted(wfp: Workflow):
 def test_watcher_updated(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
     (tst,) = declare_static(wfp, wfp.root, ["tst"])
-    cat = wfp.define_step(plan, "cat tst", inp_paths=["tst"])
-    step1 = wfp.define_step(plan, "bla1", out_paths=["prr"])
-    step2 = wfp.define_step(plan, "bla2", inp_paths=["prr"])
+    wfp.define_step(plan, "cat tst", inp_paths=["tst"])
+    cat = wfp.find("step", "cat tst")
+    wfp.define_step(plan, "bla1", out_paths=["prr"])
+    step1 = wfp.find("step", "bla1")
+    wfp.define_step(plan, "bla2", inp_paths=["prr"])
+    step2 = wfp.find("step", "bla2")
 
     # Static
     cat.completed(True, StepHash(b"sfdsafds", b"zzz"))
@@ -1390,19 +1459,18 @@ def test_watcher_updated(wfp: Workflow):
 
 def test_step_recycle(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    echo1 = wfp.define_step(plan, "echo foo > bar", out_paths=["bar"])
+    wfp.define_step(plan, "echo foo > bar", out_paths=["bar"])
+    echo = wfp.find("step", "echo foo > bar")
     step_hash = StepHash(b"bsfssfdsdfsdfasdfasa", b"zzz")
     wfp.update_file_hashes([("bar", fake_hash("bar"))])
-    echo1.completed(True, step_hash)
-    hash1 = echo1.get_hash()
+    echo.completed(True, step_hash)
+    hash1 = echo.get_hash()
     assert hash1 is not None
 
     # Orphan and recycle
-    echo1.orphan()
-    echo2 = wfp.define_step(plan, "echo foo > bar", out_paths=["bar"])
-    assert echo1 is not echo2
-    assert echo1 == echo2
-    hash2 = echo2.get_hash()
+    echo.orphan()
+    wfp.define_step(plan, "echo foo > bar", out_paths=["bar"])
+    hash2 = echo.get_hash()
     assert hash2 is not None
     assert hash1.digest == hash2.digest
     assert hash1.inp_digest == hash2.inp_digest
@@ -1410,7 +1478,8 @@ def test_step_recycle(wfp: Workflow):
 
 def test_output_dir_nested(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "mkdir s/foo/bar/egg", out_paths=["s/foo/bar/egg/"])
+    wfp.define_step(plan, "mkdir -p s/foo/bar/egg", out_paths=["s/foo/bar/egg/"])
+    step = wfp.find("step", "mkdir -p s/foo/bar/egg")
     wfp.clean()
     f, is_orphan = wfp.find("file", "s/", return_orphan=True)
     assert isinstance(f, File)
@@ -1444,12 +1513,10 @@ def test_output_dir_nested(wfp: Workflow):
 def test_clean_multiple_suppliers(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
     (file,) = declare_static(wfp, plan, ["common.txt"])
-    step1 = wfp.define_step(
-        plan, "prog1 common.txt", inp_paths=["common.txt"], out_paths=["output1.txt"]
-    )
-    step2 = wfp.define_step(
-        plan, "prog2 common.txt", inp_paths=["common.txt"], out_paths=["output2.txt"]
-    )
+    wfp.define_step(plan, "prog1 common.txt", inp_paths=["common.txt"], out_paths=["output1.txt"])
+    step1 = wfp.find("step", "prog1 common.txt")
+    wfp.define_step(plan, "prog2 common.txt", inp_paths=["common.txt"], out_paths=["output2.txt"])
+    step2 = wfp.find("step", "prog2 common.txt")
     file.orphan()
     wfp.clean()
     assert file.is_orphan()
@@ -1463,7 +1530,8 @@ def test_clean_multiple_suppliers(wfp: Workflow):
 
 def test_env_vars(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "prog1", env_vars=["name", "other"])
+    wfp.define_step(plan, "prog1", env_vars=["name", "other"])
+    step = wfp.find("step", "prog1")
     assert set(step.env_vars(amended=False)) == {"name", "other"}
     assert set(step.env_vars(amended=True)) == set()
     assert set(step.env_vars()) == {"name", "other"}
@@ -1471,7 +1539,8 @@ def test_env_vars(wfp: Workflow):
 
 def test_amended_env_vars(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "prog1", env_vars=["egg"])
+    wfp.define_step(plan, "prog1", env_vars=["egg"])
+    step = wfp.find("step", "prog1")
     assert step.get_state() == StepState.QUEUED
     assert wfp.job_queue.get_nowait() == ExecuteJob(step, None)
     wfp.amend_step(step, env_vars=["foo", "egg"])
@@ -1500,10 +1569,12 @@ def test_cyclic_two_steps(wfp: Workflow):
 def test_optional_imply(wfp: Workflow):
     # Define sequence of steps: optional -> mandatory
     plan = wfp.find("step", "./plan.py")
-    step1 = wfp.define_step(plan, "prog1", out_paths=["foo"], optional=True)
+    wfp.define_step(plan, "prog1", out_paths=["foo"], optional=True)
+    step1 = wfp.find("step", "prog1")
     assert step1.get_mandatory() == Mandatory.NO
     assert step1.get_state() == StepState.PENDING
-    step2 = wfp.define_step(plan, "prog2", inp_paths=["foo"], out_paths=["bar"])
+    wfp.define_step(plan, "prog2", inp_paths=["foo"], out_paths=["bar"])
+    step2 = wfp.find("step", "prog2")
     assert step2.get_mandatory() == Mandatory.YES
     assert step2.get_state() == StepState.PENDING
     assert step1.get_mandatory() == Mandatory.REQUIRED
@@ -1551,13 +1622,16 @@ def test_optional_imply(wfp: Workflow):
 def test_optional_imply_chain(wfp: Workflow):
     # Define sequence of steps: optional -> optional -> mandatory
     plan = wfp.find("step", "./plan.py")
-    step1 = wfp.define_step(plan, "prog1", out_paths=["foo"], optional=True)
+    wfp.define_step(plan, "prog1", out_paths=["foo"], optional=True)
+    step1 = wfp.find("step", "prog1")
     assert step1.get_mandatory() == Mandatory.NO
     assert step1.get_state() == StepState.PENDING
-    step2 = wfp.define_step(plan, "prog2", inp_paths=["foo"], out_paths=["bar"], optional=True)
+    wfp.define_step(plan, "prog2", inp_paths=["foo"], out_paths=["bar"], optional=True)
+    step2 = wfp.find("step", "prog2")
     assert step2.get_mandatory() == Mandatory.NO
     assert step2.get_state() == StepState.PENDING
-    step3 = wfp.define_step(plan, "prog3", inp_paths=["bar"])
+    wfp.define_step(plan, "prog3", inp_paths=["bar"])
+    step3 = wfp.find("step", "prog3")
     assert step3.get_mandatory() == Mandatory.YES
     assert step3.get_state() == StepState.PENDING
     assert step2.get_mandatory() == Mandatory.REQUIRED
@@ -1591,23 +1665,28 @@ def test_optional_imply_chain(wfp: Workflow):
 def test_optional_infer(wfp: Workflow):
     # Define sequence of steps: optional -> mandatory
     plan = wfp.find("step", "./plan.py")
-    step1 = wfp.define_step(plan, "prog1", inp_paths=["foo"])
+    wfp.define_step(plan, "prog1", inp_paths=["foo"])
+    step1 = wfp.find("step", "prog1")
     assert step1.get_mandatory() == Mandatory.YES
     assert step1.get_state() == StepState.PENDING
-    step2 = wfp.define_step(plan, "prog2", out_paths=["foo"], optional=True)
+    wfp.define_step(plan, "prog2", out_paths=["foo"], optional=True)
+    step2 = wfp.find("step", "prog2")
     assert step2.get_mandatory() == Mandatory.REQUIRED
     assert step2.get_state() == StepState.QUEUED
 
 
 def test_optional_infer_chained(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step1 = wfp.define_step(plan, "prog1", inp_paths=["foo"])
+    wfp.define_step(plan, "prog1", inp_paths=["foo"])
+    step1 = wfp.find("step", "prog1")
     assert step1.get_mandatory() == Mandatory.YES
     assert step1.get_state() == StepState.PENDING
-    step2 = wfp.define_step(plan, "prog2", out_paths=["bar"], optional=True)
+    wfp.define_step(plan, "prog2", out_paths=["bar"], optional=True)
+    step2 = wfp.find("step", "prog2")
     assert step2.get_mandatory() == Mandatory.NO
     assert step2.get_state() == StepState.PENDING
-    step3 = wfp.define_step(plan, "prog3", inp_paths=["bar"], out_paths=["foo"], optional=True)
+    wfp.define_step(plan, "prog3", inp_paths=["bar"], out_paths=["foo"], optional=True)
+    step3 = wfp.find("step", "prog3")
     assert step3.get_mandatory() == Mandatory.REQUIRED
     assert step3.get_state() == StepState.PENDING
     assert step2.get_mandatory() == Mandatory.REQUIRED
@@ -1619,7 +1698,8 @@ def test_optional_infer_chained(wfp: Workflow):
 def test_deferred_glob_basic(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
     # Define a step with an orphan input
-    wfp.define_step(plan, "cat head1.txt", inp_paths=["head1.txt"])
+    to_check = wfp.define_step(plan, "cat head1.txt", inp_paths=["head1.txt"])
+    assert to_check == []
 
     # Define deferred glob and check attributes
     with pytest.raises(ValueError):
@@ -1640,14 +1720,13 @@ def test_deferred_glob_basic(wfp: Workflow):
     assert head1.get_state() == FileState.STATIC
 
     # Use deferred glob after it is added
-    to_check = wfp.filter_deferred(["tail1.txt"])
+    to_check = wfp.define_step(plan, "cat tail1.txt", inp_paths=["tail1.txt"])
     assert to_check == [("tail1.txt", FileHash.unknown())]
     tail1 = wfp.find("file", "tail1.txt")
     assert tail1.get_state() == FileState.MISSING
     with pytest.raises(AssertionError):
         wfp.confirm_static(to_check)
     wfp.confirm_static([("tail1.txt", fake_hash("tail1.txt"))])
-    wfp.define_step(plan, "cat tail1.txt", inp_paths=["tail1.txt"])
     assert tail1.get_state() == FileState.STATIC
 
 
@@ -1656,7 +1735,7 @@ def test_deferred_glob_clean(wfp: Workflow):
     to_check = wfp.defer_glob(plan, "static/**")
     assert len(to_check) == 0
     inp_paths = ["static/foo/bar.txt"]
-    to_check = wfp.filter_deferred(inp_paths)
+    to_check = wfp.define_step(plan, "cat static/foo/bar.txt", inp_paths=inp_paths)
     assert to_check == [
         ("static/", FileHash.unknown()),
         ("static/foo/", FileHash.unknown()),
@@ -1669,7 +1748,7 @@ def test_deferred_glob_clean(wfp: Workflow):
             ("static/foo/bar.txt", fake_hash("static/foo/bar.txt")),
         ]
     )
-    step = wfp.define_step(plan, "cat static/foo/bar.txt", inp_paths=inp_paths)
+    step = wfp.find("step", "cat static/foo/bar.txt")
 
     # Check effect of defining the step on the deferred_glob
     dg = wfp.find("dg", "static/**")
@@ -1709,7 +1788,7 @@ def test_deferred_glob_two_matches(wfp: Workflow):
     wfp.defer_glob(plan, "*.md")
     wfp.defer_glob(plan, "README.*")
     with pytest.raises(GraphError):
-        wfp.filter_deferred(["README.md"])
+        wfp.define_step(plan, "cat README.md", inp_paths=["README.md"])
 
 
 def test_deferred_glob_static(wfp: Workflow):
@@ -1738,8 +1817,57 @@ def test_orhphaned_deferred_glob(wfp: Workflow):
     wfp.defer_glob(plan, "*.md")
     wfp.defer_glob(plan, "*.txt")
     wfp.find("dg", "*.txt").orphan()
-    to_check = wfp.filter_deferred(["README.md", "README.txt"])
+    to_check = wfp.define_step(plan, "prog", inp_paths=["README.md", "README.txt"])
     assert to_check == [("README.md", FileHash.unknown())]
+
+
+def test_deferred_glob_amend_inp(wfp: Workflow):
+    plan = wfp.find("step", "./plan.py")
+    wfp.defer_glob(plan, "*.md")
+    to_check = wfp.define_step(plan, "prog", inp_paths=["initial.md", "initial.txt"])
+    assert to_check == [("initial.md", FileHash.unknown())]
+    prog = wfp.find("step", "prog")
+    keep_going, to_check = wfp.amend_step(prog, inp_paths=["other.md"])
+    assert keep_going
+    assert to_check == [("other.md", FileHash.unknown())]
+    keep_going, to_check = wfp.amend_step(prog, inp_paths=["amended.md", "amended.txt"])
+    assert not keep_going
+    assert to_check == [("amended.md", FileHash.unknown())]
+
+
+def test_deferred_glob_amend_out(wfp: Workflow):
+    plan = wfp.find("step", "./plan.py")
+    wfp.defer_glob(plan, "data*/")
+    to_check = wfp.define_step(
+        plan, "prog", out_paths=["data_out_initial/out.txt"], vol_paths=["data_vol_initial/vol.txt"]
+    )
+    assert to_check == [
+        ("data_out_initial/", FileHash.unknown()),
+        ("data_vol_initial/", FileHash.unknown()),
+    ]
+    prog = wfp.find("step", "prog")
+    keep_going, to_check = wfp.amend_step(
+        prog, out_paths=["data_out_amended/out.txt"], vol_paths=["data_vol_amended/vol.txt"]
+    )
+    assert keep_going
+    assert to_check == [
+        ("data_out_amended/", FileHash.unknown()),
+        ("data_vol_amended/", FileHash.unknown()),
+    ]
+
+
+def test_deferred_glob_recursive_dirs(wfp: Workflow):
+    plan = wfp.find("step", "./plan.py")
+    declare_static(wfp, plan, ["data/"])
+    wfp.defer_glob(plan, "data/**/")
+    to_check = wfp.declare_missing(plan, ["data/foo/a/bar.txt", "data/foo/b/egg.txt"])
+    assert to_check == [
+        ("data/foo/", FileHash.unknown()),
+        ("data/foo/a/", FileHash.unknown()),
+        ("data/foo/a/bar.txt", FileHash.unknown()),
+        ("data/foo/b/", FileHash.unknown()),
+        ("data/foo/b/egg.txt", FileHash.unknown()),
+    ]
 
 
 def test_define_step_reqdir_out_path(wfp: Workflow):
@@ -1760,7 +1888,8 @@ def test_define_step_reqdir_vol_path(wfp: Workflow):
 
 def test_define_step_reqdir_workdir(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    echo = wfp.define_step(plan, "echo", workdir="sub/dir/")
+    wfp.define_step(plan, "echo", workdir="sub/dir/")
+    echo = wfp.find("step", "echo  # wd=sub/dir/")
     command, workdir = echo.get_command_workdir()
     assert command == "echo"
     assert workdir == Path("sub/dir/")
@@ -1772,7 +1901,8 @@ def test_define_step_reqdir_workdir(wfp: Workflow):
 
 def test_amend_step_reqdir_out_path(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "echo")
+    wfp.define_step(plan, "echo")
+    step = wfp.find("step", "echo")
     wfp.amend_step(step, out_paths=["sub/dir/out"])
     reqdir, is_orphan = wfp.find("file", "sub/dir/", return_orphan=True)
     assert is_orphan
@@ -1781,7 +1911,8 @@ def test_amend_step_reqdir_out_path(wfp: Workflow):
 
 def test_amend_step_reqdir_vol_path(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "echo")
+    wfp.define_step(plan, "echo")
+    step = wfp.find("step", "echo")
     wfp.amend_step(step, vol_paths=["sub/dir/vol"])
     reqdir, is_orphan = wfp.find("file", "sub/dir/", return_orphan=True)
     assert is_orphan
@@ -1790,7 +1921,8 @@ def test_amend_step_reqdir_vol_path(wfp: Workflow):
 
 def test_inp_paths(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "script", inp_paths=["foo"])
+    wfp.define_step(plan, "script", inp_paths=["foo"])
+    step = wfp.find("step", "script")
     assert set(step.inp_paths()) == {"./"}
     assert set(step.inp_paths(yield_orphan=True)) == {("./", False), ("foo", True)}
     assert list(step.inp_paths(yield_state=True)) == [("./", FileState.STATIC)]
@@ -1803,7 +1935,8 @@ def test_inp_paths(wfp: Workflow):
 
 def test_out_paths(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "script", out_paths=["foo", "bar"])
+    wfp.define_step(plan, "script", out_paths=["foo", "bar"])
+    step = wfp.find("step", "script")
     bar = wfp.find("file", "bar")
     bar.set_state(FileState.BUILT)
     wfp.update_file_hashes([("bar", fake_hash("bar"))])
@@ -1824,7 +1957,8 @@ def test_out_paths(wfp: Workflow):
 
 def test_vol_paths(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "script", vol_paths=["foo", "bar"])
+    wfp.define_step(plan, "script", vol_paths=["foo", "bar"])
+    step = wfp.find("step", "script")
     assert set(step.vol_paths()) == {"bar", "foo"}
     assert sorted(step.vol_paths(yield_hash=True)) == [
         ("bar", FileHash.unknown()),
@@ -1834,7 +1968,8 @@ def test_vol_paths(wfp: Workflow):
 
 def test_static_missing_paths(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "script")
+    wfp.define_step(plan, "script")
+    step = wfp.find("step", "script")
     declare_static(wfp, step, ["foo", "bar", "zzz"])
     zzz = wfp.find("file", "zzz")
     zzz.set_state(FileState.MISSING)
@@ -1850,77 +1985,78 @@ def test_static_missing_paths(wfp: Workflow):
 
 def test_skip_amend_orphan_inputs(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step1 = wfp.define_step(plan, "prog", out_paths=["bar"])
+    wfp.define_step(plan, "prog", out_paths=["bar"])
+    step = wfp.find("step", "prog")
     (foo1,) = declare_static(wfp, plan, ["foo"])
 
     # Simulate running the step, which amends a few things.
-    assert wfp.job_queue.get_nowait() == ExecuteJob(step1, None)
-    wfp.amend_step(step1, inp_paths=["foo"], env_vars=["AAA"], vol_paths=["bbb"])
-    assert set(step1.inp_paths(yield_orphan=True, yield_amended=True)) == {
+    assert wfp.job_queue.get_nowait() == ExecuteJob(step, None)
+    wfp.amend_step(step, inp_paths=["foo"], env_vars=["AAA"], vol_paths=["bbb"])
+    assert set(step.inp_paths(yield_orphan=True, yield_amended=True)) == {
         ("./", False, False),
         ("foo", False, True),
     }
-    assert set(step1.env_vars(yield_amended=True)) == {("AAA", True)}
-    assert set(step1.out_paths(yield_orphan=True, yield_amended=True)) == {
+    assert set(step.env_vars(yield_amended=True)) == {("AAA", True)}
+    assert set(step.out_paths(yield_orphan=True, yield_amended=True)) == {
         ("bar", False, False),
     }
-    assert set(step1.vol_paths(yield_orphan=True, yield_amended=True)) == {
+    assert set(step.vol_paths(yield_orphan=True, yield_amended=True)) == {
         ("bbb", False, True),
     }
-    step1.completed(True, StepHash(b"step_ok", b"zzz"))
-    assert step1.get_state() == StepState.SUCCEEDED
-    assert step1.get_hash() is not None
+    step.completed(True, StepHash(b"step_ok", b"zzz"))
+    assert step.get_state() == StepState.SUCCEEDED
+    assert step.get_hash() is not None
     wfp.update_file_hashes([("bar", fake_hash("bar"))])
 
     # Make the static input orphan.
     foo1.orphan()
     assert foo1.is_orphan()
     # Amended info is not removed
-    assert set(step1.inp_paths(yield_orphan=True, yield_amended=True)) == {
+    assert set(step.inp_paths(yield_orphan=True, yield_amended=True)) == {
         ("./", False, False),
         ("foo", True, True),
     }
-    assert set(step1.env_vars(yield_amended=True)) == {("AAA", True)}
-    assert set(step1.out_paths(yield_orphan=True, yield_amended=True)) == {
+    assert set(step.env_vars(yield_amended=True)) == {("AAA", True)}
+    assert set(step.out_paths(yield_orphan=True, yield_amended=True)) == {
         ("bar", False, False),
     }
-    assert set(step1.vol_paths(yield_orphan=True, yield_amended=True)) == {
+    assert set(step.vol_paths(yield_orphan=True, yield_amended=True)) == {
         ("bbb", False, True),
     }
 
     # Make step1 orphan
-    step1.orphan()
-    assert step1.is_alive()
-    assert step1.is_orphan()
-    assert step1.get_hash() is not None
+    step.orphan()
+    assert step.is_alive()
+    assert step.is_orphan()
+    assert step.get_hash() is not None
 
     # Redefine the step in exactly the same way
     (foo2,) = declare_static(wfp, plan, ["foo"])
     assert foo1 == foo2
-    step2 = wfp.define_step(plan, "prog", out_paths=["bar"])
-    assert step1 == step2
-    assert set(step2.inp_paths()) == {"./", "foo"}
-    assert set(step2.inp_paths(yield_orphan=True)) == {("./", False), ("foo", False)}
-    assert set(step2.out_paths()) == {"bar"}
+    wfp.define_step(plan, "prog", out_paths=["bar"])
+    assert not step.is_orphan()
+    assert set(step.inp_paths()) == {"./", "foo"}
+    assert set(step.inp_paths(yield_orphan=True)) == {("./", False), ("foo", False)}
+    assert set(step.out_paths()) == {"bar"}
     # Note that amended info is removed when inputs of a step are orphaned.
-    assert set(step2.vol_paths()) == {"bbb"}
+    assert set(step.vol_paths()) == {"bbb"}
 
     # Check that amended info is back and hash is still in place
-    assert step2.get_hash() is not None
+    assert step.get_hash() is not None
 
 
 def test_define_step_out_nested(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "script", out_paths=["sub/", "sub/foo/", "sub/foo/bar"])
+    wfp.define_step(plan, "script", out_paths=["sub/", "sub/foo/", "sub/foo/bar"])
+    step = wfp.find("step", "script")
     assert set(step.inp_paths()) == {"./"}
     assert set(step.out_paths()) == {"sub/", "sub/foo/", "sub/foo/bar"}
 
 
 def test_define_step_vol_nested(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(
-        plan, "script", out_paths=["sub/", "sub/foo/"], vol_paths=["sub/foo/bar"]
-    )
+    wfp.define_step(plan, "script", out_paths=["sub/", "sub/foo/"], vol_paths=["sub/foo/bar"])
+    step = wfp.find("step", "script")
     assert set(step.inp_paths()) == {"./"}
     assert set(step.out_paths()) == {"sub/", "sub/foo/"}
     assert set(step.vol_paths()) == {"sub/foo/bar"}
@@ -1928,7 +2064,8 @@ def test_define_step_vol_nested(wfp: Workflow):
 
 def test_amend_step_out_nested(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "script", out_paths=["sub/"])
+    wfp.define_step(plan, "script", out_paths=["sub/"])
+    step = wfp.find("step", "script")
     wfp.amend_step(step, out_paths=["sub/foo/", "sub/foo/bar"])
     assert set(step.inp_paths()) == {"./"}
     assert set(step.out_paths()) == {"sub/", "sub/foo/", "sub/foo/bar"}
@@ -1936,7 +2073,8 @@ def test_amend_step_out_nested(wfp: Workflow):
 
 def test_amend_step_vol_nested(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "script", out_paths=["sub/"])
+    wfp.define_step(plan, "script", out_paths=["sub/"])
+    step = wfp.find("step", "script")
     wfp.amend_step(step, out_paths=["sub/foo/"], vol_paths=["sub/foo/bar"])
     assert set(step.inp_paths()) == {"./"}
     assert set(step.out_paths()) == {"sub/", "sub/foo/"}
@@ -1949,40 +2087,56 @@ def test_define_pool(wfp: Workflow):
     assert list(plan.pool_definitions()) == [("random", 2)]
 
 
-def test_filter_deferred1(wfp: Workflow):
+def test_step_deferred1(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
     assert wfp.defer_glob(plan, "*.txt") == []
-    to_check = wfp.filter_deferred(["test.png", "test.txt", "other.txt", "sub/boom.txt"])
+    inp_paths = ["test.png", "test.txt", "other.txt", "sub/boom.txt"]
+    to_check = wfp.define_step(plan, "prog", inp_paths=inp_paths)
     assert to_check == [("other.txt", FileHash.unknown()), ("test.txt", FileHash.unknown())]
-    assert wfp.find("file", "test.png", return_orphan=True) == (None, None)
-    assert wfp.find("file", "test.txt").get_state() == FileState.MISSING
-    assert wfp.find("file", "other.txt").get_state() == FileState.MISSING
-    assert wfp.find("file", "sub/boom.txt", return_orphan=True) == (None, None)
+
+    # Check file nodes
+    for path in "test.png", "sub/boom.txt":
+        file, is_orphan = wfp.find("file", path, return_orphan=True)
+        assert is_orphan
+        assert file.get_state() == FileState.AWAITED
+    for path in "test.txt", "other.txt":
+        file, is_orphan = wfp.find("file", path, return_orphan=True)
+        assert not is_orphan
+        assert file.get_state() == FileState.MISSING
 
 
-def test_filter_deferred2(wfp: Workflow):
+def test_step_deferred2(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
     assert wfp.defer_glob(plan, "data/**") == []
-    to_check = wfp.filter_deferred(["data/test.txt", "data.txt"])
+    inp_paths = ["data/test.txt", "data.txt"]
+    to_check = wfp.define_step(plan, "prog", inp_paths=inp_paths)
     assert to_check == [("data/", FileHash.unknown()), ("data/test.txt", FileHash.unknown())]
-    assert wfp.find("file", "data/").get_state() == FileState.MISSING
-    assert wfp.find("file", "data/test.txt").get_state() == FileState.MISSING
-    assert wfp.find("file", "data.txt", return_orphan=True) == (None, None)
+
+    # Check file nodes
+    file, is_orphan = wfp.find("file", "data.txt", return_orphan=True)
+    assert is_orphan
+    assert file.get_state() == FileState.AWAITED
+    for path in "data/", "data/test.txt":
+        file, is_orphan = wfp.find("file", path, return_orphan=True)
+        assert not is_orphan
+        assert file.get_state() == FileState.MISSING
 
 
-def test_filter_deferred3(wfp: Workflow):
+def test_step_deferred3(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    assert wfp.defer_glob(plan, "data/**/foo.txt") == []
-    with pytest.raises(GraphError):
-        wfp.filter_deferred(["data/test/foo.txt"])
+    with wfp.con:
+        assert wfp.defer_glob(plan, "data/**/foo.txt") == []
+    with pytest.raises(GraphError), wfp.con:
+        wfp.define_step(plan, "prog", inp_paths=["data/test/foo.txt"])
     declare_static(wfp, plan, ["data/", "data/other/"])
-    to_check = wfp.filter_deferred(["data/other/foo.txt"])
+    to_check = wfp.define_step(plan, "prog", inp_paths=["data/other/foo.txt"])
     assert to_check == [("data/other/foo.txt", FileHash.unknown())]
 
 
 def test_confirm_deferred(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "cat ${inp}", inp_paths=["test.txt"])
+    wfp.define_step(plan, "cat ${inp}", inp_paths=["test.txt"])
+    step = wfp.find("step", "cat ${inp}")
     to_check = wfp.declare_missing(plan, ["test.txt", "other.txt"])
     assert to_check == [("other.txt", FileHash.unknown()), ("test.txt", FileHash.unknown())]
     # static other.txt
@@ -2022,7 +2176,8 @@ def test_supply_parent(wfp: Workflow):
 
 def test_step_lost_child(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "prog", out_paths=["data.txt"])
+    wfp.define_step(plan, "prog", out_paths=["data.txt"])
+    step = wfp.find("step", "prog")
     step.orphan()
     assert step.is_orphan()
 
@@ -2039,12 +2194,12 @@ def test_step_lost_child(wfp: Workflow):
 def test_deferred_glob_lost_child(wfp: Workflow):
     # Construct a workflow with a deferred glob
     plan = wfp.find("step", "./plan.py")
-    prog = wfp.define_step(plan, "prog")
+    wfp.define_step(plan, "prog")
+    prog = wfp.find("step", "prog")
     wfp.defer_glob(prog, "*.txt")
-    wfp.define_step(prog, "work", inp_paths=["data.txt"])
 
     # Simulate the creation of a static data.txt through the deferred glob.
-    to_check = wfp.filter_deferred(["data.txt"])
+    to_check = wfp.define_step(prog, "work", inp_paths=["data.txt"])
     assert to_check == [("data.txt", FileHash.unknown())]
     wfp.confirm_static([("data.txt", fake_hash("data.txt"))])
 
@@ -2074,7 +2229,8 @@ def test_consistency_parent(wfp: Workflow):
 
 def test_consistency_succeeded_step(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    step = wfp.define_step(plan, "prog", out_paths=["out.txt"])
+    wfp.define_step(plan, "prog", out_paths=["out.txt"])
+    step = wfp.find("step", "prog")
     step.completed(True, StepHash(b"prog", b"zzz"))
     assert step.get_state() == StepState.SUCCEEDED
     out = wfp.find("file", "out.txt")
@@ -2090,9 +2246,11 @@ def test_consistency_succeeded_step(wfp: Workflow):
 
 def test_sql_has_uncertain_creators(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    prog = wfp.define_step(plan, "prog")
+    wfp.define_step(plan, "prog")
+    prog = wfp.find("step", "prog")
     assert wfp.con.execute(HAS_UNCERTAIN_CREATORS, (prog.i,)).fetchone()[0] == 0
-    work = wfp.define_step(prog, "work")
+    wfp.define_step(prog, "work")
+    work = wfp.find("step", "work")
     assert wfp.con.execute(HAS_UNCERTAIN_CREATORS, (work.i,)).fetchone()[0] == 1
     prog.set_state(StepState.RUNNING)
     assert wfp.con.execute(HAS_UNCERTAIN_CREATORS, (work.i,)).fetchone()[0] == 0
@@ -2100,7 +2258,8 @@ def test_sql_has_uncertain_creators(wfp: Workflow):
 
 def test_sql_recurse_products_pending_simple(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    prog = wfp.define_step(plan, "prog", inp_paths=["data.txt"])
+    wfp.define_step(plan, "prog", inp_paths=["data.txt"])
+    prog = wfp.find("step", "prog")
     assert prog.get_state() == StepState.PENDING
     rows = wfp.con.execute(RECURSE_PRODUCTS_PENDING, (plan.i,)).fetchall()
     assert len(rows) == 1
@@ -2112,17 +2271,23 @@ def test_sql_recurse_products_pending_simple(wfp: Workflow):
 def test_sql_recurse_products_pending_tree(wfp: Workflow):
     # Create a tree of steps
     plan = wfp.find("step", "./plan.py")
-    foo = wfp.define_step(plan, "foo", inp_paths=["data.txt"])
+    wfp.define_step(plan, "foo", inp_paths=["data.txt"])
+    foo = wfp.find("step", "foo")
     assert foo.get_state() == StepState.PENDING
-    bar = wfp.define_step(foo, "bar")
+    wfp.define_step(foo, "bar")
+    bar = wfp.find("step", "bar")
     assert bar.get_state() == StepState.PENDING
-    egg = wfp.define_step(bar, "egg", inp_paths=["data.txt"])
+    wfp.define_step(bar, "egg", inp_paths=["data.txt"])
+    egg = wfp.find("step", "egg")
     assert egg.get_state() == StepState.PENDING
-    spam = wfp.define_step(bar, "spam")
+    wfp.define_step(bar, "spam")
+    spam = wfp.find("step", "spam")
     assert spam.get_state() == StepState.PENDING
-    step1 = wfp.define_step(spam, "step1", inp_paths=["data.txt"])
+    wfp.define_step(spam, "step1", inp_paths=["data.txt"])
+    step1 = wfp.find("step", "step1")
     assert step1.get_state() == StepState.PENDING
-    step2 = wfp.define_step(spam, "step2", inp_paths=["data.txt"])
+    wfp.define_step(spam, "step2", inp_paths=["data.txt"])
+    step2 = wfp.find("step", "step2")
     assert step2.get_state() == StepState.PENDING
     step2.set_mandatory(Mandatory.NO)
 
@@ -2136,3 +2301,91 @@ def test_sql_recurse_products_pending_tree(wfp: Workflow):
     assert len(rows) == 2
     assert Step(wfp, *rows[0]) == egg
     assert Step(wfp, *rows[1]) == step1
+
+
+def test_recurse_deferred_inputs1(wfp: Workflow):
+    plan = wfp.find("step", "./plan.py")
+    wfp.define_step(plan, "prog", inp_paths=["data.txt"])
+    prog = wfp.find("step", "prog")
+    wfp.defer_glob(plan, "*.txt")
+    rows = wfp.con.execute(RECURSE_DEFERRED_INPUTS, (prog.i,)).fetchall()
+    assert len(rows) == 1
+    data = wfp.find("file", "data.txt")
+    assert File(wfp, *rows[0]) == data
+
+
+def test_recurse_deferred_inputs2(wfp: Workflow):
+    plan = wfp.find("step", "./plan.py")
+    wfp.define_step(plan, "prog", inp_paths=["data/sub/deep.txt"])
+    prog = wfp.find("step", "prog")
+    wfp.defer_glob(plan, "data/**")
+    rows = wfp.con.execute(RECURSE_DEFERRED_INPUTS, (prog.i,)).fetchall()
+    assert len(rows) == 3
+    assert {row[1] for row in rows} == {"data/", "data/sub/", "data/sub/deep.txt"}
+
+
+def test_recurse_deferred_inputs3(wfp: Workflow):
+    plan = wfp.find("step", "./plan.py")
+    wfp.define_step(plan, "prog", inp_paths=["data/sub/other/deep.txt"])
+    prog = wfp.find("step", "prog")
+    wfp.declare_missing(plan, ["data/"])
+    wfp.defer_glob(plan, "data/**/")
+    wfp.declare_missing(plan, ["data/sub/other/deep.txt"])
+    rows = wfp.con.execute(RECURSE_DEFERRED_INPUTS, (prog.i,)).fetchall()
+    assert len(rows) == 2
+    assert {row[1] for row in rows} == {"data/sub/", "data/sub/other/"}
+
+
+def test_recreate_step_to_check(wfp: Workflow):
+    plan = wfp.find("step", "./plan.py")
+    wfp.defer_glob(plan, "*.txt")
+    to_check = wfp.define_step(plan, "prog", inp_paths=["data.txt"])
+    assert to_check == [("data.txt", FileHash.unknown())]
+    prog = wfp.find("step", "prog")
+    prog.orphan()
+    to_check = wfp.define_step(plan, "prog", inp_paths=["data.txt"])
+    assert to_check == [("data.txt", FileHash.unknown())]
+
+
+def test_recreate_step_to_check_amend(wfp: Workflow):
+    plan = wfp.find("step", "./plan.py")
+    wfp.defer_glob(plan, "d?/")
+    to_check = wfp.define_step(
+        plan,
+        "prog",
+        workdir="d0/",
+        inp_paths=["d1/inp.txt"],
+        out_paths=["d2/out.txt"],
+        vol_paths=["d3/vol.txt"],
+    )
+    assert to_check == [
+        ("d0/", FileHash.unknown()),
+        ("d1/", FileHash.unknown()),
+        ("d2/", FileHash.unknown()),
+        ("d3/", FileHash.unknown()),
+    ]
+    prog = wfp.find("step", "prog  # wd=d0/")
+    prog.orphan()
+    to_check = wfp.define_step(
+        plan,
+        "prog",
+        workdir="d0/",
+        inp_paths=["d1/inp.txt"],
+        out_paths=["d2/out.txt"],
+        vol_paths=["d3/vol.txt"],
+    )
+    assert to_check == [
+        ("d0/", FileHash.unknown()),
+        ("d1/", FileHash.unknown()),
+        ("d2/", FileHash.unknown()),
+        ("d3/", FileHash.unknown()),
+    ]
+    keep_going, to_check = wfp.amend_step(
+        prog, inp_paths=["d4/inp.txt"], out_paths=["d5/out.txt"], vol_paths=["d6/vol.txt"]
+    )
+    assert not keep_going
+    assert to_check == [
+        ("d4/", FileHash.unknown()),
+        ("d5/", FileHash.unknown()),
+        ("d6/", FileHash.unknown()),
+    ]

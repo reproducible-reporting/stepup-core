@@ -3,13 +3,6 @@ root:
              creates   file:plan.py
              creates   step:./plan.py
 
-file:plan.py
-               state = STATIC
-          created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
-            supplies   step:cat ../plan.py  # wd=sub/
-
 file:./
                state = STATIC
           created by   root:
@@ -17,7 +10,15 @@ file:./
             supplies   file:plan.py
             supplies   file:sub/
             supplies   step:./plan.py
+            supplies   step:cat ../plan.py  # wd=sub/
             supplies   step:cp -aT example.txt sub/example.txt
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+            supplies   step:cat ../plan.py  # wd=sub/
 
 step:./plan.py
                state = SUCCEEDED
@@ -98,5 +99,6 @@ step:cat ../plan.py  # wd=sub/
                state = SUCCEEDED
           inp_digest = same
           created by   step:./plan.py  # wd=sub/
+            consumes   file:./
             consumes   file:plan.py
             consumes   file:sub/

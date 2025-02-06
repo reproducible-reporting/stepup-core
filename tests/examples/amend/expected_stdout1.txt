@@ -6,6 +6,7 @@
      START │ ./step.py
 RESCHEDULE │ ./step.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
+Missing inputs and/or required directories:
 inp2.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ echo word2 > inp2.txt

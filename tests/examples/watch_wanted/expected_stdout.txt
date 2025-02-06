@@ -35,8 +35,8 @@ Outputs      AWAITED  output2.txt
 Command               ./plan.py
 Working directory     ./
 Declares      STATIC  static.txt
-Inputs       MISSING  plan.py
-              STATIC  ./
+Inputs        STATIC  ./
+             MISSING  plan.py
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Command               cp input1.txt output1.txt
 Working directory     ./

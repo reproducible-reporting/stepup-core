@@ -10,7 +10,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(nothing yet)
+### Fixed
+
+- Fixed issues with directories matching `glob("...", _defer=True)`,
+  which are later used as parent directories in various scenarios.
 
 ## [2.0.6][] - 2025-02-05 {: #v2.0.6 }
 

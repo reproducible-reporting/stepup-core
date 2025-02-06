@@ -3,12 +3,6 @@ root:
              creates   file:plan.py
              creates   step:./plan.py
 
-file:plan.py
-               state = STATIC
-          created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
-
 file:./
                state = STATIC
           created by   root:
@@ -19,6 +13,12 @@ file:./
             supplies   step:./plan.py
             supplies   step:./work.py --inp=work_inp.pickle --out=work_out.pickle --amend-out
             supplies   step:python -c 'import pickle; print(pickle.load(open("work_out.pickle", "rb")))'
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED

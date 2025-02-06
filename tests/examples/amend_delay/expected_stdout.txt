@@ -6,6 +6,7 @@
      START │ ./step.py > log.txt
 RESCHEDULE │ ./step.py > log.txt
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
+Missing inputs and/or required directories:
 tmp1.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ cp inp1.txt tmp1.txt
@@ -66,6 +67,7 @@ Same out hash        tmp1.txt
      START │ ./step.py > log.txt
 RESCHEDULE │ ./step.py > log.txt
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
+Missing inputs and/or required directories:
 tmp1.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ cp inp1.txt tmp1.txt

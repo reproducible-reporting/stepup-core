@@ -4,18 +4,18 @@ root:
              creates   file:plan.py
              creates   step:./plan.py
 
-file:plan.py
-               state = STATIC
-          created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
-
 file:./
                state = STATIC
           created by   root:
             supplies   file:plan.py
             supplies   step:./plan.py
             supplies   step:cp -aT /tmp/this_is_potentially_unsafe_18731 /tmp/this_is_potentially_unsafe_79824
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED

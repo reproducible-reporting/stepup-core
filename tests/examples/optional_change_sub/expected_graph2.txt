@@ -3,12 +3,6 @@ root:
              creates   file:plan.py
              creates   step:./plan.py
 
-file:plan.py
-               state = STATIC
-          created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
-
 file:./
                state = STATIC
           created by   root:
@@ -17,7 +11,14 @@ file:./
             supplies   file:plan.py
             supplies   file:sub/
             supplies   step:./plan.py
+            supplies   step:cp -aT ../hop2.txt hop3.txt  # wd=sub/
             supplies   step:cp -aT hop1.txt hop2.txt
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
@@ -78,6 +79,7 @@ step:./plan.py  # wd=sub/
 step:cp -aT ../hop2.txt hop3.txt  # wd=sub/
                state = SUCCEEDED
           created by   step:./plan.py  # wd=sub/
+            consumes   file:./
             consumes   file:hop2.txt
             consumes   file:sub/
              creates   file:sub/hop3.txt

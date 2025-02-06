@@ -3,12 +3,6 @@ root:
              creates   file:poor plan.py
              creates   step:'./poor plan.py'
 
-file:poor plan.py
-               state = STATIC
-          created by   root:
-            consumes   file:./
-            supplies   step:'./poor plan.py'
-
 file:./
                state = STATIC
           created by   root:
@@ -24,6 +18,12 @@ file:./
             supplies   step:'./script is cool.py' plan
             supplies   step:'./script is cool.py' run
             supplies   step:cp -aT 'README NOW.md' 'white space leaves a lot of room for mistakes.md'
+
+file:poor plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:'./poor plan.py'
 
 step:'./poor plan.py'
                state = SUCCEEDED

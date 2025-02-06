@@ -1,0 +1,61 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:given1/
+            supplies   file:out.txt
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:cp -aT given1/inp.txt out.txt
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+          inp_digest = same
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   dg:given*/
+             creates   file:given1/inp.txt
+             creates   step:cp -aT given1/inp.txt out.txt
+
+dg:given*/
+          created by   step:./plan.py
+             creates   file:given1/
+
+file:given1/inp.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:given1/
+            supplies   step:cp -aT given1/inp.txt out.txt
+
+file:given1/
+               state = STATIC
+          created by   dg:given*/
+            consumes   file:./
+            supplies   file:given1/inp.txt
+            supplies   step:cp -aT given1/inp.txt out.txt
+
+step:cp -aT given1/inp.txt out.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:given1/
+            consumes   file:given1/inp.txt
+             creates   file:out.txt
+            supplies   file:out.txt
+
+file:out.txt
+               state = BUILT
+          created by   step:cp -aT given1/inp.txt out.txt
+            consumes   file:./
+            consumes   step:cp -aT given1/inp.txt out.txt

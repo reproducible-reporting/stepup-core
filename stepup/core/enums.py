@@ -42,7 +42,8 @@ class FileState(enum.Enum):
     # Declared static by the user: hand-made, don't overwrite or delete
     STATIC = 11
 
-    # An output of a step, but step never completed (successfully) yet.
+    # A file that has never been seen or built before.
+    # If it exists, it was created externally and not (yet) known to be static or built.
     AWAITED = 12
 
     # An output of a step and step has completed.
