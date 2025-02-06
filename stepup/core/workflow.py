@@ -20,6 +20,7 @@
 """The `Workflow` is a `Cascade` subclass with more concrete node implementations."""
 
 import asyncio
+import itertools
 import json
 import logging
 import os
@@ -945,7 +946,9 @@ class Workflow(Cascade):
         step.set_rescheduled_info(
             ""
             if len(missing) == 0
-            else f"Missing inputs and/or required directories:\n{'\n'.join(sorted(missing))}"
+            else "\n".join(
+                itertools.chain(["Missing inputs and/or required directories:"], sorted(missing))
+            )
         )
         return len(missing) == 0, self._build_to_check(deferred)
 
