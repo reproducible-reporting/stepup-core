@@ -22,7 +22,6 @@ This release fixes two recursive glob issues.
   which are later used as parent directories in various scenarios.
 - Fix bug in recursive glob to match `data/inp.txt` with the pattern `data/**/inp.txt`
 
-
 ## [2.0.6][] - 2025-02-05 {: #v2.0.6 }
 
 This release introduces the `STEPUP_EXTERNAL_SOURCES` environment variable
