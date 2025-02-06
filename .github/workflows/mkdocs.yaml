@@ -6,8 +6,8 @@ on:
     branches:
       # Run on the main branch ...
       - main
-    tags-ignore:
-      # ... and on releas tags ...
+    tags:
+      # ... and on release tags ...
       - 'v*'
     paths:
       # ... and only if relevant files have changed.
