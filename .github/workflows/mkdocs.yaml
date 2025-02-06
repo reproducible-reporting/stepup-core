@@ -4,27 +4,27 @@ name: mkdocs
 on:
   push:
     branches:
-    # Run on the main branch ...
-    - main
+      # Run on the main branch ...
+      - main
     tags-ignore:
-    # ... but not for tags (avoids duplicate work) ...
-    - '**'
+      # ... and on releas tags ...
+      - 'v*'
     paths:
-    # ... and only if relevant files have changed.
-    - stepup/**
-    - docs/**
-    - mkdocs.yaml
-    - pyproject.toml
-    - .github/workflows/mkdocs.yaml
+      # ... and only if relevant files have changed.
+      - stepup/**
+      - docs/**
+      - mkdocs.yaml
+      - pyproject.toml
+      - .github/workflows/mkdocs.yaml
   pull_request:
   # Run tests on pull requests ...
     paths:
-    # ... only if relevant files have changed.
-    - stepup/**
-    - docs/**
-    - mkdocs.yaml
-    - pyproject.toml
-    - .github/workflows/mkdocs.yaml
+      # ... only if relevant files have changed.
+      - stepup/**
+      - docs/**
+      - mkdocs.yaml
+      - pyproject.toml
+      - .github/workflows/mkdocs.yaml
 
 permissions:
   contents: write
@@ -71,6 +71,12 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
       - name: Build mkdocs
         run: mike deploy dev
-      - name: Push gh-pages branch to GitHub
+      - name: Push gh-pages branch with development version of docs
         if: github.ref == 'refs/heads/main'
         run: git push origin gh-pages
+      - name: Deploy gh-pages branch with stable version of docs
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          MACRO_MESO=$(echo "${VERSION}" | cut -d. -f1,2)
+          mike deploy $(MACRO_MESO) -u stable -p

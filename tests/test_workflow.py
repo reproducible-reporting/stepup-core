@@ -1858,10 +1858,10 @@ def test_deferred_glob_amend_out(wfp: Workflow):
 
 def test_deferred_glob_recursive_dirs(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
-    declare_static(wfp, plan, ["data/"])
     wfp.defer_glob(plan, "data/**/")
     to_check = wfp.declare_missing(plan, ["data/foo/a/bar.txt", "data/foo/b/egg.txt"])
     assert to_check == [
+        ("data/", FileHash.unknown()),
         ("data/foo/", FileHash.unknown()),
         ("data/foo/a/", FileHash.unknown()),
         ("data/foo/a/bar.txt", FileHash.unknown()),
@@ -2328,12 +2328,11 @@ def test_recurse_deferred_inputs3(wfp: Workflow):
     plan = wfp.find("step", "./plan.py")
     wfp.define_step(plan, "prog", inp_paths=["data/sub/other/deep.txt"])
     prog = wfp.find("step", "prog")
-    wfp.declare_missing(plan, ["data/"])
     wfp.defer_glob(plan, "data/**/")
     wfp.declare_missing(plan, ["data/sub/other/deep.txt"])
     rows = wfp.con.execute(RECURSE_DEFERRED_INPUTS, (prog.i,)).fetchall()
-    assert len(rows) == 2
-    assert {row[1] for row in rows} == {"data/sub/", "data/sub/other/"}
+    assert len(rows) == 3
+    assert {row[1] for row in rows} == {"data/", "data/sub/", "data/sub/other/"}
 
 
 def test_recreate_step_to_check(wfp: Workflow):

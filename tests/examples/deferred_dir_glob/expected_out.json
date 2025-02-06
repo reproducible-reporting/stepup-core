@@ -3,5 +3,6 @@
   "data/part1/foo.out",
   "data/part2/bar.out",
   "data/part2/foo.out",
-  "data/part2/sub/other.out"
+  "data/part2/sub/other.out",
+  "data/top.out"
 ]

@@ -92,9 +92,9 @@ from path import Path
 
 RE_WILD_PARTS = [
     r"^[*][*]$",  # recursive ** wildcard, full string
-    r"^[*][*](?=/)",  # recursive ** wildcard, leading
+    r"^[*][*]/",  # recursive ** wildcard, leading
     r"(?<=/)[*][*]$",  # recursive ** wildcard, trailing
-    r"(?<=/)[*][*](?=/)",  # recursive ** wildcard, middle
+    r"(?<=/)[*][*]/",  # recursive ** wildcard, middle
     r"\[.*?]",  # anonymous [abc] wildcard
     r"[*]",  # anonymous * wildcard
     r"[?]",  # anonymous ? wildcard
@@ -732,6 +732,11 @@ def convert_nglob_to_regex(
                     regex = r".*"
                     if last in ["*"]:
                         replace = True
+            elif part == "**/":
+                if last != "**/":
+                    regex = r"(?:.*/|)"
+                    if last in ["*", "**"]:
+                        replace = True
             elif part.startswith("[") and part.endswith("]"):
                 regex = rf"[^{part[2:-1]}]" if part[1] == "!" else rf"[{part[1:-1]}]"
             elif part.startswith("${*") and part.endswith("}"):
@@ -819,6 +824,11 @@ def convert_nglob_to_glob(pattern: str, subs: dict[str, str] | None = None) -> s
                 texts[-1] = "**"
             elif texts[-1] != "**":
                 texts.append("**")
+        elif part == "**/":
+            if texts[-1] in ["*"] or texts[-1] == "**":
+                texts[-1] = "**/"
+            elif texts[-1] != "**/":
+                texts.append("**/")
         else:
             texts.append(part)
     return "".join(texts)

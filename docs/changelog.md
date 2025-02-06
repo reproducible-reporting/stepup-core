@@ -10,10 +10,18 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(nothing yet)
+
+## [2.0.7][] - 2025-02-06 {: #v2.0.7 }
+
+This release fixes two recursive glob issues.
+
 ### Fixed
 
 - Fixed issues with directories matching `glob("...", _defer=True)`,
   which are later used as parent directories in various scenarios.
+- Fix bug in recursive glob to match `data/inp.txt` with the pattern `data/**/inp.txt`
+
 
 ## [2.0.6][] - 2025-02-05 {: #v2.0.6 }
 
@@ -350,6 +358,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[2.0.7]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.7
 [2.0.6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.6
 [2.0.5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.5
 [2.0.4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.4

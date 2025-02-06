@@ -25,7 +25,6 @@ step:./plan.py
             consumes   file:./
             consumes   file:plan.py
              creates   dg:data/**/
-             creates   file:data/
              creates   file:data/part1/bar.inp
              creates   file:data/part1/bar.out
              creates   file:data/part1/foo.inp
@@ -36,16 +35,12 @@ step:./plan.py
              creates   file:data/part2/foo.out
              creates   file:data/part2/sub/other.inp
              creates   file:data/part2/sub/other.out
-
-file:data/
-               state = STATIC
-          created by   step:./plan.py
-            consumes   file:./
-            supplies   file:data/part1/
-            supplies   file:data/part2/
+             creates   file:data/top.inp
+             creates   file:data/top.out
 
 dg:data/**/
           created by   step:./plan.py
+             creates   file:data/
              creates   file:data/part1/
              creates   file:data/part2/
              creates   file:data/part2/sub/
@@ -63,6 +58,15 @@ file:data/part1/
             supplies   file:data/part1/bar.out
             supplies   file:data/part1/foo.inp
             supplies   file:data/part1/foo.out
+
+file:data/
+               state = STATIC
+          created by   dg:data/**/
+            consumes   file:./
+            supplies   file:data/part1/
+            supplies   file:data/part2/
+            supplies   file:data/top.inp
+            supplies   file:data/top.out
 
 file:data/part1/foo.inp
                state = STATIC
@@ -101,6 +105,11 @@ file:data/part2/sub/
             supplies   file:data/part2/sub/other.inp
             supplies   file:data/part2/sub/other.out
 
+file:data/top.inp
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:data/
+
 file:data/part1/bar.out
                state = STATIC
           created by   step:./plan.py
@@ -125,3 +134,8 @@ file:data/part2/sub/other.out
                state = STATIC
           created by   step:./plan.py
             consumes   file:data/part2/sub/
+
+file:data/top.out
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:data/

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 import json
 
-from stepup.core.api import glob, static
+from stepup.core.api import glob
 
 # Make data and subdirectories static when they are needed.
 # In this example, they become static when files in them are declared static.
-static("data/")
 glob("data/**/", _defer=True)
 
 # Make all inp and out files in data static and get them as separate lists.

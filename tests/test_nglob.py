@@ -40,7 +40,20 @@ from stepup.core.nglob import (
 
 
 @pytest.mark.parametrize(
-    "pattern", ["bar_${*foo}", "foo*", "*", "?", "**", "ls/ff**f/", "num[0-9]"]
+    "pattern",
+    [
+        "bar_${*foo}",
+        "foo*",
+        "*",
+        "?",
+        "**",
+        "ls/ff**f/",
+        "**/*.txt",
+        "data/**",
+        "data/**/*",
+        "data/**/out.txt",
+        "num[0-9]",
+    ],
 )
 def test_has_wildcards_true(pattern):
     assert has_wildcards(pattern)
@@ -354,10 +367,11 @@ def test_nglob_multi_single_anonymous():
         ("foo[*]", ["[*]"]),
         ("foo[${*ab}]", ["[${*ab}]"]),
         ("foo[[]a]", ["[[]"]),
-        ("**/", ["**"]),
+        ("**/", ["**/"]),
         ("/**", ["**"]),
         ("**", ["**"]),
-        ("./**/*.txt", ["**", "*"]),
+        ("./**/*.txt", ["**/", "*"]),
+        ("data/**/*.txt", ["**/", "*"]),
     ],
 )
 def test_nglob_wild(string, matches):
@@ -390,6 +404,8 @@ def test_nglob_wild(string, matches):
         ("${*sub}/**", "*/**"),
         ("${*sub}/**/", "*/**/"),
         ("data**", "data*"),
+        ("data/**/", "data/**/"),
+        ("data/**/*.txt", "data/**/*.txt"),
     ],
 )
 def test_nglob_to_glob(pattern, normal):
@@ -446,8 +462,10 @@ def test_nglob_to_glob_subs(pattern, subs, normal):
             r"(?P<generic>[^/]*)/ch(?P<foo>[^/]*)/[^/]*\.md",
         ),
         ("generic/ch${*foo}/${*md}", r"generic/ch(?P<foo>[^/]*)/(?P<md>[^/]*)"),
-        ("generic/${*md}${*ch}/${*md}", "generic/(?P<md>[^/]*)(?P<ch>[^/]*)/(?P=md)"),
-        ("data**", "data[^/]*/?"),
+        ("generic/${*md}${*ch}/${*md}", r"generic/(?P<md>[^/]*)(?P<ch>[^/]*)/(?P=md)"),
+        ("data**", r"data[^/]*/?"),
+        ("data/**/", r"data/(?:.*/|)"),
+        ("data/**/*.txt", r"data/(?:.*/|)[^/]*\.txt"),
     ],
 )
 def test_nglob_to_regex(pattern, regex):
@@ -720,6 +738,17 @@ def test_recursive6(tmpdir):
         paths=["data/", "data/sub/", "data/sub/part1.txt", "data/part2.txt"],
         used_names=(),
         results={(): [{"data/", "data/sub/"}]},
+    )
+
+
+def test_recursive7(tmpdir):
+    _check_ngm_multi(
+        tmpdir,
+        patterns=["data/**/*.txt"],
+        subs={},
+        paths=["data.txt", "data/sub/part1.txt", "data/part2.txt"],
+        used_names=(),
+        results={(): [{"data/sub/part1.txt", "data/part2.txt"}]},
     )
 
 
