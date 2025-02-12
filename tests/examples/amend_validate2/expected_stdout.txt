@@ -7,36 +7,30 @@
 RESCHEDULE │ ./work.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 Missing inputs and/or required directories:
-optional1.txt
+ping.txt
+pong.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ cp -aT data1.txt optional1.txt
-   SUCCESS │ cp -aT data1.txt optional1.txt
+     START │ echo ping > ping.txt
+   SUCCESS │ echo ping > ping.txt
      START │ ./work.py
 RESCHEDULE │ ./work.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 Missing inputs and/or required directories:
-optional2.txt
+pong.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ cp -aT data2.txt optional2.txt
-   SUCCESS │ cp -aT data2.txt optional2.txt
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-   UPDATED │ data2.txt
-     PHASE │ run
-     START │ ./work.py
-RESCHEDULE │ ./work.py
-──────────────── Rescheduling due to unavailable amended inputs ────────────────
-Missing inputs and/or required directories:
-optional2.txt
+   WARNING │ 1 step(s) remained pending due to incomplete requirements
+─────────────────────────────── Orphaned inputs ────────────────────────────────
+             AWAITED  pong.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               ./work.py
+Working directory     ./
+Inputs        STATIC  ./
+              STATIC  work.py
+               BUILT  ping.txt [amended]
+             AWAITED  (pong.txt) [amended]
+Outputs      AWAITED  work.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ cp -aT data2.txt optional2.txt
-   SUCCESS │ cp -aT data2.txt optional2.txt
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.

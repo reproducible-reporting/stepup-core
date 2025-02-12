@@ -8,7 +8,7 @@
      PHASE │ run
  DROPAMEND │ ./plan.py
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   compact ➜ explained, inp_digest fa44555e ➜ f4914cbb, out_digest d26e67b0 ➜ (unset)
+Modified step hash   compact ➜ explained, inp_digest fa44555e ➜ 5fd3d015, out_digest d26e67b0 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
      START │ ./plan.py
    SUCCESS │ ./plan.py

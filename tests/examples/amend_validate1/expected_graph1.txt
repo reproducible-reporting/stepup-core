@@ -1,0 +1,83 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:ping.txt
+            supplies   file:plan.py
+            supplies   file:pong.txt
+            supplies   file:work.py
+            supplies   file:work.txt
+            supplies   step:./plan.py
+            supplies   step:./work.py
+            supplies   step:echo ping > ping.txt
+            supplies   step:echo pong > pong.txt
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:work.py
+             creates   step:./work.py
+             creates   step:echo ping > ping.txt
+             creates   step:echo pong > pong.txt
+
+file:work.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./work.py
+
+step:echo ping > ping.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+             creates   file:ping.txt
+            supplies   file:ping.txt
+
+file:ping.txt
+               state = BUILT
+          created by   step:echo ping > ping.txt
+            consumes   file:./
+            consumes   step:echo ping > ping.txt
+            supplies   step:./work.py
+
+step:echo pong > pong.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+             creates   file:pong.txt
+            supplies   file:pong.txt
+
+file:pong.txt
+               state = BUILT
+          created by   step:echo pong > pong.txt
+            consumes   file:./
+            consumes   step:echo pong > pong.txt
+            supplies   step:./work.py
+
+step:./work.py
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:ping.txt [amended]
+            consumes   file:pong.txt [amended]
+            consumes   file:work.py
+             creates   file:work.txt
+            supplies   file:work.txt
+
+file:work.txt
+               state = BUILT
+          created by   step:./work.py
+            consumes   file:./
+            consumes   step:./work.py

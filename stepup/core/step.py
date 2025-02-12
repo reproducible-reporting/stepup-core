@@ -717,7 +717,8 @@ class Step(Node):
                     # - Initial input is not ready.
                     # - Amended input is not ready and not going to validate it.
                     return
-            inp_hashes.append((path, FileHash(digest, mode, mtime, size, inode)))
+            else:
+                inp_hashes.append((path, FileHash(digest, mode, mtime, size, inode)))
 
         # Determine the appropriate job to queue.
         step_hash = self.get_hash()

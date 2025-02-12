@@ -18,11 +18,18 @@ optional.txt
      PHASE │ watch
    UPDATED │ data.txt
      PHASE │ run
+     START │ ./work.py
+RESCHEDULE │ ./work.py
+──────────────── Rescheduling due to unavailable amended inputs ────────────────
+Missing inputs and/or required directories:
+optional.txt
+────────────────────────────────────────────────────────────────────────────────
      START │ cp -aT data.txt optional.txt
    SUCCESS │ cp -aT data.txt optional.txt
      START │ ./work.py
    SUCCESS │ ./work.py
   DIRECTOR │ Trying to delete 0 outdated output(s).
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

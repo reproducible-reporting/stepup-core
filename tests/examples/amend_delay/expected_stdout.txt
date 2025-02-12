@@ -49,13 +49,13 @@ Same out hash        log.txt
      PHASE │ run
  DROPAMEND │ ./step.py > log.txt
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest 07e830e4 ➜ af042ea5, out_digest 7d6b25ba ➜ (unset)
+Modified step hash   explained, inp_digest 07e830e4 ➜ fd1b8b49, out_digest 7d6b25ba ➜ (unset)
 Modified inp hash    inp0.txt (digest 681fd532 ➜ 2dab5684)
+Deleted inp hash     tmp1.txt
 ──────────────────────── Remained the same (or missing) ────────────────────────
 Same inp hash        ./
 Same inp hash        inp2.txt
 Same inp hash        step.py
-Same inp hash        tmp1.txt
 ────────────────────────────────────────────────────────────────────────────────
     NOSKIP │ cp inp1.txt tmp1.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
