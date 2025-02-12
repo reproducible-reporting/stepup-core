@@ -69,4 +69,4 @@ jobs:
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
           MACRO_MESO=$(echo "${VERSION}" | cut -d. -f1,2)
-          mike deploy $(MACRO_MESO) -u stable -p
+          mike deploy ${MACRO_MESO} -u stable -p
