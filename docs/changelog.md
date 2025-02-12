@@ -12,7 +12,15 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (nothing yet)
 
-## [2.1.1][] - 2025-02-12 {: #v2.1.0 }
+## [2.1.2][] - 2025-02-12 {: #v2.1.2 }
+
+This is a minor bugfix release.
+
+### Fixed
+
+- Fix an RPC timeout bug.
+
+## [2.1.1][] - 2025-02-12 {: #v2.1.1 }
 
 This is a minor bugfix release.
 
@@ -416,6 +424,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[2.1.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.2
 [2.1.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.1
 [2.1.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.0
 [2.0.7]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.7

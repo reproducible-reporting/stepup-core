@@ -135,21 +135,21 @@ def graph(prefix: str):
 
 def watch_update(path: str):
     """Block until the watcher has observed an update of the file."""
-    RPC_CLIENT.call.watch_update(path, _rpc_timeout=None)
+    RPC_CLIENT.call.watch_update(path, _rpc_timeout=-1)
 
 
 def watch_delete(path: str):
     """Block until the watcher has observed the deletion of the file."""
-    RPC_CLIENT.call.watch_delete(path, _rpc_timeout=None)
+    RPC_CLIENT.call.watch_delete(path, _rpc_timeout=-1)
 
 
 def wait():
     """Block until the runner has become idle."""
-    RPC_CLIENT.call.wait(_rpc_timeout=None)
+    RPC_CLIENT.call.wait(_rpc_timeout=-1)
 
 
 def join():
     """Wait for the runner to become idle and stop the director.
 
     This is the same as `wait()` followed by `shutdown()`."""
-    RPC_CLIENT.call.join(_rpc_timeout=None)
+    RPC_CLIENT.call.join(_rpc_timeout=-1)

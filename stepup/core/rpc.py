@@ -483,7 +483,7 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
         return result
 
     def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs) -> Any:
-        """Call a function of the RPC server.
+        """Call a function of the RPC server (always blocking).
 
         Parameters
         ----------
@@ -496,11 +496,10 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
             This keyword argument is not passed to the remote procedure.
             When None (the default), the timeout is taken from the environment variable
             `STEPUP_SYNC_RPC_TIMEOUT` or set to 300 if the variable is not defined.
-            Negative values are interpreted as infinite, meaning the client will wait
-            indefinitely for a response to the remote call.
+            A negative or zero value means that the client will wait indefinitely for
+            a response to the remote procedure call.
             A `TimeoutError` will be raised when the wait time for a response from the RPC
             server exceeds a strictly positive timeout value.
-            `_rpc_timeout=0` is not supported.
         kwargs
             Keyword arguments for the remote function.
 
@@ -513,13 +512,11 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
             raise ValueError("Methods starting with underscores are not allowed.")
         if _rpc_timeout is None:
             _rpc_timeout = float(os.environ.get("STEPUP_SYNC_RPC_TIMEOUT", 300))
-        if _rpc_timeout == 0:
-            raise TimeoutError("RPC timeout is zero, which is not supported.")
 
         request = pickle.dumps([name, args, kwargs], protocol=pickle.HIGHEST_PROTOCOL)
         self.counter += 1
         call_id = self.counter
-        self._socket.settimeout(_rpc_timeout)
+        self._socket.settimeout(None if _rpc_timeout <= 0 else _rpc_timeout)
         self._send_rpc_message(call_id, request)
         response = self._recv_rpc_message(call_id)
         body, is_error = pickle.loads(response)
