@@ -1,0 +1,17 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.0.4)
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ mkdir -p ../public/
+   SUCCESS │ mkdir -p ../public/
+     START │ ./plan.py  # wd=sub/
+   SUCCESS │ ./plan.py  # wd=sub/
+     START │ mkdir -p ../../public/sub/  # wd=sub/
+   SUCCESS │ mkdir -p ../../public/sub/  # wd=sub/
+     START │ cp -aT example.txt ../../public/sub/example.txt  # wd=sub/
+   SUCCESS │ cp -aT example.txt ../../public/sub/example.txt  # wd=sub/
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!
