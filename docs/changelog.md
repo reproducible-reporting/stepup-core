@@ -12,6 +12,16 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (nothing yet)
 
+## [2.1.1][] - 2025-02-12 {: #v2.1.0 }
+
+This is a minor bugfix release.
+
+### Fixed
+
+- Disable input checking when running a `ValidateAmendJob`.
+  (It is expected that inputs may not be consistent yet at this stage.)
+  This eliminates some false positive input errors.
+
 ## [2.1.0][] - 2025-02-12 {: #v2.1.0 }
 
 This release improves the overall robustness of StepUp.
@@ -406,6 +416,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[2.1.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.1
 [2.1.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.0
 [2.0.7]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.7
 [2.0.6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.6

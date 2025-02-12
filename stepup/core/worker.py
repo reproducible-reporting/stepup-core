@@ -142,7 +142,7 @@ class WorkerClient:
             True if the amended inputs are invalid.
             This can be fixed by running the step again.
         """
-        async with self.new_step(step, inp_hashes, env_vars, validate=True) as new_step_hash:
+        async with self.new_step(step, inp_hashes, env_vars, check_hash=False) as new_step_hash:
             if not (new_step_hash is None or step_hash.inp_digest == new_step_hash.inp_digest):
                 await self.client.call.outdated_amended(step_hash, new_step_hash)
                 # Inputs have changed, so must run.
@@ -298,7 +298,7 @@ class WorkerClient:
         inp_hashes: list[tuple[str, FileHash]],
         env_vars: list[str],
         *,
-        validate: bool = False,
+        check_hash: bool = True,
     ) -> AsyncGenerator[StepHash, None]:
         """Let the worker know what step it will be working on.
 
@@ -310,19 +310,19 @@ class WorkerClient:
             List of tuples of input paths and their file hashes.
         env_vars
             List of environment variable names used by the step.
-        validate
-            If `True`, the step must be validated.
-            In this case, input file changes are still possible since the job
-            was queued, and no error should be raised.
+        check_hash
+            If `True`, unexpected changes in input files will cause an error.
         """
         error_pages = []
         try:
-            new_step_hash = await self.client.call.new_step(step.label, inp_hashes, env_vars)
+            new_step_hash = await self.client.call.new_step(
+                step.label, inp_hashes, env_vars, check_hash
+            )
         except RPCError as exc:
             error_pages.append(("RPC Error", str(exc)))
             new_step_hash = None
 
-        if new_step_hash is None and not validate:
+        if new_step_hash is None and check_hash:
             # The hashes of the input files on disk differ from those in the database,
             # or some inputs were deleted.
             # As this must be due to an external cause and it breaks the workflow,
@@ -498,8 +498,31 @@ class WorkerHandler:
 
     @allow_rpc
     async def new_step(
-        self, label: str, inp_hashes: list[tuple[str, FileHash]], env_vars: list[str]
+        self,
+        label: str,
+        inp_hashes: list[tuple[str, FileHash]],
+        env_vars: list[str],
+        check_hash: bool = True,
     ) -> StepHash | None:
+        """Prepare the worker for a new step.
+
+        Parameters
+        ----------
+        label
+            The label of the step to prepare for (contains command and workdir).
+        inp_hashes
+            List of tuples of input paths and their file hashes.
+        env_vars
+            List of environment variable names used by the step.
+        check_hash
+            If `True`, unexpected changes in input files will cause an error.
+
+        Returns
+        -------
+        step_hash
+            The hash of the step, with the input part already computed, if available.
+            `None` is returned if some inputs are missing or have changed unexpectedly.
+        """
         if self.step is not None:
             raise RPCError(
                 "Worker cannot initiate two steps at the same time. "
@@ -511,12 +534,32 @@ class WorkerHandler:
         self.step = WorkerStep(f"step:{label}", command, workdir)
 
         # Create initial StepHash
-        return self.compute_inp_step_hash(inp_hashes, env_vars)[0]
+        return self.compute_inp_step_hash(inp_hashes, env_vars, check_hash)[0]
 
     def compute_inp_step_hash(
-        self, old_inp_hashes: list[tuple[str, FileHash]], env_vars: list[str]
+        self,
+        old_inp_hashes: list[tuple[str, FileHash]],
+        env_vars: list[str],
+        check_hash: bool = True,
     ) -> tuple[StepHash | None, list[tuple[str, FileHash]]]:
-        """Compute the input part of a step hash."""
+        """Compute the input part of a step hash.
+
+        Parameters
+        ----------
+        old_inp_hashes
+            List of tuples of input paths and their file hashes.
+            These should be up to date. If any changes are observed, something went wrong.
+        env_vars
+            List of environment variable names to include in the hash.
+        check_hash
+            If `True`, unexpected changes in input files will cause an error.
+
+        Returns
+        -------
+        step_hash
+            The hash of the step, with the input part already computed, if available.
+            `None` is returned if some inputs are missing or have changed unexpectedly.
+        """
         # Check the input hashes
         messages = []
         new_inp_hashes = []
@@ -524,7 +567,7 @@ class WorkerHandler:
         for path, old_file_hash in old_inp_hashes:
             new_file_hash = old_file_hash.regen(path)
             all_inp_hashes.append((path, new_file_hash))
-            if new_file_hash != old_file_hash:
+            if check_hash and new_file_hash != old_file_hash:
                 if new_file_hash.is_unknown:
                     messages.append(f"Input vanished unexpectedly: {path} ")
                 else:
