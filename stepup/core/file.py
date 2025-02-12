@@ -82,6 +82,16 @@ class File(Node):
         """Return node-specific SQL commands to initialize the database."""
         return FILE_SCHEMA
 
+    @classmethod
+    def create_label(cls, label: str, **kwargs):
+        """Do not allow certain filenames, just as a sanity check to detect problems early."""
+        # These are not allowed but may pass "existence" checks
+        if label in (".", "..", ""):
+            raise ValueError(f"Invalid file name: {label}")
+        if label.endswith(("/.", "/..")):
+            raise ValueError(f"Invalid file name: {label}")
+        return str(label)
+
     def initialize(self, state: FileState):  # type: ignore
         """Create extra information in the database about this node."""
         digest = b"u"

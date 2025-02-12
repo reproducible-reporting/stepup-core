@@ -73,6 +73,17 @@ def test_file(wfs: Workflow):
         declare_static(wfs, wfs.root, ["unknown/foo.txt"])
 
 
+def test_invalid_path(wfs):
+    with pytest.raises(ValueError):
+        declare_static(wfs, wfs.root, [""])
+    with pytest.raises(ValueError):
+        declare_static(wfs, wfs.root, ["."])
+    with pytest.raises(ValueError):
+        declare_static(wfs, wfs.root, ["foo/."])
+    with pytest.raises(ValueError):
+        declare_static(wfs, wfs.root, ["foo/bar/.."])
+
+
 TEST_STEP_GRAPH = """\
 root:
              creates   file:./

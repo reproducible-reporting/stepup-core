@@ -611,10 +611,13 @@ def getenv(
     value = os.getenv(name, default)
     amend(env=name)
     if multi:
+        if value is None:
+            return []
+        value = [item.strip() for item in value.split(":")]
         with subs_env_vars() as subs:
-            value = [subs(item) for item in (value or "").split(":")]
+            value = [subs(item) for item in value if len(item) > 0]
         if back:
-            value = [translate.back(item) for item in value]
+            value = [translate.back(item) for item in value if len(item) > 0]
     elif path:
         if value is None:
             raise ValueError(f"Undefined shell variable: {name}. Cannot create path.")

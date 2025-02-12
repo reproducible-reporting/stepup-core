@@ -12,6 +12,14 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (nothing yet)
 
+## [2.1.4][] - 2025-02-12 {: #v2.1.4 }
+
+This is a minor bugfix release.
+
+### Fixed
+
+- Fix a bug when using `getenv(..., multi=True)` with a non-existing environment variable.
+
 ## [2.1.3][] - 2025-02-12 {: #v2.1.3 }
 
 This is a minor bugfix release.
@@ -432,6 +440,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[2.1.4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.4
 [2.1.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.3
 [2.1.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.2
 [2.1.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.1
