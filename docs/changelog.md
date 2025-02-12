@@ -12,6 +12,55 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (nothing yet)
 
+## [2.1.0][] - 2025-02-12 {: #v2.1.0 }
+
+This release improves the overall robustness of StepUp.
+Most importantly, table constraints are introduced on the `file` table in `.stepup/graph.db`,
+eliminating potential bugs by design (or making them easier to fix).
+The constraints change the database schema,
+so `graph.db` files created with version 2.0 will be discarded.
+The workflow will be completely rebuilt after an upgrade to StepUp Core 2.1.
+
+This release also refactors the implementation of file and step hashes, and worker processes.
+Finally, error messages and exception handling have been improved.
+
+### Added
+
+- The log level can be controlled with the `STEPUP_LOG_LEVEL` environment variable.
+  Alternatively, set `STEPUP_DEBUG=1`, which will also activate additional debugging output.
+  (This replaces the former `STEPUP_STRICT` environment variable.)
+- Improve handling of unexpected file changes.
+  Before a step is executed or skipped, and after it has completed,
+  changes to inputs (since they were declared static or built by previous steps),
+  will cause the step to fail and the scheduler to drain.
+  (This feature requires a database schema version increase.)
+
+### Changed
+
+- Because of other database schema changes in this release,
+  also the `FileState` enumeration was relabeled in a more chronological order.
+- The `cleanup` command always runs in the most verbose mode (`-v` no longer supported).
+  It now also supports the `-d` or `--dry-run` option to show which files would be cleaned.
+- The variable `${STEPUP_EXTERNAL_SOURCES}` can now also contain relative paths,
+  which are assumed to be relative to `${STEPUP_ROOT}`.
+- The default timeout for RPC calls has been increased from 5 to 300 seconds.
+  It can be controlled with the `STEPUP_SYNC_RPC_TIMEOUT` environment variable.
+  Setting it to a negative value will disable the timeout
+  and make RPC calls wait indefinitely for a response.
+
+### Fixed
+
+- Table constraints are introduced to ensure file states and hashes are consistent.
+  This eliminates some difficult to reproduce bugs or makes them easier to fix.
+  (This change requires a database schema version increase.)
+- Code documentation updates and internal cleanups.
+- Renaming and moving directories in watch phase is now handled correctly.
+- Fixed routine to wipe database in case of a schema version change.
+- Add safety check to prevent two StepUp instances from running in the same directory.
+- Add a warning when errors are reported in `.stepup/director.log`.
+- When running StepUp with the `-w` option and the scheduler is drained,
+  queued steps are now made pending again, ensuring they are only executed when appropriate.
+
 ## [2.0.7][] - 2025-02-06 {: #v2.0.7 }
 
 This release fixes two recursive glob issues.
@@ -357,6 +406,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[2.1.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.0
 [2.0.7]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.7
 [2.0.6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.6
 [2.0.5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.5

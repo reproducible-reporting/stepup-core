@@ -21,7 +21,6 @@ file:plan.py
 
 step:./plan.py
                state = SUCCEEDED
-          inp_digest = same
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -51,7 +50,7 @@ step:cp input.txt wrong.txt
             supplies   file:output.txt
 
 file:output.txt
-               state = OUTDATED
+               state = AWAITED
           created by   step:cp input.txt wrong.txt
             consumes   file:./
             consumes   step:cp input.txt wrong.txt

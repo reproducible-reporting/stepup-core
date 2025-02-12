@@ -25,84 +25,110 @@ __all__ = ("Change", "DirWatch", "FileState", "Mandatory", "ReturnCode", "StepSt
 
 
 class ReturnCode(enum.Enum):
-    # All (mandatory) steps completed successfully.
     SUCCESS = 0
+    """All (mandatory) steps completed successfully."""
 
-    # Exception raised, not related to steps in the workflow
     INTERNAL = 1
+    """Exception raised, not related to failing steps in the workflow"""
 
-    # Some steps failed.
     FAILED = 2
+    """Some steps failed (and possibly some remain pending)."""
 
-    # Some steps remained pending.
     PENDING = 3
+    """Some steps remained pending (no failures)."""
 
 
 class FileState(enum.Enum):
-    # Declared static by the user: hand-made, don't overwrite or delete
-    STATIC = 11
+    """State of a file in the StepUp workflow.
 
-    # A file that has never been seen or built before.
-    # If it exists, it was created externally and not (yet) known to be static or built.
-    AWAITED = 12
+    STATIC and BUILT files are ready to be used as inputs.
+    AWAITED, MISSING, VOLATILE and OUTDATED files are not.
 
-    # An output of a step and step has completed.
-    BUILT = 13
+    The availability and purpose of file hashes depend on the file state:
 
-    # Declared static by the user, but then deleted by the user.
-    MISSING = 14
+    - File hashes are available for STATIC, OUTDATED and BUILT files.
+      They are not for AWAITED, MISSING and VOLATILE files.
 
-    # Declared as volatile output of a step:
-    # - same cleaning as built files.
-    # - cannot be used as input.
-    # - no hashes are computed.
-    VOLATILE = 15
+    - In case of STATIC files, the hash is computed when the file is declared static,
+      or when StepUp starts and checks the state of all files in the database.
+      The hashes of BUILT files are computed when the step completes.
+      OUTDATED files maintain the same hash from their BUILT state.
+    """
 
-    # An old output of a step that is no longer up-to-date.
-    OUTDATED = 16
+    MISSING = 11
+    """A file declared static by the user, but then deleted by the user."""
+
+    STATIC = 12
+    """A file that is declared static by the user.
+
+    These are user-provided and will never be overwritten are deleted by StepUp.
+    """
+
+    AWAITED = 13
+    """A file that has never been seen or built before.
+
+    If it exists, it was created externally and not (yet) known to be static or built.
+    """
+
+    BUILT = 14
+    """An output of a step and step has completed."""
+
+    OUTDATED = 15
+    """An old output of a step that is no longer up-to-date."""
+
+    VOLATILE = 16
+    """A file declared as volatile output of a step.
+
+    This means the following:
+
+    - Volatile files are cleaned up just like built files.
+    - Volatile files cannot be used as input.
+    - No hashes are computed for volatile files.
+    - They can change when a step is repeated with the same inputs.
+    """
 
 
 class StepState(enum.Enum):
-    # Step still needs to be executed.
     PENDING = 21
+    """The step still needs to be executed."""
 
-    # The step is submitted to the scheduler and will be executed soon.
     QUEUED = 22
+    """The step is handed over to the scheduler and will be executed soon."""
 
-    # The step is being executed by a worker.
     RUNNING = 23
+    """The step is being executed by a worker."""
 
-    # The step has completed successfully (exit code 0).
     SUCCEEDED = 24
+    """The step has completed successfully (exit code 0)."""
 
-    # The step has failed (exit code non-zero).
     FAILED = 25
+    """The step has failed (exit code non-zero)."""
 
 
 class Mandatory(enum.Enum):
-    # The step must be executed (default).
     YES = 31
+    """The step must be executed (default)."""
 
-    # The step is optional but (indirectly) required by a mandatory step.
     REQUIRED = 32
+    """The step is optional but (indirectly) required by a mandatory step."""
 
-    # The step is optional and not required by another mandatory or required step.
     NO = 33
+    """The step is optional and not required by another mandatory or required step."""
 
 
 class Change(enum.Enum):
-    # A file on disk has been added or changed.
     UPDATED = 41
+    """A file on disk has been added or changed."""
 
-    # A file on disk has been deleted.
     DELETED = 42
+    """A file on disk has been deleted."""
 
 
 class DirWatch(enum.Enum):
     """Flag to change the watched directories through the Workflow.dir_queue."""
 
-    # Request to start watching a directory.
     START = 51
+    """Request to start watching a directory."""
 
-    # Request to stop watching a directory.
     STOP = 52
+    """Request to stop watching a directory."""

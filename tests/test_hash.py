@@ -33,35 +33,38 @@ def test_new():
 
 
 def test_simple():
-    file_hash = FileHash.unknown()
-    assert file_hash.update("README.md") is True
-    assert file_hash.update("README.md") is False
-    assert isinstance(file_hash.digest, bytes)
-    assert file_hash.update("README.md") is False
-    assert file_hash.update("pyproject.toml") is True
+    init_hash = FileHash.unknown()
+    new_hash1 = init_hash.regen("README.md")
+    assert new_hash1 is not init_hash
+    assert isinstance(new_hash1.digest, bytes)
+    assert new_hash1.digest != b"u"
+    assert new_hash1.size > 0
+    new_hash2 = new_hash1.regen("README.md")
+    assert new_hash2 is new_hash1
+    new_hash3 = new_hash2.regen("pyproject.toml")
+    assert new_hash3 is not new_hash2
 
 
 def test_missing():
     non_existing = "sdfkjaskdfjsadksasdsdfoasudfioausdfosuadfyoa"
-    file_hash = FileHash.unknown()
-    assert file_hash.update(non_existing) is None
-    assert file_hash.digest == b"u"
-    assert file_hash.update("README.md") is True
-    assert file_hash.update("README.md") is False
-    digest = file_hash.digest
-    assert file_hash.update(non_existing) is None
-    assert file_hash.digest == digest
+    init_hash = FileHash.unknown()
+    new_hash = init_hash.regen(non_existing)
+    assert new_hash is init_hash
+    assert new_hash.digest == b"u"
+    assert new_hash.size == 0
 
 
 def test_dir():
-    file_hash = FileHash.unknown()
-    assert file_hash.update("foo/") is None
-    assert file_hash.digest == b"u"
+    init_hash = FileHash.unknown()
+    dir_hash1 = init_hash.regen("foo/")
+    assert dir_hash1.digest == b"u"
     with pytest.raises(ValueError):
-        file_hash.update("stepup")
-    assert file_hash.update("stepup/") is True
-    assert file_hash.digest == b"d"
-    assert file_hash.update("stepup/") is False
+        init_hash.regen("stepup")
+    dir_hash2 = init_hash.regen("stepup/")
+    assert dir_hash2 is not init_hash
+    assert dir_hash2.digest == b"d"
+    dir_hash3 = dir_hash2.regen("stepup/")
+    assert dir_hash3 is dir_hash2
 
 
 def test_symbolic_link(path_tmp: Path):

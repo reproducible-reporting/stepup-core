@@ -38,6 +38,7 @@ from .asyncio import stoppable_iterator
 from .director import interpret_num_workers
 from .reporter import ReporterClient, ReporterHandler
 from .rpc import SocketSyncRPCClient, serve_socket_rpc
+from .utils import string_to_bool
 
 __all__ = ()
 
@@ -52,9 +53,26 @@ async def async_main():
         print("Changing to", args.root)
         args.root.cd()
 
-    # Sanity check before creating a subdirectory
+    # Sanity check before creating a subdirectory.
     if not args.plan_py.is_file():
         raise RuntimeError(f"File {args.plan_py} does not exist.")
+
+    # Check if another StepUp director is already/still running.
+    if Path(".stepup/director.log").exists():
+        with open(".stepup/director.log") as fh:
+            try:
+                line = next(fh)
+                path_old_socket = line.split()[-1]
+                if Path(path_old_socket).exists():
+                    raise RuntimeError(
+                        f"Old director still running? Socket still exists: {path_old_socket}"
+                    )
+            except StopIteration:
+                pass
+    if Path(".stepup/graph.db-wal").exists():
+        raise RuntimeError("Old director still running? .stepup/graph.db-wal still exists.")
+    if Path(".stepup/graph.db-shm").exists():
+        raise RuntimeError("Old director still running? .stepup/graph.db-shm still exists.")
 
     # Create dir
     dir_stepup = Path(".stepup")
@@ -136,6 +154,12 @@ async def async_main():
                 await asyncio.gather(*tasks)
             except ConnectionRefusedError:
                 reporter_handler.report("ERROR", "Could not connect to director", [])
+
+    # Check if the director.log file has error messages
+    with open(".stepup/director.log") as fh:
+        if any(("ERROR" in line) or ("CRITICAL" in line) for line in fh):
+            reporter_handler.report("WARNING", "Errors logged in .stepup/director.log", [])
+
     sys.exit(returncode)
 
 
@@ -250,10 +274,11 @@ def parse_args():
         action="store_true",
         help="Explain for every step with recording info why it cannot be skipped.",
     )
+    debug = string_to_bool(os.getenv("STEPUP_DEBUG", "0"))
     parser.add_argument(
         "--log-level",
         "-l",
-        default="WARNING",
+        default=os.getenv("STEPUP_LOG_LEVEL", "DEBUG" if debug else "WARNING").upper(),
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level. [default=%(default)s]",
     )

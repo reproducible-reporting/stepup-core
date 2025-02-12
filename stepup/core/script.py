@@ -17,7 +17,10 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""Support for scripts that combine planning and execution."""
+"""Driver function to facilitate writing scripts that adhere to StepUp's script protocol.
+
+See [Script Protocol](../getting_started/script_single.md) for more details.
+"""
 
 import argparse
 import inspect
@@ -238,7 +241,27 @@ class ScriptWrapper:
 
 
 def driver(obj: Any = None):
-    """Driver function to be called from a script as `driver()` or `driver(obj)`.
+    """Implement script protocol.
+
+    The most common usage is to call `driver()` from a script
+    that defines `info()` and `run()` function, e.g.:
+
+    ```python
+    #!/usr/bin/env python3
+    from stepup.core.script import driver
+
+    def info():
+        return {"inp": ["input.txt"], "out": ["output.txt"]}
+
+    def run(inp: str, out: str):
+        with open(inp) as fh:
+            text = fh.read()
+        with open(out, "w") as fh:
+            fh.write(text.upper())
+
+    if __name__ == "__main__":
+        driver()
+    ```
 
     Parameters
     ----------

@@ -7,7 +7,7 @@
      PHASE │ run
     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, digest 89ee708b ➜ 28ec8b4f, inp_digset 89ee708b ➜ 28ec8b4f
+Modified step hash   explained, inp_digest d4b6d552 ➜ 1b84c39e, out_digest 786a02f7 ➜ (unset)
 Modified inp hash    plan.py (digest e3ce1d36 ➜ 2b370a1b, size 414 ➜ 352)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
@@ -20,6 +20,7 @@ Same inp hash        ./
      CLEAN │ foo1.txt
      CLEAN │ egg.txt
      CLEAN │ bar.txt
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

@@ -24,18 +24,23 @@ import itertools
 
 import attrs
 
-from .job import Job, SetPoolJob
+from .job import Job
 
 __all__ = ("Pool", "Scheduler")
 
 
 @attrs.define
 class Pool:
-    """A single pool of which the scheduler can contain several"""
+    """A single pool of running and queued jobs, of which the scheduler can contain several."""
 
     used: int = attrs.field(converter=int, validator=attrs.validators.ge(0), init=False, default=0)
+    """Number of slots currently in use."""
+
     size: int = attrs.field(converter=int, validator=attrs.validators.gt(0), default=1)
+    """Maximum number of slots available."""
+
     queue: asyncio.Queue[Job] = attrs.field(init=False, factory=asyncio.Queue)
+    """Queue of jobs that are waiting to be sent to the runner."""
 
     @property
     def available(self) -> bool:
@@ -54,16 +59,23 @@ class Pool:
 
 @attrs.define
 class Scheduler:
-    # Input queue: Job instances are taken from here
-    inqueue: asyncio.Queue[Job] = attrs.field()
-    # The changed event is set to True whenever it may be worth calling pop_runnable_step
+    job_queue: asyncio.Queue[Job] = attrs.field()
+    """Job queue: Job instances are popped from here and sent to the runner."""
+
+    config_queue: asyncio.Queue[tuple[str, int]] = attrs.field()
+    """Pool definitions are popped from here and applied to the scheduler."""
+
     changed: asyncio.Event = attrs.field()
-    # Main pool keeps overall count of all active steps.
+    """The changed event is set whenever it may be worth calling `pop_runnable_step()`"""
+
     _main_pool: Pool = attrs.field(factory=Pool, validator=attrs.validators.instance_of(Pool))
-    # The _pools dict also keeps counts per pool name.
+    """Keeps overall count of all running steps."""
+
     _pools: dict[str, Pool] = attrs.field(factory=dict)
-    # When True, all steps end up in the wait queue instead of the run queue
+    """Keeps counts of running steps per pool name."""
+
     _onhold: bool = attrs.field(converter=bool, default=False)
+    """When True, now new jobs are taken from the job_queue."""
 
     def __attrs_post_init__(self):
         self.changed.set()
@@ -92,7 +104,7 @@ class Scheduler:
         )
         if self._onhold:
             return result
-        result &= self.inqueue.qsize() == 0
+        result &= self.job_queue.qsize() == 0
         return result
 
     def has_pool(self, pool_name: str | None) -> bool:
@@ -110,13 +122,13 @@ class Scheduler:
 
     def pop_runnable_job(self) -> tuple[Job | None, str | None]:
         """Return a runnable step and its pool (or None)."""
+        while not self.config_queue.empty():
+            pool_name, pool_size = self.config_queue.get_nowait()
+            self.set_pool(pool_name, pool_size)
         if not self._onhold:
-            while self.inqueue.qsize() > 0:
-                job = self.inqueue.get_nowait()
-                if isinstance(job, SetPoolJob):
-                    # Shortcut that allows workflow to set a pool.
-                    self.set_pool(*job.set_pool_args)
-                elif job.pool is None:
+            while self.job_queue.qsize() > 0:
+                job = self.job_queue.get_nowait()
+                if job.pool is None:
                     self._main_pool.queue.put_nowait(job)
                 else:
                     self._pools[job.pool].queue.put_nowait(job)
@@ -149,7 +161,7 @@ class Scheduler:
         all_pools.append(self._main_pool)
         for pool in all_pools:
             while pool.queue.qsize() > 0:
-                self.inqueue.put_nowait(pool.queue.get_nowait())
+                self.job_queue.put_nowait(pool.queue.get_nowait())
 
     def resume(self):
         self._onhold = False

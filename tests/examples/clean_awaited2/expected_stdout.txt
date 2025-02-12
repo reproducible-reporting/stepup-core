@@ -20,7 +20,7 @@ Inputs        STATIC  ./
              MISSING  input.txt
 Outputs      AWAITED  output.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.

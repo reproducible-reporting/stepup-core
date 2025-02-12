@@ -55,7 +55,6 @@ step:./work.py --inp=work_inp.pickle --out=work_out.pickle --amend-out
 
 step:python -c 'import pickle; print(pickle.load(open("work_out.pickle", "rb")))'
                state = SUCCEEDED
-          inp_digest = same
           created by   step:./plan.py
             consumes   file:./
             consumes   file:work_out.pickle

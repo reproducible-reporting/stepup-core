@@ -7,7 +7,7 @@
      PHASE │ run
     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, digest e9c01876 ➜ 767814ed, inp_digset e9c01876 ➜ 767814ed
+Modified step hash   explained, inp_digest 3e1e0e1d ➜ c4c6ec6f, out_digest 786a02f7 ➜ (unset)
 Modified inp hash    plan.py (digest 3bcd5b5a ➜ 95440306, size 102 ➜ 45)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
@@ -21,7 +21,7 @@ Return code           1
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ 1 step(s) failed.
-   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.

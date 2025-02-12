@@ -103,21 +103,25 @@ def myparent(path: str) -> Path | None:
     return result
 
 
-def make_path_out(path_in: str, out: str | None, ext: str | None) -> Path:
+def make_path_out(
+    path_in: str, dest: str | None, ext: str | None, other_exts: Collection[str] = ()
+) -> Path:
     """Construct an output path given the input path, an out argument and the expected extension.
 
     Parameters
     ----------
     path_in
         The input path from which the output path can be derived.
-    out
-        An output path argument.
+    dest
+        An output destination.
         Either None (only change extension),
         a destination directory (requires trailing slash) or a file.
         In either case, the extension of the output is equal to ext.
     ext
         The (new) extension of the output, e.g. .pdf.
         When None, the extension of the input is preserved.
+    other_exts
+        Other extensions that are allowed for the output.
 
     Returns
     -------
@@ -125,16 +129,16 @@ def make_path_out(path_in: str, out: str | None, ext: str | None) -> Path:
         A properly formatted output path.
     """
     path_in = Path(path_in)
-    if out is None or out.endswith(os.sep):
+    if dest is None or dest.endswith(os.sep):
         path_out = path_in
         if ext is not None:
             path_out = Path(path_out.stem + ext)
-        path_out = path_in.parent / path_out if out is None else Path(out) / path_out.basename()
+        path_out = path_in.parent / path_out if dest is None else Path(dest) / path_out.basename()
     else:
-        path_out = Path(out)
+        path_out = Path(dest)
     if path_out == path_in:
         raise ValueError(f"The output path cannot equal the input path: {path_out}")
-    if not (ext is None or path_out.suffix == ext):
+    if not (ext is None or path_out.suffix == ext or path_out.suffix in other_exts):
         raise ValueError(f"The output path does not have extension '{ext}': {path_out}.")
     return path_out
 
@@ -214,33 +218,49 @@ def format_command(executable: str) -> str:
     return shlex.quote(executable if executable.startswith(("./", "../")) else f"./{executable}")
 
 
-def filter_dependencies(paths: Collection[str]) -> set[Path]:
-    """Select only paths under `STEPUP_ROOT` or any of `STEPUP_EXTERNAL_SOURCES` and make relative.
+def filter_dependencies(paths: Collection[str], *external_sources: str) -> set[Path]:
+    """Select only paths that are children of a source directory and make relative.
 
     Parameters
     ----------
     paths
         A collection of paths to filter.
+        Relative paths are assumed to be relative to the current working directory.
+    external_sources
+        A collection of paths that are considered external sources.
+        Relative paths are assumed to be relative to the current working directory.
 
     Returns
     -------
     filtered_paths
         A collection of relative paths that are under `STEPUP_ROOT`
-        or any of `STEPUP_EXTERNAL_SOURCES`.
+        or any of `external_sources` or `${STEPUP_EXTERNAL_SOURCES}`.
+
+    Notes
+    -----
+    The list of source directories consists of:
+    - `STEPUP_ROOT` (if not set, the current directory is used.)
+    - Paths in `external_sources`
+    - Paths in the environment variable `${STEPUP_EXTERNAL_SOURCES}` (if set.)
+      When `${STEPUP_EXTERNAL_SOURCES}` contains relative paths,
+      they are assumed to be relative to `STEPUP_ROOT`.
+      (It acts as global variable, so its interpretation should be the same in all directories.)
     """
     # Get paths for all local imports.
-    sources_roots = [Path(os.environ.get("STEPUP_ROOT", Path.cwd())).normpath() / ""]
-    external_sources = os.environ.get("STEPUP_EXTERNAL_SOURCES")
-    if external_sources is not None:
+    sources_roots = [Path(os.environ.get("STEPUP_ROOT", Path.cwd())).absolute() / ""]
+    global_external_sources = os.environ.get("STEPUP_EXTERNAL_SOURCES")
+    if global_external_sources is not None:
         sources_roots.extend(
-            Path(source).expanduser().normpath() / "" for source in external_sources.split(":")
+            translate.back(source).absolute() / "" for source in global_external_sources.split(":")
         )
+    sources_roots.extend(Path(source).absolute() / "" for source in external_sources)
 
+    # Filter paths that are under the source directories.
     result = set()
     for path in paths:
         abspath = myabsolute(path)
-        for source_root in sources_roots:
-            if abspath.startswith(source_root):
+        for sources_root in sources_roots:
+            if abspath.startswith(sources_root):
                 result.add(myrelpath(path))
                 break
     return result

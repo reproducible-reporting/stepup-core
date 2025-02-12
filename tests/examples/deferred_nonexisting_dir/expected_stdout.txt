@@ -23,7 +23,7 @@ Inputs        STATIC  ./
              MISSING  sub/message.txt
 Outputs      AWAITED  message.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    UPDATED │ sub/

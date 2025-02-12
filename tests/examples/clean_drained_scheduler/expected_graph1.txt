@@ -1,0 +1,78 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:case1.txt
+            supplies   file:case2.txt
+            supplies   file:cases.txt
+            supplies   file:plan.py
+            supplies   file:work.py
+            supplies   step:./plan.py
+            supplies   step:./work.py case1.txt
+            supplies   step:./work.py case2.txt
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:cases.txt [amended]
+            consumes   file:plan.py
+             creates   file:cases.txt
+             creates   file:work.py
+             creates   step:./work.py case1.txt
+             creates   step:./work.py case2.txt
+
+file:cases.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./plan.py
+            supplies   step:./work.py case1.txt
+            supplies   step:./work.py case2.txt
+
+file:work.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./work.py case1.txt
+            supplies   step:./work.py case2.txt
+
+step:./work.py case1.txt
+               state = FAILED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:cases.txt
+            consumes   file:work.py
+             creates   file:case1.txt
+            supplies   file:case1.txt
+
+file:case1.txt
+               state = OUTDATED
+          created by   step:./work.py case1.txt
+            consumes   file:./
+            consumes   step:./work.py case1.txt
+
+step:./work.py case2.txt
+               state = PENDING
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:cases.txt
+            consumes   file:work.py
+             creates   file:case2.txt
+            supplies   file:case2.txt
+
+file:case2.txt
+               state = AWAITED
+          created by   step:./work.py case2.txt
+            consumes   file:./
+            consumes   step:./work.py case2.txt

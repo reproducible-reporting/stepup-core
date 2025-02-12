@@ -25,6 +25,8 @@ import sqlite3
 from collections import Counter
 
 from path import Path
+from rich.console import Console
+from rich.table import Table
 
 from .cascade import DROP_CONSUMERS, INITIAL_CONSUMERS, RECURSE_CONSUMERS
 from .enums import FileState
@@ -44,55 +46,96 @@ def main():
             lo_path /= ""
         tr_paths.add(translate(lo_path))
 
-    # Open the database in read-only mode
+    # Copy the database in memory, close it and work on the copy.
     root = Path(os.getenv("STEPUP_ROOT", "."))
     path_db = root / ".stepup/graph.db"
-    con = sqlite3.Connection(f"file:{path_db}?mode=ro", uri=True)
+    dst = sqlite3.Connection(":memory:")
+    try:
+        src = sqlite3.Connection(path_db)
+        try:
+            src.backup(dst)
+        finally:
+            src.close()
+        cleanup(dst, tr_paths, args)
+    finally:
+        dst.close()
 
+
+def cleanup(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace):
+    """Perform the cleanup of the given paths.
+
+    Parameters
+    ----------
+    con
+        The database connection.
+    tr_paths
+        The paths to consider for the cleanup.
+    args
+        The command-line arguments
+    """
     # Find all related output paths
     tr_consuming_paths = search_consuming_paths(con, tr_paths)
     tr_consuming_paths.sort(reverse=True)
 
     # Loop over paths, remove and collect info for stdout
     counter = Counter()
-    for tr_consuming_path, file_hash in tr_consuming_paths:
+    colors0 = {"?": "yellow", "!": "red", " ": "green"}
+    colors1 = {"d": "cyan", "f": "blue"}
+    console = Console(highlight=False)
+    for tr_consuming_path, state, old_file_hash in tr_consuming_paths:
         # Translate back to local path
         lo_consuming_path = translate.back(tr_consuming_path)
-        if args.verbose >= 1:
-            label = "" if lo_consuming_path.exists() else "?"
+        label = "" if lo_consuming_path.exists() else "?"
 
-        # Remove if hash has not changed
-        if file_hash.update(lo_consuming_path) is False:
+        # Remove if it is safe
+        if not args.dry_run and (
+            state == FileState.VOLATILE or old_file_hash.regen(lo_consuming_path) == old_file_hash
+        ):
             if lo_consuming_path.endswith("/"):
                 lo_consuming_path.rmdir_p()
             else:
                 lo_consuming_path.remove_p()
 
         # Check removal
-        if args.verbose >= 1:
-            if label == "":
-                label += "!" if lo_consuming_path.exists() else " "
-            label += "d" if lo_consuming_path.endswith("/") else "f"
-            if args.verbose >= 2:
-                print(f"{label} {lo_consuming_path}")
-            counter[label] += 1
+        if label == "":
+            label += "!" if lo_consuming_path.exists() else " "
+        label += "d" if lo_consuming_path.endswith("/") else "f"
+        c0 = colors0[label[0]]
+        c1 = colors1[label[1]]
+        console.print(f"[bold {c0}]{label[0]}[/][bold {c1}]{label[1]}[/] {lo_consuming_path}")
+        counter[label] += 1
+    console.print()
 
-    # Summary
-    if args.verbose >= 1:
-        print("                Files      Dirs")
-        print(f"Not found:   {counter['?f']:8d}  {counter['?d']:8d}")
-        print(f"Not removed: {counter['!f']:8d}  {counter['!d']:8d}")
-        print(f"Removed:     {counter[' f']:8d}  {counter[' d']:8d}")
+    # Print summary
+    title = "Cleanup summary"
+    if args.dry_run:
+        title += " (dry run)"
+    table = Table(title=title)
+    table.add_column("Category")
+    table.add_column("[bold blue]Files[/]", justify="right")
+    table.add_column("[bold cyan]Dirs[/]", justify="right")
+    table.add_row("[bold yellow]Not found[/]", fmtnum(counter["?f"]), fmtnum(counter["?d"]))
+    table.add_row("[bold red]Not removed[/]", fmtnum(counter["!f"]), fmtnum(counter["!d"]))
+    table.add_row("Removed", fmtnum(counter[" f"]), fmtnum(counter[" d"]))
+    console.print(table)
+
+
+def fmtnum(i: int):
+    if i == 0:
+        return "[grey]0[/]"
+    return str(i)
 
 
 INITIAL_PATHS = "CREATE TABLE temp.initial_path(path TEXT PRIMARY KEY) WITHOUT ROWID"
 
-SELECT_OUTPUTS = """
+SELECT_OUTPUTS = f"""
 -- Final: Get all (indirect) outputs
-SELECT label, digest, mode, mtime, size, inode FROM node
+SELECT label, state, digest, mode, mtime, size, inode FROM node
 JOIN all_consumer ON node.i = all_consumer.current
 JOIN file ON file.node = all_consumer.current
-WHERE file.state in (:built, :volatile, :outdated) AND NOT orphan
+WHERE file.state in
+({FileState.BUILT.value}, {FileState.OUTDATED.value}, {FileState.VOLATILE.value})
+AND NOT orphan
 """
 
 DROP_PATHS = "DROP TABLE IF EXISTS temp.initial_path"
@@ -100,7 +143,22 @@ DROP_PATHS = "DROP TABLE IF EXISTS temp.initial_path"
 
 def search_consuming_paths(
     con: sqlite3.Connection, initial_paths: list[Path]
-) -> list[tuple[Path, FileHash]]:
+) -> list[tuple[Path, FileState, FileHash]]:
+    """Find all paths that depend on the given initial paths.
+
+    Parameters
+    ----------
+    con
+        The database connection.
+    initial_paths
+        The initial paths to consider.
+
+    Returns
+    -------
+    consuming_paths
+        A list of paths and their file states and hashes.
+        This only includes paths that are (volatile) outputs of steps,
+    """
     try:
         con.execute(DROP_PATHS)
         con.execute(INITIAL_PATHS)
@@ -113,21 +171,13 @@ def search_consuming_paths(
             "INSERT INTO temp.initial_consumer SELECT node.i AS current "
             "FROM node JOIN temp.initial_path ON node.label = temp.initial_path.path"
         )
-        all_paths = [
-            (row[0], FileHash(*row[1:]))
-            for row in con.execute(
-                RECURSE_CONSUMERS + SELECT_OUTPUTS,
-                {
-                    "built": FileState.BUILT.value,
-                    "volatile": FileState.VOLATILE.value,
-                    "outdated": FileState.OUTDATED.value,
-                },
-            )
+        return [
+            (row[0], FileState(row[1]), FileHash(*row[2:]))
+            for row in con.execute(RECURSE_CONSUMERS + SELECT_OUTPUTS)
         ]
     finally:
         con.execute(DROP_PATHS)
         con.execute(DROP_CONSUMERS)
-    return all_paths
 
 
 def parse_args():
@@ -147,7 +197,12 @@ def parse_args():
         "The directory itself is also removed if it is not static. "
         "The cleanup is performed recursively: outputs of outputs are also removed, etc.",
     )
-    parser.add_argument("-v", "--verbose", action="count", default=0)
+    parser.add_argument(
+        "-d",
+        "--dry-run",
+        action="store_true",
+        help="Do not remove any files, just show what would be done.",
+    )
     return parser.parse_args()
 
 

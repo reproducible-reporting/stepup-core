@@ -1,5 +1,9 @@
 !f hello.txt
-                Files      Dirs
-Not found:          0         0
-Not removed:        1         0
-Removed:            0         0
+
+       Cleanup summary    ┏━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━┓
+┃ Category    ┃ Files ┃ Dirs ┃
+┡━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━┩
+│ Not found   │     0 │    0 │
+│ Not removed │     1 │    0 │
+│ Removed     │     0 │    0 │
+└─────────────┴───────┴──────┘

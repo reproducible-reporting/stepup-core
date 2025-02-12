@@ -25,7 +25,7 @@ EOD
 [[ -f sub/tmp.txt ]] || exit 1
 [[ -f sub/out.txt ]] || exit 1
 
-cleanup sub -vv > current_cleanup.txt
+cleanup sub > current_cleanup.txt
 
 # Get the graph after completion of the pending steps.
 python3 - << EOD

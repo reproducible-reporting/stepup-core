@@ -60,7 +60,8 @@ which it simply passes on when creating the `./executable plan` step.
 
 ## Script driver
 
-StepUp implements a `driver()` function in the module `stepup.core.script` that greatly facilitates
+StepUp implements a [`driver()`][stepup.core.script.driver] function
+in the module `stepup.core.script` that greatly facilitates
 writing Python scripts that adhere to the script protocol.
 
 It can be used in two ways:

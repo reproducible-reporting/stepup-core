@@ -19,7 +19,6 @@ file:plan.py
 
 step:./plan.py
                state = SUCCEEDED
-          inp_digest = same
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -33,7 +32,7 @@ step:rm .sjdksjdfkjasdfkdjsak
             supplies   file:oops.txt
 
 file:oops.txt
-               state = OUTDATED
+               state = AWAITED
           created by   step:rm .sjdksjdfkjasdfkdjsak
             consumes   file:./
             consumes   step:rm .sjdksjdfkjasdfkdjsak

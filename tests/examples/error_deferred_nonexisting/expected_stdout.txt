@@ -23,7 +23,7 @@ Inputs        STATIC  ./
              MISSING  static/foo/bar/
              MISSING  static/foo/bar/README.md
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.

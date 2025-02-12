@@ -632,15 +632,15 @@ class NGlobMulti:
         """
         return any(ngs.regex.fullmatch(path) for ngs in self._nglob_singles)
 
-    def may_change(self, deleted: set[str], updated: set[str]) -> bool:
+    def may_change(self, deleted: set[str], added: set[str]) -> bool:
         """Determine whether the results may change (later) after deleting or adding files.
 
         Parameters
         ----------
         deleted
             Set of files to be deleted.
-        updated
-            Set of files to be updated.
+        added
+            Set of files to be added.
 
         Returns
         -------
@@ -649,27 +649,27 @@ class NGlobMulti:
             (It may require additional additions and deletions to get any effect,
             but cannot be excluded that the provided deletions and updates play a role in it.)
         """
-        updated_new = updated.copy()
+        added_new = added.copy()
         for ngs in self._nglob_singles:
             for paths in ngs.results.values():
                 if not deleted.isdisjoint(paths):
                     return True
-                updated_new.difference_update(paths)
+                added_new.difference_update(paths)
         for ngs in self._nglob_singles:
-            for path in updated_new:
+            for path in added_new:
                 if ngs.regex.fullmatch(path):
                     return True
         return False
 
-    def will_change(self, deleted: Collection[str], updated: Collection[str]) -> Self | None:
+    def will_change(self, deleted: Collection[str], added: Collection[str]) -> Self | None:
         """Determine whether the results will change after deleting or adding files.
 
         Parameters
         ----------
         deleted
             Set of files to be deleted.
-        updated
-            Set of files to be added or changed.
+        added
+            Set of files to be added.
 
         Returns
         -------
@@ -678,7 +678,7 @@ class NGlobMulti:
             None otherwise.
         """
         evolved = self.deepcopy()
-        evolved.extend(updated)
+        evolved.extend(added)
         evolved.reduce(deleted)
         return None if evolved.equals(self) else evolved
 

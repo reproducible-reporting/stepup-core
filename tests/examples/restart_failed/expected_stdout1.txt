@@ -1,0 +1,17 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cat line.txt >> log.txt; exit 1
+      FAIL │ cat line.txt >> log.txt; exit 1
+────────────────────────────────── Step info ───────────────────────────────────
+Command               cat line.txt >> log.txt; exit 1
+Return code           1
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ 1 step(s) failed.
+   WARNING │ Skipping file cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

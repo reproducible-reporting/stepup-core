@@ -25,7 +25,7 @@ Inputs        STATIC  ./
             OUTDATED  (copy1.txt)
 Outputs     OUTDATED  copy2.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.

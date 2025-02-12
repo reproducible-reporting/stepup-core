@@ -14,12 +14,13 @@ inp2.txt
      START │ ./step.py
    SUCCESS │ ./step.py
   DIRECTOR │ Trying to delete 0 outdated output(s).
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    UPDATED │ inp2.txt
      PHASE │ run
     NOSKIP │ echo word2 > inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, digest ecd85c33 ➜ a1cf540a, inp_digset 87ee641b
+Modified step hash   explained, inp_digest 23ddc1c2, out_digest e27820eb ➜ c01f6e39
 Modified out hash    inp2.txt (digest 55af8bcf ➜ b0c92f99, size 6 ➜ 15)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
@@ -27,6 +28,7 @@ Same inp hash        ./
      START │ echo word2 > inp2.txt
    SUCCESS │ echo word2 > inp2.txt
   DIRECTOR │ Trying to delete 0 outdated output(s).
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

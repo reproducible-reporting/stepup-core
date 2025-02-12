@@ -43,46 +43,50 @@ logger = logging.getLogger(__name__)
 
 @attrs.define
 class Runner:
-    # The watcher instance, used to start the watcher when the runner becomes idle.
     watcher: Watcher | None = attrs.field()
+    """The watcher instance, used to start the watcher when the runner becomes idle."""
 
-    # The scheduler providing jobs to the runner.
     scheduler: Scheduler = attrs.field()
+    """The scheduler providing jobs to the runner."""
 
-    # The workflow which generated the jobs and which gets updated as a result of the jobs.
     workflow: Workflow = attrs.field()
+    """The workflow which generated the jobs and which gets updated as a result of the jobs."""
 
-    # Lock for workflow database access.
     dblock: DBLock = attrs.field()
+    """Lock for workflow database access."""
 
-    # A reporter client for sending progress info to.
     reporter: ReporterClient = attrs.field()
+    """A reporter client for sending progress info to."""
 
-    # The path of the director socket, passed on to worker processes.
     director_socket_path: str = attrs.field()
+    """The path of the director socket, passed on to worker processes."""
 
-    # Flag to enable performance output after a worker executed a step.
     show_perf: bool = attrs.field()
+    """Flag to enable performance output after a worker executed a step."""
 
-    # Flag to enable more details on why steps cannot be skipped.
     explain_rerun: bool = attrs.field()
+    """Flag to enable more details on why steps cannot be skipped."""
 
-    # Other parts of StepUp can set the resume event to put the runner back to work.
     resume: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+    """Other parts of StepUp can set the resume event to put the runner back to work."""
 
-    # A list of worker client objects, one for each worker process.
     workers: list[WorkerClient] = attrs.field(init=False, factory=list)
+    """A list of worker client objects, one for each worker process."""
 
-    # The list of active and idle workers (just integer indexes of the workers list).
     active_workers: set[int] = attrs.field(init=False, factory=set)
+    """The list of active workers (just integer indexes of the workers list)."""
+
     idle_workers: set[int] = attrs.field(init=False, factory=set)
+    """The list of idle workers (just integer indexes of the workers list)."""
 
-    # Dictionary of asyncio tasks that interact with a worker client.
     running_worker_tasks: dict[asyncio.Task, Job] = attrs.field(init=False, factory=dict)
-    done_worker_tasks: dict[asyncio.Task, Job] = attrs.field(init=False, factory=dict)
+    """Dictionary of asyncio tasks that are currently running a job."""
 
-    # Exit code of the directory, based on the last run phase.
+    done_worker_tasks: dict[asyncio.Task, Job] = attrs.field(init=False, factory=dict)
+    """Dictionary of asyncio tasks that have completed a job."""
+
     returncode: ReturnCode = attrs.field(init=False, default=ReturnCode.PENDING)
+    """Exit code for the director, based on the last run phase."""
 
     async def loop(self, stop_event: asyncio.Event):
         """The main runner loop.
@@ -146,15 +150,16 @@ class Runner:
     async def finalize(self):
         """Final steps after the runner has executed a bunch of jobs."""
         async with self.dblock:
-            self.workflow.con.execute("VACUUM")
-        async with self.dblock:
             self.returncode = await report_completion(self.workflow, self.scheduler, self.reporter)
         if self.returncode == ReturnCode.SUCCESS:
             async with self.dblock:
                 self.workflow.clean()
             await remove_outdated_outputs(self.workflow, self.dblock, self.reporter)
         else:
-            await self.reporter("WARNING", "Skipping cleanup due to incomplete build.")
+            await self.reporter("WARNING", "Skipping file cleanup due to incomplete build.")
+            await clean_queue(self.scheduler, self.dblock, self.reporter)
+        async with self.dblock:
+            self.workflow.con.execute("VACUUM")
         await self.reporter.update_step_counts(self.workflow.get_step_counts())
         await self.reporter.check_logs()
         if self.watcher is not None:
@@ -175,6 +180,7 @@ class Runner:
 
     async def _launch_worker(self) -> int:
         worker = WorkerClient(
+            self.scheduler,
             self.workflow,
             self.dblock,
             self.reporter,
@@ -225,33 +231,6 @@ class Runner:
     async def kill_worker_procs(self, signal: int):
         for worker_idx in self.active_workers:
             await self.workers[worker_idx].kill(signal)
-
-
-async def remove_outdated_outputs(workflow: Workflow, dblock: DBLock, reporter: ReporterClient):
-    """Remove outdated outputs from the file system and reset their state in the database."""
-    await reporter(
-        "DIRECTOR",
-        f"Trying to delete {len(workflow.to_be_deleted)} outdated output(s).",
-    )
-    workflow.to_be_deleted.sort(reverse=True)
-    # Remove the files from the file system.
-    for path, file_hash in workflow.to_be_deleted:
-        if (
-            path.endswith("/") or file_hash is None or file_hash.update(path) is False
-        ) and remove_path(path):
-            await reporter("CLEAN", path)
-    # Reset the state of the deleted files in the database, if they are still present.
-    async with dblock:
-        workflow.con.executemany(
-            """
-            WITH node_tmp AS (SELECT i FROM node WHERE label = ?)
-            UPDATE file
-            SET state = ?, digest = ?, mode = 0, mtime = 0, size = 0, inode = 0
-            WHERE node IN node_tmp
-            """,
-            [(path, FileState.AWAITED.value, b"u") for path, _ in workflow.to_be_deleted],
-        )
-    workflow.to_be_deleted.clear()
 
 
 async def report_completion(
@@ -346,3 +325,43 @@ async def report_completion(
                 # Finally, report the workflow steps that are pending.
                 await reporter("WARNING", f"{lead} incomplete requirements", pending_pages)
     return returncode
+
+
+async def remove_outdated_outputs(workflow: Workflow, dblock: DBLock, reporter: ReporterClient):
+    """Remove outdated outputs from the file system and reset their state in the database."""
+    await reporter(
+        "DIRECTOR",
+        f"Trying to delete {len(workflow.to_be_deleted)} outdated output(s).",
+    )
+    workflow.to_be_deleted.sort(reverse=True)
+    # Remove the files from the file system.
+    for path, file_hash in workflow.to_be_deleted:
+        if (
+            path.endswith("/") or file_hash is None or file_hash.regen(path) == file_hash
+        ) and remove_path(path):
+            await reporter("CLEAN", path)
+    # Reset the state of the deleted files in the database, if they are still present.
+    async with dblock:
+        workflow.con.executemany(
+            """
+            WITH node_tmp AS (SELECT i FROM node WHERE label = ?)
+            UPDATE file
+            SET state = ?, digest = ?, mode = 0, mtime = 0, size = 0, inode = 0
+            WHERE node IN node_tmp
+            """,
+            [(path, FileState.AWAITED.value, b"u") for path, _ in workflow.to_be_deleted],
+        )
+    workflow.to_be_deleted.clear()
+
+
+async def clean_queue(scheduler: Scheduler, dblock: DBLock, reporter: ReporterClient):
+    """Clean the scheduler queue and make queued steps pending again."""
+    if scheduler.onhold:
+        count = 0
+        async with dblock:
+            while scheduler.job_queue.qsize() > 0:
+                job = scheduler.job_queue.get_nowait()
+                job.step.set_state(StepState.PENDING)
+                count += 1
+        if count > 0:
+            await reporter("WARNING", f"Made {count} step(s) in the queue pending again.")

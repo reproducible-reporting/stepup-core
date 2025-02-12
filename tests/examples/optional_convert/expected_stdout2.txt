@@ -8,7 +8,7 @@
      PHASE │ run
     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, digest a82ec837 ➜ af3a70ef, inp_digset a82ec837 ➜ af3a70ef
+Modified step hash   explained, inp_digest 8dd342cf ➜ 2a63643b, out_digest 786a02f7 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_IDX ='3' ➜ ='1'
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
@@ -22,6 +22,7 @@ Same inp hash        plan.py
    SUCCESS │ cp -aT converted1.txt used.txt
   DIRECTOR │ Trying to delete 1 outdated output(s).
      CLEAN │ converted3.txt
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

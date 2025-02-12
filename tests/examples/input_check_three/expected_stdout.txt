@@ -1,0 +1,23 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ echo hi > f1.txt
+   SUCCESS │ echo hi > f1.txt
+     START │ ./work.py
+   SUCCESS │ ./work.py
+      FAIL │ cat f1.txt f2.txt > f3.txt
+────────────────────────────────── Step info ───────────────────────────────────
+Command               cat f1.txt f2.txt > f3.txt
+──────────────────────────────── Invalid inputs ────────────────────────────────
+Input changed unexpectedly: f1.txt (digest 7ea59e7a ➜ a97fe9ac, size 3 ➜ 15)
+────────────────────────────────────────────────────────────────────────────────
+     ERROR │ The scheduler has been drained due to unexpected input changes.
+   WARNING │ 1 step(s) failed.
+   WARNING │ Scheduler is put on hold. Not reporting pending steps.
+   WARNING │ Skipping file cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

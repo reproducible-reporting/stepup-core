@@ -8,7 +8,7 @@
      PHASE │ run
     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, digest 70df0869 ➜ b65d1108, inp_digset 70df0869 ➜ b65d1108
+Modified step hash   explained, inp_digest 683fd0b7 ➜ d24cb33a, out_digest 786a02f7 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_PREFIX ='README' ➜ ='FOO'
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
@@ -21,6 +21,7 @@ Same inp hash        plan.py
   DIRECTOR │ Trying to delete 2 outdated output(s).
      CLEAN │ README-stdout.txt
      CLEAN │ README-stderr.txt
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

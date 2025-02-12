@@ -45,16 +45,6 @@ jobs:
         with:
           python-version: 3.x
 
-      # Sanity check before doing anything else.
-      - name: Lint markdown files
-        uses: DavidAnson/markdownlint-cli2-action@v19
-        with:
-          config-file: .markdownlint-cli2.jsonc
-          globs: |
-            *.md
-            docs/*.md
-            docs/*/*.md
-
       # Prepare the environment for building docs.
       - name: Setup Pages
         id: pages

@@ -20,7 +20,7 @@ The following screen recording provides a quick visual impression of StepUp's te
 
 <script src="https://asciinema.org/a/656610.js" id="asciicast-656610" async="true"></script>
 
-## Why Was StepUp Core Created?
+## Why Was StepUp Created?
 
 StepUp is a [greenfield project](https://en.wikipedia.org/wiki/Greenfield_project)
 inspired by similar tools, such as

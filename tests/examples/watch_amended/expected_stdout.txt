@@ -20,7 +20,7 @@ Inputs        STATIC  ./
               STATIC  work.py
 Outputs     OUTDATED  out.txt [amended]
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    UPDATED │ inp.txt

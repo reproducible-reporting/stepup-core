@@ -22,13 +22,11 @@
 import glob
 import logging
 import os
-from copy import copy
 
 from path import Path
 
 from .enums import DirWatch, FileState, StepState
-from .hash import FileHash, fmt_env_value, report_hash_diff
-from .job import SetPoolJob
+from .hash import FileHash, fmt_env_value, fmt_file_hash_diff
 from .reporter import ReporterClient
 from .runner import Runner
 from .step import Step
@@ -74,7 +72,7 @@ async def startup_from_db(
     if len(rows) > 0:
         await reporter("STARTUP", f"Setting {len(rows)} pools from initial database")
         for pool, size in rows:
-            workflow.job_queue.put_nowait(SetPoolJob(pool, size))
+            workflow.config_queue.put_nowait((pool, size))
         workflow.job_queue_changed.set()
 
     # Populate dir queue
@@ -111,14 +109,16 @@ async def startup_from_db(
 
     # Check for file changes and new glob matches
     await reporter("STARTUP", "Scanning initial database for changed files")
-    deleted, updated = await scan_file_changes(workflow, dblock, reporter)
+    deleted, old_added = await scan_file_changes(workflow, dblock, reporter)
     await reporter("STARTUP", "Scanning initial database for new nglob matches")
-    updated_nglob = await scan_nglob_changes(workflow, dblock, reporter)
+    new_added = await scan_nglob_changes(workflow, dblock, reporter)
+    async with dblock:
+        workflow.process_nglob_changes(deleted, old_added | new_added)
 
-    # Update the workflow and fire up the runner
+    # Wrap up by making necessary steps pending and starting the runner.
     logger.info("Startup sequence completed")
     async with dblock:
-        workflow.process_watcher_changes(deleted, updated | updated_nglob)
+        workflow.queue_pending_steps()
     runner.resume.set()
 
 
@@ -138,32 +138,28 @@ async def scan_file_changes(
         return None
 
     deleted = set()
-    updated = set()
+    added = set()
     changed_hashes = []
     for path, state, digest, mode, mtime, size, inode in rows:
         state = FileState(state)
-        file_hash = FileHash(digest, mode, mtime, size, inode)
-        old_file_hash = copy(file_hash)
-        changed = file_hash.update(path)
-        if changed is None:
-            if state != FileState.MISSING:
-                deleted.add(path)
+        old_file_hash = FileHash(digest, mode, mtime, size, inode)
+        new_file_hash = old_file_hash.regen(path)
+        if old_file_hash != new_file_hash:
+            if new_file_hash.is_unknown:
                 await reporter("DELETED", path)
-                if state == FileState.STATIC and digest != b"u":
-                    changed_hashes.append((path, file_hash))
-        elif changed:
-            updated.add(path)
-            if state in (FileState.STATIC, FileState.MISSING):
-                changed_hashes.append((path, file_hash))
-                await reporter(
-                    "UPDATED", report_hash_diff("", path, old_file_hash, file_hash)[1][1]
-                )
+                deleted.add(path)
             else:
-                await reporter("UPDATED", path)
+                await reporter(
+                    "UPDATED", path + " " + fmt_file_hash_diff(old_file_hash, new_file_hash)
+                )
+                if state in (FileState.MISSING, FileState.AWAITED):
+                    added.add(path)
+            changed_hashes.append((path, new_file_hash))
 
+    logger.info("Updating file hashes %s", changed_hashes)
     async with dblock:
-        workflow.update_file_hashes(changed_hashes)
-    return deleted, updated
+        workflow.update_file_hashes(changed_hashes, "external")
+    return deleted, added
 
 
 async def scan_nglob_changes(
@@ -202,6 +198,4 @@ async def scan_nglob_changes(
     new_paths.sort()
     for new_path in new_paths:
         await reporter("UPDATED", new_path)
-
-    # Feed back to the workflow
     return set(new_paths)

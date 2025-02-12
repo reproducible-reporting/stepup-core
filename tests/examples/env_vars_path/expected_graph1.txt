@@ -22,7 +22,6 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
              env_var = ENV_VAR_TEST_STEPUP_PREFIX [amended]
-          inp_digest = same
            explained = yes
           created by   root:
             consumes   file:./

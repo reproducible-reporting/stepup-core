@@ -19,7 +19,7 @@ and watch some football.
    SUCCESS │ ./plan.py
       SKIP │ cat analyzed.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, digest 85191f53, inp_digset 85191f53
+Same step hash       explained, inp_digest 29d3affc, out_digest 786a02f7
 Same inp hash        ./
 Same inp hash        analyzed.txt
 ────────────────────────────────────────────────────────────────────────────────

@@ -33,7 +33,7 @@ from .deferred_glob import DeferredGlob
 from .enums import FileState, Mandatory, StepState
 from .file import File, FileHash
 from .hash import StepHash
-from .job import ExecuteJob, TrySkipJob, ValidateAmendedJob
+from .job import RunJob, ValidateAmendedJob
 from .nglob import NGlobMulti
 from .stepinfo import StepInfo
 from .utils import format_digest
@@ -93,9 +93,10 @@ CREATE INDEX IF NOT EXISTS env_var_node ON env_var(node);
 
 CREATE TABLE IF NOT EXISTS step_hash (
     node INTEGER PRIMARY KEY,
-    digest BLOB NOT NULL,
     inp_digest BLOB NOT NULL,
-    explain_info BLOB,
+    inp_info BLOB,
+    out_digest BLOB NOT NULL,
+    out_info BLOB,
     FOREIGN KEY (node) REFERENCES node(i)
 );
 """
@@ -152,6 +153,12 @@ WITH RECURSIVE tree(i, label, creator, state) AS (
 )
 SELECT i, label FROM tree WHERE state = {StepState.PENDING.value}
 """
+
+
+def split_step_label(label: str) -> tuple[str, str]:
+    """Split a step label into command and workdir."""
+    parts = label.split("  # wd=", maxsplit=1)
+    return parts[0], Path(parts[1]) if len(parts) == 2 else Path("./")
 
 
 @attrs.define
@@ -235,16 +242,13 @@ class Step(Node):
 
         step_hash = self.get_hash()
         if step_hash is not None:
-            l1, l2 = format_digest(step_hash.digest)
-            yield "digest", l1
+            l1, l2 = format_digest(step_hash.inp_digest)
+            yield "inp_digest", l1
             yield "", l2
-            if step_hash.digest == step_hash.inp_digest:
-                yield "inp_digest", "same"
-            else:
-                l1, l2 = format_digest(step_hash.inp_digest)
-                yield "inp_digest", l1
-                yield "", l2
-            if step_hash.explain_info is not None:
+            l1, l2 = format_digest(step_hash.out_digest)
+            yield "out_digest", l1
+            yield "", l2
+            if step_hash.inp_info is not None:
                 yield "explained", "yes"
 
     def _make_orphan(self):
@@ -371,8 +375,7 @@ class Step(Node):
 
     def get_command_workdir(self) -> tuple[str, str]:
         """Return the command and workdir of this step."""
-        parts = self.label.split("  # wd=", maxsplit=1)
-        return parts[0], Path(parts[1]) if len(parts) == 2 else Path("./")
+        return split_step_label(self.label)
 
     def get_state(self) -> StepState:
         row = self.con.execute("SELECT state FROM step WHERE node = ?", (self.i,)).fetchone()
@@ -687,14 +690,25 @@ class Step(Node):
             return
 
         # Do not start a step if any of its (recursive) creators are not in a valid state.
+        # These may still produce or changes files relevant for this step.
         if self.con.execute(HAS_UNCERTAIN_CREATORS, (self.i,)).fetchone()[0]:
             return
 
         # Check whether initial and amended inputs are ready.
+        # Also collect the input hashes for input validation before the step is started.
         amended_inputs_ready = True
-        for _, file_state, is_orphan, is_amended in self.inp_paths(
-            yield_state=True, yield_orphan=True, yield_amended=True
-        ):
+        inp_hashes = []
+        sql = (
+            "SELECT node.label, node.orphan, file.state, "
+            "EXISTS (SELECT 1 FROM amended_dep WHERE amended_dep.i = dep.i), "
+            "file.digest, file.mode, file.mtime, file.size, file.inode "
+            "FROM node JOIN dependency AS dep ON node.i = dep.supplier "
+            "JOIN file ON file.node = node.i "
+            "WHERE dep.consumer = ?"
+        )
+        cursor = self.con.execute(sql, (self.i,))
+        for path, is_orphan, fs_value, is_amended, digest, mode, mtime, size, inode in cursor:
+            file_state = FileState(fs_value)
             if is_orphan or file_state not in (FileState.BUILT, FileState.STATIC):
                 if is_amended and validate_amended:
                     amended_inputs_ready = False
@@ -703,17 +717,22 @@ class Step(Node):
                     # - Initial input is not ready.
                     # - Amended input is not ready and not going to validate it.
                     return
+            inp_hashes.append((path, FileHash(digest, mode, mtime, size, inode)))
 
         # Determine the appropriate job to queue.
-        if amended_inputs_ready:
-            # All inputs are good to go.
-            job = ExecuteJob(self, pool) if self.get_hash() is None else TrySkipJob(self, pool)
+        step_hash = self.get_hash()
+        # Get a list of environment variables used.
+        env_vars = list(self.env_vars())
+
+        if amended_inputs_ready or step_hash is None:
+            # All (amended) inputs are ready, or the job is not skippable.
+            job = RunJob(self, pool, inp_hashes, env_vars, step_hash)
         else:
             # If the initial inputs are ready, but the amended inputs are not,
-            # we need to validate the amended inputs first.
-            # They may not be available, but if the initial inputs have changed,
-            # they may also no longer be needed. Almost a catch 22.
-            job = ValidateAmendedJob(self, pool)
+            # and there is a step hash, we need to validate the amended inputs first.
+            # If they are not available, and if the existing inputs have changed,
+            # they may also no longer be needed.
+            job = ValidateAmendedJob(self, pool, inp_hashes, env_vars, step_hash)
 
         # Queue the job.
         logger.info("Queue %s", job.name)
@@ -822,42 +841,37 @@ class Step(Node):
             file = File(self.workflow, i, label)
             file.mark_outdated()
 
-    def completed(self, success: bool, new_hash: StepHash | None) -> str | None:
+    def completed(self, new_hash: StepHash | None):
         """Set a step as completed (succeeded or failed) and trigger the consequences.
 
         Parameters
         ----------
-        success
-            True if the step completed without error, False otherwise.
         new_hash
-            The new digest of the completed step.
-            Required if the step was successful or rescheduled.
-            Allowed to be None when the step failed.
-
-        Returns
-        -------
-        reschedule_info
-            A string listing the reasons for rescheduling the step.
+            The new digest of the completed step if the step was successful, `None` otherwise.
         """
-        rescheduled_info = self.get_rescheduled_info()
-        if rescheduled_info != "":
-            logger.info("Reschedule step: %s", self.label)
-            if new_hash is None:
-                raise ValueError("Step rescheduled without new_hash")
-            self.set_state(StepState.PENDING)
-            self.delete_hash()
-            # The missing inputs may have appeared by the time the step ended,
-            # so we need to check if we can put the step back on the queue right away.
-            self.queue_if_appropriate()
-            return rescheduled_info
-        if success:
-            logger.info("Success step: %s", self.label)
-            if new_hash is None:
-                raise ValueError("Step succeeded without new_hash")
-            self.set_state(StepState.SUCCEEDED)
-            # Pending steps that use outputs of the current step may possibly be queued.
+        if new_hash is None:
+            rescheduled_info = self.get_rescheduled_info()
+            # Update states, needed for files that have not changed since previous run.
             for file in self.products(kind="file"):
-                if file.get_state() in (FileState.AWAITED, FileState.OUTDATED):
+                if file.get_state() == FileState.BUILT:
+                    file.set_state(FileState.OUTDATED)
+            if rescheduled_info != "":
+                logger.info("Rescheduled step: %s", self.label)
+                self.set_state(StepState.PENDING)
+                self.delete_hash()
+                # The missing inputs may have appeared by the time the step ended,
+                # so we need to check if we can put the step back on the queue right away.
+                self.queue_if_appropriate()
+            else:
+                logger.info("Failed step: %s", self.label)
+                self.set_state(StepState.FAILED)
+                self.delete_hash()
+        else:
+            logger.info("Succeeded step: %s", self.label)
+            self.set_state(StepState.SUCCEEDED)
+            # Update states, needed for files that have not changed since previous run.
+            for file in self.products(kind="file"):
+                if file.get_state() == FileState.OUTDATED:
                     file.set_state(FileState.BUILT)
                     file.release_pending()
             # Pending steps that are created by this step may possibly be queued.
@@ -868,30 +882,23 @@ class Step(Node):
                 step = Step(self.workflow, i, label)
                 step.queue_if_appropriate()
             self.set_hash(new_hash)
-        else:
-            logger.info("Fail step: %s", self.label)
-            self.set_state(StepState.FAILED)
-            for file in self.products(kind="file"):
-                if file.get_state() in (FileState.AWAITED, FileState.BUILT):
-                    file.set_state(FileState.OUTDATED)
-            self.delete_hash()
-        return ""
 
     def get_hash(self) -> StepHash | None:
-        sql = "SELECT digest, inp_digest, explain_info FROM step_hash WHERE node = ?"
+        sql = "SELECT inp_digest, inp_info, out_digest, out_info FROM step_hash WHERE node = ?"
         row = self.con.execute(sql, (self.i,)).fetchone()
         if row is None:
             return None
-        return StepHash(row[0], row[1], None if row[2] is None else pickle.loads(row[2]))
+        return StepHash(row[0], pickle.loads(row[1]), row[2], pickle.loads(row[3]))
 
     def set_hash(self, step_hash: StepHash):
         data = (
             self.i,
-            step_hash.digest,
             step_hash.inp_digest,
-            pickle.dumps(step_hash.explain_info),
+            pickle.dumps(step_hash.inp_info),
+            step_hash.out_digest,
+            pickle.dumps(step_hash.out_info),
         )
-        self.con.execute("INSERT OR REPLACE INTO step_hash VALUES (?, ?, ?, ?)", data)
+        self.con.execute("INSERT OR REPLACE INTO step_hash VALUES (?, ?, ?, ?, ?)", data)
 
     def delete_hash(self):
         self.con.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))

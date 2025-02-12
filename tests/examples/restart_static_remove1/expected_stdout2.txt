@@ -8,12 +8,13 @@
      PHASE │ run
     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   compact, digest 37558936 ➜ 099f76e8, inp_digset 37558936 ➜ 099f76e8
+Modified step hash   compact ➜ explained, inp_digest 74e0cbe5 ➜ 54bc0135, out_digest 786a02f7 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
      START │ ./plan.py
    SUCCESS │ ./plan.py
   DIRECTOR │ Trying to delete 1 outdated output(s).
      CLEAN │ bar.txt
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

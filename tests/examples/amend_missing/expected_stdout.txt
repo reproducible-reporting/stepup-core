@@ -16,11 +16,15 @@ missing.txt
 ────────────────────────────────── Step info ───────────────────────────────────
 Command               ./step.py
 Return code           1
+──────────────────────────────── Invalid inputs ────────────────────────────────
+Input vanished unexpectedly: missing.txt
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
+     ERROR │ The scheduler has been drained due to unexpected input changes.
    WARNING │ 1 step(s) failed.
-   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Scheduler is put on hold. Not reporting pending steps.
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.

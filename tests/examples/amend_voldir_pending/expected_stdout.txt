@@ -19,7 +19,7 @@ Inputs        STATIC  ./
              AWAITED  (nonexisting/) [amended]
 Outputs     VOLATILE  nonexisting/foo.out [amended]
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.

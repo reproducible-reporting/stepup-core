@@ -9,11 +9,12 @@
 ───────────────────────────── Missing output files ─────────────────────────────
 out.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   compact, digest 75412e53 ➜ 04afa894, inp_digset 399be370
+Modified step hash   compact ➜ explained, inp_digest 9d3c7b57, out_digest d26e67b0 ➜ 870e35dd
 ────────────────────────────────────────────────────────────────────────────────
      START │ cp -aT inp.txt out.txt
    SUCCESS │ cp -aT inp.txt out.txt
   DIRECTOR │ Trying to delete 0 outdated output(s).
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

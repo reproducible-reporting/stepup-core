@@ -35,7 +35,6 @@ from stepup.core.director import serve
 from stepup.core.enums import StepState
 from stepup.core.file import File
 from stepup.core.hash import FileHash
-from stepup.core.job import ExecuteJob
 from stepup.core.reporter import ReporterClient
 from stepup.core.rpc import AsyncRPCClient
 from stepup.core.workflow import Workflow
@@ -88,9 +87,10 @@ def path_tmp(tmpdir: str) -> Path:
 
 
 def fake_hash(path):
-    return FileHash(
-        b"d" if path.endswith("/") else hashlib.blake2b(path.encode("utf8")).digest(), 0, 0.0, 0, 0
-    )
+    digest = b"d" if path.endswith("/") else hashlib.blake2b(path.encode("utf8")).digest()
+    mtime = sum(bytearray(digest)) ** 0.5
+    mode = 0o755 if path.endswith("/") else 0o644
+    return FileHash(digest, mode, mtime, len(path) ** 2, len(path))
 
 
 def declare_static(workflow, creator, paths):
@@ -101,7 +101,7 @@ def declare_static(workflow, creator, paths):
     """
     missing = workflow.declare_missing(creator, paths)
     checked = [(path, fake_hash(path)) for path, _ in missing]
-    workflow.confirm_static(checked)
+    workflow.update_file_hashes(checked, "confirmed")
     return [workflow.find("file", path) for path in paths]
 
 
@@ -119,18 +119,25 @@ def wfp() -> Iterator[Workflow]:
     """A workflow with a boots step plan.py"""
     workflow = Workflow(sqlite3.Connection(":memory:"))
     with workflow.con:
+        # Prepare the basic workflow with a plan script.
         root = workflow.root
         declare_static(workflow, root, ["./", "plan.py"])
         workflow.define_step(root, "./plan.py", inp_paths=["plan.py"])
+
+        # Check the basics of the workflow.
         plan = workflow.find("step", "./plan.py")
         nodes = list(workflow.nodes())
         assert nodes[0] == root
         for node in nodes[1:3]:
             assert isinstance(node, File)
         assert nodes[-1] == plan
+
         # Simulate running the plan
-        assert workflow.job_queue.get_nowait() == ExecuteJob(plan, None)
+        job = workflow.job_queue.get_nowait()
+        assert job.name == "EXECUTE: ./plan.py"
+        assert job.pool is None
         plan.set_state(StepState.RUNNING)
+
     yield workflow
     with workflow.con:
         workflow.check_consistency()

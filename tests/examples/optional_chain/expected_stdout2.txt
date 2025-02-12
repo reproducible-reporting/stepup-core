@@ -7,7 +7,7 @@
      PHASE │ run
     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, digest 28ec8b4f ➜ 89ee708b, inp_digset 28ec8b4f ➜ 89ee708b
+Modified step hash   explained, inp_digest 1b84c39e ➜ d4b6d552, out_digest 786a02f7 ➜ (unset)
 Modified inp hash    plan.py (digest 2b370a1b ➜ e3ce1d36, size 352 ➜ 414)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
@@ -25,6 +25,7 @@ Same inp hash        ./
      START │ cat egg.txt > spam.txt
    SUCCESS │ cat egg.txt > spam.txt
   DIRECTOR │ Trying to delete 0 outdated output(s).
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

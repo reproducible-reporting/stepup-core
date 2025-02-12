@@ -18,7 +18,6 @@ file:plan.py
 
 step:./plan.py
                state = SUCCEEDED
-          inp_digest = same
            explained = yes
           created by   root:
             consumes   file:./
@@ -44,7 +43,6 @@ file:sub/plan.py
 
 step:./plan.py  # wd=sub/
                state = SUCCEEDED
-          inp_digest = same
            explained = yes
           created by   step:./plan.py
             consumes   file:sub/

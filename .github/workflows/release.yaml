@@ -13,6 +13,7 @@ env:
   # This is not critical
   # It is used only for showing URLs in GitHub Actions web interface.
   PYPI_NAME: stepup
+  TITLE: StepUp Core
 
 jobs:
   build:
@@ -104,7 +105,7 @@ jobs:
       run: >-
         gh release create '${{ github.ref_name }}'
         --repo '${{ github.repository }}'
-        --title 'Release ${{ github.ref_name }}'
+        --title '${{ env.TITLE }} ${{ github.ref_name }}'
         --notes-file notes.md
     - name: Upload artifact signatures to GitHub Release
       env:

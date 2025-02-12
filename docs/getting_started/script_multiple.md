@@ -2,11 +2,11 @@
 
 In the [previous tutorial](script_single.md), the script protocol and driver
 were illustrated with a single use case of a script.
-The driver also handles scripts that can be executed with different combinations of inputs.
+The script protocol also supports scripts that can be executed with different combinations of inputs.
 
 ## Multiple Cases Script Driver
 
-A Python script using the driver for multiple cases has the following structure.
+A Python script using the script protocol for multiple cases has the following structure.
 
 ```python
 #!/usr/bin/env python3

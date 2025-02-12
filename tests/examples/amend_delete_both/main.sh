@@ -35,7 +35,8 @@ wait
 [[ -f data2.txt ]] || exit 1
 [[ -f log.txt ]] || exit 1
 
-# Remove both intermediates and restart
+# Remove both intermediates the output and one of the inputs, and restart.
+# There should be pending steps because some input is missing.
 rm data1.txt data2.txt log.txt asource1.txt
 stepup -w -e -n 1 --log-level INFO plan.py & # > current_stdout2.txt &
 PID=$!

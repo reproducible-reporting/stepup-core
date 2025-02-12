@@ -1,0 +1,33 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./work.py case1.txt
+      FAIL │ ./work.py case1.txt
+────────────────────────────────── Step info ───────────────────────────────────
+Command               ./work.py case1.txt
+Return code           0
+──────────────────────────────── Invalid inputs ────────────────────────────────
+Input changed unexpectedly: cases.txt (digest 125bc6a0 ➜ 2863481f)
+────────────────────────────────────────────────────────────────────────────────
+     ERROR │ The scheduler has been drained due to unexpected input changes.
+   WARNING │ 1 step(s) failed.
+   WARNING │ Scheduler is put on hold. Not reporting pending steps.
+   WARNING │ Skipping file cleanup due to incomplete build.
+   WARNING │ Made 1 step(s) in the queue pending again.
+   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+     PHASE │ watch
+   UPDATED │ cases.txt
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./work.py case3.txt
+   SUCCESS │ ./work.py case3.txt
+     START │ ./work.py case4.txt
+   SUCCESS │ ./work.py case4.txt
+  DIRECTOR │ Trying to delete 1 outdated output(s).
+     CLEAN │ case1.txt
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

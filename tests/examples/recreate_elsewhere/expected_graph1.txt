@@ -22,7 +22,6 @@ file:plan.py
 
 step:./plan.py
                state = SUCCEEDED
-          inp_digest = same
            explained = yes
           created by   root:
             consumes   file:./
@@ -45,7 +44,6 @@ file:outer.py
 
 step:./outer.py foo
                state = SUCCEEDED
-          inp_digest = same
            explained = yes
           created by   step:./plan.py
             consumes   file:./

@@ -115,11 +115,7 @@ def static(*paths: str | Iterable[str]):
         tr_paths = sorted(translate(su_path) for su_path in su_paths)
         # Declare the missing and then confirm the files.
         to_check = RPC_CLIENT.call.missing(_get_step_key(), tr_paths)
-        if to_check is not None:
-            # When the RPC_CLIENT is a dummy, it always returns None.
-            for tr_path, file_hash in to_check:
-                file_hash.update(translate.back(tr_path))
-            RPC_CLIENT.call.confirm(to_check)
+        _confirm_missing(to_check)
 
 
 def glob(
@@ -208,11 +204,7 @@ def glob(
         _check_inp_paths(static_paths)
         tr_static_paths = [translate(static_path) for static_path in static_paths]
         to_check = RPC_CLIENT.call.missing(_get_step_key(), tr_static_paths)
-        if to_check is not None:
-            # When the RPC_CLIENT is a dummy, it always returns None.
-            for tr_path, file_hash in to_check:
-                file_hash.update(translate.back(tr_path))
-            RPC_CLIENT.call.confirm(to_check)
+        _confirm_missing(to_check)
 
     # Translate all the nglob matches with matching paths and send to the director.
     tr_all_paths = [
@@ -678,11 +670,11 @@ def call(
           a pickle file is created whose filename is derived from `prefix`.
         - If `True`: an input file is always written to a path derived from `prefix` and `fmt`,
           even if no keyword arguments are given.
-        - If `str`: an input file is always written if some extra `**kwargs` are given,
+        - If `str`: an input file is written if some extra `**kwargs` are given,
           and `fmt` is deduced from the extension.
-          Without keyword arguments, the input file is assumed to be created by another step.
-        - If `Sequence`, the first item is used according one of the previous points,
-          depending of its type.
+          Without keyword arguments, the input file is assumed to be the output of another step.
+        - If `Sequence`, the first item is used according to one of the previous points,
+          depending on its type.
           Remaining items are add to the `inp` argument of the `step()` function,
           and are added to `kwargs['inp']`.
     env
@@ -692,7 +684,8 @@ def call(
 
         - If `None`: the script may write an output file. (This is the most flexible option.)
           The output path is derived from `prefix` and `fmt`.
-          The script is called with arguments `--out={path_out}` and `--amend-out`.
+          The script is called with arguments `--out={path_out}` and `--amend-out`,
+          so the script can decide whether to write the output file.
         - If `str`: the script is called with the argument `--out={path_out}`
           and is expected to create this output file unconditionally.
           (No `amend(out=path_out)` is needed.)
@@ -702,7 +695,7 @@ def call(
           and is not expected to write an output file.
           (This is useful to keep things minimal.)
         - If `Sequence`, the first item is used according one of the previous points,
-          depending of its type.
+          depending on its type.
           Remaining items are add to the `out` argument of the `step()` function,
           and are added to `kwargs['out']`.
 
@@ -719,11 +712,10 @@ def call(
     pars
         A dictionary with additional parameters for the script.
         They will be merged with the arguments in `kwargs`.
-        (This can be useful to pass arguments whose name coincides with the arguments above.)
+        (This can be useful to pass arguments whose name coincide with the arguments above.)
     kwargs
         If given, these are serialized to the input file.
         If absent, no input file is written unless `inp` is `True`.
-        (This can be used to chain script calls with `inp=True`.)
 
     Returns
     -------
@@ -981,21 +973,31 @@ class DeferredNotConfirmedError(Exception):
     """Raised deferred glob matches cannot be confirmed."""
 
 
+def _confirm_missing(to_check: list[tuple[str, FileHash]] | None):
+    """Confirm initially missing files and send the updates to the director."""
+    # When the RPC_CLIENT is a dummy, to_check may be `None`.
+    if to_check is not None and len(to_check) > 0:
+        checked = []
+        for tr_path, old_file_hash in to_check:
+            new_file_hash = old_file_hash.regen(translate.back(tr_path))
+            if new_file_hash != old_file_hash:
+                checked.append((tr_path, new_file_hash))
+        if len(checked) > 0:
+            RPC_CLIENT.call.confirm(checked)
+
+
 def _check_deferred(to_check: list[tuple[str, FileHash]] | None, step_key: str | None = None):
     """Check file, update hashes of existing ones, and send the updates to the director."""
     if to_check is not None and len(to_check) > 0:
         # Select matches of the deferred glob that exist and update their hashes.
         checked = []
         errors = ["Invalid deferred glob matches:"]
-        for tr_path, file_hash in to_check:
-            lo_path = translate.back(tr_path)
-            file_hash.update(lo_path)
-            if file_hash.digest == b"u":
+        for tr_path, old_file_hash in to_check:
+            new_file_hash = old_file_hash.regen(translate.back(tr_path))
+            if new_file_hash != old_file_hash:
+                checked.append((tr_path, new_file_hash))
+            if new_file_hash.is_unknown:
                 errors.append("{tr_path} (MISSING)")
-            elif file_hash.digest == b"d" and not tr_path.endswith("/"):
-                errors.append("{tr_path} (NO TRAILING SEPARATOR)")
-            else:
-                checked.append((tr_path, file_hash))
         if len(checked) > 0:
             RPC_CLIENT.call.confirm(checked)
         if len(errors) > 1:

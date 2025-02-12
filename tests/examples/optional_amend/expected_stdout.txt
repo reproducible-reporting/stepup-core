@@ -14,6 +14,7 @@ optional.txt
      START │ ./work.py
    SUCCESS │ ./work.py
   DIRECTOR │ Trying to delete 0 outdated output(s).
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    UPDATED │ data.txt
      PHASE │ run

@@ -28,7 +28,6 @@ from path import Path
 from .asyncio import stoppable_iterator
 from .enums import Change, DirWatch
 from .file import FileState
-from .hash import FileHash
 from .reporter import ReporterClient
 from .utils import DBLock
 from .workflow import Workflow
@@ -38,42 +37,64 @@ __all__ = ("Watcher",)
 
 @attrs.define
 class Watcher:
-    # The workflow to report file events to.
     workflow: Workflow = attrs.field()
+    """The workflow to report file events to."""
 
-    # Lock for workflow database access.
-    # (This is only used for workflow calls that may change the database.)
     dblock: DBLock = attrs.field()
+    """Lock for workflow database access.
 
-    # The reporter to send progress information to.
+    This is only used for workflow calls that may change the database.
+    """
+
     reporter: ReporterClient = attrs.field()
+    """The reporter to send progress information to."""
 
-    # The dir_queue is used to set the list of directories to watch for file events.
-    # It holds tuples of a boolean and a path. When the boolean is `True`, the path
-    # is a directory to remove from the watcher. When `False`, it should be added.
     dir_queue: asyncio.Queue = attrs.field()
+    """Queue to receive directories to watch (or stop watching) for file events.
 
-    # The active event is set when the Watcher is watching file system events.
+    It holds tuples of a `DirWatch` flag and a path.
+    If the flag is `DirWatch.START`, the path is a directory to add to the watcher.
+    In case of `DirWatch.STOP`, it will be removed from the watched directories.
+    """
+
     active: asyncio.Event = attrs.field(factory=asyncio.Event)
+    """The active event is set when the Watcher is reporting file system events.
 
-    # The processed event is set when the Watcher has passed all information to the workflow,
-    # after which the run phase can start.
+    It always watches for changes, but only reports them when active.
+    """
+
     processed: asyncio.Event = attrs.field(factory=asyncio.Event)
+    """The processed event is set when the Watcher has passed all information to the workflow.
 
-    # The interrupt event is set when other parts of StepUp want to interrupt the watcher.
+    After this event the run phase can start.
+    """
+
     interrupt: asyncio.Event = attrs.field(factory=asyncio.Event)
+    """Event set when other parts of StepUp want to interrupt the watcher.
 
-    # The resume event is set when other parts of StepUp (the runner) want to enable the watcher.
+    This marks the end of the active watch phase.
+    """
+
     resume: asyncio.Event = attrs.field(factory=asyncio.Event)
+    """Event set when the watcher should resume activity."""
 
-    # The following sets contain the deleted and changed file
-    # while the watcher is observing. These changes are not sent to the workflow yet.
     deleted: set[Path] = attrs.field(init=False, factory=set)
-    updated: set[Path] = attrs.field(init=False, factory=set)
+    """Files deleted while the watcher is active.
 
-    # Event set to True when a relevant file event was recorded.
-    # This is used by the watch_update and watch_delete functions.
+    These changes are sent to the workflow at the end of the watch phase.
+    """
+
+    updated: set[Path] = attrs.field(init=False, factory=set)
+    """Files changed or added files while the watcher is active.
+
+    These changes are sent to the workflow at the end of the watch phase.
+    """
+
     files_changed_events: set[asyncio.Event] = attrs.field(init=False, factory=set)
+    """Event set to True when a relevant file event was recorded.
+
+    This is used by the watch_update and watch_delete functions.
+    """
 
     async def loop(self, stop_event: asyncio.Event):
         """The main watcher loop.
@@ -97,11 +118,14 @@ class Watcher:
 
     async def watch_changes(self, change_queue: asyncio.Queue):
         """Watch file events. They are sent to the workflow right before the runner is restarted."""
+        # Reset the state of the watcher: changes are not processed yet.
+        # Other parts of StepUp can wait for file changes.
         self.processed.clear()
         for event in self.files_changed_events:
             event.clear()
 
-        # Process changes to static files picked up during watch phase.
+        # Process changes to static files picked up during run phase.
+        await self.reporter("PHASE", "watch")
         while not change_queue.empty():
             change, path = change_queue.get_nowait()
             file = self.workflow.find("file", path)
@@ -110,36 +134,32 @@ class Watcher:
 
         # Wait for new changes to show up.
         self.active.set()
-        await self.reporter("PHASE", "watch")
         async for change, path in stoppable_iterator(change_queue.get, self.interrupt):
             await self.record_change(change, path)
-
-        # Check whether updated files are actually different from their last known state.
-        # If not, they are not sent to the workflow.
-        unchanged = set()
-        new_file_hashes = []
-        for path in self.updated:
-            file = self.workflow.find("file", path)
-            if file is None:
-                continue
-            file_hash = file.get_hash()
-            if file_hash is None:
-                file_hash = FileHash.unknown()
-            change = file_hash.update(path)
-            if change is True:
-                if file.get_state() in (FileState.STATIC, FileState.MISSING):
-                    new_file_hashes.append((path, file_hash))
-                continue
-            await self.reporter("UNCHANGED", path)
-            unchanged.add(path)
-        self.updated.difference_update(unchanged)
 
         # Feed all updates to the worker and clean up.
         self.active.clear()
         async with self.dblock:
-            if len(new_file_hashes) > 0:
-                self.workflow.update_file_hashes(new_file_hashes)
-            self.workflow.process_watcher_changes(self.deleted, self.updated)
+            # Update the hashes of all files known to the workflow.
+            old_hashes = self.workflow.get_file_hashes(self.updated | self.deleted)
+            new_hashes = []
+            for path, old_file_hash in old_hashes:
+                new_file_hash = old_file_hash.regen(path)
+                if new_file_hash == old_file_hash:
+                    await self.reporter("UNCHANGED", path)
+                    self.updated.discard(path)
+                else:
+                    new_hashes.append((path, new_file_hash))
+            if len(new_hashes) > 0:
+                self.workflow.update_file_hashes(new_hashes, "external")
+
+            # Mark steps pending if they use nglob patterns that have different matches.
+            self.workflow.process_nglob_changes(self.deleted, self.updated)
+
+            # Queue all pending steps.
+            self.workflow.queue_pending_steps()
+
+        # Reset the watcher state.
         self.deleted.clear()
         self.updated.clear()
         for event in self.files_changed_events:
@@ -169,6 +189,8 @@ class Watcher:
                 if path.endswith("/"):
                     self.dir_queue.put_nowait((DirWatch.START, path))
                     for sub_path in path.iterdir():
+                        if sub_path.is_dir():
+                            sub_path = sub_path / ""
                         await self.record_change(Change.UPDATED, sub_path)
 
 
@@ -263,11 +285,9 @@ class AsyncInotifyWrapper:
             # Drop invalid watches (deleted or unmounted directories)
             if event.mask & Mask.IGNORED:
                 self.watches.pop(f"{event.watch.path}/", None)
-            if event.mask & Mask.MOVE_SELF:
-                raise RuntimeError("StepUp does not support moving directories it is watching.")
             change = (
                 Change.DELETED
-                if event.mask & (Mask.DELETE | Mask.DELETE_SELF | Mask.MOVED_FROM)
+                if event.mask & (Mask.DELETE | Mask.DELETE_SELF | Mask.MOVED_FROM | Mask.MOVE_SELF)
                 else Change.UPDATED
             )
             path = Path(event.path)

@@ -12,7 +12,7 @@
 ───────────────────────────── Missing output files ─────────────────────────────
 data2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, digest 61a97a5c ➜ 59a861c0, inp_digset ea1edf68
+Modified step hash   explained, inp_digest c4dd9f6c, out_digest a04d333e ➜ 525a401d
 Modified out hash    data2.txt (digest 28b7cc0a ➜ UNKNOWN, size 25 ➜ 0, mode -rw-r--r-- ➜ ?---------)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
@@ -38,7 +38,7 @@ Inputs        STATIC  ./
              MISSING  asource1.txt
 Outputs      AWAITED  data1.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.

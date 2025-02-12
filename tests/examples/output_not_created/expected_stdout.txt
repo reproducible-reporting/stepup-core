@@ -14,7 +14,7 @@ Return code           0
 output.txt
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ 1 step(s) failed.
-   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.

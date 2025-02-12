@@ -41,4 +41,5 @@ jobs:
         run: pip install -e .[dev]
       - name: Run pytest
         # Enfore strict checks instead of trying to repair fixable issues.
-        run: STEPUP_STRICT=1 pytest -vv
+        # RPC timeout is set shorter to speed up tests in case of failures.
+        run: STEPUP_DEBUG=1 STEPUP_SYNC_RPC_TIMEOUT=10 pytest -vv

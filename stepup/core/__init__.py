@@ -18,12 +18,3 @@
 #
 # --
 """StepUp Core package."""
-
-__all__ = ("__version__", "__version_tuple__")
-
-
-try:
-    from ._version import __version__, __version_tuple__
-except ImportError:
-    __version__ = "0.0.0a-dev"
-    __version_tuple__ = (0, 0, 0, "a-dev")

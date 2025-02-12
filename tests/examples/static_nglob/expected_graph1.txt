@@ -35,7 +35,6 @@ step:./plan.py
                  ngm = ['ch-1-intro/sec-${*ch}-${*sec}-${*name}.txt'] {'ch': '1', 'sec': '[0-9]'}
                  ngm = ['ch-2-theory/sec-${*ch}-${*sec}-${*name}.txt'] {'ch': '2', 'sec': '[0-9]'}
                  ngm = ['ch-3-conclusions/sec-${*ch}-${*sec}-${*name}.txt'] {'ch': '3', 'sec': '[0-9]'}
-          inp_digest = same
           created by   root:
             consumes   file:./
             consumes   file:plan.py

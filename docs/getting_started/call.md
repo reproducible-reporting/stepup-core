@@ -11,12 +11,12 @@
 The [`call()`][stepup.core.api.call] function is a function wrapper for local executable scripts.
 These scripts can be written in any language,
 as long as they adhere to the "call protocol" described below.
-StepUp provides a `driver()` function in the module `stepup.core.call`
-to facilitate the implementation of Python scripts that adhere to the call protocol
+StepUp provides a [`driver()`][stepup.core.call.driver] function in the module `stepup.core.call`
+to facilitate the implementation of Python scripts that adhere to the call protocol.
 
 ## Call protocol
 
-In its simplest form, the following `call()` in a `plan.py` script
+In its simplest form, the following use of `call()` in a `plan.py` script
 
 ```python
 call("executable", parameter="value")
@@ -47,10 +47,11 @@ you can think of the output file of the script as the `Future` object that is re
 The `call()` function returns a [`StepInfo`][stepup.core.stepinfo.StepInfo] object
 from which you can extract the output file path.
 
-To fully support the `call()` protocol, the executable must be able to handle the following options:
+To fully support the `call()` protocol,
+the executable must be able to handle the following command-line arguments:
 
 - `JSON_INP`:
-  The JSON-encoded parameters passed on the command-line
+  The JSON-encoded parameters.
 - `--inp=PATH_INP`:
   As an alternative to the previous, a file with parameters in JSON or PICKLE format.
 - `--out=PATH_OUT`:
@@ -60,7 +61,8 @@ To fully support the `call()` protocol, the executable must be able to handle th
 
 ## Call driver
 
-StepUp implements a `driver()` function in the module `stepup.core.call` that greatly facilitates
+StepUp implements a [`driver()`][stepup.core.call.driver] function
+in the module `stepup.core.call` that greatly facilitates
 writing Python scripts that adhere to the call protocol.
 The usage of this `driver()` function is illustrated in the example below.
 
@@ -68,7 +70,7 @@ Note that the `driver()` function also detects local modules that are imported i
 and amends these as required inputs.
 Changes to modules imported in your Python script will automatically trigger a re-run of the script.
 By default, only the modules inside `STEPUP_ROOT` are treated as dependencies.
-You can specify additional directories in the `STEPUP_EXTERNAL_SOURCES` environment variable.
+You can specify additional directories in the [`STEPUP_EXTERNAL_SOURCES` environment variable](../reference/environment_variables.md).
 
 ## Example
 

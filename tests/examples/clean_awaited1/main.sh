@@ -44,7 +44,7 @@ wait
 grep overwritten hello.txt
 
 # Call cleanup to remove all outputs
-cleanup -vv . > current_cleanup.txt
+cleanup . > current_cleanup.txt
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1

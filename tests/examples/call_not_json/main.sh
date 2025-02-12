@@ -29,3 +29,4 @@ set +e; wait -fn $PID; RETURNCODE=$?; set -e
 [[ -f plan.py ]] || exit 1
 [[ ! -f work_inp.json ]] || exit 1
 [[ ! -f work_out.json ]] || exit 1
+grep JSON .stepup/fail.log

@@ -7,16 +7,16 @@
      PHASE │ run
     NOSKIP │ cp -aT static/foo.txt bar.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, digest 13498f2f ➜ 381fb017, inp_digset 4123a251 ➜ 2af8b7c4
+Modified step hash   explained, inp_digest 5efaf395 ➜ 6b01b464, out_digest b3ce722f ➜ (unset)
 Modified inp hash    static/foo.txt (digest 5d470882 ➜ 4e2397d6, size 6 ➜ 7)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 Same inp hash        static/
-Same out hash        bar.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ cp -aT static/foo.txt bar.txt
    SUCCESS │ cp -aT static/foo.txt bar.txt
   DIRECTOR │ Trying to delete 0 outdated output(s).
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

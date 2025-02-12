@@ -27,6 +27,7 @@ import os
 import pickle
 import re
 import shlex
+import stat
 import textwrap
 from collections.abc import Collection, Iterator
 
@@ -37,8 +38,7 @@ from .deferred_glob import DeferredGlob
 from .enums import FileState, Mandatory, StepState
 from .exceptions import GraphError
 from .file import File
-from .hash import FileHash
-from .job import SetPoolJob
+from .hash import FileHash, fmt_digest
 from .nglob import NGlobMulti, convert_nglob_to_regex, iter_wildcard_names
 from .step import Step
 from .utils import myparent, string_to_bool
@@ -90,18 +90,23 @@ class SupplyInfo:
 
 @attrs.define(eq=False)
 class Workflow(Cascade):
-    # Steps ready for scheduling and execution.
     job_queue: asyncio.queues = attrs.field(init=False, factory=asyncio.Queue)
+    """Steps ready for scheduling and execution can be added to this queue."""
 
-    # Directories to be (un)watched
+    config_queue: asyncio.queues = attrs.field(init=False, factory=asyncio.Queue)
+    """Pools can be added to this queue to change the pool sizes."""
+
     dir_queue: asyncio.queues = attrs.field(init=False, factory=asyncio.Queue)
+    """Directories to be (un)watched can be added to this queue."""
 
-    # This event is set when the scheduler should check the job_queue again.
     job_queue_changed: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+    """Event set when the scheduler should check the job_queue again."""
 
-    # A list of files and directories that can be deleted.
-    # This list contains BUILT files node with file hashes that were removed from the graph.
     to_be_deleted: list[tuple[str, FileHash | None]] = attrs.field(init=False, factory=list)
+    """A list of files and directories that can be deleted.
+
+    This list contains BUILT files node with file hashes that were removed from the graph.
+    """
 
     #
     # Initialization
@@ -109,7 +114,7 @@ class Workflow(Cascade):
 
     def check_consistency(self):
         """Check whether the initial graph satisfies all constraints."""
-        strict = string_to_bool(os.getenv("STEPUP_STRICT", "0"))
+        strict = string_to_bool(os.getenv("STEPUP_DEBUG", "0"))
         super().check_consistency()
 
         # Verify that all files have a parent directory as supplying node.
@@ -123,25 +128,26 @@ class Workflow(Cascade):
             if parent_path != myparent(path):
                 raise GraphError(f"File {path!r} has unexpected parent {parent_path!r}")
 
-        # Verify that all BUILT and STATIC files have a hash.
+        # Verify that all BUILT, OUTDATED and STATIC files have a hash.
         sql = (
             "SELECT i, state, label FROM node JOIN file ON node.i = file.node "
-            "WHERE state IN (?, ?) and digest = ?"
+            "WHERE state IN (?, ?, ?) and digest = X'75'"
         )
-        data = (FileState.BUILT.value, FileState.STATIC.value, b"u")
+        data = (FileState.BUILT.value, FileState.OUTDATED.value, FileState.STATIC.value)
+        files = []
         file_hashes = []
         for i, file_state_value, path in self.con.execute(sql, data):
             file_state = FileState(file_state_value)
             if strict:
                 raise GraphError(f"{file_state.name} file without hash: {path}")
             logger.error(f"{file_state.name} file without hash: %s", path)
-            File(self, i, path).mark_outdated()
-            file_hash = FileHash.unknown()
-            file_hash.update(path)
-            file_hashes.append((path, file_hash))
-        if file_hashes:
+            files.append(File(self, i, path))
+            file_hashes.append((path, FileHash.unknown().regen(path)))
+        if len(file_hashes) > 0:
             logger.error("Fixing %s file hashes", len(file_hashes))
-            self.update_file_hashes(file_hashes)
+            self.update_file_hashes(file_hashes, "external")
+            for file in self.files:
+                file.mark_outdated()
 
         # Verify that all succeeded steps only have BUILT outputs.
         sql = (
@@ -196,9 +202,8 @@ class Workflow(Cascade):
         for node in nodes.values():
             node.orphan()
         to_check = self.declare_missing(self.root, ["./", path_plan])
-        for path, file_hash in to_check:
-            file_hash.update(path)
-        self.confirm_static(to_check)
+        checked = [(path, file_hash.regen(path)) for path, file_hash in to_check]
+        self.update_file_hashes(checked, "confirmed")
         self.define_step(self.root, command, inp_paths=[path_plan])
         return True
 
@@ -551,87 +556,182 @@ class Workflow(Cascade):
         finally:
             self.con.execute("DROP TABLE IF EXISTS temp.missing")
 
-    def confirm_static(self, checked: Collection[tuple[str, FileHash]]):
-        """Make missing files static with updated hashes.
+    def get_file_hashes(self, paths: Collection[str]) -> list[tuple[str, FileHash]]:
+        """Get the hashes of existing files.
 
         Parameters
         ----------
-        checked
-            A list of (path, file_hash) tuples computed on the client side,
-            of which the file hashes must confirm that the files exist.
+        paths
+            A list of paths.
+
+        Returns
+        -------
+        file_hashes
+            A list of `(path, file_hash)` tuples.
         """
-        for path, file_hash in checked:
-            if file_hash.digest == b"u":
-                raise AssertionError(f"Missing static file: {path}")
+        # TODO: also return state, needs updating too
+        self.con.execute("DROP TABLE IF EXISTS temp.paths")
+        try:
+            self.con.execute("CREATE TABLE temp.paths(path TEXT PRIMARY KEY)")
+            self.con.executemany("INSERT INTO temp.paths VALUES (?)", ((path,) for path in paths))
+            sql = (
+                "SELECT label, digest, mode, mtime, size, inode FROM node "
+                "JOIN file ON file.node = node.i JOIN temp.paths ON label = temp.paths.path"
+            )
+            return [
+                (path, FileHash(digest, mode, mtime, size, inode))
+                for path, digest, mode, mtime, size, inode in self.con.execute(sql)
+            ]
+        finally:
+            self.con.execute("DROP TABLE IF EXISTS temp.paths")
 
-        files = self.update_file_hashes(checked, return_files=True)
-        for file, file_state in files:
-            if file_state != FileState.MISSING:
-                raise AssertionError(f"File was not missing: {file.path}")
-            file.set_state(FileState.STATIC)
-            file.release_pending()
-
-    def update_file_hashes(
-        self, file_hashes: Collection[tuple[str, FileHash]], return_files: bool = False
-    ) -> list[tuple[File, FileState]] | None:
+    def update_file_hashes(self, file_hashes: Collection[tuple[str, FileHash]], cause: str):
         """Update the hashes of existing files.
 
         Parameters
         ----------
         file_hashes
-            A list of (path, file_hash) tuples.
-        return_files
-            If True, return a list of (file, file_state) tuples.
-            (No return value otherwise)
-
-        Returns
-        -------
-        files
-            A list of (file, file_state) tuples.
+            A list of `(path, file_hash)` tuples.
+        cause
+            The cause of the hash updates.
+            Can be one of the following:
+            `"external"`, `"succeeded"`, `"failed"` or `"confirmed"`.
         """
-        # Load the hashes into a temporary table.
-        self.con.execute("DROP TABLE IF EXISTS temp.checked")
+        if cause not in ("external", "succeeded", "failed", "confirmed"):
+            raise ValueError("Invalid cause for updating file hashes.")
+        if len(file_hashes) == 0:
+            return
+
+        # Efficiently get corresponding node_index and state tuples.
+        file_hashes = dict(file_hashes)
+        self.con.execute("DROP TABLE IF EXISTS temp.updated")
         try:
-            self.con.execute(
-                "CREATE TABLE temp.checked(path TEXT PRIMARY KEY, node INTEGER, digest BLOB, "
-                "mtime INTEGER, mode INTEGER, size INTEGER, inode INTEGER)"
-            )
+            self.con.execute("CREATE TABLE temp.updated(path TEXT PRIMARY KEY) WITHOUT ROWID")
             self.con.executemany(
-                "INSERT INTO temp.checked VALUES (?, 0, ?, ?, ?, ?, ?)",
-                (
-                    (path, fh.digest, fh.mtime, fh.mode, fh.size, fh.inode)
-                    for path, fh in file_hashes
-                ),
+                "INSERT INTO temp.updated VALUES (?)",
+                ((path,) for path in file_hashes),
             )
-            self.con.execute(
-                "UPDATE temp.checked SET node = node.i FROM node WHERE node.label = path"
+            sql = (
+                "SELECT node.i, path, file.state FROM temp.updated "
+                "JOIN node ON node.label = path JOIN file ON file.node = node.i "
             )
-
-            # Get the files that need to be confirmed,
-            # which makes it possible for the caller to verify their state.
-            result = None
-            if return_files:
-                result = [
-                    (File(self, i, label), FileState(file_state_value))
-                    for i, label, file_state_value in self.con.execute(
-                        "SELECT temp.checked.node, temp.checked.path, file.state FROM temp.checked "
-                        "JOIN file ON file.node = temp.checked.node"
-                    )
-                ]
-
-            # Actual update of the file hashes.
-            cur = self.con.execute(
-                "UPDATE file SET digest = temp.checked.digest, mtime = temp.checked.mtime, "
-                "mode = temp.checked.mode, size = temp.checked.size, inode = temp.checked.inode "
-                "FROM temp.checked WHERE file.node = temp.checked.node"
-            )
-            if cur.rowcount != len(file_hashes):
-                raise ValueError("Not all file hashes could be updated.")
+            records = [
+                (i, path, file_hashes[path], FileState(value))
+                for i, path, value in self.con.execute(sql)
+            ]
         finally:
-            # Clean up
-            self.con.execute("DROP TABLE IF EXISTS temp.checked")
+            self.con.execute("DROP TABLE IF EXISTS temp.updated")
 
-        return result
+        if len(records) != len(file_hashes):
+            raise AssertionError(
+                f"Inconsistent number of records: expected={len(file_hashes)} actual={len(records)}"
+            )
+
+        # Files whose `externally_updated` method must be called.
+        updated = []
+        # Files whose `externally_deleted` method must be called.
+        deleted = []
+        # File whose `release` method should be called
+        released = []
+        # Files whose state and hash must be updated.
+        new_states_hashes = []
+
+        def raise_unexpected(path, old_state, fh):
+            raise AssertionError(
+                f"Unexpected file hash update: cause={cause} path={path} state={old_state} "
+                f"digest={fmt_digest(fh.digest)} mode={stat.filemode(fh.mode)}"
+            )
+
+        # Decide how the file state must change and which other actions to take on the files
+        # based on the cause of the hash updates.
+        if cause == "external":
+            # This is branch is relevant for the end of the watch phase or the startup of StepUp
+            for i, path, fh, old_state in records:
+                if old_state == FileState.MISSING:
+                    if fh.is_unknown:
+                        raise AssertionError(f"Missing updated to be missing again: {path}")
+                    new_states_hashes.append((i, FileState.STATIC, fh))
+                    updated.append((i, path))
+                elif old_state == FileState.STATIC:
+                    if fh.is_unknown:
+                        new_states_hashes.append((i, FileState.MISSING, fh))
+                        deleted.append((i, path))
+                    else:
+                        new_states_hashes.append((i, FileState.STATIC, fh))
+                        updated.append((i, path))
+                elif old_state in (FileState.BUILT, FileState.OUTDATED):
+                    new_states_hashes.append((i, FileState.AWAITED, FileHash.unknown()))
+                    if fh.is_unknown:
+                        deleted.append((i, path))
+                    else:
+                        updated.append((i, path))
+                else:
+                    raise_unexpected(path, old_state, fh)
+        elif cause == "succeeded":
+            # This branch is relevant for when a step has succeeded
+            # and its outputs should be marked as BUILT.
+            for i, path, fh, old_state in records:
+                if old_state in (FileState.OUTDATED, FileState.AWAITED):
+                    if fh.is_unknown:
+                        raise AssertionError(f"Unknown file hash after succeded step: {path}")
+                    new_states_hashes.append((i, FileState.BUILT, fh))
+                    released.append((i, path))
+                else:
+                    raise_unexpected(path, old_state, fh)
+        elif cause == "failed":
+            # This branch is relevant for when a step has failed or rescheduled
+            # and its outputs should be marked as OUTDATED.
+            for i, path, fh, old_state in records:
+                if old_state in (FileState.OUTDATED, FileState.AWAITED):
+                    new_states_hashes.append(
+                        (i, FileState.AWAITED if fh.is_unknown else FileState.OUTDATED, fh)
+                    )
+                else:
+                    raise_unexpected(path, old_state, fh)
+        elif cause == "confirmed":
+            # This branch is relevant for when the client has confirmed the hashes
+            # of missing files and they should be marked as STATIC.
+            for i, path, fh, old_state in records:
+                if old_state == FileState.MISSING:
+                    if fh.is_unknown:
+                        raise AssertionError(f"Missing file confirmed as missing: {path}")
+                    new_states_hashes.append((i, FileState.STATIC, fh))
+                    released.append((i, path))
+                else:
+                    raise_unexpected(path, old_state, fh)
+        else:
+            raise ValueError(f"Invalid cause for updating file hashes: {cause}")
+
+        # Actual update of the file hashes.
+        logger.info("Update file hashes: cause=%s new=%s", cause, new_states_hashes)
+        if len(new_states_hashes) != len(file_hashes):
+            raise AssertionError(
+                f"Inconsistent number of file hash updates: "
+                f"expected={len(file_hashes)} actual={len(new_states_hashes)}"
+            )
+        self.con.executemany(
+            "UPDATE file SET state = ?, digest = ?, mode = ?, mtime = ?, size = ?, inode = ? "
+            "WHERE node = ?",
+            (
+                (state.value, fh.digest, fh.mode, fh.mtime, fh.size, fh.inode, i)
+                for i, state, fh in new_states_hashes
+            ),
+        )
+
+        # Call File methods to further update the workflow.
+        logger.info(
+            "Update file hashes: cause=%s updated=%s deleted=%s released=%s",
+            cause,
+            updated,
+            deleted,
+            released,
+        )
+        for i, path in updated:
+            File(self, i, path).externally_updated()
+        for i, path in deleted:
+            File(self, i, path).externally_deleted()
+        for i, path in released:
+            File(self, i, path).release_pending()
 
     def define_step(
         self,
@@ -766,10 +866,9 @@ class Workflow(Cascade):
             file.add_supplier(step)
 
         # Determine if the step needs executing and queue if relevant.
+        logger.info("Define step: %s", step.label)
         if not optional:
             step.queue_if_appropriate()
-
-        logger.info("Define step: %s", step.label)
         return self._build_to_check(deferred)
 
     def _recreate_step(
@@ -845,7 +944,7 @@ class Workflow(Cascade):
     def define_pool(self, step: Step, pool: str, size: int):
         """Set the pool size and keep the information in the step to support replay."""
         step.define_pool(pool, size)
-        self.job_queue.put_nowait(SetPoolJob(pool, size))
+        self.config_queue.put_nowait((pool, size))
         self.job_queue_changed.set()
 
     def amend_step(
@@ -1048,60 +1147,32 @@ class Workflow(Cascade):
             nglob_multi = pickle.loads(data)
             yield (ngm_i, nglob_multi, Step(self, node_i, label)) if yield_step else nglob_multi
 
-    def update_nglob_multi(self, i: int, nglob_multi: NGlobMulti):
-        """Store an updated nglob_multi in the database.
-
-        Parameters
-        ----------
-        i
-            row index of the nglob_multi to be updated.
-        nglob_multi
-            The new nglob_multi.
-        """
-        data = (pickle.dumps(nglob_multi), i)
-        self.con.execute("UPDATE nglob_multi SET data = ? WHERE i = ?", data)
-
-    def process_watcher_changes(self, deleted: Collection[str], updated: Collection[str]):
-        """Update the workflow given a list of deleted and updated paths observed by the watcher.
+    def process_nglob_changes(self, deleted: Collection[str], added: Collection[str]):
+        """Mark steps with nglob pending if they are affected by the deleted and updated paths.
 
         Parameters
         ----------
         deleted
             The deleted files.
-        updated
-            The added / changed files.
+        added
+            The added.
         """
-        # Sanity check
-        if not set(deleted).isdisjoint(updated):
-            raise ValueError("Added and deleted files are not mutually exclusive.")
-
-        # Process all deletions
-        for path in sorted(deleted):
-            # Handle deleted files that were used or created by steps.
-            file = self.find("file", path)
-            if file is None:
-                raise ValueError("Cannot process deletion of file absent from workflow")
-            file.watcher_deleted()
-
-        # Process all updates
-        for path in sorted(updated):
-            file = self.find("file", path)
-            # If updated the file is known, it must have changed (or a MISSING file was added).
-            if file is not None:
-                file.watcher_updated()
-
+        if deleted & added:
+            raise ValueError("Deleted and added paths cannot overlap.")
         for i, ngm, step in self.nglob_multis(yield_step=True):
             # Check if any of the deleted files matches an nglob.
             # If yes, step becomes pending.
             # Check if added files could result in new nglob matches.
             # If yes, step becomes pending.
-            evolved = ngm.will_change(deleted, updated)
+            evolved = ngm.will_change(deleted, added)
             if evolved is not None:
                 step.delete_hash()
-                self.update_nglob_multi(i, evolved)
+                data = (pickle.dumps(evolved), i)
+                self.con.execute("UPDATE nglob_multi SET data = ? WHERE i = ?", data)
                 step.mark_pending(input_changed=True)
 
-        # Queue pending steps that can be executed.
+    def queue_pending_steps(self):
+        """Queue pending steps that can be executed."""
         sql = (
             "SELECT i, label, orphan FROM node JOIN step ON node.i = step.node WHERE step.state = ?"
         )

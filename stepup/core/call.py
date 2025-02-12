@@ -17,10 +17,10 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""Driver function to facilitate the implementation of StepUp's call protocol."""
+"""Driver function to facilitate writing scripts that adhere to StepUp's call protocol.
 
-__all__ = ("driver",)
-
+See [Call Protocol](../getting_started/call.md) for more details.
+"""
 
 import argparse
 import inspect
@@ -37,7 +37,20 @@ __all__ = ("driver",)
 
 
 def driver(obj: Any = None):
-    """Driver function to be called from a script as `driver()` or `driver(obj)`
+    """Implement call protocol.
+
+    The most common usage is to call `driver()` from a script that defines a `run()` function, e.g.:
+
+    ```python
+    #!/usr/bin/env python3
+    from stepup.core.call import driver
+
+    def run(a: int, b: int) -> int:
+        return a + b
+
+    if __name__ == "__main__":
+        driver()
+    ```
 
     Parameters
     ----------

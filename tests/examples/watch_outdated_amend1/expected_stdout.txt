@@ -12,16 +12,16 @@
      PHASE │ run
  DROPAMEND │ ./step.py
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, digest 764de23c ➜ b3e91d7c, inp_digset d7b8a410 ➜ efd3c811
+Modified step hash   explained, inp_digest 8013c23b ➜ d0e33f87, out_digest afcdb0f9 ➜ (unset)
 Modified inp hash    inp1.txt (digest e41b0ac1 ➜ UNKNOWN, size 5 ➜ 0, mode -rw-r--r-- ➜ ?---------)
 Modified inp hash    subs.txt (digest 30d31453 ➜ c273a7ee)
 ──────────────────────── Remained the same (or missing) ────────────────────────
 Same inp hash        ./
-Same out hash        copy.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ ./step.py
    SUCCESS │ ./step.py
   DIRECTOR │ Trying to delete 0 outdated output(s).
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

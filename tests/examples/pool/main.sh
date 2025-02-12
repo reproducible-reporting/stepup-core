@@ -27,3 +27,4 @@ wait
 [[ -f plan.py ]] || exit 1
 [[ -f r.txt ]] || exit 1
 [[ ! -f u.txt ]] || exit 1
+[[ ! -f .stepup/fail.log ]] || exit 1

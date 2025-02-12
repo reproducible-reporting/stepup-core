@@ -21,28 +21,27 @@
    SUCCESS │ cp -aT inp2.txt conv2.txt
  DROPAMEND │ ./step.py subs1.txt > subs2.txt
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, digest 17e12e00 ➜ a6d78868, inp_digset 8293e4ae ➜ e82399fd
-Deleted inp hash     conv1.txt
+Modified step hash   explained, inp_digest dd7228ea ➜ 688e39b7, out_digest 9ac3231c ➜ (unset)
 Modified inp hash    subs1.txt (digest f927920a ➜ 2ab04a00)
 ──────────────────────── Remained the same (or missing) ────────────────────────
 Same inp hash        ./
-Same out hash        subs2.txt
+Same inp hash        conv1.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ ./step.py subs1.txt > subs2.txt
    SUCCESS │ ./step.py subs1.txt > subs2.txt
  DROPAMEND │ ./step.py subs2.txt > subs3.txt
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, digest 92fd431c ➜ c076a19b, inp_digset c04b2fe4 ➜ e913fb0f
-Deleted inp hash     conv1.txt
+Modified step hash   explained, inp_digest 12870c12 ➜ da2cdf9c, out_digest 19bfd411 ➜ (unset)
 Modified inp hash    subs2.txt (digest f927920a ➜ 2ab04a00)
 ──────────────────────── Remained the same (or missing) ────────────────────────
 Same inp hash        ./
-Same out hash        subs3.txt
+Same inp hash        conv1.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ ./step.py subs2.txt > subs3.txt
    SUCCESS │ ./step.py subs2.txt > subs3.txt
   DIRECTOR │ Trying to delete 1 outdated output(s).
      CLEAN │ conv1.txt
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

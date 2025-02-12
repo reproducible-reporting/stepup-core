@@ -24,22 +24,27 @@ from typing import TYPE_CHECKING
 import attrs
 
 if TYPE_CHECKING:
+    from .file import FileHash
     from .scheduler import Scheduler
-    from .step import Step
+    from .step import Step, StepHash
     from .worker import WorkerClient
 
 
-__all__ = ("ExecuteJob", "Job", "SetPoolJob", "TrySkipJob", "ValidateAmendedJob")
+__all__ = ("Job", "RunJob", "ValidateAmendedJob")
 
 
 @attrs.define(frozen=True)
 class Job:
+    """A job managed by the scheduler."""
+
     @property
     def pool(self) -> str | None:
+        """The pool in which the job should be executed, or None for no restriction."""
         raise NotImplementedError
 
     @property
     def name(self) -> str:
+        """A human-readable name for the job."""
         raise NotImplementedError
 
     def coro(self, worker: "WorkerClient"):
@@ -47,32 +52,25 @@ class Job:
         raise NotImplementedError
 
     def finalize(self, result, scheduler: "Scheduler"):
+        """Finalize the job after execution, may include scheduling another job."""
         raise NotImplementedError
 
 
 @attrs.define(frozen=True)
-class SetPoolJob(Job):
-    """This is a stub: the scheduler uses it to set the pool, never executes on the worker."""
-
-    _pool: str = attrs.field()
-    _size: int = attrs.field()
-
-    @property
-    def pool(self) -> str | None:
-        # Setting a pool never requires a pool.
-        return None
-
-    @property
-    def set_pool_args(self) -> tuple[str, int]:
-        return (self._pool, self._size)
-
-
-@attrs.define(frozen=True)
 class ValidateAmendedJob(Job):
-    """Validate that amended inputs have not changed yet, or schedule for rerun."""
+    """Validate that amended inputs have not changed yet, or schedule for rerun.
 
-    _step: "Step" = attrs.field()
+    This job checks whether the inputs of a step have changed since the last run,
+    in which case the amended inputs may be outdated. When that is the case:
+    - The step cannot be skipped and the step hash should be discarded.
+    - The amended inputs need to be recreated by running the step.
+    """
+
+    step: "Step" = attrs.field()
     _pool: str | None = attrs.field()
+    inp_hashes: list[tuple[str, "FileHash"]] = attrs.field()
+    env_vars: list[str] = attrs.field()
+    step_hash: "StepHash" = attrs.field()
 
     @property
     def pool(self) -> str | None:
@@ -83,71 +81,60 @@ class ValidateAmendedJob(Job):
 
     @property
     def name(self) -> str:
-        return f"ValidateAmended {self._step.label}"
+        return f"VALIDATE: {self.step.label}"
 
     def coro(self, worker: "WorkerClient"):
-        return worker.validate_amended_job(self._step)
+        return worker.validate_amended_job(
+            self.step, self.inp_hashes, self.env_vars, self.step_hash
+        )
 
     def finalize(self, must_run: bool, scheduler: "Scheduler"):
+        """Reschedule the job if it must be executed.
+
+        If it does not need to be executed, do nothing. The job will be rescheduled later
+        when amended inputs become available.
+        """
         if must_run:
-            run_job = ExecuteJob(self._step, self._pool)
-            scheduler.inqueue.put_nowait(run_job)
+            run_job = RunJob(self.step, self._pool, self.inp_hashes, self.env_vars, None)
+            scheduler.job_queue.put_nowait(run_job)
             scheduler.changed.set()
 
 
 @attrs.define(frozen=True)
-class TrySkipJob(Job):
-    """Check if the outputs of the step are still valid. If so, just skip the execution.
+class RunJob(Job):
+    """Skip or execute a job
 
-    The two main difference with a ExecuteJob are:
-    1. The job is not actually executed.
-    2. The job is not scheduled to run in a pool.
+    When `step_hash` is set, the job is skipped if that hash is still valid,
+    i.e. meaning that inputs, environment variables and output have not changed.
+    The calculation of the hash is done by the worker and is not restricted to a pool,
+    even if the actual execution of the jobs would be.
+    If skipping is not succesful, the job will reschedule itself after setting the step_hash to None
 
-    The second point is the reason skipping a step and running a step are not done in a single job.
-    This way, skipping jobs does not congest any pool.
+    When `step_hash` is None, the job is executed in the pool specified by `pool`.
     """
 
-    _step: "Step" = attrs.field()
+    step: "Step" = attrs.field()
     _pool: str | None = attrs.field()
+    inp_hashes: list[tuple[str, "FileHash"]] = attrs.field()
+    env_vars: list[str] = attrs.field()
+    step_hash: "StepHash | None" = attrs.field()
 
     @property
     def pool(self) -> str | None:
-        # A skip never has pool restrictions.
-        return None
+        return self._pool if self.step_hash is None else None
 
     @property
     def name(self) -> str:
-        return f"TrySkip {self._step.label}"
+        prefix = "EXECUTE" if self.step_hash is None else "SKIP"
+        return f"{prefix}: {self.step.label}"
 
     def coro(self, worker: "WorkerClient"):
-        return worker.try_skip_job(self._step)
+        if self.step_hash is None:
+            return worker.execute_job(self.step, self.inp_hashes, self.env_vars)
+        return worker.try_skip_job(self.step, self.inp_hashes, self.env_vars, self.step_hash)
 
     def finalize(self, must_run: bool, scheduler: "Scheduler"):
         if must_run:
-            run_job = ExecuteJob(self._step, self._pool)
-            scheduler.inqueue.put_nowait(run_job)
+            run_job = RunJob(self.step, self._pool, self.inp_hashes, self.env_vars, None)
+            scheduler.job_queue.put_nowait(run_job)
             scheduler.changed.set()
-
-
-@attrs.define(frozen=True)
-class ExecuteJob(Job):
-    """Actually execute a job."""
-
-    _step: "Step" = attrs.field()
-    _pool: str | None = attrs.field()
-
-    @property
-    def pool(self) -> str | None:
-        return self._pool
-
-    @property
-    def name(self) -> str:
-        return f"Execute {self._step.label}"
-
-    def coro(self, worker: "WorkerClient"):
-        return worker.run_job(self._step)
-
-    def finalize(self, _, scheduler: "Scheduler"):
-        # When a run job has completed, it does not need to create a follow-up job.
-        # This is the last possible job for a given step to run.
-        pass

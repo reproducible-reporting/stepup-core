@@ -30,7 +30,7 @@ wait
 [[ -f test2.txt ]] || exit 1
 
 # Call cleanup to remove all outputs
-cleanup -vv . > current_cleanup.txt
+cleanup . > current_cleanup.txt
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1

@@ -19,7 +19,7 @@ Inputs        STATIC  ./
              MISSING  input.txt
 Outputs     OUTDATED  output.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    UPDATED │ input.txt

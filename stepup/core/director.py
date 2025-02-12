@@ -62,12 +62,12 @@ def main():
 async def async_main():
     args = parse_args()
     logging.basicConfig(
-        format="%(asctime)s  %(levelname)8s  %(name)s  ::  %(message)s",
+        format="%(asctime)s  %(levelname)8s  %(name)24s  ::  %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         level=args.log_level,
     )
     print(f"SOCKET {args.director_socket}", file=sys.stderr)
-    logger.info("PID %s", os.getpid())
+    print(f"PID {os.getpid()}", file=sys.stderr)
     async with ReporterClient.socket(args.reporter_socket) as reporter:
         num_workers = interpret_num_workers(args.num_workers)
         await reporter.set_num_workers(num_workers)
@@ -224,7 +224,7 @@ async def serve(
     con = sqlite3.connect(".stepup/graph.db", cached_statements=1024)
     dblock = DBLock(con)
     workflow = Workflow(con)
-    scheduler = Scheduler(workflow.job_queue, workflow.job_queue_changed)
+    scheduler = Scheduler(workflow.job_queue, workflow.config_queue, workflow.job_queue_changed)
     scheduler.num_workers = num_workers
     watcher = Watcher(workflow, dblock, reporter, workflow.dir_queue) if do_watch else None
     runner = Runner(
@@ -358,7 +358,7 @@ class DirectorHandler:
             on the client side.
         """
         async with self.dblock:
-            self.workflow.confirm_static(checked)
+            self.workflow.update_file_hashes(checked, "confirmed")
 
     @allow_rpc
     async def step(

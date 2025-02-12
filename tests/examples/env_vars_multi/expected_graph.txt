@@ -22,7 +22,6 @@ file:plan.py
 
 step:./plan.py
                state = SUCCEEDED
-          inp_digest = same
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -71,7 +70,6 @@ file:inp.txt
 step:./plan.py  # wd=bar/
                state = SUCCEEDED
              env_var = INPS [amended]
-          inp_digest = same
           created by   step:./plan.py
             consumes   file:bar/
             consumes   file:bar/plan.py

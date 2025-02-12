@@ -27,7 +27,6 @@ step:./plan.py
                state = SUCCEEDED
                  ngm = ['inp?.txt'] {}
                  ngm = ['step?.py'] {}
-          inp_digest = same
           created by   root:
             consumes   file:./
             consumes   file:plan.py

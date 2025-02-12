@@ -19,6 +19,8 @@
 # --
 """Tests for stepup.core.utils."""
 
+import contextlib
+
 import pytest
 from path import Path
 
@@ -30,6 +32,7 @@ from stepup.core.utils import (
     mynormpath,
     myparent,
     myrelpath,
+    translate,
 )
 
 
@@ -119,6 +122,13 @@ def test_make_path_out():
         make_path_out("foo.pdf", None, None)
 
 
+def test_mak_path_out_other_exts():
+    assert make_path_out("foo.svg", None, ".pdf", [".png"]) == "foo.pdf"
+    assert make_path_out("foo.svg", "bar.png", ".pdf", [".png"]) == "bar.png"
+    with pytest.raises(ValueError):
+        make_path_out("foo.svg", "bar.jpg", ".pdf", [".png"])
+
+
 @pytest.mark.parametrize("with_stepup_root", [True, False])
 def test_translate(monkeypatch, with_stepup_root):
     translate = Translate(Path.cwd(), "foo/bar") if with_stepup_root else Translate(here="foo/bar")
@@ -189,3 +199,20 @@ def test_filter_dependencies_external2(monkeypatch, path_tmp):
     ]
     monkeypatch.chdir(path_tmp / "project")
     assert filter_dependencies(abs_paths) == {"../pkgs/helper.py", "../templates/fancy.typ"}
+
+
+def test_filter_dependencies_relative(monkeypatch, path_tmp):
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp / "project")
+    monkeypatch.setenv("STEPUP_EXTERNAL_SOURCES", "../external")
+    (path_tmp / "project/sub").makedirs()
+    with contextlib.chdir(path_tmp / "project/sub"):
+        monkeypatch.setattr(translate, "root", path_tmp / "project/")
+        monkeypatch.setattr(translate, "here", "sub/")
+        rel_paths = ["foo", "../../external/bar", "../../egg", "../../other/spam"]
+        assert filter_dependencies(rel_paths) == {"foo", "../../external/bar"}
+
+
+def test_filter_dependencies_arg():
+    assert filter_dependencies(["../foo/source.txt", "../bar/library.txt"], "../foo") == {
+        "../foo/source.txt"
+    }

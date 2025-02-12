@@ -13,7 +13,7 @@ Return code           126
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ 1 step(s) failed.
-   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
      PHASE │ watch
    UPDATED │ sub/plan.py

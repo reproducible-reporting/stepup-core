@@ -20,7 +20,6 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
         defines pool = transform=1
-          inp_digest = same
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -30,13 +29,11 @@ step:./plan.py
 step:echo 1; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
                state = SUCCEEDED
                 pool = transform
-          inp_digest = same
           created by   step:./plan.py
             consumes   file:./
 
 step:echo 2; mv r.txt u.txt; sleep 0.1; mv u.txt r.txt
                state = SUCCEEDED
                 pool = transform
-          inp_digest = same
           created by   step:./plan.py
             consumes   file:./

@@ -24,6 +24,7 @@ This module also includes a synchronous RPC client to support simple client APIs
 
 import asyncio
 import inspect
+import os
 import pickle
 import socket
 import subprocess
@@ -70,6 +71,7 @@ def _handle_error(body: str, name: str, args, kwargs):
 
 
 def allow_rpc(func):
+    """Decorator to allow a function to be called remotely."""
     func._allow_rpc = True
     return func
 
@@ -105,6 +107,18 @@ async def _recv_rpc_message(reader: asyncio.StreamReader) -> tuple[int | None, b
 
 
 async def _send_rpc_message(writer: asyncio.StreamWriter, call_id: int, message: bytes | None):
+    """Send a single RPC response.
+
+    Parameters
+    ----------
+    writer
+        The StreamWriter to write the response to.
+    call_id
+        The call id of the message, used to label the response.
+        This must match the call id of the request to which is being responded.
+    message
+        The content of the message. None means the RPC loops should be stopped.
+    """
     writer.write(call_id.to_bytes(8))
     if message is None:
         writer.write((0).to_bytes(8))
@@ -221,6 +235,7 @@ async def _handle_connection(
     reader: asyncio.StreamReader,
     writer: asyncio.StreamWriter,
 ):
+    """Handle a single connection to the RPC server."""
     await serve_rpc(handler, reader, writer)
     await writer.drain()
     writer.close()
@@ -228,6 +243,17 @@ async def _handle_connection(
 
 
 async def serve_socket_rpc(handler, path: str, stop_event: asyncio.Event):
+    """Serve an RPC server on a Unix domain socket.
+
+    Parameters
+    ----------
+    handler
+        Any object whose methods (decorated with `@allow_rpc`) are to be called remotely.
+    path
+        The path to the Unix domain socket.
+    stop_event
+        The RPC loops keep running until the stop event is set.
+    """
     server = await asyncio.start_unix_server(partial(_handle_connection, handler), path)
     async with server:
         await stop_event.wait()
@@ -240,6 +266,13 @@ async def serve_socket_rpc(handler, path: str, stop_event: asyncio.Event):
 
 
 async def serve_stdio_rpc(handler):
+    """Serve an RPC server on stdin and stdout.
+
+    Parameters
+    ----------
+    handler
+        Any object whose methods (decorated with `@allow_rpc`) are to be called remotely.
+    """
     reader, writer = await stdio()
     await serve_rpc(handler, reader, writer)
 
@@ -251,15 +284,27 @@ async def serve_stdio_rpc(handler):
 
 @attrs.define
 class CallInterface:
+    """A proxy object to call remote functions."""
+
     func: Callable = attrs.field()
 
     def __getattr__(self, item):
+        """Return a function, with a pre-filled first argument name, that calls the remote function.
+
+        Parameters
+        ----------
+        item
+            The name of the remote function to call.
+        """
         return partial(self.func, item)
 
 
 @attrs.define
 class BaseAsyncRPCClient:
+    """Base class for async RPC clients."""
+
     _call: CallInterface = attrs.field(init=False)
+    """The call interface to call remote functions."""
 
     @_call.default
     def _default_call(self):
@@ -269,7 +314,8 @@ class BaseAsyncRPCClient:
     def call(self) -> CallInterface:
         return self._call
 
-    async def __call__(self, name: str, *args, **kwargs):
+    async def __call__(self, name: str, *args, **kwargs) -> Any:
+        """Call a function of the RPC server. This must be implemented in subclassses."""
         raise NotImplementedError
 
 
@@ -278,13 +324,28 @@ class AsyncRPCClient(BaseAsyncRPCClient):
     """RPC client."""
 
     reader: asyncio.StreamReader = attrs.field()
+    """The reader to receive responses from the server."""
+
     writer: asyncio.StreamWriter = attrs.field()
+    """The writer to send requests to the server."""
+
     counter: int = attrs.field(init=False, default=0)
+    """A counter to keep track of the call ids, needed to pair requests and responses."""
+
     _recv_events: dict[int, asyncio.Event] = attrs.field(init=False, factory=dict)
+    """Events to signal when a response is received for a call id."""
+
     _recv_data: dict[int, bytes] = attrs.field(init=False, factory=dict)
+    """The responses received from the server, indexed by call id."""
+
     _recv_stop: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+    """Event to signal the receive loop to stop."""
+
     _recv_task: asyncio.Task = attrs.field(init=False)
+    """The task running the receive loop."""
+
     _wait_on_close: list[Awaitable[Any]] = attrs.field(factory=list)
+    """Awaitables to wait for when closing the client."""
 
     @_recv_task.default
     def _default_recv_task(self):
@@ -292,6 +353,7 @@ class AsyncRPCClient(BaseAsyncRPCClient):
         return asyncio.create_task(self._client_rpc_recv_loop(), name="client-rpc-recv-loop")
 
     async def _client_rpc_recv_loop(self):
+        """Receive responses from the server and store them in the response dictionary."""
         si = stoppable_iterator(_recv_rpc_message, self._recv_stop, (self.reader,))
         async for call_id, response in si:
             if call_id is None:
@@ -302,6 +364,7 @@ class AsyncRPCClient(BaseAsyncRPCClient):
 
     @classmethod
     async def subprocess(cls, executable: str, *args, **kwargs):
+        """Create an RPC client connected to a server running in a subprocess."""
         process = await asyncio.create_subprocess_exec(
             executable, *args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, **kwargs
         )
@@ -309,6 +372,7 @@ class AsyncRPCClient(BaseAsyncRPCClient):
 
     @classmethod
     async def socket(cls, path: str):
+        """Create an RPC client connected to a server running on a Unix domain socket."""
         reader, writer = await asyncio.open_unix_connection(path)
         return AsyncRPCClient(reader, writer)
 
@@ -344,6 +408,10 @@ class AsyncRPCClient(BaseAsyncRPCClient):
         return body
 
     async def close(self):
+        """Close the client.
+
+        This will send a close message to the server and will wait for the receive loop to stop.
+        """
         self.counter += 1
         call_id = self.counter
         await _send_rpc_message(self.writer, call_id, None)
@@ -362,7 +430,7 @@ class AsyncRPCClient(BaseAsyncRPCClient):
 class DummyAsyncRPCClient(BaseAsyncRPCClient):
     """Dummy RPC client. This one just prints the RPC calls instead of sending them to a server."""
 
-    async def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
+    async def __call__(self, name: str, *args, **kwargs):
         """Call a function of the RPC server. See AsyncSocketRPCClient for details."""
         print(fmt_rpc_call(name, args, kwargs))
 
@@ -374,7 +442,10 @@ class DummyAsyncRPCClient(BaseAsyncRPCClient):
 
 @attrs.define
 class BaseSyncRPCClient:
+    """Base class for synchronous RPC clients."""
+
     _call: CallInterface = attrs.field(init=False)
+    """The call interface to call remote functions."""
 
     @_call.default
     def _default_call(self):
@@ -384,42 +455,52 @@ class BaseSyncRPCClient:
     def call(self) -> CallInterface:
         return self._call
 
-    def __call__(self, name: str, *args, _rpc_timeout: float | None = 5.0, **kwargs):
+    def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
         raise NotImplementedError
 
 
 @attrs.define
 class SocketSyncRPCClient(BaseSyncRPCClient):
+    """Synchronous socket RPC client."""
+
     path: str = attrs.field()
+    """The path to the Unix domain socket."""
+
     counter: int = attrs.field(init=False, default=0)
+    """A counter to keep track of the call ids, needed to pair requests and responses."""
+
     _socket: socket.socket = attrs.field(init=False)
+    """The socket to communicate with the server."""
+
     _partial_recv: bytes = attrs.field(init=False, default=b"")
+    """The bytes received from the socket that are not yet used."""
 
     @_socket.default
     def _default_socket(self):
+        """Create a socket and connect to the server."""
         result = socket.socket(socket.AF_UNIX)
         result.connect(self.path)
         return result
 
-    @property
-    def call(self) -> CallInterface:
-        return self._call
-
-    def __call__(self, name: str, *args, _rpc_timeout: float | None = 5.0, **kwargs) -> Any:
+    def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs) -> Any:
         """Call a function of the RPC server.
 
         Parameters
         ----------
         name
-            The name of the remote function to call
+            The name of the remote function to call.
         args
             Arguments for the remote function.
         _rpc_timeout
+            The timeout for the remote call in seconds.
             This keyword argument is not passed to the remote procedure.
-            When None (the default), the client will wait
+            When None (the default), the timeout is taken from the environment variable
+            `STEPUP_SYNC_RPC_TIMEOUT` or set to 300 if the variable is not defined.
+            Negative values are interpreted as infinite, meaning the client will wait
             indefinitely for a response to the remote call.
-            Otherwise, the timeout is in seconds and must be strictly positive.
-            A TimeoutError will be raised when communication with the remote exceeds the timeout.
+            A `TimeoutError` will be raised when the wait time for a response from the RPC
+            server exceeds a strictly positive timeout value.
+            `_rpc_timeout=0` is not supported.
         kwargs
             Keyword arguments for the remote function.
 
@@ -430,8 +511,10 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
         """
         if name.startswith("_"):
             raise ValueError("Methods starting with underscores are not allowed.")
-        if not (_rpc_timeout is None or _rpc_timeout > 0):
-            raise ValueError("The timeout must be None or strictly positive.")
+        if _rpc_timeout is None:
+            _rpc_timeout = float(os.environ.get("STEPUP_SYNC_RPC_TIMEOUT", 300))
+        if _rpc_timeout == 0:
+            raise TimeoutError("RPC timeout is zero, which is not supported.")
 
         request = pickle.dumps([name, args, kwargs], protocol=pickle.HIGHEST_PROTOCOL)
         self.counter += 1
@@ -445,6 +528,10 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
         return body
 
     def close(self):
+        """Close the client.
+
+        This will send a close message to the server, after which the server should stop eventually.
+        """
         self.counter += 1
         call_id = self.counter
         self._send_rpc_message(call_id, None)
@@ -456,6 +543,7 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
         self.close()
 
     def _send_rpc_message(self, call_id: int, message: bytes | None):
+        """Send a single RPC request."""
         self._socket.sendall(call_id.to_bytes(8))
         if message is None:
             self._socket.sendall((0).to_bytes(8))
@@ -464,6 +552,7 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
             self._socket.sendall(message)
 
     def _recv_rpc_message(self, expected_call_id: int) -> bytes:
+        """Receive a single RPC response."""
         call_id = int.from_bytes(self._readexactly(8))
         if call_id != expected_call_id:
             raise ValueError(f"Expected call_id {expected_call_id}, got {call_id}")

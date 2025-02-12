@@ -27,7 +27,6 @@ file:poor plan.py
 
 step:'./poor plan.py'
                state = SUCCEEDED
-          inp_digest = same
           created by   root:
             consumes   file:./
             consumes   file:poor plan.py
@@ -82,7 +81,6 @@ step:'./call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amen
 
 step:'./script is cool.py' plan
                state = SUCCEEDED
-          inp_digest = same
           created by   step:'./poor plan.py'
             consumes   file:./
             consumes   file:script is cool.py

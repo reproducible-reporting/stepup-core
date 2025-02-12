@@ -6,25 +6,24 @@
      PHASE │ run
     NOSKIP │ cp -aT inp.txt out.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, digest 58f6896f ➜ cf87e1a8, inp_digset cbb296a1 ➜ d3b37ad8
+Modified step hash   explained, inp_digest ba977372 ➜ 832c6c13, out_digest d88d72dc ➜ (unset)
 Modified inp hash    inp.txt (digest ef13f276 ➜ 4f4f82c6)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
-Same out hash        out.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ cp -aT inp.txt out.txt
    SUCCESS │ cp -aT inp.txt out.txt
     NOSKIP │ cp -aT out.txt final.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, digest 64459fd7 ➜ 446a5bae, inp_digset ce6145c0 ➜ fb0f1c5e
+Modified step hash   explained, inp_digest 50406891 ➜ 7779b0cf, out_digest a44a1173 ➜ (unset)
 Modified inp hash    out.txt (digest ef13f276 ➜ 4f4f82c6)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
-Same out hash        final.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ cp -aT out.txt final.txt
    SUCCESS │ cp -aT out.txt final.txt
   DIRECTOR │ Trying to delete 0 outdated output(s).
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

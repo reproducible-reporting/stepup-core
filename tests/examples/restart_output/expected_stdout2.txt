@@ -9,7 +9,7 @@
 ───────────────────────────── Missing output files ─────────────────────────────
 copy.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, digest 62a4a24b ➜ 9e949306, inp_digset b013fd77
+Modified step hash   explained, inp_digest fbfbcb22, out_digest e8a9704b ➜ 11483ded
 Modified out hash    copy.txt (digest 9d30180e ➜ UNKNOWN, size 10 ➜ 0, mode -rw-r--r-- ➜ ?---------)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
@@ -18,6 +18,7 @@ Same inp hash        original.txt
      START │ cp -aT original.txt copy.txt
    SUCCESS │ cp -aT original.txt copy.txt
   DIRECTOR │ Trying to delete 0 outdated output(s).
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

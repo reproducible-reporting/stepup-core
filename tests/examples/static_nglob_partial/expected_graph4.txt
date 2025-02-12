@@ -30,7 +30,6 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                  ngm = ['head_${*char}.txt', 'tail_${*char}.txt'] {'char': '?'}
-          inp_digest = same
            explained = yes
           created by   root:
             consumes   file:./

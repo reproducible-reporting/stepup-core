@@ -36,12 +36,6 @@ __all__ = ("Cascade", "Node", "Root")
 logger = logging.getLogger(__name__)
 
 
-DROP_TABLES = """
-PRAGMA foreign_keys=OFF;
-SELECT 'DROP TABLE IF EXISTS "' || name || '";' FROM sqlite_master WHERE type = 'table';
-PRAGMA foreign_keys=ON;
-"""
-
 CASCADE_SCHEMA = """
 PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
@@ -143,8 +137,17 @@ class Node:
     """
 
     cascade: "Cascade" = attrs.field(repr=False)
+    """The Cascade object that contains the node."""
+
     i: int = attrs.field()
+    """The identifier of the node in the database."""
+
     label: str = attrs.field()
+    """The label of the node.
+
+    While this can be derived from the database, it is stored here for convenience,
+    since it is considered immutable.
+    """
 
     @property
     def con(self) -> sqlite3.Connection:
@@ -397,7 +400,7 @@ class Node:
             )
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class Root(Node):
     """The root node of the provenance and dependency graph.
 
@@ -424,7 +427,10 @@ class ConnectionWrapper:
     """Wrapper for SQLite connection that prints from where execute is called."""
 
     _con: sqlite3.Connection = attrs.field()
+    """SQLite connection where the graph is stored."""
+
     _explain: bool = attrs.field(default=False)
+    """If set to `True`, each query plan is printed to stderr."""
 
     def _print_caller(self, name: str):
         frame = inspect.currentframe().f_back.f_back
@@ -503,14 +509,23 @@ class Cascade:
 
     @property
     def application_id(self) -> int:
+        """Return the application ID of the database.
+
+        This can be used to recognize the database file as a StepUp database.
+        """
         return 768739001
 
     @property
     def schema_version(self) -> int:
-        return 1
+        """Return the schema version of the database."""
+        # Schema 1 become outdated due to new step_hash table.
+        # While making this change, the enums were also made more intuitive.
+        # return 1
+        return 2
 
     @classmethod
     def schema(cls) -> str:
+        """Return the SQL schema for the database. (Does not include node-specific schemas.)"""
         return CASCADE_SCHEMA
 
     def __attrs_post_init__(self):
@@ -526,9 +541,9 @@ class Cascade:
             rows = self._con.execute("PRAGMA application_id").fetchone()
             if len(rows) != 1 or rows[0] != self.application_id:
                 raise ValueError("Invalid database application ID")
-            file_version = self._con.execute("PRAGMA user_version").fetchone()[0]
-            if file_version != self.schema_version:
-                self._con.executescript(DROP_TABLES)
+            schema_version = self._con.execute("PRAGMA user_version").fetchone()[0]
+            if schema_version != self.schema_version:
+                wipe_database(self._con)
                 empty = True
         self._con.executescript(
             self.schema().format(
@@ -579,6 +594,7 @@ class Cascade:
 
     @property
     def con(self) -> sqlite3.Connection:
+        """Access the connection to the SQLite database."""
         # return self._con_wrapper
         return self._con
 
@@ -612,7 +628,7 @@ class Cascade:
         kind: str | None = None,
         include_orphans: bool = False,
     ) -> Iterator[Node]:
-        """Return all nodes of a certain kind."""
+        """Iterate over all nodes of a certain kind."""
         query = "SELECT i, kind, label FROM node"
         data = []
         words = ["WHERE", "AND"]
@@ -780,3 +796,29 @@ class Cascade:
                 node.del_suppliers()
                 node.clean()
                 self._con.execute("DELETE FROM node where i = ?", (i,))
+
+
+def wipe_database(con: sqlite3.Connection):
+    """Removes all tables and indexes from an SQLite database."""
+    try:
+        # Temporarily disable foreign key constraints
+        con.execute("PRAGMA foreign_keys = OFF")
+        # Drop all tables
+        rows = list(
+            con.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )
+        )
+        for (table,) in rows:
+            con.execute(f"DROP TABLE IF EXISTS '{table}'")
+        # Drop all indexes
+        rows = list(
+            con.execute(
+                "SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'"
+            )
+        )
+        for (index,) in rows:
+            con.execute(f"DROP INDEX IF EXISTS '{index}'")
+    finally:
+        # Restore foreign key constraints
+        con.execute("PRAGMA foreign_keys = ON")

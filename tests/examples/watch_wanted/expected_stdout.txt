@@ -20,7 +20,7 @@ Inputs        STATIC  ./
              AWAITED  (input2.txt)
 Outputs      AWAITED  output2.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    DELETED │ plan.py
@@ -50,7 +50,7 @@ Inputs        STATIC  ./
              AWAITED  (input2.txt)
 Outputs      AWAITED  output2.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    UPDATED │ plan.py

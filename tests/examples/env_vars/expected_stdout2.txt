@@ -8,17 +8,17 @@
      PHASE │ run
     NOSKIP │ ./printvars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, digest 4cf2fe6c ➜ 98202335, inp_digset 64c33960 ➜ 82c68fea
+Modified step hash   explained, inp_digest 940e5d45 ➜ 59991baf, out_digest 31d3017c ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_DFTHYH ='BBBB' ➜ ='CCCC'
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 Same inp hash        printvars.py
 Same env var         ENV_VAR_TEST_STEPUP_AWDFTD ='AAAA'
-Same out hash        current_variables.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ ./printvars.py
    SUCCESS │ ./printvars.py
   DIRECTOR │ Trying to delete 0 outdated output(s).
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

@@ -19,7 +19,6 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
              env_var = SUB [amended]
-          inp_digest = same
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -44,7 +43,6 @@ step:./plan.py  # wd=sub/
                state = SUCCEEDED
              env_var = DELAYED [amended]
                      = HERE [amended]
-          inp_digest = same
           created by   step:./plan.py
             consumes   file:sub/
             consumes   file:sub/plan.py

@@ -8,7 +8,7 @@
      PHASE │ run
  DROPAMEND │ ./plan.py
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   compact, digest fffd91ab ➜ cf6b8624, inp_digset d1732098 ➜ 4e0ca487
+Modified step hash   compact ➜ explained, inp_digest fa44555e ➜ f4914cbb, out_digest d26e67b0 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
      START │ ./plan.py
    SUCCESS │ ./plan.py
@@ -17,6 +17,7 @@ Modified step hash   compact, digest fffd91ab ➜ cf6b8624, inp_digset d1732098 
   DIRECTOR │ Trying to delete 2 outdated output(s).
      CLEAN │ out1.txt
      CLEAN │ out.txt
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

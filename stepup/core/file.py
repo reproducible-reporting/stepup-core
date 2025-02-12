@@ -41,16 +41,25 @@ __all__ = ("File",)
 logger = logging.getLogger(__name__)
 
 
-FILE_SCHEMA = """
+FILE_SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS file (
-    node INTEGER PRIMARY KEY,
-    state INTEGER NOT NULL CHECK(state >= 11 AND state <= 16),
-    digest BLOB NOT NULL,
-    mode INTEGER NOT NULL CHECK(mode >= 0),
-    mtime REAL NOT NULL CHECK(mtime >= 0),
-    size INTEGER NOT NULL CHECK(size >= 0),
-    inode INTEGER NOT NULL,
-    FOREIGN KEY (node) REFERENCES node(i)
+  node INTEGER PRIMARY KEY,
+  state INTEGER NOT NULL CHECK(state >= 11 AND state <= 16),
+  digest BLOB NOT NULL,
+  mode INTEGER NOT NULL CHECK(mode >= 0),
+  mtime REAL NOT NULL CHECK(mtime >= 0),
+  size INTEGER NOT NULL CHECK(size >= 0),
+  inode INTEGER NOT NULL,
+  FOREIGN KEY (node) REFERENCES node(i),
+  CHECK (
+    state IN ({FileState.MISSING.value}, {FileState.AWAITED.value}, {FileState.VOLATILE.value}) OR
+    (digest != X'75' AND mtime != 0 AND inode != 0) OR
+    (digest == X'64' AND mode != 0 AND mtime = 0 AND size = 0 AND inode = 0)
+  ),
+  CHECK (
+    state IN ({FileState.STATIC.value}, {FileState.BUILT.value}, {FileState.OUTDATED.value}) OR
+    (digest = X'75' AND mode = 0 AND mtime = 0 AND size = 0 AND inode = 0)
+  )
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS file_state ON file(state);
 """
@@ -73,19 +82,37 @@ class File(Node):
         """Return node-specific SQL commands to initialize the database."""
         return FILE_SCHEMA
 
-    def initialize(self, state: FileState):
+    def initialize(self, state: FileState):  # type: ignore
         """Create extra information in the database about this node."""
+        digest = b"u"
+        mode = 0
+        mtime = 0.0
+        size = 0
+        inode = 0
         # If the file was previously BUILT or OUTDATED, and created again as AWAITED,
         # it should copy that state
         if state == FileState.AWAITED:
-            row = self.con.execute("SELECT state FROM file WHERE node = ?", (self.i,)).fetchone()
+            sql = "SELECT state, digest, mode, mtime, size, inode FROM file WHERE node = ?"
+            row = self.con.execute(sql, (self.i,)).fetchone()
             if row is not None and row[0] in (FileState.BUILT.value, FileState.OUTDATED.value):
                 state = FileState(row[0])
+                digest, mode, mtime, size, inode = row[1:]
+        if digest == b"u" and state in (FileState.STATIC, FileState.BUILT, FileState.OUTDATED):
+            raise ValueError(f"Cannot create a {state.name} file without a hash: {self.path}")
         # Add/update row in the file table.
         self.con.execute(
-            "INSERT INTO file VALUES(:node, :state, :digest, 0, 0.0, 0, 0) ON CONFLICT "
-            "DO UPDATE SET state = :state WHERE node = :node",
-            {"node": self.i, "state": state.value, "digest": b"u"},
+            "INSERT INTO file VALUES(:node, :state, :digest, :mode, :mtime, :size, :inode) "
+            "ON CONFLICT DO UPDATE SET state = :state, digest = :digest, mode = :mode, "
+            "mtime = :mtime, size = :size, inode = :inode WHERE node = :node",
+            {
+                "node": self.i,
+                "state": state.value,
+                "digest": digest,
+                "mode": mode,
+                "mtime": mtime,
+                "size": size,
+                "inode": inode,
+            },
         )
         # If the state is BUILT, mark it as OUTDATED to force a rebuild.
         if state == FileState.BUILT:
@@ -168,16 +195,14 @@ class File(Node):
         return FileState(row[0])
 
     def set_state(self, state: FileState):
-        if state in (FileState.MISSING, FileState.AWAITED):
+        if state in (FileState.MISSING, FileState.AWAITED, FileState.VOLATILE):
             sql = (
-                "UPDATE file SET state = ?, digest = ?, mode = 0, mtime = 0, size = 0, inode = 0 "
-                "WHERE node = ?"
+                "UPDATE file SET state = ?, digest = X'75', mode = 0, mtime = 0, "
+                "size = 0, inode = 0 WHERE node = ?"
             )
-            data = (state.value, b"u", self.i)
         else:
             sql = "UPDATE file SET state = ? WHERE node = ?"
-            data = (state.value, self.i)
-        self.con.execute(sql, data)
+        self.con.execute(sql, (state.value, self.i))
 
     def get_hash(self) -> FileHash:
         sql = "SELECT digest, mode, mtime, size, inode FROM file WHERE node = ?"
@@ -204,43 +229,44 @@ class File(Node):
     # Watch phase
     #
 
-    def watcher_deleted(self):
-        """Modify the graph to account for the fact this file was deleted."""
+    def externally_deleted(self):
+        """Modify the graph to account for the fact this file was deleted.
+
+        File states and hashes have already been updated before this method is called.
+        """
         if self.path.endswith("/"):
             self.workflow.dir_queue.put_nowait((DirWatch.STOP, self.path))
         state = self.get_state()
-        if state == FileState.MISSING:
-            raise ValueError(f"Cannot delete a path that is already MISSING: {self.path}")
+        logger.info("Externally deleted %s file: %s", state, self.path)
+
         if state == FileState.STATIC:
             self.set_state(FileState.MISSING)
+            state = FileState.MISSING
         elif state in (FileState.BUILT, FileState.OUTDATED):
             self.set_state(FileState.AWAITED)
+            state = FileState.AWAITED
+
+        if state == FileState.AWAITED:
             # Request rerun of creator
             self.creator().mark_pending()
-        else:
-            # No action needed when a AWAITED or VOLATILE file is deleted.
-            return
-        # Make all consumers pending
-        for step in self.consumers(kind="step"):
-            step.mark_pending()
+        if state != FileState.VOLATILE:
+            # Make all consumers pending
+            for step in self.consumers(kind="step"):
+                step.mark_pending()
+            for file in self.consumers(kind="file"):
+                file.externally_deleted()
 
-    def watcher_updated(self):
-        """Modify the graph to account for the fact that this file changed on disk.
+    def externally_updated(self):
+        """Modify the graph to account for the external changes to this file.
 
-        Hashes are not updated until needed, to allow for reverting the file in its original
-        form. (This is more common than one may thing, e.g. when switching Git branches.)
+        File states and hashes have already been updated before this method is called.
         """
         state = self.get_state()
-        if state == FileState.MISSING:
-            self.set_state(FileState.STATIC)
-            state = FileState.STATIC
         if state == FileState.STATIC:
             # Mark all consumers pending
             for step in self.consumers(kind="step"):
                 step.mark_pending(input_changed=True)
-        elif state in (FileState.BUILT, FileState.OUTDATED):
-            # The new state becomes AWAITED because it was changed externally, not our result.
-            self.set_state(FileState.AWAITED)
+        elif state == FileState.AWAITED:
             # Mark the creator pending again, as to make sure the file is rebuilt.
             creator = self.creator()
             if creator.kind() == "step":
@@ -254,4 +280,4 @@ class File(Node):
             for step in self.consumers(kind="step"):
                 step.mark_pending(input_changed=True)
         elif state != FileState.OUTDATED:
-            raise ValueError(f"Cannot make file pending when its state is {state}")
+            raise ValueError(f"Cannot make file oudated when its state is {state}")

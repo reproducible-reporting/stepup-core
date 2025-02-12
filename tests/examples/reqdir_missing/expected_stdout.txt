@@ -15,7 +15,7 @@ Inputs        STATIC  ./
              AWAITED  (sub/dir/nested/)
 Outputs      AWAITED  sub/dir/nested/hello.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping cleanup due to incomplete build.
+   WARNING │ Skipping file cleanup due to incomplete build.
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.

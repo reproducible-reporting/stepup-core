@@ -46,18 +46,27 @@ You can better understand how the above example works by breaking it down into t
 - The part `python -c 'from stepup.core.interact import run; run()'`
   has the same effect as pressing `r` in the terminal where StepUp is running.
   The variable `STEPUP_DIRECTOR_SOCKET` tells which instance of StepUp to interact with.
-  When StepUp runs `plan.py` scripts, they also use this environment variable
-  to interact with the director process.
-  As these are subprocesses of the director process, the variable is set automatically,
-  so you don't need to set it.
-  This is only needed if processes other than subprocesses need to interact with the director,
-  as in this example.
+
+    (When StepUp runs `plan.py` scripts, they also use this environment variable
+    to interact with the director process.
+    Because these are subprocesses of the director,
+    the `STEPUP_DIRECTOR_SOCKET` is set by the director.)
 
 ## Configuration of a Task in VSCode
 
 You can define a
 [Custom Task in VSCode](https://code.visualstudio.com/docs/editor/tasks#_custom-tasks)
-to rerun StepUp with the following `tasks.json` file:
+to start the run phase of a StepUp instance running in a terminal.
+
+For this example, we will assume the following:
+
+- You have an `.envrc` file that defines the environment variable `STEPUP_ROOT`
+  and you have configured and installed [direnv](https://direnv.net/).
+- You have an interactive StepUp instance running in a terminal (with `stepup -w`).
+- You want to use the `ctrl+'` keybinding to start the run phase
+  while you are editing a file in the StepUp project.
+
+Add the following to your user `tasks.json` file:
 
 ```json
 {
@@ -66,9 +75,13 @@ to rerun StepUp with the following `tasks.json` file:
     {
       "label": "StepUp run",
       "type": "shell",
-      "command": "STEPUP_DIRECTOR_SOCKET=$(python -c 'import stepup.core.director; \
-print(stepup.core.director.get_socket())') python -c 'from stepup.core.interact import run; run()'",
-      "options": {"cwd": "./path/from/project/root/to/stepup/root/"},
+      "command": "eval \\"$(direnv export bash)\\"; \
+STEPUP_DIRECTOR_SOCKET=$(python -c 'import stepup.core.director; \
+print(stepup.core.director.get_socket())') \
+python -c 'from stepup.core.interact import run; run()'",
+      "options": {
+        "cwd": "${fileDirname}"
+      },
       "presentation": {
         "echo": true,
         "reveal": "silent",
@@ -82,49 +95,37 @@ print(stepup.core.director.get_socket())') python -c 'from stepup.core.interact 
 }
 ```
 
-The following `keybindings.json` file will bind `ctrl+d` to run the task:
+This will create a task that executes the command in the directory of the file you are editing.
+With `eval \"$(direnv export bash)\"`, the environment variables from your `.envrc` file are loaded.
+The rest of the `command` field is the same as the command we used in the first example.
+
+The following `keybindings.json` file will bind `ctrl+'` to run the task:
 
 ```json
 [
   {
-    "key": "ctrl+d",
+    "key": "ctrl+'",
     "command": "workbench.action.tasks.runTask",
     "args": "StepUp run"
   }
 ]
 ```
 
+VSCode will automatically save the file when you run the task with this keybinding.
+
+Instead of this shortcut, you can also use `stepup -W`,
+which will automatically rerun the build as soon as you delete, save or add a relevant file.
+
 """
 
-from .api import RPC_CLIENT, translate
+from .api import RPC_CLIENT
 
-__all__ = ("cleanup", "graph", "join", "run", "wait", "watch_delete", "watch_update")
+__all__ = ("graph", "join", "run", "wait", "watch_delete", "watch_update")
 
 
 def run():
     """Exit the watch phase and start running steps whose inputs have changed."""
     RPC_CLIENT.call.run()
-
-
-def cleanup(*paths: str) -> tuple[int, int]:
-    """Remove paths (if they are outputs), recursively removing all consumer files and directories.
-
-    Parameters
-    ----------
-    paths
-        A list of paths to consider for removal.
-        Variable substitutions are not supported.
-
-    Returns
-    -------
-    numf
-        The number of files effectively removed.
-    numd
-        The number of directories effectively removed.
-    """
-    # Translate paths to directory working dir and make RPC call
-    tr_paths = sorted(translate(path) for path in paths)
-    return RPC_CLIENT.call.cleanup(tr_paths)
 
 
 def graph(prefix: str):

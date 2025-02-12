@@ -1,0 +1,36 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cat data/sub/inp.txt > data/sub/out.txt
+   SUCCESS │ cat data/sub/inp.txt > data/sub/out.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+   DELETED │ data/
+     PHASE │ run
+   WARNING │ 1 step(s) remained pending due to incomplete requirements
+──────────────────────────────── Missing inputs ────────────────────────────────
+             MISSING  data/
+             MISSING  data/sub/
+             MISSING  data/sub/inp.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Command               cat data/sub/inp.txt > data/sub/out.txt
+Working directory     ./
+Inputs        STATIC  ./
+             MISSING  data/sub/
+             MISSING  data/sub/inp.txt
+Outputs      AWAITED  data/sub/out.txt
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping file cleanup due to incomplete build.
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+   UPDATED │ data/
+   UPDATED │ data/sub/
+   UPDATED │ data/sub/inp.txt
+     PHASE │ run
+      SKIP │ cat data/sub/inp.txt > data/sub/out.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!

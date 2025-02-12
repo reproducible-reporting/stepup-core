@@ -55,7 +55,6 @@ step:./work.py --inp=work_inp.json --out=work_out.json --amend-out
 
 step:cat work_out.json
                state = SUCCEEDED
-          inp_digest = same
           created by   step:./plan.py
             consumes   file:./
             consumes   file:work_out.json

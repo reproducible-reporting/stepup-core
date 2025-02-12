@@ -26,7 +26,6 @@ file:plan.py
 
 step:./plan.py
                state = SUCCEEDED
-          inp_digest = same
            explained = yes
           created by   root:
             consumes   file:./

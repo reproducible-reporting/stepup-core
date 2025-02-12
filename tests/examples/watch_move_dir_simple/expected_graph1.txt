@@ -1,0 +1,63 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:data/
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:cat data/sub/inp.txt > data/sub/out.txt
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:data/
+             creates   file:data/sub/
+             creates   file:data/sub/inp.txt
+             creates   step:cat data/sub/inp.txt > data/sub/out.txt
+
+file:data/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   file:data/sub/
+
+file:data/sub/
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:data/
+            supplies   file:data/sub/inp.txt
+            supplies   file:data/sub/out.txt
+            supplies   step:cat data/sub/inp.txt > data/sub/out.txt
+
+file:data/sub/inp.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:data/sub/
+            supplies   step:cat data/sub/inp.txt > data/sub/out.txt
+
+step:cat data/sub/inp.txt > data/sub/out.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:data/sub/
+            consumes   file:data/sub/inp.txt
+             creates   file:data/sub/out.txt
+            supplies   file:data/sub/out.txt
+
+file:data/sub/out.txt
+               state = BUILT
+          created by   step:cat data/sub/inp.txt > data/sub/out.txt
+            consumes   file:data/sub/
+            consumes   step:cat data/sub/inp.txt > data/sub/out.txt

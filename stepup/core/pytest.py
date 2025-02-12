@@ -77,7 +77,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
         "./main.sh",
         stdin=subprocess.DEVNULL,
         cwd=workdir,
-        env=os.environ | {"PYTHONUNBUFFERED": "yes", "COLUMNS": "80", "STEPUP_STRICT": "1"},
+        env=os.environ | {"PYTHONUNBUFFERED": "yes", "COLUMNS": "80", "STEPUP_DEBUG": "1"},
     )
     try:
         async with asyncio.timeout(30):
@@ -104,7 +104,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
             # - Remove trailing whitespace
             cur = re.sub(r"[ \t]+?(\n|\Z)", r"\1", cur)
             # - Remove digests, change often, content of results must be tested explicitly.
-            cur = re.sub(r" {10}(inp_| {4})digest = [ 0-9a-f]{71}\n {21}= [ 0-9a-f]{71}\n", "", cur)
+            cur = re.sub(r" {10}(.{4})digest = [ 0-9a-f]{71}\n {21}= [ 0-9a-f]{71}\n", "", cur)
             # - Remove standard error: sensitive to OS and Python version
             cur = re.sub(
                 STDERR_BEGIN + r".*?" + STDERR_END,

@@ -19,7 +19,8 @@ Put the following lines in `.envrc`:
 ```bash
 source venv/bin/activate
 export XDG_CACHE_HOME="${VIRTUAL_ENV}/cache"
-export STEPUP_STRICT="1"
+export STEPUP_DEBUG="1"
+export STEPUP_SYNC_RPC_TIMEOUT="10"
 ```
 
 Finally, run the following commands:

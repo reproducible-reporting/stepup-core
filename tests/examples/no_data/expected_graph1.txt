@@ -22,7 +22,6 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                  ngm = ['data.txt'] {}
-          inp_digest = same
            explained = yes
           created by   root:
             consumes   file:./
@@ -55,7 +54,6 @@ file:analyzed.txt
 
 step:cat analyzed.txt
                state = SUCCEEDED
-          inp_digest = same
            explained = yes
           created by   step:./plan.py
             consumes   file:./

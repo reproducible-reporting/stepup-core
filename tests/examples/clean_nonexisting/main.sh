@@ -23,7 +23,7 @@ EOD
 [[ -f plan.py ]] || exit 1
 [[ -f bar.txt ]] || exit 1
 
-cleanup blabla.txt -vv > current_cleanup.txt
+cleanup blabla.txt > current_cleanup.txt
 
 # Get the graph after completion of the pending steps.
 python3 - << EOD
