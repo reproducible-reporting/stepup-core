@@ -1013,14 +1013,12 @@ class Workflow(Cascade):
             deferred.update(info.deferred)
 
         # Process inp_paths
-        new_inp_files = []
         for inp_path in inp_paths:
             info = self.supply_file(step, inp_path, new=False)
             if not info.available:
                 missing.add(inp_path)
             if info.new_idep is not None:
                 self._amend_dep(info.new_idep)
-                new_inp_files.append(info.file)
             deferred.update(info.deferred)
 
         # Process vars
