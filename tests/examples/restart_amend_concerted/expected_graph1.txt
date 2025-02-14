@@ -1,0 +1,105 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:inp1.txt
+            supplies   file:inp2.txt
+            supplies   file:out1.txt
+            supplies   file:out2.txt
+            supplies   file:plan.py
+            supplies   file:prep.py
+            supplies   file:work.py
+            supplies   step:./plan.py
+            supplies   step:./prep.py plan
+            supplies   step:./prep.py run
+            supplies   step:./work.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+           explained = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:inp1.txt
+             creates   file:inp2.txt
+             creates   file:prep.py
+             creates   file:work.py
+             creates   step:./prep.py plan
+             creates   step:./work.py
+
+file:inp1.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./prep.py run
+
+file:inp2.txt
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./work.py
+
+file:prep.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./prep.py plan
+            supplies   step:./prep.py run
+
+file:work.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./work.py
+
+step:./work.py
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:inp2.txt
+            consumes   file:out1.txt [amended]
+            consumes   file:work.py
+             creates   file:out2.txt
+            supplies   file:out2.txt
+
+file:out2.txt
+               state = BUILT
+          created by   step:./work.py
+            consumes   file:./
+            consumes   step:./work.py
+
+step:./prep.py plan
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:prep.py
+             creates   step:./prep.py run
+
+file:out1.txt
+               state = BUILT
+          created by   step:./prep.py run
+            consumes   file:./
+            consumes   step:./prep.py run
+            supplies   step:./work.py
+
+step:./prep.py run
+               state = SUCCEEDED
+           explained = yes
+          created by   step:./prep.py plan
+            consumes   file:./
+            consumes   file:inp1.txt
+            consumes   file:prep.py
+             creates   file:out1.txt
+            supplies   file:out1.txt

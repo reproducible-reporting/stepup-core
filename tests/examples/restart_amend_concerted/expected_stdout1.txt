@@ -1,0 +1,22 @@
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./work.py
+RESCHEDULE │ ./work.py
+──────────────── Rescheduling due to unavailable amended inputs ────────────────
+Missing inputs and/or required directories:
+out1.txt
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./prep.py plan
+   SUCCESS │ ./prep.py plan
+     START │ ./prep.py run
+   SUCCESS │ ./prep.py run
+     START │ ./work.py
+   SUCCESS │ ./work.py
+  DIRECTOR │ Trying to delete 0 outdated output(s).
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ Stopping workers.
+  DIRECTOR │ See you!
