@@ -38,6 +38,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = [
+    "psutil",
     "pytest",
     "pytest-asyncio>=0.24",
     "pytest-xdist",

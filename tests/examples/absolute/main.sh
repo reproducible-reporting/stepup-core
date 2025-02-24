@@ -5,8 +5,10 @@ trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Prepare
-PATH_SRC="/tmp/this_is_potentially_unsafe_18731"
-PATH_DST="/tmp/this_is_potentially_unsafe_79824"
+export mytmpdir=$(mktemp -d)
+trap 'rm -rf $tmpdir' EXIT
+PATH_SRC="$mytmpdir/this_is_potentially_unsafe_18731"
+PATH_DST="$mytmpdir/this_is_potentially_unsafe_79824"
 echo hello > $PATH_SRC
 rm -rf $PATH_DST
 
@@ -34,7 +36,7 @@ grep hello $PATH_DST
 echo changed > $PATH_SRC
 python3 - << EOD
 from stepup.core.interact import *
-watch_update("/tmp/this_is_potentially_unsafe_18731")
+watch_update("$PATH_SRC")
 run()
 wait()
 graph("current_graph2")

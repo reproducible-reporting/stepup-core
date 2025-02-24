@@ -10,7 +10,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(nothing yet)
+(no summary yet)
+
+### Added
+
+- Configuration for development with [devenv](https://devenv.sh/)
 
 ## [2.1.4][] - 2025-02-12 {: #v2.1.4 }
 

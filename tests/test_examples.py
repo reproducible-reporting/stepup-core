@@ -195,11 +195,11 @@ async def test_example(name: str, path_tmp: Path):
 @pytest.mark.parametrize(
     "name",
     [
-        "absolute",
         "amend",
         "deferred_nonexisting_dir",
         "not_cyclic",
         "optional_convert",
+        "static",
     ],
 )
 @pytest.mark.asyncio

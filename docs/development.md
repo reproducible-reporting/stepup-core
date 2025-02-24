@@ -2,7 +2,12 @@
 
 If you would like to contribute, please read [CONTRIBUTING.md](https://github.com/reproducible-reporting/.github/blob/main/CONTRIBUTING.md).
 
-## Development Install and Unit Tests
+## Development environment
+
+If you break your development environment, you can discard it
+by running `git clean -dfX` and repeating the instructions below.
+
+### Most Linux distributions
 
 A local installation for testing and development can be installed
 using the following commands:
@@ -20,7 +25,7 @@ Put the following lines in `.envrc`:
 source venv/bin/activate
 export XDG_CACHE_HOME="${VIRTUAL_ENV}/cache"
 export STEPUP_DEBUG="1"
-export STEPUP_SYNC_RPC_TIMEOUT="10"
+export STEPUP_SYNC_RPC_TIMEOUT="30"
 ```
 
 Finally, run the following commands:
@@ -29,6 +34,37 @@ Finally, run the following commands:
 direnv allow
 pip install -U pip
 pip install -e .[dev]
+```
+
+### NixOS
+
+The setup on [NixOS](https://nixos.org/) is experimental
+and makes use of [devenv](https://devenv.sh/).
+You can enter the development shell by running
+
+```bash
+devenv shell
+```
+
+You can also activated it when entering the stepup-core directory with following in `.envrc`:
+
+```bash
+export DIRENV_WARN_TIMEOUT=20s
+eval "$(devenv direnvrc)"
+use devenv
+```
+
+After you create this file, run
+
+```bash
+direnv allow
+```
+
+## Tests
+
+We use pytest, so you can run the tests as follows:
+
+```bash
 pytest -vv
 ```
 
