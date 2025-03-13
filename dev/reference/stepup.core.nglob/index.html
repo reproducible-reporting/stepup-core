@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.8">
     
     
       
@@ -2415,6 +2415,7 @@ For example, the following would match:</p>
 
 
 
+
   <div class="doc doc-children">
 
 
@@ -2454,6 +2455,7 @@ It will raise an exception when there are zero or multiple matches:</p>
 you can access their values through the <code>mapping</code> attribute:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">print</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;single&quot;</span><span class="p">])</span>
 </span></code></pre></div>
+
 
 
 
@@ -2648,6 +2650,7 @@ If a pattern has anonymous wildcards,
 the item itself is a list of all files matching the pattern,
 If the pattern contains no anonymous wildcards,
 the corresponding item in the returned list is a single path.</p>
+
     </div>
 
 </div>
@@ -2669,6 +2672,7 @@ the corresponding item in the returned list is a single path.</p>
     <div class="doc doc-contents ">
 
         <p>Dictionary with <code>(wildcard_name, substring)</code> items.</p>
+
     </div>
 
 </div>
@@ -2690,6 +2694,7 @@ the corresponding item in the returned list is a single path.</p>
     <div class="doc doc-contents ">
 
         <p>A single path if there is exactly one match, raises an error otherwise.</p>
+
     </div>
 
 </div>
@@ -2719,6 +2724,7 @@ the corresponding item in the returned list is a single path.</p>
 
 
         <p>A sequence of Named Glob patterns for which consistent matches are collected.</p>
+
 
 
 
@@ -3426,6 +3432,7 @@ the corresponding item in the returned list is a single path.</p>
     <div class="doc doc-contents ">
 
         <p>True if any named or anonymous wildcards are present in the patterns.</p>
+
     </div>
 
 </div>
@@ -3449,6 +3456,7 @@ the corresponding item in the returned list is a single path.</p>
         <p>The list of NGlobSingle instances, one for each pattern.</p>
 <p>These instances collect (partial) matches before any consistency is imposed between
 the substrings matching the same name in different patterns.</p>
+
     </div>
 
 </div>
@@ -3470,6 +3478,7 @@ the substrings matching the same name in different patterns.</p>
     <div class="doc doc-contents ">
 
         <p>The list of Named Glob patterns.</p>
+
     </div>
 
 </div>
@@ -3499,6 +3508,7 @@ pattern from the <code>patterns</code> attribute, whose named wildcards match th
 of the key.</p>
 <p>The results can be extended with the <code>extend</code> and <code>glob</code> methods.
 Conversely, results can be removed with the <code>reduce</code> method.</p>
+
     </div>
 
 </div>
@@ -3521,6 +3531,7 @@ Conversely, results can be removed with the <code>reduce</code> method.</p>
 
         <p>User-defined glob patterns for the named wildcards.</p>
 <p>When a name is not present, <code>*</code> is used.</p>
+
     </div>
 
 </div>
@@ -3542,6 +3553,7 @@ Conversely, results can be removed with the <code>reduce</code> method.</p>
     <div class="doc doc-contents ">
 
         <p>The names used across all the named glob patterns.</p>
+
     </div>
 
 </div>
@@ -3560,6 +3572,7 @@ Conversely, results can be removed with the <code>reduce</code> method.</p>
     <div class="doc doc-contents ">
 
         <p>True when there are some items in the <code>results</code> attribute.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -3586,6 +3599,7 @@ Conversely, results can be removed with the <code>reduce</code> method.</p>
     <div class="doc doc-contents ">
 
         <p>Iterates over <code>self.matches</code> if there are named wildcards, else over <code>self.files</code>.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -3622,7 +3636,7 @@ Conversely, results can be removed with the <code>reduce</code> method.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>i</code></b>
-              (<code>int</code>)
+              (<code><span title="int">int</span></code>)
           –
           <div class="doc-md-description">
             <p>The integer index of the pattern in the <code>patterns</code> attribute being processed.</p>
@@ -3630,13 +3644,14 @@ Conversely, results can be removed with the <code>reduce</code> method.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>values</code></b>
-              (<code>tuple[str, ...]</code>)
+              (<code><span title="tuple">tuple</span>[<span title="str">str</span>, ...]</code>)
           –
           <div class="doc-md-description">
             <p>A new set of substrings matching the named wildcards.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -3691,7 +3706,7 @@ Conversely, results can be removed with the <code>reduce</code> method.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>criteria</code></b>
-              (<code>dict[str, str]</code>)
+              (<code><span title="dict">dict</span>[<span title="str">str</span>, <span title="str">str</span>]</code>)
           –
           <div class="doc-md-description">
             <p>A dictionary mapping named wildcards to matching substrings.</p>
@@ -3699,7 +3714,7 @@ Conversely, results can be removed with the <code>reduce</code> method.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>full_paths</code></b>
-              (<code>list | int</code>)
+              (<code><span title="list">list</span> | <span title="int">int</span></code>)
           –
           <div class="doc-md-description">
             <p>If this is a list, it contains lists of paths matching the patterns
@@ -3713,6 +3728,7 @@ to identify the current pattern being processed.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -3827,7 +3843,7 @@ to identify the current pattern being processed.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>i</code></b>
-              (<code>int</code>)
+              (<code><span title="int">int</span></code>)
           –
           <div class="doc-md-description">
             <p>The integer index of the pattern in the <code>patterns</code> attribute being processed.</p>
@@ -3835,13 +3851,14 @@ to identify the current pattern being processed.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>values</code></b>
-              (<code>tuple[str, ...]</code>)
+              (<code><span title="tuple">tuple</span>[<span title="str">str</span>, ...]</code>)
           –
           <div class="doc-md-description">
             <p>A new set of substrings matching the named wildcards.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -3889,6 +3906,7 @@ to identify the current pattern being processed.</p>
 
         <p>Return an independent copy.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-562">562</a></span>
@@ -3915,6 +3933,7 @@ to identify the current pattern being processed.</p>
 
         <p>Compare the results.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-566">566</a></span>
@@ -3940,6 +3959,7 @@ to identify the current pattern being processed.</p>
     <div class="doc doc-contents ">
 
         <p>Try to extend the results by searching for matches in the given list of paths.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -3976,6 +3996,7 @@ to identify the current pattern being processed.</p>
         <p>Return a tuple of sorted files that match the individual patterns.</p>
 <p>No constraints between multiple patterns are imposed and files may belong to partial
 and inconsistent full matches.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -4028,7 +4049,7 @@ and inconsistent full matches.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>patterns</code></b>
-              (<code><span title="collections.abc.Iterable">Iterable</span>[str]</code>)
+              (<code><span title="collections.abc.Iterable">Iterable</span>[<span title="str">str</span>]</code>)
           –
           <div class="doc-md-description">
             <p>Named Glob patterns.
@@ -4038,7 +4059,7 @@ for the named wildcards appearing in all the patterns.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>subs</code></b>
-              (<code>dict[str, str] | None</code>, default:
+              (<code><span title="dict">dict</span>[<span title="str">str</span>, <span title="str">str</span>] | None</code>, default:
                   <code>None</code>
 )
           –
@@ -4048,6 +4069,7 @@ When a name is not present, the wildcard <code>*</code> is used for this name.</
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -4121,6 +4143,7 @@ When a name is not present, the wildcard <code>*</code> is used for this name.</
 
         <p>Extend the results with paths found by the built-in glob function.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-556">556</a></span>
@@ -4156,7 +4179,7 @@ When a name is not present, the wildcard <code>*</code> is used for this name.</
 <p><span class="doc-section-title">Yields:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>nglob_match</code>
+              <code><span title="nglob_match">nglob_match</span></code>
           –
           <div class="doc-md-description">
             <p>An instance of NGlobMatch, which contains the substrings matching the named wildcards
@@ -4164,6 +4187,7 @@ and the corresponding lists of paths.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -4226,7 +4250,7 @@ and the corresponding lists of paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>deleted</code></b>
-              (<code>set[str]</code>)
+              (<code><span title="set">set</span>[<span title="str">str</span>]</code>)
           –
           <div class="doc-md-description">
             <p>Set of files to be deleted.</p>
@@ -4234,7 +4258,7 @@ and the corresponding lists of paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>added</code></b>
-              (<code>set[str]</code>)
+              (<code><span title="set">set</span>[<span title="str">str</span>]</code>)
           –
           <div class="doc-md-description">
             <p>Set of files to be added.</p>
@@ -4246,7 +4270,7 @@ and the corresponding lists of paths.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-internal" title="stepup.core.nglob.NGlobMulti.may_change" href="#stepup.core.nglob.NGlobMulti.may_change">may_change</a></code>
+              <code><a class="autorefs autorefs-internal" title="may_change(deleted, added) (stepup.core.nglob.NGlobMulti.may_change)" href="#stepup.core.nglob.NGlobMulti.may_change">may_change</a></code>
           –
           <div class="doc-md-description">
             <p>True if the NGlobMulti results may change.
@@ -4255,6 +4279,7 @@ but cannot be excluded that the provided deletions and updates play a role in it
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -4335,6 +4360,7 @@ but cannot be excluded that the provided deletions and updates play a role in it
 When added, it will show up in the result of the <code>files</code> method,
 and it may affect the outcome of the <code>matches</code> method.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-626">626</a></span>
@@ -4370,6 +4396,7 @@ and it may affect the outcome of the <code>matches</code> method.</p>
     <div class="doc doc-contents ">
 
         <p>Drop results by eliminating the provided paths.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -4409,13 +4436,14 @@ and it may affect the outcome of the <code>matches</code> method.</p>
 <p><span class="doc-section-title">Raises:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>ValueError</code>
+              <code><span title="ValueError">ValueError</span></code>
             –
           <div class="doc-md-description">
             <p>If there is not exactly one match.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -4466,7 +4494,7 @@ and it may affect the outcome of the <code>matches</code> method.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>deleted</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str]</code>)
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>]</code>)
           –
           <div class="doc-md-description">
             <p>Set of files to be deleted.</p>
@@ -4474,7 +4502,7 @@ and it may affect the outcome of the <code>matches</code> method.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>added</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str]</code>)
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>]</code>)
           –
           <div class="doc-md-description">
             <p>Set of files to be added.</p>
@@ -4486,7 +4514,7 @@ and it may affect the outcome of the <code>matches</code> method.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>evolved</code>
+              <code><span title="evolved">evolved</span></code>
           –
           <div class="doc-md-description">
             <p>a new modified copy with the changes if any.
@@ -4494,6 +4522,7 @@ None otherwise.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -4565,6 +4594,7 @@ None otherwise.</p>
 
 
         <p>Named glob with a single pattern.</p>
+
 
 
 
@@ -4864,6 +4894,7 @@ None otherwise.</p>
     <div class="doc doc-contents ">
 
         <p>The conversion of the named glob to a (more general) conventional glob pattern.</p>
+
     </div>
 
 </div>
@@ -4885,6 +4916,7 @@ None otherwise.</p>
     <div class="doc doc-contents ">
 
         <p>The Named Glob pattern used to match filenames.</p>
+
     </div>
 
 </div>
@@ -4906,6 +4938,7 @@ None otherwise.</p>
     <div class="doc doc-contents ">
 
         <p>The conversion of the named glob to a regular expression.</p>
+
     </div>
 
 </div>
@@ -4930,6 +4963,7 @@ None otherwise.</p>
 <p>The keys of the <code>results</code> dictionary are tuples with the substrings,
 matching the respective named wildcards in the <code>used_names</code> tuple.
 The values are sets with matching paths.</p>
+
     </div>
 
 </div>
@@ -4952,6 +4986,7 @@ The values are sets with matching paths.</p>
 
         <p>User-defined glob patterns for the named wildcards.</p>
 <p>When a name is not present, <code>*</code> is used.</p>
+
     </div>
 
 </div>
@@ -4973,6 +5008,7 @@ The values are sets with matching paths.</p>
     <div class="doc doc-contents ">
 
         <p>A tuple of named wildcards present in the pattern.</p>
+
     </div>
 
 </div>
@@ -4998,6 +5034,7 @@ In case of a hit, it yields a tuple with the following three items:</p>
 <li><code>path_set</code>: the current set of paths associated with the combination of substrings.</li>
 <li><code>path</code>: a <code>Path</code> instance of the matching path.</li>
 </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -5071,7 +5108,7 @@ In case of a hit, it yields a tuple with the following three items:</p>
 <p><span class="doc-section-title">Yields:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>values</code>
+              <code><span title="values">values</span></code>
           –
           <div class="doc-md-description">
             <p>A tuple with substring matching the named wildcards,
@@ -5079,6 +5116,7 @@ only this combination of names was not present yet.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -5130,7 +5168,7 @@ only this combination of names was not present yet.</p>
 <p><span class="doc-section-title">Yields:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>values</code>
+              <code><span title="values">values</span></code>
           –
           <div class="doc-md-description">
             <p>A tuple with substring matching the named wildcards,
@@ -5138,6 +5176,7 @@ only this combination of names was not present yet.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -5195,7 +5234,7 @@ only this combination of names was not present yet.</p>
 <p><span class="doc-section-title">Yields:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>values</code>
+              <code><span title="values">values</span></code>
           –
           <div class="doc-md-description">
             <p>A tuple with deleted substring matching the named wildcards,
@@ -5203,6 +5242,7 @@ only if the last matching paths were removed.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -5266,7 +5306,7 @@ only if the last matching paths were removed.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>pattern</code></b>
-              (<code>str</code>)
+              (<code><span title="str">str</span></code>)
           –
           <div class="doc-md-description">
             <p>A string with named wildcards.</p>
@@ -5274,7 +5314,7 @@ only if the last matching paths were removed.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>subs</code></b>
-              (<code>dict[str, str] | None</code>, default:
+              (<code><span title="dict">dict</span>[<span title="str">str</span>, <span title="str">str</span>] | None</code>, default:
                   <code>None</code>
 )
           –
@@ -5289,7 +5329,7 @@ If a name is not present, <code>*</code> is used as default.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>pattern</code>
+              <code><span title="pattern">pattern</span></code>
           –
           <div class="doc-md-description">
             <p>A conventional wildcard string, without the constraint that named wildcards must correspond.
@@ -5297,6 +5337,7 @@ Where possible, neighboring wildcards are merged into one.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -5427,7 +5468,7 @@ Where possible, neighboring wildcards are merged into one.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>pattern</code></b>
-              (<code>str</code>)
+              (<code><span title="str">str</span></code>)
           –
           <div class="doc-md-description">
             <p>A string with named wildcards.</p>
@@ -5435,7 +5476,7 @@ Where possible, neighboring wildcards are merged into one.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>subs</code></b>
-              (<code>dict[str, str] | None</code>, default:
+              (<code><span title="dict">dict</span>[<span title="str">str</span>, <span title="str">str</span>] | None</code>, default:
                   <code>None</code>
 )
           –
@@ -5446,7 +5487,7 @@ If a name is not present, <code>*</code> is used as default.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>allow_names</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>True</code>
 )
           –
@@ -5460,7 +5501,7 @@ If a name is not present, <code>*</code> is used as default.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>regex</code>
+              <code><span title="regex">regex</span></code>
           –
           <div class="doc-md-description">
             <p>A regular expression string to test if a string matches the pattern.
@@ -5470,6 +5511,7 @@ and to impose consistency when the same name appears multiple times.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -5681,6 +5723,7 @@ and to impose consistency when the same name appears multiple times.</p>
 
         <p>Test if a glob pattern has anonymous wildcards.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-334">334</a></span>
@@ -5713,6 +5756,7 @@ and to impose consistency when the same name appears multiple times.</p>
 
         <p>Test if a glob pattern has anonymous or named wildcards.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-329">329</a></span>
@@ -5738,6 +5782,7 @@ and to impose consistency when the same name appears multiple times.</p>
     <div class="doc doc-contents ">
 
         <p>Iterate over the names of the named wildcards in a Named Glob pattern.</p>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/nglob.py</code></summary>
@@ -5816,7 +5861,7 @@ and to impose consistency when the same name appears multiple times.</p>
     <script id="__config" type="application/json">{"base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.f1b6f286.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
       
     
   </body>

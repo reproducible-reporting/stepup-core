@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.8">
     
     
       
@@ -3084,8 +3084,8 @@ for more fine-grained control over automatic dependency tracking.</p>
   Similarly, all warnings (if any) are written to <code>.stepup/warning.log</code>.</li>
 <li><code>--perf</code> option to analyze performance bottlenecks in the director process.</li>
 <li>The &ldquo;call&rdquo; protocol is added as a light alternative to the &ldquo;script&rdquo; protocol.
-  It can be used through the new <a class="autorefs autorefs-internal" href="../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> function.</li>
-<li><a class="autorefs autorefs-internal" href="../reference/stepup.core.api/#stepup.core.api.getinfo"><code>getinfo()</code></a> function to retrieve the
+  It can be used through the new <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable, *, prefix=None, fmt='auto', inp=None, env=(), out=None, vol=(), workdir='./', optional=False, pool=None, block=False, pars=None, **kwargs)" href="../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> function.</li>
+<li><a class="autorefs autorefs-internal" title="stepup.core.api.getinfo()" href="../reference/stepup.core.api/#stepup.core.api.getinfo"><code>getinfo()</code></a> function to retrieve the
   <a class="autorefs autorefs-internal" href="../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo"><code>StepInfo</code></a> object of the current step.</li>
 <li>Cleanly exit the director process upon several types of exceptions (instead of hanging).</li>
 <li>Gracefully handle <code>SIGINT</code> and <code>SIGTERM</code>, e.g. pressing <code>ctrl-c</code> in the terminal.</li>
@@ -3095,33 +3095,33 @@ for more fine-grained control over automatic dependency tracking.</p>
 <li>
 <p>Breaking changes to <code>stepup.core.api</code>:</p>
 <ul>
-<li>The <a class="autorefs autorefs-internal" href="../reference/stepup.core.api/#stepup.core.api.getenv"><code>getenv()</code></a> function has been extended and now has three options
+<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.getenv(name, default=None, *, path=False, back=False, multi=False)" href="../reference/stepup.core.api/#stepup.core.api.getenv"><code>getenv()</code></a> function has been extended and now has three options
   (<code>path</code>, <code>rebase</code> and <code>multi</code>) to control how the environment variable gets processed.</li>
-<li>The optional <code>workdir</code> argument of the <a class="autorefs autorefs-internal" href="../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> function
+<li>The optional <code>workdir</code> argument of the <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> function
   must always be specified as a keyword argument.</li>
-<li>The <code>block</code> argument of the <a class="autorefs autorefs-internal" href="../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> function
+<li>The <code>block</code> argument of the <a class="autorefs autorefs-internal" title="stepup.core.api.plan(subdir, *, inp=(), env=(), out=(), vol=(), optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> function
 must be given as a keyword argument.</li>
-<li>All optional arguments of <a class="autorefs autorefs-internal" href="../reference/stepup.core.api/#stepup.core.api.copy"><code>copy()</code></a>
-  and <a class="autorefs autorefs-internal" href="../reference/stepup.core.api/#stepup.core.api.mkdir"><code>mkdir()</code></a> must be given as keyword arguments.</li>
+<li>All optional arguments of <a class="autorefs autorefs-internal" title="stepup.core.api.copy(src, dst, *, optional=False, block=False)" href="../reference/stepup.core.api/#stepup.core.api.copy"><code>copy()</code></a>
+  and <a class="autorefs autorefs-internal" title="stepup.core.api.mkdir(dirname, *, optional=False, block=False)" href="../reference/stepup.core.api/#stepup.core.api.mkdir"><code>mkdir()</code></a> must be given as keyword arguments.</li>
 <li><code>plan.py</code> scripts must start with <code>#!/usr/bin/env python3</code> instead of <code>#!/usr/bin/env python</code>.</li>
-<li>The <a class="autorefs autorefs-internal" href="../reference/stepup.core.api/#stepup.core.api.amend"><code>amend()</code></a> function now raises an exception when the
+<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.amend(*, inp=(), env=(), out=(), vol=())" href="../reference/stepup.core.api/#stepup.core.api.amend"><code>amend()</code></a> function now raises an exception when the
   amended inputs are not available yet, instead of returning <code>False</code>.</li>
 </ul>
 </li>
 <li>
 <p>Backward compatible changes to <code>stepup.core.api</code>:</p>
 <ul>
-<li>The <a class="autorefs autorefs-internal" href="../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> function has an extra <code>step_info</code> option
+<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> function has an extra <code>step_info</code> option
   to specify a file to which the <code>step_info</code> objects of the run part(s) is/are written.
   This comes with an extension of the script protocol: <code>./script.py plan</code> must
   accept an optional argument <code>--step-info=...</code></li>
-<li>The <a class="autorefs autorefs-internal" href="../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> function now accepts all arguments
-  that can be passed on to the underlying <a class="autorefs autorefs-internal" href="../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> call.
+<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> function now accepts all arguments
+  that can be passed on to the underlying <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> call.
   There are only relevant for the plan stage of the script protocol.</li>
 <li>The script <code>driver()</code> now detects local imports in the
   <code>run()</code> function of the script and amends them as inputs.</li>
-<li>The <a class="autorefs autorefs-internal" href="../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> function now accepts all arguments
-  that can be passed on to the underlying <a class="autorefs autorefs-internal" href="../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> call.</li>
+<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.plan(subdir, *, inp=(), env=(), out=(), vol=(), optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> function now accepts all arguments
+  that can be passed on to the underlying <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> call.</li>
 </ul>
 </li>
 <li>
@@ -3391,7 +3391,7 @@ must be given as a keyword argument.</li>
     <script id="__config" type="application/json">{"base": "..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.f1b6f286.min.js"></script>
+      <script src="../assets/javascripts/bundle.c8b220af.min.js"></script>
       
     
   </body>

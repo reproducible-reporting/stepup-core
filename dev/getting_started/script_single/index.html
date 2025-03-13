@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.8">
     
     
       
@@ -1601,7 +1601,7 @@ To help you decide which one to use, consider the following:</p>
 </li>
 </ul>
 <h2 id="script-protocol">Script Protocol<a class="headerlink" href="#script-protocol" title="Permanent link">&para;</a></h2>
-<p>The <a class="autorefs autorefs-internal" href="../../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> protocol itself is rather simple.
+<p>The <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> protocol itself is rather simple.
 The following line in <code>plan.py</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">script</span><span class="p">(</span><span class="s2">&quot;executable&quot;</span><span class="p">,</span> <span class="n">workdir</span><span class="o">=</span><span class="s2">&quot;sub&quot;</span><span class="p">)</span>
 </span></code></pre></div>
@@ -1623,7 +1623,7 @@ This results in an extra argument <code>--step-info=some_file.json</code> for <c
 The planning of the run scripts is then expected to
 write all the information about the created run steps to this JSON file.
 In complex workflows, it may be useful to load this JSON file with
-<a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.load_step_info"><code>load_step_info()</code></a>.
+<a class="autorefs autorefs-internal" title="load_step_info(filename)" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.load_step_info"><code>load_step_info()</code></a>.
 Consult the section on <a href="../../advanced_topics/step_info/">StepInfo Objects</a>
 to learn how to use these objects.</p>
 <p>In addition, the <code>script()</code> function also supports all the arguments of <code>step()</code>,
@@ -1633,7 +1633,7 @@ which it simply passes on when creating the <code>./executable plan</code> step.
 <p>The <code>step_info</code> argument, and support for all <code>step()</code> arguments were added in StepUp 2.0.0.</p>
 </div>
 <h2 id="script-driver">Script driver<a class="headerlink" href="#script-driver" title="Permanent link">&para;</a></h2>
-<p>StepUp implements a <a class="autorefs autorefs-internal" href="../../reference/stepup.core.script/#stepup.core.script.driver"><code>driver()</code></a> function
+<p>StepUp implements a <a class="autorefs autorefs-internal" title="driver(obj=None)" href="../../reference/stepup.core.script/#stepup.core.script.driver"><code>driver()</code></a> function
 in the module <code>stepup.core.script</code> that greatly facilitates
 writing Python scripts that adhere to the script protocol.</p>
 <p>It can be used in two ways:</p>
@@ -1833,7 +1833,7 @@ serialized in a JSON file:</p>
     <script id="__config" type="application/json">{"base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.f1b6f286.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
       
     
   </body>
