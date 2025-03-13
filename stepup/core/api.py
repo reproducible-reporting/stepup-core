@@ -1000,7 +1000,7 @@ def _check_deferred(to_check: list[tuple[str, FileHash]] | None, step_key: str |
             if new_file_hash != old_file_hash:
                 checked.append((tr_path, new_file_hash))
             if new_file_hash.is_unknown:
-                errors.append("{tr_path} (MISSING)")
+                errors.append(f"{tr_path} (MISSING)")
         if len(checked) > 0:
             RPC_CLIENT.call.confirm(checked)
         if len(errors) > 1:
