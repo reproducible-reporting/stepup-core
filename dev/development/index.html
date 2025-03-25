@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.8">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.9">
     
     
       
@@ -30,7 +30,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.8608ea7d.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.4af4bdda.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
@@ -1418,30 +1418,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Development environment">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#most-linux-distributions" class="md-nav__link">
-    <span class="md-ellipsis">
-      Most Linux distributions
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#nixos" class="md-nav__link">
-    <span class="md-ellipsis">
-      NixOS
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -1542,30 +1518,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Development environment">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#most-linux-distributions" class="md-nav__link">
-    <span class="md-ellipsis">
-      Most Linux distributions
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#nixos" class="md-nav__link">
-    <span class="md-ellipsis">
-      NixOS
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -1633,7 +1585,6 @@
 <h2 id="development-environment">Development environment<a class="headerlink" href="#development-environment" title="Permanent link">&para;</a></h2>
 <p>If you break your development environment, you can discard it
 by running <code>git clean -dfX</code> and repeating the instructions below.</p>
-<h3 id="most-linux-distributions">Most Linux distributions<a class="headerlink" href="#most-linux-distributions" title="Permanent link">&para;</a></h3>
 <p>A local installation for testing and development can be installed
 using the following commands:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:reproducible-reporting/stepup-core.git
@@ -1652,29 +1603,15 @@ using the following commands:</p>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span>pip
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.<span class="o">[</span>dev<span class="o">]</span>
 </span></code></pre></div>
-<h3 id="nixos">NixOS<a class="headerlink" href="#nixos" title="Permanent link">&para;</a></h3>
-<p>The setup on <a href="https://nixos.org/">NixOS</a> is experimental
-and makes use of <a href="https://devenv.sh/">devenv</a>.
-You can enter the development shell by running</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>devenv<span class="w"> </span>shell
-</span></code></pre></div>
-<p>You can also activated it when entering the stepup-core directory with following in <code>.envrc</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">DIRENV_WARN_TIMEOUT</span><span class="o">=</span>20s
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>devenv<span class="w"> </span>direnvrc<span class="k">)</span><span class="s2">&quot;</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>use<span class="w"> </span>devenv
-</span></code></pre></div>
-<p>After you create this file, run</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>direnv<span class="w"> </span>allow
-</span></code></pre></div>
 <h2 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h2>
 <p>We use pytest, so you can run the tests as follows:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>pytest<span class="w"> </span>-vv
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pytest<span class="w"> </span>-vv
 </span></code></pre></div>
 <h2 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Permanent link">&para;</a></h2>
 <p>The documentation is created using <a href="https://www.mkdocs.org/">MkDocs</a>.
 <a href="https://github.com/jimporter/mike">mike</a> is used to manage documentation of different versions</p>
 <p>Edit the documentation Markdown files with a live preview by running:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>mkdocs<span class="w"> </span>serve
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>mkdocs<span class="w"> </span>serve
 </span></code></pre></div>
 <p>(Keep this running.)
 Then open the live preview in your browser at <a href="http://127.0.0.1:8000/">http://127.0.0.1:8000/</a>
@@ -1683,8 +1620,8 @@ and edit Markdown files in your IDE.</p>
 because it facilitates reviewing documentation changes.</p>
 <h2 id="tutorial-example-outputs">Tutorial Example Outputs<a class="headerlink" href="#tutorial-example-outputs" title="Permanent link">&para;</a></h2>
 <p>If you wish to regenerate the output of the examples, run <code>stepup</code> in the <code>docs</code> directory:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nb">cd</span><span class="w"> </span>docs
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>stepup
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">cd</span><span class="w"> </span>docs
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>stepup
 </span></code></pre></div>
 <p>Note that some scripts use <a href="https://graphviz.org/">Graphviz</a> to generate diagrams,
 so you must have it installed on your system.</p>
