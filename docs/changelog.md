@@ -12,9 +12,15 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no summary yet)
 
-### Added
+## [2.1.5][] - 2025-03-25 {: #v2.1.5 }
 
-- Configuration for development with [devenv](https://devenv.sh/)
+This is a minor bugfix release.
+
+# Fixed
+
+- Fixed bug in format string in `stepup.core.api`.
+- Small cleanups
+- Tweak absolute path tests for non-FHS systems.
 
 ## [2.1.4][] - 2025-02-12 {: #v2.1.4 }
 
@@ -444,6 +450,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[2.1.5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.5
 [2.1.4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.4
 [2.1.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.3
 [2.1.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.2
