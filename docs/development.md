@@ -7,8 +7,6 @@ If you would like to contribute, please read [CONTRIBUTING.md](https://github.co
 If you break your development environment, you can discard it
 by running `git clean -dfX` and repeating the instructions below.
 
-### Most Linux distributions
-
 A local installation for testing and development can be installed
 using the following commands:
 
@@ -34,30 +32,6 @@ Finally, run the following commands:
 direnv allow
 pip install -U pip
 pip install -e .[dev]
-```
-
-### NixOS
-
-The setup on [NixOS](https://nixos.org/) is experimental
-and makes use of [devenv](https://devenv.sh/).
-You can enter the development shell by running
-
-```bash
-devenv shell
-```
-
-You can also activated it when entering the stepup-core directory with following in `.envrc`:
-
-```bash
-export DIRENV_WARN_TIMEOUT=20s
-eval "$(devenv direnvrc)"
-use devenv
-```
-
-After you create this file, run
-
-```bash
-direnv allow
 ```
 
 ## Tests
