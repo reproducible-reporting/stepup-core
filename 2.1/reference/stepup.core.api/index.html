@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.4">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.9">
     
     
       
@@ -30,7 +30,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.8608ea7d.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.4af4bdda.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -1842,7 +1842,7 @@ may undergo larger changes and are not intended to be API stable.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>*paths</code></b>
-              (<code>str | <span title="collections.abc.Iterable">Iterable</span>[str]</code>, default:
+              (<code><span title="str">str</span> | <span title="collections.abc.Iterable">Iterable</span>[<span title="str">str</span>]</code>, default:
                   <code>()</code>
 )
           –
@@ -1858,7 +1858,7 @@ Arguments may also be lists of strings.</p>
 <p><span class="doc-section-title">Raises:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>ValueError</code>
+              <code><span title="ValueError">ValueError</span></code>
             –
           <div class="doc-md-description">
             <p>When a file does not exist or there is an error with the trailing separator.</p>
@@ -1873,6 +1873,7 @@ Arguments may also be lists of strings.</p>
 substituted directly and amend the current step&rsquo;s env_vars list, if needed.
 These substitutions will ignore changes to <code>os.environ</code> made in the calling script.</p>
 </details>
+
             <details class="quote">
               <summary>Source code in <code>stepup/core/api.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-76"> 76</a></span>
@@ -1984,7 +1985,7 @@ These substitutions will ignore changes to <code>os.environ</code> made in the c
     <ul>
         <li class="doc-section-item field-body">
             <b><code>*patterns</code></b>
-              (<code>str</code>, default:
+              (<code><span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
@@ -1998,7 +1999,7 @@ the keyword arguments.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>_required</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
@@ -2008,7 +2009,7 @@ the keyword arguments.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>_defer</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
@@ -2023,7 +2024,7 @@ Named wildcards are not supported in deferred globs.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>**subs</code></b>
-              (<code>str</code>, default:
+              (<code><span title="str">str</span></code>, default:
                   <code>{}</code>
 )
           –
@@ -2039,7 +2040,7 @@ Names starting with underscores are not allowed.</p>
 <p><span class="doc-section-title">Raises:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>FileNotFoundError</code>
+              <code><span title="FileNotFoundError">FileNotFoundError</span></code>
             –
           <div class="doc-md-description">
             <p>when no matches were found and _required is True.</p>
@@ -2051,7 +2052,7 @@ Names starting with underscores are not allowed.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>ngm</code>
+              <code><span title="ngm">ngm</span></code>
           –
           <div class="doc-md-description">
             <p>An <code>NGlobMulti</code> instance holding all the matched (combinations of) paths.
@@ -2076,6 +2077,7 @@ For unrelated patterns, it may be more efficient to use separate <code>glob</cod
 substituted directly and amend the current step&rsquo;s env_vars list, if needed.
 These substitutions will ignore changes to <code>os.environ</code> made in the calling script.</p>
 </details>
+
             <details class="quote">
               <summary>Source code in <code>stepup/core/api.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-121">121</a></span>
@@ -2299,7 +2301,7 @@ These substitutions will ignore changes to <code>os.environ</code> made in the c
     <ul>
         <li class="doc-section-item field-body">
             <b><code>command</code></b>
-              (<code>str</code>)
+              (<code><span title="str">str</span></code>)
           –
           <div class="doc-md-description">
             <p>Command to execute (in the working directory of the director).</p>
@@ -2307,7 +2309,7 @@ These substitutions will ignore changes to <code>os.environ</code> made in the c
         </li>
         <li class="doc-section-item field-body">
             <b><code>inp</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
@@ -2319,7 +2321,7 @@ Can be files or directories (trailing slash).</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>env</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
@@ -2331,7 +2333,7 @@ such that the step cannot be skipped.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>out</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
@@ -2343,7 +2345,7 @@ These can be files or directories (trailing slash).</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>vol</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
@@ -2355,7 +2357,7 @@ Directories are not allowed.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>workdir</code></b>
-              (<code>str</code>, default:
+              (<code><span title="str">str</span></code>, default:
                   <code>&#39;./&#39;</code>
 )
           –
@@ -2368,7 +2370,7 @@ If this is a relative path, it is relative to the work directory of the caller.
         </li>
         <li class="doc-section-item field-body">
             <b><code>optional</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
@@ -2378,7 +2380,7 @@ If this is a relative path, it is relative to the work directory of the caller.
         </li>
         <li class="doc-section-item field-body">
             <b><code>pool</code></b>
-              (<code>str | None</code>, default:
+              (<code><span title="str">str</span> | None</code>, default:
                   <code>None</code>
 )
           –
@@ -2389,7 +2391,7 @@ The maximum number of parallel steps running in this pool is determined by the p
         </li>
         <li class="doc-section-item field-body">
             <b><code>block</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
@@ -2404,7 +2406,7 @@ This can be used to temporarily prevent part of the workflow from being executed
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>step_info</code>
+              <code><span title="step_info">step_info</span></code>
           –
           <div class="doc-md-description">
             <p>Holds relevant information of the step, useful for defining follow-up steps.</p>
@@ -2423,6 +2425,7 @@ in the command are substituted by white-space concatenated list of <code>inp</co
 <code>vol</code>, respectively.
 Relative paths in <code>inp</code>, <code>out</code> and <code>vol</code> are relative to the working directory of the new step.</p>
 </details>
+
             <details class="quote">
               <summary>Source code in <code>stepup/core/api.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-226">226</a></span>
@@ -2664,7 +2667,7 @@ Relative paths in <code>inp</code>, <code>out</code> and <code>vol</code> are re
     <ul>
         <li class="doc-section-item field-body">
             <b><code>name</code></b>
-              (<code>str</code>)
+              (<code><span title="str">str</span></code>)
           –
           <div class="doc-md-description">
             <p>The name of the pool.</p>
@@ -2672,13 +2675,14 @@ Relative paths in <code>inp</code>, <code>out</code> and <code>vol</code> are re
         </li>
         <li class="doc-section-item field-body">
             <b><code>size</code></b>
-              (<code>int</code>)
+              (<code><span title="int">int</span></code>)
           –
           <div class="doc-md-description">
             <p>The pool size.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/api.py</code></summary>
@@ -2727,7 +2731,7 @@ Relative paths in <code>inp</code>, <code>out</code> and <code>vol</code> are re
     <ul>
         <li class="doc-section-item field-body">
             <b><code>inp</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
@@ -2738,7 +2742,7 @@ Can be files or directories (trailing slash).</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>env</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
@@ -2750,7 +2754,7 @@ such that the step is not skipped when these variables change.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>out</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
@@ -2761,7 +2765,7 @@ Can be files or directories (trailing slash).</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>vol</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
@@ -2796,6 +2800,7 @@ as in the <code>step()</code> function. The used variables are added to the env_
 <p>Always call amend before using the input files
 and before creating the output and volatile files.</p>
 </details>
+
             <details class="quote">
               <summary>Source code in <code>stepup/core/api.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-353">353</a></span>
@@ -2964,7 +2969,7 @@ and before creating the output and volatile files.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>step_info</code>
+              <code><span title="step_info">step_info</span></code>
           –
           <div class="doc-md-description">
             <p>Holds relevant information of the step, useful for defining follow-up steps.
@@ -2973,6 +2978,7 @@ paths are relative to the working directory of the step.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/api.py</code></summary>
@@ -3040,7 +3046,7 @@ paths are relative to the working directory of the step.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>subdir</code></b>
-              (<code>str</code>)
+              (<code><span title="str">str</span></code>)
           –
           <div class="doc-md-description">
             <p>The subdirectory in which another <code>plan.py</code> script can be found.
@@ -3050,56 +3056,56 @@ A trailing slash is added when not present.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>inp</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.
 (Rarely needed for planning steps.)</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>env</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.
 (Rarely needed for planning steps.)</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>out</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.
 (Rarely needed for planning steps.)</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>vol</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.
 (Rarely needed for planning steps.)</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>optional</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.
 (Rarely needed for planning steps.)
 Use with care, since the nodes created by plan script will be unknown upfront
 and cannot therefore imply the necessity of an optional plan step.</p>
@@ -3107,23 +3113,23 @@ and cannot therefore imply the necessity of an optional plan step.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>pool</code></b>
-              (<code>str | None</code>, default:
+              (<code><span title="str">str</span> | None</code>, default:
                   <code>None</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.
 (Rarely needed for planning steps.)</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>block</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.
 (Rarely needed for planning steps.)</p>
           </div>
         </li>
@@ -3133,13 +3139,14 @@ and cannot therefore imply the necessity of an optional plan step.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>step_info</code>
+              <code><span title="step_info">step_info</span></code>
           –
           <div class="doc-md-description">
             <p>Holds relevant information of the step, useful for defining follow-up steps.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/api.py</code></summary>
@@ -3270,7 +3277,7 @@ and cannot therefore imply the necessity of an optional plan step.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>src</code></b>
-              (<code>str</code>)
+              (<code><span title="str">str</span></code>)
           –
           <div class="doc-md-description">
             <p>This must be a file. Environment variables are substituted.</p>
@@ -3278,7 +3285,7 @@ and cannot therefore imply the necessity of an optional plan step.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>dst</code></b>
-              (<code>str</code>)
+              (<code><span title="str">str</span></code>)
           –
           <div class="doc-md-description">
             <p>This can be a file or a directory. Environment variables are substituted.
@@ -3287,7 +3294,7 @@ If it is a directory, it must have a trailing slash.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>optional</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
@@ -3297,7 +3304,7 @@ If it is a directory, it must have a trailing slash.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>block</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
@@ -3311,13 +3318,14 @@ If it is a directory, it must have a trailing slash.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>step_info</code>
+              <code><span title="step_info">step_info</span></code>
           –
           <div class="doc-md-description">
             <p>Holds relevant information of the step, useful for defining follow-up steps.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/api.py</code></summary>
@@ -3400,7 +3408,7 @@ If it is a directory, it must have a trailing slash.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>dirname</code></b>
-              (<code>str</code>)
+              (<code><span title="str">str</span></code>)
           –
           <div class="doc-md-description">
             <p>The director to create.
@@ -3410,7 +3418,7 @@ Environment variables are substituted.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>optional</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
@@ -3420,7 +3428,7 @@ Environment variables are substituted.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>block</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
@@ -3434,13 +3442,14 @@ Environment variables are substituted.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>step_info</code>
+              <code><span title="step_info">step_info</span></code>
           –
           <div class="doc-md-description">
             <p>Holds relevant information of the step, useful for defining follow-up steps.</p>
           </div>
         </li>
     </ul>
+
 
             <details class="quote">
               <summary>Source code in <code>stepup/core/api.py</code></summary>
@@ -3521,7 +3530,7 @@ Environment variables are substituted.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>name</code></b>
-              (<code>str</code>)
+              (<code><span title="str">str</span></code>)
           –
           <div class="doc-md-description">
             <p>The name of the environment variable, which is retrieved with <code>os.getenv</code>.</p>
@@ -3529,7 +3538,7 @@ Environment variables are substituted.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>default</code></b>
-              (<code><span title="path.Path">Path</span> | str | None</code>, default:
+              (<code><span title="path.Path">Path</span> | <span title="str">str</span> | None</code>, default:
                   <code>None</code>
 )
           –
@@ -3539,7 +3548,7 @@ Environment variables are substituted.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>path</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
@@ -3551,7 +3560,7 @@ Shell variables are substituted (once) in such paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>back</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
@@ -3564,7 +3573,7 @@ This implies <code>path=True</code>.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>multi</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
@@ -3580,7 +3589,7 @@ This implies <code>path=True</code>.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>value</code>
+              <code><span title="value">value</span></code>
           –
           <div class="doc-md-description">
             <p>The value of the environment variable.
@@ -3597,6 +3606,7 @@ Otherwise, the result is a string.</p>
   <summary>Notes</summary>
   <p>The optional arguments of this function have changed in StepUp 2.0.0.</p>
 </details>
+
             <details class="quote">
               <summary>Source code in <code>stepup/core/api.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-567">567</a></span>
@@ -3748,7 +3758,7 @@ Otherwise, the result is a string.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>executable</code></b>
-              (<code>str</code>)
+              (<code><span title="str">str</span></code>)
           –
           <div class="doc-md-description">
             <p>The path of a local executable script to call.
@@ -3758,7 +3768,7 @@ The path of the executable is assumed to be relative to this directory.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>prefix</code></b>
-              (<code>str | None</code>, default:
+              (<code><span title="str">str</span> | None</code>, default:
                   <code>None</code>
 )
           –
@@ -3770,7 +3780,7 @@ If absent, the prefix is the stem of the executable.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>fmt</code></b>
-              (<code>str</code>, default:
+              (<code><span title="str">str</span></code>, default:
                   <code>&#39;auto&#39;</code>
 )
           –
@@ -3784,7 +3794,7 @@ If input or output files are given, the format is deduced from their extension.<
         </li>
         <li class="doc-section-item field-body">
             <b><code>inp</code></b>
-              (<code><span title="collections.abc.Sequence">Sequence</span> | str | bool | None</code>, default:
+              (<code><span title="collections.abc.Sequence">Sequence</span> | <span title="str">str</span> | <span title="bool">bool</span> | None</code>, default:
                   <code>None</code>
 )
           –
@@ -3808,17 +3818,17 @@ If input or output files are given, the format is deduced from their extension.<
         </li>
         <li class="doc-section-item field-body">
             <b><code>env</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>out</code></b>
-              (<code><span title="collections.abc.Sequence">Sequence</span> | str | bool | None</code>, default:
+              (<code><span title="collections.abc.Sequence">Sequence</span> | <span title="str">str</span> | <span title="bool">bool</span> | None</code>, default:
                   <code>None</code>
 )
           –
@@ -3846,57 +3856,57 @@ If input or output files are given, the format is deduced from their extension.<
         </li>
         <li class="doc-section-item field-body">
             <b><code>vol</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>workdir</code></b>
-              (<code>str</code>, default:
+              (<code><span title="str">str</span></code>, default:
                   <code>&#39;./&#39;</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>optional</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>pool</code></b>
-              (<code>str | None</code>, default:
+              (<code><span title="str">str</span> | None</code>, default:
                   <code>None</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>block</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>pars</code></b>
-              (<code>dict[str] | None</code>, default:
+              (<code><span title="dict">dict</span>[<span title="str">str</span>] | None</code>, default:
                   <code>None</code>
 )
           –
@@ -3920,7 +3930,7 @@ If absent, no input file is written unless <code>inp</code> is <code>True</code>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>step_info</code>
+              <code><span title="step_info">step_info</span></code>
           –
           <div class="doc-md-description">
             <p>Holds relevant information of the step, useful for defining follow-up steps.</p>
@@ -3944,6 +3954,7 @@ must be written when <code>inp</code> is a string or a sequence of strings.</p>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>*_out.pickle
 </span></code></pre></div>
 </details>
+
             <details class="quote">
               <summary>Source code in <code>stepup/core/api.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-631">631</a></span>
@@ -4411,7 +4422,7 @@ must be written when <code>inp</code> is a string or a sequence of strings.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>executable</code></b>
-              (<code>str</code>)
+              (<code><span title="str">str</span></code>)
           –
           <div class="doc-md-description">
             <p>The path of a local executable that will be called with the argument <code>plan</code>.
@@ -4421,7 +4432,7 @@ The path of the script is assumed to be relative to this directory.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>step_info</code></b>
-              (<code>str | None</code>, default:
+              (<code><span title="str">str</span> | None</code>, default:
                   <code>None</code>
 )
           –
@@ -4433,82 +4444,82 @@ This filename is relative to the work directory.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>inp</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>env</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>out</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>vol</code></b>
-              (<code><span title="collections.abc.Collection">Collection</span>[str] | str</code>, default:
+              (<code><span title="collections.abc.Collection">Collection</span>[<span title="str">str</span>] | <span title="str">str</span></code>, default:
                   <code>()</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>workdir</code></b>
-              (<code>str</code>, default:
+              (<code><span title="str">str</span></code>, default:
                   <code>&#39;./&#39;</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>optional</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>pool</code></b>
-              (<code>str | None</code>, default:
+              (<code><span title="str">str</span> | None</code>, default:
                   <code>None</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>block</code></b>
-              (<code>bool</code>, default:
+              (<code><span title="bool">bool</span></code>, default:
                   <code>False</code>
 )
           –
           <div class="doc-md-description">
-            <p>See the <a class="autorefs autorefs-internal" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
+            <p>See the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="#stepup.core.api.step"><code>step()</code></a> function for more information.</p>
           </div>
         </li>
     </ul>
@@ -4517,7 +4528,7 @@ This filename is relative to the work directory.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code>step_info</code>
+              <code><span title="step_info">step_info</span></code>
           –
           <div class="doc-md-description">
             <p>Holds relevant information of the step, useful for defining follow-up steps.</p>
@@ -4536,6 +4547,7 @@ This filename is relative to the work directory.</p>
   and is passed on the the run stage.</li>
 </ul>
 </details>
+
             <details class="quote">
               <summary>Source code in <code>stepup/core/api.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-853">853</a></span>
@@ -4701,6 +4713,7 @@ For example:</p>
 <p>This function may be used in other API functions to substitute environment variables in
 all relevant paths.</p>
 
+
             <details class="quote">
               <summary>Source code in <code>stepup/core/api.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-927">927</a></span>
@@ -4842,7 +4855,7 @@ all relevant paths.</p>
     <script id="__config" type="application/json">{"base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.f1b6f286.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
       
     
   </body>
