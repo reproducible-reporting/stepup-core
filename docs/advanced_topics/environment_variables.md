@@ -1,8 +1,9 @@
 # Environment Variables
 
 When defining a step, one can specify the environment variables it uses (not their values).
-When starting StepUp with a different value for any of these variables,
-StepUp will know that it has to repeat the step instead of skipping it.
+When restarting StepUp with a different value for any of these variables,
+StepUp will know that it has to rerun the step instead of skipping it,
+even if input files have not changed.
 
 One can only change an environment variable by stopping StepUp,
 changing the variable, and then starting StepUp again.
@@ -43,3 +44,18 @@ as discussed in the [tutorial on dependencies](../getting_started/dependencies.m
 
 - Now run `MYVAR=bar stepup -n 1`.
   This time, the variable change will cause the step to be executed.
+
+## Injecting Environment Variables
+
+Besides working with external environment variables,
+you can also inject environment variables into the command of a step.
+For example:
+
+```python
+msg = "hello"
+step(f"MESSAGE={msg} " + "echo ${MESSAGE}")
+```
+
+Note that this is a different mechanism and it practically serves a different purpose.
+In this case, there is no point in add the argument `env="MESSAGE"`,
+because this step will not be sensitive to the value of `MESSAGE` defined outside StepUp.
