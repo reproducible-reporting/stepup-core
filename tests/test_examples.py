@@ -130,6 +130,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "restart_blocked",
         "restart_changes",
         "restart_deferred_glob",
+        "restart_deferred_removed",
         "restart_delete_nglob",
         "restart_failed",
         "restart_fix_bug",

@@ -1,4 +1,7 @@
 .stepup
+plan.py
 current_*
 static/foo.txt
+static/bar.txt
+foo.txt
 bar.txt

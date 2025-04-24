@@ -12,6 +12,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no summary yet)
 
+# Fixed
+
+- Handle removed files correctly after restart that previously matched a deferred glob.
+
 ## [2.1.5][] - 2025-03-25 {: #v2.1.5 }
 
 This is a minor bugfix release.

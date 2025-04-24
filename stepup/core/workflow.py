@@ -1083,11 +1083,11 @@ class Workflow(Cascade):
         # Check for matches in existing files.
         # For example previously defined inputs whose origin was not determined yet.
         regex = re.compile(convert_nglob_to_regex(pattern))
-        matching_paths = [
-            file.path
-            for file in self.nodes(kind="file", include_orphans=True)
-            if regex.fullmatch(file.path)
-        ]
+        sql = (
+            "SELECT label FROM node JOIN file ON node.i = file.node "
+            f"WHERE state != {FileState.MISSING.value}"
+        )
+        matching_paths = [path for (path,) in self._con.execute(sql) if regex.fullmatch(path)]
         return self.declare_missing(dg, matching_paths)
 
     def clean(self):
