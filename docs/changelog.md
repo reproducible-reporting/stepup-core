@@ -12,21 +12,25 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no summary yet)
 
-## Added
+### Added
 
 - Print progress information on every line when stdout is not a terminal.
 - The `stepup` command now accepts the `--no-clean` option
   to disable removal of outdated outputs at the end of a successful run.
 
-## Changed
+### Changed
 
 - Simplified the output of the `cases` command of the script [`driver()`][stepup.core.script.driver].
+
+### Fixed
+
+- Never amend `HERE` and `ROOT` environment variables.
 
 ## [2.1.6][] - 2025-04-24 {: #v2.1.6 }
 
 This is a minor bugfix release.
 
-# Fixed
+### Fixed
 
 - Do not abort StepUp when wal or shm files are present.
 - Upon restart, handle removed files correctly that previously matched a deferred glob.
@@ -35,7 +39,7 @@ This is a minor bugfix release.
 
 This is a minor bugfix release.
 
-# Fixed
+### Fixed
 
 - Fixed bug in format string in `stepup.core.api`.
 - Small cleanups

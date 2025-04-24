@@ -59,7 +59,6 @@ file:scripts/repeat.py
 
 step:./plan.py  # wd=data/
                state = SUCCEEDED
-             env_var = ROOT [amended]
           created by   step:./plan.py
             consumes   file:data/
             consumes   file:data/plan.py

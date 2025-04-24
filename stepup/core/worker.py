@@ -702,9 +702,11 @@ class WorkerHandler:
         # Actual execution
         stepup_root = Path.cwd()
         env = os.environ | {
+            # For internal use only:
             "STEPUP_DIRECTOR_SOCKET": self.director_socket_path,
             "STEPUP_STEP_KEY": self.step.key,
             "STEPUP_ROOT": stepup_root,
+            # Client code may use the following:
             "ROOT": Path.cwd().relpath(self.step.workdir),
             "HERE": self.step.workdir.relpath(),
         }

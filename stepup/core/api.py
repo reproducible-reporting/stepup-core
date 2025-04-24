@@ -609,7 +609,9 @@ def getenv(
     """
     path = path or back or multi
     value = os.getenv(name, default)
-    amend(env=name)
+    # Do not amend environment variables set by the worker.
+    if name not in ["HERE", "ROOT"]:
+        amend(env=name)
     if multi:
         if value is None:
             return []
