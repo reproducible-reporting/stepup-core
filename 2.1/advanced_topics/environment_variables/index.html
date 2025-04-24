@@ -997,6 +997,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#injecting-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Injecting Environment Variables
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1559,6 +1568,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#injecting-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Injecting Environment Variables
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1585,8 +1603,9 @@
 
 <h1 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h1>
 <p>When defining a step, one can specify the environment variables it uses (not their values).
-When starting StepUp with a different value for any of these variables,
-StepUp will know that it has to repeat the step instead of skipping it.</p>
+When restarting StepUp with a different value for any of these variables,
+StepUp will know that it has to rerun the step instead of skipping it,
+even if input files have not changed.</p>
 <p>One can only change an environment variable by stopping StepUp,
 changing the variable, and then starting StepUp again.
 One cannot modify environment variables while StepUp is running.</p>
@@ -1633,6 +1652,16 @@ as discussed in the <a href="../../getting_started/dependencies/">tutorial on de
   This time, the variable change will cause the step to be executed.</p>
 </li>
 </ul>
+<h2 id="injecting-environment-variables">Injecting Environment Variables<a class="headerlink" href="#injecting-environment-variables" title="Permanent link">&para;</a></h2>
+<p>Besides working with external environment variables,
+you can also inject environment variables into the command of a step.
+For example:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;hello&quot;</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">step</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MESSAGE=</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2"> &quot;</span> <span class="o">+</span> <span class="s2">&quot;echo $</span><span class="si">{MESSAGE}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Note that this is a different mechanism and it practically serves a different purpose.
+In this case, there is no point in add the argument <code>env="MESSAGE"</code>,
+because this step will not be sensitive to the value of <code>MESSAGE</code> defined outside StepUp.</p>
 
 
 
