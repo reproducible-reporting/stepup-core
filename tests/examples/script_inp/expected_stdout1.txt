@@ -5,10 +5,10 @@
         1/2 |    SUCCESS │ ./plan.py
         1/2 |      START │ ./script.py plan
         2/4 |    SUCCESS │ ./script.py plan
-        2/4 |      START │ ./script.py run -- foo
-        3/4 |    SUCCESS │ ./script.py run -- foo
-        3/4 |      START │ ./script.py run -- bar
-        4/4 |    SUCCESS │ ./script.py run -- bar
+        2/4 |      START │ ./script.py run foo
+        3/4 |    SUCCESS │ ./script.py run foo
+        3/4 |      START │ ./script.py run bar
+        4/4 |    SUCCESS │ ./script.py run bar
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         4/4 |      PHASE │ watch
         4/4 |   DIRECTOR │ Stopping workers.

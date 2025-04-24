@@ -13,8 +13,8 @@ file:./
             supplies   file:work.py
             supplies   step:./plan.py
             supplies   step:./work.py plan
-            supplies   step:./work.py run -- first
-            supplies   step:./work.py run -- second
+            supplies   step:./work.py run first
+            supplies   step:./work.py run second
 
 file:plan.py
                state = STATIC
@@ -35,26 +35,26 @@ file:helper.py
                state = STATIC
           created by   step:./plan.py
             consumes   file:./
-            supplies   step:./work.py run -- first
-            supplies   step:./work.py run -- second
+            supplies   step:./work.py run first
+            supplies   step:./work.py run second
 
 file:work.py
                state = STATIC
           created by   step:./plan.py
             consumes   file:./
             supplies   step:./work.py plan
-            supplies   step:./work.py run -- first
-            supplies   step:./work.py run -- second
+            supplies   step:./work.py run first
+            supplies   step:./work.py run second
 
 step:./work.py plan
                state = SUCCEEDED
           created by   step:./plan.py
             consumes   file:./
             consumes   file:work.py
-             creates   step:./work.py run -- first
-             creates   step:./work.py run -- second
+             creates   step:./work.py run first
+             creates   step:./work.py run second
 
-step:./work.py run -- first
+step:./work.py run first
                state = SUCCEEDED
           created by   step:./work.py plan
             consumes   file:./
@@ -65,11 +65,11 @@ step:./work.py run -- first
 
 file:first.txt
                state = BUILT
-          created by   step:./work.py run -- first
+          created by   step:./work.py run first
             consumes   file:./
-            consumes   step:./work.py run -- first
+            consumes   step:./work.py run first
 
-step:./work.py run -- second
+step:./work.py run second
                state = SUCCEEDED
           created by   step:./work.py plan
             consumes   file:./
@@ -80,6 +80,6 @@ step:./work.py run -- second
 
 file:second.txt
                state = BUILT
-          created by   step:./work.py run -- second
+          created by   step:./work.py run second
             consumes   file:./
-            consumes   step:./work.py run -- second
+            consumes   step:./work.py run second

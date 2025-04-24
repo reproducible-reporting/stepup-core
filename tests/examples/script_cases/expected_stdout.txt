@@ -7,8 +7,8 @@
         2/4 |    SUCCESS │ ./work.py plan --step-info=current_step_info.json
         2/4 |      START │ ./work.py run -- -5.0 > stdout-5.0.txt 2> stderr-5.0.txt
         3/4 |    SUCCESS │ ./work.py run -- -5.0 > stdout-5.0.txt 2> stderr-5.0.txt
-        3/4 |      START │ ./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
-        4/4 |    SUCCESS │ ./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
+        3/4 |      START │ ./work.py run +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
+        4/4 |    SUCCESS │ ./work.py run +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         4/4 |      PHASE │ watch
         4/4 |   DIRECTOR │ Stopping workers.

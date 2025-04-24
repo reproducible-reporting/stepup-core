@@ -18,6 +18,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - The `stepup` command now accepts the `--no-clean` option
   to disable removal of outdated outputs at the end of a successful run.
 
+## Changed
+
+- Simplified the output of the `cases` command of the script [`driver()`][stepup.core.script.driver].
+
 ## [2.1.6][] - 2025-04-24 {: #v2.1.6 }
 
 This is a minor bugfix release.

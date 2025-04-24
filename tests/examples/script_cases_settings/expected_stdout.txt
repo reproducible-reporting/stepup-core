@@ -5,8 +5,8 @@
         1/2 |    SUCCESS │ ./plan.py
         1/2 |      START │ ./work.py plan
         2/4 |    SUCCESS │ ./work.py plan
-        2/4 |      START │ ./work.py run -- +0.3
-        3/4 |    SUCCESS │ ./work.py run -- +0.3
+        2/4 |      START │ ./work.py run +0.3
+        3/4 |    SUCCESS │ ./work.py run +0.3
         3/4 |      START │ ./work.py run -- -1.2
         4/4 |    SUCCESS │ ./work.py run -- -1.2
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).

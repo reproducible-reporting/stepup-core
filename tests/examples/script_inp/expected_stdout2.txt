@@ -7,10 +7,10 @@
         3/4 |      PHASE │ run
         1/2 |      START │ ./script.py plan
         2/4 |    SUCCESS │ ./script.py plan
-        2/4 |      START │ ./script.py run -- egg
-        3/4 |    SUCCESS │ ./script.py run -- egg
-        3/4 |      START │ ./script.py run -- spam
-        4/4 |    SUCCESS │ ./script.py run -- spam
+        2/4 |      START │ ./script.py run egg
+        3/4 |    SUCCESS │ ./script.py run egg
+        3/4 |      START │ ./script.py run spam
+        4/4 |    SUCCESS │ ./script.py run spam
         4/4 |   DIRECTOR │ Trying to delete 2 outdated output(s).
         4/4 |      CLEAN │ out_foo.txt
         4/4 |      CLEAN │ out_bar.txt

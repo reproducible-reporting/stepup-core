@@ -349,13 +349,15 @@ def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrap
         # Then create steps for all cases
         step_info = [] if step_info is None else [step_info]
         for case_args, case_kwargs in cases:
-            argstr = wrapper.format(*case_args, **case_kwargs)
+            argstr = shlex.quote(wrapper.format(*case_args, **case_kwargs))
+            if argstr.startswith("-"):
+                argstr = f"-- {argstr}"
             static_paths, inp_paths, out_paths, stdout_path, stderr_path = wrapper.get_case_plan(
                 *case_args, **case_kwargs
             )
             inp_paths.append(script_path)
             static(*static_paths)
-            command = format_command(script_path) + " run -- " + shlex.quote(argstr)
+            command = format_command(script_path) + " run " + argstr
             command = _add_redirects(command, out_paths, stdout_path, stderr_path)
             step_info.append(
                 step(
@@ -375,8 +377,10 @@ def _driver_cases(script_path: str, wrapper: ScriptWrapper):
         print(f"./{script_path} run")
     if wrapper.has_cases:
         for case_args, case_kwargs in wrapper.generate_cases():
-            argstr = wrapper.format(*case_args, **case_kwargs)
-            print(f"./{script_path} run -- '{argstr}'")
+            argstr = shlex.quote(wrapper.format(*case_args, **case_kwargs))
+            if argstr.startswith("-"):
+                argstr = f"-- {argstr}"
+            print(f"./{script_path} run {argstr}")
 
 
 def _driver_run(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapper):

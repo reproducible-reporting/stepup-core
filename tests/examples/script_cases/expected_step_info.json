@@ -14,7 +14,7 @@
     "vol": []
   },
   {
-    "command": "./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt",
+    "command": "./work.py run +7.0 > stdout+7.0.txt 2> stderr+7.0.txt",
     "workdir": "./",
     "inp": [
       "work.py"

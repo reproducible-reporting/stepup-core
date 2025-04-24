@@ -18,7 +18,7 @@ file:./
             supplies   file:work.py
             supplies   step:./plan.py
             supplies   step:./work.py plan --step-info=current_step_info.json
-            supplies   step:./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
+            supplies   step:./work.py run +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
             supplies   step:./work.py run -- -5.0 > stdout-5.0.txt 2> stderr-5.0.txt
 
 file:plan.py
@@ -41,7 +41,7 @@ file:helper.py
           created by   step:./plan.py
             consumes   file:./
             supplies   step:./work.py plan --step-info=current_step_info.json
-            supplies   step:./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
+            supplies   step:./work.py run +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
             supplies   step:./work.py run -- -5.0 > stdout-5.0.txt 2> stderr-5.0.txt
 
 file:work.py
@@ -49,7 +49,7 @@ file:work.py
           created by   step:./plan.py
             consumes   file:./
             supplies   step:./work.py plan --step-info=current_step_info.json
-            supplies   step:./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
+            supplies   step:./work.py run +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
             supplies   step:./work.py run -- -5.0 > stdout-5.0.txt 2> stderr-5.0.txt
 
 step:./work.py plan --step-info=current_step_info.json
@@ -59,7 +59,7 @@ step:./work.py plan --step-info=current_step_info.json
             consumes   file:helper.py [amended]
             consumes   file:work.py
              creates   file:current_step_info.json
-             creates   step:./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
+             creates   step:./work.py run +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
              creates   step:./work.py run -- -5.0 > stdout-5.0.txt 2> stderr-5.0.txt
             supplies   file:current_step_info.json
 
@@ -100,7 +100,7 @@ file:stdout-5.0.txt
             consumes   file:./
             consumes   step:./work.py run -- -5.0 > stdout-5.0.txt 2> stderr-5.0.txt
 
-step:./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
+step:./work.py run +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
                state = SUCCEEDED
           created by   step:./work.py plan --step-info=current_step_info.json
             consumes   file:./
@@ -115,18 +115,18 @@ step:./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
 
 file:data+7.0.txt
                state = BUILT
-          created by   step:./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
+          created by   step:./work.py run +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
             consumes   file:./
-            consumes   step:./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
+            consumes   step:./work.py run +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
 
 file:stderr+7.0.txt
                state = BUILT
-          created by   step:./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
+          created by   step:./work.py run +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
             consumes   file:./
-            consumes   step:./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
+            consumes   step:./work.py run +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
 
 file:stdout+7.0.txt
                state = BUILT
-          created by   step:./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
+          created by   step:./work.py run +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
             consumes   file:./
-            consumes   step:./work.py run -- +7.0 > stdout+7.0.txt 2> stderr+7.0.txt
+            consumes   step:./work.py run +7.0 > stdout+7.0.txt 2> stderr+7.0.txt

@@ -13,8 +13,8 @@ file:./
             supplies   file:script.py
             supplies   step:./plan.py
             supplies   step:./script.py plan
-            supplies   step:./script.py run -- bar
-            supplies   step:./script.py run -- foo
+            supplies   step:./script.py run bar
+            supplies   step:./script.py run foo
 
 file:plan.py
                state = STATIC
@@ -42,8 +42,8 @@ file:script.py
           created by   step:./plan.py
             consumes   file:./
             supplies   step:./script.py plan
-            supplies   step:./script.py run -- bar
-            supplies   step:./script.py run -- foo
+            supplies   step:./script.py run bar
+            supplies   step:./script.py run foo
 
 step:./script.py plan
                state = SUCCEEDED
@@ -51,10 +51,10 @@ step:./script.py plan
             consumes   file:./
             consumes   file:config.txt
             consumes   file:script.py
-             creates   step:./script.py run -- bar
-             creates   step:./script.py run -- foo
+             creates   step:./script.py run bar
+             creates   step:./script.py run foo
 
-step:./script.py run -- foo
+step:./script.py run foo
                state = SUCCEEDED
           created by   step:./script.py plan
             consumes   file:./
@@ -64,11 +64,11 @@ step:./script.py run -- foo
 
 file:out_foo.txt
                state = BUILT
-          created by   step:./script.py run -- foo
+          created by   step:./script.py run foo
             consumes   file:./
-            consumes   step:./script.py run -- foo
+            consumes   step:./script.py run foo
 
-step:./script.py run -- bar
+step:./script.py run bar
                state = SUCCEEDED
           created by   step:./script.py plan
             consumes   file:./
@@ -78,6 +78,6 @@ step:./script.py run -- bar
 
 file:out_bar.txt
                state = BUILT
-          created by   step:./script.py run -- bar
+          created by   step:./script.py run bar
             consumes   file:./
-            consumes   step:./script.py run -- bar
+            consumes   step:./script.py run bar
