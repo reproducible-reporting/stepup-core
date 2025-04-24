@@ -1,0 +1,34 @@
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 2 director(y|ies) from initial database
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    UPDATED │ plan.py (digest e011ae03 ➜ fa5849da, size 152 ➜ 123)
+        0/0 |    DELETED │ static/foo.txt
+        0/0 |    UPDATED │ static/bar.txt (digest a69cc588 ➜ 8f30ea8a, size 4 ➜ 6)
+        0/0 |    DELETED │ foo.txt
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/3 |      PHASE │ run
+        0/3 |     NOSKIP │ ./plan.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest 5070945c ➜ d1417211, out_digest 786a02f7 ➜ (unset)
+Modified inp hash    plan.py (digest e011ae03 ➜ fa5849da, size 152 ➜ 123)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+────────────────────────────────────────────────────────────────────────────────
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |     NOSKIP │ cp -aT static/bar.txt bar.txt
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest 2ad4534f ➜ b4fa0ec6, out_digest 74597035 ➜ (unset)
+Modified inp hash    static/bar.txt (digest a69cc588 ➜ 8f30ea8a, size 4 ➜ 6)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+Same inp hash        static/
+────────────────────────────────────────────────────────────────────────────────
+        1/2 |      START │ cp -aT static/bar.txt bar.txt
+        2/2 |    SUCCESS │ cp -aT static/bar.txt bar.txt
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |    WARNING │ Check logs: .stepup/warning.log
+        2/2 |      PHASE │ watch
+        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ See you!
