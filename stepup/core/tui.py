@@ -113,8 +113,8 @@ async def async_main():
                 "stepup.core.director",
                 args.plan_py,
                 director_socket_path,
-                f"--num-workers={num_workers}",
                 f"--reporter={reporter_socket_path}",
+                f"--num-workers={num_workers}",
                 f"--log-level={args.log_level}",
             ]
         )
@@ -126,6 +126,8 @@ async def async_main():
             argv.append("--watch")
         if args.watch_first:
             argv.append("--watch-first")
+        if not args.do_clean:
+            argv.append("--no-clean")
         returncode = 1  # Internal error unless it is overriden later by the director subprocess
         try:
             with open(".stepup/director.log", "w") as log_file:
@@ -264,11 +266,13 @@ def parse_args():
         "plan_py", type=Path, default=Path("plan.py"), help="Top-level build script", nargs="?"
     )
     parser.add_argument(
-        "--explain-rerun",
-        "-e",
-        default=False,
-        action="store_true",
-        help="Explain for every step with recording info why it cannot be skipped.",
+        "--num-workers",
+        "-n",
+        type=Decimal,
+        default=Decimal("1.2"),
+        help="Number of workers running in parallel. "
+        "When given as a real number with digits after the comma, "
+        "it is multiplied with the number of available cores. [default=%(default)s]",
     )
     debug = string_to_bool(os.getenv("STEPUP_DEBUG", "0"))
     parser.add_argument(
@@ -279,33 +283,18 @@ def parse_args():
         help="Set the logging level. [default=%(default)s]",
     )
     parser.add_argument(
-        "--num-workers",
-        "-n",
-        type=Decimal,
-        default=Decimal("1.2"),
-        help="Number of workers running in parallel. "
-        "When given as a real number with digits after the comma, "
-        "it is multiplied with the number of available cores. [default=%(default)s]",
-    )
-    parser.add_argument(
-        "--perf",
-        default=None,
-        nargs="?",
-        const=500,
-        help="Run the director under perf record, by default at a frequency of 500 Hz.",
-    )
-    parser.add_argument(
-        "--root",
-        type=Path,
-        default=Path(os.getenv("STEPUP_ROOT", os.getcwd())),
-        help="Directory containing top-level plan.py [default=%(default)s]",
-    )
-    parser.add_argument(
         "--show-perf",
         "-s",
         default=0,
         action="count",
         help="Show the performance info on each line. Repeat for more detailed info.",
+    )
+    parser.add_argument(
+        "--explain-rerun",
+        "-e",
+        default=False,
+        action="store_true",
+        help="Explain for every step with recording info why it cannot be skipped.",
     )
     parser.add_argument("--version", "-V", action="version", version="%(prog)s " + version)
     parser.add_argument(
@@ -324,6 +313,26 @@ def parse_args():
         action="store_true",
         help="Start the runner after observing the first file change in watch mode. "
         "This implies --watch. (Only supported on Linux.)",
+    )
+    parser.add_argument(
+        "--no-clean",
+        dest="do_clean",
+        default=True,
+        action="store_false",
+        help="Do not remove outdated output files.",
+    )
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=Path(os.getenv("STEPUP_ROOT", os.getcwd())),
+        help="Directory containing top-level plan.py [default=%(default)s]",
+    )
+    parser.add_argument(
+        "--perf",
+        default=None,
+        nargs="?",
+        const=500,
+        help="Run the director under perf record, by default at a frequency of 500 Hz.",
     )
 
     args = parser.parse_args()

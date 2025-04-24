@@ -83,6 +83,7 @@ async def async_main():
                 args.explain_rerun,
                 args.watch,
                 args.watch_first,
+                args.do_clean,
             )
         except Exception as exc:
             tbstr = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
@@ -110,6 +111,13 @@ def parse_args() -> argparse.Namespace:
         help="The socket at which StepUp will listen for instructions.",
     )
     parser.add_argument(
+        "--reporter",
+        "-r",
+        dest="reporter_socket",
+        default=os.environ.get("STEPUP_REPORTER_SOCKET"),
+        help="Socket to send reporter updates to, if any.",
+    )
+    parser.add_argument(
         "--num-workers",
         "-n",
         type=Decimal,
@@ -119,11 +127,11 @@ def parse_args() -> argparse.Namespace:
         "it is multiplied with the number of available cores. [default=%(default)s]",
     )
     parser.add_argument(
-        "--reporter",
-        "-r",
-        dest="reporter_socket",
-        default=os.environ.get("STEPUP_REPORTER_SOCKET"),
-        help="Socket to send reporter updates to, if any.",
+        "--log-level",
+        "-l",
+        default="WARNING",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level. [default=%(default)s]",
     )
     parser.add_argument(
         "--show-perf",
@@ -156,11 +164,11 @@ def parse_args() -> argparse.Namespace:
         "This implies --watch.",
     )
     parser.add_argument(
-        "--log-level",
-        "-l",
-        default="WARNING",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level. [default=%(default)s]",
+        "--no-clean",
+        dest="do_clean",
+        default=True,
+        action="store_false",
+        help="Do not remove outdated output files.",
     )
     args = parser.parse_args()
     if args.watch_first:
@@ -184,6 +192,7 @@ async def serve(
     explain_rerun: bool,
     do_watch: bool,
     do_watch_first: bool,
+    do_clean: bool = True,
 ) -> ReturnCode:
     """Server program.
 
@@ -208,6 +217,8 @@ async def serve(
         If False, the director exits after a single run phase.
     do_watch_first
         If True, the runner restarts after the watcher sees the first file change.
+    do_clean
+        If True, the director removes outdated output files.
 
     Returns
     -------
@@ -228,14 +239,15 @@ async def serve(
     scheduler.num_workers = num_workers
     watcher = Watcher(workflow, dblock, reporter, workflow.dir_queue) if do_watch else None
     runner = Runner(
-        watcher,
-        scheduler,
-        workflow,
-        dblock,
-        reporter,
-        director_socket_path,
-        show_perf,
-        explain_rerun,
+        watcher=watcher,
+        scheduler=scheduler,
+        workflow=workflow,
+        dblock=dblock,
+        reporter=reporter,
+        director_socket_path=director_socket_path,
+        show_perf=show_perf,
+        explain_rerun=explain_rerun,
+        do_remove_outdated=do_clean,
     )
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(

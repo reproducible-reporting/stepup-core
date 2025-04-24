@@ -1,0 +1,34 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   (step:echo Hello > test1.txt)
+            supplies   file:plan.py
+            supplies   step:./plan.py
+            supplies   step:echo Hello > test2.txt
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:echo Hello > test2.txt
+
+(step:echo Hello > test1.txt)
+               state = SUCCEEDED
+            consumes   file:./
+
+step:echo Hello > test2.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./

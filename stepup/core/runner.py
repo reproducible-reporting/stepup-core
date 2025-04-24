@@ -43,28 +43,28 @@ logger = logging.getLogger(__name__)
 
 @attrs.define
 class Runner:
-    watcher: Watcher | None = attrs.field()
+    watcher: Watcher | None = attrs.field(kw_only=True)
     """The watcher instance, used to start the watcher when the runner becomes idle."""
 
-    scheduler: Scheduler = attrs.field()
+    scheduler: Scheduler = attrs.field(kw_only=True)
     """The scheduler providing jobs to the runner."""
 
-    workflow: Workflow = attrs.field()
+    workflow: Workflow = attrs.field(kw_only=True)
     """The workflow which generated the jobs and which gets updated as a result of the jobs."""
 
-    dblock: DBLock = attrs.field()
+    dblock: DBLock = attrs.field(kw_only=True)
     """Lock for workflow database access."""
 
-    reporter: ReporterClient = attrs.field()
+    reporter: ReporterClient = attrs.field(kw_only=True)
     """A reporter client for sending progress info to."""
 
-    director_socket_path: str = attrs.field()
+    director_socket_path: str = attrs.field(kw_only=True)
     """The path of the director socket, passed on to worker processes."""
 
-    show_perf: bool = attrs.field()
+    show_perf: bool = attrs.field(kw_only=True)
     """Flag to enable performance output after a worker executed a step."""
 
-    explain_rerun: bool = attrs.field()
+    explain_rerun: bool = attrs.field(kw_only=True)
     """Flag to enable more details on why steps cannot be skipped."""
 
     resume: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
@@ -87,6 +87,9 @@ class Runner:
 
     returncode: ReturnCode = attrs.field(init=False, default=ReturnCode.PENDING)
     """Exit code for the director, based on the last run phase."""
+
+    do_remove_outdated: bool = attrs.field(kw_only=True, default=True)
+    """Flag to enable removal of outdated outputs."""
 
     async def loop(self, stop_event: asyncio.Event):
         """The main runner loop.
@@ -151,13 +154,15 @@ class Runner:
         """Final steps after the runner has executed a bunch of jobs."""
         async with self.dblock:
             self.returncode = await report_completion(self.workflow, self.scheduler, self.reporter)
-        if self.returncode == ReturnCode.SUCCESS:
+        if self.returncode != ReturnCode.SUCCESS:
+            await self.reporter("WARNING", "Skipping file cleanup due to incomplete build.")
+            await clean_queue(self.scheduler, self.dblock, self.reporter)
+        elif not self.do_remove_outdated:
+            await self.reporter("WARNING", "Skipping file cleanup at user's request (--no-clean).")
+        else:
             async with self.dblock:
                 self.workflow.clean()
             await remove_outdated_outputs(self.workflow, self.dblock, self.reporter)
-        else:
-            await self.reporter("WARNING", "Skipping file cleanup due to incomplete build.")
-            await clean_queue(self.scheduler, self.dblock, self.reporter)
         async with self.dblock:
             self.workflow.con.execute("VACUUM")
         await self.reporter.update_step_counts(self.workflow.get_step_counts())

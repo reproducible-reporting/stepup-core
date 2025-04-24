@@ -15,6 +15,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 ## Added
 
 - Print progress information on every line when stdout is not a terminal.
+- The `stepup` command now accepts the `--no-clean` option
+  to disable removal of outdated outputs at the end of a successful run.
 
 ## [2.1.6][] - 2025-04-24 {: #v2.1.6 }
 
