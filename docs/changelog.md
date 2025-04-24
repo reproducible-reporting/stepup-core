@@ -12,6 +12,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no summary yet)
 
+## [2.1.7][] - 2025-04-24 {: #v2.1.7 }
+
+Minor enhancements and bugfixes.
+
 ### Added
 
 - Print progress information on every line when stdout is not a terminal.
@@ -21,6 +25,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 ### Changed
 
 - Simplified the output of the `cases` command of the script [`driver()`][stepup.core.script.driver].
+- The arguments `inp`, `out` and `vol` are converted to `Path` instances
+  before calling the `run()` function.
 
 ### Fixed
 
@@ -473,6 +479,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[2.1.7]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.7
 [2.1.6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.6
 [2.1.5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.5
 [2.1.4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.4
