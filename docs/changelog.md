@@ -12,6 +12,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no summary yet)
 
+## [2.1.6][] - 2025-04-24 {: #v2.1.6 }
+
+This is a minor bugfix release.
+
 # Fixed
 
 - Do not abort StepUp when wal or shm files are present.
@@ -455,6 +459,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[2.1.6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.6
 [2.1.5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.5
 [2.1.4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.4
 [2.1.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.3
