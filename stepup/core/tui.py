@@ -37,7 +37,7 @@ from path import Path
 from .asyncio import stoppable_iterator
 from .director import interpret_num_workers
 from .reporter import ReporterClient, ReporterHandler
-from .rpc import SocketSyncRPCClient, serve_socket_rpc
+from .rpc import AsyncRPCClient, serve_socket_rpc
 from .utils import string_to_bool
 
 __all__ = ()
@@ -204,9 +204,9 @@ class AsyncReadChar:
 
         Note that asyncio.StreamReader is not used because it puts stdin (and stdout and stderr)
         in non-blocking mode, which is not compatible with print functions and rich.print.
-        (This problem is only noticable when printing large amounts of data.
+        (This problem is only noticeable when printing large amounts of data.
 
-        This method is intended to be running in a separate deamon thread.
+        This method is intended to be running in a separate daemon thread.
         """
         while True:
             char = sys.stdin.read(1)
@@ -223,36 +223,28 @@ async def keyboard(
     reporter_socket_path: Path,
     stop_event: asyncio.Event,
 ):
-    quit_messages = [
-        "Waiting for steps to complete before shutdown.",
-        "Second call to shutdown: killing steps with SIGINT.",
-        "Third call to shutdown: killing steps with SIGKILL.",
-    ]
     async with (
         ReporterClient.socket(reporter_socket_path) as reporter,
         AsyncReadChar() as readchar,
     ):
         async for ch in stoppable_iterator(readchar, stop_event):
-            if ch == "q" and len(quit_messages) > 0:
-                await reporter("KEYBOARD", quit_messages.pop(0))
-                with SocketSyncRPCClient(director_socket_path) as client:
-                    client.call.shutdown()
-            elif ch == "j":
-                await reporter("KEYBOARD", "Waiting for the runner to complete before shutdown.")
-                with SocketSyncRPCClient(director_socket_path) as client:
-                    client.call.join()
-            elif ch == "d":
-                await reporter("KEYBOARD", "Draining the scheduler and waiting for workers.")
-                with SocketSyncRPCClient(director_socket_path) as client:
-                    client.call.drain()
-            elif ch == "r":
-                await reporter("KEYBOARD", "Restarting the runner.")
-                with SocketSyncRPCClient(director_socket_path) as client:
-                    client.call.run()
-            elif ch == "g":
-                with SocketSyncRPCClient(director_socket_path) as client:
-                    client.call.graph("graph")
-                await reporter("KEYBOARD", "Workflow graph written to graph.txt.")
+            if ch in "qjdrg":
+                async with await AsyncRPCClient.socket(director_socket_path) as client:
+                    if ch == "q":
+                        await reporter("KEYBOARD", "Shutting down")
+                        await client.call.shutdown()
+                    elif ch == "j":
+                        await reporter("KEYBOARD", "Waiting for all steps before shutdown.")
+                        await client.call.join()
+                    elif ch == "d":
+                        await reporter("KEYBOARD", "Draining the scheduler.")
+                        await client.call.drain()
+                    elif ch == "r":
+                        await reporter("KEYBOARD", "Restarting the runner.")
+                        await client.call.run()
+                    elif ch == "g":
+                        await client.call.graph("graph")
+                        await reporter("KEYBOARD", "Workflow graph written to graph.txt.")
             else:
                 pages = [("Keys", KEY_STROKE_HELP)]
                 await reporter("KEYBOARD", f"Unsupported key {ch}", pages)

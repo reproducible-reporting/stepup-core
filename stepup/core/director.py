@@ -251,7 +251,7 @@ async def serve(
     )
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(
-        scheduler, workflow, dblock, runner, watcher, path_plan, stop_event
+        scheduler, workflow, dblock, reporter, runner, watcher, path_plan, stop_event
     )
 
     # Install signal handlers
@@ -280,7 +280,7 @@ async def serve(
     try:
         await asyncio.gather(*coroutines)
     finally:
-        # In case of an exception, set the stop event, so other parts know then can stop waiting.
+        # In case of an exception, set the stop event, so other parts know they can stop waiting.
         stop_event.set()
         # Regular shutdown
         await reporter("DIRECTOR", "Stopping workers.")
@@ -296,6 +296,7 @@ class DirectorHandler:
     scheduler: Scheduler = attrs.field()
     workflow: Workflow = attrs.field()
     dblock: DBLock = attrs.field()
+    reporter: ReporterClient = attrs.field()
     runner: Runner = attrs.field()
     watcher: Watcher | None = attrs.field()
     path_plan: str = attrs.field()
@@ -488,8 +489,15 @@ class DirectorHandler:
         self.scheduler.drain()
         if self.stop_event.is_set():
             if len(self._kill_signals) > 0:
-                await self.runner.kill_worker_procs(self._kill_signals.pop(0))
+                kill_signal = self._kill_signals.pop(0)
+                await self.reporter(
+                    "DIRECTOR",
+                    f"Killing steps with signal {kill_signal} ({signal.strsignal(kill_signal)})",
+                )
+                await self.runner.kill_worker_procs(kill_signal)
         else:
+            if len(self.runner.active_workers) > 0:
+                await self.reporter("DIRECTOR", "Waiting for steps to complete before shutdown.")
             self.stop_event.set()
         if self.watcher is not None:
             self.watcher.interrupt.set()
