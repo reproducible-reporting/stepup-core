@@ -8,7 +8,7 @@
      PHASE │ run
     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 683fd0b7 ➜ d24cb33a, out_digest 786a02f7 ➜ (unset)
+Modified step hash   explained, inp_digest fbc361f9 ➜ d9e7fe3b, out_digest 786a02f7 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_PREFIX ='README' ➜ ='FOO'
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
@@ -16,8 +16,8 @@ Same inp hash        plan.py
 ────────────────────────────────────────────────────────────────────────────────
      START │ ./plan.py
    SUCCESS │ ./plan.py
-     START │ grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
-   SUCCESS │ grep variable FOO.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+     START │ grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+   SUCCESS │ grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
   DIRECTOR │ Trying to delete 2 outdated output(s).
      CLEAN │ README-stdout.txt
      CLEAN │ README-stderr.txt

@@ -6,11 +6,11 @@ root:
 file:./
                state = STATIC
           created by   root:
-            supplies   file:README.md
-            supplies   file:backup.md
+            supplies   file:README.txt
+            supplies   file:backup.txt
             supplies   file:plan.py
             supplies   step:./plan.py
-            supplies   step:cp -aT README.md backup.md
+            supplies   step:cp -aT README.txt backup.txt
 
 file:plan.py
                state = STATIC
@@ -24,25 +24,25 @@ step:./plan.py
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   file:README.md
-             creates   step:cp -aT README.md backup.md
+             creates   file:README.txt
+             creates   step:cp -aT README.txt backup.txt
 
-file:README.md
+file:README.txt
                state = STATIC
           created by   step:./plan.py
             consumes   file:./
-            supplies   step:cp -aT README.md backup.md
+            supplies   step:cp -aT README.txt backup.txt
 
-step:cp -aT README.md backup.md
+step:cp -aT README.txt backup.txt
                state = SUCCEEDED
           created by   step:./plan.py
             consumes   file:./
-            consumes   file:README.md
-             creates   file:backup.md
-            supplies   file:backup.md
+            consumes   file:README.txt
+             creates   file:backup.txt
+            supplies   file:backup.txt
 
-file:backup.md
+file:backup.txt
                state = BUILT
-          created by   step:cp -aT README.md backup.md
+          created by   step:cp -aT README.txt backup.txt
             consumes   file:./
-            consumes   step:cp -aT README.md backup.md
+            consumes   step:cp -aT README.txt backup.txt

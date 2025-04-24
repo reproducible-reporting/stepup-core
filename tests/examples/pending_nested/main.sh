@@ -9,7 +9,7 @@ echo a > inp1.txt
 echo a > inp2.txt
 echo a > inp3.txt
 export LEVEL=1
-stepup -w -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -45,7 +45,7 @@ export LEVEL=2
 rm inp1.txt
 echo b > inp3.txt
 rm .stepup/*.log
-stepup -w -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -n 1 & # > current_stdout2.txt &
 PID=$!
 
 # Wait for the director and get its socket.
@@ -83,7 +83,7 @@ grep 'level=1' out3.txt
 export LEVEL=3
 echo a > inp1.txt
 rm .stepup/*.log
-stepup -w -n 1 plan.py & # > current_stdout3.txt &
+stepup -w -n 1 & # > current_stdout3.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

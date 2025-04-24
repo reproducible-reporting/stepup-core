@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example
 echo hello > inp.txt
-stepup -w -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -47,7 +47,7 @@ wait
 
 # Restore the input and restart
 echo hello > inp.txt
-stepup -w -e -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -e -n 1 & # > current_stdout2.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

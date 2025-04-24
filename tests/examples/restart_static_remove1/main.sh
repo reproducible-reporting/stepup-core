@@ -7,7 +7,7 @@ rm -rvf $(cat .gitignore)
 # Run the example
 cp plan1.py plan.py
 echo "just something" > foo.txt
-stepup -w -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -29,12 +29,12 @@ wait
 [[ -f plan.py ]] || exit 1
 [[ -f foo.txt ]] || exit 1
 [[ -f bar.txt ]] || exit 1
-[[ -f backup.md ]] || exit 1
+[[ -f backup.txt ]] || exit 1
 
 # Remove the static file foo.txt, change the plan, and restart
 cp plan2.py plan.py
 rm foo.txt
-stepup -w -e -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -e -n 1 & # > current_stdout2.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -53,6 +53,6 @@ wait
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
-[[ -f backup.md ]] || exit 1
+[[ -f backup.txt ]] || exit 1
 [[ ! -f foo.txt ]] || exit 1
 [[ ! -f bar.txt ]] || exit 1

@@ -34,7 +34,6 @@ repos:
   rev: v0.17.2
   hooks:
   - id: markdownlint-cli2
-    exclude: '^test'
     require_serial: true
 - repo: https://github.com/python-jsonschema/check-jsonschema
   rev: 0.30.0

@@ -5,7 +5,7 @@ trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Run the example
-stepup -w -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -30,7 +30,7 @@ wait
 
 # Create the first file and restart
 echo two > inp2.txt
-stepup -w -e -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -e -n 1 & # > current_stdout2.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -55,7 +55,7 @@ grep two out2.txt
 
 # Create the second file and restart
 echo three > inp3.txt
-stepup -w -e -n 1 plan.py & # > current_stdout3.txt &
+stepup -w -e -n 1 & # > current_stdout3.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

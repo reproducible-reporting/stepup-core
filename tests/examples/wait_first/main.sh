@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example
 echo hello > inp.txt
-stepup -W -n 1 plan.py & # > current_stdout.txt &
+stepup -W -n 1 & # > current_stdout.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

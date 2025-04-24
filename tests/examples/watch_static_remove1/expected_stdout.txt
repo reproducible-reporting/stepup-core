@@ -5,8 +5,8 @@
    SUCCESS │ ./plan.py
      START │ cp -aT foo.txt bar.txt
    SUCCESS │ cp -aT foo.txt bar.txt
-     START │ cp -aT README.md backup.md
-   SUCCESS │ cp -aT README.md backup.md
+     START │ cp -aT README.txt backup.txt
+   SUCCESS │ cp -aT README.txt backup.txt
   DIRECTOR │ Trying to delete 0 outdated output(s).
      PHASE │ watch
    UPDATED │ plan.py

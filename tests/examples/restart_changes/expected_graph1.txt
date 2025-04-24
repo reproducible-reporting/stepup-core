@@ -1,32 +1,32 @@
 root:
              creates   file:./
-             creates   file:plan1.py
-             creates   step:./plan1.py
+             creates   file:plan.py
+             creates   step:./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:copy1.txt
             supplies   file:copy_both1.txt
-            supplies   file:plan1.py
+            supplies   file:plan.py
             supplies   file:source1.txt
             supplies   file:source_both.txt
-            supplies   step:./plan1.py
+            supplies   step:./plan.py
             supplies   step:cp source1.txt copy1.txt
             supplies   step:cp source_both.txt copy_both1.txt
 
-file:plan1.py
+file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan1.py
+            supplies   step:./plan.py
 
-step:./plan1.py
+step:./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
             consumes   file:./
-            consumes   file:plan1.py
+            consumes   file:plan.py
              creates   file:source1.txt
              creates   file:source_both.txt
              creates   step:cp source1.txt copy1.txt
@@ -34,14 +34,14 @@ step:./plan1.py
 
 file:source_both.txt
                state = STATIC
-          created by   step:./plan1.py
+          created by   step:./plan.py
             consumes   file:./
             supplies   step:cp source_both.txt copy_both1.txt
 
 step:cp source_both.txt copy_both1.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan1.py
+          created by   step:./plan.py
             consumes   file:./
             consumes   file:source_both.txt
              creates   file:copy_both1.txt
@@ -56,7 +56,7 @@ file:copy_both1.txt
 step:cp source1.txt copy1.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan1.py
+          created by   step:./plan.py
             consumes   file:./
             consumes   file:source1.txt
              creates   file:copy1.txt
@@ -64,7 +64,7 @@ step:cp source1.txt copy1.txt
 
 file:source1.txt
                state = STATIC
-          created by   step:./plan1.py
+          created by   step:./plan.py
             consumes   file:./
             supplies   step:cp source1.txt copy1.txt
 

@@ -7,7 +7,7 @@ rm -rvf $(cat .gitignore)
 # Run the example
 echo a1 > data1.txt
 echo b2 > data2.txt
-stepup -w -n 1 --log-level INFO plan.py & # > current_stdout.txt &
+stepup -w -n 1 --log-level INFO & # > current_stdout.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

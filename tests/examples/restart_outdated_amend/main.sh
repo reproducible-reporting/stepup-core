@@ -7,7 +7,7 @@ rm -rvf $(cat .gitignore)
 # Run with the initial subs.txt.
 echo inp1 > inp1.txt
 echo inp1.txt > subs.txt
-stepup -w -e -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -e -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -36,7 +36,7 @@ rm inp1.txt
 echo inp2 > inp2.txt
 echo inp2.txt > subs.txt
 rm .stepup/*.log
-stepup -w -e -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -e -n 1 & # > current_stdout2.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

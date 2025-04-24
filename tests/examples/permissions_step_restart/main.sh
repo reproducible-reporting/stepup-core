@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the plan with non-executable step.py.
 chmod -x step.py
-stepup -w -e -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -e -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -32,7 +32,7 @@ wait
 # Restart the plan with executable step.py.
 chmod +x step.py
 rm .stepup/*.log
-stepup -w -e -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -e -n 1 & # > current_stdout2.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

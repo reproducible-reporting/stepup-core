@@ -7,7 +7,7 @@ rm -rvf $(cat .gitignore)
 # Run the plan for the first time.
 mkdir -p static
 echo first > static/foo.txt
-stepup -w -e -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -e -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -34,7 +34,7 @@ grep first bar.txt
 
 # Run the plan again without any changes.
 rm .stepup/*.log
-stepup -w -e -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -e -n 1 & # > current_stdout2.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -62,7 +62,7 @@ grep first bar.txt
 # Run the plan again with changes.
 echo second > static/foo.txt
 rm .stepup/*.log
-stepup -w -e -n 1 plan.py & # > current_stdout3.txt &
+stepup -w -e -n 1 & # > current_stdout3.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

@@ -7,7 +7,7 @@ rm -rvf $(cat .gitignore)
 # Run the example with two input files.
 echo one > inp1.txt
 echo two > inp2.txt
-stepup -w -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -38,7 +38,7 @@ grep two foo2.txt
 
 # Remove an input file and restart.
 rm inp1.txt
-stepup -w -e -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -e -n 1 & # > current_stdout2.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -67,7 +67,7 @@ grep two foo2.txt
 
 # Remove also the other input file and restart
 rm inp2.txt
-stepup -w -e -n 1 plan.py & # > current_stdout3.txt &
+stepup -w -e -n 1 & # > current_stdout3.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

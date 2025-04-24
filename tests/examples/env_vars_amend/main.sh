@@ -8,7 +8,7 @@ rm -rvf $(cat .gitignore)
 export ENV_VAR_TEST_STEPUP_SDASFD="AAAA"
 
 # Run the example
-stepup -w -e -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -e -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -33,7 +33,7 @@ grep AAAA output.txt
 # Rerstart with changed variable
 export ENV_VAR_TEST_STEPUP_SDASFD="BBBB"
 rm .stepup/*.log
-stepup -w -e -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -e -n 1 & # > current_stdout2.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

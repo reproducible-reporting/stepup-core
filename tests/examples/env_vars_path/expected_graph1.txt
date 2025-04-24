@@ -8,10 +8,10 @@ file:./
           created by   root:
             supplies   file:README-stderr.txt
             supplies   file:README-stdout.txt
-            supplies   file:README.md
+            supplies   file:README.txt
             supplies   file:plan.py
             supplies   step:./plan.py
-            supplies   step:grep variable README.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+            supplies   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
 
 file:plan.py
                state = STATIC
@@ -26,34 +26,35 @@ step:./plan.py
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   file:README.md
-             creates   step:grep variable README.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+             creates   file:README.txt
+             creates   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
 
-file:README.md
+file:README.txt
                state = STATIC
           created by   step:./plan.py
             consumes   file:./
-            supplies   step:grep variable README.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+            supplies   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
 
-step:grep variable README.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
-               state = FAILED
+step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+               state = SUCCEEDED
              env_var = ENV_VAR_TEST_STEPUP_PREFIX
+           explained = yes
           created by   step:./plan.py
             consumes   file:./
-            consumes   file:README.md
+            consumes   file:README.txt
              creates   file:README-stderr.txt
              creates   file:README-stdout.txt
             supplies   file:README-stderr.txt
             supplies   file:README-stdout.txt
 
 file:README-stdout.txt
-               state = OUTDATED
-          created by   step:grep variable README.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+               state = BUILT
+          created by   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
             consumes   file:./
-            consumes   step:grep variable README.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+            consumes   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
 
 file:README-stderr.txt
                state = VOLATILE
-          created by   step:grep variable README.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+          created by   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
             consumes   file:./
-            consumes   step:grep variable README.md ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+            consumes   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt

@@ -9,7 +9,7 @@ echo "This is the first half and" > asource1.txt
 echo "this is the second half." > asource2.txt
 
 # Run the plan.
-stepup -w -e -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -e -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -38,7 +38,7 @@ wait
 # Remove both intermediates the output and one of the inputs, and restart.
 # There should be pending steps because some input is missing.
 rm data1.txt data2.txt log.txt asource1.txt
-stepup -w -e -n 1 --log-level INFO plan.py & # > current_stdout2.txt &
+stepup -w -e -n 1 --log-level INFO & # > current_stdout2.txt &
 PID=$!
 
 # Wait for the director and get its socket.

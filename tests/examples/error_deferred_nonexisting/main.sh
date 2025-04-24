@@ -5,7 +5,7 @@ trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Run the example
-stepup -w -n 1 plan.py & # > current_stdout.txt &
+stepup -w -n 1 & # > current_stdout.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -23,4 +23,4 @@ wait
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
-[[ -f README.md ]] || exit 1
+[[ -f README.txt ]] || exit 1

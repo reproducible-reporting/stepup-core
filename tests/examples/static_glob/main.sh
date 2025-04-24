@@ -9,7 +9,7 @@ echo "First input" > inp1.txt
 echo "Second input" > inp2.txt
 
 # Run the example
-stepup -w -e -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -e -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -59,7 +59,7 @@ grep Third out3.txt
 echo "Fourth input" > inp4.txt
 rm inp2.txt
 rm .stepup/*.log
-stepup -w -e -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -e -n 1 & # > current_stdout2.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

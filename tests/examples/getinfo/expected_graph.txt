@@ -6,7 +6,7 @@ root:
 file:./
                state = STATIC
           created by   root:
-            supplies   file:README.md
+            supplies   file:README.txt
             supplies   file:inp1.txt
             supplies   file:out0.txt
             supplies   file:out2.txt
@@ -28,14 +28,14 @@ step:./plan.py
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   file:README.md
+             creates   file:README.txt
              creates   file:inp1.txt
              creates   file:sub/
              creates   file:sub/getinfo.py
              creates   file:sub/inp0.txt
              creates   step:./getinfo.py  # wd=sub/
 
-file:README.md
+file:README.txt
                state = STATIC
           created by   step:./plan.py
             consumes   file:./
@@ -75,7 +75,7 @@ step:./getinfo.py  # wd=sub/
                      = FOO
           created by   step:./plan.py
             consumes   file:./
-            consumes   file:README.md
+            consumes   file:README.txt
             consumes   file:inp1.txt [amended]
             consumes   file:sub/
             consumes   file:sub/inp0.txt

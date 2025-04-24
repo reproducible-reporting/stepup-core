@@ -1,10 +1,10 @@
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
-     START │ './poor plan.py'
-   SUCCESS │ './poor plan.py'
-     START │ cp -aT 'README NOW.md' 'white space leaves a lot of room for mistakes.md'
-   SUCCESS │ cp -aT 'README NOW.md' 'white space leaves a lot of room for mistakes.md'
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cp -aT 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+   SUCCESS │ cp -aT 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
      START │ './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
    SUCCESS │ './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
      START │ './script is cool.py' plan

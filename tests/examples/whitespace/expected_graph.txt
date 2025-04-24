@@ -1,79 +1,79 @@
 root:
              creates   file:./
-             creates   file:poor plan.py
-             creates   step:'./poor plan.py'
+             creates   file:plan.py
+             creates   step:./plan.py
 
 file:./
                state = STATIC
           created by   root:
-            supplies   file:README NOW.md
+            supplies   file:README NOW.txt
             supplies   file:call is cool.py
             supplies   file:call is cool_out.json
-            supplies   file:poor plan.py
+            supplies   file:plan.py
             supplies   file:script is cool.py
-            supplies   file:the road to hell is paved with whitespace.md
-            supplies   file:white space leaves a lot of room for mistakes.md
+            supplies   file:the road to hell is paved with whitespace.txt
+            supplies   file:white space leaves a lot of room for mistakes.txt
             supplies   step:'./call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
-            supplies   step:'./poor plan.py'
             supplies   step:'./script is cool.py' plan
             supplies   step:'./script is cool.py' run
-            supplies   step:cp -aT 'README NOW.md' 'white space leaves a lot of room for mistakes.md'
+            supplies   step:./plan.py
+            supplies   step:cp -aT 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
 
-file:poor plan.py
+file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:'./poor plan.py'
+            supplies   step:./plan.py
 
-step:'./poor plan.py'
+step:./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
-            consumes   file:poor plan.py
-             creates   file:README NOW.md
+            consumes   file:plan.py
+             creates   file:README NOW.txt
              creates   file:call is cool.py
              creates   file:script is cool.py
              creates   step:'./call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
              creates   step:'./script is cool.py' plan
-             creates   step:cp -aT 'README NOW.md' 'white space leaves a lot of room for mistakes.md'
+             creates   step:cp -aT 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
 
-file:README NOW.md
+file:README NOW.txt
                state = STATIC
-          created by   step:'./poor plan.py'
+          created by   step:./plan.py
             consumes   file:./
             supplies   step:'./script is cool.py' run
-            supplies   step:cp -aT 'README NOW.md' 'white space leaves a lot of room for mistakes.md'
+            supplies   step:cp -aT 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
 
 file:call is cool.py
                state = STATIC
-          created by   step:'./poor plan.py'
+          created by   step:./plan.py
             consumes   file:./
             supplies   step:'./call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
 
 file:script is cool.py
                state = STATIC
-          created by   step:'./poor plan.py'
+          created by   step:./plan.py
             consumes   file:./
             supplies   step:'./script is cool.py' plan
             supplies   step:'./script is cool.py' run
 
-step:cp -aT 'README NOW.md' 'white space leaves a lot of room for mistakes.md'
+step:cp -aT 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
                state = SUCCEEDED
-          created by   step:'./poor plan.py'
+          created by   step:./plan.py
             consumes   file:./
-            consumes   file:README NOW.md
-             creates   file:white space leaves a lot of room for mistakes.md
-            supplies   file:white space leaves a lot of room for mistakes.md
+            consumes   file:README NOW.txt
+             creates   file:white space leaves a lot of room for mistakes.txt
+            supplies   file:white space leaves a lot of room for mistakes.txt
 
-file:white space leaves a lot of room for mistakes.md
+file:white space leaves a lot of room for mistakes.txt
                state = BUILT
-          created by   step:cp -aT 'README NOW.md' 'white space leaves a lot of room for mistakes.md'
+          created by   step:cp -aT 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
             consumes   file:./
-            consumes   step:cp -aT 'README NOW.md' 'white space leaves a lot of room for mistakes.md'
+            consumes   step:cp -aT 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
 
 step:'./call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
                state = SUCCEEDED
-          created by   step:'./poor plan.py'
+          created by   step:./plan.py
             consumes   file:./
             consumes   file:call is cool.py
              creates   file:call is cool_out.json
@@ -81,7 +81,7 @@ step:'./call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amen
 
 step:'./script is cool.py' plan
                state = SUCCEEDED
-          created by   step:'./poor plan.py'
+          created by   step:./plan.py
             consumes   file:./
             consumes   file:script is cool.py
              creates   step:'./script is cool.py' run
@@ -96,12 +96,12 @@ step:'./script is cool.py' run
                state = SUCCEEDED
           created by   step:'./script is cool.py' plan
             consumes   file:./
-            consumes   file:README NOW.md
+            consumes   file:README NOW.txt
             consumes   file:script is cool.py
-             creates   file:the road to hell is paved with whitespace.md
-            supplies   file:the road to hell is paved with whitespace.md
+             creates   file:the road to hell is paved with whitespace.txt
+            supplies   file:the road to hell is paved with whitespace.txt
 
-file:the road to hell is paved with whitespace.md
+file:the road to hell is paved with whitespace.txt
                state = BUILT
           created by   step:'./script is cool.py' run
             consumes   file:./

@@ -4,7 +4,7 @@ from stepup.core.api import amend, getinfo
 info = getinfo()
 assert info.command == "./getinfo.py"
 assert info.workdir == "sub/"
-assert info.inp == ["../README.md", "inp0.txt"]
+assert info.inp == ["../README.txt", "inp0.txt"]
 assert info.env == ["BAR", "FOO"]
 assert info.out == ["../out0.txt", "out1.txt"]
 assert info.vol == ["../vol1.txt", "vol0.txt"]
@@ -29,7 +29,7 @@ with open("../vol2.txt", "w") as f:
 info = getinfo()
 assert info.command == "./getinfo.py"
 assert info.workdir == "sub/"
-assert info.inp == ["../README.md", "inp0.txt"]
+assert info.inp == ["../README.txt", "inp0.txt"]
 assert info.env == ["BAR", "FOO"]
 assert info.out == ["../out0.txt", "out1.txt"]
 assert info.vol == ["../vol1.txt", "vol0.txt"]

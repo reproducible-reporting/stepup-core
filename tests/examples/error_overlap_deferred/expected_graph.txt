@@ -6,8 +6,10 @@ root:
 file:./
                state = STATIC
           created by   root:
+            supplies   file:README.txt
             supplies   file:plan.py
             supplies   step:./plan.py
+            supplies   step:cat README.txt
 
 file:plan.py
                state = STATIC
@@ -16,15 +18,29 @@ file:plan.py
             supplies   step:./plan.py
 
 step:./plan.py
-               state = FAILED
+               state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   dg:*.md
              creates   dg:README.*
+             creates   step:cat README.txt
 
 dg:README.*
           created by   step:./plan.py
+             creates   file:README.txt
 
 dg:*.md
           created by   step:./plan.py
+
+step:cat README.txt
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:README.txt
+
+file:README.txt
+               state = STATIC
+          created by   dg:README.*
+            consumes   file:./
+            supplies   step:cat README.txt

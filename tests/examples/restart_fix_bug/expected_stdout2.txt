@@ -1,7 +1,7 @@
    STARTUP │ Making failed steps pending
    STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files
-   UPDATED │ plan.py (digest 39dc7700 ➜ 4a40649a)
+   UPDATED │ plan.py (digest 50602d96 ➜ 51baa050)
    STARTUP │ Scanning initial database for new nglob matches
   DIRECTOR │ Launched worker 0
      PHASE │ run

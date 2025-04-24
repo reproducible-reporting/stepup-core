@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example
 export ENV_VAR_TEST_STEPUP_INP="static/sub/foo.txt"
-stepup -w -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -33,7 +33,7 @@ wait
 # Restart the example with a different input
 export ENV_VAR_TEST_STEPUP_INP="static/sub/bar.txt"
 rm .stepup/*.log
-stepup -w -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -n 1 & # > current_stdout2.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example
 export ENV_VAR_TEST_STEPUP_IDX="3"
-stepup -w -e -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -e -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -44,7 +44,7 @@ grep raw3 used.txt
 # Restart with a different environment variables
 export ENV_VAR_TEST_STEPUP_IDX="1"
 rm .stepup/*.log
-stepup -w -e -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -e -n 1 & # > current_stdout2.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -75,7 +75,7 @@ grep raw1 used.txt
 # Restart with the original environment variable.
 export ENV_VAR_TEST_STEPUP_IDX="3"
 rm .stepup/*.log
-stepup -w -e -n 1 plan.py & # > current_stdout3.txt &
+stepup -w -e -n 1 & # > current_stdout3.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

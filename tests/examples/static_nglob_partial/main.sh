@@ -12,7 +12,7 @@ echo "tx" > tail_x.txt
 echo "hy" > head_y.txt
 
 # Run the example
-stepup -w -e -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -e -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -76,7 +76,7 @@ grep 'hx tx' paste_x.txt
 echo "ty" > tail_y.txt
 echo "tz" > tail_z.txt
 rm .stepup/*.log
-stepup -w -e -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -e -n 1 & # > current_stdout2.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

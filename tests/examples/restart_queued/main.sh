@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the plan.
 echo version1 > inp.txt
-stepup -w -e -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -e -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -50,7 +50,7 @@ grep version1 final.txt
 # Restart StepUp after removing the output.
 echo version2 > inp.txt
 rm .stepup/*.log
-stepup -w -e -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -e -n 1 & # > current_stdout2.txt &
 PID=$!
 
 # Wait for the director and get its socket.

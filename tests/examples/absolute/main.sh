@@ -13,7 +13,7 @@ echo hello > $PATH_SRC
 rm -rf $PATH_DST
 
 # Run the example
-stepup -w -n 1 plan.py & # > current_stdout.txt &
+stepup -w -n 1 & # > current_stdout.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

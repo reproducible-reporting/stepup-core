@@ -1,14 +1,14 @@
    STARTUP │ Making failed steps pending
    STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files
-   UPDATED │ plan.py (digest f381940c ➜ c68af031, size 154 ➜ 116)
+   UPDATED │ plan.py (digest 69db3100 ➜ 5c1bf9f6, size 157 ➜ 119)
    DELETED │ foo.txt
    STARTUP │ Scanning initial database for new nglob matches
   DIRECTOR │ Launched worker 0
      PHASE │ run
     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   compact ➜ explained, inp_digest 74e0cbe5 ➜ 54bc0135, out_digest 786a02f7 ➜ (unset)
+Modified step hash   compact ➜ explained, inp_digest 94dfd8f6 ➜ 48a95554, out_digest 786a02f7 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
      START │ ./plan.py
    SUCCESS │ ./plan.py

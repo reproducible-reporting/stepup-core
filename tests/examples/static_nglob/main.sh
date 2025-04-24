@@ -8,7 +8,7 @@ rm -rvf $(cat .gitignore)
 cp sec-2-2.txt ch-2-theory/sec-2-2-advanced.txt
 
 # Run the example
-stepup -w -n 1 plan.py & # > current_stdout.txt &
+stepup -w -n 1 & # > current_stdout.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -73,7 +73,7 @@ wait
 # Start stepup without checking expected output because watchdog file
 # order is not reproducible.
 rm .stepup/*.log
-stepup -w -n 1 plan.py &
+stepup -w -n 1 &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

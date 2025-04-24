@@ -8,7 +8,7 @@ rm -rvf $(cat .gitignore)
 echo "# This script has no shebang line, which StepUp does not accept.
 # See https://en.wikipedia.org/wiki/Shebang_%28Unix%29" > script.py
 chmod +x script.py
-stepup -w -n 1 plan.py & # > current_stdout.txt &
+stepup -w -n 1 & # > current_stdout.txt &
 PID=$!
 
 # Wait for the director and get its socket.

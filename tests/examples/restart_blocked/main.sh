@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the initial plan.
 cp plan_blocked.py plan.py
-stepup -w -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -32,7 +32,7 @@ wait
 # Modify a few things and restart
 cp plan_unblocked.py plan.py
 rm .stepup/*.log
-stepup -w -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -n 1 & # > current_stdout2.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

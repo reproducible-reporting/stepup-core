@@ -3,7 +3,7 @@ from stepup.core.script import driver
 
 
 def info():
-    return {"inp": "README NOW.md", "out": "the road to hell is paved with whitespace.md"}
+    return {"inp": "README NOW.txt", "out": "the road to hell is paved with whitespace.txt"}
 
 
 def run(inp, out):

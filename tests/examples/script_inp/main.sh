@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example with the first config file.
 cp config1.txt config.txt
-stepup -w -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -32,7 +32,7 @@ wait
 
 # Run the example with the second config file.
 cp config2.txt config.txt
-stepup -w -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -n 1 & # > current_stdout2.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

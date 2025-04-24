@@ -9,7 +9,7 @@ mkdir -p dir_work dir_inp dir_out dir_vol
 echo blabla > dir_inp/inp.txt
 
 # Run the example
-stepup -w -n 1 plan.py & # > current_stdout.txt &
+stepup -w -n 1 & # > current_stdout.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(

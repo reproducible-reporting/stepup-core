@@ -6,7 +6,7 @@ root:
 file:./
                state = STATIC
           created by   root:
-            supplies   file:README.md
+            supplies   file:README.txt
             supplies   file:out.txt
             supplies   file:plan.py
             supplies   step:./plan.py
@@ -24,10 +24,10 @@ step:./plan.py
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   file:README.md
+             creates   file:README.txt
              creates   step:echo 'I was here' > out.txt
 
-file:README.md
+file:README.txt
                state = STATIC
           created by   step:./plan.py
             consumes   file:./

@@ -1,8 +1,19 @@
-   STARTUP │ (Re)initialized boot script
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ plan.py (digest 05b7f2d7 ➜ 3cffd20f)
+   STARTUP │ Scanning initial database for new nglob matches
   DIRECTOR │ Launched worker 0
      PHASE │ run
-     START │ ./plan2.py
-   SUCCESS │ ./plan2.py
+    NOSKIP │ ./plan.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest 83e2c9db ➜ 2b0cc2c1, out_digest 786a02f7 ➜ (unset)
+Modified inp hash    plan.py (digest 05b7f2d7 ➜ 3cffd20f)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+────────────────────────────────────────────────────────────────────────────────
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
      START │ cp source_both.txt copy_both2.txt
    SUCCESS │ cp source_both.txt copy_both2.txt
      START │ cp source2.txt copy2.txt
@@ -10,6 +21,7 @@
   DIRECTOR │ Trying to delete 2 outdated output(s).
      CLEAN │ copy_both1.txt
      CLEAN │ copy1.txt
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ Stopping workers.
   DIRECTOR │ See you!

@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example, version 1
 cp plan1.py plan.py
-stepup -w -e -n 1 plan.py & # > current_stdout1.txt &
+stepup -w -e -n 1 & # > current_stdout1.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
@@ -31,7 +31,7 @@ wait
 # Run the example, version 2
 cp plan2.py plan.py
 rm .stepup/*.log
-stepup -w -e -n 1 plan.py & # > current_stdout2.txt &
+stepup -w -e -n 1 & # > current_stdout2.txt &
 
 # Wait for the director and get its socket.
 export STEPUP_DIRECTOR_SOCKET=$(
