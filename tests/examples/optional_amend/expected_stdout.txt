@@ -1,35 +1,35 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py
-RESCHEDULE │ ./work.py
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ ./work.py
+        1/3 | RESCHEDULE │ ./work.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 Missing inputs and/or required directories:
 optional.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ cp -aT data.txt optional.txt
-   SUCCESS │ cp -aT data.txt optional.txt
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-   UPDATED │ data.txt
-     PHASE │ run
-     START │ ./work.py
-RESCHEDULE │ ./work.py
+        1/3 |      START │ cp -aT data.txt optional.txt
+        2/3 |    SUCCESS │ cp -aT data.txt optional.txt
+        1/2 |      START │ ./work.py
+        3/3 |    SUCCESS │ ./work.py
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |    WARNING │ Check logs: .stepup/warning.log
+        3/3 |      PHASE │ watch
+        3/3 |    UPDATED │ data.txt
+        1/3 |      PHASE │ run
+        1/2 |      START │ ./work.py
+        1/3 | RESCHEDULE │ ./work.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 Missing inputs and/or required directories:
 optional.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ cp -aT data.txt optional.txt
-   SUCCESS │ cp -aT data.txt optional.txt
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        1/3 |      START │ cp -aT data.txt optional.txt
+        2/3 |    SUCCESS │ cp -aT data.txt optional.txt
+        1/2 |      START │ ./work.py
+        3/3 |    SUCCESS │ ./work.py
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |    WARNING │ Check logs: .stepup/warning.log
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

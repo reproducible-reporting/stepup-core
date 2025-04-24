@@ -1,13 +1,13 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp source_both.txt copy_both1.txt
-   SUCCESS │ cp source_both.txt copy_both1.txt
-     START │ cp source1.txt copy1.txt
-   SUCCESS │ cp source1.txt copy1.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ cp source_both.txt copy_both1.txt
+        2/3 |    SUCCESS │ cp source_both.txt copy_both1.txt
+        2/3 |      START │ cp source1.txt copy1.txt
+        3/3 |    SUCCESS │ cp source1.txt copy1.txt
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

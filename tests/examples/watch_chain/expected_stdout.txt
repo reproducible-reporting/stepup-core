@@ -1,30 +1,30 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./use_config.py
-   SUCCESS │ ./use_config.py
-     START │ echo All is fine. > script.log
-   SUCCESS │ echo All is fine. > script.log
-     START │ echo log written to script.log. > report.txt
-   SUCCESS │ echo log written to script.log. > report.txt
-     START │ cp -aT report.txt copy.txt
-   SUCCESS │ cp -aT report.txt copy.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-   UPDATED │ config.json
-     PHASE │ run
-     START │ ./use_config.py
-   SUCCESS │ ./use_config.py
-     START │ echo All is fine. > other.log
-   SUCCESS │ echo All is fine. > other.log
-     START │ echo log written to other.log. > report.txt
-   SUCCESS │ echo log written to other.log. > report.txt
-     START │ cp -aT report.txt copy.txt
-   SUCCESS │ cp -aT report.txt copy.txt
-  DIRECTOR │ Trying to delete 1 outdated output(s).
-     CLEAN │ script.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ ./use_config.py
+        2/5 |    SUCCESS │ ./use_config.py
+        2/5 |      START │ echo All is fine. > script.log
+        3/5 |    SUCCESS │ echo All is fine. > script.log
+        3/5 |      START │ echo log written to script.log. > report.txt
+        4/5 |    SUCCESS │ echo log written to script.log. > report.txt
+        4/5 |      START │ cp -aT report.txt copy.txt
+        5/5 |    SUCCESS │ cp -aT report.txt copy.txt
+        5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        5/5 |      PHASE │ watch
+        5/5 |    UPDATED │ config.json
+        4/5 |      PHASE │ run
+        2/3 |      START │ ./use_config.py
+        2/5 |    SUCCESS │ ./use_config.py
+        2/5 |      START │ echo All is fine. > other.log
+        3/5 |    SUCCESS │ echo All is fine. > other.log
+        3/5 |      START │ echo log written to other.log. > report.txt
+        4/5 |    SUCCESS │ echo log written to other.log. > report.txt
+        4/5 |      START │ cp -aT report.txt copy.txt
+        5/5 |    SUCCESS │ cp -aT report.txt copy.txt
+        5/5 |   DIRECTOR │ Trying to delete 1 outdated output(s).
+        5/5 |      CLEAN │ script.log
+        5/5 |      PHASE │ watch
+        5/5 |   DIRECTOR │ Stopping workers.
+        5/5 |   DIRECTOR │ See you!

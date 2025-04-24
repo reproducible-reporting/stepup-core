@@ -1,17 +1,17 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp -aT sub/message.txt message.txt
-   SUCCESS │ cp -aT sub/message.txt message.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-   DELETED │ sub/message.txt
-   DELETED │ sub/
-   DELETED │ message.txt
-     PHASE │ run
-   WARNING │ 1 step(s) remained pending due to incomplete requirements
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ cp -aT sub/message.txt message.txt
+        2/2 |    SUCCESS │ cp -aT sub/message.txt message.txt
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |      PHASE │ watch
+        2/2 |    DELETED │ sub/message.txt
+        2/2 |    DELETED │ sub/
+        2/2 |    DELETED │ message.txt
+        1/2 |      PHASE │ run
+        1/2 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  sub/
              MISSING  sub/message.txt
@@ -23,15 +23,15 @@ Inputs        STATIC  ./
              MISSING  sub/message.txt
 Outputs      AWAITED  message.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-   UPDATED │ sub/
-   UPDATED │ sub/message.txt
-     PHASE │ run
-     START │ cp -aT sub/message.txt message.txt
-   SUCCESS │ cp -aT sub/message.txt message.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        1/2 |    WARNING │ Skipping file cleanup due to incomplete build.
+        1/2 |    WARNING │ Check logs: .stepup/warning.log
+        1/2 |      PHASE │ watch
+        1/2 |    UPDATED │ sub/
+        1/2 |    UPDATED │ sub/message.txt
+        1/2 |      PHASE │ run
+        1/2 |      START │ cp -aT sub/message.txt message.txt
+        2/2 |    SUCCESS │ cp -aT sub/message.txt message.txt
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |      PHASE │ watch
+        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ See you!

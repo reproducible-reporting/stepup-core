@@ -1,13 +1,13 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Making steps pending that use changed environment variables
-   UPDATED │ ENV_VAR_TEST_STEPUP_AWDFTD ='AAAA' ➜ ='DDDD'
-   UPDATED │ ENV_VAR_TEST_STEPUP_DFTHYH ='BBBB' ➜ ='CCCC'
-   STARTUP │ Scanning initial database for changed files
-   STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-    NOSKIP │ ./printvars.py
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Making steps pending that use changed environment variables
+        0/0 |    UPDATED │ ENV_VAR_TEST_STEPUP_AWDFTD ='AAAA' ➜ ='DDDD'
+        0/0 |    UPDATED │ ENV_VAR_TEST_STEPUP_DFTHYH ='BBBB' ➜ ='CCCC'
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        2/3 |      PHASE │ run
+        2/3 |     NOSKIP │ ./printvars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 8ca16000 ➜ c9ca3cfc, out_digest 8b927ea1 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_AWDFTD (unset) ➜ ='DDDD'
@@ -16,10 +16,10 @@ Same inp hash        ./
 Same inp hash        printvars.py
 Same env var         ENV_VAR_TEST_STEPUP_DFTHYH ='CCCC'
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./printvars.py
-   SUCCESS │ ./printvars.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        2/3 |      START │ ./printvars.py
+        3/3 |    SUCCESS │ ./printvars.py
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |    WARNING │ Check logs: .stepup/warning.log
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

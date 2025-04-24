@@ -1,17 +1,17 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp original.txt copy.txt
-   SUCCESS │ cp original.txt copy.txt
-     START │ cp copy.txt another.txt
-   SUCCESS │ cp copy.txt another.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-   DELETED │ plan.py
-     PHASE │ run
-   WARNING │ 1 step(s) remained pending due to incomplete requirements
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ cp original.txt copy.txt
+        2/3 |    SUCCESS │ cp original.txt copy.txt
+        2/3 |      START │ cp copy.txt another.txt
+        3/3 |    SUCCESS │ cp copy.txt another.txt
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |      PHASE │ watch
+        3/3 |    DELETED │ plan.py
+        2/3 |      PHASE │ run
+        2/3 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  plan.py
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -21,19 +21,19 @@ Declares      STATIC  original.txt
 Inputs        STATIC  ./
              MISSING  plan.py
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-   UPDATED │ plan.py
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp original.txt between.txt
-   SUCCESS │ cp original.txt between.txt
-     START │ cp between.txt another.txt
-   SUCCESS │ cp between.txt another.txt
-  DIRECTOR │ Trying to delete 1 outdated output(s).
-     CLEAN │ copy.txt
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        2/3 |    WARNING │ Skipping file cleanup due to incomplete build.
+        2/3 |    WARNING │ Check logs: .stepup/warning.log
+        2/3 |      PHASE │ watch
+        2/3 |    UPDATED │ plan.py
+        2/3 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ cp original.txt between.txt
+        2/3 |    SUCCESS │ cp original.txt between.txt
+        2/3 |      START │ cp between.txt another.txt
+        3/3 |    SUCCESS │ cp between.txt another.txt
+        3/3 |   DIRECTOR │ Trying to delete 1 outdated output(s).
+        3/3 |      CLEAN │ copy.txt
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

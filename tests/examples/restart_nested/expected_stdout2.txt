@@ -1,16 +1,16 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   UPDATED │ inp1.txt (digest bedfbb90 ➜ 3be587a7)
-   UPDATED │ inp3.txt (digest bedfbb90 ➜ 3be587a7)
-   STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./step1.py
-   SUCCESS │ ./step1.py
-  DIRECTOR │ Trying to delete 2 outdated output(s).
-     CLEAN │ out3.txt
-     CLEAN │ out2.txt
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    UPDATED │ inp1.txt (digest bedfbb90 ➜ 3be587a7)
+        0/0 |    UPDATED │ inp3.txt (digest bedfbb90 ➜ 3be587a7)
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        2/4 |      PHASE │ run
+        1/2 |      START │ ./step1.py
+        2/2 |    SUCCESS │ ./step1.py
+        2/2 |   DIRECTOR │ Trying to delete 2 outdated output(s).
+        2/2 |      CLEAN │ out3.txt
+        2/2 |      CLEAN │ out2.txt
+        2/2 |      PHASE │ watch
+        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ See you!

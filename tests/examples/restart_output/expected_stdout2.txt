@@ -1,11 +1,11 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   DELETED │ copy.txt
-   STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-    NOSKIP │ cp -aT original.txt copy.txt
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    DELETED │ copy.txt
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        1/2 |      PHASE │ run
+        1/2 |     NOSKIP │ cp -aT original.txt copy.txt
 ───────────────────────────── Missing output files ─────────────────────────────
 copy.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
@@ -15,10 +15,10 @@ Modified out hash    copy.txt (digest 9d30180e ➜ UNKNOWN, size 10 ➜ 0, mode 
 Same inp hash        ./
 Same inp hash        original.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ cp -aT original.txt copy.txt
-   SUCCESS │ cp -aT original.txt copy.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        1/2 |      START │ cp -aT original.txt copy.txt
+        2/2 |    SUCCESS │ cp -aT original.txt copy.txt
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |    WARNING │ Check logs: .stepup/warning.log
+        2/2 |      PHASE │ watch
+        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ See you!

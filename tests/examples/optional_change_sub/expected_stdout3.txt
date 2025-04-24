@@ -1,13 +1,13 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 2 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   UPDATED │ plan.py (digest d58c25e3 ➜ 4f0369ed, size 171 ➜ 170)
-   STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 2 director(y|ies) from initial database
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    UPDATED │ plan.py (digest d58c25e3 ➜ 4f0369ed, size 171 ➜ 170)
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        3/4 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        4/4 |    SUCCESS │ ./plan.py
+        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        4/4 |      PHASE │ watch
+        4/4 |   DIRECTOR │ Stopping workers.
+        4/4 |   DIRECTOR │ See you!

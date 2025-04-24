@@ -1,15 +1,15 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-   DELETED │ inp.txt
-     PHASE │ run
-   WARNING │ 1 step(s) remained pending due to incomplete requirements
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ ./work.py
+        2/2 |    SUCCESS │ ./work.py
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |      PHASE │ watch
+        2/2 |    DELETED │ inp.txt
+        1/2 |      PHASE │ run
+        1/2 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  inp.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -20,19 +20,19 @@ Inputs        STATIC  ./
               STATIC  work.py
 Outputs     OUTDATED  out.txt [amended]
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-   UPDATED │ inp.txt
-     PHASE │ run
-      SKIP │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-   UPDATED │ inp.txt
-     PHASE │ run
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        1/2 |    WARNING │ Skipping file cleanup due to incomplete build.
+        1/2 |    WARNING │ Check logs: .stepup/warning.log
+        1/2 |      PHASE │ watch
+        1/2 |    UPDATED │ inp.txt
+        1/2 |      PHASE │ run
+        1/2 |       SKIP │ ./work.py
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |      PHASE │ watch
+        2/2 |    UPDATED │ inp.txt
+        1/2 |      PHASE │ run
+        1/2 |      START │ ./work.py
+        2/2 |    SUCCESS │ ./work.py
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |      PHASE │ watch
+        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ See you!

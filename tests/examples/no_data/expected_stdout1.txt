@@ -1,29 +1,29 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ grep -i foo data.txt > analyzed.txt
-   SUCCESS │ grep -i foo data.txt > analyzed.txt
-     START │ cat analyzed.txt
-   SUCCESS │ cat analyzed.txt
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ grep -i foo data.txt > analyzed.txt
+        2/3 |    SUCCESS │ grep -i foo data.txt > analyzed.txt
+        2/3 |      START │ cat analyzed.txt
+        3/3 |    SUCCESS │ cat analyzed.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 A bunch of foos walk into a bar,
 and watch some football.
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-   DELETED │ data.txt
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-      SKIP │ cat analyzed.txt
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |      PHASE │ watch
+        3/3 |    DELETED │ data.txt
+        0/3 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |       SKIP │ cat analyzed.txt
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       explained, inp_digest 29d3affc, out_digest 786a02f7
 Same inp hash        ./
 Same inp hash        analyzed.txt
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |      PHASE │ watch
+        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ See you!

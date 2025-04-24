@@ -1,15 +1,15 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cat data/sub/inp.txt > data/sub/out.txt
-   SUCCESS │ cat data/sub/inp.txt > data/sub/out.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-   DELETED │ data/
-     PHASE │ run
-   WARNING │ 1 step(s) remained pending due to incomplete requirements
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ cat data/sub/inp.txt > data/sub/out.txt
+        2/2 |    SUCCESS │ cat data/sub/inp.txt > data/sub/out.txt
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |      PHASE │ watch
+        2/2 |    DELETED │ data/
+        1/2 |      PHASE │ run
+        1/2 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  data/
              MISSING  data/sub/
@@ -22,15 +22,15 @@ Inputs        STATIC  ./
              MISSING  data/sub/inp.txt
 Outputs      AWAITED  data/sub/out.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-   UPDATED │ data/
-   UPDATED │ data/sub/
-   UPDATED │ data/sub/inp.txt
-     PHASE │ run
-      SKIP │ cat data/sub/inp.txt > data/sub/out.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        1/2 |    WARNING │ Skipping file cleanup due to incomplete build.
+        1/2 |    WARNING │ Check logs: .stepup/warning.log
+        1/2 |      PHASE │ watch
+        1/2 |    UPDATED │ data/
+        1/2 |    UPDATED │ data/sub/
+        1/2 |    UPDATED │ data/sub/inp.txt
+        1/2 |      PHASE │ run
+        1/2 |       SKIP │ cat data/sub/inp.txt > data/sub/out.txt
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |      PHASE │ watch
+        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ See you!

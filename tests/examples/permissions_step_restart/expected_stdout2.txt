@@ -1,13 +1,13 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   UPDATED │ step.py (mode -rw-r--r-- ➜ -rwxr-xr-x)
-   STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./step.py
-   SUCCESS │ ./step.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    UPDATED │ step.py (mode -rw-r--r-- ➜ -rwxr-xr-x)
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        1/2 |      PHASE │ run
+        1/2 |      START │ ./step.py
+        2/2 |    SUCCESS │ ./step.py
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |      PHASE │ watch
+        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ See you!

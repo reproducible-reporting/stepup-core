@@ -1,12 +1,12 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Making steps pending that use changed environment variables
-   UPDATED │ ENV_VAR_TEST_STEPUP_SDASFD ='AAAA' ➜ ='BBBB'
-   STARTUP │ Scanning initial database for changed files
-   STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-    NOSKIP │ ./demovars.py > output.txt
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Making steps pending that use changed environment variables
+        0/0 |    UPDATED │ ENV_VAR_TEST_STEPUP_SDASFD ='AAAA' ➜ ='BBBB'
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        1/2 |      PHASE │ run
+        1/2 |     NOSKIP │ ./demovars.py > output.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest a3f83793 ➜ 3e65dc00, out_digest c7193dc7 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_SDASFD ='AAAA' ➜ ='BBBB'
@@ -14,10 +14,10 @@ Modified env var     ENV_VAR_TEST_STEPUP_SDASFD ='AAAA' ➜ ='BBBB'
 Same inp hash        ./
 Same inp hash        demovars.py
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./demovars.py > output.txt
-   SUCCESS │ ./demovars.py > output.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        1/2 |      START │ ./demovars.py > output.txt
+        2/2 |    SUCCESS │ ./demovars.py > output.txt
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |    WARNING │ Check logs: .stepup/warning.log
+        2/2 |      PHASE │ watch
+        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ See you!

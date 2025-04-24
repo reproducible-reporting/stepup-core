@@ -1,31 +1,31 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   UPDATED │ plan.py (digest 2b370a1b ➜ e3ce1d36, size 352 ➜ 414)
-   STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-    NOSKIP │ ./plan.py
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    UPDATED │ plan.py (digest 2b370a1b ➜ e3ce1d36, size 352 ➜ 414)
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 1b84c39e ➜ d4b6d552, out_digest 786a02f7 ➜ (unset)
 Modified inp hash    plan.py (digest 2b370a1b ➜ e3ce1d36, size 352 ➜ 414)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo inp1 > foo1.txt
-   SUCCESS │ echo inp1 > foo1.txt
-     START │ echo inp2 > foo2.txt
-   SUCCESS │ echo inp2 > foo2.txt
-     START │ cat foo1.txt foo2.txt > bar.txt
-   SUCCESS │ cat foo1.txt foo2.txt > bar.txt
-     START │ cat bar.txt > egg.txt
-   SUCCESS │ cat bar.txt > egg.txt
-     START │ cat egg.txt > spam.txt
-   SUCCESS │ cat egg.txt > spam.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/1 |      START │ ./plan.py
+        1/6 |    SUCCESS │ ./plan.py
+        1/6 |      START │ echo inp1 > foo1.txt
+        2/6 |    SUCCESS │ echo inp1 > foo1.txt
+        2/6 |      START │ echo inp2 > foo2.txt
+        3/6 |    SUCCESS │ echo inp2 > foo2.txt
+        3/6 |      START │ cat foo1.txt foo2.txt > bar.txt
+        4/6 |    SUCCESS │ cat foo1.txt foo2.txt > bar.txt
+        4/6 |      START │ cat bar.txt > egg.txt
+        5/6 |    SUCCESS │ cat bar.txt > egg.txt
+        5/6 |      START │ cat egg.txt > spam.txt
+        6/6 |    SUCCESS │ cat egg.txt > spam.txt
+        6/6 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        6/6 |    WARNING │ Check logs: .stepup/warning.log
+        6/6 |      PHASE │ watch
+        6/6 |   DIRECTOR │ Stopping workers.
+        6/6 |   DIRECTOR │ See you!

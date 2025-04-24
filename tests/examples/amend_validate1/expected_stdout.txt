@@ -1,27 +1,27 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo ping > ping.txt
-   SUCCESS │ echo ping > ping.txt
-     START │ echo pong > pong.txt
-   SUCCESS │ echo pong > pong.txt
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-   DELETED │ ping.txt
-   DELETED │ pong.txt
-   DELETED │ work.txt
-     PHASE │ run
-     START │ echo ping > ping.txt
-   SUCCESS │ echo ping > ping.txt
-     START │ echo pong > pong.txt
-   SUCCESS │ echo pong > pong.txt
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/4 |    SUCCESS │ ./plan.py
+        1/4 |      START │ echo ping > ping.txt
+        2/4 |    SUCCESS │ echo ping > ping.txt
+        2/4 |      START │ echo pong > pong.txt
+        3/4 |    SUCCESS │ echo pong > pong.txt
+        3/4 |      START │ ./work.py
+        4/4 |    SUCCESS │ ./work.py
+        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        4/4 |      PHASE │ watch
+        4/4 |    DELETED │ ping.txt
+        4/4 |    DELETED │ pong.txt
+        4/4 |    DELETED │ work.txt
+        1/4 |      PHASE │ run
+        1/4 |      START │ echo ping > ping.txt
+        2/4 |    SUCCESS │ echo ping > ping.txt
+        2/4 |      START │ echo pong > pong.txt
+        3/4 |    SUCCESS │ echo pong > pong.txt
+        3/4 |      START │ ./work.py
+        4/4 |    SUCCESS │ ./work.py
+        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        4/4 |      PHASE │ watch
+        4/4 |   DIRECTOR │ Stopping workers.
+        4/4 |   DIRECTOR │ See you!

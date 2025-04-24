@@ -1,24 +1,24 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py
-RESCHEDULE │ ./work.py
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ ./work.py
+        1/3 | RESCHEDULE │ ./work.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 Missing inputs and/or required directories:
 ping.txt
 pong.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ echo ping > ping.txt
-   SUCCESS │ echo ping > ping.txt
-     START │ ./work.py
-RESCHEDULE │ ./work.py
+        1/3 |      START │ echo ping > ping.txt
+        2/3 |    SUCCESS │ echo ping > ping.txt
+        2/3 |      START │ ./work.py
+        2/3 | RESCHEDULE │ ./work.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 Missing inputs and/or required directories:
 pong.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ 1 step(s) remained pending due to incomplete requirements
+        2/3 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              AWAITED  pong.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -30,8 +30,8 @@ Inputs        STATIC  ./
              AWAITED  (pong.txt) [amended]
 Outputs      AWAITED  work.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        2/3 |    WARNING │ Skipping file cleanup due to incomplete build.
+        2/3 |    WARNING │ Check logs: .stepup/warning.log
+        2/3 |      PHASE │ watch
+        2/3 |   DIRECTOR │ Stopping workers.
+        2/3 |   DIRECTOR │ See you!

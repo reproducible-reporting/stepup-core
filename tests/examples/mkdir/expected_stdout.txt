@@ -1,15 +1,15 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ mkdir -p sub/
-   SUCCESS │ mkdir -p sub/
-     START │ mkdir -p exists/
-   SUCCESS │ mkdir -p exists/
-     START │ echo a > sub/foo.txt
-   SUCCESS │ echo a > sub/foo.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/4 |    SUCCESS │ ./plan.py
+        1/4 |      START │ mkdir -p sub/
+        2/4 |    SUCCESS │ mkdir -p sub/
+        2/4 |      START │ mkdir -p exists/
+        3/4 |    SUCCESS │ mkdir -p exists/
+        3/4 |      START │ echo a > sub/foo.txt
+        4/4 |    SUCCESS │ echo a > sub/foo.txt
+        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        4/4 |      PHASE │ watch
+        4/4 |   DIRECTOR │ Stopping workers.
+        4/4 |   DIRECTOR │ See you!

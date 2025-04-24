@@ -1,16 +1,16 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py --inp=work_inp.pickle --out=work_out.pickle --amend-out
-   SUCCESS │ ./work.py --inp=work_inp.pickle --out=work_out.pickle --amend-out
-     START │ python -c 'import pickle; print(pickle.load(open("work_out.pickle", "rb")))'
-   SUCCESS │ python -c 'import pickle; print(pickle.load(open("work_out.pickle", "rb")))'
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ ./work.py --inp=work_inp.pickle --out=work_out.pickle --amend-out
+        2/3 |    SUCCESS │ ./work.py --inp=work_inp.pickle --out=work_out.pickle --amend-out
+        2/3 |      START │ python -c 'import pickle; print(pickle.load(open("work_out.pickle", "rb")))'
+        3/3 |    SUCCESS │ python -c 'import pickle; print(pickle.load(open("work_out.pickle", "rb")))'
 ─────────────────────────────── Standard output ────────────────────────────────
 4.2
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

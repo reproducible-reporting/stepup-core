@@ -1,11 +1,11 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo soon gone > bye.txt
-   SUCCESS │ echo soon gone > bye.txt
-   WARNING │ 1 step(s) remained pending due to incomplete requirements
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ echo soon gone > bye.txt
+        2/3 |    SUCCESS │ echo soon gone > bye.txt
+        2/3 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              AWAITED  missing.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -15,8 +15,8 @@ Inputs        STATIC  ./
              AWAITED  (missing.txt)
 Outputs      AWAITED  hello.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        2/3 |    WARNING │ Skipping file cleanup due to incomplete build.
+        2/3 |    WARNING │ Check logs: .stepup/warning.log
+        2/3 |      PHASE │ watch
+        2/3 |   DIRECTOR │ Stopping workers.
+        2/3 |   DIRECTOR │ See you!

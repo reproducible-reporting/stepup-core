@@ -1,16 +1,16 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py --inp=work_inp.json --out=work_out.json --amend-out
-   SUCCESS │ ./work.py --inp=work_inp.json --out=work_out.json --amend-out
-     START │ cat work_out.json
-   SUCCESS │ cat work_out.json
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ ./work.py --inp=work_inp.json --out=work_out.json --amend-out
+        2/3 |    SUCCESS │ ./work.py --inp=work_inp.json --out=work_out.json --amend-out
+        2/3 |      START │ cat work_out.json
+        3/3 |    SUCCESS │ cat work_out.json
 ─────────────────────────────── Standard output ────────────────────────────────
 42
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

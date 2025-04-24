@@ -1,23 +1,23 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp -aT inp1.txt out1.txt
-   SUCCESS │ cp -aT inp1.txt out1.txt
-     START │ cp -aT inp2.txt out2.txt
-   SUCCESS │ cp -aT inp2.txt out2.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-   UPDATED │ inp3.txt
-   DELETED │ inp1.txt
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp -aT inp3.txt out3.txt
-   SUCCESS │ cp -aT inp3.txt out3.txt
-  DIRECTOR │ Trying to delete 1 outdated output(s).
-     CLEAN │ out1.txt
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ cp -aT inp1.txt out1.txt
+        2/3 |    SUCCESS │ cp -aT inp1.txt out1.txt
+        2/3 |      START │ cp -aT inp2.txt out2.txt
+        3/3 |    SUCCESS │ cp -aT inp2.txt out2.txt
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |      PHASE │ watch
+        3/3 |    UPDATED │ inp3.txt
+        3/3 |    DELETED │ inp1.txt
+        1/3 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        2/3 |    SUCCESS │ ./plan.py
+        2/3 |      START │ cp -aT inp3.txt out3.txt
+        3/3 |    SUCCESS │ cp -aT inp3.txt out3.txt
+        3/3 |   DIRECTOR │ Trying to delete 1 outdated output(s).
+        3/3 |      CLEAN │ out1.txt
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

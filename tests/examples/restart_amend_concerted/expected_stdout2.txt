@@ -1,12 +1,12 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   UPDATED │ inp1.txt (digest 2600b478 ➜ 827c3d5c)
-   UPDATED │ inp2.txt (digest 3618355c ➜ bc82e0ae)
-   STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
- DROPAMEND │ ./work.py
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    UPDATED │ inp1.txt (digest 2600b478 ➜ 827c3d5c)
+        0/0 |    UPDATED │ inp2.txt (digest 3618355c ➜ bc82e0ae)
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        2/4 |      PHASE │ run
+        2/4 |  DROPAMEND │ ./work.py
 ────────────────────── Outdated amended step information ───────────────────────
 Modified step hash   explained, inp_digest 95c8343f ➜ e8f30349, out_digest 59af1c47 ➜ (unset)
 Modified inp hash    inp2.txt (digest 3618355c ➜ bc82e0ae)
@@ -15,7 +15,7 @@ Deleted inp hash     out1.txt
 Same inp hash        ./
 Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
-    NOSKIP │ ./prep.py run
+        2/4 |     NOSKIP │ ./prep.py run
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 48b2c30d ➜ 677aa982, out_digest dc5a1639 ➜ (unset)
 Modified inp hash    inp1.txt (digest 2600b478 ➜ 827c3d5c)
@@ -23,18 +23,18 @@ Modified inp hash    inp1.txt (digest 2600b478 ➜ 827c3d5c)
 Same inp hash        ./
 Same inp hash        prep.py
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./work.py
-RESCHEDULE │ ./work.py
+        2/4 |      START │ ./work.py
+        2/4 | RESCHEDULE │ ./work.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 Missing inputs and/or required directories:
 out1.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./prep.py run
-   SUCCESS │ ./prep.py run
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        2/4 |      START │ ./prep.py run
+        3/4 |    SUCCESS │ ./prep.py run
+        3/4 |      START │ ./work.py
+        4/4 |    SUCCESS │ ./work.py
+        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        4/4 |    WARNING │ Check logs: .stepup/warning.log
+        4/4 |      PHASE │ watch
+        4/4 |   DIRECTOR │ Stopping workers.
+        4/4 |   DIRECTOR │ See you!

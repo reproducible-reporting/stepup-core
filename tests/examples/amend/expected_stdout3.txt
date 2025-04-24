@@ -1,21 +1,21 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   UPDATED │ inp2.txt (digest 55af8bcf ➜ 705a962e, size 6 ➜ 16)
-   STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-    NOSKIP │ echo word2 > inp2.txt
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    UPDATED │ inp2.txt (digest 55af8bcf ➜ 705a962e, size 6 ➜ 16)
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        2/3 |      PHASE │ run
+        2/3 |     NOSKIP │ echo word2 > inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 23ddc1c2, out_digest e27820eb ➜ c967283e
 Modified out hash    inp2.txt (digest 55af8bcf ➜ 705a962e, size 6 ➜ 16)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
-     START │ echo word2 > inp2.txt
-   SUCCESS │ echo word2 > inp2.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        2/3 |      START │ echo word2 > inp2.txt
+        3/3 |    SUCCESS │ echo word2 > inp2.txt
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |    WARNING │ Check logs: .stepup/warning.log
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

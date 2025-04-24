@@ -1,13 +1,13 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./plan.py  # wd=data/
-   SUCCESS │ ./plan.py  # wd=data/
-     START │ ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
-   SUCCESS │ ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ ./plan.py  # wd=data/
+        2/3 |    SUCCESS │ ./plan.py  # wd=data/
+        2/3 |      START │ ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
+        3/3 |    SUCCESS │ ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

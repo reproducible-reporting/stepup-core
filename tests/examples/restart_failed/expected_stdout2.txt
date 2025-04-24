@@ -1,18 +1,18 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ cat line.txt >> log.txt; exit 1
-      FAIL │ cat line.txt >> log.txt; exit 1
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        1/2 |      PHASE │ run
+        1/2 |      START │ cat line.txt >> log.txt; exit 1
+        1/1 |       FAIL │ cat line.txt >> log.txt; exit 1
 ────────────────────────────────── Step info ───────────────────────────────────
 Command               cat line.txt >> log.txt; exit 1
 Return code           1
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ 1 step(s) failed.
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        1/1 |    WARNING │ 1 step(s) failed.
+        1/1 |    WARNING │ Skipping file cleanup due to incomplete build.
+        1/1 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+        1/1 |      PHASE │ watch
+        1/1 |   DIRECTOR │ Stopping workers.
+        1/1 |   DIRECTOR │ See you!

@@ -1,28 +1,28 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   UPDATED │ plan.py (digest 3bcd5b5a ➜ 95440306, size 102 ➜ 45)
-   STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-    NOSKIP │ ./plan.py
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    UPDATED │ plan.py (digest 3bcd5b5a ➜ 95440306, size 102 ➜ 45)
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        1/2 |      PHASE │ run
+        1/2 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 3e1e0e1d ➜ c4c6ec6f, out_digest 786a02f7 ➜ (unset)
 Modified inp hash    plan.py (digest 3bcd5b5a ➜ 95440306, size 102 ➜ 45)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./plan.py
-      FAIL │ ./plan.py
+        0/1 |      START │ ./plan.py
+        0/0 |       FAIL │ ./plan.py
 ────────────────────────────────── Step info ───────────────────────────────────
 Command               ./plan.py
 Return code           1
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ 1 step(s) failed.
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/0 |    WARNING │ 1 step(s) failed.
+        0/0 |    WARNING │ Skipping file cleanup due to incomplete build.
+        0/0 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+        0/0 |      PHASE │ watch
+        0/0 |   DIRECTOR │ Stopping workers.
+        0/0 |   DIRECTOR │ See you!

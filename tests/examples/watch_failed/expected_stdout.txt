@@ -1,28 +1,28 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cat line.txt >> log.txt; exit 1
-      FAIL │ cat line.txt >> log.txt; exit 1
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ cat line.txt >> log.txt; exit 1
+        1/1 |       FAIL │ cat line.txt >> log.txt; exit 1
 ────────────────────────────────── Step info ───────────────────────────────────
 Command               cat line.txt >> log.txt; exit 1
 Return code           1
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ 1 step(s) failed.
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-     PHASE │ watch
-     PHASE │ run
-     START │ cat line.txt >> log.txt; exit 1
-      FAIL │ cat line.txt >> log.txt; exit 1
+        1/1 |    WARNING │ 1 step(s) failed.
+        1/1 |    WARNING │ Skipping file cleanup due to incomplete build.
+        1/1 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+        1/1 |      PHASE │ watch
+        1/2 |      PHASE │ run
+        1/2 |      START │ cat line.txt >> log.txt; exit 1
+        1/1 |       FAIL │ cat line.txt >> log.txt; exit 1
 ────────────────────────────────── Step info ───────────────────────────────────
 Command               cat line.txt >> log.txt; exit 1
 Return code           1
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ 1 step(s) failed.
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        1/1 |    WARNING │ 1 step(s) failed.
+        1/1 |    WARNING │ Skipping file cleanup due to incomplete build.
+        1/1 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+        1/1 |      PHASE │ watch
+        1/1 |   DIRECTOR │ Stopping workers.
+        1/1 |   DIRECTOR │ See you!

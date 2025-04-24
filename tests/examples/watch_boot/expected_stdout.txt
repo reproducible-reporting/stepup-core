@@ -1,24 +1,24 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo "test 1" > first.txt
-   SUCCESS │ echo "test 1" > first.txt
-     START │ cp first.txt final.txt
-   SUCCESS │ cp first.txt final.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-   UPDATED │ plan.py
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo "test 2" > second.txt
-   SUCCESS │ echo "test 2" > second.txt
-     START │ cp second.txt final.txt
-   SUCCESS │ cp second.txt final.txt
-  DIRECTOR │ Trying to delete 1 outdated output(s).
-     CLEAN │ first.txt
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ echo "test 1" > first.txt
+        2/3 |    SUCCESS │ echo "test 1" > first.txt
+        2/3 |      START │ cp first.txt final.txt
+        3/3 |    SUCCESS │ cp first.txt final.txt
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |      PHASE │ watch
+        3/3 |    UPDATED │ plan.py
+        2/3 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ echo "test 2" > second.txt
+        2/3 |    SUCCESS │ echo "test 2" > second.txt
+        2/3 |      START │ cp second.txt final.txt
+        3/3 |    SUCCESS │ cp second.txt final.txt
+        3/3 |   DIRECTOR │ Trying to delete 1 outdated output(s).
+        3/3 |      CLEAN │ first.txt
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

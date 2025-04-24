@@ -12,6 +12,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no summary yet)
 
+## Added
+
+- Print progress information on every line when stdout is not a terminal.
+
 ## [2.1.6][] - 2025-04-24 {: #v2.1.6 }
 
 This is a minor bugfix release.

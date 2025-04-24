@@ -1,29 +1,29 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-    NOSKIP │ cp -aT inp.txt out.txt
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        1/3 |      PHASE │ run
+        1/3 |     NOSKIP │ cp -aT inp.txt out.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest ba977372 ➜ 832c6c13, out_digest d88d72dc ➜ (unset)
 Modified inp hash    inp.txt (digest ef13f276 ➜ 4f4f82c6)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
-     START │ cp -aT inp.txt out.txt
-   SUCCESS │ cp -aT inp.txt out.txt
-    NOSKIP │ cp -aT out.txt final.txt
+        1/3 |      START │ cp -aT inp.txt out.txt
+        2/3 |    SUCCESS │ cp -aT inp.txt out.txt
+        2/3 |     NOSKIP │ cp -aT out.txt final.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 50406891 ➜ 7779b0cf, out_digest a44a1173 ➜ (unset)
 Modified inp hash    out.txt (digest ef13f276 ➜ 4f4f82c6)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
-     START │ cp -aT out.txt final.txt
-   SUCCESS │ cp -aT out.txt final.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        2/3 |      START │ cp -aT out.txt final.txt
+        3/3 |    SUCCESS │ cp -aT out.txt final.txt
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |    WARNING │ Check logs: .stepup/warning.log
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

@@ -1,20 +1,20 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work1.py
-RESCHEDULE │ ./work1.py
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ ./work1.py
+        1/3 | RESCHEDULE │ ./work1.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 Missing inputs and/or required directories:
 inp2.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./work2.py
-   SUCCESS │ ./work2.py
-     START │ ./work1.py
-   SUCCESS │ ./work1.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        1/3 |      START │ ./work2.py
+        2/3 |    SUCCESS │ ./work2.py
+        2/3 |      START │ ./work1.py
+        3/3 |    SUCCESS │ ./work1.py
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |    WARNING │ Check logs: .stepup/warning.log
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

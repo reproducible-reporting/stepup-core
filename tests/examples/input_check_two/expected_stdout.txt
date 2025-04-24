@@ -1,22 +1,22 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py
-   SUCCESS │ ./work.py
-      FAIL │ cat f1.txt f2.txt > f3.txt
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ ./work.py
+        2/3 |    SUCCESS │ ./work.py
+        2/2 |       FAIL │ cat f1.txt f2.txt > f3.txt
 ────────────────────────────────── Step info ───────────────────────────────────
 Command               cat f1.txt f2.txt > f3.txt
 ──────────────────────────────── Invalid inputs ────────────────────────────────
 Input changed unexpectedly: f1.txt (digest 7ea59e7a ➜ a97fe9ac, size 3 ➜ 15)
 ────────────────────────────────────────────────────────────────────────────────
-     ERROR │ The scheduler has been drained due to unexpected input changes.
-   WARNING │ 1 step(s) failed.
-   WARNING │ Scheduler is put on hold. Not reporting pending steps.
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-     PHASE │ watch
-   UPDATED │ f1.txt
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        2/2 |      ERROR │ The scheduler has been drained due to unexpected input changes.
+        2/2 |    WARNING │ 1 step(s) failed.
+        2/2 |    WARNING │ Scheduler is put on hold. Not reporting pending steps.
+        2/2 |    WARNING │ Skipping file cleanup due to incomplete build.
+        2/2 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+        2/2 |      PHASE │ watch
+        2/2 |    UPDATED │ f1.txt
+        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ See you!

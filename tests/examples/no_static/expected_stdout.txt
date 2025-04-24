@@ -1,16 +1,16 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo "spam" > first.txt
-   SUCCESS │ echo "spam" > first.txt
-     START │ cp -v first.txt second.txt
-   SUCCESS │ cp -v first.txt second.txt
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ echo "spam" > first.txt
+        2/3 |    SUCCESS │ echo "spam" > first.txt
+        2/3 |      START │ cp -v first.txt second.txt
+        3/3 |    SUCCESS │ cp -v first.txt second.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 'first.txt' -> 'second.txt'
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

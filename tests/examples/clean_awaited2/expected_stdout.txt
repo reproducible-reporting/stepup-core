@@ -1,16 +1,16 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp -aT input.txt output.txt
-   SUCCESS │ cp -aT input.txt output.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-   UPDATED │ output.txt
-   DELETED │ input.txt
-     PHASE │ run
-   WARNING │ 1 step(s) remained pending due to incomplete requirements
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ cp -aT input.txt output.txt
+        2/2 |    SUCCESS │ cp -aT input.txt output.txt
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |      PHASE │ watch
+        2/2 |    UPDATED │ output.txt
+        2/2 |    DELETED │ input.txt
+        1/2 |      PHASE │ run
+        1/2 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  input.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -20,8 +20,8 @@ Inputs        STATIC  ./
              MISSING  input.txt
 Outputs      AWAITED  output.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        1/2 |    WARNING │ Skipping file cleanup due to incomplete build.
+        1/2 |    WARNING │ Check logs: .stepup/warning.log
+        1/2 |      PHASE │ watch
+        1/2 |   DIRECTOR │ Stopping workers.
+        1/2 |   DIRECTOR │ See you!

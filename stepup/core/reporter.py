@@ -174,9 +174,14 @@ class ReporterHandler:
         line = f"[bold {action_color}]{action:>10s}[/] │ [{descr_color}]{description}[/]"
         if self.show_perf:
             now = perf_counter()
-            line = f"[gray46]{perf_counter() - self.start:7.2f} {nrun:{nd}d}[/] " + line
+            line = f"[gray46]{perf_counter() - self.start:7.2f} {nrun:{nd}d} [/]" + line
             if action == "PHASE":
                 self.start = now
+        if not self.console.is_terminal:
+            # If not a terminal, the progress bars are not shown,
+            # so we need to print the completed and total number of steps.
+            progress = f"{nsuc}/{nsuc + nrun + npen}"
+            line = f"[gray46]{progress:>11s} | [/]" + line
         self.console.print(
             line, no_wrap=self.console.is_terminal, soft_wrap=not self.console.is_terminal
         )

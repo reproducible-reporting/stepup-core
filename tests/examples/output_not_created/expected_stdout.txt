@@ -1,21 +1,21 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ touch input.txt
-   SUCCESS │ touch input.txt
-     START │ cp input.txt wrong.txt
-      FAIL │ cp input.txt wrong.txt
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ touch input.txt
+        2/3 |    SUCCESS │ touch input.txt
+        2/3 |      START │ cp input.txt wrong.txt
+        2/2 |       FAIL │ cp input.txt wrong.txt
 ────────────────────────────────── Step info ───────────────────────────────────
 Command               cp input.txt wrong.txt
 Return code           0
 ───────────────────────── Expected outputs not created ─────────────────────────
 output.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ 1 step(s) failed.
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        2/2 |    WARNING │ 1 step(s) failed.
+        2/2 |    WARNING │ Skipping file cleanup due to incomplete build.
+        2/2 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+        2/2 |      PHASE │ watch
+        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ See you!

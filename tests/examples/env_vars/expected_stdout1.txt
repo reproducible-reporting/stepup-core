@@ -1,17 +1,17 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./demovars.py
-   SUCCESS │ ./demovars.py
-     START │ ./printvars.py
-   SUCCESS │ ./printvars.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-   UPDATED │ variables.json
-     PHASE │ run
-    NOSKIP │ ./demovars.py
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ ./demovars.py
+        2/3 |    SUCCESS │ ./demovars.py
+        2/3 |      START │ ./printvars.py
+        3/3 |    SUCCESS │ ./printvars.py
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |      PHASE │ watch
+        3/3 |    UPDATED │ variables.json
+        2/3 |      PHASE │ run
+        2/3 |     NOSKIP │ ./demovars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest bc4a25f2 ➜ 0aee69e2, out_digest 786a02f7 ➜ (unset)
 Modified inp hash    variables.json (digest 9fcdaff9 ➜ b38f0cd4, size 35 ➜ 67)
@@ -19,9 +19,9 @@ Modified inp hash    variables.json (digest 9fcdaff9 ➜ b38f0cd4, size 35 ➜ 6
 Same inp hash        ./
 Same inp hash        demovars.py
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./demovars.py
-   SUCCESS │ ./demovars.py
-    NOSKIP │ ./printvars.py
+        1/2 |      START │ ./demovars.py
+        2/3 |    SUCCESS │ ./demovars.py
+        2/3 |     NOSKIP │ ./printvars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 5c6da1fb ➜ 940e5d45, out_digest 31d3017c ➜ (unset)
 Added env var        ENV_VAR_TEST_STEPUP_DFTHYH ='BBBB'
@@ -30,15 +30,15 @@ Same inp hash        ./
 Same inp hash        printvars.py
 Same env var         ENV_VAR_TEST_STEPUP_AWDFTD ='AAAA'
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./printvars.py
-   SUCCESS │ ./printvars.py
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-   UPDATED │ variables.json
- UNCHANGED │ variables.json
-     PHASE │ run
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        2/3 |      START │ ./printvars.py
+        3/3 |    SUCCESS │ ./printvars.py
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |    WARNING │ Check logs: .stepup/warning.log
+        3/3 |      PHASE │ watch
+        3/3 |    UPDATED │ variables.json
+        3/3 |  UNCHANGED │ variables.json
+        3/3 |      PHASE │ run
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

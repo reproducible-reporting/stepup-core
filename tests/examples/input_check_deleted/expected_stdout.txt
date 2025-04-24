@@ -1,23 +1,23 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo hi > f1.txt
-   SUCCESS │ echo hi > f1.txt
-     START │ ./work.py
-      FAIL │ ./work.py
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/4 |    SUCCESS │ ./plan.py
+        1/4 |      START │ echo hi > f1.txt
+        2/4 |    SUCCESS │ echo hi > f1.txt
+        2/4 |      START │ ./work.py
+        2/3 |       FAIL │ ./work.py
 ────────────────────────────────── Step info ───────────────────────────────────
 Command               ./work.py
 Return code           0
 ──────────────────────────────── Invalid inputs ────────────────────────────────
 Input vanished unexpectedly: f1.txt
 ────────────────────────────────────────────────────────────────────────────────
-     ERROR │ The scheduler has been drained due to unexpected input changes.
-   WARNING │ 1 step(s) failed.
-   WARNING │ Scheduler is put on hold. Not reporting pending steps.
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        2/3 |      ERROR │ The scheduler has been drained due to unexpected input changes.
+        2/3 |    WARNING │ 1 step(s) failed.
+        2/3 |    WARNING │ Scheduler is put on hold. Not reporting pending steps.
+        2/3 |    WARNING │ Skipping file cleanup due to incomplete build.
+        2/3 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+        2/3 |      PHASE │ watch
+        2/3 |   DIRECTOR │ Stopping workers.
+        2/3 |   DIRECTOR │ See you!

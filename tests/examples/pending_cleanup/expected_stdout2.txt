@@ -1,13 +1,13 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   DELETED │ bye.txt
-   STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ echo soon gone > bye.txt
-   SUCCESS │ echo soon gone > bye.txt
-   WARNING │ 1 step(s) remained pending due to incomplete requirements
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    DELETED │ bye.txt
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        1/3 |      PHASE │ run
+        1/3 |      START │ echo soon gone > bye.txt
+        2/3 |    SUCCESS │ echo soon gone > bye.txt
+        2/3 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              AWAITED  missing.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -17,8 +17,8 @@ Inputs        STATIC  ./
              AWAITED  (missing.txt)
 Outputs      AWAITED  hello.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        2/3 |    WARNING │ Skipping file cleanup due to incomplete build.
+        2/3 |    WARNING │ Check logs: .stepup/warning.log
+        2/3 |      PHASE │ watch
+        2/3 |   DIRECTOR │ Stopping workers.
+        2/3 |   DIRECTOR │ See you!

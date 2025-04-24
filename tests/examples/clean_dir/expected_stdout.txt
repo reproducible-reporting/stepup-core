@@ -1,21 +1,21 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ mkdir -p sub/
-   SUCCESS │ mkdir -p sub/
-     START │ echo hello > sub/inp.txt
-   SUCCESS │ echo hello > sub/inp.txt
-     START │ cp -aT sub/inp.txt sub/tmp.txt
-   SUCCESS │ cp -aT sub/inp.txt sub/tmp.txt
-     START │ cp -aT sub/tmp.txt sub/out.txt
-   SUCCESS │ cp -aT sub/tmp.txt sub/out.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-   DELETED │ sub/tmp.txt
-   DELETED │ sub/out.txt
-   DELETED │ sub/inp.txt
-   DELETED │ sub/
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/5 |    SUCCESS │ ./plan.py
+        1/5 |      START │ mkdir -p sub/
+        2/5 |    SUCCESS │ mkdir -p sub/
+        2/5 |      START │ echo hello > sub/inp.txt
+        3/5 |    SUCCESS │ echo hello > sub/inp.txt
+        3/5 |      START │ cp -aT sub/inp.txt sub/tmp.txt
+        4/5 |    SUCCESS │ cp -aT sub/inp.txt sub/tmp.txt
+        4/5 |      START │ cp -aT sub/tmp.txt sub/out.txt
+        5/5 |    SUCCESS │ cp -aT sub/tmp.txt sub/out.txt
+        5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        5/5 |      PHASE │ watch
+        5/5 |    DELETED │ sub/tmp.txt
+        5/5 |    DELETED │ sub/out.txt
+        5/5 |    DELETED │ sub/inp.txt
+        5/5 |    DELETED │ sub/
+        5/5 |   DIRECTOR │ Stopping workers.
+        5/5 |   DIRECTOR │ See you!

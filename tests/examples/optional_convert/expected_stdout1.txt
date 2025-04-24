@@ -1,16 +1,16 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp -aT raw3.txt converted3.txt
-   SUCCESS │ cp -aT raw3.txt converted3.txt
-     START │ cp -aT converted3.txt used.txt
-   SUCCESS │ cp -aT converted3.txt used.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-     PHASE │ run
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ cp -aT raw3.txt converted3.txt
+        2/3 |    SUCCESS │ cp -aT raw3.txt converted3.txt
+        2/3 |      START │ cp -aT converted3.txt used.txt
+        3/3 |    SUCCESS │ cp -aT converted3.txt used.txt
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |      PHASE │ watch
+        3/3 |      PHASE │ run
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

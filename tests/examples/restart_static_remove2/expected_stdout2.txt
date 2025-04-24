@@ -1,23 +1,23 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   UPDATED │ plan.py (digest d2122958 ➜ ec13a3f4, size 254 ➜ 101)
-   DELETED │ inp.txt
-   STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
- DROPAMEND │ ./plan.py
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    UPDATED │ plan.py (digest d2122958 ➜ ec13a3f4, size 254 ➜ 101)
+        0/0 |    DELETED │ inp.txt
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        1/2 |      PHASE │ run
+        1/2 |  DROPAMEND │ ./plan.py
 ────────────────────── Outdated amended step information ───────────────────────
 Modified step hash   compact ➜ explained, inp_digest fa44555e ➜ 5fd3d015, out_digest d26e67b0 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo bye > out2.txt
-   SUCCESS │ echo bye > out2.txt
-  DIRECTOR │ Trying to delete 2 outdated output(s).
-     CLEAN │ out1.txt
-     CLEAN │ out.txt
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ echo bye > out2.txt
+        2/2 |    SUCCESS │ echo bye > out2.txt
+        2/2 |   DIRECTOR │ Trying to delete 2 outdated output(s).
+        2/2 |      CLEAN │ out1.txt
+        2/2 |      CLEAN │ out.txt
+        2/2 |    WARNING │ Check logs: .stepup/warning.log
+        2/2 |      PHASE │ watch
+        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ See you!

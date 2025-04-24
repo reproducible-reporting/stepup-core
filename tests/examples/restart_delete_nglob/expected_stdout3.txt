@@ -1,15 +1,15 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   DELETED │ inp2.txt
-   STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-  DIRECTOR │ Trying to delete 2 outdated output(s).
-     CLEAN │ out2.txt
-     CLEAN │ foo2.txt
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    DELETED │ inp2.txt
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/3 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/1 |    SUCCESS │ ./plan.py
+        1/1 |   DIRECTOR │ Trying to delete 2 outdated output(s).
+        1/1 |      CLEAN │ out2.txt
+        1/1 |      CLEAN │ foo2.txt
+        1/1 |      PHASE │ watch
+        1/1 |   DIRECTOR │ Stopping workers.
+        1/1 |   DIRECTOR │ See you!

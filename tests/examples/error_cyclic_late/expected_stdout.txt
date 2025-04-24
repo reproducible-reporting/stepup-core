@@ -1,16 +1,16 @@
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-      FAIL │ ./plan.py
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        0/1 |       FAIL │ ./plan.py
 ────────────────────────────────── Step info ───────────────────────────────────
 Command               ./plan.py
 Return code           1
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ 1 step(s) failed.
-   WARNING │ 1 step(s) remained pending due to incomplete requirements
+        0/1 |    WARNING │ 1 step(s) failed.
+        0/1 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              AWAITED  first
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -20,8 +20,8 @@ Inputs        STATIC  ./
              AWAITED  (first)
 Outputs      AWAITED  second
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build.
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/1 |    WARNING │ Skipping file cleanup due to incomplete build.
+        0/1 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+        0/1 |      PHASE │ watch
+        0/1 |   DIRECTOR │ Stopping workers.
+        0/1 |   DIRECTOR │ See you!
