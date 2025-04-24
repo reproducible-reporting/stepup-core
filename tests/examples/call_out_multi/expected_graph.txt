@@ -1,0 +1,65 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:data1.json
+            supplies   file:data2.json
+            supplies   file:generate.py
+            supplies   file:plan.py
+            supplies   step:./generate.py '{"size": 10}' --out=data1.json
+            supplies   step:./generate.py '{"size": 20}' --out=data2.json
+            supplies   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:generate.py
+             creates   step:./generate.py '{"size": 10}' --out=data1.json
+             creates   step:./generate.py '{"size": 20}' --out=data2.json
+
+file:generate.py
+               state = STATIC
+          created by   step:./plan.py
+            consumes   file:./
+            supplies   step:./generate.py '{"size": 10}' --out=data1.json
+            supplies   step:./generate.py '{"size": 20}' --out=data2.json
+
+step:./generate.py '{"size": 10}' --out=data1.json
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:generate.py
+             creates   file:data1.json
+            supplies   file:data1.json
+
+file:data1.json
+               state = BUILT
+          created by   step:./generate.py '{"size": 10}' --out=data1.json
+            consumes   file:./
+            consumes   step:./generate.py '{"size": 10}' --out=data1.json
+
+step:./generate.py '{"size": 20}' --out=data2.json
+               state = SUCCEEDED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:generate.py
+             creates   file:data2.json
+            supplies   file:data2.json
+
+file:data2.json
+               state = BUILT
+          created by   step:./generate.py '{"size": 20}' --out=data2.json
+            consumes   file:./
+            consumes   step:./generate.py '{"size": 20}' --out=data2.json

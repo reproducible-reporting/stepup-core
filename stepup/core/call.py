@@ -92,6 +92,14 @@ def driver(obj: Any = None):
     # Filter kwargs to only include those accepted by the run function
     run_signature = inspect.signature(run)
     filtered_kwargs = {k: v for k, v in kwargs.items() if k in run_signature.parameters}
+    # Turn inp, out and vol kwargs into lists of Path instances.
+    for key in ("inp", "out", "vol"):
+        key_paths = filtered_kwargs.get(key)
+        if isinstance(key_paths, str):
+            filtered_kwargs[key] = Path(key_paths)
+        elif isinstance(key_paths, list):
+            filtered_kwargs[key] = [Path(p) for p in key_paths]
+    # Call the run function with the filtered kwargs.
     result = run(**filtered_kwargs)
 
     # Use a local import because the API is only needed when the driver is called.
