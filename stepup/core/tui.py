@@ -69,10 +69,6 @@ async def async_main():
                     )
             except StopIteration:
                 pass
-    if Path(".stepup/graph.db-wal").exists():
-        raise RuntimeError("Old director still running? .stepup/graph.db-wal still exists.")
-    if Path(".stepup/graph.db-shm").exists():
-        raise RuntimeError("Old director still running? .stepup/graph.db-shm still exists.")
 
     # Create dir
     dir_stepup = Path(".stepup")
