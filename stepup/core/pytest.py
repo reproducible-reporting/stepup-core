@@ -94,7 +94,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
             cur = cur.replace(Path.cwd(), "${PWD}")
             cur = cur.replace(workdir, "${CASE}")
             # - Listening paths are random
-            cur = re.sub(r"^.* Listening on .*\n", "", cur)
+            cur = re.sub(r"        0/0 \|   DIRECTOR │ Listening on .*\n", "", cur)
             # - Exact line numbers in exceptions change often, not important
             cur = re.sub(r", line \d+, in ", ", line ---, in ", cur)
             # - Remove new types of traceback output not present in Python 3.11

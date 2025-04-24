@@ -1,5 +1,4 @@
 Changing to ${CASE}/source
-        0/0 |   DIRECTOR │ Listening on /tmp/stepup-aukgk2zx/director (StepUp 2.1.4.post4)
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run

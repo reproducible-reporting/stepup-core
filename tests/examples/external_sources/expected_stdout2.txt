@@ -1,5 +1,4 @@
 Changing to ${CASE}/project
-        0/0 |   DIRECTOR │ Listening on /tmp/stepup-ojdrcezd/director (StepUp 2.1.4.post4)
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 3 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
