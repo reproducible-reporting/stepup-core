@@ -1462,6 +1462,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Changed
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#v2.1.6" class="md-nav__link">
     <span class="md-ellipsis">
       2.1.6 - 2025-04-24
@@ -1567,6 +1576,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Changed
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#v2.1.6" class="md-nav__link">
     <span class="md-ellipsis">
       2.1.6 - 2025-04-24
@@ -1613,6 +1631,10 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>Print progress information on every line when stdout is not a terminal.</li>
 <li>The <code>stepup</code> command now accepts the <code>--no-clean</code> option
   to disable removal of outdated outputs at the end of a successful run.</li>
+</ul>
+<h2 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Simplified the output of the <code>cases</code> command of the script <a class="autorefs autorefs-internal" title="driver(obj=None)" href="../reference/stepup.core.script/#stepup.core.script.driver"><code>driver()</code></a>.</li>
 </ul>
 <h2 id="v2.1.6"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.6">2.1.6</a> - 2025-04-24<a class="headerlink" href="#v2.1.6" title="Permanent link">&para;</a></h2>
 <p>This is a minor bugfix release.</p>
@@ -1675,7 +1697,7 @@ Finally, error messages and exception handling have been improved.</p>
   will cause the step to fail and the scheduler to drain.
   (This feature requires a database schema version increase.)</li>
 </ul>
-<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
+<h3 id="changed_1">Changed<a class="headerlink" href="#changed_1" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Because of other database schema changes in this release,
   also the <code>FileState</code> enumeration was relabeled in a more chronological order.</li>
@@ -1719,14 +1741,14 @@ for more fine-grained control over automatic dependency tracking.</p>
   The <code>script</code> and <code>call</code> drivers use this to decide which imported Python modules
   to consider as inputs to a step.</li>
 </ul>
-<h3 id="changed_1">Changed<a class="headerlink" href="#changed_1" title="Permanent link">&para;</a></h3>
+<h3 id="changed_2">Changed<a class="headerlink" href="#changed_2" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Switch from <a href="https://semver.org/spec/v2.0.0.html">SemVer</a> to
   <a href="https://jacobtomlinson.dev/effver/">EffVer</a>.</li>
 </ul>
 <h2 id="v2.0.5"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.5">2.0.5</a> - 2025-01-28<a class="headerlink" href="#v2.0.5" title="Permanent link">&para;</a></h2>
 <p>This is a minor release, just adding a utility function.</p>
-<h3 id="changed_2">Changed<a class="headerlink" href="#changed_2" title="Permanent link">&para;</a></h3>
+<h3 id="changed_3">Changed<a class="headerlink" href="#changed_3" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Use <code>string_to_bool</code> to interpret the environment variable <code>STEPUP_STRICT</code>.
   E.g., setting it to <code>"0"</code> will disable strict mode.</li>
@@ -1794,7 +1816,7 @@ for more fine-grained control over automatic dependency tracking.</p>
 <li>Cleanly exit the director process upon several types of exceptions (instead of hanging).</li>
 <li>Gracefully handle <code>SIGINT</code> and <code>SIGTERM</code>, e.g. pressing <code>ctrl-c</code> in the terminal.</li>
 </ul>
-<h3 id="changed_3">Changed<a class="headerlink" href="#changed_3" title="Permanent link">&para;</a></h3>
+<h3 id="changed_4">Changed<a class="headerlink" href="#changed_4" title="Permanent link">&para;</a></h3>
 <ul>
 <li>
 <p>Breaking changes to <code>stepup.core.api</code>:</p>
@@ -1912,7 +1934,7 @@ must be given as a keyword argument.</li>
   These are only valid when there is a unique match,
   i.e. when the <code>files()</code> method or property has exactly one path.</li>
 </ul>
-<h3 id="changed_4">Changed<a class="headerlink" href="#changed_4" title="Permanent link">&para;</a></h3>
+<h3 id="changed_5">Changed<a class="headerlink" href="#changed_5" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Migrate <code>load_module_file</code> to stepup-reprep.</li>
 <li>Replace <a href="https://github.com/gorakhargosh/watchdog">watchdog</a>
@@ -1970,7 +1992,7 @@ must be given as a keyword argument.</li>
 <li>Minor code cleanups</li>
 </ul>
 <h2 id="v1.2.4"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.4">1.2.4</a> - 2024-05-27<a class="headerlink" href="#v1.2.4" title="Permanent link">&para;</a></h2>
-<h3 id="changed_5">Changed<a class="headerlink" href="#changed_5" title="Permanent link">&para;</a></h3>
+<h3 id="changed_6">Changed<a class="headerlink" href="#changed_6" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Include &ldquo;hidden&rdquo; files when globbing.</li>
 </ul>
@@ -1981,7 +2003,7 @@ must be given as a keyword argument.</li>
 <li>Pool definitions are stored in workflow and replayed correctly when a step is skipped.</li>
 </ul>
 <h2 id="v1.2.3"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.3">1.2.3</a> - 2024-05-19<a class="headerlink" href="#v1.2.3" title="Permanent link">&para;</a></h2>
-<h3 id="changed_6">Changed<a class="headerlink" href="#changed_6" title="Permanent link">&para;</a></h3>
+<h3 id="changed_7">Changed<a class="headerlink" href="#changed_7" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Completed and revised docstrings in <code>stepup.core.nglob</code>,
   and added this module to the reference documentation.</li>
@@ -1991,7 +2013,7 @@ must be given as a keyword argument.</li>
 <li>Improve hash computation of a symbolic links in <code>stepup.core.hash</code>.</li>
 </ul>
 <h2 id="v1.2.2"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v1.2.2">1.2.2</a> - 2024-05-16<a class="headerlink" href="#v1.2.2" title="Permanent link">&para;</a></h2>
-<h3 id="changed_7">Changed<a class="headerlink" href="#changed_7" title="Permanent link">&para;</a></h3>
+<h3 id="changed_8">Changed<a class="headerlink" href="#changed_8" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Documentation updates.</li>
 </ul>
@@ -2011,7 +2033,7 @@ must be given as a keyword argument.</li>
 <li>Export of graphs to <a href="https://graphviz.org/">Graphviz</a> DOT files.</li>
 <li>The <code>cleanup</code> script for manually cleaning up outputs.</li>
 </ul>
-<h3 id="changed_8">Changed<a class="headerlink" href="#changed_8" title="Permanent link">&para;</a></h3>
+<h3 id="changed_9">Changed<a class="headerlink" href="#changed_9" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Documentation updates.</li>
 <li>Limit acyclic constraint to the supplier-consumer graph.
