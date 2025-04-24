@@ -40,6 +40,7 @@ grep bar bar.txt
 rm .stepup/*.log
 rm foo.txt
 rm static/foo.txt
+echo other > static/bar.txt
 cp plan2.py plan.py
 stepup -w -e -n 1 & # > current_stdout2.txt &
 
@@ -65,4 +66,4 @@ wait
 [[ ! -f foo.txt ]] || exit 1
 [[ -f static/bar.txt ]] || exit 1
 [[ -f bar.txt ]] || exit 1
-grep bar bar.txt
+grep other bar.txt
