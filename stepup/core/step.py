@@ -23,7 +23,7 @@ import logging
 import os
 import pickle
 from collections.abc import Iterator
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 import attrs
 from path import Path
@@ -295,7 +295,7 @@ class Step(Node):
         """
         idep = super().add_supplier(supplier)
         if self.get_mandatory() != Mandatory.NO:
-            for step in supplier.suppliers(kind="step"):
+            for step in supplier.suppliers(Step):
                 step.make_required()
         return idep
 
@@ -316,7 +316,7 @@ class Step(Node):
         if self.get_mandatory() != Mandatory.NO:
             steps = set()
             for supplier in _suppliers:
-                for step in supplier.suppliers(kind="step"):
+                for step in supplier.suppliers(Step):
                     steps.add(step)
             for step in steps:
                 step.undo_required()
@@ -338,22 +338,16 @@ class Step(Node):
     # Getters and setters
     #
 
-    def _dependencies(
+    def _dependencies_str(
         self,
-        kind: str | None = None,
-        include_orphans: bool = False,
-        yield_str: bool = False,
+        node_type: type = Self,
         do_suppliers: bool = True,
-    ) -> Iterator[Node | tuple[int, str]]:
-        iterator = super()._dependencies(kind, include_orphans, yield_str, do_suppliers)
-        if yield_str:
-            # TODO: make more efficient with executemany
-            sql = "SELECT 1 FROM amended_dep WHERE i = ?"
-            for idep, node_str in iterator:
-                amended = self.con.execute(sql, (idep,)).fetchone() is not None
-                yield idep, f"{node_str} [amended]" if amended else node_str
-        else:
-            yield from iterator
+    ) -> Iterator[tuple[int, str]]:
+        # TODO: make more efficient with executemany
+        sql = "SELECT 1 FROM amended_dep WHERE i = ?"
+        for idep, node_str in super()._dependencies_str(node_type, do_suppliers):
+            amended = self.con.execute(sql, (idep,)).fetchone() is not None
+            yield idep, f"{node_str} [amended]" if amended else node_str
 
     def properties(self) -> tuple[str, Path, StepState, str, bool, Mandatory]:
         row = self.con.execute(
@@ -853,7 +847,7 @@ class Step(Node):
         if new_hash is None:
             rescheduled_info = self.get_rescheduled_info()
             # Update states, needed for files that have not changed since previous run.
-            for file in self.products(kind="file"):
+            for file in self.products(File):
                 if file.get_state() == FileState.BUILT:
                     file.set_state(FileState.OUTDATED)
             if rescheduled_info != "":
@@ -871,7 +865,7 @@ class Step(Node):
             logger.info("Succeeded step: %s", self.label)
             self.set_state(StepState.SUCCEEDED)
             # Update states, needed for files that have not changed since previous run.
-            for file in self.products(kind="file"):
+            for file in self.products(File):
                 if file.get_state() == FileState.OUTDATED:
                     file.set_state(FileState.BUILT)
                     file.release_pending()
@@ -934,6 +928,6 @@ class Step(Node):
             logger.info("Mark %s step PENDING: %s", state.name, self.label)
             self.set_state(StepState.PENDING)
             # First make all consumers (output files) pending
-            for file in self.consumers(kind="file"):
+            for file in self.consumers(File):
                 if file.get_state() == FileState.BUILT:
                     file.mark_outdated()

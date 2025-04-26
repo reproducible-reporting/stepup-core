@@ -37,6 +37,7 @@ from stepup.core.file import File
 from stepup.core.hash import FileHash
 from stepup.core.reporter import ReporterClient
 from stepup.core.rpc import AsyncRPCClient
+from stepup.core.step import Step
 from stepup.core.workflow import Workflow
 
 pytest.register_assert_rewrite("stepup.core.pytest")
@@ -102,7 +103,7 @@ def declare_static(workflow, creator, paths):
     missing = workflow.declare_missing(creator, paths)
     checked = [(path, fake_hash(path)) for path, _ in missing]
     workflow.update_file_hashes(checked, "confirmed")
-    return [workflow.find("file", path) for path in paths]
+    return [workflow.find(File, path) for path in paths]
 
 
 @pytest.fixture
@@ -125,7 +126,7 @@ def wfp() -> Iterator[Workflow]:
         workflow.define_step(root, "./plan.py", inp_paths=["plan.py"])
 
         # Check the basics of the workflow.
-        plan = workflow.find("step", "./plan.py")
+        plan = workflow.find(Step, "./plan.py")
         nodes = list(workflow.nodes())
         assert nodes[0] == root
         for node in nodes[1:3]:

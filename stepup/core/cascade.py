@@ -24,7 +24,7 @@ import logging
 import sqlite3
 import sys
 from collections.abc import Iterable, Iterator
-from typing import Self
+from typing import Self, TypeVar
 
 import attrs
 
@@ -106,6 +106,9 @@ SELECT current FROM all_consumer
 """
 
 DROP_CONSUMERS = "DROP TABLE IF EXISTS temp.initial_consumer"
+
+
+NodeType = TypeVar("NodeType")
 
 
 @attrs.define(frozen=True)
@@ -216,21 +219,8 @@ class Node:
         row = self.con.execute("SELECT orphan FROM node WHERE i = ?", (self.i,)).fetchone()
         return bool(row[0])
 
-    def creator(
-        self, *, return_orphan: bool = False
-    ) -> Self | None | tuple[Self, bool] | tuple[None, None]:
+    def creator(self) -> Self | None:
         """Return the creator of the node."""
-        if return_orphan:
-            row = self.con.execute(
-                "SELECT i, kind, label, orphan "
-                "FROM node WHERE i = (SELECT creator FROM node WHERE i = ?)",
-                (self.i,),
-            ).fetchone()
-            if row is None:
-                return None, None
-            i, kind, label, is_orphan = row
-            return self.cascade._node_classes[kind](self.cascade, i, label), is_orphan
-
         row = self.con.execute(
             "SELECT node.i, node.kind, node.label "
             "FROM node WHERE node.i = (SELECT creator FROM node WHERE i = ?)",
@@ -241,60 +231,100 @@ class Node:
         i, kind, label = row
         return self.cascade._node_classes[kind](self.cascade, i, label)
 
-    def products(
-        self,
-        kind: str | None = None,
-        yield_str: bool = False,
-    ) -> Iterator[Self]:
+    def creator_orphan(self) -> tuple[Self, bool] | tuple[None, None]:
+        """Return the creator of the node."""
+        row = self.con.execute(
+            "SELECT i, kind, label, orphan "
+            "FROM node WHERE i = (SELECT creator FROM node WHERE i = ?)",
+            (self.i,),
+        ).fetchone()
+        if row is None:
+            return None, None
+        i, kind, label, is_orphan = row
+        return self.cascade._node_classes[kind](self.cascade, i, label), is_orphan
+
+    def products(self, node_type: type[NodeType] = Self) -> Iterator[NodeType]:
         """Iterate over (a subset of) products of this node."""
-        query = "SELECT i, kind, label, orphan FROM node WHERE creator = ?"
+        query = "SELECT i, kind, label FROM node WHERE creator = ?"
         data = [self.i]
-        if kind is not None:
+        if node_type is not Self:
             query += " AND kind = ?"
-            data.append(kind)
-        for i, kind1, label, is_orphan in self.con.execute(query, data):
-            node = self.cascade.node_classes[kind1](self.cascade, i, label)
-            yield node.key(is_orphan) if yield_str else node
+            data.append(node_type.kind())
+        for i, kind, label in self.con.execute(query, data):
+            yield self.cascade.node_classes[kind](self.cascade, i, label)
+
+    def products_str(self, node_type: type[NodeType] = Self) -> Iterator[str]:
+        """Iterate over (a subset of) products of this node."""
+        query = "SELECT kind, label, orphan FROM node WHERE creator = ?"
+        data = [self.i]
+        if node_type is not Self:
+            query += " AND kind = ?"
+            data.append(node_type.kind())
+        for kind, label, is_orphan in self.con.execute(query, data):
+            node_str = f"{kind}:{label}"
+            if is_orphan:
+                node_str = f"({node_str})"
+            yield node_str
 
     def _dependencies(
         self,
-        kind: str | None = None,
+        node_type: type[NodeType] = Self,
         include_orphans: bool = False,
-        yield_str: bool = False,
         do_suppliers: bool = True,
-    ) -> Iterator[Self | tuple[int, str]]:
-        sql = (
-            "SELECT node.i, kind, label, orphan, dependency.i "
-            "FROM node JOIN dependency ON node.i = "
-        )
+    ) -> Iterator[NodeType]:
+        sql = "SELECT node.i, kind, label FROM node JOIN dependency ON node.i = "
         if do_suppliers:
             sql += "supplier WHERE consumer = ?"
         else:
             sql += "consumer WHERE supplier = ?"
         data = [self.i]
-        if kind is not None:
+        if node_type is not Self:
             sql += " AND kind = ?"
-            data.append(kind)
+            data.append(node_type.kind())
         if not include_orphans:
             sql += " AND NOT orphan"
-        for i, kind1, label, is_orphan, idep in self.cascade.con.execute(sql, data):
-            node = self.cascade.node_classes[kind1](self.cascade, i, label)
-            if yield_str:
-                yield idep, node.key(is_orphan)
-            else:
-                yield node
+        for i, kind, label in self.cascade.con.execute(sql, data):
+            yield self.cascade.node_classes[kind](self.cascade, i, label)
 
     def suppliers(
-        self, kind: str | None = None, include_orphans: bool = False, yield_str: bool = False
-    ) -> Iterator[Self | tuple[int, str]]:
+        self, node_type: type[NodeType] = Self, include_orphans: bool = False
+    ) -> Iterator[NodeType]:
         """Iterate over nodes that supply to this one."""
-        yield from self._dependencies(kind, include_orphans, yield_str, do_suppliers=True)
+        yield from self._dependencies(node_type, include_orphans, do_suppliers=True)
 
     def consumers(
-        self, kind: str | None = None, include_orphans: bool = False, yield_str: bool = False
-    ) -> Iterator[Self | tuple[int, str]]:
+        self, node_type: type[NodeType] = Self, include_orphans: bool = False
+    ) -> Iterator[NodeType]:
         """Iterate over nodes that consume from this one."""
-        yield from self._dependencies(kind, include_orphans, yield_str, do_suppliers=False)
+        yield from self._dependencies(node_type, include_orphans, do_suppliers=False)
+
+    def _dependencies_str(
+        self,
+        node_type: type[NodeType] = Self,
+        do_suppliers: bool = True,
+    ) -> Iterator[tuple[int, str]]:
+        sql = "SELECT kind, label, orphan, dependency.i FROM node JOIN dependency ON node.i = "
+        if do_suppliers:
+            sql += "supplier WHERE consumer = ?"
+        else:
+            sql += "consumer WHERE supplier = ?"
+        data = [self.i]
+        if node_type is not Self:
+            sql += " AND kind = ?"
+            data.append(node_type.kind())
+        for kind, label, is_orphan, idep in self.cascade.con.execute(sql, data):
+            node_str = f"{kind}:{label}"
+            if is_orphan:
+                node_str = f"({node_str})"
+            yield idep, node_str
+
+    def suppliers_str(self, node_type: type[NodeType] = Self) -> Iterator[tuple[int, str]]:
+        """Iterate over nodes that supply to this one."""
+        yield from self._dependencies_str(node_type, do_suppliers=True)
+
+    def consumers_str(self, node_type: type[NodeType] = Self) -> Iterator[tuple[int, str]]:
+        """Iterate over nodes that consume from this one."""
+        yield from self._dependencies_str(node_type, do_suppliers=False)
 
     #
     # Graph modifications
@@ -340,7 +370,7 @@ class Node:
             raise TypeError(f"Argument new_creator must be a Node, got {type(new_creator)}")
         if new_creator.is_orphan():
             raise ValueError("New creator node must not be orphaned.")
-        old_creator, old_creator_is_orphan = self.creator(return_orphan=True)
+        old_creator, old_creator_is_orphan = self.creator_orphan()
         self.con.execute(
             "UPDATE node SET creator = ?, orphan = FALSE WHERE i = ?", (new_creator.i, self.i)
         )
@@ -557,9 +587,9 @@ class Cascade:
                 self._con.executescript(node_schema)
         if empty:
             self._con.execute("VACUUM")
-            self._root = self.create("root", None)
+            self._root = self.create(Root, None)
         else:
-            self._root = self.find("root", "")
+            self._root = self.find(Root, "")
             self.check_consistency()
 
     def check_consistency(self):
@@ -602,43 +632,41 @@ class Cascade:
     def root(self) -> Root:
         return self._root
 
-    def find(
-        self, kind: str, label: str, *, return_orphan=False
-    ) -> Node | None | tuple[Node, bool] | tuple[None, None]:
-        """Return the node ID for the given node class and label."""
-        if return_orphan:
-            sql = "SELECT i, orphan FROM node WHERE kind = ? AND label = ?"
-            data = (kind, label)
-            row = self._con.execute(sql, data).fetchone()
-            if row is None:
-                return None, None
-            i, is_orphan = row
-            return (
-                self._node_classes[kind](self, i, label),
-                bool(is_orphan),
-            )
-
+    def find(self, node_type: type[NodeType], label: str) -> NodeType | None:
+        """Return the node for the given node class and label."""
         sql = "SELECT i FROM node WHERE kind = ? AND label = ?"
-        data = (kind, label)
+        data = (node_type.kind(), label)
         row = self._con.execute(sql, data).fetchone()
-        return None if row is None else self._node_classes[kind](self, row[0], label)
+        return None if row is None else node_type(self, row[0], label)
+
+    def find_orphan(
+        self, node_type: type[NodeType], label: str
+    ) -> tuple[NodeType, bool] | tuple[None, None]:
+        """Return the node and is_orphan for the given node class and label."""
+        sql = "SELECT i, orphan FROM node WHERE kind = ? AND label = ?"
+        data = (node_type.kind(), label)
+        row = self._con.execute(sql, data).fetchone()
+        if row is None:
+            return None, None
+        i, is_orphan = row
+        return node_type(self, i, label), bool(is_orphan)
 
     def nodes(
         self,
-        kind: str | None = None,
+        node_type: type[NodeType] = Node,
         include_orphans: bool = False,
-    ) -> Iterator[Node]:
+    ) -> Iterator[NodeType]:
         """Iterate over all nodes of a certain kind."""
         query = "SELECT i, kind, label FROM node"
         data = []
         words = ["WHERE", "AND"]
-        if kind is not None:
+        if node_type is not Node:
             query += f" {words.pop(0)} kind = ?"
-            data.append(kind)
+            data.append(node_type.kind())
         if not include_orphans:
             query += f" {words.pop(0)} NOT orphan"
-        for i, kind1, label in self._con.execute(query, data):
-            yield self._node_classes[kind1](self, i, label)
+        for i, kind, label in self._con.execute(query, data):
+            yield self._node_classes[kind](self, i, label)
 
     def walk_consumers(self, initial_is: Iterable[int]) -> Iterator[int]:
         """Iterate over all identifiers of indirect consumers of this node."""
@@ -676,20 +704,16 @@ class Cascade:
                 pairs.append(("created by", creator.key(cis_orphan)))
             pairs.extend(
                 ("consumes", other_str)
-                for _, other_str in sorted(
-                    node.suppliers(include_orphans=True, yield_str=True), key=(lambda x: x[1])
-                )
+                for _, other_str in sorted(node.suppliers_str(), key=(lambda x: x[1]))
             )
             pairs.extend(
                 ("creates", other_str)
-                for other_str in sorted(node.products(yield_str=True))
+                for other_str in sorted(node.products_str())
                 if other_str != "root:"
             )
             pairs.extend(
                 ("supplies", other_str)
-                for _, other_str in sorted(
-                    node.consumers(include_orphans=True, yield_str=True), key=(lambda x: x[1])
-                )
+                for _, other_str in sorted(node.consumers_str(), key=(lambda x: x[1]))
             )
             for role, key in pairs:
                 lines.append(f"{role:>20s}   {key}")
@@ -700,13 +724,15 @@ class Cascade:
     # Graph modifications
     #
 
-    def create(self, kind: str, creator: Node | None, label: str = "", **kwargs) -> Node:
+    def create(
+        self, node_type: type[NodeType], creator: Node | None, label: str = "", **kwargs
+    ) -> NodeType:
         """Add a newly created node with reference to its creator, if any.
 
         Parameters
         ----------
-        kind
-            String identifier for the Node subclass.
+        node_type
+            Subclass of Node.
         creator
             The node that created the new node.
             Set to None to create an orphan node.
@@ -721,23 +747,22 @@ class Cascade:
             The newly created node.
         """
         # Sanity checking
-        if not isinstance(kind, str):
-            raise TypeError(f"Argument kind must be a string, got {kind}")
-        node_class = self._node_classes.get(kind)
-        if node_class is None:
-            raise TypeError(f"Unregistered node kind: {kind}")
+        if not isinstance(node_type, type):
+            raise TypeError(f"Argument node_type must be a type, got {node_type}")
+        if not issubclass(node_type, Node):
+            raise TypeError(f"Argument node_type must be a subclass of Node, got {node_type}")
         if not (isinstance(creator, Node) or creator is None):
             raise TypeError(f"Argument creator must be a Node or None, got {type(creator)}")
-        label = node_class.create_label(label, **kwargs)
+        label = node_type.create_label(label, **kwargs)
 
-        node, is_orphan = self.find(kind, label, return_orphan=True)
+        node, is_orphan = self.find_orphan(node_type, label)
         if node is not None:
             # Recycle old data if needed and add/update node
             if not is_orphan:
                 raise GraphError(f"Node ({node.key()}) already exists and is not orphan.")
 
             # Get the old creator before this information is lost.
-            old_creator, old_creator_is_orphan = node.creator(return_orphan=True)
+            old_creator, old_creator_is_orphan = node.creator_orphan()
             # Replace the old creator by the new one.
             if creator is None:
                 creator_i = None
@@ -764,16 +789,16 @@ class Cascade:
             # Add new node
             cur = self._con.execute(
                 "INSERT INTO node (kind, label, creator, orphan) VALUES (?, ?, ?, ?)",
-                (kind, label, None if creator is None else creator.i, is_orphan),
+                (node_type.kind(), label, None if creator is None else creator.i, is_orphan),
             )
             node_i = cur.lastrowid
-            if kind == "root":
+            if node_type is Root:
                 if self._con.execute("SELECT count(*) FROM node").fetchone()[0] > 1:
                     raise GraphError("Only one root node is allowed and it must be the first node.")
                 self._con.execute(
                     "UPDATE node SET creator = ?, orphan = FALSE WHERE i = ?", (node_i, node_i)
                 )
-            node = node_class(self, node_i, label)
+            node = node_type(self, node_i, label)
         node.initialize(**kwargs)
         node.validate()
         return node

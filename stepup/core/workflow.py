@@ -380,19 +380,19 @@ class Workflow(Cascade):
             When the path exists while it is expected to be new.
         """
         available = False
-        file, is_orphan = self.find("file", path, return_orphan=True)
+        file, is_orphan = self.find_orphan(File, path)
         deferred = []
         if file is None or is_orphan:
             if self.always_static(path):
-                file = self.create("file", self.root, path, state=FileState.MISSING)
+                file = self.create(File, self.root, path, state=FileState.MISSING)
                 deferred.append(file)
                 available = True
             else:
                 dg = self.matching_deferred_glob(path)
                 if dg is None:
-                    file = self.create("file", None, path, state=FileState.AWAITED)
+                    file = self.create(File, None, path, state=FileState.AWAITED)
                 else:
-                    file = self.create("file", dg, path, state=FileState.MISSING)
+                    file = self.create(File, dg, path, state=FileState.MISSING)
                     deferred.append(file)
                     # If the file matches a deferred glob, it will become static
                     # and can be considered available unless the existence cannot
@@ -462,7 +462,7 @@ class Workflow(Cascade):
         if file_state != FileState.MISSING and self.always_static(path):
             raise GraphError(f"Path is created as {file_state} but must be static: {path}")
 
-        file = self.create("file", creator, path, state=file_state)
+        file = self.create(File, creator, path, state=file_state)
 
         # Do not allow volatile files to have consumers.
         if file_state == FileState.VOLATILE and any(file.consumers()):
@@ -789,7 +789,7 @@ class Workflow(Cascade):
             raise GraphError("The working directory must end with a trailing separator")
 
         # If it is a boot step, check that there was no boot step yet.
-        if creator.i == self.root.i and any(self.root.products(kind="step")):
+        if creator.i == self.root.i and any(self.root.products(Step)):
             raise GraphError("Boot step already defined.")
 
         # Normalize arguments
@@ -826,7 +826,7 @@ class Workflow(Cascade):
 
         # Create new step
         step = self.create(
-            "step",
+            Step,
             creator,
             command=command,
             workdir=workdir,
@@ -894,7 +894,7 @@ class Workflow(Cascade):
             MISSING file nodes that match a deferred glob and need to be confirmed.
         """
         label = Step.create_label("", command, workdir)
-        old_step, is_orphan = self.find("step", label, return_orphan=True)
+        old_step, is_orphan = self.find_orphan(Step, label)
 
         # Check whether the step can be reused.
         if old_step is None or not is_orphan:
@@ -1079,7 +1079,7 @@ class Workflow(Cascade):
             raise ValueError(f"Deferred glob patterns cannot be absolute paths: {pattern}")
         if any(iter_wildcard_names(pattern)):
             raise ValueError(f"Deferred glob does not support named wildcards: {pattern}")
-        dg = self.create("dg", creator, pattern)
+        dg = self.create(DeferredGlob, creator, pattern)
         # Check for matches in existing files.
         # For example previously defined inputs whose origin was not determined yet.
         regex = re.compile(convert_nglob_to_regex(pattern))
@@ -1092,7 +1092,7 @@ class Workflow(Cascade):
 
     def clean(self):
         # Get rid of deferred glob files that are no longer used.
-        for dg in self.nodes(kind="dg"):
+        for dg in self.nodes(DeferredGlob):
             files = sorted(dg.products(), reverse=True, key=(lambda node: node.path))
             for file in files:
                 if not any(file.consumers()):
@@ -1129,7 +1129,7 @@ class Workflow(Cascade):
     #
 
     def is_relevant(self, path: str) -> bool:
-        file, is_orphan = self.find("file", path, return_orphan=True)
+        file, is_orphan = self.find_orphan(File, path)
         if not (file is None or is_orphan):
             return file.get_state() not in (FileState.AWAITED, FileState.VOLATILE)
         return any(ngm.may_change(set(), {path}) for ngm in self.nglob_multis())

@@ -228,8 +228,10 @@ class File(Node):
 
         In case of a directory, also notify the watcher by putting it on the dir_queue.
         """
+        from .step import Step
+
         if self.get_state() in [FileState.STATIC, FileState.BUILT]:
-            for step in self.consumers(kind="step"):
+            for step in self.consumers(Step):
                 step.set_validate_amended()
                 step.queue_if_appropriate()
             if self.path.endswith("/"):
@@ -261,9 +263,11 @@ class File(Node):
             self.creator().mark_pending()
         if state != FileState.VOLATILE:
             # Make all consumers pending
-            for step in self.consumers(kind="step"):
+            from .step import Step
+
+            for step in self.consumers(Step):
                 step.mark_pending()
-            for file in self.consumers(kind="file"):
+            for file in self.consumers(File):
                 file.externally_deleted()
 
     def externally_updated(self):
@@ -274,7 +278,9 @@ class File(Node):
         state = self.get_state()
         if state == FileState.STATIC:
             # Mark all consumers pending
-            for step in self.consumers(kind="step"):
+            from .step import Step
+
+            for step in self.consumers(Step):
                 step.mark_pending(input_changed=True)
         elif state == FileState.AWAITED:
             # Mark the creator pending again, as to make sure the file is rebuilt.
@@ -287,7 +293,9 @@ class File(Node):
         if state == FileState.BUILT:
             logger.info("Mark %s file OUTDATED: %s", state, self.path)
             self.set_state(FileState.OUTDATED)
-            for step in self.consumers(kind="step"):
+            from .step import Step
+
+            for step in self.consumers(Step):
                 step.mark_pending(input_changed=True)
         elif state != FileState.OUTDATED:
             raise ValueError(f"Cannot make file oudated when its state is {state}")

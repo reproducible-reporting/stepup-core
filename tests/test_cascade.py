@@ -43,7 +43,7 @@ root:
 def test_from_scratch(cascade):
     assert cascade.root.i == 1
     assert cascade.root.creator() == cascade.root
-    assert cascade.root.creator(return_orphan=True) == (cascade.root, False)
+    assert cascade.root.creator_orphan() == (cascade.root, False)
     with pytest.raises(attrs.exceptions.FrozenInstanceError):
         cascade.root.i = 3
     assert cascade.format_str() == FROM_SCRATCH_FORMAT_STR
@@ -63,7 +63,7 @@ def test_supply_missing_nodes(cascade):
 
 def test_no_node_class(cascade):
     with pytest.raises(TypeError):
-        cascade.create("foo", cascade.root, "bla")
+        cascade.create(int, cascade.root, "bla")
 
 
 def test_check_consistency_root1(cascade):
@@ -195,8 +195,8 @@ root:
 
 def test_singleton(lc):
     assert lc.root.creator() == lc.root
-    assert lc.root.creator(return_orphan=True) == (lc.root, False)
-    foo = lc.create("f", lc.root, "one", value=1)
+    assert lc.root.creator_orphan() == (lc.root, False)
+    foo = lc.create(Foo, lc.root, "one", value=1)
     assert foo.key() == "f:one"
     assert foo.i == 2
     assert foo.label == "one"
@@ -205,17 +205,17 @@ def test_singleton(lc):
     assert len(list(foo.suppliers())) == 0
     assert len(list(foo.products())) == 0
     assert foo.creator() == lc.root
-    assert foo.creator(return_orphan=True) == (lc.root, False)
+    assert foo.creator_orphan() == (lc.root, False)
     assert lc.format_str() == SINGLETON1_FORMAT_STR
     foo.orphan()
     assert foo.is_orphan()
     assert foo.creator() is None
-    assert foo.creator(return_orphan=True) == (None, None)
+    assert foo.creator_orphan() == (None, None)
     assert lc.format_str() == SINGLETON2_FORMAT_STR
-    foo = lc.create("f", lc.root, "one")
+    foo = lc.create(Foo, lc.root, "one")
     assert lc.format_str() == SINGLETON1_FORMAT_STR
     foo.orphan()
-    foo = lc.create("f", lc.root, "one", value=-1)
+    foo = lc.create(Foo, lc.root, "one", value=-1)
     assert foo.get_value() == -1
     foo.orphan()
     lc.clean()
@@ -235,10 +235,12 @@ def test_singleton(lc):
 
     # Validate sanity checking
     with pytest.raises(TypeError):
+        lc.create(int, lc.root, "one", value=123)
+    with pytest.raises(TypeError):
         lc.create("Foo", lc.root, "one", value=123)
-    lc.create("f", lc.root, "one", value=123)
+    lc.create(Foo, lc.root, "one", value=123)
     with pytest.raises(GraphError):
-        lc.create("f", lc.root, "one", value=1234)
+        lc.create(Foo, lc.root, "one", value=1234)
 
 
 CHAIN1_FORMAT_STR = """\
@@ -314,11 +316,11 @@ def test_chain(lc):
     # root +-> foo0 --> foo4
     #      +-> foo1
     #      +-> foo2 --> foo3
-    foo0 = lc.create("f", lc.root, "zero", value=0)
-    foo1 = lc.create("f", lc.root, "one", value=1)
-    foo2 = lc.create("f", lc.root, "two", value=2)
-    foo3 = lc.create("f", foo2, "three", value=3)
-    foo4 = lc.create("f", foo0, "four", value=4)
+    foo0 = lc.create(Foo, lc.root, "zero", value=0)
+    foo1 = lc.create(Foo, lc.root, "one", value=1)
+    foo2 = lc.create(Foo, lc.root, "two", value=2)
+    foo3 = lc.create(Foo, foo2, "three", value=3)
+    foo4 = lc.create(Foo, foo0, "four", value=4)
     assert foo0.key() == "f:zero"
     assert foo1.key() == "f:one"
     assert foo2.key() == "f:two"
@@ -330,13 +332,13 @@ def test_chain(lc):
 
     # Test nodes
     assert list(lc.nodes()) == [lc.root, foo0, foo1, foo2, foo3, foo4]
-    assert set(lc.nodes(kind="f")) == {foo0, foo1, foo2, foo3, foo4}
+    assert set(lc.nodes(Foo)) == {foo0, foo1, foo2, foo3, foo4}
 
     # Test creator
     assert foo3.creator() == foo2
-    assert foo3.creator(return_orphan=True) == (foo2, False)
+    assert foo3.creator_orphan() == (foo2, False)
     assert foo4.creator() == foo0
-    assert foo4.creator(return_orphan=True) == (foo0, False)
+    assert foo4.creator_orphan() == (foo0, False)
 
     # Test products
     assert list(foo2.products()) == [foo3]
@@ -361,8 +363,8 @@ def test_chain(lc):
     assert foo2.is_orphan()
     assert foo3.is_orphan()
     assert lc.format_str() == CHAIN1_FORMAT_STR
-    assert set(lc.nodes(kind="f")) == {foo0, foo1, foo4}
-    assert set(lc.nodes(kind="f", include_orphans=True)) == {foo0, foo1, foo2, foo3, foo4}
+    assert set(lc.nodes(Foo)) == {foo0, foo1, foo4}
+    assert set(lc.nodes(Foo, include_orphans=True)) == {foo0, foo1, foo2, foo3, foo4}
 
     # foo0
     assert list(foo0.consumers()) == []
@@ -379,20 +381,20 @@ def test_chain(lc):
     assert list(foo2.suppliers()) == [foo0, foo1]
     assert foo2.is_orphan()
     assert foo2.creator() is None
-    assert foo2.creator(return_orphan=True) == (None, None)
+    assert foo2.creator_orphan() == (None, None)
     assert list(foo2.products()) == [foo3]
     # foo3
     assert list(foo3.consumers()) == []
     assert list(foo3.suppliers()) == []
     assert foo3.is_orphan()
     assert foo3.creator() == foo2
-    assert foo3.creator(return_orphan=True) == (foo2, True)
+    assert foo3.creator_orphan() == (foo2, True)
     assert list(foo3.products()) == []
     # foo4
     assert list(foo4.consumers()) == []
     assert list(foo4.suppliers()) == []
     assert foo4.creator() == foo0
-    assert foo4.creator(return_orphan=True) == (foo0, False)
+    assert foo4.creator_orphan() == (foo0, False)
     assert list(foo4.products()) == []
 
     # Orphan, recreate, clean, and check log messages
@@ -447,42 +449,42 @@ f:3
 
 def test_clean_consumers(lc):
     """Orphan nodes only get removed when they have no consumers."""
-    foo0 = lc.create("f", lc.root, "0", value=0)
-    foo1 = lc.create("f", foo0, "1", value=1)
-    foo2 = lc.create("f", foo0, "2", value=2)
-    foo3 = lc.create("f", lc.root, "3", value=3)
+    foo0 = lc.create(Foo, lc.root, "0", value=0)
+    foo1 = lc.create(Foo, foo0, "1", value=1)
+    foo2 = lc.create(Foo, foo0, "2", value=2)
+    foo3 = lc.create(Foo, lc.root, "3", value=3)
     foo3.add_supplier(foo1)
     foo3.add_supplier(foo2)
     foo0.orphan()
     assert lc.format_str() == CLEAN_CONSUMER1_FORMAT_STR
     lc.clean()
-    assert list(lc.nodes(kind="f", include_orphans=True)) == [foo0, foo1, foo2, foo3]
+    assert list(lc.nodes(Foo, include_orphans=True)) == [foo0, foo1, foo2, foo3]
     assert lc.format_str() == CLEAN_CONSUMER1_FORMAT_STR
     foo3.orphan()
     lc.clean()
-    assert len(list(lc.nodes(kind="f", include_orphans=True))) == 0
+    assert len(list(lc.nodes(Foo, include_orphans=True))) == 0
     assert lc.format_str() == FROM_SCRATCH_FORMAT_STR
 
 
 def test_recycle_consumers(lc):
     """When an orphan node with consumers is recycled, the consumer relations remain."""
-    foo0 = lc.create("f", lc.root, "0", value=0)
-    foo1 = lc.create("f", lc.root, "1", value=1)
-    foo2 = lc.create("f", lc.root, "2", value=2)
+    foo0 = lc.create(Foo, lc.root, "0", value=0)
+    foo1 = lc.create(Foo, lc.root, "1", value=1)
+    foo2 = lc.create(Foo, lc.root, "2", value=2)
     foo1.add_supplier(foo0)
     foo2.add_supplier(foo0)
     assert list(foo0.consumers()) == [foo1, foo2]
     foo0.orphan()
     assert list(foo0.consumers()) == [foo1, foo2]
-    lc.create("f", lc.root, "0")
+    lc.create(Foo, lc.root, "0")
     assert list(foo0.consumers()) == [foo1, foo2]
 
 
 def test_clean_nested(lc):
-    foo0 = lc.create("f", None, "0", value=0)
-    foo1 = lc.create("f", None, "1", value=1)
-    foo2 = lc.create("f", None, "2", value=2)
-    foo3 = lc.create("f", lc.root, "3", value=3)
+    foo0 = lc.create(Foo, None, "0", value=0)
+    foo1 = lc.create(Foo, None, "1", value=1)
+    foo2 = lc.create(Foo, None, "2", value=2)
+    foo3 = lc.create(Foo, lc.root, "3", value=3)
 
     # Test is_alive method
     assert foo0.is_alive()
@@ -494,20 +496,20 @@ def test_clean_nested(lc):
     foo2.add_supplier(foo1)
     foo3.add_supplier(foo2)
     lc.clean()
-    assert lc.find("f", "3") == foo3
-    assert lc.find("f", "3", return_orphan=True) == (foo3, False)
-    assert lc.find("f", "0") == foo0
-    assert lc.find("f", "0", return_orphan=True) == (foo0, True)
+    assert lc.find(Foo, "3") == foo3
+    assert lc.find_orphan(Foo, "3") == (foo3, False)
+    assert lc.find(Foo, "0") == foo0
+    assert lc.find_orphan(Foo, "0") == (foo0, True)
     foo3.orphan()
-    assert lc.find("f", "3") == foo3
-    assert lc.find("f", "3", return_orphan=True) == (foo3, True)
-    assert lc.find("f", "0") == foo0
-    assert lc.find("f", "0", return_orphan=True) == (foo0, True)
+    assert lc.find(Foo, "3") == foo3
+    assert lc.find_orphan(Foo, "3") == (foo3, True)
+    assert lc.find(Foo, "0") == foo0
+    assert lc.find_orphan(Foo, "0") == (foo0, True)
     lc.clean()
-    assert lc.find("f", "3") is None
-    assert lc.find("f", "3", return_orphan=True) == (None, None)
-    assert lc.find("f", "0") is None
-    assert lc.find("f", "0", return_orphan=True) == (None, None)
+    assert lc.find(Foo, "3") is None
+    assert lc.find_orphan(Foo, "3") == (None, None)
+    assert lc.find(Foo, "0") is None
+    assert lc.find_orphan(Foo, "0") == (None, None)
 
     # Test is_alive method
     assert not foo0.is_alive()
@@ -517,10 +519,10 @@ def test_clean_nested(lc):
 
 
 def test_create_orphan(lc):
-    foo1 = lc.create("f", None, "some", value=0)
+    foo1 = lc.create(Foo, None, "some", value=0)
     assert foo1.is_orphan()
     assert foo1.get_value() == 0
-    foo2 = lc.create("f", None, "some", value=10)
+    foo2 = lc.create(Foo, None, "some", value=10)
     assert foo1 == foo2
     assert foo1.is_orphan()
     assert foo2.is_orphan()
@@ -529,11 +531,11 @@ def test_create_orphan(lc):
 
 
 def test_create_orphan_with_products_a(lc):
-    foo0 = lc.create("f", None, "0", value=0)
-    foo1 = lc.create("f", foo0, "1", value=1)
+    foo0 = lc.create(Foo, None, "0", value=0)
+    foo1 = lc.create(Foo, foo0, "1", value=1)
     assert foo0.is_orphan()
     assert foo1.is_orphan()
-    foo0_bis = lc.create("f", None, "0", value=0)
+    foo0_bis = lc.create(Foo, None, "0", value=0)
     assert foo0 == foo0_bis
     assert foo0.is_orphan()
     assert foo0_bis.is_orphan()
@@ -541,11 +543,11 @@ def test_create_orphan_with_products_a(lc):
 
 
 def test_create_orphan_with_products_b(lc):
-    foo0 = lc.create("f", None, "0", value=0)
-    foo1 = lc.create("f", foo0, "1", value=1)
+    foo0 = lc.create(Foo, None, "0", value=0)
+    foo1 = lc.create(Foo, foo0, "1", value=1)
     assert foo0.is_orphan()
     assert foo1.is_orphan()
-    foo0_bis = lc.create("f", lc.root, "0", value=0)
+    foo0_bis = lc.create(Foo, lc.root, "0", value=0)
     assert foo0 == foo0_bis
     assert not foo0.is_orphan()
     assert not foo0_bis.is_orphan()
@@ -553,11 +555,11 @@ def test_create_orphan_with_products_b(lc):
 
 
 def test_create_orphan_try_cyclic(lc):
-    foo0 = lc.create("f", None, "0", value=0)
-    foo1 = lc.create("f", foo0, "1", value=1)
+    foo0 = lc.create(Foo, None, "0", value=0)
+    foo1 = lc.create(Foo, foo0, "1", value=1)
     assert foo0.is_orphan()
     assert foo1.is_orphan()
-    foo0_bis = lc.create("f", foo1, "0", value=0)
+    foo0_bis = lc.create(Foo, foo1, "0", value=0)
     assert foo0.is_orphan()
     assert foo1.is_orphan()
     assert foo0_bis.is_orphan()
@@ -565,32 +567,32 @@ def test_create_orphan_try_cyclic(lc):
 
 
 def test_duplicate_dependency(lc):
-    foo0 = lc.create("f", lc.root, "0", value=0)
-    foo1 = lc.create("f", foo0, "1", value=1)
+    foo0 = lc.create(Foo, lc.root, "0", value=0)
+    foo1 = lc.create(Foo, foo0, "1", value=1)
     foo0.add_supplier(foo1)
     with pytest.raises(GraphError):
         foo0.add_supplier(foo1)
 
 
 def test_cyclic1(lc):
-    foo0 = lc.create("f", lc.root, "0", value=0)
-    foo1 = lc.create("f", foo0, "1", value=1)
+    foo0 = lc.create(Foo, lc.root, "0", value=0)
+    foo1 = lc.create(Foo, foo0, "1", value=1)
     foo0.add_supplier(foo1)
     assert list(foo0.suppliers()) == [foo1]
 
 
 def test_cyclic2(lc):
-    foo0 = lc.create("f", lc.root, "0", value=0)
-    foo1 = lc.create("f", lc.root, "1", value=1)
+    foo0 = lc.create(Foo, lc.root, "0", value=0)
+    foo1 = lc.create(Foo, lc.root, "1", value=1)
     foo1.add_supplier(foo0)
     with pytest.raises(CyclicError):
         foo0.add_supplier(foo1)
 
 
 def test_cyclic3(lc):
-    foo0 = lc.create("f", lc.root, "0", value=0)
-    foo1 = lc.create("f", lc.root, "1", value=1)
-    foo2 = lc.create("f", lc.root, "2", value=2)
+    foo0 = lc.create(Foo, lc.root, "0", value=0)
+    foo1 = lc.create(Foo, lc.root, "1", value=1)
+    foo2 = lc.create(Foo, lc.root, "2", value=2)
     foo1.add_supplier(foo0)
     foo2.add_supplier(foo1)
     with pytest.raises(CyclicError):
@@ -600,10 +602,10 @@ def test_cyclic3(lc):
 def test_walk_consumers(lc):
     # foo0 --> foo1 --> foo2
     #      --> foo3
-    foo0 = lc.create("f", lc.root, "0", value=0)
-    foo1 = lc.create("f", lc.root, "1", value=1)
-    foo2 = lc.create("f", lc.root, "2", value=2)
-    foo3 = lc.create("f", lc.root, "3", value=3)
+    foo0 = lc.create(Foo, lc.root, "0", value=0)
+    foo1 = lc.create(Foo, lc.root, "1", value=1)
+    foo2 = lc.create(Foo, lc.root, "2", value=2)
+    foo3 = lc.create(Foo, lc.root, "3", value=3)
     foo1.add_supplier(foo0)
     foo2.add_supplier(foo1)
     foo3.add_supplier(foo0)
@@ -632,11 +634,11 @@ def test_relocate_tree(lc):
     # foo0 +-> foo1 +-> foo2
     #      |        +-> foo3
     #      +-> foo4
-    foo0 = lc.create("f", lc.root, "0", value=0)
-    foo1 = lc.create("f", foo0, "1", value=1)
-    foo2 = lc.create("f", foo1, "2", value=2)
-    lc.create("f", foo1, "3", value=3)
-    foo4 = lc.create("f", foo0, "4", value=4)
+    foo0 = lc.create(Foo, lc.root, "0", value=0)
+    foo1 = lc.create(Foo, foo0, "1", value=1)
+    foo2 = lc.create(Foo, foo1, "2", value=2)
+    lc.create(Foo, foo1, "3", value=3)
+    foo4 = lc.create(Foo, foo0, "4", value=4)
     foo2.add_supplier(foo1)
     foo2.add_supplier(foo4)
 
@@ -685,7 +687,7 @@ f:4
 
 def test_check_consistency_creator(lc):
     # Manually set creator field of foo0 node to None.
-    foo0 = lc.create("f", lc.root, "0", value=0)
+    foo0 = lc.create(Foo, lc.root, "0", value=0)
     lc.con.execute("UPDATE node SET creator = NULL WHERE i = ?", (foo0.i,))
     with pytest.raises(GraphError):
         lc.check_consistency()
@@ -693,7 +695,7 @@ def test_check_consistency_creator(lc):
 
 def test_check_consistency_orphan(lc):
     # Manually make foo0 an orphan while it has a creator.
-    foo0 = lc.create("f", lc.root, "0", value=0)
+    foo0 = lc.create(Foo, lc.root, "0", value=0)
     lc.con.execute("UPDATE node SET orphan = TRUE WHERE i = ?", (foo0.i,))
     with pytest.raises(GraphError):
         lc.check_consistency()
@@ -701,7 +703,7 @@ def test_check_consistency_orphan(lc):
 
 def test_check_consistency_second_root(lc):
     # Manually make foo0 its own creator
-    foo0 = lc.create("f", lc.root, "0", value=0)
+    foo0 = lc.create(Foo, lc.root, "0", value=0)
     lc.con.execute("UPDATE node SET creator = ? WHERE i = ?", (foo0.i, foo0.i))
     with pytest.raises(GraphError):
         lc.check_consistency()
@@ -744,11 +746,11 @@ def test_relocate_nested_orphan(lc):
     # foo0 +-> foo1 +-> foo2
     #      |        +-> foo3
     #      +-> foo4
-    foo0 = lc.create("f", lc.root, "0", value=0)
-    foo1 = lc.create("f", foo0, "1", value=1)
-    foo2 = lc.create("f", foo1, "2", value=2)
-    lc.create("f", foo1, "3", value=3)
-    foo4 = lc.create("f", foo0, "4", value=4)
+    foo0 = lc.create(Foo, lc.root, "0", value=0)
+    foo1 = lc.create(Foo, foo0, "1", value=1)
+    foo2 = lc.create(Foo, foo1, "2", value=2)
+    lc.create(Foo, foo1, "3", value=3)
+    foo4 = lc.create(Foo, foo0, "4", value=4)
     foo2.add_supplier(foo1)
     foo2.add_supplier(foo4)
 

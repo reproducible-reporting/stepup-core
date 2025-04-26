@@ -34,6 +34,8 @@ from importlib.metadata import version as get_version
 import attrs
 from path import Path
 
+from stepup.core.step import Step
+
 from .asyncio import wait_for_events
 from .enums import ReturnCode, StepState
 from .exceptions import GraphError
@@ -330,7 +332,7 @@ class DirectorHandler:
         The client then calls confirm with the updated hashes.
         """
         async with self.dblock:
-            creator = self.workflow.find(*creator_key.split(":", maxsplit=1))
+            creator = self.workflow.find(Step, creator_key.split(":", maxsplit=1)[1])
             return self.workflow.declare_missing(creator, paths)
 
     @allow_rpc
@@ -341,7 +343,7 @@ class DirectorHandler:
         ngm = NGlobMulti.from_patterns(patterns, subs)
         ngm.extend(paths)
         async with self.dblock:
-            creator = self.workflow.find(*creator_key.split(":", maxsplit=1))
+            creator = self.workflow.find(Step, creator_key.split(":", maxsplit=1)[1])
             self.workflow.register_nglob(creator, ngm)
 
     @allow_rpc
@@ -355,7 +357,7 @@ class DirectorHandler:
         """
         to_check = []
         async with self.dblock:
-            creator = self.workflow.find(*creator_key.split(":", maxsplit=1))
+            creator = self.workflow.find(Step, creator_key.split(":", maxsplit=1)[1])
             for pattern in patterns:
                 to_check.extend(self.workflow.defer_glob(creator, pattern))
         return to_check
@@ -401,7 +403,7 @@ class DirectorHandler:
         if not workdir.endswith(os.sep):
             raise GraphError(f"A working directory must end with a separator, got: {workdir}")
         async with self.dblock:
-            creator = self.workflow.find(*creator_key.split(":", maxsplit=1))
+            creator = self.workflow.find(Step, creator_key.split(":", maxsplit=1)[1])
             return self.workflow.define_step(
                 creator,
                 command,
@@ -424,7 +426,7 @@ class DirectorHandler:
         This is an RPC wrapper for `Scheduler.define_pool`.
         """
         async with self.dblock:
-            step = self.workflow.find(*step_key.split(":", maxsplit=1))
+            step = self.workflow.find(Step, step_key.split(":", maxsplit=1)[1])
             self.workflow.define_pool(step, name, size)
 
     @allow_rpc
@@ -453,7 +455,7 @@ class DirectorHandler:
             the caller has to change `keep_going` to `False`.
         """
         async with self.dblock:
-            step = self.workflow.find(*step_key.split(":", maxsplit=1))
+            step = self.workflow.find(Step, step_key.split(":", maxsplit=1)[1])
             return self.workflow.amend_step(
                 step,
                 inp_paths=inp_paths,
@@ -466,7 +468,7 @@ class DirectorHandler:
     async def reschedule_step(self, step_key: str, reason: str):
         """Reschedule a step for the given reason."""
         async with self.dblock:
-            step = self.workflow.find(*step_key.split(":", maxsplit=1))
+            step = self.workflow.find(Step, step_key.split(":", maxsplit=1)[1])
             step.set_rescheduled_info(reason)
 
     @allow_rpc
@@ -476,7 +478,7 @@ class DirectorHandler:
         For the sake of consistency, amended step arguments are not included.
         """
         async with self.dblock:
-            step = self.workflow.find(*step_key.split(":", maxsplit=1))
+            step = self.workflow.find(Step, step_key.split(":", maxsplit=1)[1])
             return step.get_step_info()
 
     #

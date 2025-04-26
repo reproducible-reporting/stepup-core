@@ -27,7 +27,7 @@ from path import Path
 
 from .asyncio import stoppable_iterator
 from .enums import Change, DirWatch
-from .file import FileState
+from .file import File, FileState
 from .reporter import ReporterClient
 from .utils import DBLock
 from .workflow import Workflow
@@ -128,7 +128,7 @@ class Watcher:
         await self.reporter("PHASE", "watch")
         while not change_queue.empty():
             change, path = change_queue.get_nowait()
-            file = self.workflow.find("file", path)
+            file = self.workflow.find(File, path)
             if file is not None and file.get_state() == FileState.STATIC:
                 await self.record_change(change, path)
 

@@ -23,18 +23,20 @@ from conftest import declare_static, fake_hash
 
 from stepup.core.cleanup import search_consuming_paths
 from stepup.core.enums import FileState
+from stepup.core.file import File
 from stepup.core.hash import FileHash
+from stepup.core.step import Step
 from stepup.core.workflow import Workflow
 
 
 def test_cleanup_simple1(wfp: Workflow):
-    plan = wfp.find("step", "./plan.py")
+    plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "cp bar.txt foo.txt", inp_paths=["bar.txt"], out_paths=["foo.txt"])
     assert search_consuming_paths(wfp.con, ["bar.txt"]) == []
 
 
 def test_cleanup_simple2(wfp: Workflow):
-    plan = wfp.find("step", "./plan.py")
+    plan = wfp.find(Step, "./plan.py")
     declare_static(wfp, plan, ["bar.txt"])
     wfp.define_step(plan, "cp bar.txt foo.txt", inp_paths=["bar.txt"], out_paths=["foo.txt"])
     file_hash = fake_hash("foo.txt")
@@ -43,19 +45,19 @@ def test_cleanup_simple2(wfp: Workflow):
 
 
 def test_cleanup_simple3(wfp: Workflow):
-    plan = wfp.find("step", "./plan.py")
+    plan = wfp.find(Step, "./plan.py")
     declare_static(wfp, plan, ["bar.txt"])
     wfp.define_step(plan, "cp bar.txt foo.txt", inp_paths=["bar.txt"], out_paths=["foo.txt"])
     file_hash = fake_hash("foo.txt")
     wfp.update_file_hashes([("foo.txt", file_hash)], "succeeded")
-    wfp.find("file", "foo.txt").set_state(FileState.OUTDATED)
+    wfp.find(File, "foo.txt").set_state(FileState.OUTDATED)
     assert search_consuming_paths(wfp.con, ["bar.txt"]) == [
         ("foo.txt", FileState.OUTDATED, file_hash),
     ]
 
 
 def test_cleanup_simple4(wfp: Workflow):
-    plan = wfp.find("step", "./plan.py")
+    plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "prog1", inp_paths=["bar.txt"], out_paths=["foo.txt"])
     file_hash = fake_hash("foo.txt")
     wfp.update_file_hashes([("foo.txt", file_hash)], "succeeded")
@@ -67,7 +69,7 @@ def test_cleanup_simple4(wfp: Workflow):
 
 
 def test_cleanup_volatile(wfp: Workflow):
-    plan = wfp.find("step", "./plan.py")
+    plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "prog1", inp_paths=["inp.txt"], vol_paths=["vol.txt"])
     # Volatile files are always removed, without checking hashes
     assert search_consuming_paths(wfp.con, ["inp.txt"]) == [
