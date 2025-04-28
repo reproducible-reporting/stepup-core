@@ -12,6 +12,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no summary yet)
 
+### Added
+
+- Option `stepup --no-progress` to disable progress information.
+  This is sometimes useful when running `stepup` in a non-interactive environment.
+
 ### Changed
 
 - Internals:
