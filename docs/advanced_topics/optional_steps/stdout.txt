@@ -1,4 +1,4 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.0.4)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post3)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
@@ -8,8 +8,8 @@
    SUCCESS │ ./generate.py plan --optional
      START │ ./plot.py plan
    SUCCESS │ ./plot.py plan
-     START │ ./generate.py run -- logmap_3.200
-   SUCCESS │ ./generate.py run -- logmap_3.200
+     START │ ./generate.py run logmap_3.200
+   SUCCESS │ ./generate.py run logmap_3.200
      START │ ./plot.py run
    SUCCESS │ ./plot.py run
   DIRECTOR │ Trying to delete 0 outdated output(s).

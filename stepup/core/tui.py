@@ -90,7 +90,7 @@ async def async_main():
             loop.add_signal_handler(sig, stop_event.set)
 
         # Set up the reporter monitor
-        reporter_handler = ReporterHandler(args.show_perf > 0, stop_event)
+        reporter_handler = ReporterHandler(args.show_perf > 0, args.progress, stop_event)
         task_reporter = asyncio.create_task(
             serve_socket_rpc(reporter_handler, reporter_socket_path, stop_event),
             name="reporter-rpc",
@@ -312,6 +312,14 @@ def parse_args():
         default=True,
         action="store_false",
         help="Do not remove outdated output files.",
+    )
+    parser.add_argument(
+        "--no-progress",
+        dest="progress",
+        default=True,
+        action="store_false",
+        help="Do not report progress information in the terminal user interface. "
+        "(This can be useful to simplify and reduce the output.)",
     )
     parser.add_argument(
         "--root",

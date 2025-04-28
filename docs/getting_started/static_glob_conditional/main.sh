@@ -2,9 +2,9 @@
 git clean -qdfX .
 export COLUMNS=80
 unset STEPUP_ROOT
-stepup -n 1 | sed -f ../../clean_stdout.sed > stdout1.txt
+stepup --no-progress -n 1 | sed -f ../../clean_stdout.sed > stdout1.txt
 mv dataset tmp
-stepup -n 1 | sed -f ../../clean_stdout.sed > stdout2.txt
+stepup --no-progress -n 1 | sed -f ../../clean_stdout.sed > stdout2.txt
 mv tmp dataset
 
 # INP: plan.py

@@ -89,15 +89,16 @@ class ReporterClient:
 
 @attrs.define
 class ReporterHandler:
-    show_perf: bool = attrs.field()
+    show_perf: bool = attrs.field(default=False)
+    show_progress: bool = attrs.field(default=True)
     stop_event: asyncio.Event = attrs.field(factory=asyncio.Event)
     _num_workers: int = attrs.field(init=False, default=0)
     _step_counts: dict[StepState, int] = attrs.field(init=False, factory=dict)
     _num_digits: int = attrs.field(init=False, default=3)
     console: Console = attrs.field(init=False)
-    progress_bar: ProgressBar = attrs.field(init=False)
-    task_id_running: TaskID = attrs.field(init=False)
-    task_id_step: TaskID = attrs.field(init=False)
+    progress_bar: ProgressBar | None = attrs.field(init=False)
+    task_id_running: TaskID | None = attrs.field(init=False)
+    task_id_step: TaskID | None = attrs.field(init=False)
     start: float = attrs.field(init=False, factory=perf_counter)
 
     @console.default
@@ -113,6 +114,8 @@ class ReporterHandler:
 
     @progress_bar.default
     def _default_progress_bar(self):
+        if not (self.show_progress and self.console.is_terminal):
+            return None
         progress_bar = ProgressBar(
             TextColumn("{task.description}"),
             BarColumn(None),
@@ -126,30 +129,45 @@ class ReporterHandler:
 
     @task_id_running.default
     def _default_task_id_running(self):
-        return self.progress_bar.add_task("🛠 ", total=0, visible=True)
+        return (
+            self.progress_bar.add_task("🛠 ", total=0, visible=True)
+            if self.show_progress and self.console.is_terminal
+            else None
+        )
 
     @task_id_step.default
     def _default_task_id_step(self):
-        return self.progress_bar.add_task("✔ ", total=0, visible=True)
+        return (
+            self.progress_bar.add_task("✔ ", total=0, visible=True)
+            if self.show_progress and self.console.is_terminal
+            else None
+        )
 
     @allow_rpc
     def shutdown(self):
-        self.progress_bar.stop()
+        if self.progress_bar is not None:
+            self.progress_bar.stop()
         self.stop_event.set()
 
     @allow_rpc
     def report(self, action: str, description: str, pages: list[tuple[str, str]]):
-        # Progress bar
-        nsuc = self._step_counts.get(StepState.SUCCEEDED, 0)
-        nrun = self._step_counts.get(StepState.RUNNING, 0)
-        npen = self._step_counts.get(StepState.PENDING, 0) + self._step_counts.get(
-            StepState.QUEUED, 0
-        )
-        nd = max(self._num_digits, len(str(nsuc)), len(str(nrun)), len(str(npen)))
-        self._num_digits = nd
-        self.progress_bar.update(self.task_id_running, completed=nrun, total=self._num_workers)
-        self.progress_bar.update(self.task_id_step, completed=nsuc, total=nsuc + nrun + npen)
-        self.progress_bar.refresh()
+        if self.show_progress:
+            # Progress bar
+            nsuc = self._step_counts.get(StepState.SUCCEEDED, 0)
+            nrun = self._step_counts.get(StepState.RUNNING, 0)
+            npen = self._step_counts.get(StepState.PENDING, 0) + self._step_counts.get(
+                StepState.QUEUED, 0
+            )
+            nd = max(self._num_digits, len(str(nsuc)), len(str(nrun)), len(str(npen)))
+            self._num_digits = nd
+            if self.console.is_terminal:
+                self.progress_bar.update(
+                    self.task_id_running, completed=nrun, total=self._num_workers
+                )
+                self.progress_bar.update(
+                    self.task_id_step, completed=nsuc, total=nsuc + nrun + npen
+                )
+                self.progress_bar.refresh()
 
         # Action info
         action_color = {
@@ -177,7 +195,7 @@ class ReporterHandler:
             line = f"[gray46]{perf_counter() - self.start:7.2f} {nrun:{nd}d} [/]" + line
             if action == "PHASE":
                 self.start = now
-        if not self.console.is_terminal:
+        if not self.console.is_terminal and self.show_progress:
             # If not a terminal, the progress bars are not shown,
             # so we need to print the completed and total number of steps.
             progress = f"{nsuc}/{nsuc + nrun + npen}"

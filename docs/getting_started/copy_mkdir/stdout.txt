@@ -1,4 +1,4 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.0.4)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post3)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
   DIRECTOR │ Launched worker 1
@@ -8,8 +8,8 @@
    SUCCESS │ echo hello > hello.txt
      START │ mkdir -p sub/
    SUCCESS │ mkdir -p sub/
-   SUCCESS │ ./plan.py
      START │ cp -aT hello.txt sub/hello.txt
+   SUCCESS │ ./plan.py
    SUCCESS │ cp -aT hello.txt sub/hello.txt
   DIRECTOR │ Trying to delete 0 outdated output(s).
   DIRECTOR │ Stopping workers.

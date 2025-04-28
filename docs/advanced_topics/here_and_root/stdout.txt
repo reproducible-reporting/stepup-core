@@ -1,17 +1,17 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.0.4)
-   STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ mkdir -p ../public/
-   SUCCESS │ mkdir -p ../public/
-     START │ ./plan.py  # wd=sub/
-   SUCCESS │ ./plan.py  # wd=sub/
-     START │ mkdir -p ../../public/sub/  # wd=sub/
-   SUCCESS │ mkdir -p ../../public/sub/  # wd=sub/
-     START │ cp -aT example.txt ../../public/sub/example.txt  # wd=sub/
-   SUCCESS │ cp -aT example.txt ../../public/sub/example.txt  # wd=sub/
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-  DIRECTOR │ Stopping workers.
-  DIRECTOR │ See you!
+        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post3)
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ mkdir -p ../public/
+        2/3 |    SUCCESS │ mkdir -p ../public/
+        2/3 |      START │ ./plan.py  # wd=sub/
+        3/5 |    SUCCESS │ ./plan.py  # wd=sub/
+        3/5 |      START │ mkdir -p ../../public/sub/  # wd=sub/
+        4/5 |    SUCCESS │ mkdir -p ../../public/sub/  # wd=sub/
+        4/5 |      START │ cp -aT example.txt ../../public/sub/example.txt  # wd=sub/
+        5/5 |    SUCCESS │ cp -aT example.txt ../../public/sub/example.txt  # wd=sub/
+        5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        5/5 |   DIRECTOR │ Stopping workers.
+        5/5 |   DIRECTOR │ See you!
