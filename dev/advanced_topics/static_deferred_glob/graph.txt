@@ -3,14 +3,6 @@ root:
              creates   file:plan.py
              creates   step:./plan.py
 
-file:plan.py
-               state = STATIC
-              digest = e9a2826e 1262a2a9 8b01a7e8 cc5a1e13 b1fd2bb7 5233efc6 14ad6e42 5f4c9ff2
-                     = d79dc863 ccd12e12 e7aa11a3 93d037fc a5cec13f 44f7e0ce 70381bfb 8eb624f6
-          created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
-
 file:./
                state = STATIC
           created by   root:
@@ -18,6 +10,14 @@ file:./
             supplies   file:plan.py
             supplies   step:./plan.py
             supplies   step:cat foo.txt
+
+file:plan.py
+               state = STATIC
+              digest = e9a2826e 1262a2a9 8b01a7e8 cc5a1e13 b1fd2bb7 5233efc6 14ad6e42 5f4c9ff2
+                     = d79dc863 ccd12e12 e7aa11a3 93d037fc a5cec13f 44f7e0ce 70381bfb 8eb624f6
+          created by   root:
+            consumes   file:./
+            supplies   step:./plan.py
 
 step:./plan.py
                state = RUNNING
@@ -31,6 +31,12 @@ dg:*.txt
           created by   step:./plan.py
              creates   file:foo.txt
 
+step:cat foo.txt
+               state = QUEUED
+          created by   step:./plan.py
+            consumes   file:./
+            consumes   file:foo.txt
+
 file:foo.txt
                state = STATIC
               digest = 0c64fa0d 9b93cfe0 46d049cd 30640438 385cec99 cf27db48 ad87ebb0 0f9d727d
@@ -38,9 +44,3 @@ file:foo.txt
           created by   dg:*.txt
             consumes   file:./
             supplies   step:cat foo.txt
-
-step:cat foo.txt
-               state = QUEUED
-          created by   step:./plan.py
-            consumes   file:./
-            consumes   file:foo.txt
