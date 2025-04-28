@@ -114,7 +114,7 @@ def static(*paths: str | Iterable[str]):
         # Translate paths to make them relative to the working directory of the director.
         tr_paths = sorted(translate(su_path) for su_path in su_paths)
         # Declare the missing and then confirm the files.
-        to_check = RPC_CLIENT.call.missing(_get_step_key(), tr_paths)
+        to_check = RPC_CLIENT.call.missing(_get_step_i(), tr_paths)
         _confirm_missing(to_check)
 
 
@@ -188,7 +188,7 @@ def glob(
             raise ValueError("Combination of options not supported: _defer=True, _required=True")
         if len(subs) > 0:
             raise ValueError("Named wildcards are not supported in deferred globs.")
-        to_check = RPC_CLIENT.call.defer(_get_step_key(), tr_patterns)
+        to_check = RPC_CLIENT.call.defer(_get_step_i(), tr_patterns)
         _check_deferred(to_check)
         return None
 
@@ -203,7 +203,7 @@ def glob(
     if len(static_paths) > 0:
         _check_inp_paths(static_paths)
         tr_static_paths = [translate(static_path) for static_path in static_paths]
-        to_check = RPC_CLIENT.call.missing(_get_step_key(), tr_static_paths)
+        to_check = RPC_CLIENT.call.missing(_get_step_i(), tr_static_paths)
         _confirm_missing(to_check)
 
     # Translate all the nglob matches with matching paths and send to the director.
@@ -213,7 +213,7 @@ def glob(
         for paths in nglob_single.results.values()
         for path in paths
     ]
-    RPC_CLIENT.call.nglob(_get_step_key(), tr_patterns, subs, tr_all_paths)
+    RPC_CLIENT.call.nglob(_get_step_i(), tr_patterns, subs, tr_all_paths)
 
     # Done
     return nglob_multi
@@ -314,7 +314,7 @@ def step(
 
     # Finally create the step.
     to_check = RPC_CLIENT.call.step(
-        _get_step_key(),
+        _get_step_i(),
         command,
         tr_inp_paths,
         env_vars,
@@ -343,7 +343,7 @@ def pool(name: str, size: int):
     size
         The pool size.
     """
-    RPC_CLIENT.call.pool(_get_step_key(), name, size)
+    RPC_CLIENT.call.pool(_get_step_i(), name, size)
 
 
 class InputNotFoundError(Exception):
@@ -407,9 +407,9 @@ def amend(
         tr_vol_paths = [translate(subs(vol_path)) for vol_path in vol_paths]
 
     # Finally, amend for real.
-    step_key = _get_step_key()
+    step_i = _get_step_i()
     amend_result = RPC_CLIENT.call.amend(
-        step_key,
+        step_i,
         tr_inp_paths,
         sorted(env_vars),
         tr_out_paths,
@@ -419,7 +419,7 @@ def amend(
         keep_going, to_check = amend_result
         if keep_going is False:
             raise InputNotFoundError("Amended inputs are not available yet.")
-        _check_deferred(to_check, step_key)
+        _check_deferred(to_check, step_i)
     # Double check that all inputs are indeed present.
     _check_inp_paths(su_inp_paths)
 
@@ -434,7 +434,7 @@ def getinfo() -> StepInfo:
         For consistency with other functions in this module, the `inp`, `out` and `vol`
         paths are relative to the working directory of the step.
     """
-    step_info = RPC_CLIENT.call.getinfo(_get_step_key())
+    step_info = RPC_CLIENT.call.getinfo(_get_step_i())
     # Update paths to make them relative to the working directory of the step.
     step_info.inp = sorted(translate.back(inp) for inp in step_info.inp)
     step_info.out = sorted(translate.back(out) for out in step_info.out)
@@ -991,7 +991,7 @@ def _confirm_missing(to_check: list[tuple[str, FileHash]] | None):
             RPC_CLIENT.call.confirm(checked)
 
 
-def _check_deferred(to_check: list[tuple[str, FileHash]] | None, step_key: str | None = None):
+def _check_deferred(to_check: list[tuple[str, FileHash]] | None, step_i: int | None = None):
     """Check file, update hashes of existing ones, and send the updates to the director."""
     if to_check is not None and len(to_check) > 0:
         # Select matches of the deferred glob that exist and update their hashes.
@@ -1007,8 +1007,8 @@ def _check_deferred(to_check: list[tuple[str, FileHash]] | None, step_key: str |
             RPC_CLIENT.call.confirm(checked)
         if len(errors) > 1:
             message = "\n".join(errors)
-            if step_key is not None:
-                RPC_CLIENT.call.reschedule_step(step_key, message)
+            if step_i is not None:
+                RPC_CLIENT.call.reschedule_step(step_i, message)
             raise DeferredNotConfirmedError(message)
 
 
@@ -1031,11 +1031,11 @@ def _get_rpc_client():
 RPC_CLIENT = _get_rpc_client()
 
 
-def _get_step_key():
-    """Get the current step key from the STEPUP_STEP_KEY environment variable."""
-    stepup_step_key = os.getenv("STEPUP_STEP_KEY")
-    if stepup_step_key is None:
+def _get_step_i() -> int:
+    """Get the current step node index from the STEPUP_STEP_I environment variable."""
+    step_i = os.getenv("STEPUP_STEP_I")
+    if step_i is None:
         if isinstance(RPC_CLIENT, DummySyncRPCClient):
-            return "dummy:"
-        raise RuntimeError("The STEPUP_STEP_KEY environment variable is not defined.")
-    return stepup_step_key
+            return -1
+        raise RuntimeError("The STEPUP_STEP_I environment variable is not defined.")
+    return int(step_i)

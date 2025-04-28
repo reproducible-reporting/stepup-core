@@ -138,8 +138,7 @@ async def test_missing(client: AsyncRPCClient, path_tmp: Path):
     try:
         with open("foo", "w") as fh:
             fh.write("bar")
-        step_key_plan = "step:./plan.py"
-        to_check = await client("missing", step_key_plan, ["foo"])
+        to_check = await client("missing", 4, ["foo"])
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
@@ -207,10 +206,9 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
     try:
         with open("original.txt", "w") as fh:
             fh.write("Hello world!")
-        step_key_plan = "step:./plan.py"
         await client(
             "step",
-            step_key_plan,
+            4,
             "cp -v original.txt copy.txt",
             ["original.txt"],
             {},
@@ -221,7 +219,7 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
             None,
             False,
         )
-        to_check = await client("missing", step_key_plan, ["original.txt"])
+        to_check = await client("missing", 4, ["original.txt"])
         assert to_check == [("original.txt", FileHash.unknown())]
         file_hash = FileHash.unknown().regen("original.txt")
         await client("confirm", [("original.txt", file_hash)])

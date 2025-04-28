@@ -12,6 +12,13 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no summary yet)
 
+### Changed
+
+- Internals:
+    - Improved type hints in the code.
+    - The environment variable `STEPUP_STEP_KEY` (string)
+      has been replaced by `STEPUP_STEP_I` (integer).
+
 ## [2.1.7][] - 2025-04-24 {: #v2.1.7 }
 
 Minor enhancements and bugfixes.

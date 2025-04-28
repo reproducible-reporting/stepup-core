@@ -633,7 +633,7 @@ class Cascade:
         return self._root
 
     def find(self, node_type: type[NodeType], label: str) -> NodeType | None:
-        """Return the node for the given node class and label."""
+        """Return the node for the given node class and label or index."""
         sql = "SELECT i FROM node WHERE kind = ? AND label = ?"
         data = (node_type.kind(), label)
         row = self._con.execute(sql, data).fetchone()
@@ -650,6 +650,18 @@ class Cascade:
             return None, None
         i, is_orphan = row
         return node_type(self, i, label), bool(is_orphan)
+
+    def node(self, node_type: type[NodeType], i: int) -> NodeType | None:
+        """Return the node for the given node class and label or index."""
+        sql = "SELECT kind, label FROM node WHERE i = ?"
+        data = (i,)
+        row = self._con.execute(sql, data).fetchone()
+        if row is None:
+            return None
+        kind, label = row
+        if kind != node_type.kind():
+            raise TypeError(f"Node with id {i} is not of type {node_type.kind()}")
+        return node_type(self, i, label)
 
     def nodes(
         self,

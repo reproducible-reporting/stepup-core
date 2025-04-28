@@ -323,7 +323,7 @@ class DirectorHandler:
             return self.workflow.initialize_boot(self.path_plan)
 
     @allow_rpc
-    async def missing(self, creator_key: str, paths: list[str]) -> list[tuple[str, FileHash]]:
+    async def missing(self, creator_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
         """Add a list of absolute paths to the workflow, to become static.
 
         They are stored internally as paths relative to STEPUP_ROOT, initially set to misssing.
@@ -332,22 +332,22 @@ class DirectorHandler:
         The client then calls confirm with the updated hashes.
         """
         async with self.dblock:
-            creator = self.workflow.find(Step, creator_key.split(":", maxsplit=1)[1])
+            creator = self.workflow.node(Step, creator_i)
             return self.workflow.declare_missing(creator, paths)
 
     @allow_rpc
     async def nglob(
-        self, creator_key: str, patterns: list[str], subs: dict[str, str], paths: list[str]
+        self, creator_i: int, patterns: list[str], subs: dict[str, str], paths: list[str]
     ):
         """Register a glob patterns to be watched."""
         ngm = NGlobMulti.from_patterns(patterns, subs)
         ngm.extend(paths)
         async with self.dblock:
-            creator = self.workflow.find(Step, creator_key.split(":", maxsplit=1)[1])
+            creator = self.workflow.node(Step, creator_i)
             self.workflow.register_nglob(creator, ngm)
 
     @allow_rpc
-    async def defer(self, creator_key: str, patterns: list[str]) -> list[tuple[str, FileHash]]:
+    async def defer(self, creator_i: int, patterns: list[str]) -> list[tuple[str, FileHash]]:
         """Register a deferred glob.
 
         Returns
@@ -357,7 +357,7 @@ class DirectorHandler:
         """
         to_check = []
         async with self.dblock:
-            creator = self.workflow.find(Step, creator_key.split(":", maxsplit=1)[1])
+            creator = self.workflow.node(Step, creator_i)
             for pattern in patterns:
                 to_check.extend(self.workflow.defer_glob(creator, pattern))
         return to_check
@@ -378,7 +378,7 @@ class DirectorHandler:
     @allow_rpc
     async def step(
         self,
-        creator_key: str,
+        creator_i: int,
         command: str,
         inp_paths: list[str],
         env_vars: list[str],
@@ -403,7 +403,7 @@ class DirectorHandler:
         if not workdir.endswith(os.sep):
             raise GraphError(f"A working directory must end with a separator, got: {workdir}")
         async with self.dblock:
-            creator = self.workflow.find(Step, creator_key.split(":", maxsplit=1)[1])
+            creator = self.workflow.node(Step, creator_i)
             return self.workflow.define_step(
                 creator,
                 command,
@@ -418,7 +418,7 @@ class DirectorHandler:
             )
 
     @allow_rpc
-    async def pool(self, step_key: str, name: str, size: int):
+    async def pool(self, step_i: int, name: str, size: int):
         """Define a pool with given name and size.
 
         Notes
@@ -426,13 +426,13 @@ class DirectorHandler:
         This is an RPC wrapper for `Scheduler.define_pool`.
         """
         async with self.dblock:
-            step = self.workflow.find(Step, step_key.split(":", maxsplit=1)[1])
+            step = self.workflow.node(Step, step_i)
             self.workflow.define_pool(step, name, size)
 
     @allow_rpc
     async def amend(
         self,
-        step_key: str,
+        step_i: int,
         inp_paths: list[str],
         env_vars: set[str],
         out_paths: list[str],
@@ -455,7 +455,7 @@ class DirectorHandler:
             the caller has to change `keep_going` to `False`.
         """
         async with self.dblock:
-            step = self.workflow.find(Step, step_key.split(":", maxsplit=1)[1])
+            step = self.workflow.node(Step, step_i)
             return self.workflow.amend_step(
                 step,
                 inp_paths=inp_paths,
@@ -465,20 +465,20 @@ class DirectorHandler:
             )
 
     @allow_rpc
-    async def reschedule_step(self, step_key: str, reason: str):
+    async def reschedule_step(self, step_i: int, reason: str):
         """Reschedule a step for the given reason."""
         async with self.dblock:
-            step = self.workflow.find(Step, step_key.split(":", maxsplit=1)[1])
+            step = self.workflow.node(Step, step_i)
             step.set_rescheduled_info(reason)
 
     @allow_rpc
-    async def getinfo(self, step_key: str) -> StepInfo:
+    async def getinfo(self, step_i: int) -> StepInfo:
         """Return step information, consisent with return values of functions in stepup.core.api.
 
         For the sake of consistency, amended step arguments are not included.
         """
         async with self.dblock:
-            step = self.workflow.find(Step, step_key.split(":", maxsplit=1)[1])
+            step = self.workflow.node(Step, step_i)
             return step.get_step_info()
 
     #

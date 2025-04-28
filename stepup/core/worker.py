@@ -316,7 +316,7 @@ class WorkerClient:
         error_pages = []
         try:
             new_step_hash = await self.client.call.new_step(
-                step.label, inp_hashes, env_vars, check_hash
+                step.i, step.label, inp_hashes, env_vars, check_hash
             )
         except RPCError as exc:
             error_pages.append(("RPC Error", str(exc)))
@@ -432,8 +432,8 @@ class WorkerClient:
 class WorkerStep:
     """Information on the current step that a worker is working on."""
 
-    key: str = attrs.field()
-    """The unique identifier for the step, used to set the STEPUP_STEP_KEY."""
+    i: int = attrs.field()
+    """The index from the node table for the step, used to set the STEPUP_STEP_I."""
 
     command: str = attrs.field()
     """The command to be executed for the step."""
@@ -499,6 +499,7 @@ class WorkerHandler:
     @allow_rpc
     async def new_step(
         self,
+        i: int,
         label: str,
         inp_hashes: list[tuple[str, FileHash]],
         env_vars: list[str],
@@ -508,6 +509,8 @@ class WorkerHandler:
 
         Parameters
         ----------
+        i
+            The index from the node table for the step.
         label
             The label of the step to prepare for (contains command and workdir).
         inp_hashes
@@ -531,7 +534,7 @@ class WorkerHandler:
 
         # Create the step
         command, workdir = split_step_label(label)
-        self.step = WorkerStep(f"step:{label}", command, workdir)
+        self.step = WorkerStep(i, command, workdir)
 
         # Create initial StepHash
         return self.compute_inp_step_hash(inp_hashes, env_vars, check_hash)[0]
@@ -587,8 +590,11 @@ class WorkerHandler:
         env_var_values = [(env_var, os.environ.get(env_var)) for env_var in env_vars]
 
         # Create the StepHash
+        label = self.step.command
+        if self.step.workdir != "./":
+            label += f"  # wd={self.step.workdir}"
         return StepHash.from_inp(
-            self.step.key, self.explain_rerun, all_inp_hashes, env_var_values
+            f"step:{label}", self.explain_rerun, all_inp_hashes, env_var_values
         ), []
 
     @allow_rpc
@@ -704,7 +710,7 @@ class WorkerHandler:
         env = os.environ | {
             # For internal use only:
             "STEPUP_DIRECTOR_SOCKET": self.director_socket_path,
-            "STEPUP_STEP_KEY": self.step.key,
+            "STEPUP_STEP_I": str(self.step.i),
             "STEPUP_ROOT": stepup_root,
             # Client code may use the following:
             "ROOT": Path.cwd().relpath(self.step.workdir),
