@@ -22,7 +22,6 @@
 import argparse
 import asyncio
 import os
-import signal
 import subprocess
 import sys
 import tempfile
@@ -34,7 +33,7 @@ from importlib.metadata import version as get_version
 import attrs
 from path import Path
 
-from .asyncio import stoppable_iterator
+from .asyncio import stoppable_iterator, wait_for_path
 from .director import interpret_num_workers
 from .reporter import ReporterClient, ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
@@ -83,13 +82,8 @@ async def async_main():
         director_socket_path = dir_sockets / "director"
         reporter_socket_path = dir_sockets / "reporter"
 
-        # Install signal handlers
-        stop_event = asyncio.Event()
-        loop = asyncio.get_running_loop()
-        for sig in signal.SIGINT, signal.SIGTERM:
-            loop.add_signal_handler(sig, stop_event.set)
-
         # Set up the reporter monitor
+        stop_event = asyncio.Event()
         reporter_handler = ReporterHandler(args.show_perf > 0, args.progress, stop_event)
         task_reporter = asyncio.create_task(
             serve_socket_rpc(reporter_handler, reporter_socket_path, stop_event),
@@ -159,17 +153,6 @@ async def async_main():
             reporter_handler.report("WARNING", "Errors logged in .stepup/director.log", [])
 
     sys.exit(returncode)
-
-
-async def wait_for_path(path: Path, stop_event: asyncio.Event):
-    """Wait until a path exists."""
-    time = 0.0
-    while not path.exists():
-        if stop_event.is_set():
-            break
-        if time > 0:
-            await asyncio.sleep(time)
-        time += 0.1
 
 
 @attrs.define

@@ -259,11 +259,6 @@ async def serve(
         scheduler, workflow, dblock, reporter, runner, watcher, path_plan, stop_event
     )
 
-    # Install signal handlers
-    loop = asyncio.get_running_loop()
-    for sig in signal.SIGINT, signal.SIGTERM:
-        loop.add_signal_handler(sig, scheduler.drain)
-
     # Initialize the workflow
     new_boot = await director_handler.initialize_boot()
     if new_boot:
@@ -306,7 +301,7 @@ class DirectorHandler:
     watcher: Watcher | None = attrs.field()
     path_plan: Path = attrs.field()
     stop_event: asyncio.Event = attrs.field()
-    _kill_signals: list[int] = attrs.field(default=[signal.SIGINT, signal.SIGKILL])
+    _shutdown_counter: int = attrs.field(init=False, default=0)
 
     #
     # Building the workflow
@@ -493,17 +488,19 @@ class DirectorHandler:
         """Shut down the director and worker processes."""
         self.scheduler.drain()
         if self.stop_event.is_set():
-            if len(self._kill_signals) > 0:
-                kill_signal = self._kill_signals.pop(0)
-                await self.reporter(
-                    "DIRECTOR",
-                    f"Killing steps with signal {kill_signal} ({signal.strsignal(kill_signal)})",
-                )
-                await self.runner.kill_worker_procs(kill_signal)
+            signal_name, signal_number = (
+                ("SIGINT", signal.SIGINT)
+                if self._shutdown_counter == 1
+                else ("SIGTERM", signal.SIGTERM)
+            )
+            await self.reporter("DIRECTOR", f"Interrupting worker subprocesses ({signal_name}).")
+            await self.runner.interrupt_workers(signal_number)
+            self._shutdown_counter += 2
         else:
             if len(self.runner.active_workers) > 0:
                 await self.reporter("DIRECTOR", "Waiting for steps to complete before shutdown.")
             self.stop_event.set()
+            self._shutdown_counter = 1
         if self.watcher is not None:
             self.watcher.interrupt.set()
 

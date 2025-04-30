@@ -24,11 +24,14 @@ import contextlib
 import os
 import sys
 
+from path import Path
+
 __all__ = (
     "pipe",
     "stdio",
     "stoppable_iterator",
     "wait_for_events",
+    "wait_for_path",
 )
 
 
@@ -161,3 +164,14 @@ async def pipe(
         )
         writer = asyncio.streams.StreamWriter(writer_transport, writer_protocol, None, loop)
         yield reader, writer
+
+
+async def wait_for_path(path: Path, stop_event: asyncio.Event):
+    """Wait until a path exists."""
+    time = 0.0
+    while not path.exists():
+        if stop_event.is_set():
+            break
+        if time > 0:
+            await asyncio.sleep(time)
+        time += 0.1

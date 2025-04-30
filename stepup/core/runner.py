@@ -20,8 +20,10 @@
 """The `Runner` delegates the execution of jobs to the workers."""
 
 import asyncio
+import contextlib
 import logging
 from functools import partial
+from io import TextIOBase
 
 import attrs
 from path import Path
@@ -105,22 +107,30 @@ class Runner:
         One iteration in the main runner loop consists of running a bunch of jobs:
         All runnable jobs are executed unless the user interrupts the runner (drain command).
         """
-        # Start workers
-        self.idle_workers.update(
+        with contextlib.ExitStack() as stack:
+            # Start workers in parallel.
             await asyncio.gather(
-                *[self._launch_worker() for _ in range(self.scheduler.num_workers)]
+                *[
+                    self._launch_worker(
+                        idx,
+                        stack.enter_context(open(f".stepup/worker{idx}.log", "w")),
+                        stop_event,
+                    )
+                    for idx in range(self.scheduler.num_workers)
+                ]
             )
-        )
-        # Loop through runner phases.
-        while True:
-            await wait_for_events(self.resume, stop_event, return_when=asyncio.FIRST_COMPLETED)
-            if stop_event.is_set():
-                return
-            await self.job_loop()
-            await self.finalize()
-            self.resume.clear()
-            if self.watcher is None:
-                stop_event.set()
+            self.idle_workers = set(range(self.scheduler.num_workers))
+            # Loop through run phases.
+            while True:
+                await wait_for_events(self.resume, stop_event, return_when=asyncio.FIRST_COMPLETED)
+                if stop_event.is_set():
+                    return
+                await self.job_loop()
+                await self.finalize()
+                self.resume.clear()
+                # If there is no watcher, the runner stops after one iteration.
+                if self.watcher is None:
+                    stop_event.set()
 
     async def job_loop(self):
         """Run all runnable jobs unless the scheduler is drained while the runner is in progress."""
@@ -177,8 +187,7 @@ class Runner:
         if len(self.idle_workers) > 0:
             worker_idx = self.idle_workers.pop()
         else:
-            # Normally never needed because workers are pre-launched, but keeping to play safe.
-            worker_idx = await self._launch_worker()
+            raise RuntimeError("No idle workers available.")
         # Move it to the set of active workers.
         worker = self.workers[worker_idx]
         self.active_workers.add(worker_idx)
@@ -188,7 +197,7 @@ class Runner:
         self.running_worker_tasks[task] = job
         task.add_done_callback(partial(self._task_done, worker_idx=worker_idx))
 
-    async def _launch_worker(self) -> int:
+    async def _launch_worker(self, idx: int, log: TextIOBase, stop_event: asyncio.Event):
         worker = WorkerClient(
             self.scheduler,
             self.workflow,
@@ -197,18 +206,20 @@ class Runner:
             self.director_socket_path,
             self.show_perf,
             self.explain_rerun,
-            len(self.workers),
+            idx,
         )
         self.workers.append(worker)
-        await worker.boot()
+        await worker.boot(log, stop_event)
         await self.reporter("DIRECTOR", f"Launched worker {worker.idx}")
-        return worker.idx
 
     def _task_done(self, task: asyncio.Task, worker_idx: int):
         job = self.running_worker_tasks.pop(task)
         self.done_worker_tasks[task] = job
-        self.active_workers.discard(worker_idx)
-        self.idle_workers.add(worker_idx)
+        if worker_idx in self.active_workers:
+            self.active_workers.discard(worker_idx)
+            self.idle_workers.add(worker_idx)
+        else:
+            raise RuntimeError(f"Worker {worker_idx} not in active workers.")
         self.scheduler.release_pool(job.pool)
 
     def handle_done_tasks(self):
@@ -238,9 +249,10 @@ class Runner:
             waits.append(worker.close())
         await asyncio.gather(*waits)
 
-    async def kill_worker_procs(self, signal: int):
-        for worker_idx in self.active_workers:
-            await self.workers[worker_idx].kill(signal)
+    async def interrupt_workers(self, signal: int):
+        await asyncio.gather(
+            *[self.workers[worker_idx].interrupt(signal) for worker_idx in self.active_workers]
+        )
 
 
 async def report_completion(

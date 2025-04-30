@@ -22,24 +22,28 @@
 import argparse
 import asyncio
 import contextlib
+import ctypes
+import io
 import os
+import queue
 import resource
 import shlex
-import signal
+import subprocess
 import sys
+import threading
 import traceback
 from collections.abc import AsyncGenerator
-from functools import partial
 from time import perf_counter
 
 import attrs
 from path import Path
 
+from .asyncio import wait_for_path
 from .enums import FileState, StepState
 from .exceptions import RPCError
 from .hash import FileHash, StepHash, compare_step_hashes, fmt_file_hash_diff
 from .reporter import ReporterClient
-from .rpc import AsyncRPCClient, allow_rpc, serve_stdio_rpc
+from .rpc import AsyncRPCClient, allow_rpc, serve_socket_rpc
 from .scheduler import Scheduler
 from .step import Step, split_step_label
 from .utils import DBLock
@@ -84,6 +88,9 @@ class WorkerClient:
     idx: int = attrs.field(converter=int)
     """The integer index of the worker (in the list of workers kept by the Runner instance)."""
 
+    process: asyncio.subprocess.Process | None = attrs.field(init=False, default=None)
+    """The worker process that is running the steps."""
+
     client: AsyncRPCClient | None = attrs.field(init=False, default=None)
     """The RPC client to communicate with the worker process."""
 
@@ -91,26 +98,37 @@ class WorkerClient:
     # Setup and teardown
     #
 
-    async def boot(self):
-        args = [
+    async def boot(self, log: io.TextIOBase, stop_event: asyncio.Event):
+        worker_socket_path = self.director_socket_path.parent / f"worker{self.idx}"
+        argv = [
+            sys.executable,
             "-m",
             "stepup.core.worker",
             self.director_socket_path,
+            worker_socket_path,
             str(self.idx),
         ]
         if self.show_perf:
-            args.append("--show-perf")
+            argv.append("--show-perf")
         if self.explain_rerun:
-            args.append("--explain-rerun")
+            argv.append("--explain-rerun")
         if self.reporter.socket_path is not None:
-            args.append(f"--reporter={self.reporter.socket_path}")
-        self.client = await AsyncRPCClient.subprocess(
-            sys.executable,
-            *args,
+            argv.append(f"--reporter={self.reporter.socket_path}")
+        # Create the worker process
+        self.process = await asyncio.create_subprocess_exec(
+            *argv,
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=log,
+            stderr=asyncio.subprocess.STDOUT,
         )
+        # Wait for the socket to appear and connect to it
+        await wait_for_path(worker_socket_path, stop_event)
+        self.client = await AsyncRPCClient.socket(worker_socket_path)
 
     async def close(self):
         await self.client.close()
+        await self.process.wait()
+        self.process = None
 
     #
     # Functions called by jobs
@@ -417,10 +435,12 @@ class WorkerClient:
         return await self.client.call.compute_full_step_hash(inp_hashes, env_vars, out_hashes)
 
     async def shutdown(self):
+        """Shutdown the worker process."""
         await self.client.call.shutdown()
 
-    async def kill(self, sig: int):
-        await self.client.call.kill(sig)
+    async def interrupt(self, sig: int):
+        """Interrupt the step currently running, if any."""
+        await self.client.call.interrupt(sig)
 
 
 #
@@ -441,13 +461,10 @@ class WorkerStep:
     workdir: Path = attrs.field()
     """The working directory where the command will be executed."""
 
-    proc: asyncio.subprocess.Process | None = attrs.field(init=False, default=None)
-    """The process running the command (only available when executing)."""
-
-    stdout: bytes = attrs.field(init=False, default=b"")
+    stdout: str = attrs.field(init=False, default="")
     """The standard output captured from the command execution."""
 
-    stderr: bytes = attrs.field(init=False, default=b"")
+    stderr: str = attrs.field(init=False, default="")
     """The standard error captured from the command execution."""
 
     perf_info: str = attrs.field(init=False, default="")
@@ -462,6 +479,9 @@ class WorkerStep:
     rescheduled_info: str = attrs.field(init=False, default="")
     """Information about why the step was rescheduled."""
 
+    thread: threading.Thread | None = attrs.field(init=False, default=None)
+    """Thread that is running the command."""
+
     returncode: int | None = attrs.field(init=False, default=None)
     """The return code from the command execution."""
 
@@ -474,6 +494,70 @@ class WorkerStep:
     @property
     def description(self):
         return self.command if self.workdir == "./" else f"{self.command}  # wd={self.workdir}"
+
+
+class WorkThread(threading.Thread):
+    """Thread to run commands in the worker process."""
+
+    def __init__(self, command: str):
+        super().__init__()
+        self.command = command
+        self.returncode = 1
+        self.done = asyncio.Event()
+        self.loop = asyncio.get_event_loop()
+        self.pid_queue = queue.Queue(1)
+
+    def run(self):
+        from stepup.core.actions import runsh
+
+        try:
+            self.returncode = runsh(self.command, self)
+        finally:
+            self.loop.call_soon_threadsafe(self.done.set)
+
+    def runsh(self, command: str):
+        """Run a shell command in the worker process."""
+        # Sanity check of the executable (if it can be found)
+        if not has_shebang(Path(shlex.split(command)[0])):
+            print(f"Script does not start with a shebang: {command}", file=sys.stderr)
+            return 1
+        p = subprocess.Popen(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
+        self.pid_queue.put_nowait(p.pid)
+        stdout, stderr = p.communicate()
+        with contextlib.suppress(queue.Empty):
+            self.pid_queue.get_nowait()
+        if stdout is not None and len(stdout) > 0:
+            print(stdout)
+        if stderr is not None and len(stderr) > 0:
+            print(stderr, file=sys.stderr)
+        return p.returncode
+
+
+def has_shebang(executable: Path) -> bool:
+    """Return `True` if a script has a shebang or if the file is not a script."""
+    # See https://en.wikipedia.org/wiki/Shebang_%28Unix%29
+    if not executable.is_file():
+        # The executable is probably in the PATH,
+        # i.e. not a custom script, so not checking
+        return True
+    # Check if the file is binary.
+    # https://stackoverflow.com/a/7392391
+    with open(executable, "rb") as fh:
+        head = fh.read(1024)
+    printable_text_chars = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F})
+    # Check if the file is binary by translating non-text characters
+    if bool(head.translate(None, printable_text_chars)):
+        # This is unlikely to be a script, so not checking the shebang.
+        return True
+    return head[:3] == b"#!/"
 
 
 @attrs.define
@@ -492,9 +576,30 @@ class WorkerHandler:
         self.stop_event.set()
 
     @allow_rpc
-    def kill(self, sig: int):
-        if self.step is not None and self.step.proc is not None:
-            self.step.proc.send_signal(sig)
+    def interrupt(self, sig: int):
+        if self.step is not None and self.step.thread is not None:
+            # Get process IDs launched in the thread.
+            pids = []
+            while True:
+                try:
+                    pids.append(self.step.thread.pid_queue.get(block=False))
+                except queue.Empty:
+                    break
+            if len(pids) > 0:
+                # Kill the process IDs first
+                for pid in pids:
+                    with contextlib.suppress(ProcessLookupError):
+                        print(f"Interrupting process {pid} with singal {sig}", file=sys.stderr)
+                        os.kill(pid, sig)
+            else:
+                # Thread running, raise KeyboardInterrupt in the thread.
+                # See https://stackoverflow.com/a/325528
+                print("No worker subprocesses, interrupting thread", file=sys.stderr)
+                res = ctypes.pythonapi.PyThreadState_SetAsyncExc(
+                    ctypes.c_ulong(self.step.thread.ident), ctypes.py_object(KeyboardInterrupt)
+                )
+                if res == 0:
+                    raise RPCError("Failed to interrupt the worker thread.")
 
     @allow_rpc
     async def new_step(
@@ -697,42 +802,34 @@ class WorkerHandler:
     async def run(self):
         await self.reporter("START", self.step.description)
 
-        # Sanity check of the executable (if it can be found)
-        if not has_shebang(self.step.workdir / shlex.split(self.step.command)[0]):
-            self.step.stdout = b""
-            self.step.stderr = b"Script does not start with a shebang."
-            self.step.returncode = 1
-            self.step.success = False
-            return
-
-        # Actual execution
-        stepup_root = Path.cwd()
-        env = os.environ | {
-            # For internal use only:
-            "STEPUP_DIRECTOR_SOCKET": self.director_socket_path,
-            "STEPUP_STEP_I": str(self.step.i),
-            "STEPUP_ROOT": stepup_root,
-            # Client code may use the following:
-            "ROOT": Path.cwd().relpath(self.step.workdir),
-            "HERE": self.step.workdir.relpath(),
-        }
-        if self.show_perf:
-            ru_initial = resource.getrusage(resource.RUSAGE_CHILDREN)
-            pt_initial = perf_counter()
-        proc = await asyncio.create_subprocess_shell(
-            self.step.command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            stdin=asyncio.subprocess.DEVNULL,
-            env=env,
-            cwd=self.step.workdir,
-        )
-        self.step.proc = proc
+        # For internal use only:
+        os.environ["STEPUP_DIRECTOR_SOCKET"] = self.director_socket_path  # TODO only once
+        os.environ["STEPUP_ROOT"] = str(Path.cwd())  # TODO only once, just take PWD?
+        os.environ["STEPUP_STEP_I"] = str(self.step.i)
+        # Client code may use the following:
+        os.environ["ROOT"] = str(Path.cwd().relpath(self.step.workdir))
+        os.environ["HERE"] = str(self.step.workdir.relpath())
+        # Create IO redirection for stdout and stderr
+        step_err = io.StringIO()
+        step_out = io.StringIO()
+        with (
+            contextlib.chdir(self.step.workdir),
+            contextlib.redirect_stderr(step_err),
+            contextlib.redirect_stdout(step_out),
+        ):
+            if self.show_perf:
+                ru_initial = resource.getrusage(resource.RUSAGE_CHILDREN)
+                pt_initial = perf_counter()
+            self.step.thread = WorkThread(self.step.command)
+            self.step.thread.start()
+            await self.step.thread.done.wait()
+            self.step.thread.join()
+            self.step.returncode = self.step.thread.returncode
+            self.step.thread = None
+        self.step.stdout = step_out.getvalue()
+        self.step.stderr = step_err.getvalue()
 
         # Process results of the step.
-        self.step.stdout, self.step.stderr = await proc.communicate()
-        self.step.proc = None
-        self.step.returncode = proc.returncode
         if self.show_perf:
             ru_final = resource.getrusage(resource.RUSAGE_CHILDREN)
             utime = ru_final.ru_utime - ru_initial.ru_utime
@@ -784,10 +881,10 @@ class WorkerHandler:
             if len(self.step.out_missing) > 0:
                 self.step.out_missing.sort()
                 pages.append(("Expected outputs not created", "\n".join(self.step.out_missing)))
-        stdout = self.step.stdout.decode("utf-8", errors="ignore").rstrip()
+        stdout = self.step.stdout.rstrip()
         if len(stdout) > 0:
             pages.append(("Standard output", stdout))
-        stderr = self.step.stderr.decode("utf-8", errors="ignore").rstrip()
+        stderr = self.step.stderr.rstrip()
         if len(stderr) > 0:
             pages.append(("Standard error", stderr))
         if self.step.rescheduled_info != "":
@@ -832,30 +929,12 @@ class WorkerHandler:
         return self.step is None
 
 
-def has_shebang(executable: Path) -> bool:
-    """Return `True` if a script has a shebang or if the file is not a script."""
-    # See https://en.wikipedia.org/wiki/Shebang_%28Unix%29
-    if not executable.is_file():
-        # The executable is probably in the PATH,
-        # i.e. not a custom script, so not checking
-        return True
-    # Check if the file is binary.
-    # https://stackoverflow.com/a/7392391
-    with open(executable, "rb") as fh:
-        head = fh.read(1024)
-    printable_text_chars = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F})
-    # Check if the file is binary by translating non-text characters
-    if bool(head.translate(None, printable_text_chars)):
-        # This is unlikely to be a script, so not checking the shebang.
-        return True
-    return head[:3] == b"#!/"
-
-
 def parse_args():
     parser = argparse.ArgumentParser(
         prog="stepup-worker", description="Launch and monitor running steps."
     )
     parser.add_argument("director_socket", type=Path, help="Socket of the director")
+    parser.add_argument("worker_socket", type=Path, help="Socket of the worker (to be created)")
     parser.add_argument("worker_idx", type=int, help="Worker index")
     parser.add_argument(
         "--reporter",
@@ -884,21 +963,11 @@ def parse_args():
 
 async def async_main():
     args = parse_args()
-    with contextlib.ExitStack() as stack:
-        ferr = stack.enter_context(open(f".stepup/worker{args.worker_idx}.log", "w"))
-        stack.enter_context(contextlib.redirect_stderr(ferr))
-        print(f"PID {os.getpid()}", file=sys.stderr)
-        async with ReporterClient.socket(args.reporter_socket) as reporter:
-            # Create the worker handler for the RPC server (and to handle signals).
-            handler = WorkerHandler(
-                args.director_socket, reporter, args.show_perf, args.explain_rerun
-            )
-            # Install signal handlers
-            loop = asyncio.get_running_loop()
-            for sig in signal.SIGINT, signal.SIGTERM:
-                loop.add_signal_handler(sig, partial(handler.kill, sig))
-            # Serve RPC
-            await serve_stdio_rpc(handler)
+    print(f"PID {os.getpid()}", file=sys.stderr)
+    async with ReporterClient.socket(args.reporter_socket) as reporter:
+        # Create the worker handler for the RPC server.
+        handler = WorkerHandler(args.director_socket, reporter, args.show_perf, args.explain_rerun)
+        await serve_socket_rpc(handler, args.worker_socket, handler.stop_event)
 
 
 def main():

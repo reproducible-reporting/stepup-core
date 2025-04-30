@@ -81,7 +81,7 @@ def allow_rpc(func):
 #
 
 
-async def _recv_rpc_message(reader: asyncio.StreamReader) -> tuple[int | None, bytes | None]:
+async def _recv_rpc_message(reader: asyncio.StreamReader) -> tuple[int, bytes] | tuple[None, None]:
     """Read a single RPC request.
 
     Parameters
@@ -205,7 +205,7 @@ async def _handle_request(handler, name: str, args: list, kwargs: dict) -> tuple
         if asyncio.iscoroutinefunction(call):
             result = await result
         return result, False
-    except Exception as exc:  # noqa: BLE001
+    except BaseException as exc:  # noqa: BLE001
         message = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
         return message, True
 
@@ -221,8 +221,12 @@ async def _serve_rpc_send_loop(
 ):
     """Send replies from completed tasks back to RPC client."""
     async for call_id, task in stoppable_iterator(queue.get, stop_event):
-        response = pickle.dumps(await task, protocol=pickle.HIGHEST_PROTOCOL)
-        await _send_rpc_message(writer, call_id, response)
+        try:
+            response = pickle.dumps(await task, protocol=pickle.HIGHEST_PROTOCOL)
+            await _send_rpc_message(writer, call_id, response)
+        except:
+            await _send_rpc_message(writer, call_id, None)
+            raise
 
 
 #
@@ -255,8 +259,9 @@ async def serve_socket_rpc(handler, path: str, stop_event: asyncio.Event):
         The RPC loops keep running until the stop event is set.
     """
     server = await asyncio.start_unix_server(partial(_handle_connection, handler), path)
-    async with server:
-        await stop_event.wait()
+    await stop_event.wait()
+    server.close()
+    await server.wait_closed()
     if sys.version_info < (3, 12, 1) and server._waiters is not None:
         # Workaround for server.wait_closed() issue fixed in Python 3.12.1
         # See https://github.com/python/cpython/issues/120866
