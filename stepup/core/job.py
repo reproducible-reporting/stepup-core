@@ -37,6 +37,21 @@ __all__ = ("Job", "RunJob", "ValidateAmendedJob")
 class Job:
     """A job managed by the scheduler."""
 
+    step: "Step" = attrs.field()
+    """The step related to this job."""
+
+    _pool: str | None = attrs.field()
+    """The pool in which the job should be executed, or None for no restriction."""
+
+    inp_hashes: list[tuple[str, "FileHash"]] = attrs.field()
+    """The input hashes of the step, as a list of tuples (name, hash)."""
+
+    env_vars: list[str] = attrs.field()
+    """The names of (externally defined) environment variables that are used by the step."""
+
+    step_hash: "StepHash" = attrs.field()
+    """The hash of the step if it was previously executed, or None if it was not."""
+
     @property
     def pool(self) -> str | None:
         """The pool in which the job should be executed, or None for no restriction."""
@@ -65,12 +80,6 @@ class ValidateAmendedJob(Job):
     - The step cannot be skipped and the step hash should be discarded.
     - The amended inputs need to be recreated by running the step.
     """
-
-    step: "Step" = attrs.field()
-    _pool: str | None = attrs.field()
-    inp_hashes: list[tuple[str, "FileHash"]] = attrs.field()
-    env_vars: list[str] = attrs.field()
-    step_hash: "StepHash" = attrs.field()
 
     @property
     def pool(self) -> str | None:
@@ -108,16 +117,10 @@ class RunJob(Job):
     i.e. meaning that inputs, environment variables and output have not changed.
     The calculation of the hash is done by the worker and is not restricted to a pool,
     even if the actual execution of the jobs would be.
-    If skipping is not succesful, the job will reschedule itself after setting the step_hash to None
+    If skipping failed, the job will reschedule itself after setting the step_hash to None.
 
     When `step_hash` is None, the job is executed in the pool specified by `pool`.
     """
-
-    step: "Step" = attrs.field()
-    _pool: str | None = attrs.field()
-    inp_hashes: list[tuple[str, "FileHash"]] = attrs.field()
-    env_vars: list[str] = attrs.field()
-    step_hash: "StepHash | None" = attrs.field()
 
     @property
     def pool(self) -> str | None:

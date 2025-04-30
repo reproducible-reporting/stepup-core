@@ -24,12 +24,11 @@ import asyncio
 import attrs
 import pytest
 
-from stepup.core.job import Job
 from stepup.core.scheduler import Pool, Scheduler
 
 
 @attrs.define(frozen=True)
-class MockJob(Job):
+class MockJob:
     _key: str = attrs.field()
     _pool: str = attrs.field()
 
