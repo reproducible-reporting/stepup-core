@@ -68,7 +68,7 @@ async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
         os.chmod("plan.py", stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
         reporter = ReporterClient()
         director = asyncio.create_task(
-            serve(director_socket_path, 1, "plan.py", reporter, False, False, True, False)
+            serve(director_socket_path, 1, Path("plan.py"), reporter, False, False, True, False)
         )
         while not director_socket_path.exists():
             await asyncio.sleep(0.1)

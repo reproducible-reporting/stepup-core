@@ -69,7 +69,7 @@ class WorkerClient:
     reporter: ReporterClient = attrs.field()
     """A reporter to send progress and terminal output to."""
 
-    director_socket_path: str = attrs.field()
+    director_socket_path: Path = attrs.field()
     """The path of the director socket.
 
     A step being executed by a worker needs this socket extend the workflow.
@@ -855,11 +855,12 @@ def parse_args():
     parser = argparse.ArgumentParser(
         prog="stepup-worker", description="Launch and monitor running steps."
     )
-    parser.add_argument("director_socket", help="Socket of the director")
+    parser.add_argument("director_socket", type=Path, help="Socket of the director")
     parser.add_argument("worker_idx", type=int, help="Worker index")
     parser.add_argument(
         "--reporter",
         "-r",
+        type=Path,
         dest="reporter_socket",
         default=os.environ.get("STEPUP_REPORTER_SOCKET"),
         help="Socket to send reporter updates to, if any.",

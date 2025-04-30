@@ -77,7 +77,7 @@ async def async_main():
         await reporter("DIRECTOR", f"Listening on {args.director_socket} (StepUp {version})")
         try:
             returncode = await serve(
-                Path(args.director_socket),
+                args.director_socket,
                 num_workers,
                 args.plan,
                 reporter,
@@ -105,16 +105,19 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "plan",
+        type=Path,
         default="plan.py",
         help="The top-level plan.py script (must be in current directory).",
     )
     parser.add_argument(
         "director_socket",
+        type=Path,
         help="The socket at which StepUp will listen for instructions.",
     )
     parser.add_argument(
         "--reporter",
         "-r",
+        type=Path,
         dest="reporter_socket",
         default=os.environ.get("STEPUP_REPORTER_SOCKET"),
         help="Socket to send reporter updates to, if any.",
@@ -188,7 +191,7 @@ def interpret_num_workers(num_workers: Decimal) -> int:
 async def serve(
     director_socket_path: Path,
     num_workers: int,
-    path_plan: str,
+    path_plan: Path,
     reporter: ReporterClient,
     show_perf: bool,
     explain_rerun: bool,
@@ -301,7 +304,7 @@ class DirectorHandler:
     reporter: ReporterClient = attrs.field()
     runner: Runner = attrs.field()
     watcher: Watcher | None = attrs.field()
-    path_plan: str = attrs.field()
+    path_plan: Path = attrs.field()
     stop_event: asyncio.Event = attrs.field()
     _kill_signals: list[int] = attrs.field(default=[signal.SIGINT, signal.SIGKILL])
 
@@ -317,7 +320,7 @@ class DirectorHandler:
         initialized
             Whether the boot script was (re)initialized.
         """
-        if Path(self.path_plan).absolute().parent != Path.cwd():
+        if self.path_plan.absolute().parent != Path.cwd():
             raise ValueError("The plan script must be in the current directory.")
         async with self.dblock:
             return self.workflow.initialize_boot(self.path_plan)

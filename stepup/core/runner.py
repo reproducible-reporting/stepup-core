@@ -24,6 +24,7 @@ import logging
 from functools import partial
 
 import attrs
+from path import Path
 
 from .asyncio import wait_for_events
 from .enums import FileState, Mandatory, ReturnCode, StepState
@@ -58,7 +59,7 @@ class Runner:
     reporter: ReporterClient = attrs.field(kw_only=True)
     """A reporter client for sending progress info to."""
 
-    director_socket_path: str = attrs.field(kw_only=True)
+    director_socket_path: Path = attrs.field(kw_only=True)
     """The path of the director socket, passed on to worker processes."""
 
     show_perf: bool = attrs.field(kw_only=True)

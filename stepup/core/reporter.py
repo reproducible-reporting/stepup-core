@@ -40,12 +40,12 @@ __all__ = ("ReporterClient", "ReporterHandler")
 
 @attrs.define
 class ReporterClient:
-    socket_path: str | None = attrs.field(default=None)
+    socket_path: Path | None = attrs.field(default=None)
     client: BaseAsyncRPCClient = attrs.field(factory=DummyAsyncRPCClient)
 
     @classmethod
     @contextlib.asynccontextmanager
-    async def socket(cls, path: str | None) -> AsyncGenerator["ReporterClient", None]:
+    async def socket(cls, path: Path | None) -> AsyncGenerator["ReporterClient", None]:
         if path is None:
             yield cls(path, DummyAsyncRPCClient())
         else:
