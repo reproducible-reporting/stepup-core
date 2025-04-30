@@ -70,7 +70,7 @@ class WorkerClient:
     """A reporter to send progress and terminal output to."""
 
     director_socket_path: str = attrs.field()
-    """The path of the directory socket.
+    """The path of the director socket.
 
     A step being executed by a worker needs this socket extend the workflow.
     """

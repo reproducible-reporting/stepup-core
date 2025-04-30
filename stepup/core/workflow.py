@@ -477,7 +477,7 @@ class Workflow(Cascade):
             parent_state = parent_info.file.get_state()
             deferred_parents = parent_info.deferred
 
-        # Consisytency checks for static and missing files.
+        # Consistency checks for static and missing files.
         if file_state == FileState.STATIC:
             if not (parent_state is None or parent_state == FileState.STATIC):
                 raise GraphError(f"Static path does not have a static parent path node: {path}")
