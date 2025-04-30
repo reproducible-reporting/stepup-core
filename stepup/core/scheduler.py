@@ -120,8 +120,8 @@ class Scheduler:
             pool.size = size
         self.changed.set()
 
-    def pop_runnable_job(self) -> tuple[Job | None, str | None]:
-        """Return a runnable step and its pool (or None)."""
+    def pop_runnable_job(self) -> Job | None:
+        """Return a runnable step (or None if there aren't any)."""
         while not self.config_queue.empty():
             pool_name, pool_size = self.config_queue.get_nowait()
             self.set_pool(pool_name, pool_size)
@@ -136,12 +136,12 @@ class Scheduler:
             if self._main_pool.available and pool.available and pool.queue.qsize() > 0:
                 job = pool.queue.get_nowait()
                 self.acquire_pool(pool_name)
-                return job, pool_name
+                return job
         if self._main_pool.available and self._main_pool.queue.qsize() > 0:
             job = self._main_pool.queue.get_nowait()
             self.acquire_pool(None)
-            return job, None
-        return None, None
+            return job
+        return None
 
     def acquire_pool(self, pool_name: str | None):
         if pool_name is not None:

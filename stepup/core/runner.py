@@ -129,9 +129,9 @@ class Runner:
         # Get step jobs and run them on the workers.
         while True:
             # Get the next job and send it to workers if there is such a job.
-            job, pool_name = self.scheduler.pop_runnable_job()
+            job = self.scheduler.pop_runnable_job()
             if job is not None:
-                await self.send_to_worker(job, pool_name)
+                await self.send_to_worker(job)
                 continue
 
             # When there is nothing left to do, the runner must stop.
@@ -170,14 +170,18 @@ class Runner:
         if self.watcher is not None:
             self.watcher.resume.set()
 
-    async def send_to_worker(self, job: Job, pool_name: str):
+    async def send_to_worker(self, job: Job):
+        """Select an idle worker and send the job to it."""
+        # Select an idle worker.
         if len(self.idle_workers) > 0:
             worker_idx = self.idle_workers.pop()
         else:
             # Normally never needed because workers are pre-launched, but keeping to play safe.
             worker_idx = await self._launch_worker()
+        # Move it to the set of active workers.
         worker = self.workers[worker_idx]
         self.active_workers.add(worker_idx)
+        # Send the job to the worker.
         logger.info("Run %s", job.name)
         task = asyncio.create_task(job.coro(worker), name=job.name)
         self.running_worker_tasks[task] = job

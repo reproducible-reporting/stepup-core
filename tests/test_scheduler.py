@@ -91,7 +91,7 @@ def test_scheduler_basics_without_pools(scheduler):
     assert scheduler._main_pool.queue.qsize() == 0
     assert scheduler._main_pool.used == 0
     assert not scheduler.queues_empty
-    assert scheduler.pop_runnable_job() == (MockJob("3", None), None)
+    assert scheduler.pop_runnable_job() == MockJob("3", None)
     assert scheduler.queues_empty
     assert scheduler._main_pool.used == 1
     scheduler.release_pool(None)
@@ -111,7 +111,7 @@ def test_scheduler_basics_with_pools(scheduler):
     assert scheduler._main_pool.used == 0
     assert scheduler._pools["pool"].queue.qsize() == 0
     assert scheduler._pools["pool"].used == 0
-    assert scheduler.pop_runnable_job() == (MockJob("4", "pool"), "pool")
+    assert scheduler.pop_runnable_job() == MockJob("4", "pool")
     assert not scheduler.queues_empty
     assert scheduler._pools["pool"].used == 1
     assert scheduler._main_pool.used == 1
@@ -120,7 +120,7 @@ def test_scheduler_basics_with_pools(scheduler):
     scheduler.release_pool("pool")
     assert scheduler._main_pool.used == 0
     assert scheduler._pools["pool"].used == 0
-    assert scheduler.pop_runnable_job() == (MockJob("3", None), None)
+    assert scheduler.pop_runnable_job() == MockJob("3", None)
     assert scheduler.queues_empty
     assert scheduler._main_pool.used == 1
     assert scheduler._main_pool.queue.qsize() == 0
@@ -147,7 +147,7 @@ def test_scheduler_basics_with_pools_replay(scheduler):
     assert scheduler._main_pool.used == 0
     assert scheduler._pools["pool"].queue.qsize() == 0
     assert scheduler._pools["pool"].used == 0
-    assert scheduler.pop_runnable_job() == (MockJob("2", None), None)
+    assert scheduler.pop_runnable_job() == MockJob("2", None)
     assert not scheduler.queues_empty
     assert scheduler._pools["pool"].used == 0
     assert scheduler._main_pool.used == 1
@@ -156,7 +156,7 @@ def test_scheduler_basics_with_pools_replay(scheduler):
     scheduler.release_pool(None)
     assert scheduler._main_pool.used == 0
     assert scheduler._pools["pool"].used == 0
-    assert scheduler.pop_runnable_job() == (MockJob("7", None), None)
+    assert scheduler.pop_runnable_job() == MockJob("7", None)
     assert scheduler.queues_empty
     assert scheduler._main_pool.used == 1
     assert scheduler._main_pool.queue.qsize() == 0
@@ -177,9 +177,9 @@ def test_scheduler_onhold_without_pools(scheduler):
     assert scheduler.queues_empty
     assert scheduler._main_pool.queue.qsize() == 0
     assert scheduler._main_pool.used == 0
-    assert scheduler.pop_runnable_job() == (None, None)
+    assert scheduler.pop_runnable_job() is None
     scheduler.resume()
-    assert scheduler.pop_runnable_job() == (MockJob("3", None), None)
+    assert scheduler.pop_runnable_job() == MockJob("3", None)
     assert scheduler._main_pool.used == 1
     scheduler.release_pool(None)
     assert scheduler._main_pool.used == 0
@@ -215,7 +215,7 @@ def test_scheduler_onhold_with_pools(scheduler):
     assert scheduler._pools["boo"].queue.qsize() == 0
     assert scheduler._pools["boo"].used == 0
 
-    assert scheduler.pop_runnable_job() == (MockJob("4", "pool"), "pool")
+    assert scheduler.pop_runnable_job() == MockJob("4", "pool")
     assert scheduler.job_queue.qsize() == 0
     assert scheduler._main_pool.queue.qsize() == 1
     assert scheduler._main_pool.used == 1
@@ -225,7 +225,7 @@ def test_scheduler_onhold_with_pools(scheduler):
     assert scheduler._pools["boo"].used == 0
 
     assert not scheduler._pools["pool"].available
-    assert scheduler.pop_runnable_job() == (MockJob("6", "boo"), "boo")
+    assert scheduler.pop_runnable_job() == MockJob("6", "boo")
     assert scheduler._pools["boo"].used == 1
     assert scheduler._pools["boo"].queue.qsize() == 0
     scheduler.release_pool("pool")
@@ -235,7 +235,7 @@ def test_scheduler_onhold_with_pools(scheduler):
     assert scheduler._pools["boo"].available
     assert scheduler._pools["boo"].used == 0
 
-    assert scheduler.pop_runnable_job() == (MockJob("5", "pool"), "pool")
+    assert scheduler.pop_runnable_job() == MockJob("5", "pool")
     assert not scheduler._pools["pool"].available
     assert scheduler._pools["pool"].used == 1
     assert scheduler._pools["pool"].queue.qsize() == 0
@@ -243,7 +243,7 @@ def test_scheduler_onhold_with_pools(scheduler):
     assert scheduler._pools["pool"].available
     assert scheduler._pools["pool"].used == 0
 
-    assert scheduler.pop_runnable_job() == (MockJob("3", None), None)
+    assert scheduler.pop_runnable_job() == MockJob("3", None)
     assert scheduler._main_pool.used == 1
     assert scheduler._main_pool.queue.qsize() == 0
     scheduler.release_pool(None)

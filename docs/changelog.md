@@ -23,6 +23,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
     - Improved type hints in the code.
     - The environment variable `STEPUP_STEP_KEY` (string)
       has been replaced by `STEPUP_STEP_I` (integer).
+    - Simplify `Runner.send_to_worker()`
 
 ## [2.1.7][] - 2025-04-24 {: #v2.1.7 }
 
