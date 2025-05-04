@@ -1,38 +1,38 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:plan.py
             supplies   file:vol.txt
-            supplies   step:./plan.py
-            supplies   step:echo blub blub > vol.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh echo blub blub > vol.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:echo blub blub > vol.txt
+             creates   step:stepup.core.actions.runsh echo blub blub > vol.txt
 
-step:echo blub blub > vol.txt
+step:stepup.core.actions.runsh echo blub blub > vol.txt
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
              creates   file:vol.txt
             supplies   file:vol.txt
 
 file:vol.txt
                state = VOLATILE
-          created by   step:echo blub blub > vol.txt
+          created by   step:stepup.core.actions.runsh echo blub blub > vol.txt
             consumes   file:./
-            consumes   step:echo blub blub > vol.txt
+            consumes   step:stepup.core.actions.runsh echo blub blub > vol.txt

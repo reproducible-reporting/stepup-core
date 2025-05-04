@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-from stepup.core.api import static, step
+from stepup.core.api import runsh, static
 
 static("${INP_VAR_TEST_STEPUP_WORKDIR}/")
 static("${INP_VAR_TEST_STEPUP_WORKDIR}/input.txt")
-step(
+runsh(
     "cat input.txt > output.txt",
     inp=["input.txt"],
     out=["output.txt"],

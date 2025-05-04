@@ -1,29 +1,25 @@
 [
   {
-    "command": "./work.py run -- -5.0 > stdout-5.0.txt 2> stderr-5.0.txt",
+    "action": "stepup.core.actions.runpy ./work.py run -- -5.0",
     "workdir": "./",
     "inp": [
       "work.py"
     ],
     "env": [],
     "out": [
-      "data-5.0.txt",
-      "stderr-5.0.txt",
-      "stdout-5.0.txt"
+      "data-5.0.txt"
     ],
     "vol": []
   },
   {
-    "command": "./work.py run +7.0 > stdout+7.0.txt 2> stderr+7.0.txt",
+    "action": "stepup.core.actions.runpy ./work.py run +7.0",
     "workdir": "./",
     "inp": [
       "work.py"
     ],
     "env": [],
     "out": [
-      "data+7.0.txt",
-      "stderr+7.0.txt",
-      "stdout+7.0.txt"
+      "data+7.0.txt"
     ],
     "vol": []
   }

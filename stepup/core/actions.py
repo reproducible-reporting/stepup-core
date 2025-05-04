@@ -27,22 +27,90 @@ which means they are subject to some restrictions:
 - They return an integer returncode.
 """
 
-from stepup.core.worker import WorkThread
+import os
+import shlex
+import shutil
 
-__all__ = ("runsh",)
+from .worker import WorkThread
+
+__all__ = ("copy", "mkdir", "runpy", "runsh")
 
 
-def runsh(command: str, work_thread: WorkThread) -> int:
+def runsh(argstr: str, work_thread: WorkThread) -> int:
     """Execute a shell command and return the returncode.
 
     Parameters
     ----------
-    command
-        The shell command with command-line arguments to execute.
+    argstr
+        The command to execute in the shell.
+    work_thread
+        The work thread that is executing the command.
 
     Returns
     -------
     exitcode
         The exit code of the command.
     """
-    return work_thread.runsh(command)
+    return work_thread.runsh(argstr)
+
+
+def runpy(argstr: str, work_thread: WorkThread) -> int:
+    """Execute a Python script and return the returncode.
+
+    Parameters
+    ----------
+    args
+        Python script to execute and its arguments split into a list of strings.
+    work_thread
+        The work thread that is executing the command.
+
+    Returns
+    -------
+    exitcode
+        The exit code of the command.
+    """
+    args = shlex.split(argstr)
+    return work_thread.runpy(args[0], args[1:])
+
+
+def copy(argstr: str) -> int:
+    """Copy a file preserving permissions.
+
+    Parameters
+    ----------
+    args
+        The source and destination files.
+
+    Returns
+    -------
+    exitcode
+        The exit code of the command.
+    """
+    args = shlex.split(argstr)
+    if len(args) != 2:
+        raise ValueError("copy requires exactly two arguments")
+    src, dst = args
+    shutil.copy2(src, dst)
+    st = os.stat(src)
+    os.chown(src, st.st_uid, st.st_gid)
+    return 0
+
+
+def mkdir(argstr: str) -> int:
+    """Create a directory.
+
+    Parameters
+    ----------
+    path
+        The path to the directory to create.
+
+    Returns
+    -------
+    exitcode
+        The exit code of the command.
+    """
+    args = shlex.split(argstr)
+    if len(args) != 1:
+        raise ValueError("mkdir requires exactly one argument")
+    os.makedirs(args[0], exist_ok=True)
+    return 0

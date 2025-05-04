@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-from stepup.core.api import static, step
+from stepup.core.api import runpy, static
 
 static("bunch.py")
-info = step(
+info = runpy(
     "./bunch.py", inp="bunch.py", out=["sub/", "sub/other/", "sub/other/foo/", "sub/other/foo/text"]
 )
 

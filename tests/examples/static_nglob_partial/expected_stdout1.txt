@@ -1,25 +1,25 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
-        2/2 |    SUCCESS │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |      START │ runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+        2/2 |    SUCCESS │ runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         2/2 |      PHASE │ watch
         2/2 |    UPDATED │ tail_y.txt
         2/2 |    UPDATED │ head_z.txt
         1/2 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        2/3 |    SUCCESS │ ./plan.py
-        2/3 |      START │ paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
-        3/3 |    SUCCESS │ paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+        0/1 |      START │ runpy ./plan.py
+        2/3 |    SUCCESS │ runpy ./plan.py
+        2/3 |      START │ runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+        3/3 |    SUCCESS │ runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         3/3 |      PHASE │ watch
         3/3 |    DELETED │ tail_y.txt
         1/3 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        2/2 |    SUCCESS │ ./plan.py
+        0/1 |      START │ runpy ./plan.py
+        2/2 |    SUCCESS │ runpy ./plan.py
         2/2 |   DIRECTOR │ Trying to delete 1 outdated output(s).
         2/2 |      CLEAN │ paste_y.txt
         2/2 |      PHASE │ watch

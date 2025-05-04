@@ -4,7 +4,7 @@ set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
-# Run the plan with non-executable step.py.
+# Run the plan with non-executable work.py.
 chmod -x sub/plan.py
 stepup -w -n 1 & # > current_stdout.txt &
 
@@ -25,7 +25,7 @@ EOD
 [[ -f sub/plan.py ]] || exit 1
 [[ ! -f sub/done.txt ]] || exit 1
 
-# Rerun the plan with executable step.py.
+# Rerun the plan with executable work.py.
 chmod +x sub/plan.py
 
 # Wait and get graph.

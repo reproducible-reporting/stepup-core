@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,18 +9,18 @@ file:./
             supplies   file:example.txt
             supplies   file:plan.py
             supplies   file:sub/
-            supplies   step:./plan.py
-            supplies   step:cat ../plan.py  # wd=sub/
-            supplies   step:cp -aT example.txt sub/example.txt
+            supplies   step:stepup.core.actions.copy example.txt sub/example.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh cat ../plan.py  # wd=sub/
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
-            supplies   step:cat ../plan.py  # wd=sub/
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh cat ../plan.py  # wd=sub/
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -28,36 +28,36 @@ step:./plan.py
              creates   file:example.txt
              creates   file:sub/
              creates   file:sub/plan.py
-             creates   step:./plan.py  # wd=sub/
-             creates   step:cp -aT example.txt sub/example.txt
+             creates   step:stepup.core.actions.copy example.txt sub/example.txt
+             creates   step:stepup.core.actions.runpy ./plan.py  # wd=sub/
 
 file:example.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:cp -aT example.txt sub/example.txt
+            supplies   step:stepup.core.actions.copy example.txt sub/example.txt
 
 file:sub/
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             supplies   file:sub/example.txt
             supplies   file:sub/plan.py
             supplies   file:sub/upper.txt
-            supplies   step:./plan.py  # wd=sub/
-            supplies   step:cat ../plan.py  # wd=sub/
-            supplies   step:cp -aT example.txt sub/example.txt
-            supplies   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+            supplies   step:stepup.core.actions.copy example.txt sub/example.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py  # wd=sub/
+            supplies   step:stepup.core.actions.runsh cat ../plan.py  # wd=sub/
+            supplies   step:stepup.core.actions.runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 
 file:sub/plan.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:sub/
-            supplies   step:./plan.py  # wd=sub/
+            supplies   step:stepup.core.actions.runpy ./plan.py  # wd=sub/
 
-step:cp -aT example.txt sub/example.txt
+step:stepup.core.actions.copy example.txt sub/example.txt
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:example.txt
             consumes   file:sub/
@@ -66,22 +66,22 @@ step:cp -aT example.txt sub/example.txt
 
 file:sub/example.txt
                state = BUILT
-          created by   step:cp -aT example.txt sub/example.txt
+          created by   step:stepup.core.actions.copy example.txt sub/example.txt
             consumes   file:sub/
-            consumes   step:cp -aT example.txt sub/example.txt
-            supplies   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+            consumes   step:stepup.core.actions.copy example.txt sub/example.txt
+            supplies   step:stepup.core.actions.runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 
-step:./plan.py  # wd=sub/
+step:stepup.core.actions.runpy ./plan.py  # wd=sub/
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:sub/
             consumes   file:sub/plan.py
-             creates   step:cat ../plan.py  # wd=sub/
-             creates   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+             creates   step:stepup.core.actions.runsh cat ../plan.py  # wd=sub/
+             creates   step:stepup.core.actions.runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 
-step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+step:stepup.core.actions.runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
                state = SUCCEEDED
-          created by   step:./plan.py  # wd=sub/
+          created by   step:stepup.core.actions.runpy ./plan.py  # wd=sub/
             consumes   file:sub/
             consumes   file:sub/example.txt
              creates   file:sub/upper.txt
@@ -89,13 +89,13 @@ step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 
 file:sub/upper.txt
                state = BUILT
-          created by   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+          created by   step:stepup.core.actions.runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
             consumes   file:sub/
-            consumes   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+            consumes   step:stepup.core.actions.runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 
-step:cat ../plan.py  # wd=sub/
+step:stepup.core.actions.runsh cat ../plan.py  # wd=sub/
                state = SUCCEEDED
-          created by   step:./plan.py  # wd=sub/
+          created by   step:stepup.core.actions.runpy ./plan.py  # wd=sub/
             consumes   file:./
             consumes   file:plan.py
             consumes   file:sub/

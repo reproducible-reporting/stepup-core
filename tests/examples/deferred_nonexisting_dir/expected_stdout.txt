@@ -1,12 +1,13 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ cp -aT sub/message.txt message.txt
-        2/2 |    SUCCESS │ cp -aT sub/message.txt message.txt
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |      START │ copy sub/message.txt message.txt
+        2/2 |    SUCCESS │ copy sub/message.txt message.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         2/2 |      PHASE │ watch
+        2/2 |    UPDATED │ sub/message.txt
         2/2 |    DELETED │ sub/message.txt
         2/2 |    DELETED │ sub/
         2/2 |    DELETED │ message.txt
@@ -16,7 +17,7 @@
              MISSING  sub/
              MISSING  sub/message.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Command               cp -aT sub/message.txt message.txt
+Action                stepup.core.actions.copy sub/message.txt message.txt
 Working directory     ./
 Inputs        STATIC  ./
              MISSING  sub/
@@ -29,9 +30,11 @@ Outputs      AWAITED  message.txt
         1/2 |    UPDATED │ sub/
         1/2 |    UPDATED │ sub/message.txt
         1/2 |      PHASE │ run
-        1/2 |      START │ cp -aT sub/message.txt message.txt
-        2/2 |    SUCCESS │ cp -aT sub/message.txt message.txt
+        1/2 |      START │ copy sub/message.txt message.txt
+        2/2 |    SUCCESS │ copy sub/message.txt message.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         2/2 |      PHASE │ watch
+        2/2 |    UPDATED │ sub/message.txt
+        2/2 |  UNCHANGED │ sub/message.txt
         2/2 |   DIRECTOR │ Stopping workers.
         2/2 |   DIRECTOR │ See you!

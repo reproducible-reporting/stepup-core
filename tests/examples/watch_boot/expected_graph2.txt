@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,47 +9,47 @@ file:./
             supplies   file:final.txt
             supplies   file:plan.py
             supplies   file:second.txt
-            supplies   step:./plan.py
-            supplies   step:cp second.txt final.txt
-            supplies   step:echo "test 2" > second.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh cp second.txt final.txt
+            supplies   step:stepup.core.actions.runsh echo "test 2" > second.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:cp second.txt final.txt
-             creates   step:echo "test 2" > second.txt
+             creates   step:stepup.core.actions.runsh cp second.txt final.txt
+             creates   step:stepup.core.actions.runsh echo "test 2" > second.txt
 
 file:final.txt
                state = BUILT
-          created by   step:cp second.txt final.txt
+          created by   step:stepup.core.actions.runsh cp second.txt final.txt
             consumes   file:./
-            consumes   step:cp second.txt final.txt
+            consumes   step:stepup.core.actions.runsh cp second.txt final.txt
 
-step:echo "test 2" > second.txt
+step:stepup.core.actions.runsh echo "test 2" > second.txt
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
              creates   file:second.txt
             supplies   file:second.txt
 
 file:second.txt
                state = BUILT
-          created by   step:echo "test 2" > second.txt
+          created by   step:stepup.core.actions.runsh echo "test 2" > second.txt
             consumes   file:./
-            consumes   step:echo "test 2" > second.txt
-            supplies   step:cp second.txt final.txt
+            consumes   step:stepup.core.actions.runsh echo "test 2" > second.txt
+            supplies   step:stepup.core.actions.runsh cp second.txt final.txt
 
-step:cp second.txt final.txt
+step:stepup.core.actions.runsh cp second.txt final.txt
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:second.txt
              creates   file:final.txt

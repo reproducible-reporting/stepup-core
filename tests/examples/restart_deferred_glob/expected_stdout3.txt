@@ -5,18 +5,20 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
-        1/2 |     NOSKIP │ cp -aT static/foo.txt bar.txt
+        1/2 |     NOSKIP │ copy static/foo.txt bar.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 5efaf395 ➜ 6b01b464, out_digest b3ce722f ➜ (unset)
+Modified step hash   explained, inp_digest 7083062a ➜ 4b628c4e, out_digest b3ce722f ➜ (unset)
 Modified inp hash    static/foo.txt (digest 5d470882 ➜ 4e2397d6, size 6 ➜ 7)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 Same inp hash        static/
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |      START │ cp -aT static/foo.txt bar.txt
-        2/2 |    SUCCESS │ cp -aT static/foo.txt bar.txt
+        1/2 |      START │ copy static/foo.txt bar.txt
+        2/2 |    SUCCESS │ copy static/foo.txt bar.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         2/2 |    WARNING │ Check logs: .stepup/warning.log
         2/2 |      PHASE │ watch
+        2/2 |    UPDATED │ static/foo.txt
+        2/2 |  UNCHANGED │ static/foo.txt
         2/2 |   DIRECTOR │ Stopping workers.
         2/2 |   DIRECTOR │ See you!

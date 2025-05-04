@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,57 +9,57 @@ file:./
             supplies   file:plan.py
             supplies   file:test1.txt
             supplies   file:test2.txt
-            supplies   step:./plan.py
-            supplies   step:cat test2.txt
-            supplies   step:echo test1 > test1.txt
-            supplies   step:echo test2 > test2.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh cat test2.txt
+            supplies   step:stepup.core.actions.runsh echo test1 > test1.txt
+            supplies   step:stepup.core.actions.runsh echo test2 > test2.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:cat test2.txt
-             creates   step:echo test1 > test1.txt
-             creates   step:echo test2 > test2.txt
+             creates   step:stepup.core.actions.runsh cat test2.txt
+             creates   step:stepup.core.actions.runsh echo test1 > test1.txt
+             creates   step:stepup.core.actions.runsh echo test2 > test2.txt
 
-step:echo test1 > test1.txt
+step:stepup.core.actions.runsh echo test1 > test1.txt
                state = PENDING
            mandatory = NO
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
              creates   file:test1.txt
             supplies   file:test1.txt
 
 file:test1.txt
                state = AWAITED
-          created by   step:echo test1 > test1.txt
+          created by   step:stepup.core.actions.runsh echo test1 > test1.txt
             consumes   file:./
-            consumes   step:echo test1 > test1.txt
+            consumes   step:stepup.core.actions.runsh echo test1 > test1.txt
 
-step:echo test2 > test2.txt
+step:stepup.core.actions.runsh echo test2 > test2.txt
                state = SUCCEEDED
            mandatory = REQUIRED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
              creates   file:test2.txt
             supplies   file:test2.txt
 
 file:test2.txt
                state = BUILT
-          created by   step:echo test2 > test2.txt
+          created by   step:stepup.core.actions.runsh echo test2 > test2.txt
             consumes   file:./
-            consumes   step:echo test2 > test2.txt
-            supplies   step:cat test2.txt
+            consumes   step:stepup.core.actions.runsh echo test2 > test2.txt
+            supplies   step:stepup.core.actions.runsh cat test2.txt
 
-step:cat test2.txt
+step:stepup.core.actions.runsh cat test2.txt
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:test2.txt

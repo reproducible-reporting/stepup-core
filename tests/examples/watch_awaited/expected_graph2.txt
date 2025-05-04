@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,25 +9,25 @@ file:./
             supplies   (file:inp.txt)
             supplies   file:out.txt
             supplies   file:plan.py
-            supplies   step:./plan.py
-            supplies   step:cp -aT inp.txt out.txt
+            supplies   step:stepup.core.actions.copy inp.txt out.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:cp -aT inp.txt out.txt
+             creates   step:stepup.core.actions.copy inp.txt out.txt
 
-step:cp -aT inp.txt out.txt
+step:stepup.core.actions.copy inp.txt out.txt
                state = PENDING
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   (file:inp.txt)
             consumes   file:./
              creates   file:out.txt
@@ -36,10 +36,10 @@ step:cp -aT inp.txt out.txt
 (file:inp.txt)
                state = AWAITED
             consumes   file:./
-            supplies   step:cp -aT inp.txt out.txt
+            supplies   step:stepup.core.actions.copy inp.txt out.txt
 
 file:out.txt
                state = AWAITED
-          created by   step:cp -aT inp.txt out.txt
+          created by   step:stepup.core.actions.copy inp.txt out.txt
             consumes   file:./
-            consumes   step:cp -aT inp.txt out.txt
+            consumes   step:stepup.core.actions.copy inp.txt out.txt

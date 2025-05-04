@@ -189,8 +189,8 @@ def test_step(wfs: Workflow):
         assert to_check == []
         step = wfs.find(Step, "cp foo.txt sub/bar.txt")
         assert step.key() == "step:cp foo.txt sub/bar.txt"
-        command, workdir = step.get_command_workdir()
-        assert command == "cp foo.txt sub/bar.txt"
+        action, workdir = step.get_action_workdir()
+        assert action == "cp foo.txt sub/bar.txt"
         assert workdir == Path("./")
         assert isinstance(workdir, Path)
         assert wfs.format_str() == TEST_STEP_GRAPH
@@ -1917,8 +1917,8 @@ def test_define_step_reqdir_workdir(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "echo", workdir="sub/dir/")
     echo = wfp.find(Step, "echo  # wd=sub/dir/")
-    command, workdir = echo.get_command_workdir()
-    assert command == "echo"
+    action, workdir = echo.get_action_workdir()
+    assert action == "echo"
     assert workdir == Path("sub/dir/")
     assert isinstance(workdir, Path)
     reqdir, is_orphan = wfp.find_orphan(File, "sub/dir/")

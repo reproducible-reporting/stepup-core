@@ -1,29 +1,29 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   (file:output.txt)
-            supplies   (step:touch output.txt)
+            supplies   (step:stepup.core.actions.runsh touch output.txt)
             supplies   file:plan.py
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = FAILED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
 
-(step:touch output.txt)
+(step:stepup.core.actions.runsh touch output.txt)
                state = SUCCEEDED
            explained = yes
             consumes   file:./
@@ -32,6 +32,6 @@ step:./plan.py
 
 (file:output.txt)
                state = BUILT
-          created by   (step:touch output.txt)
-            consumes   (step:touch output.txt)
+          created by   (step:stepup.core.actions.runsh touch output.txt)
+            consumes   (step:stepup.core.actions.runsh touch output.txt)
             consumes   file:./

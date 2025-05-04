@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,25 +9,25 @@ file:./
             supplies   (file:first)
             supplies   file:plan.py
             supplies   file:second
-            supplies   step:./plan.py
-            supplies   step:cat first > second
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh cat first > second
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = FAILED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:cat first > second
+             creates   step:stepup.core.actions.runsh cat first > second
 
-step:cat first > second
+step:stepup.core.actions.runsh cat first > second
                state = PENDING
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   (file:first)
             consumes   file:./
              creates   file:second
@@ -36,10 +36,10 @@ step:cat first > second
 (file:first)
                state = AWAITED
             consumes   file:./
-            supplies   step:cat first > second
+            supplies   step:stepup.core.actions.runsh cat first > second
 
 file:second
                state = AWAITED
-          created by   step:cat first > second
+          created by   step:stepup.core.actions.runsh cat first > second
             consumes   file:./
-            consumes   step:cat first > second
+            consumes   step:stepup.core.actions.runsh cat first > second

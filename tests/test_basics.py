@@ -57,21 +57,21 @@ FROM_SCRATCH_GRAPH = """\
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:plan.py
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -103,22 +103,22 @@ STATIC_GRAPH = """\
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:foo
             supplies   file:plan.py
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -127,7 +127,7 @@ step:./plan.py
 
 file:foo
                state = MISSING
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
 
 """
@@ -153,7 +153,7 @@ COPY_GRAPH = """\
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -161,26 +161,26 @@ file:./
             supplies   file:copy.txt
             supplies   file:original.txt
             supplies   file:plan.py
-            supplies   step:./plan.py
-            supplies   step:cp -v original.txt copy.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh cp -v original.txt copy.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:original.txt
-             creates   step:cp -v original.txt copy.txt
+             creates   step:stepup.core.actions.runsh cp -v original.txt copy.txt
 
-step:cp -v original.txt copy.txt
+step:stepup.core.actions.runsh cp -v original.txt copy.txt
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:original.txt
              creates   file:copy.txt
@@ -188,15 +188,15 @@ step:cp -v original.txt copy.txt
 
 file:original.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:cp -v original.txt copy.txt
+            supplies   step:stepup.core.actions.runsh cp -v original.txt copy.txt
 
 file:copy.txt
                state = BUILT
-          created by   step:cp -v original.txt copy.txt
+          created by   step:stepup.core.actions.runsh cp -v original.txt copy.txt
             consumes   file:./
-            consumes   step:cp -v original.txt copy.txt
+            consumes   step:stepup.core.actions.runsh cp -v original.txt copy.txt
 
 """
 
@@ -209,7 +209,7 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
         await client(
             "step",
             4,
-            "cp -v original.txt copy.txt",
+            "stepup.core.actions.runsh cp -v original.txt copy.txt",
             ["original.txt"],
             {},
             ["copy.txt"],

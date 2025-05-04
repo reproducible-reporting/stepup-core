@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,32 +9,32 @@ file:./
             supplies   file:bunch.py
             supplies   file:plan.py
             supplies   file:sub/
-            supplies   step:./bunch.py
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./bunch.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:bunch.py
-             creates   step:./bunch.py
+             creates   step:stepup.core.actions.runpy ./bunch.py
 
 file:bunch.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./bunch.py
+            supplies   step:stepup.core.actions.runpy ./bunch.py
 
-step:./bunch.py
+step:stepup.core.actions.runpy ./bunch.py
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:bunch.py
              creates   file:sub/
@@ -54,48 +54,48 @@ step:./bunch.py
 
 file:sub/
                state = BUILT
-          created by   step:./bunch.py
+          created by   step:stepup.core.actions.runpy ./bunch.py
             consumes   file:./
-            consumes   step:./bunch.py
+            consumes   step:stepup.core.actions.runpy ./bunch.py
             supplies   file:sub/one/
             supplies   file:sub/other/
 
 file:sub/other/
                state = BUILT
-          created by   step:./bunch.py
+          created by   step:stepup.core.actions.runpy ./bunch.py
             consumes   file:sub/
-            consumes   step:./bunch.py
+            consumes   step:stepup.core.actions.runpy ./bunch.py
             supplies   file:sub/other/foo/
 
 file:sub/other/foo/
                state = BUILT
-          created by   step:./bunch.py
+          created by   step:stepup.core.actions.runpy ./bunch.py
             consumes   file:sub/other/
-            consumes   step:./bunch.py
+            consumes   step:stepup.core.actions.runpy ./bunch.py
             supplies   file:sub/other/foo/text
 
 file:sub/other/foo/text
                state = BUILT
-          created by   step:./bunch.py
+          created by   step:stepup.core.actions.runpy ./bunch.py
             consumes   file:sub/other/foo/
-            consumes   step:./bunch.py
+            consumes   step:stepup.core.actions.runpy ./bunch.py
 
 file:sub/one/
                state = BUILT
-          created by   step:./bunch.py
+          created by   step:stepup.core.actions.runpy ./bunch.py
             consumes   file:sub/
-            consumes   step:./bunch.py
+            consumes   step:stepup.core.actions.runpy ./bunch.py
             supplies   file:sub/one/bar/
 
 file:sub/one/bar/
                state = BUILT
-          created by   step:./bunch.py
+          created by   step:stepup.core.actions.runpy ./bunch.py
             consumes   file:sub/one/
-            consumes   step:./bunch.py
+            consumes   step:stepup.core.actions.runpy ./bunch.py
             supplies   file:sub/one/bar/text
 
 file:sub/one/bar/text
                state = BUILT
-          created by   step:./bunch.py
+          created by   step:stepup.core.actions.runpy ./bunch.py
             consumes   file:sub/one/bar/
-            consumes   step:./bunch.py
+            consumes   step:stepup.core.actions.runpy ./bunch.py

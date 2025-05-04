@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 
-from stepup.core.api import step
+from stepup.core.api import runsh
 
 # Load configuration
 with open("config.json") as fh:
@@ -11,9 +11,9 @@ with open("config.json") as fh:
 with open("output.txt", "w") as fh:
     print(config["msg"], file=fh)
 
-# Use the log parameter to create a new step.
+# Use the log parameter to create a new runsh.
 # Here just echo to keep things simple.
-step(f"echo All is fine. > {config['log']}", out=[config["log"]])
+runsh(f"echo All is fine. > {config['log']}", out=[config["log"]])
 
-# Add a step that writes something from the config to a fixed file.
-step(f"echo log written to {config['log']}. > report.txt", out=["report.txt"])
+# Add a runsh that writes something from the config to a fixed file.
+runsh(f"echo log written to {config['log']}. > report.txt", out=["report.txt"])

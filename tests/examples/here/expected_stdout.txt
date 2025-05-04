@@ -2,17 +2,19 @@ Changing to ${CASE}/source
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/4 |    SUCCESS │ ./plan.py
-        1/4 |      START │ mkdir -p ../public/
-        2/4 |    SUCCESS │ mkdir -p ../public/
-        2/4 |      START │ ./plan.py  # wd=www/
-        3/5 |    SUCCESS │ ./plan.py  # wd=www/
-        3/5 |      START │ mkdir -p ../public/www/
-        4/5 |    SUCCESS │ mkdir -p ../public/www/
-        4/5 |      START │ cp -aT index.md ../../public/www/index.md  # wd=www/
-        5/5 |    SUCCESS │ cp -aT index.md ../../public/www/index.md  # wd=www/
+        0/1 |      START │ runpy ./plan.py
+        1/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |      START │ mkdir ../public/
+        2/4 |    SUCCESS │ mkdir ../public/
+        2/4 |      START │ runpy ./plan.py  # wd=www/
+        3/5 |    SUCCESS │ runpy ./plan.py  # wd=www/
+        3/5 |      START │ mkdir ../public/www/
+        4/5 |    SUCCESS │ mkdir ../public/www/
+        4/5 |      START │ copy index.md ../../public/www/index.md  # wd=www/
+        5/5 |    SUCCESS │ copy index.md ../../public/www/index.md  # wd=www/
         5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         5/5 |      PHASE │ watch
+        5/5 |    UPDATED │ www/index.md
+        5/5 |  UNCHANGED │ www/index.md
         5/5 |   DIRECTOR │ Stopping workers.
         5/5 |   DIRECTOR │ See you!

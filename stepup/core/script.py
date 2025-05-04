@@ -120,7 +120,7 @@ class ScriptWrapper:
             raise TypeError("All keys of the info dict must be strings.")
         return info
 
-    def get_plan(self) -> tuple[list[str], list[str], list[str], str | None, str | None]:
+    def get_plan(self) -> tuple[list[str], list[str], list[str]]:
         """Return a tuple with normalized information from the info dictionary (single run).
 
         Returns
@@ -132,18 +132,12 @@ class ScriptWrapper:
             A list of input paths.
         out_paths
             A list of output paths.
-        stdout_path
-            A path to redirect the standard output to.
-        stderr_path
-            A path to redirect the standard error to.
         """
         info = self.get_info()
         return (
             _get_path_list("static", info, self._script_path, "info"),
             _get_path_list("inp", info, self._script_path, "info"),
             _get_path_list("out", info, self._script_path, "info"),
-            _get_optional_path("stdout", info, self._script_path, "info"),
-            _get_optional_path("stderr", info, self._script_path, "info"),
         )
 
     def generate_cases(self) -> Iterator[tuple[list, dict]]:
@@ -202,9 +196,7 @@ class ScriptWrapper:
             raise TypeError("All keys of the info dict must be strings.")
         return info
 
-    def get_case_plan(
-        self, *args, **kwargs
-    ) -> tuple[list[str], list[str], list[str], str | None, str | None]:
+    def get_case_plan(self, *args, **kwargs) -> tuple[list[str], list[str], list[str]]:
         """Return a tuple with normalized information from the info dictionary (multiple runs).
 
         Returns
@@ -216,18 +208,12 @@ class ScriptWrapper:
             A list of input paths.
         out_paths
             A list of output paths.
-        stdout_path
-            A path to redirect the standard output to.
-        stderr_path
-            A path to redirect the standard error to.
         """
         info = self.get_case_info(*args, **kwargs)
         return (
             _get_path_list("static", info, self._script_path, "case_info"),
             _get_path_list("inp", info, self._script_path, "case_info"),
             _get_path_list("out", info, self._script_path, "case_info"),
-            _get_optional_path("stdout", info, self._script_path, "case_info"),
-            _get_optional_path("stderr", info, self._script_path, "case_info"),
         )
 
     def filter_info(self, info: dict) -> dict:
@@ -330,18 +316,19 @@ def parse_args(script_path: str) -> argparse.Namespace:
 def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapper):
     """Create the step to plan the run part of the script."""
     # Local import because the StepUp client is not always needed.
-    from stepup.core.api import amend, static, step
+    from stepup.core.api import amend, runpy, runsh, static
+
+    runfunc = runpy if script_path.endswith(".py") else runsh
 
     # Plan the script.
     step_info = None
     if wrapper.has_single:
-        static_paths, inp_paths, out_paths, stdout_path, stderr_path = wrapper.get_plan()
+        static_paths, inp_paths, out_paths = wrapper.get_plan()
         amend(inp=_get_local_import_paths(script_path))
         inp_paths.append(script_path)
         static(*static_paths)
         command = format_command(script_path) + " run"
-        command = _add_redirects(command, out_paths, stdout_path, stderr_path)
-        step_info = step(command, inp=inp_paths, out=out_paths, optional=args.optional)
+        step_info = runfunc(command, inp=inp_paths, out=out_paths, optional=args.optional)
     if wrapper.has_cases:
         # First collect all cases
         cases = list(wrapper.generate_cases())
@@ -352,15 +339,12 @@ def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrap
             argstr = shlex.quote(wrapper.format(*case_args, **case_kwargs))
             if argstr.startswith("-"):
                 argstr = f"-- {argstr}"
-            static_paths, inp_paths, out_paths, stdout_path, stderr_path = wrapper.get_case_plan(
-                *case_args, **case_kwargs
-            )
+            static_paths, inp_paths, out_paths = wrapper.get_case_plan(*case_args, **case_kwargs)
             inp_paths.append(script_path)
             static(*static_paths)
             command = format_command(script_path) + " run " + argstr
-            command = _add_redirects(command, out_paths, stdout_path, stderr_path)
             step_info.append(
-                step(
+                runfunc(
                     command,
                     inp=inp_paths,
                     out=out_paths,
@@ -438,40 +422,3 @@ def _get_local_import_paths(script_path: Path) -> list[str]:
     # The script path is already included in the inputs.
     mod_paths.discard(script_path)
     return sorted(mod_paths)
-
-
-def _add_redirects(
-    command: str, out_paths: list[str], stdout_path: str | None, stderr_path: str | None
-) -> str:
-    """Add stdout and stderr to the command and update out_paths.
-
-    Parameters
-    ----------
-    command
-        The command without output and error redirection.
-    out_paths
-        The list of output paths before redirection.
-        This list will be updated with standard output and error paths if relevant.
-    stdout_path
-        The standard output path. Ignored if `None`. Not added to out_paths if `"/dev/null"`.
-    stderr_path
-        The standard error path. Ignored if `None`. Not added to out_paths if `"/dev/null"`.
-        Use the same value as `stdout` to redirect both streams to the same file.
-
-    Returns
-    -------
-    command
-        The command with redirections included.
-    """
-    if stdout_path is not None:
-        if stderr_path == stdout_path:
-            command += f" &> {stdout_path}"
-        else:
-            command += f" > {stdout_path}"
-        if stdout_path != "/dev/null":
-            out_paths.append(stdout_path)
-    if not (stderr_path is None or stderr_path == stdout_path):
-        command += f" 2> {stderr_path}"
-        if stderr_path != "/dev/null":
-            out_paths.append(stderr_path)
-    return command

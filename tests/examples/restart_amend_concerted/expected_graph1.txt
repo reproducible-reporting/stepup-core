@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -13,18 +13,18 @@ file:./
             supplies   file:plan.py
             supplies   file:prep.py
             supplies   file:work.py
-            supplies   step:./plan.py
-            supplies   step:./prep.py plan
-            supplies   step:./prep.py run
-            supplies   step:./work.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runpy ./prep.py plan
+            supplies   step:stepup.core.actions.runpy ./prep.py run
+            supplies   step:stepup.core.actions.runpy ./work.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
@@ -34,38 +34,38 @@ step:./plan.py
              creates   file:inp2.txt
              creates   file:prep.py
              creates   file:work.py
-             creates   step:./prep.py plan
-             creates   step:./work.py
+             creates   step:stepup.core.actions.runpy ./prep.py plan
+             creates   step:stepup.core.actions.runpy ./work.py
 
 file:inp1.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./prep.py run
+            supplies   step:stepup.core.actions.runpy ./prep.py run
 
 file:inp2.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./work.py
+            supplies   step:stepup.core.actions.runpy ./work.py
 
 file:prep.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./prep.py plan
-            supplies   step:./prep.py run
+            supplies   step:stepup.core.actions.runpy ./prep.py plan
+            supplies   step:stepup.core.actions.runpy ./prep.py run
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./work.py
+            supplies   step:stepup.core.actions.runpy ./work.py
 
-step:./work.py
+step:stepup.core.actions.runpy ./work.py
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:inp2.txt
             consumes   file:out1.txt [amended]
@@ -75,29 +75,29 @@ step:./work.py
 
 file:out2.txt
                state = BUILT
-          created by   step:./work.py
+          created by   step:stepup.core.actions.runpy ./work.py
             consumes   file:./
-            consumes   step:./work.py
+            consumes   step:stepup.core.actions.runpy ./work.py
 
-step:./prep.py plan
+step:stepup.core.actions.runpy ./prep.py plan
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:prep.py
-             creates   step:./prep.py run
+             creates   step:stepup.core.actions.runpy ./prep.py run
 
 file:out1.txt
                state = BUILT
-          created by   step:./prep.py run
+          created by   step:stepup.core.actions.runpy ./prep.py run
             consumes   file:./
-            consumes   step:./prep.py run
-            supplies   step:./work.py
+            consumes   step:stepup.core.actions.runpy ./prep.py run
+            supplies   step:stepup.core.actions.runpy ./work.py
 
-step:./prep.py run
+step:stepup.core.actions.runpy ./prep.py run
                state = SUCCEEDED
            explained = yes
-          created by   step:./prep.py plan
+          created by   step:stepup.core.actions.runpy ./prep.py plan
             consumes   file:./
             consumes   file:inp1.txt
             consumes   file:prep.py

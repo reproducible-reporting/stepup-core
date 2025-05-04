@@ -6,16 +6,16 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
-        1/2 |     NOSKIP │ ./demovars.py > output.txt
+        1/2 |     NOSKIP │ runsh ./demovars.py > output.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest a3f83793 ➜ 3e65dc00, out_digest c7193dc7 ➜ (unset)
+Modified step hash   explained, inp_digest 7fa3b44d ➜ dc7da9c5, out_digest c7193dc7 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_SDASFD ='AAAA' ➜ ='BBBB'
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 Same inp hash        demovars.py
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |      START │ ./demovars.py > output.txt
-        2/2 |    SUCCESS │ ./demovars.py > output.txt
+        1/2 |      START │ runsh ./demovars.py > output.txt
+        2/2 |    SUCCESS │ runsh ./demovars.py > output.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         2/2 |    WARNING │ Check logs: .stepup/warning.log
         2/2 |      PHASE │ watch

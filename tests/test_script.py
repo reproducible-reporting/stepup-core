@@ -21,44 +21,7 @@
 
 import pytest
 
-from stepup.core.script import _add_redirects, _get_optional_path, _get_path_list
-
-
-def test_add_redirects_both():
-    out_paths = ["aaa"]
-    assert _add_redirects("echo foo", out_paths, "out", "err") == "echo foo > out 2> err"
-    assert out_paths == ["aaa", "out", "err"]
-
-
-def test_add_redirects_none():
-    out_paths = ["aaa"]
-    assert _add_redirects("echo foo", out_paths, None, None) == "echo foo"
-    assert out_paths == ["aaa"]
-
-
-def test_add_redirects_out():
-    out_paths = ["aaa"]
-    assert _add_redirects("echo foo", out_paths, "out", None) == "echo foo > out"
-    assert out_paths == ["aaa", "out"]
-
-
-def test_add_redirects_err():
-    out_paths = ["aaa"]
-    assert _add_redirects("echo foo", out_paths, None, "err") == "echo foo 2> err"
-    assert out_paths == ["aaa", "err"]
-
-
-def test_add_redirects_combined():
-    out_paths = ["aaa"]
-    assert _add_redirects("echo foo", out_paths, "out", "out") == "echo foo &> out"
-    assert out_paths == ["aaa", "out"]
-
-
-def test_add_redirects_devnull():
-    out_paths = ["aaa"]
-    expected = "echo foo &> /dev/null"
-    assert _add_redirects("echo foo", out_paths, "/dev/null", "/dev/null") == expected
-    assert out_paths == ["aaa"]
+from stepup.core.script import _get_optional_path, _get_path_list
 
 
 def test_get_path_list():

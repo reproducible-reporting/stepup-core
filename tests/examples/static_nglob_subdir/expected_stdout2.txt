@@ -5,11 +5,13 @@
         0/0 |    UPDATED │ sub/inp3.txt
         0/0 |   DIRECTOR │ Launched worker 0
         3/4 |      PHASE │ run
-        1/2 |      START │ ./plan.py  # wd=sub/
-        4/5 |    SUCCESS │ ./plan.py  # wd=sub/
-        4/5 |      START │ cp -aT inp3.txt out3.txt  # wd=sub/
-        5/5 |    SUCCESS │ cp -aT inp3.txt out3.txt  # wd=sub/
+        1/2 |      START │ runpy ./plan.py  # wd=sub/
+        4/5 |    SUCCESS │ runpy ./plan.py  # wd=sub/
+        4/5 |      START │ copy inp3.txt out3.txt  # wd=sub/
+        5/5 |    SUCCESS │ copy inp3.txt out3.txt  # wd=sub/
         5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         5/5 |      PHASE │ watch
+        5/5 |    UPDATED │ sub/inp3.txt
+        5/5 |  UNCHANGED │ sub/inp3.txt
         5/5 |   DIRECTOR │ Stopping workers.
         5/5 |   DIRECTOR │ See you!

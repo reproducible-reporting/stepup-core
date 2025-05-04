@@ -2,7 +2,7 @@
 
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to StepUp Core will be documented on this page.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev/effver/).
@@ -16,9 +16,21 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 - Option `stepup --no-progress` to disable progress information.
   This is sometimes useful when running `stepup` in a non-interactive environment.
+- The [runpy()][stepup.core.api.runpy] function can now be used to schedule a Python script.
+  This will be more efficient than using `runsh()` because it does not start a new subprocess.
 
 ### Changed
 
+- Breaking changes:
+    - The database schema was incremented because steps now execute "actions",
+      which can be shell commands in subprocesses, but also other things,
+      such as executing a Python script without starting a new process.
+    - While the schema was incremented, a small changes was made to the step has computation.
+    - The function [step()][stepup.core.api.step] now accepts a new argument `action`
+      instead of a shell command.
+      The syntax of an `action` is similar to a shell command:
+      It consists of `module.submodule.function arg1 arg2 ...`.
+    - [runsh()][stepup.core.api.runsh] mimics the behavior of the old `step()` function.
 - Internals:
     - Improved type hints in the code.
     - The environment variable `STEPUP_STEP_KEY` (string)

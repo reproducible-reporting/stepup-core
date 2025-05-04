@@ -1,44 +1,44 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/4 |    SUCCESS │ ./plan.py
-        1/4 |      START │ ./step.py > log.txt
-        1/4 | RESCHEDULE │ ./step.py > log.txt
+        0/1 |      START │ runpy ./plan.py
+        1/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |      START │ runsh ./work.py > log.txt
+        1/4 | RESCHEDULE │ runsh ./work.py > log.txt
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 Missing inputs and/or required directories:
 tmp1.txt
 ────────────────────────────────────────────────────────────────────────────────
-        1/4 |      START │ cp inp1.txt tmp1.txt
-        2/4 |    SUCCESS │ cp inp1.txt tmp1.txt
-        2/4 |      START │ echo Contents of inp2.txt > inp2.txt
-        3/4 |    SUCCESS │ echo Contents of inp2.txt > inp2.txt
-        3/4 |      START │ ./step.py > log.txt
-        4/4 |    SUCCESS │ ./step.py > log.txt
+        1/4 |      START │ runsh cp inp1.txt tmp1.txt
+        2/4 |    SUCCESS │ runsh cp inp1.txt tmp1.txt
+        2/4 |      START │ runsh echo Contents of inp2.txt > inp2.txt
+        3/4 |    SUCCESS │ runsh echo Contents of inp2.txt > inp2.txt
+        3/4 |      START │ runsh ./work.py > log.txt
+        4/4 |    SUCCESS │ runsh ./work.py > log.txt
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch
         4/4 |    DELETED │ inp2.txt
         2/4 |      PHASE │ run
-        2/4 |     NOSKIP │ echo Contents of inp2.txt > inp2.txt
+        2/4 |     NOSKIP │ runsh echo Contents of inp2.txt > inp2.txt
 ───────────────────────────── Missing output files ─────────────────────────────
 inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 37bc9faa, out_digest c0d853a3 ➜ a03072aa
+Modified step hash   explained, inp_digest 2ab42b8f, out_digest c0d853a3 ➜ a03072aa
 Modified out hash    inp2.txt (digest 42746c66 ➜ UNKNOWN, size 21 ➜ 0, mode -rw-r--r-- ➜ ?---------)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
-        2/4 |      START │ echo Contents of inp2.txt > inp2.txt
-        3/4 |    SUCCESS │ echo Contents of inp2.txt > inp2.txt
-        3/4 |       SKIP │ ./step.py > log.txt
+        2/4 |      START │ runsh echo Contents of inp2.txt > inp2.txt
+        3/4 |    SUCCESS │ runsh echo Contents of inp2.txt > inp2.txt
+        3/4 |       SKIP │ runsh ./work.py > log.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 07e830e4, out_digest 7d6b25ba
+Same step hash       explained, inp_digest 51356bac, out_digest 7d6b25ba
 Same inp hash        ./
 Same inp hash        inp0.txt
 Same inp hash        inp2.txt
-Same inp hash        step.py
 Same inp hash        tmp1.txt
+Same inp hash        work.py
 Same out hash        log.txt
 ────────────────────────────────────────────────────────────────────────────────
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
@@ -47,33 +47,33 @@ Same out hash        log.txt
         4/4 |    UPDATED │ inp0.txt
         4/4 |    UPDATED │ inp1.txt
         2/4 |      PHASE │ run
-        2/4 |  DROPAMEND │ ./step.py > log.txt
+        2/4 |  DROPAMEND │ runsh ./work.py > log.txt
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest 07e830e4 ➜ fd1b8b49, out_digest 7d6b25ba ➜ (unset)
+Modified step hash   explained, inp_digest 51356bac ➜ 83e67952, out_digest 7d6b25ba ➜ (unset)
 Modified inp hash    inp0.txt (digest 681fd532 ➜ 2dab5684)
 Deleted inp hash     tmp1.txt
 ──────────────────────── Remained the same (or missing) ────────────────────────
 Same inp hash        ./
 Same inp hash        inp2.txt
-Same inp hash        step.py
+Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
-        2/4 |     NOSKIP │ cp inp1.txt tmp1.txt
+        2/4 |     NOSKIP │ runsh cp inp1.txt tmp1.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest ce6d0dfc ➜ c0d91c06, out_digest 10bf5516 ➜ (unset)
+Modified step hash   explained, inp_digest cb5d3967 ➜ 480dfa88, out_digest 10bf5516 ➜ (unset)
 Modified inp hash    inp1.txt (digest 6c6e5eb3 ➜ e8869200, size 15 ➜ 16)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
-        2/4 |      START │ ./step.py > log.txt
-        2/4 | RESCHEDULE │ ./step.py > log.txt
+        2/4 |      START │ runsh ./work.py > log.txt
+        2/4 | RESCHEDULE │ runsh ./work.py > log.txt
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 Missing inputs and/or required directories:
 tmp1.txt
 ────────────────────────────────────────────────────────────────────────────────
-        2/4 |      START │ cp inp1.txt tmp1.txt
-        3/4 |    SUCCESS │ cp inp1.txt tmp1.txt
-        3/4 |      START │ ./step.py > log.txt
-        4/4 |    SUCCESS │ ./step.py > log.txt
+        2/4 |      START │ runsh cp inp1.txt tmp1.txt
+        3/4 |    SUCCESS │ runsh cp inp1.txt tmp1.txt
+        3/4 |      START │ runsh ./work.py > log.txt
+        4/4 |    SUCCESS │ runsh ./work.py > log.txt
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from stepup.core.api import glob, static, step
+from stepup.core.api import glob, runpy, static
 
-static("step.py", "subs.txt")
+static("work.py", "subs.txt")
 glob("inp*.txt", _defer=True)
-step("./step.py", inp="subs.txt")
+runpy("./work.py", inp="subs.txt")

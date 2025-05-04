@@ -1,47 +1,47 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:plan.py
             supplies   file:sub/
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:sub/
              creates   file:sub/inp.txt
-             creates   step:cp inp.txt out.txt  # wd=sub/
+             creates   step:stepup.core.actions.runsh cp inp.txt out.txt  # wd=sub/
 
 file:sub/
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             supplies   file:sub/inp.txt
             supplies   file:sub/out.txt
-            supplies   step:cp inp.txt out.txt  # wd=sub/
+            supplies   step:stepup.core.actions.runsh cp inp.txt out.txt  # wd=sub/
 
 file:sub/inp.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:sub/
-            supplies   step:cp inp.txt out.txt  # wd=sub/
+            supplies   step:stepup.core.actions.runsh cp inp.txt out.txt  # wd=sub/
 
-step:cp inp.txt out.txt  # wd=sub/
+step:stepup.core.actions.runsh cp inp.txt out.txt  # wd=sub/
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:sub/
             consumes   file:sub/inp.txt
              creates   file:sub/out.txt
@@ -49,6 +49,6 @@ step:cp inp.txt out.txt  # wd=sub/
 
 file:sub/out.txt
                state = BUILT
-          created by   step:cp inp.txt out.txt  # wd=sub/
+          created by   step:stepup.core.actions.runsh cp inp.txt out.txt  # wd=sub/
             consumes   file:sub/
-            consumes   step:cp inp.txt out.txt  # wd=sub/
+            consumes   step:stepup.core.actions.runsh cp inp.txt out.txt  # wd=sub/

@@ -6,23 +6,23 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/4 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        2/4 |    SUCCESS │ ./plan.py
+        0/1 |      START │ runpy ./plan.py
+        2/4 |    SUCCESS │ runpy ./plan.py
         2/4 |    WARNING │ 2 step(s) remained pending due to incomplete requirements
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              MISSING  inp1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Command               ./step1.py
+Action                stepup.core.actions.runpy ./work1.py
 Working directory     ./
 Inputs        STATIC  ./
-              STATIC  step1.py
+              STATIC  work1.py
              MISSING  (inp1.txt)
 Outputs     OUTDATED  out1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Command               ./step3.py
+Action                stepup.core.actions.runpy ./work3.py
 Working directory     ./
 Inputs        STATIC  ./
-              STATIC  step3.py
+              STATIC  work3.py
               STATIC  inp3.txt
 Outputs     OUTDATED  out3.txt
 ────────────────────────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -12,17 +12,17 @@ file:./
             supplies   file:join_out.pickle
             supplies   file:plan.py
             supplies   file:write.py
-            supplies   step:./join.py --inp=join_inp.pickle --out=join_out.pickle
-            supplies   step:./plan.py
-            supplies   step:./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
+            supplies   step:stepup.core.actions.runpy ./join.py --inp=join_inp.pickle --out=join_out.pickle
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runpy ./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_CALL_FORMAT [amended]
           created by   root:
@@ -31,38 +31,38 @@ step:./plan.py
              creates   file:join.py
              creates   file:join_inp.pickle
              creates   file:write.py
-             creates   step:./join.py --inp=join_inp.pickle --out=join_out.pickle
-             creates   step:./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
+             creates   step:stepup.core.actions.runpy ./join.py --inp=join_inp.pickle --out=join_out.pickle
+             creates   step:stepup.core.actions.runpy ./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
             supplies   file:join_inp.pickle [amended]
 
 file:join.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./join.py --inp=join_inp.pickle --out=join_out.pickle
+            supplies   step:stepup.core.actions.runpy ./join.py --inp=join_inp.pickle --out=join_out.pickle
 
 file:write.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
+            supplies   step:stepup.core.actions.runpy ./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
 
 file:check.txt
                state = BUILT
-          created by   step:./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
+          created by   step:stepup.core.actions.runpy ./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
             consumes   file:./
-            consumes   step:./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
+            consumes   step:stepup.core.actions.runpy ./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
 
 file:join_inp.pickle
                state = BUILT
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            consumes   step:./plan.py
-            supplies   step:./join.py --inp=join_inp.pickle --out=join_out.pickle
+            consumes   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runpy ./join.py --inp=join_inp.pickle --out=join_out.pickle
 
-step:./join.py --inp=join_inp.pickle --out=join_out.pickle
+step:stepup.core.actions.runpy ./join.py --inp=join_inp.pickle --out=join_out.pickle
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:join.py
             consumes   file:join_inp.pickle
@@ -71,14 +71,14 @@ step:./join.py --inp=join_inp.pickle --out=join_out.pickle
 
 file:join_out.pickle
                state = BUILT
-          created by   step:./join.py --inp=join_inp.pickle --out=join_out.pickle
+          created by   step:stepup.core.actions.runpy ./join.py --inp=join_inp.pickle --out=join_out.pickle
             consumes   file:./
-            consumes   step:./join.py --inp=join_inp.pickle --out=join_out.pickle
-            supplies   step:./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
+            consumes   step:stepup.core.actions.runpy ./join.py --inp=join_inp.pickle --out=join_out.pickle
+            supplies   step:stepup.core.actions.runpy ./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
 
-step:./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
+step:stepup.core.actions.runpy ./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:join_out.pickle
             consumes   file:write.py

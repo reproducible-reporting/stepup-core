@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,32 +9,32 @@ file:./
             supplies   file:line.txt
             supplies   file:log.txt
             supplies   file:plan.py
-            supplies   step:./plan.py
-            supplies   step:cat line.txt >> log.txt; exit 1
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh cat line.txt >> log.txt; exit 1
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:line.txt
-             creates   step:cat line.txt >> log.txt; exit 1
+             creates   step:stepup.core.actions.runsh cat line.txt >> log.txt; exit 1
 
 file:line.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:cat line.txt >> log.txt; exit 1
+            supplies   step:stepup.core.actions.runsh cat line.txt >> log.txt; exit 1
 
-step:cat line.txt >> log.txt; exit 1
+step:stepup.core.actions.runsh cat line.txt >> log.txt; exit 1
                state = FAILED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:line.txt
              creates   file:log.txt
@@ -42,6 +42,6 @@ step:cat line.txt >> log.txt; exit 1
 
 file:log.txt
                state = OUTDATED
-          created by   step:cat line.txt >> log.txt; exit 1
+          created by   step:stepup.core.actions.runsh cat line.txt >> log.txt; exit 1
             consumes   file:./
-            consumes   step:cat line.txt >> log.txt; exit 1
+            consumes   step:stepup.core.actions.runsh cat line.txt >> log.txt; exit 1

@@ -1,19 +1,19 @@
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ plan.py (digest e3ce1d36 ➜ 2b370a1b, size 414 ➜ 352)
+        0/0 |    UPDATED │ plan.py (digest f556bdc3 ➜ 47ac7281, size 420 ➜ 357)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         5/6 |      PHASE │ run
-        5/6 |     NOSKIP │ ./plan.py
+        5/6 |     NOSKIP │ runpy ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest d4b6d552 ➜ 1b84c39e, out_digest 786a02f7 ➜ (unset)
-Modified inp hash    plan.py (digest e3ce1d36 ➜ 2b370a1b, size 414 ➜ 352)
+Modified step hash   explained, inp_digest 37342aa0 ➜ 2d57215f, out_digest 786a02f7 ➜ (unset)
+Modified inp hash    plan.py (digest f556bdc3 ➜ 47ac7281, size 420 ➜ 357)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
-        0/1 |      START │ ./plan.py
-        1/1 |    SUCCESS │ ./plan.py
+        0/1 |      START │ runpy ./plan.py
+        1/1 |    SUCCESS │ runpy ./plan.py
         1/1 |   DIRECTOR │ Trying to delete 5 outdated output(s).
         1/1 |      CLEAN │ spam.txt
         1/1 |      CLEAN │ foo2.txt

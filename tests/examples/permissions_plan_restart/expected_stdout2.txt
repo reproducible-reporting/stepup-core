@@ -5,10 +5,10 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
-        1/2 |      START │ ./plan.py  # wd=sub/
-        2/3 |    SUCCESS │ ./plan.py  # wd=sub/
-        2/3 |      START │ touch done.txt  # wd=sub/
-        3/3 |    SUCCESS │ touch done.txt  # wd=sub/
+        1/2 |      START │ runpy ./plan.py  # wd=sub/
+        2/3 |    SUCCESS │ runpy ./plan.py  # wd=sub/
+        2/3 |      START │ runsh touch done.txt  # wd=sub/
+        3/3 |    SUCCESS │ runsh touch done.txt  # wd=sub/
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         3/3 |      PHASE │ watch
         3/3 |   DIRECTOR │ Stopping workers.

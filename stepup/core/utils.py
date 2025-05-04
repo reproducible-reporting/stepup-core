@@ -45,6 +45,7 @@ __all__ = (
     "remove_path",
     "string_to_bool",
     "translate",
+    "translate_back",
 )
 
 
@@ -251,7 +252,7 @@ def filter_dependencies(paths: Collection[str], *external_sources: str) -> set[P
     global_external_sources = os.environ.get("STEPUP_EXTERNAL_SOURCES")
     if global_external_sources is not None:
         sources_roots.extend(
-            translate.back(source).absolute() / "" for source in global_external_sources.split(":")
+            translate_back(source).absolute() / "" for source in global_external_sources.split(":")
         )
     sources_roots.extend(Path(source).absolute() / "" for source in external_sources)
 
@@ -284,73 +285,57 @@ class DBLock:
         self._lock.release()
 
 
-@attrs.define
-class Translate:
-    """Singleton for translating paths from the current directory to the director and back.
+def translate(path: str, workdir: str = ".") -> Path:
+    """Normalize the path and, if relative, make it relative to `self.root`.
 
-    By creating an instance, environment variables are usedfix the path of the StepUp root,
-    simplifying the logic of the actual translation.
-    If the environment variable `HERE` is not set, it is derived from `STEPUP_ROOT` if set.
-    If that is not set, it is assumed that the current directory is `STEPUP_ROOT`.
-    For these, the relative path from the current directory is derived and assigned do `self.root`.
+    Parameters
+    ----------
+    path
+        The path to translate. If relative, it assumed to be relative to the working directory.
+    workdir
+        The work directory. If relative, it is assumed to be relative to `self.here`
+
+    Returns
+    -------
+    translated_path
+        A path that can be interpreted in the working directory of the StepUp director.
     """
-
-    root: Path = attrs.field(default=Path(os.getenv("STEPUP_ROOT", os.getcwd())), converter=Path)
-    here: Path = attrs.field(converter=Path)
-
-    @here.default
-    def _default_here(self):
-        return Path(os.getenv("HERE", myrelpath("./", self.root)))
-
-    def __call__(self, path: str, workdir: str = ".") -> Path:
-        """Normalize the path and, if relative, make it relative to `self.root`.
-
-        Parameters
-        ----------
-        path
-            The path to translate. If relative, it assumed to be relative to the working directory.
-        workdir
-            The work directory. If relative, it is assumed to be relative to `self.here`
-
-        Returns
-        -------
-        translated_path
-            A path that can be interpreted in the working directory of the StepUp director.
-        """
-        path = mynormpath(path)
-        if not path.isabs():
-            workdir = mynormpath(workdir)
-            path = workdir / path
-            if not workdir.isabs():
-                path = myrelpath(mynormpath(self.root / self.here / path), self.root)
-        return path
-
-    def back(self, path: str, workdir: str = ".") -> Path:
-        """If relative, make it relative to work directory, assuming it is relative to `self.root`.
-
-        Parameters
-        ----------
-        path
-            The path to translate. If relative, it is assumed to be relative to `ROOT`.
-        workdir
-            The working directory. If relative, it is assumed to be relative to `HERE`.
-
-        Returns
-        -------
-        back_translated_path
-            A path that can be interpreted in the working directory.
-        """
-        path = mynormpath(path)
+    path = mynormpath(path)
+    if not path.isabs():
         workdir = mynormpath(workdir)
-        if path.isabs():
-            if workdir.isabs() and path.startswith(workdir):
-                path = myrelpath(path, workdir)
-        else:
-            path = myrelpath(self.root / path, self.root / self.here / workdir)
-        return path
+        path = workdir / path
+        if not workdir.isabs():
+            root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
+            here = Path(os.getenv("HERE", myrelpath("./", root)))
+            path = myrelpath(mynormpath(root / here / path), root)
+    return path
 
 
-translate = Translate()
+def translate_back(path: str, workdir: str = ".") -> Path:
+    """If relative, make it relative to work directory, assuming it is relative to `self.root`.
+
+    Parameters
+    ----------
+    path
+        The path to translate. If relative, it is assumed to be relative to `ROOT`.
+    workdir
+        The working directory. If relative, it is assumed to be relative to `HERE`.
+
+    Returns
+    -------
+    back_translated_path
+        A path that can be interpreted in the working directory.
+    """
+    path = mynormpath(path)
+    workdir = mynormpath(workdir)
+    if path.isabs():
+        if workdir.isabs() and path.startswith(workdir):
+            path = myrelpath(path, workdir)
+    else:
+        root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
+        here = Path(os.getenv("HERE", myrelpath("./", root)))
+        path = myrelpath(root / path, root / here / workdir)
+    return path
 
 
 def string_to_bool(v: str | bool) -> bool:

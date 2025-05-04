@@ -278,7 +278,7 @@ async def report_completion(
         pending_pages = []
         block_lines = []
         for step in steps_pending:
-            command, workdir = step.get_command_workdir()
+            action, workdir = step.get_action_workdir()
             _, _, block, mandatory, _ = step.properties()
             if mandatory == Mandatory.NO:
                 num_pending -= 1
@@ -288,7 +288,7 @@ async def report_completion(
             if len(block_lines) > 0:
                 continue
 
-            lines = [f"Command               {command}"]
+            lines = [f"Action                {action}"]
             if workdir != ".":
                 lines.append(f"Working directory     {workdir}")
 

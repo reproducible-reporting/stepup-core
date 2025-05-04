@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import json
-import sys
 
 from stepup.core.script import driver
 
@@ -11,8 +10,6 @@ def info():
         "static": "config.json",
         "inp": "config.json",
         "out": "test.csv",
-        "stdout": "stdout.txt",
-        "stderr": "stderr.txt",
     }
 
 
@@ -26,8 +23,6 @@ def run():
                 fh.write(f"foo,{value}\n")
             else:
                 fh.write(f"bar,{value}\n")
-    print("Standard output")
-    print("Standard error", file=sys.stderr)
 
 
 if __name__ == "__main__":

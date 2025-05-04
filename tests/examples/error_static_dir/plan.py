@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import static, step
+from stepup.core.api import runsh, static
 
 static("subdir")
-step("cat subdir", inp="subdir")
+runsh("cat subdir", inp="subdir")

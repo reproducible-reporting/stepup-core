@@ -2,7 +2,7 @@ root:
              creates   file:../
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,17 +10,17 @@ file:./
             supplies   file:../
             supplies   file:plan.py
             supplies   file:www/
-            supplies   step:./plan.py
-            supplies   step:mkdir -p ../public/
-            supplies   step:mkdir -p ../public/www/
+            supplies   step:stepup.core.actions.mkdir ../public/
+            supplies   step:stepup.core.actions.mkdir ../public/www/
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
              env_var = PUBLIC [amended]
           created by   root:
@@ -28,28 +28,28 @@ step:./plan.py
             consumes   file:plan.py
              creates   file:www/
              creates   file:www/plan.py
-             creates   step:./plan.py  # wd=www/
-             creates   step:mkdir -p ../public/
-             creates   step:mkdir -p ../public/www/
+             creates   step:stepup.core.actions.mkdir ../public/
+             creates   step:stepup.core.actions.mkdir ../public/www/
+             creates   step:stepup.core.actions.runpy ./plan.py  # wd=www/
 
 file:www/
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             supplies   file:www/index.md
             supplies   file:www/plan.py
-            supplies   step:./plan.py  # wd=www/
-            supplies   step:cp -aT index.md ../../public/www/index.md  # wd=www/
+            supplies   step:stepup.core.actions.copy index.md ../../public/www/index.md  # wd=www/
+            supplies   step:stepup.core.actions.runpy ./plan.py  # wd=www/
 
 file:www/plan.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:www/
-            supplies   step:./plan.py  # wd=www/
+            supplies   step:stepup.core.actions.runpy ./plan.py  # wd=www/
 
-step:mkdir -p ../public/
+step:stepup.core.actions.mkdir ../public/
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:../
             consumes   file:./
              creates   file:../public/
@@ -60,19 +60,19 @@ file:../
           created by   root:
             consumes   file:./
             supplies   file:../public/
-            supplies   step:mkdir -p ../public/
+            supplies   step:stepup.core.actions.mkdir ../public/
 
 file:../public/
                state = BUILT
-          created by   step:mkdir -p ../public/
+          created by   step:stepup.core.actions.mkdir ../public/
             consumes   file:../
-            consumes   step:mkdir -p ../public/
+            consumes   step:stepup.core.actions.mkdir ../public/
             supplies   file:../public/www/
-            supplies   step:mkdir -p ../public/www/
+            supplies   step:stepup.core.actions.mkdir ../public/www/
 
-step:mkdir -p ../public/www/
+step:stepup.core.actions.mkdir ../public/www/
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:../public/
             consumes   file:./
              creates   file:../public/www/
@@ -80,32 +80,32 @@ step:mkdir -p ../public/www/
 
 file:../public/www/
                state = BUILT
-          created by   step:mkdir -p ../public/www/
+          created by   step:stepup.core.actions.mkdir ../public/www/
             consumes   file:../public/
-            consumes   step:mkdir -p ../public/www/
+            consumes   step:stepup.core.actions.mkdir ../public/www/
             supplies   file:../public/www/index.md
-            supplies   step:cp -aT index.md ../../public/www/index.md  # wd=www/
+            supplies   step:stepup.core.actions.copy index.md ../../public/www/index.md  # wd=www/
 
-step:./plan.py  # wd=www/
+step:stepup.core.actions.runpy ./plan.py  # wd=www/
                state = SUCCEEDED
              env_var = HERE [amended]
                      = PUBLIC [amended]
                      = ROOT [amended]
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:www/
             consumes   file:www/plan.py
              creates   file:www/index.md
-             creates   step:cp -aT index.md ../../public/www/index.md  # wd=www/
+             creates   step:stepup.core.actions.copy index.md ../../public/www/index.md  # wd=www/
 
 file:www/index.md
                state = STATIC
-          created by   step:./plan.py  # wd=www/
+          created by   step:stepup.core.actions.runpy ./plan.py  # wd=www/
             consumes   file:www/
-            supplies   step:cp -aT index.md ../../public/www/index.md  # wd=www/
+            supplies   step:stepup.core.actions.copy index.md ../../public/www/index.md  # wd=www/
 
-step:cp -aT index.md ../../public/www/index.md  # wd=www/
+step:stepup.core.actions.copy index.md ../../public/www/index.md  # wd=www/
                state = SUCCEEDED
-          created by   step:./plan.py  # wd=www/
+          created by   step:stepup.core.actions.runpy ./plan.py  # wd=www/
             consumes   file:../public/www/
             consumes   file:www/
             consumes   file:www/index.md
@@ -114,6 +114,6 @@ step:cp -aT index.md ../../public/www/index.md  # wd=www/
 
 file:../public/www/index.md
                state = BUILT
-          created by   step:cp -aT index.md ../../public/www/index.md  # wd=www/
+          created by   step:stepup.core.actions.copy index.md ../../public/www/index.md  # wd=www/
             consumes   file:../public/www/
-            consumes   step:cp -aT index.md ../../public/www/index.md  # wd=www/
+            consumes   step:stepup.core.actions.copy index.md ../../public/www/index.md  # wd=www/

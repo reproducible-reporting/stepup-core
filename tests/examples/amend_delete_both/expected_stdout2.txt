@@ -8,31 +8,31 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/4 |      PHASE │ run
-        1/4 |     NOSKIP │ cp -aT asource2.txt data2.txt
+        1/4 |     NOSKIP │ copy asource2.txt data2.txt
 ───────────────────────────── Missing output files ─────────────────────────────
 data2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest c4dd9f6c, out_digest a04d333e ➜ 525a401d
+Modified step hash   explained, inp_digest f417c5d4, out_digest a04d333e ➜ 525a401d
 Modified out hash    data2.txt (digest 28b7cc0a ➜ UNKNOWN, size 25 ➜ 0, mode -rw-r--r-- ➜ ?---------)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 Same inp hash        asource2.txt
 ────────────────────────────────────────────────────────────────────────────────
-        1/4 |      START │ cp -aT asource2.txt data2.txt
-        2/4 |    SUCCESS │ cp -aT asource2.txt data2.txt
+        1/4 |      START │ copy asource2.txt data2.txt
+        2/4 |    SUCCESS │ copy asource2.txt data2.txt
         2/4 |    WARNING │ 2 step(s) remained pending due to incomplete requirements
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  asource1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Command               ./step.py > log.txt
+Action                stepup.core.actions.runsh ./work.py > log.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  data1.txt
-              STATIC  step.py
+              STATIC  work.py
                BUILT  data2.txt [amended]
 Outputs      AWAITED  log.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Command               cp -aT asource1.txt data1.txt
+Action                stepup.core.actions.copy asource1.txt data1.txt
 Working directory     ./
 Inputs        STATIC  ./
              MISSING  asource1.txt
@@ -41,5 +41,7 @@ Outputs      AWAITED  data1.txt
         2/4 |    WARNING │ Skipping file cleanup due to incomplete build.
         2/4 |    WARNING │ Check logs: .stepup/warning.log
         2/4 |      PHASE │ watch
+        2/4 |    UPDATED │ asource2.txt
+        2/4 |  UNCHANGED │ asource2.txt
         2/4 |   DIRECTOR │ Stopping workers.
         2/4 |   DIRECTOR │ See you!

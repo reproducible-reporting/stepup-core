@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -11,52 +11,52 @@ file:./
             supplies   file:plan.py
             supplies   file:second.txt
             supplies   file:work.py
-            supplies   step:./plan.py
-            supplies   step:./work.py plan
-            supplies   step:./work.py run first
-            supplies   step:./work.py run second
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runpy ./work.py plan
+            supplies   step:stepup.core.actions.runpy ./work.py run first
+            supplies   step:stepup.core.actions.runpy ./work.py run second
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:helper.py
              creates   file:work.py
-             creates   step:./work.py plan
+             creates   step:stepup.core.actions.runpy ./work.py plan
 
 file:helper.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./work.py run first
-            supplies   step:./work.py run second
+            supplies   step:stepup.core.actions.runpy ./work.py run first
+            supplies   step:stepup.core.actions.runpy ./work.py run second
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./work.py plan
-            supplies   step:./work.py run first
-            supplies   step:./work.py run second
+            supplies   step:stepup.core.actions.runpy ./work.py plan
+            supplies   step:stepup.core.actions.runpy ./work.py run first
+            supplies   step:stepup.core.actions.runpy ./work.py run second
 
-step:./work.py plan
+step:stepup.core.actions.runpy ./work.py plan
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:work.py
-             creates   step:./work.py run first
-             creates   step:./work.py run second
+             creates   step:stepup.core.actions.runpy ./work.py run first
+             creates   step:stepup.core.actions.runpy ./work.py run second
 
-step:./work.py run first
+step:stepup.core.actions.runpy ./work.py run first
                state = SUCCEEDED
-          created by   step:./work.py plan
+          created by   step:stepup.core.actions.runpy ./work.py plan
             consumes   file:./
             consumes   file:helper.py [amended]
             consumes   file:work.py
@@ -65,13 +65,13 @@ step:./work.py run first
 
 file:first.txt
                state = BUILT
-          created by   step:./work.py run first
+          created by   step:stepup.core.actions.runpy ./work.py run first
             consumes   file:./
-            consumes   step:./work.py run first
+            consumes   step:stepup.core.actions.runpy ./work.py run first
 
-step:./work.py run second
+step:stepup.core.actions.runpy ./work.py run second
                state = SUCCEEDED
-          created by   step:./work.py plan
+          created by   step:stepup.core.actions.runpy ./work.py plan
             consumes   file:./
             consumes   file:helper.py [amended]
             consumes   file:work.py
@@ -80,6 +80,6 @@ step:./work.py run second
 
 file:second.txt
                state = BUILT
-          created by   step:./work.py run second
+          created by   step:stepup.core.actions.runpy ./work.py run second
             consumes   file:./
-            consumes   step:./work.py run second
+            consumes   step:stepup.core.actions.runpy ./work.py run second

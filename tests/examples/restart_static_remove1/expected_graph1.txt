@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -11,41 +11,41 @@ file:./
             supplies   file:bar.txt
             supplies   file:foo.txt
             supplies   file:plan.py
-            supplies   step:./plan.py
-            supplies   step:cp -aT README.txt backup.txt
-            supplies   step:cp -aT foo.txt bar.txt
+            supplies   step:stepup.core.actions.copy README.txt backup.txt
+            supplies   step:stepup.core.actions.copy foo.txt bar.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:README.txt
              creates   file:foo.txt
-             creates   step:cp -aT README.txt backup.txt
-             creates   step:cp -aT foo.txt bar.txt
+             creates   step:stepup.core.actions.copy README.txt backup.txt
+             creates   step:stepup.core.actions.copy foo.txt bar.txt
 
 file:README.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:cp -aT README.txt backup.txt
+            supplies   step:stepup.core.actions.copy README.txt backup.txt
 
 file:foo.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:cp -aT foo.txt bar.txt
+            supplies   step:stepup.core.actions.copy foo.txt bar.txt
 
-step:cp -aT foo.txt bar.txt
+step:stepup.core.actions.copy foo.txt bar.txt
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:foo.txt
              creates   file:bar.txt
@@ -53,13 +53,13 @@ step:cp -aT foo.txt bar.txt
 
 file:bar.txt
                state = BUILT
-          created by   step:cp -aT foo.txt bar.txt
+          created by   step:stepup.core.actions.copy foo.txt bar.txt
             consumes   file:./
-            consumes   step:cp -aT foo.txt bar.txt
+            consumes   step:stepup.core.actions.copy foo.txt bar.txt
 
-step:cp -aT README.txt backup.txt
+step:stepup.core.actions.copy README.txt backup.txt
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:README.txt
              creates   file:backup.txt
@@ -67,6 +67,6 @@ step:cp -aT README.txt backup.txt
 
 file:backup.txt
                state = BUILT
-          created by   step:cp -aT README.txt backup.txt
+          created by   step:stepup.core.actions.copy README.txt backup.txt
             consumes   file:./
-            consumes   step:cp -aT README.txt backup.txt
+            consumes   step:stepup.core.actions.copy README.txt backup.txt

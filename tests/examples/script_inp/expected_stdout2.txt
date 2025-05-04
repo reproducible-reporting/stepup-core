@@ -5,12 +5,12 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         3/4 |      PHASE │ run
-        1/2 |      START │ ./script.py plan
-        2/4 |    SUCCESS │ ./script.py plan
-        2/4 |      START │ ./script.py run egg
-        3/4 |    SUCCESS │ ./script.py run egg
-        3/4 |      START │ ./script.py run spam
-        4/4 |    SUCCESS │ ./script.py run spam
+        1/2 |      START │ runpy ./script.py plan
+        2/4 |    SUCCESS │ runpy ./script.py plan
+        2/4 |      START │ runpy ./script.py run egg
+        3/4 |    SUCCESS │ runpy ./script.py run egg
+        3/4 |      START │ runpy ./script.py run spam
+        4/4 |    SUCCESS │ runpy ./script.py run spam
         4/4 |   DIRECTOR │ Trying to delete 2 outdated output(s).
         4/4 |      CLEAN │ out_foo.txt
         4/4 |      CLEAN │ out_bar.txt

@@ -48,8 +48,8 @@ class StepInfo:
     All paths and environment variables are stored in sorted order to ensure consistency.
     """
 
-    command: str = attrs.field(converter=str)
-    """The command of the step."""
+    action: str = attrs.field(converter=str)
+    """The action of the step."""
 
     workdir: Path = attrs.field(converter=Path)
     """The work directory of the step.

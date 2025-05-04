@@ -1,14 +1,14 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ ./work.py plan
-        2/4 |    SUCCESS │ ./work.py plan
-        2/4 |      START │ ./work.py run first
-        3/4 |    SUCCESS │ ./work.py run first
-        3/4 |      START │ ./work.py run second
-        4/4 |    SUCCESS │ ./work.py run second
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |      START │ runpy ./work.py plan
+        2/4 |    SUCCESS │ runpy ./work.py plan
+        2/4 |      START │ runpy ./work.py run first
+        3/4 |    SUCCESS │ runpy ./work.py run first
+        3/4 |      START │ runpy ./work.py run second
+        4/4 |    SUCCESS │ runpy ./work.py run second
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         4/4 |      PHASE │ watch
         4/4 |   DIRECTOR │ Stopping workers.

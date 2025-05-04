@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,46 +10,46 @@ file:./
             supplies   file:plan.py
             supplies   file:quadruple.txt
             supplies   file:single.txt
-            supplies   step:./plan.py
-            supplies   step:cat double.txt double.txt > quadruple.txt
-            supplies   step:cat single.txt single.txt > double.txt
-            supplies   step:echo something > single.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh cat double.txt double.txt > quadruple.txt
+            supplies   step:stepup.core.actions.runsh cat single.txt single.txt > double.txt
+            supplies   step:stepup.core.actions.runsh echo something > single.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:cat double.txt double.txt > quadruple.txt
-             creates   step:cat single.txt single.txt > double.txt
-             creates   step:echo something > single.txt
+             creates   step:stepup.core.actions.runsh cat double.txt double.txt > quadruple.txt
+             creates   step:stepup.core.actions.runsh cat single.txt single.txt > double.txt
+             creates   step:stepup.core.actions.runsh echo something > single.txt
 
-step:echo something > single.txt
+step:stepup.core.actions.runsh echo something > single.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
              creates   file:single.txt
             supplies   file:single.txt
 
 file:single.txt
                state = BUILT
-          created by   step:echo something > single.txt
+          created by   step:stepup.core.actions.runsh echo something > single.txt
             consumes   file:./
-            consumes   step:echo something > single.txt
-            supplies   step:cat single.txt single.txt > double.txt
+            consumes   step:stepup.core.actions.runsh echo something > single.txt
+            supplies   step:stepup.core.actions.runsh cat single.txt single.txt > double.txt
 
-step:cat single.txt single.txt > double.txt
+step:stepup.core.actions.runsh cat single.txt single.txt > double.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:single.txt
              creates   file:double.txt
@@ -57,15 +57,15 @@ step:cat single.txt single.txt > double.txt
 
 file:double.txt
                state = BUILT
-          created by   step:cat single.txt single.txt > double.txt
+          created by   step:stepup.core.actions.runsh cat single.txt single.txt > double.txt
             consumes   file:./
-            consumes   step:cat single.txt single.txt > double.txt
-            supplies   step:cat double.txt double.txt > quadruple.txt
+            consumes   step:stepup.core.actions.runsh cat single.txt single.txt > double.txt
+            supplies   step:stepup.core.actions.runsh cat double.txt double.txt > quadruple.txt
 
-step:cat double.txt double.txt > quadruple.txt
+step:stepup.core.actions.runsh cat double.txt double.txt > quadruple.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:double.txt
              creates   file:quadruple.txt
@@ -73,6 +73,6 @@ step:cat double.txt double.txt > quadruple.txt
 
 file:quadruple.txt
                state = BUILT
-          created by   step:cat double.txt double.txt > quadruple.txt
+          created by   step:stepup.core.actions.runsh cat double.txt double.txt > quadruple.txt
             consumes   file:./
-            consumes   step:cat double.txt double.txt > quadruple.txt
+            consumes   step:stepup.core.actions.runsh cat double.txt double.txt > quadruple.txt

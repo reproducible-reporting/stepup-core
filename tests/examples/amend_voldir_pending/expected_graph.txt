@@ -1,32 +1,32 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   (file:nonexisting/)
             supplies   file:plan.py
-            supplies   step:./demo.py
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./demo.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:./demo.py
+             creates   step:stepup.core.actions.runpy ./demo.py
 
-step:./demo.py
+step:stepup.core.actions.runpy ./demo.py
                state = PENDING
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   (file:nonexisting/) [amended]
             consumes   file:./
              creates   file:nonexisting/foo.out
@@ -36,10 +36,10 @@ step:./demo.py
                state = AWAITED
             consumes   file:./
             supplies   file:nonexisting/foo.out
-            supplies   step:./demo.py
+            supplies   step:stepup.core.actions.runpy ./demo.py
 
 file:nonexisting/foo.out
                state = VOLATILE
-          created by   step:./demo.py
+          created by   step:stepup.core.actions.runpy ./demo.py
             consumes   (file:nonexisting/)
-            consumes   step:./demo.py
+            consumes   step:stepup.core.actions.runpy ./demo.py

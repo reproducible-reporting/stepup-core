@@ -1,12 +1,12 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/3 |    SUCCESS │ ./plan.py
-        1/3 |      START │ ./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
-        2/3 |    SUCCESS │ ./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
-        2/3 |      START │ ./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out
-        3/3 |    SUCCESS │ ./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out
+        0/1 |      START │ runpy ./plan.py
+        1/3 |    SUCCESS │ runpy ./plan.py
+        1/3 |      START │ runpy ./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
+        2/3 |    SUCCESS │ runpy ./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
+        2/3 |      START │ runpy ./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out
+        3/3 |    SUCCESS │ runpy ./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         3/3 |      PHASE │ watch
         3/3 |   DIRECTOR │ Stopping workers.

@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""A `Step` is a shell command that can be executed and that has inputs and outputs."""
+"""A `Step` an action that can be executed and that has inputs and/or outputs."""
 
 import logging
 import os
@@ -156,7 +156,7 @@ SELECT i, label FROM tree WHERE state = {StepState.PENDING.value}
 
 
 def split_step_label(label: str) -> tuple[str, str]:
-    """Split a step label into command and workdir."""
+    """Split a step label into action and workdir."""
     parts = label.split("  # wd=", maxsplit=1)
     return parts[0], Path(parts[1]) if len(parts) == 2 else Path("./")
 
@@ -177,16 +177,16 @@ class Step(Node):
         return STEP_SCHEMA
 
     @classmethod
-    def create_label(cls, label: str, command: str, workdir: str, **kwargs):
+    def create_label(cls, label: str, action: str, workdir: str, **kwargs):
         """Optionally override the user-provided label when creating a node."""
         if label != "":
             raise ValueError(
                 "Do not provide a label when creating a step. "
                 "It will be derived from other arguments."
             )
-        if "  # wd=" in command:
-            raise ValueError("Do not provide a workdir comment in the command string.")
-        label = command
+        if "  # wd=" in action:
+            raise ValueError("Do not provide a workdir comment in the action string.")
+        label = action
         if workdir != "./":
             label += f"  # wd={workdir}"
         return label
@@ -367,8 +367,8 @@ class Step(Node):
     # Getters and setters
     #
 
-    def get_command_workdir(self) -> tuple[str, str]:
-        """Return the command and workdir of this step."""
+    def get_action_workdir(self) -> tuple[str, str]:
+        """Return the action and workdir of this step."""
         return split_step_label(self.label)
 
     def get_state(self) -> StepState:
@@ -403,9 +403,9 @@ class Step(Node):
         Amended information is not included for consistency with
         the information that is available when defining a step.
         """
-        command, workdir = self.get_command_workdir()
+        action, workdir = self.get_action_workdir()
         return StepInfo(
-            command,
+            action,
             workdir,
             self.inp_paths(amended=False),
             self.env_vars(amended=False),

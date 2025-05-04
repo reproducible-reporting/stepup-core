@@ -6,18 +6,18 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         0/2 |      PHASE │ run
-        0/2 |     NOSKIP │ ./plan.py
+        0/2 |     NOSKIP │ runpy ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest fbc361f9 ➜ d9e7fe3b, out_digest 786a02f7 ➜ (unset)
+Modified step hash   explained, inp_digest d0395107 ➜ b94cf3b9, out_digest 786a02f7 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_PREFIX ='README' ➜ ='FOO'
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 Same inp hash        plan.py
 ────────────────────────────────────────────────────────────────────────────────
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
-        2/2 |    SUCCESS │ grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |      START │ runsh grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+        2/2 |    SUCCESS │ runsh grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
         2/2 |   DIRECTOR │ Trying to delete 2 outdated output(s).
         2/2 |      CLEAN │ README-stdout.txt
         2/2 |      CLEAN │ README-stderr.txt

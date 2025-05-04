@@ -47,8 +47,8 @@ def test_getenv_nonexisting(monkeypatch):
 @pytest.mark.parametrize("use_default", [True, False])
 def test_getenv_single(monkeypatch, use_default):
     monkeypatch.setattr("stepup.core.api.amend", noop_amend)
-    monkeypatch.setattr("stepup.core.utils.translate.root", "../")
-    monkeypatch.setattr("stepup.core.utils.translate.here", "work/")
+    monkeypatch.setenv("ROOT", "../")
+    monkeypatch.setenv("HERE", "work/")
     if use_default:
         monkeypatch.delenv("SFDDFHT", raising=False)
         default = "sub/asdf"
@@ -70,8 +70,8 @@ def test_getenv_single(monkeypatch, use_default):
 @pytest.mark.parametrize("use_default", [True, False])
 def test_getenv_default_multi1(monkeypatch, use_default):
     monkeypatch.setattr("stepup.core.api.amend", noop_amend)
-    monkeypatch.setattr("stepup.core.utils.translate.root", "../")
-    monkeypatch.setattr("stepup.core.utils.translate.here", "work/")
+    monkeypatch.setenv("ROOT", "../")
+    monkeypatch.setenv("HERE", "work/")
     monkeypatch.delenv("SFDDFHT", raising=False)
     if use_default:
         monkeypatch.delenv("SFDDFHT", raising=False)
@@ -93,8 +93,8 @@ def test_getenv_default_multi1(monkeypatch, use_default):
 @pytest.mark.parametrize("use_default", [True, False])
 def test_getenv_default_multi3(monkeypatch, use_default):
     monkeypatch.setattr("stepup.core.api.amend", noop_amend)
-    monkeypatch.setattr("stepup.core.utils.translate.root", "../")
-    monkeypatch.setattr("stepup.core.utils.translate.here", "work/")
+    monkeypatch.setenv("ROOT", "../")
+    monkeypatch.setenv("HERE", "work/")
     if use_default:
         monkeypatch.delenv("SFDDFHT", raising=False)
         default = "sub/asdf:foo:"

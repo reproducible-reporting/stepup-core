@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import copy, glob, step
+from stepup.core.api import copy, glob, runsh
 
 # This double loop mimics the conversion and concatenation of sections and chapters
 paths_ch = []
@@ -19,8 +19,8 @@ for m_ch in glob("ch-${*ch}-${*name}/", ch="[0-9]", _required=True):
 
     # Mimic concatenation of sections with cat
     path_ch = m_ch[0] / f"ch-{m_ch.ch}-compiled.md"
-    step("cat ${inp} > ${out}", inp=paths_sec, out=[path_ch])
+    runsh("cat ${inp} > ${out}", inp=paths_sec, out=[path_ch])
     paths_ch.append(path_ch)
 
 # Mimic concatenation of chapters with cat
-step("cat ${inp} > ${out}", inp=paths_ch, out=["book.md"])
+runsh("cat ${inp} > ${out}", inp=paths_ch, out=["book.md"])

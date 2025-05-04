@@ -31,7 +31,7 @@ from rich.table import Table
 from .cascade import DROP_CONSUMERS, INITIAL_CONSUMERS, RECURSE_CONSUMERS
 from .enums import FileState
 from .hash import FileHash
-from .utils import mynormpath, translate
+from .utils import mynormpath, translate, translate_back
 
 
 def main():
@@ -83,8 +83,8 @@ def cleanup(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespac
     colors1 = {"d": "cyan", "f": "blue"}
     console = Console(highlight=False)
     for tr_consuming_path, state, old_file_hash in tr_consuming_paths:
-        # Translate back to local path
-        lo_consuming_path = translate.back(tr_consuming_path)
+        # translate_back to local path
+        lo_consuming_path = translate_back(tr_consuming_path)
         label = "" if lo_consuming_path.exists() else "?"
 
         # Remove if it is safe

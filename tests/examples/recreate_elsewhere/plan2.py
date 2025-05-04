@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import static, step
+from stepup.core.api import runpy, static
 
 static("outer.py", "inner.py")
-step("./outer.py bar", inp="outer.py")
+runpy("./outer.py bar", inp="outer.py")

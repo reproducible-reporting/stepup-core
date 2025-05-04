@@ -28,5 +28,3 @@ wait
 [[ -f work/generate.py ]] || exit 1
 [[ -f work/test.csv ]] || exit 1
 [[ -f work/copy.csv ]] || exit 1
-grep "Standard output" work/stdout.txt
-grep "Standard error" work/stderr.txt

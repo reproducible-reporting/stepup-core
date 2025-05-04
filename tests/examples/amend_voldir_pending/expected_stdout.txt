@@ -1,10 +1,10 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ ./demo.py
-        1/2 | RESCHEDULE │ ./demo.py
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |      START │ runpy ./demo.py
+        1/2 | RESCHEDULE │ runpy ./demo.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 Missing inputs and/or required directories:
 nonexisting/
@@ -13,7 +13,7 @@ nonexisting/
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              AWAITED  nonexisting/
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Command               ./demo.py
+Action                stepup.core.actions.runpy ./demo.py
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (nonexisting/) [amended]

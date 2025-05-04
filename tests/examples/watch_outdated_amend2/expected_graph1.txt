@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,22 +9,22 @@ file:./
             supplies   file:conv1.txt
             supplies   file:inp1.txt
             supplies   file:plan.py
-            supplies   file:step.py
             supplies   file:subs1.txt
             supplies   file:subs2.txt
             supplies   file:subs3.txt
-            supplies   step:./plan.py
-            supplies   step:./step.py subs1.txt > subs2.txt
-            supplies   step:./step.py subs2.txt > subs3.txt
-            supplies   step:cp -aT inp1.txt conv1.txt
+            supplies   file:work.py
+            supplies   step:stepup.core.actions.copy inp1.txt conv1.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh ./work.py subs1.txt > subs2.txt
+            supplies   step:stepup.core.actions.runsh ./work.py subs2.txt > subs3.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
                  ngm = ['inp*.txt'] {}
            explained = yes
@@ -32,33 +32,33 @@ step:./plan.py
             consumes   file:./
             consumes   file:plan.py
              creates   file:inp1.txt
-             creates   file:step.py
              creates   file:subs1.txt
-             creates   step:./step.py subs1.txt > subs2.txt
-             creates   step:./step.py subs2.txt > subs3.txt
-             creates   step:cp -aT inp1.txt conv1.txt
-
-file:step.py
-               state = STATIC
-          created by   step:./plan.py
-            consumes   file:./
+             creates   file:work.py
+             creates   step:stepup.core.actions.copy inp1.txt conv1.txt
+             creates   step:stepup.core.actions.runsh ./work.py subs1.txt > subs2.txt
+             creates   step:stepup.core.actions.runsh ./work.py subs2.txt > subs3.txt
 
 file:subs1.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./step.py subs1.txt > subs2.txt
+            supplies   step:stepup.core.actions.runsh ./work.py subs1.txt > subs2.txt
+
+file:work.py
+               state = STATIC
+          created by   step:stepup.core.actions.runpy ./plan.py
+            consumes   file:./
 
 file:inp1.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:cp -aT inp1.txt conv1.txt
+            supplies   step:stepup.core.actions.copy inp1.txt conv1.txt
 
-step:cp -aT inp1.txt conv1.txt
+step:stepup.core.actions.copy inp1.txt conv1.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:inp1.txt
              creates   file:conv1.txt
@@ -66,16 +66,16 @@ step:cp -aT inp1.txt conv1.txt
 
 file:conv1.txt
                state = BUILT
-          created by   step:cp -aT inp1.txt conv1.txt
+          created by   step:stepup.core.actions.copy inp1.txt conv1.txt
             consumes   file:./
-            consumes   step:cp -aT inp1.txt conv1.txt
-            supplies   step:./step.py subs1.txt > subs2.txt
-            supplies   step:./step.py subs2.txt > subs3.txt
+            consumes   step:stepup.core.actions.copy inp1.txt conv1.txt
+            supplies   step:stepup.core.actions.runsh ./work.py subs1.txt > subs2.txt
+            supplies   step:stepup.core.actions.runsh ./work.py subs2.txt > subs3.txt
 
-step:./step.py subs1.txt > subs2.txt
+step:stepup.core.actions.runsh ./work.py subs1.txt > subs2.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:conv1.txt [amended]
             consumes   file:subs1.txt
@@ -84,15 +84,15 @@ step:./step.py subs1.txt > subs2.txt
 
 file:subs2.txt
                state = BUILT
-          created by   step:./step.py subs1.txt > subs2.txt
+          created by   step:stepup.core.actions.runsh ./work.py subs1.txt > subs2.txt
             consumes   file:./
-            consumes   step:./step.py subs1.txt > subs2.txt
-            supplies   step:./step.py subs2.txt > subs3.txt
+            consumes   step:stepup.core.actions.runsh ./work.py subs1.txt > subs2.txt
+            supplies   step:stepup.core.actions.runsh ./work.py subs2.txt > subs3.txt
 
-step:./step.py subs2.txt > subs3.txt
+step:stepup.core.actions.runsh ./work.py subs2.txt > subs3.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:conv1.txt [amended]
             consumes   file:subs2.txt
@@ -101,6 +101,6 @@ step:./step.py subs2.txt > subs3.txt
 
 file:subs3.txt
                state = BUILT
-          created by   step:./step.py subs2.txt > subs3.txt
+          created by   step:stepup.core.actions.runsh ./work.py subs2.txt > subs3.txt
             consumes   file:./
-            consumes   step:./step.py subs2.txt > subs3.txt
+            consumes   step:stepup.core.actions.runsh ./work.py subs2.txt > subs3.txt

@@ -1,20 +1,20 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/3 |    SUCCESS │ ./plan.py
+        0/1 |      START │ runpy ./plan.py
+        1/3 |    SUCCESS │ runpy ./plan.py
         1/3 |    WARNING │ 2 step(s) remained pending due to incomplete requirements
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              AWAITED  input1.txt
              AWAITED  input2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Command               cp input1.txt output1.txt
+Action                stepup.core.actions.runsh cp input1.txt output1.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (input1.txt)
 Outputs      AWAITED  output1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Command               cp input2.txt output2.txt
+Action                stepup.core.actions.runsh cp input2.txt output2.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (input2.txt)
@@ -32,19 +32,19 @@ Outputs      AWAITED  output2.txt
              AWAITED  input1.txt
              AWAITED  input2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Command               ./plan.py
+Action                stepup.core.actions.runpy ./plan.py
 Working directory     ./
 Declares      STATIC  static.txt
 Inputs        STATIC  ./
              MISSING  plan.py
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Command               cp input1.txt output1.txt
+Action                stepup.core.actions.runsh cp input1.txt output1.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (input1.txt)
 Outputs      AWAITED  output1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Command               cp input2.txt output2.txt
+Action                stepup.core.actions.runsh cp input2.txt output2.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (input2.txt)
@@ -55,8 +55,8 @@ Outputs      AWAITED  output2.txt
         0/3 |      PHASE │ watch
         0/3 |    UPDATED │ plan.py
         0/3 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/1 |    SUCCESS │ ./plan.py
+        0/1 |      START │ runpy ./plan.py
+        1/1 |    SUCCESS │ runpy ./plan.py
         1/1 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         1/1 |      PHASE │ watch
         1/1 |   DIRECTOR │ Stopping workers.

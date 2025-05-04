@@ -185,6 +185,7 @@ class Workflow(Cascade):
                 "must be in the current directory."
             )
         command = shlex.quote(f"./{path_plan}")
+        action = f"stepup.core.actions.runpy {command}"
         nodes = {node.key(): node for node in self.root.products()}
         del nodes["root:"]
         if (
@@ -193,7 +194,7 @@ class Workflow(Cascade):
             and nodes["file:./"].get_state() == FileState.STATIC
             and f"file:{path_plan}" in nodes
             and nodes[f"file:{path_plan}"].get_state() == FileState.STATIC
-            and f"step:{command}" in nodes
+            and f"step:{action}" in nodes
         ):
             # The boot steps are already present (from a previous invocation of stepup).
             return False
@@ -204,7 +205,7 @@ class Workflow(Cascade):
         to_check = self.declare_missing(self.root, ["./", path_plan])
         checked = [(path, file_hash.regen(path)) for path, file_hash in to_check]
         self.update_file_hashes(checked, "confirmed")
-        self.define_step(self.root, command, inp_paths=[path_plan])
+        self.define_step(self.root, action, inp_paths=[path_plan])
         return True
 
     @staticmethod
@@ -736,7 +737,7 @@ class Workflow(Cascade):
     def define_step(
         self,
         creator: Node,
-        command: str,
+        action: str,
         *,
         inp_paths: Collection[str] = (),
         env_vars: Collection[str] = (),
@@ -754,8 +755,8 @@ class Workflow(Cascade):
         creator
             The step that generated this step.
             This is None for the boot script.
-        command
-            A command that can be executed by /usr/bin/sh.
+        action
+            An action that can be executed by a worker.
         inp_paths
             Input paths.
         env_vars
@@ -765,7 +766,7 @@ class Workflow(Cascade):
         vol_paths
             Volatile output (not reproducible) but will be cleaned like built files.
         workdir
-            The directory where the command should be executed,
+            The directory where the action must be executed,
             typically relative to the working directory of the director.
         optional
             If True, the step is only executed when required by other mandatory steps.
@@ -809,7 +810,7 @@ class Workflow(Cascade):
 
         # If a matching orphaned step is found, reuse it, instead of creating a new one.
         old_deferred = self._recreate_step(
-            command,
+            action,
             workdir,
             inp_paths,
             reqdirs,
@@ -828,7 +829,7 @@ class Workflow(Cascade):
         step = self.create(
             Step,
             creator,
-            command=command,
+            action=action,
             workdir=workdir,
             pool=pool,
             block=block,
@@ -873,7 +874,7 @@ class Workflow(Cascade):
 
     def _recreate_step(
         self,
-        command: str,
+        action: str,
         workdir: str,
         inp_paths: list[str],
         reqdirs: list[str],
@@ -893,7 +894,7 @@ class Workflow(Cascade):
             If the step can be reused, a possibly empty list is returned with
             MISSING file nodes that match a deferred glob and need to be confirmed.
         """
-        label = Step.create_label("", command, workdir)
+        label = Step.create_label("", action, workdir)
         old_step, is_orphan = self.find_orphan(Step, label)
 
         # Check whether the step can be reused.

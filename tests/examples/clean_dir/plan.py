@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-from stepup.core.api import copy, mkdir, step
+from stepup.core.api import copy, mkdir, runsh
 
 mkdir("sub/")
-step("echo hello > sub/inp.txt", out="sub/inp.txt")
+runsh("echo hello > sub/inp.txt", out="sub/inp.txt")
 copy("sub/inp.txt", "sub/tmp.txt")
 copy("sub/tmp.txt", "sub/out.txt")

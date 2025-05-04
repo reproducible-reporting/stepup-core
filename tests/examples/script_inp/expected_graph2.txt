@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -11,52 +11,52 @@ file:./
             supplies   file:out_spam.txt
             supplies   file:plan.py
             supplies   file:script.py
-            supplies   step:./plan.py
-            supplies   step:./script.py plan
-            supplies   step:./script.py run egg
-            supplies   step:./script.py run spam
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runpy ./script.py plan
+            supplies   step:stepup.core.actions.runpy ./script.py run egg
+            supplies   step:stepup.core.actions.runpy ./script.py run spam
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:config.txt
              creates   file:script.py
-             creates   step:./script.py plan
+             creates   step:stepup.core.actions.runpy ./script.py plan
 
 file:config.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./script.py plan
+            supplies   step:stepup.core.actions.runpy ./script.py plan
 
 file:script.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./script.py plan
-            supplies   step:./script.py run egg
-            supplies   step:./script.py run spam
+            supplies   step:stepup.core.actions.runpy ./script.py plan
+            supplies   step:stepup.core.actions.runpy ./script.py run egg
+            supplies   step:stepup.core.actions.runpy ./script.py run spam
 
-step:./script.py plan
+step:stepup.core.actions.runpy ./script.py plan
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:config.txt
             consumes   file:script.py
-             creates   step:./script.py run egg
-             creates   step:./script.py run spam
+             creates   step:stepup.core.actions.runpy ./script.py run egg
+             creates   step:stepup.core.actions.runpy ./script.py run spam
 
-step:./script.py run egg
+step:stepup.core.actions.runpy ./script.py run egg
                state = SUCCEEDED
-          created by   step:./script.py plan
+          created by   step:stepup.core.actions.runpy ./script.py plan
             consumes   file:./
             consumes   file:script.py
              creates   file:out_egg.txt
@@ -64,13 +64,13 @@ step:./script.py run egg
 
 file:out_egg.txt
                state = BUILT
-          created by   step:./script.py run egg
+          created by   step:stepup.core.actions.runpy ./script.py run egg
             consumes   file:./
-            consumes   step:./script.py run egg
+            consumes   step:stepup.core.actions.runpy ./script.py run egg
 
-step:./script.py run spam
+step:stepup.core.actions.runpy ./script.py run spam
                state = SUCCEEDED
-          created by   step:./script.py plan
+          created by   step:stepup.core.actions.runpy ./script.py plan
             consumes   file:./
             consumes   file:script.py
              creates   file:out_spam.txt
@@ -78,6 +78,6 @@ step:./script.py run spam
 
 file:out_spam.txt
                state = BUILT
-          created by   step:./script.py run spam
+          created by   step:stepup.core.actions.runpy ./script.py run spam
             consumes   file:./
-            consumes   step:./script.py run spam
+            consumes   step:stepup.core.actions.runpy ./script.py run spam

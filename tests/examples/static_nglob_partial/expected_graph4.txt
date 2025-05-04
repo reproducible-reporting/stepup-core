@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -16,18 +16,18 @@ file:./
             supplies   file:tail_x.txt
             supplies   file:tail_y.txt
             supplies   file:tail_z.txt
-            supplies   step:./plan.py
-            supplies   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
-            supplies   step:paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
-            supplies   step:paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+            supplies   step:stepup.core.actions.runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+            supplies   step:stepup.core.actions.runsh paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
                  ngm = ['head_${*char}.txt', 'tail_${*char}.txt'] {'char': '?'}
            explained = yes
@@ -40,32 +40,32 @@ step:./plan.py
              creates   file:tail_x.txt
              creates   file:tail_y.txt
              creates   file:tail_z.txt
-             creates   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
-             creates   step:paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
-             creates   step:paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
+             creates   step:stepup.core.actions.runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+             creates   step:stepup.core.actions.runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+             creates   step:stepup.core.actions.runsh paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
 
 file:head_x.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+            supplies   step:stepup.core.actions.runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 file:head_y.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+            supplies   step:stepup.core.actions.runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
 
 file:tail_x.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+            supplies   step:stepup.core.actions.runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
-step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+step:stepup.core.actions.runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:head_x.txt
             consumes   file:tail_x.txt
@@ -74,32 +74,32 @@ step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 file:paste_x.txt
                state = BUILT
-          created by   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+          created by   step:stepup.core.actions.runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
             consumes   file:./
-            consumes   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+            consumes   step:stepup.core.actions.runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 file:head_z.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
+            supplies   step:stepup.core.actions.runsh paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
 
 file:tail_y.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+            supplies   step:stepup.core.actions.runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
 
 file:tail_z.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
+            supplies   step:stepup.core.actions.runsh paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
 
-step:paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+step:stepup.core.actions.runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:head_y.txt
             consumes   file:tail_y.txt
@@ -108,14 +108,14 @@ step:paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
 
 file:paste_y.txt
                state = BUILT
-          created by   step:paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+          created by   step:stepup.core.actions.runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
             consumes   file:./
-            consumes   step:paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+            consumes   step:stepup.core.actions.runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
 
-step:paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
+step:stepup.core.actions.runsh paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:head_z.txt
             consumes   file:tail_z.txt
@@ -124,6 +124,6 @@ step:paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
 
 file:paste_z.txt
                state = BUILT
-          created by   step:paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
+          created by   step:stepup.core.actions.runsh paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
             consumes   file:./
-            consumes   step:paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
+            consumes   step:stepup.core.actions.runsh paste -d ' ' head_z.txt tail_z.txt > paste_z.txt

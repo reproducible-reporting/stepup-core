@@ -1,12 +1,12 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ rm .sjdksjdfkjasdfkdjsak
-        1/1 |       FAIL │ rm .sjdksjdfkjasdfkdjsak
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |      START │ runsh rm .sjdksjdfkjasdfkdjsak
+        1/1 |       FAIL │ runsh rm .sjdksjdfkjasdfkdjsak
 ────────────────────────────────── Step info ───────────────────────────────────
-Command               rm .sjdksjdfkjasdfkdjsak
+Action                stepup.core.actions.runsh rm .sjdksjdfkjasdfkdjsak
 Return code           1
 ───────────────────────── Expected outputs not created ─────────────────────────
 oops.txt

@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -11,17 +11,17 @@ file:./
             supplies   file:plan.py
             supplies   file:printvars.py
             supplies   file:variables.json
-            supplies   step:./demovars.py
-            supplies   step:./plan.py
-            supplies   step:./printvars.py
+            supplies   step:stepup.core.actions.runpy ./demovars.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh ./printvars.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
@@ -30,40 +30,40 @@ step:./plan.py
              creates   file:demovars.py
              creates   file:printvars.py
              creates   file:variables.json
-             creates   step:./demovars.py
+             creates   step:stepup.core.actions.runpy ./demovars.py
 
 file:demovars.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./demovars.py
+            supplies   step:stepup.core.actions.runpy ./demovars.py
 
 file:printvars.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./printvars.py
+            supplies   step:stepup.core.actions.runsh ./printvars.py
 
 file:variables.json
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./demovars.py
+            supplies   step:stepup.core.actions.runpy ./demovars.py
 
-step:./demovars.py
+step:stepup.core.actions.runpy ./demovars.py
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:demovars.py
             consumes   file:variables.json
-             creates   step:./printvars.py
+             creates   step:stepup.core.actions.runsh ./printvars.py
 
-step:./printvars.py
+step:stepup.core.actions.runsh ./printvars.py
                state = SUCCEEDED
              env_var = ENV_VAR_TEST_STEPUP_AWDFTD
            explained = yes
-          created by   step:./demovars.py
+          created by   step:stepup.core.actions.runpy ./demovars.py
             consumes   file:./
             consumes   file:printvars.py
              creates   file:current_variables.txt
@@ -71,6 +71,6 @@ step:./printvars.py
 
 file:current_variables.txt
                state = BUILT
-          created by   step:./printvars.py
+          created by   step:stepup.core.actions.runsh ./printvars.py
             consumes   file:./
-            consumes   step:./printvars.py
+            consumes   step:stepup.core.actions.runsh ./printvars.py

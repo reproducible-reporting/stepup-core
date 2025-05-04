@@ -4,7 +4,7 @@ set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
-# Run the plan with non-executable step.py.
+# Run the plan with non-executable work.py.
 chmod -x sub/plan.py
 stepup -w -e -n 1 & # > current_stdout1.txt &
 
@@ -30,7 +30,7 @@ wait
 [[ -f sub/plan.py ]] || exit 1
 [[ ! -f sub/done.txt ]] || exit 1
 
-# Restart the plan with executable step.py.
+# Restart the plan with executable work.py.
 chmod +x sub/plan.py
 rm .stepup/*.log
 stepup -w -e -n 1 & # > current_stdout2.txt &

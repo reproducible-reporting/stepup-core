@@ -548,10 +548,10 @@ class Cascade:
     @property
     def schema_version(self) -> int:
         """Return the schema version of the database."""
-        # Schema 1 become outdated due to new step_hash table.
+        # Schema 1 became outdated due to new step_hash table.
         # While making this change, the enums were also made more intuitive.
-        # return 1
-        return 2
+        # Schema 2 became outdated due to the worker actions.
+        return 3
 
     @classmethod
     def schema(cls) -> str:

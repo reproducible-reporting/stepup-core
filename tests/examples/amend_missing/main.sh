@@ -27,4 +27,4 @@ set +e; wait -fn $PID; RETURNCODE=$?; set -e
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
-[[ -f step.py ]] || exit 1
+[[ -f work.py ]] || exit 1

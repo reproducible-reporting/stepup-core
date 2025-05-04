@@ -8,27 +8,29 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         0/3 |      PHASE │ run
-        0/3 |     NOSKIP │ ./plan.py
+        0/3 |     NOSKIP │ runpy ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 5070945c ➜ d1417211, out_digest 786a02f7 ➜ (unset)
+Modified step hash   explained, inp_digest dc9a611c ➜ 3f614bef, out_digest 786a02f7 ➜ (unset)
 Modified inp hash    plan.py (digest e011ae03 ➜ fa5849da, size 152 ➜ 123)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |     NOSKIP │ cp -aT static/bar.txt bar.txt
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |     NOSKIP │ copy static/bar.txt bar.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 2ad4534f ➜ b4fa0ec6, out_digest 74597035 ➜ (unset)
+Modified step hash   explained, inp_digest 27e06602 ➜ f848c955, out_digest 74597035 ➜ (unset)
 Modified inp hash    static/bar.txt (digest a69cc588 ➜ 8f30ea8a, size 4 ➜ 6)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 Same inp hash        static/
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |      START │ cp -aT static/bar.txt bar.txt
-        2/2 |    SUCCESS │ cp -aT static/bar.txt bar.txt
+        1/2 |      START │ copy static/bar.txt bar.txt
+        2/2 |    SUCCESS │ copy static/bar.txt bar.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         2/2 |    WARNING │ Check logs: .stepup/warning.log
         2/2 |      PHASE │ watch
+        2/2 |    UPDATED │ static/bar.txt
+        2/2 |  UNCHANGED │ static/bar.txt
         2/2 |   DIRECTOR │ Stopping workers.
         2/2 |   DIRECTOR │ See you!

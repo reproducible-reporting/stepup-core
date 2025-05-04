@@ -29,14 +29,14 @@ from stepup.core.stepinfo import StepInfo, dump_step_info, load_step_info
 
 def test_step_info_initialization():
     step_info = StepInfo(
-        command="echo 'Hello, World!'",
+        action="echo 'Hello, World!'",
         workdir="/tmp",
         inp=["input1.txt", "input2.txt"],
         env=["ENV_VAR", 1],
         out=["output1.txt"],
         vol=["volatile1.txt"],
     )
-    assert step_info.command == "echo 'Hello, World!'"
+    assert step_info.action == "echo 'Hello, World!'"
     assert step_info.workdir == Path("/tmp")
     assert step_info.inp == [Path("input1.txt"), Path("input2.txt")]
     assert step_info.env == ["1", "ENV_VAR"]
@@ -47,7 +47,7 @@ def test_step_info_initialization():
 def test_load_step_info_single(path_tmp: Path):
     path_json = path_tmp / "test_step_info.json"
     data = {
-        "command": "echo 'Hello, World!'",
+        "action": "echo 'Hello, World!'",
         "workdir": "/tmp",
         "inp": ["input1.txt"],
         "env": ["ENV_VAR"],
@@ -65,7 +65,7 @@ def test_load_step_info_multiple(path_tmp: Path):
     path_json = path_tmp / "test_step_info.json"
     data = [
         {
-            "command": "echo 'Hello, World!'",
+            "action": "echo 'Hello, World!'",
             "workdir": "/tmp",
             "inp": ["input1.txt"],
             "env": ["ENV_VAR1"],
@@ -73,7 +73,7 @@ def test_load_step_info_multiple(path_tmp: Path):
             "vol": ["volatile1.txt"],
         },
         {
-            "command": "echo 'Goodbye, World!'",
+            "action": "echo 'Goodbye, World!'",
             "workdir": "/var",
             "inp": ["input2.txt"],
             "env": ["ENV_VAR2"],
@@ -92,7 +92,7 @@ def test_load_step_info_multiple(path_tmp: Path):
 def test_dump_step_info(path_tmp: Path):
     path_json = path_tmp / "test_step_info.json"
     step_info = StepInfo(
-        command="echo 'Hello, World!'",
+        action="echo 'Hello, World!'",
         workdir=Path("/tmp"),
         inp=["input1.txt"],
         env=["ENV_VAR"],
@@ -102,7 +102,7 @@ def test_dump_step_info(path_tmp: Path):
     dump_step_info(path_json, step_info)
     with open(path_json) as f:
         data = json.load(f)
-    assert data["command"] == "echo 'Hello, World!'"
+    assert data["action"] == "echo 'Hello, World!'"
     assert data["workdir"] == "/tmp"
     assert data["inp"] == ["input1.txt"]
     assert data["env"] == ["ENV_VAR"]
@@ -114,7 +114,7 @@ def test_dump_step_info_multiple(path_tmp: Path):
     path_json = path_tmp / "test_step_info.json"
     step_infos = [
         StepInfo(
-            command="echo 'Hello, World!'",
+            action="echo 'Hello, World!'",
             workdir=Path("/tmp"),
             inp=["input1.txt"],
             env=["ENV_VAR1"],
@@ -122,7 +122,7 @@ def test_dump_step_info_multiple(path_tmp: Path):
             vol=["volatile1.txt"],
         ),
         StepInfo(
-            command="echo 'Goodbye, World!'",
+            action="echo 'Goodbye, World!'",
             workdir=Path("/var"),
             inp=["input2.txt"],
             env=["ENV_VAR2"],
@@ -134,13 +134,13 @@ def test_dump_step_info_multiple(path_tmp: Path):
     with open(path_json) as f:
         data = json.load(f)
     assert len(data) == 2
-    assert data[0]["command"] == "echo 'Hello, World!'"
+    assert data[0]["action"] == "echo 'Hello, World!'"
     assert data[0]["workdir"] == "/tmp"
     assert data[0]["inp"] == ["input1.txt"]
     assert data[0]["env"] == ["ENV_VAR1"]
     assert data[0]["out"] == ["output1.txt"]
     assert data[0]["vol"] == ["volatile1.txt"]
-    assert data[1]["command"] == "echo 'Goodbye, World!'"
+    assert data[1]["action"] == "echo 'Goodbye, World!'"
     assert data[1]["workdir"] == "/var"
     assert data[1]["inp"] == ["input2.txt"]
     assert data[1]["env"] == ["ENV_VAR2"]
@@ -150,7 +150,7 @@ def test_dump_step_info_multiple(path_tmp: Path):
 
 def test_filter_inp():
     step_info = StepInfo(
-        command="echo 'Hello, World!'",
+        action="echo 'Hello, World!'",
         workdir=Path("/tmp"),
         inp=["input1.txt", "input2.log"],
         env=["ENV_VAR"],
@@ -164,7 +164,7 @@ def test_filter_inp():
 
 def test_filter_out():
     step_info = StepInfo(
-        command="echo 'Hello, World!'",
+        action="echo 'Hello, World!'",
         workdir=Path("/tmp"),
         inp=["input1.txt"],
         env=["ENV_VAR"],
@@ -178,7 +178,7 @@ def test_filter_out():
 
 def test_filter_vol():
     step_info = StepInfo(
-        command="echo 'Hello, World!'",
+        action="echo 'Hello, World!'",
         workdir=Path("/tmp"),
         inp=["input1.txt"],
         env=["ENV_VAR"],

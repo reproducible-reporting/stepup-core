@@ -9,6 +9,6 @@ EXPECTED_COMMAND = """
 ../scripts/repeat.py
 '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'
 """.replace("\n", " ").strip()
-if repeat.command != EXPECTED_COMMAND:
-    print(repeat.command)
+if repeat.action != EXPECTED_COMMAND:
+    print(repeat.action)
     raise AssertionError("Unexpected command")

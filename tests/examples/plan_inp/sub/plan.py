@@ -2,7 +2,7 @@
 from stepup.core.api import getinfo
 
 # This is a somewhat poor example, because plan.py script should normally not do
-# much more than just calling step() function.
+# much more than just calling runsh() function.
 # This example is just meant to show that it is possible
 # to use input files and write output files.
 # It also demonstrates how to use the getinfo() function.
@@ -10,7 +10,7 @@ from stepup.core.api import getinfo
 info = getinfo()
 
 # Just checking for the sake of the test:
-assert info.command == "./plan.py"
+assert info.action == "stepup.core.actions.runpy ./plan.py"
 assert info.workdir == "sub/"
 assert info.inp == ["inp.txt", "plan.py"]
 assert info.env == []

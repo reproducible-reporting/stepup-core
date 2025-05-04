@@ -4,8 +4,8 @@ set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
-# Run the plan with non-executable step.py.
-chmod -x step.py
+# Run the plan with non-executable work.py.
+chmod -x work.py
 stepup -w -n 1 & # > current_stdout.txt &
 
 # Wait for the director and get its socket.
@@ -22,16 +22,16 @@ EOD
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
-[[ -f step.py ]] || exit 1
+[[ -f work.py ]] || exit 1
 [[ ! -f message.txt ]] || exit 1
 
-# Rerun the plan with executable step.py.
-chmod +x step.py
+# Rerun the plan with executable work.py.
+chmod +x work.py
 
 # Wait and get graph.
 python3 - << EOD
 from stepup.core.interact import *
-watch_update("step.py")
+watch_update("work.py")
 run()
 wait()
 graph("current_graph2")
@@ -43,5 +43,5 @@ wait
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
-[[ -f step.py ]] || exit 1
+[[ -f work.py ]] || exit 1
 [[ -f message.txt ]] || exit 1

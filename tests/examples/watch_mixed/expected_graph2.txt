@@ -1,38 +1,38 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   (file:copy1.txt)
             supplies   (file:orig.txt)
-            supplies   (step:cp orig.txt copy1.txt)
+            supplies   (step:stepup.core.actions.runsh cp orig.txt copy1.txt)
             supplies   file:copy2.txt
             supplies   file:plan.py
-            supplies   step:./plan.py
-            supplies   step:cp copy1.txt copy2.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh cp copy1.txt copy2.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:cp copy1.txt copy2.txt
+             creates   step:stepup.core.actions.runsh cp copy1.txt copy2.txt
 
 (file:orig.txt)
                state = MISSING
             consumes   file:./
-            supplies   (step:cp orig.txt copy1.txt)
+            supplies   (step:stepup.core.actions.runsh cp orig.txt copy1.txt)
 
-(step:cp orig.txt copy1.txt)
+(step:stepup.core.actions.runsh cp orig.txt copy1.txt)
                state = PENDING
             consumes   (file:orig.txt)
             consumes   file:./
@@ -41,14 +41,14 @@ step:./plan.py
 
 (file:copy1.txt)
                state = OUTDATED
-          created by   (step:cp orig.txt copy1.txt)
-            consumes   (step:cp orig.txt copy1.txt)
+          created by   (step:stepup.core.actions.runsh cp orig.txt copy1.txt)
+            consumes   (step:stepup.core.actions.runsh cp orig.txt copy1.txt)
             consumes   file:./
-            supplies   step:cp copy1.txt copy2.txt
+            supplies   step:stepup.core.actions.runsh cp copy1.txt copy2.txt
 
-step:cp copy1.txt copy2.txt
+step:stepup.core.actions.runsh cp copy1.txt copy2.txt
                state = PENDING
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   (file:copy1.txt)
             consumes   file:./
              creates   file:copy2.txt
@@ -56,6 +56,6 @@ step:cp copy1.txt copy2.txt
 
 file:copy2.txt
                state = OUTDATED
-          created by   step:cp copy1.txt copy2.txt
+          created by   step:stepup.core.actions.runsh cp copy1.txt copy2.txt
             consumes   file:./
-            consumes   step:cp copy1.txt copy2.txt
+            consumes   step:stepup.core.actions.runsh cp copy1.txt copy2.txt

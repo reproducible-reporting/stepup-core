@@ -377,7 +377,7 @@ class DirectorHandler:
     async def step(
         self,
         creator_i: int,
-        command: str,
+        action: str,
         inp_paths: list[str],
         env_vars: list[str],
         out_paths: list[str],
@@ -404,7 +404,7 @@ class DirectorHandler:
             creator = self.workflow.node(Step, creator_i)
             return self.workflow.define_step(
                 creator,
-                command,
+                action,
                 inp_paths=inp_paths,
                 env_vars=env_vars,
                 out_paths=out_paths,

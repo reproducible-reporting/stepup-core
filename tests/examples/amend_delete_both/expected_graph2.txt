@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -12,19 +12,19 @@ file:./
             supplies   file:data2.txt
             supplies   file:log.txt
             supplies   file:plan.py
-            supplies   file:step.py
-            supplies   step:./plan.py
-            supplies   step:./step.py > log.txt
-            supplies   step:cp -aT asource1.txt data1.txt
-            supplies   step:cp -aT asource2.txt data2.txt
+            supplies   file:work.py
+            supplies   step:stepup.core.actions.copy asource1.txt data1.txt
+            supplies   step:stepup.core.actions.copy asource2.txt data2.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh ./work.py > log.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
@@ -32,66 +32,66 @@ step:./plan.py
             consumes   file:plan.py
              creates   file:asource1.txt
              creates   file:asource2.txt
-             creates   file:step.py
-             creates   step:./step.py > log.txt
-             creates   step:cp -aT asource1.txt data1.txt
-             creates   step:cp -aT asource2.txt data2.txt
+             creates   file:work.py
+             creates   step:stepup.core.actions.copy asource1.txt data1.txt
+             creates   step:stepup.core.actions.copy asource2.txt data2.txt
+             creates   step:stepup.core.actions.runsh ./work.py > log.txt
 
-step:./step.py > log.txt
+step:stepup.core.actions.runsh ./work.py > log.txt
                state = PENDING
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:data1.txt
             consumes   file:data2.txt [amended]
-            consumes   file:step.py
+            consumes   file:work.py
              creates   file:log.txt
             supplies   file:log.txt
 
 file:data1.txt
                state = AWAITED
-          created by   step:cp -aT asource1.txt data1.txt
+          created by   step:stepup.core.actions.copy asource1.txt data1.txt
             consumes   file:./
-            consumes   step:cp -aT asource1.txt data1.txt
-            supplies   step:./step.py > log.txt
+            consumes   step:stepup.core.actions.copy asource1.txt data1.txt
+            supplies   step:stepup.core.actions.runsh ./work.py > log.txt
 
-file:step.py
+file:work.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./step.py > log.txt
+            supplies   step:stepup.core.actions.runsh ./work.py > log.txt
 
 file:log.txt
                state = AWAITED
-          created by   step:./step.py > log.txt
+          created by   step:stepup.core.actions.runsh ./work.py > log.txt
             consumes   file:./
-            consumes   step:./step.py > log.txt
+            consumes   step:stepup.core.actions.runsh ./work.py > log.txt
 
 file:asource1.txt
                state = MISSING
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:cp -aT asource1.txt data1.txt
+            supplies   step:stepup.core.actions.copy asource1.txt data1.txt
 
 file:asource2.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:cp -aT asource2.txt data2.txt
+            supplies   step:stepup.core.actions.copy asource2.txt data2.txt
 
-step:cp -aT asource1.txt data1.txt
+step:stepup.core.actions.copy asource1.txt data1.txt
                state = PENDING
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:asource1.txt
              creates   file:data1.txt
             supplies   file:data1.txt
 
-step:cp -aT asource2.txt data2.txt
+step:stepup.core.actions.copy asource2.txt data2.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:asource2.txt
              creates   file:data2.txt
@@ -99,7 +99,7 @@ step:cp -aT asource2.txt data2.txt
 
 file:data2.txt
                state = BUILT
-          created by   step:cp -aT asource2.txt data2.txt
+          created by   step:stepup.core.actions.copy asource2.txt data2.txt
             consumes   file:./
-            consumes   step:cp -aT asource2.txt data2.txt
-            supplies   step:./step.py > log.txt
+            consumes   step:stepup.core.actions.copy asource2.txt data2.txt
+            supplies   step:stepup.core.actions.runsh ./work.py > log.txt

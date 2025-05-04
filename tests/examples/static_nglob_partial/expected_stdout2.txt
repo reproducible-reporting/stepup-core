@@ -6,12 +6,12 @@
         0/0 |    UPDATED │ tail_z.txt
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        2/4 |    SUCCESS │ ./plan.py
-        2/4 |      START │ paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
-        3/4 |    SUCCESS │ paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
-        3/4 |      START │ paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
-        4/4 |    SUCCESS │ paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
+        0/1 |      START │ runpy ./plan.py
+        2/4 |    SUCCESS │ runpy ./plan.py
+        2/4 |      START │ runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+        3/4 |    SUCCESS │ runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+        3/4 |      START │ runsh paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
+        4/4 |    SUCCESS │ runsh paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         4/4 |      PHASE │ watch
         4/4 |   DIRECTOR │ Stopping workers.

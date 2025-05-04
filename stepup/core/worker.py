@@ -23,6 +23,8 @@ import argparse
 import asyncio
 import contextlib
 import ctypes
+import importlib
+import inspect
 import io
 import os
 import queue
@@ -33,6 +35,7 @@ import sys
 import threading
 import traceback
 from collections.abc import AsyncGenerator
+from runpy import run_path
 from time import perf_counter
 
 import attrs
@@ -49,7 +52,7 @@ from .step import Step, split_step_label
 from .utils import DBLock
 from .workflow import Workflow
 
-__all__ = ("WorkerClient", "WorkerHandler", "WorkerStep")
+__all__ = ("WorkThread", "WorkerClient", "WorkerHandler", "WorkerStep")
 
 
 #
@@ -455,20 +458,20 @@ class WorkerStep:
     i: int = attrs.field()
     """The index from the node table for the step, used to set the STEPUP_STEP_I."""
 
-    command: str = attrs.field()
-    """The command to be executed for the step."""
+    action: str = attrs.field()
+    """The action to be executed for the step."""
 
     workdir: Path = attrs.field()
-    """The working directory where the command will be executed."""
+    """The working directory where the action will be executed."""
 
     stdout: str = attrs.field(init=False, default="")
-    """The standard output captured from the command execution."""
+    """The standard output captured from the action execution."""
 
     stderr: str = attrs.field(init=False, default="")
-    """The standard error captured from the command execution."""
+    """The standard error captured from the action execution."""
 
     perf_info: str = attrs.field(init=False, default="")
-    """Performance information collected during the command execution."""
+    """Performance information collected during the action execution."""
 
     inp_messages: list = attrs.field(init=False, factory=list)
     """Messages related to input validation issues: unexpected changes and deleted inputs."""
@@ -480,10 +483,10 @@ class WorkerStep:
     """Information about why the step was rescheduled."""
 
     thread: threading.Thread | None = attrs.field(init=False, default=None)
-    """Thread that is running the command."""
+    """Thread that is running the action."""
 
     returncode: int | None = attrs.field(init=False, default=None)
-    """The return code from the command execution."""
+    """The return code from the action."""
 
     success: bool = attrs.field(init=False, default=True)
     """Flag indicating whether the step was handled successfully.
@@ -493,36 +496,79 @@ class WorkerStep:
 
     @property
     def description(self):
-        return self.command if self.workdir == "./" else f"{self.command}  # wd={self.workdir}"
+        """A shorter form of the full action, without module name."""
+        action_name, argstr = self.action.split(" ", 1)
+        function_name = action_name.rsplit(".", 1)[-1]
+        function = f"{function_name} {argstr}"
+        return function if self.workdir == "./" else f"{function}  # wd={self.workdir}"
 
 
 class WorkThread(threading.Thread):
-    """Thread to run commands in the worker process."""
+    """Thread to run actions in the worker process."""
 
-    def __init__(self, command: str):
+    def __init__(self, action: str):
         super().__init__()
-        self.command = command
+        self.action = action
         self.returncode = 1
         self.done = asyncio.Event()
-        self.loop = asyncio.get_event_loop()
+        try:
+            self.loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self.loop = None
         self.pid_queue = queue.Queue(1)
 
     def run(self):
-        from stepup.core.actions import runsh
-
         try:
-            self.returncode = runsh(self.command, self)
+            action_name, argstr = self.action.split(" ", 1)
+            module_name, function_name = action_name.rsplit(".", 1)
+            module = importlib.import_module(module_name)
+            action = getattr(module, function_name)
+            # Run some sanity checks
+            if not callable(action):
+                raise TypeError(f"Action {action} is not callable.")
+            # Check if the function exists and has the right signature
+            sgn = inspect.signature(action)
+            if sgn.return_annotation is not int:
+                raise TypeError(f"Action {action} does not return an int.")
+            kwargs = {"argstr": argstr}
+            if "work_thread" in sgn.parameters:
+                kwargs["work_thread"] = self
+            # Finally run the action
+            returncode = action(**kwargs)
+            if not isinstance(returncode, int):
+                raise TypeError(f"Action {action} does not return an int.")
+            self.returncode = returncode
+        except BaseException as exc:  # noqa: BLE001
+            # Catch all exceptions and print them to stderr.
+            traceback.print_exc(file=sys.stderr)
+            self.returncode = exc.code if isinstance(exc, SystemExit) else 1
         finally:
-            self.loop.call_soon_threadsafe(self.done.set)
+            if self.loop is not None:
+                self.loop.call_soon_threadsafe(self.done.set)
 
-    def runsh(self, command: str):
-        """Run a shell command in the worker process."""
+    def runsh(self, argstr: str) -> int:
+        """Run a shell command in a subprocess of the worker process.
+
+        Parameters
+        ----------
+        argstr
+            The command to execute in the shell.
+
+        Returns
+        -------
+        returncode
+            The return code of the command.
+        """
         # Sanity check of the executable (if it can be found)
-        if not has_shebang(Path(shlex.split(command)[0])):
-            print(f"Script does not start with a shebang: {command}", file=sys.stderr)
+        executable = Path(shlex.split(argstr)[0])
+        if not has_shebang(executable):
+            print(
+                f"Script does not start with a shebang: {executable} (wd={Path.cwd()})",
+                file=sys.stderr,
+            )
             return 1
         p = subprocess.Popen(
-            command,
+            argstr,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -534,20 +580,44 @@ class WorkThread(threading.Thread):
         stdout, stderr = p.communicate()
         with contextlib.suppress(queue.Empty):
             self.pid_queue.get_nowait()
+        if p.returncode != 0:
+            print(f"Command failed with return code {p.returncode}: {argstr}", file=sys.stderr)
         if stdout is not None and len(stdout) > 0:
             print(stdout)
         if stderr is not None and len(stderr) > 0:
             print(stderr, file=sys.stderr)
         return p.returncode
 
+    def runpy(self, script: str, args: list[str]) -> int:
+        """Run a Python script without creating a new process."""
+        # Sanity check of the executable (if it can be found)
+        if not has_shebang(Path(script)):
+            print(
+                f"Script does not start with a shebang: {script} (wd={Path.cwd()})",
+                file=sys.stderr,
+            )
+            return 1
+        # Run the script
+        original_argv = sys.argv
+        sys.argv = [script, *args]
+        try:
+            run_path(script, run_name="__main__")
+            return 0
+        finally:
+            sys.argv = original_argv
+
 
 def has_shebang(executable: Path) -> bool:
-    """Return `True` if a script has a shebang or if the file is not a script."""
+    """Return `True` if a script has a shebang and is executable, or if the file is not a script."""
     # See https://en.wikipedia.org/wiki/Shebang_%28Unix%29
     if not executable.is_file():
         # The executable is probably in the PATH,
         # i.e. not a custom script, so not checking
         return True
+    # Check if the file is executable
+    if not executable.access(os.X_OK):
+        # This is not a script, so not checking the shebang.
+        return False
     # Check if the file is binary.
     # https://stackoverflow.com/a/7392391
     with open(executable, "rb") as fh:
@@ -634,12 +704,12 @@ class WorkerHandler:
         if self.step is not None:
             raise RPCError(
                 "Worker cannot initiate two steps at the same time. "
-                f"Still working on {self.step.command}"
+                f"Still working on {self.step.action}"
             )
 
         # Create the step
-        command, workdir = split_step_label(label)
-        self.step = WorkerStep(i, command, workdir)
+        action, workdir = split_step_label(label)
+        self.step = WorkerStep(i, action, workdir)
 
         # Create initial StepHash
         return self.compute_inp_step_hash(inp_hashes, env_vars, check_hash)[0]
@@ -695,12 +765,10 @@ class WorkerHandler:
         env_var_values = [(env_var, os.environ.get(env_var)) for env_var in env_vars]
 
         # Create the StepHash
-        label = self.step.command
+        label = self.step.action
         if self.step.workdir != "./":
             label += f"  # wd={self.step.workdir}"
-        return StepHash.from_inp(
-            f"step:{label}", self.explain_rerun, all_inp_hashes, env_var_values
-        ), []
+        return StepHash.from_inp(f"{label}", self.explain_rerun, all_inp_hashes, env_var_values), []
 
     @allow_rpc
     def compute_out_step_hash(
@@ -820,7 +888,7 @@ class WorkerHandler:
             if self.show_perf:
                 ru_initial = resource.getrusage(resource.RUSAGE_CHILDREN)
                 pt_initial = perf_counter()
-            self.step.thread = WorkThread(self.step.command)
+            self.step.thread = WorkThread(self.step.action)
             self.step.thread.start()
             await self.step.thread.done.wait()
             self.step.thread.join()
@@ -859,7 +927,7 @@ class WorkerHandler:
     async def report(self):
         pages = []
         if not self.step.success:
-            lines = [f"Command               {self.step.command}"]
+            lines = [f"Action                {self.step.action}"]
             if self.step.workdir != "./":
                 lines.append(f"Working directory     {self.step.workdir}")
             if self.step.returncode is not None:

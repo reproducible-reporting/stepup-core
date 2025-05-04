@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,27 +10,27 @@ file:./
             supplies   file:bye.txt
             supplies   file:hello.txt
             supplies   file:plan.py
-            supplies   step:./plan.py
-            supplies   step:echo data > hello.txt
-            supplies   step:echo soon gone > bye.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh echo data > hello.txt
+            supplies   step:stepup.core.actions.runsh echo soon gone > bye.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:echo data > hello.txt
-             creates   step:echo soon gone > bye.txt
+             creates   step:stepup.core.actions.runsh echo data > hello.txt
+             creates   step:stepup.core.actions.runsh echo soon gone > bye.txt
 
-step:echo data > hello.txt
+step:stepup.core.actions.runsh echo data > hello.txt
                state = PENDING
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   (file:missing.txt)
             consumes   file:./
              creates   file:hello.txt
@@ -39,23 +39,23 @@ step:echo data > hello.txt
 (file:missing.txt)
                state = AWAITED
             consumes   file:./
-            supplies   step:echo data > hello.txt
+            supplies   step:stepup.core.actions.runsh echo data > hello.txt
 
 file:hello.txt
                state = AWAITED
-          created by   step:echo data > hello.txt
+          created by   step:stepup.core.actions.runsh echo data > hello.txt
             consumes   file:./
-            consumes   step:echo data > hello.txt
+            consumes   step:stepup.core.actions.runsh echo data > hello.txt
 
-step:echo soon gone > bye.txt
+step:stepup.core.actions.runsh echo soon gone > bye.txt
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
              creates   file:bye.txt
             supplies   file:bye.txt
 
 file:bye.txt
                state = BUILT
-          created by   step:echo soon gone > bye.txt
+          created by   step:stepup.core.actions.runsh echo soon gone > bye.txt
             consumes   file:./
-            consumes   step:echo soon gone > bye.txt
+            consumes   step:stepup.core.actions.runsh echo soon gone > bye.txt

@@ -1,22 +1,22 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:data/
             supplies   file:plan.py
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
                  ngm = ['data/**/*.inp'] {}
                  ngm = ['data/**/*.out'] {}
@@ -38,7 +38,7 @@ step:./plan.py
              creates   file:data/top.out
 
 dg:data/**/
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
              creates   file:data/
              creates   file:data/part1/
              creates   file:data/part2/
@@ -46,7 +46,7 @@ dg:data/**/
 
 file:data/part1/bar.inp
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:data/part1/
 
 file:data/part1/
@@ -69,12 +69,12 @@ file:data/
 
 file:data/part1/foo.inp
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:data/part1/
 
 file:data/part2/bar.inp
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:data/part2/
 
 file:data/part2/
@@ -89,12 +89,12 @@ file:data/part2/
 
 file:data/part2/foo.inp
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:data/part2/
 
 file:data/part2/sub/other.inp
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:data/part2/sub/
 
 file:data/part2/sub/
@@ -106,35 +106,35 @@ file:data/part2/sub/
 
 file:data/top.inp
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:data/
 
 file:data/part1/bar.out
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:data/part1/
 
 file:data/part1/foo.out
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:data/part1/
 
 file:data/part2/bar.out
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:data/part2/
 
 file:data/part2/foo.out
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:data/part2/
 
 file:data/part2/sub/other.out
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:data/part2/sub/
 
 file:data/top.out
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:data/

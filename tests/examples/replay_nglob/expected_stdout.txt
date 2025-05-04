@@ -1,30 +1,34 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ ./work.py
-        2/3 |    SUCCESS │ ./work.py
-        2/3 |      START │ cp -aT inp.txt out.txt
-        3/3 |    SUCCESS │ cp -aT inp.txt out.txt
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |      START │ runpy ./work.py
+        2/3 |    SUCCESS │ runpy ./work.py
+        2/3 |      START │ copy inp.txt out.txt
+        3/3 |    SUCCESS │ copy inp.txt out.txt
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         3/3 |      PHASE │ watch
+        3/3 |    UPDATED │ inp.txt
         3/3 |    UPDATED │ plan.py
+        3/3 |  UNCHANGED │ inp.txt
         2/3 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/1 |    SUCCESS │ ./plan.py
+        0/1 |      START │ runpy ./plan.py
+        1/1 |    SUCCESS │ runpy ./plan.py
         1/1 |   DIRECTOR │ Trying to delete 1 outdated output(s).
         1/1 |      CLEAN │ out.txt
         1/1 |      PHASE │ watch
         1/1 |    UPDATED │ plan.py
         0/1 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ ./work.py
-        2/3 |    SUCCESS │ ./work.py
-        2/3 |      START │ cp -aT inp.txt out.txt
-        3/3 |    SUCCESS │ cp -aT inp.txt out.txt
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |      START │ runpy ./work.py
+        2/3 |    SUCCESS │ runpy ./work.py
+        2/3 |      START │ copy inp.txt out.txt
+        3/3 |    SUCCESS │ copy inp.txt out.txt
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         3/3 |      PHASE │ watch
+        3/3 |    UPDATED │ inp.txt
+        3/3 |  UNCHANGED │ inp.txt
         3/3 |   DIRECTOR │ Stopping workers.
         3/3 |   DIRECTOR │ See you!

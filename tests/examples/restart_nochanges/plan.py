@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-from stepup.core.api import step
+from stepup.core.api import runsh
 
 
 def duplicate(inp_path, out_path):
-    step("cat ${inp} ${inp} > ${out}", inp=[inp_path], out=[out_path])
+    runsh("cat ${inp} ${inp} > ${out}", inp=[inp_path], out=[out_path])
 
 
-step("echo something > ${out}", out=["single.txt"])
+runsh("echo something > ${out}", out=["single.txt"])
 duplicate("single.txt", "double.txt")
 duplicate("double.txt", "quadruple.txt")

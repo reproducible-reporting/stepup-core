@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,41 +10,41 @@ file:./
             supplies   file:foo.pickle
             supplies   file:plan.py
             supplies   file:special.py
-            supplies   step:./plan.py
-            supplies   step:./special.py --inp=foo.pickle --out=bar.json
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runpy ./special.py --inp=foo.pickle --out=bar.json
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:foo.pickle
              creates   file:special.py
-             creates   step:./special.py --inp=foo.pickle --out=bar.json
+             creates   step:stepup.core.actions.runpy ./special.py --inp=foo.pickle --out=bar.json
             supplies   file:foo.pickle [amended]
 
 file:special.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./special.py --inp=foo.pickle --out=bar.json
+            supplies   step:stepup.core.actions.runpy ./special.py --inp=foo.pickle --out=bar.json
 
 file:foo.pickle
                state = BUILT
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            consumes   step:./plan.py
-            supplies   step:./special.py --inp=foo.pickle --out=bar.json
+            consumes   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runpy ./special.py --inp=foo.pickle --out=bar.json
 
-step:./special.py --inp=foo.pickle --out=bar.json
+step:stepup.core.actions.runpy ./special.py --inp=foo.pickle --out=bar.json
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:foo.pickle
             consumes   file:special.py
@@ -53,6 +53,6 @@ step:./special.py --inp=foo.pickle --out=bar.json
 
 file:bar.json
                state = BUILT
-          created by   step:./special.py --inp=foo.pickle --out=bar.json
+          created by   step:stepup.core.actions.runpy ./special.py --inp=foo.pickle --out=bar.json
             consumes   file:./
-            consumes   step:./special.py --inp=foo.pickle --out=bar.json
+            consumes   step:stepup.core.actions.runpy ./special.py --inp=foo.pickle --out=bar.json

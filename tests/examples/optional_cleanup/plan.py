@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from stepup.core.api import step
+from stepup.core.api import runsh
 
-step("echo test1 > ${out}", out="test1.txt", optional=True)
-step("echo test2 > ${out}", out="test2.txt", optional=True)
-step("cat ${inp}", inp="test2.txt")
+runsh("echo test1 > ${out}", out="test1.txt", optional=True)
+runsh("echo test2 > ${out}", out="test2.txt", optional=True)
+runsh("cat ${inp}", inp="test2.txt")

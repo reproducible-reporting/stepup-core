@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import pool, step
+from stepup.core.api import pool, runsh
 
 pool("random", 1)
-step("echo foo > bar.txt", out="bar.txt", pool="random")
+runsh("echo foo > bar.txt", out="bar.txt", pool="random")

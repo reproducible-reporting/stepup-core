@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-from stepup.core.api import static, step
+from stepup.core.api import runsh, static
 
 static("source_both.txt")
-step("cp source_both.txt copy_both1.txt", inp=["source_both.txt"], out=["copy_both1.txt"])
-step(
+runsh("cp source_both.txt copy_both1.txt", inp=["source_both.txt"], out=["copy_both1.txt"])
+runsh(
     "cp source1.txt copy1.txt",
     inp=["source1.txt"],
     out=["copy1.txt"],

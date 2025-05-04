@@ -1,14 +1,14 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/3 |    SUCCESS │ ./plan.py
-        1/3 |      START │ touch input.txt
-        2/3 |    SUCCESS │ touch input.txt
-        2/3 |      START │ cp input.txt wrong.txt
-        2/2 |       FAIL │ cp input.txt wrong.txt
+        0/1 |      START │ runpy ./plan.py
+        1/3 |    SUCCESS │ runpy ./plan.py
+        1/3 |      START │ runsh touch input.txt
+        2/3 |    SUCCESS │ runsh touch input.txt
+        2/3 |      START │ runsh cp input.txt wrong.txt
+        2/2 |       FAIL │ runsh cp input.txt wrong.txt
 ────────────────────────────────── Step info ───────────────────────────────────
-Command               cp input.txt wrong.txt
+Action                stepup.core.actions.runsh cp input.txt wrong.txt
 Return code           0
 ───────────────────────── Expected outputs not created ─────────────────────────
 output.txt

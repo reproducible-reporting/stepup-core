@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,35 +10,35 @@ file:./
             supplies   file:hop2.txt
             supplies   file:hop3.txt
             supplies   file:plan.py
-            supplies   step:./plan.py
-            supplies   step:cp -aT hop1.txt hop2.txt
-            supplies   step:cp -aT hop2.txt hop3.txt
+            supplies   step:stepup.core.actions.copy hop1.txt hop2.txt
+            supplies   step:stepup.core.actions.copy hop2.txt hop3.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:hop1.txt
-             creates   step:cp -aT hop1.txt hop2.txt
-             creates   step:cp -aT hop2.txt hop3.txt
+             creates   step:stepup.core.actions.copy hop1.txt hop2.txt
+             creates   step:stepup.core.actions.copy hop2.txt hop3.txt
 
 file:hop1.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:cp -aT hop1.txt hop2.txt
+            supplies   step:stepup.core.actions.copy hop1.txt hop2.txt
 
-step:cp -aT hop1.txt hop2.txt
+step:stepup.core.actions.copy hop1.txt hop2.txt
                state = SUCCEEDED
            mandatory = REQUIRED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:hop1.txt
              creates   file:hop2.txt
@@ -46,14 +46,14 @@ step:cp -aT hop1.txt hop2.txt
 
 file:hop2.txt
                state = BUILT
-          created by   step:cp -aT hop1.txt hop2.txt
+          created by   step:stepup.core.actions.copy hop1.txt hop2.txt
             consumes   file:./
-            consumes   step:cp -aT hop1.txt hop2.txt
-            supplies   step:cp -aT hop2.txt hop3.txt
+            consumes   step:stepup.core.actions.copy hop1.txt hop2.txt
+            supplies   step:stepup.core.actions.copy hop2.txt hop3.txt
 
-step:cp -aT hop2.txt hop3.txt
+step:stepup.core.actions.copy hop2.txt hop3.txt
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:hop2.txt
              creates   file:hop3.txt
@@ -61,6 +61,6 @@ step:cp -aT hop2.txt hop3.txt
 
 file:hop3.txt
                state = BUILT
-          created by   step:cp -aT hop2.txt hop3.txt
+          created by   step:stepup.core.actions.copy hop2.txt hop3.txt
             consumes   file:./
-            consumes   step:cp -aT hop2.txt hop3.txt
+            consumes   step:stepup.core.actions.copy hop2.txt hop3.txt

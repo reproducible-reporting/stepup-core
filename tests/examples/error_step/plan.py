@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
-from stepup.core.api import step
+from stepup.core.api import runsh
 
-step("rm .sjdksjdfkjasdfkdjsak", out=["oops.txt"])
+runsh("rm .sjdksjdfkjasdfkdjsak", out=["oops.txt"])

@@ -5,20 +5,22 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
-        1/2 |     NOSKIP │ cp -aT original.txt copy.txt
+        1/2 |     NOSKIP │ copy original.txt copy.txt
 ───────────────────────────── Missing output files ─────────────────────────────
 copy.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest fbfbcb22, out_digest e8a9704b ➜ 11483ded
+Modified step hash   explained, inp_digest 3fa88109, out_digest e8a9704b ➜ 11483ded
 Modified out hash    copy.txt (digest 9d30180e ➜ UNKNOWN, size 10 ➜ 0, mode -rw-r--r-- ➜ ?---------)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 Same inp hash        original.txt
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |      START │ cp -aT original.txt copy.txt
-        2/2 |    SUCCESS │ cp -aT original.txt copy.txt
+        1/2 |      START │ copy original.txt copy.txt
+        2/2 |    SUCCESS │ copy original.txt copy.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         2/2 |    WARNING │ Check logs: .stepup/warning.log
         2/2 |      PHASE │ watch
+        2/2 |    UPDATED │ original.txt
+        2/2 |  UNCHANGED │ original.txt
         2/2 |   DIRECTOR │ Stopping workers.
         2/2 |   DIRECTOR │ See you!

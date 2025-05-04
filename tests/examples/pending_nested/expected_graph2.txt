@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -13,112 +13,112 @@ file:./
             supplies   file:out2.txt
             supplies   file:out3.txt
             supplies   file:plan.py
-            supplies   file:step1.py
-            supplies   file:step2.py
-            supplies   file:step3.py
-            supplies   step:./plan.py
-            supplies   step:./step1.py
-            supplies   step:./step2.py
-            supplies   step:./step3.py
+            supplies   file:work1.py
+            supplies   file:work2.py
+            supplies   file:work3.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runpy ./work1.py
+            supplies   step:stepup.core.actions.runpy ./work2.py
+            supplies   step:stepup.core.actions.runpy ./work3.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
-                 ngm = ['step?.py'] {}
+                 ngm = ['work?.py'] {}
                  ngm = ['inp?.txt'] {}
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:inp2.txt
              creates   file:inp3.txt
-             creates   file:step1.py
-             creates   file:step2.py
-             creates   file:step3.py
-             creates   step:./step1.py
+             creates   file:work1.py
+             creates   file:work2.py
+             creates   file:work3.py
+             creates   step:stepup.core.actions.runpy ./work1.py
 
-file:step1.py
+file:work1.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./step1.py
+            supplies   step:stepup.core.actions.runpy ./work1.py
 
-file:step2.py
+file:work2.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./step2.py
+            supplies   step:stepup.core.actions.runpy ./work2.py
 
-file:step3.py
+file:work3.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./step3.py
+            supplies   step:stepup.core.actions.runpy ./work3.py
 
 (file:inp1.txt)
                state = MISSING
             consumes   file:./
-            supplies   step:./step1.py
+            supplies   step:stepup.core.actions.runpy ./work1.py
 
 file:inp2.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./step2.py
+            supplies   step:stepup.core.actions.runpy ./work2.py
 
 file:inp3.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./step3.py
+            supplies   step:stepup.core.actions.runpy ./work3.py
 
-step:./step1.py
+step:stepup.core.actions.runpy ./work1.py
                state = PENDING
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   (file:inp1.txt)
             consumes   file:./
-            consumes   file:step1.py
+            consumes   file:work1.py
              creates   file:out1.txt
-             creates   step:./step2.py
+             creates   step:stepup.core.actions.runpy ./work2.py
             supplies   file:out1.txt
 
 file:out1.txt
                state = OUTDATED
-          created by   step:./step1.py
+          created by   step:stepup.core.actions.runpy ./work1.py
             consumes   file:./
-            consumes   step:./step1.py
+            consumes   step:stepup.core.actions.runpy ./work1.py
 
-step:./step2.py
+step:stepup.core.actions.runpy ./work2.py
                state = SUCCEEDED
-          created by   step:./step1.py
+          created by   step:stepup.core.actions.runpy ./work1.py
             consumes   file:./
             consumes   file:inp2.txt
-            consumes   file:step2.py
+            consumes   file:work2.py
              creates   file:out2.txt
-             creates   step:./step3.py
+             creates   step:stepup.core.actions.runpy ./work3.py
             supplies   file:out2.txt
 
 file:out2.txt
                state = BUILT
-          created by   step:./step2.py
+          created by   step:stepup.core.actions.runpy ./work2.py
             consumes   file:./
-            consumes   step:./step2.py
+            consumes   step:stepup.core.actions.runpy ./work2.py
 
-step:./step3.py
+step:stepup.core.actions.runpy ./work3.py
                state = PENDING
-          created by   step:./step2.py
+          created by   step:stepup.core.actions.runpy ./work2.py
             consumes   file:./
             consumes   file:inp3.txt
-            consumes   file:step3.py
+            consumes   file:work3.py
              creates   file:out3.txt
             supplies   file:out3.txt
 
 file:out3.txt
                state = OUTDATED
-          created by   step:./step3.py
+          created by   step:stepup.core.actions.runpy ./work3.py
             consumes   file:./
-            consumes   step:./step3.py
+            consumes   step:stepup.core.actions.runpy ./work3.py

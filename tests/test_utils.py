@@ -25,7 +25,6 @@ import pytest
 from path import Path
 
 from stepup.core.utils import (
-    Translate,
     filter_dependencies,
     make_path_out,
     myabsolute,
@@ -33,6 +32,7 @@ from stepup.core.utils import (
     myparent,
     myrelpath,
     translate,
+    translate_back,
 )
 
 
@@ -131,7 +131,9 @@ def test_mak_path_out_other_exts():
 
 @pytest.mark.parametrize("with_stepup_root", [True, False])
 def test_translate(monkeypatch, with_stepup_root):
-    translate = Translate(Path.cwd(), "foo/bar") if with_stepup_root else Translate(here="foo/bar")
+    if with_stepup_root:
+        monkeypatch.setenv("STEPUP_ROOT", Path.cwd())
+    monkeypatch.setenv("HERE", "foo/bar")
     assert translate("somefile.txt") == "foo/bar/somefile.txt"
     assert translate("somefile.txt", "../") == "foo/somefile.txt"
     assert translate("somefile.txt", "/egg/") == "/egg/somefile.txt"
@@ -141,7 +143,8 @@ def test_translate(monkeypatch, with_stepup_root):
 
 
 def test_translate_outside(monkeypatch):
-    translate = Translate(Path.cwd() / "foo", "bar")
+    monkeypatch.setenv("STEPUP_ROOT", Path.cwd() / "foo")
+    monkeypatch.setenv("HERE", "bar")
     assert translate("somefile.txt") == "bar/somefile.txt"
     assert translate("somefile.txt", "../") == "somefile.txt"
     assert translate("../../foo/somefile.txt") == "somefile.txt"
@@ -152,19 +155,22 @@ def test_translate_outside(monkeypatch):
 
 
 @pytest.mark.parametrize("with_stepup_root", [True, False])
-def test_translate_back(with_stepup_root):
-    translate = Translate(Path.cwd(), "foo/bar") if with_stepup_root else Translate(here="foo/bar")
-    assert translate.back("foo/bar/somefile.txt") == "somefile.txt"
-    assert translate.back("foo/somefile.txt", "../") == "somefile.txt"
-    assert translate.back("/egg/somefile.txt", "/egg/") == "somefile.txt"
-    assert translate.back("/somefile.txt", "/egg/") == "/somefile.txt"
-    assert translate.back("/egg/somefile.txt", "../") == "/egg/somefile.txt"
-    assert translate.back("/somefile.txt", "../") == "/somefile.txt"
+def test_translate_back(monkeypatch, with_stepup_root):
+    if with_stepup_root:
+        monkeypatch.setenv("STEPUP_ROOT", Path.cwd())
+    monkeypatch.setenv("HERE", "foo/bar")
+    assert translate_back("foo/bar/somefile.txt") == "somefile.txt"
+    assert translate_back("foo/somefile.txt", "../") == "somefile.txt"
+    assert translate_back("/egg/somefile.txt", "/egg/") == "somefile.txt"
+    assert translate_back("/somefile.txt", "/egg/") == "/somefile.txt"
+    assert translate_back("/egg/somefile.txt", "../") == "/egg/somefile.txt"
+    assert translate_back("/somefile.txt", "../") == "/somefile.txt"
 
 
-def test_translate_back_outside():
-    translate = Translate("/home/dude/project/source/", "../../bar/egg")
-    assert translate.back("../public") == "../../project/public"
+def test_translate_back_outside(monkeypatch):
+    monkeypatch.setenv("STEPUP_ROOT", "/home/dude/project/source/")
+    monkeypatch.setenv("HERE", "../../bar/egg")
+    assert translate_back("../public") == "../../project/public"
 
 
 def test_filter_dependencies(monkeypatch, path_tmp):
@@ -206,8 +212,8 @@ def test_filter_dependencies_relative(monkeypatch, path_tmp):
     monkeypatch.setenv("STEPUP_EXTERNAL_SOURCES", "../external")
     (path_tmp / "project/sub").makedirs()
     with contextlib.chdir(path_tmp / "project/sub"):
-        monkeypatch.setattr(translate, "root", path_tmp / "project/")
-        monkeypatch.setattr(translate, "here", "sub/")
+        monkeypatch.setenv("ROOT", path_tmp / "project/")
+        monkeypatch.setenv("HERE", "sub/")
         rel_paths = ["foo", "../../external/bar", "../../egg", "../../other/spam"]
         assert filter_dependencies(rel_paths) == {"foo", "../../external/bar"}
 

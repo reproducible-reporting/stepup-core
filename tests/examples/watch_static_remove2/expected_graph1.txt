@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,16 +10,16 @@ file:./
             supplies   file:out.txt
             supplies   file:out1.txt
             supplies   file:plan.py
-            supplies   step:./plan.py
-            supplies   step:echo bye > out1.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh echo bye > out1.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -27,30 +27,30 @@ step:./plan.py
             consumes   file:plan.py
              creates   file:inp.txt
              creates   file:out.txt
-             creates   step:echo bye > out1.txt
+             creates   step:stepup.core.actions.runsh echo bye > out1.txt
             supplies   file:out.txt [amended]
 
 file:inp.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
 file:out.txt
                state = BUILT
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            consumes   step:./plan.py
+            consumes   step:stepup.core.actions.runpy ./plan.py
 
-step:echo bye > out1.txt
+step:stepup.core.actions.runsh echo bye > out1.txt
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
              creates   file:out1.txt
             supplies   file:out1.txt
 
 file:out1.txt
                state = BUILT
-          created by   step:echo bye > out1.txt
+          created by   step:stepup.core.actions.runsh echo bye > out1.txt
             consumes   file:./
-            consumes   step:echo bye > out1.txt
+            consumes   step:stepup.core.actions.runsh echo bye > out1.txt

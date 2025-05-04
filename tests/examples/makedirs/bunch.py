@@ -5,7 +5,7 @@ from stepup.core.api import amend, getinfo
 
 # Test getinfo function
 info = getinfo()
-assert info.command == "./bunch.py"
+assert info.action == "stepup.core.actions.runpy ./bunch.py"
 assert info.workdir == "./"
 assert info.inp == ["bunch.py"]
 assert info.env == []
@@ -27,7 +27,7 @@ with open(nested2 / "text", "w") as fh:
 
 # Test getinfo function again. It should not be affected by amendments.
 info = getinfo()
-assert info.command == "./bunch.py"
+assert info.action == "stepup.core.actions.runpy ./bunch.py"
 assert info.workdir == "./"
 assert info.inp == ["bunch.py"]
 assert info.env == []

@@ -48,6 +48,7 @@ from .utils import (
     mynormpath,
     myparent,
     translate,
+    translate_back,
 )
 
 __all__ = (
@@ -224,7 +225,7 @@ def _str_to_list(arg: Collection[str] | str) -> list[str]:
 
 
 def step(
-    command: str,
+    action: str,
     *,
     inp: Collection[str] | str = (),
     env: Collection[str] | str = (),
@@ -239,8 +240,8 @@ def step(
 
     Parameters
     ----------
-    command
-        Command to execute (in the working directory of the director).
+    action
+        Action to execute (in the given working directory).
     inp
         File(s) required by the step.
         Relative paths are assumed to be relative to `workdir`.
@@ -258,7 +259,7 @@ def step(
         Relative paths are assumed to be relative to `workdir`.
         Directories are not allowed.
     workdir
-        The directory where the command must be executed.
+        The directory where the action must be executed.
         A trailing slash is added when not present.
         If this is a relative path, it is relative to the work directory of the caller.
         (The default is the current directory.)
@@ -283,7 +284,7 @@ def step(
     These substitutions will ignore changes to `os.environ` made in the calling script.
 
     Before sending the step to the director the variables `${inp}`, `${out}` and `${vol}`
-    in the command are substituted by white-space concatenated list of `inp`, `out` and
+    in the action are substituted by white-space concatenated list of `inp`, `out` and
     `vol`, respectively.
     Relative paths in `inp`, `out` and `vol` are relative to the working directory of the new step.
     """
@@ -306,7 +307,7 @@ def step(
     tr_vol_paths = [translate(vol_path, su_workdir) for vol_path in su_vol_paths]
     tr_workdir = translate(su_workdir)
     # Substitute paths that are translated back to the current directory.
-    command = CaseSensitiveTemplate(command).safe_substitute(
+    action = CaseSensitiveTemplate(action).safe_substitute(
         inp=shlex.join(su_inp_paths),
         out=shlex.join(su_out_paths),
         vol=shlex.join(su_vol_paths),
@@ -315,7 +316,7 @@ def step(
     # Finally create the step.
     to_check = RPC_CLIENT.call.step(
         _get_step_i(),
-        command,
+        action,
         tr_inp_paths,
         env_vars,
         tr_out_paths,
@@ -330,7 +331,7 @@ def step(
     _check_deferred(to_check)
 
     # Return a StepInfo instance to facilitate the definition of follow-up steps
-    return StepInfo(command, tr_workdir, su_inp_paths, env_vars, su_out_paths, su_vol_paths)
+    return StepInfo(action, tr_workdir, su_inp_paths, env_vars, su_out_paths, su_vol_paths)
 
 
 def pool(name: str, size: int):
@@ -436,9 +437,9 @@ def getinfo() -> StepInfo:
     """
     step_info = RPC_CLIENT.call.getinfo(_get_step_i())
     # Update paths to make them relative to the working directory of the step.
-    step_info.inp = sorted(translate.back(inp) for inp in step_info.inp)
-    step_info.out = sorted(translate.back(out) for out in step_info.out)
-    step_info.vol = sorted(translate.back(vol) for vol in step_info.vol)
+    step_info.inp = sorted(translate_back(inp) for inp in step_info.inp)
+    step_info.out = sorted(translate_back(out) for out in step_info.out)
+    step_info.vol = sorted(translate_back(vol) for vol in step_info.vol)
     # Filter required directorie out of the inputs.
     reqdirs = {myparent(path) for path in step_info.out}
     reqdirs.update({myparent(path) for path in step_info.vol})
@@ -449,6 +450,78 @@ def getinfo() -> StepInfo:
 #
 # Composite functions, created with the functions above.
 #
+
+
+def runsh(
+    command: str,
+    *,
+    inp: Collection[str] | str = (),
+    env: Collection[str] | str = (),
+    out: Collection[str] | str = (),
+    vol: Collection[str] | str = (),
+    workdir: str = "./",
+    optional: bool = False,
+    pool: str | None = None,
+    block: bool = False,
+) -> StepInfo:
+    """Add a shell command to the build graph.
+
+    See [`step()`][stepup.core.api.step] for the documentation of all optional arguments
+    and the return value.
+
+    Parameters
+    ----------
+    command
+        The command to execute, which will be interpreted by the shell.
+    """
+    return step(
+        f"stepup.core.actions.runsh {command}",
+        inp=inp,
+        env=env,
+        out=out,
+        vol=vol,
+        workdir=workdir,
+        optional=optional,
+        pool=pool,
+        block=block,
+    )
+
+
+def runpy(
+    command: str,
+    *,
+    inp: Collection[str] | str = (),
+    env: Collection[str] | str = (),
+    out: Collection[str] | str = (),
+    vol: Collection[str] | str = (),
+    workdir: str = "./",
+    optional: bool = False,
+    pool: str | None = None,
+    block: bool = False,
+):
+    """Add a Python command to the build graph.
+
+    See [`step()`][stepup.core.api.step] for the documentation of all optional arguments
+    and the return value.
+
+    Parameters
+    ----------
+    command
+        The path of the script and its command line arguments.
+        Note that the script will not be executed in a shell or in a subprocess.
+        Shell expressions are not interpreted.
+    """
+    return step(
+        f"stepup.core.actions.runpy {command}",
+        inp=inp,
+        env=env,
+        out=out,
+        vol=vol,
+        workdir=workdir,
+        optional=optional,
+        pool=pool,
+        block=block,
+    )
 
 
 def plan(
@@ -490,9 +563,10 @@ def plan(
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
     """
+    # TODO: remove subs_env_vars (already in step)
     with subs_env_vars() as subs:
         subdir = subs(subdir)
-    return step(
+    return runpy(
         "./plan.py",
         inp=["plan.py", *_str_to_list(inp)],
         env=env,
@@ -532,7 +606,13 @@ def copy(src: str, dst: str, *, optional: bool = False, block: bool = False) -> 
     path_src = mynormpath(src)
     path_dst = make_path_out(src, dst, None)
     amend(env=amended_env_vars)
-    return step("cp -aT ${inp} ${out}", inp=path_src, out=path_dst, optional=optional, block=block)
+    return step(
+        "stepup.core.actions.copy ${inp} ${out}",
+        inp=path_src,
+        out=path_dst,
+        optional=optional,
+        block=block,
+    )
 
 
 def mkdir(dirname: str, *, optional: bool = False, block: bool = False) -> StepInfo:
@@ -561,7 +641,7 @@ def mkdir(dirname: str, *, optional: bool = False, block: bool = False) -> StepI
         dirname += "/"
     dirname = mynormpath(dirname)
     amend(env=amended_env_vars)
-    return step(f"mkdir -p {dirname}", out=dirname, optional=optional, block=block)
+    return step(f"stepup.core.actions.mkdir {dirname}", out=dirname, optional=optional, block=block)
 
 
 def getenv(
@@ -619,14 +699,14 @@ def getenv(
         with subs_env_vars() as subs:
             value = [subs(item) for item in value if len(item) > 0]
         if back:
-            value = [translate.back(item) for item in value if len(item) > 0]
+            value = [translate_back(item) for item in value if len(item) > 0]
     elif path:
         if value is None:
             raise ValueError(f"Undefined shell variable: {name}. Cannot create path.")
         with subs_env_vars() as subs:
             value = subs(value)
         if back:
-            value = translate.back(value)
+            value = translate_back(value)
     return value
 
 
@@ -849,7 +929,9 @@ def call(
 
     # Finally, create a step
     step_kwargs.setdefault("inp", []).append(executable)
-    return step(command, **step_kwargs)
+    if executable.endswith(".py"):
+        return runpy(command, **step_kwargs)
+    return runsh(command, **step_kwargs)
 
 
 def script(
@@ -916,9 +998,19 @@ def script(
         command += " --optional"
     inp = _str_to_list(inp)
     inp.append(executable)
-    return step(
-        command, inp=inp, env=env, out=out, vol=vol, workdir=workdir, pool=pool, block=block
-    )
+    step_kwargs = {
+        "inp": inp,
+        "env": env,
+        "out": out,
+        "vol": vol,
+        "workdir": workdir,
+        "optional": optional,
+        "pool": pool,
+        "block": block,
+    }
+    if executable.endswith(".py"):
+        return runpy(command, **step_kwargs)
+    return runsh(command, **step_kwargs)
 
 
 #
@@ -984,7 +1076,7 @@ def _confirm_missing(to_check: list[tuple[str, FileHash]] | None):
     if to_check is not None and len(to_check) > 0:
         checked = []
         for tr_path, old_file_hash in to_check:
-            new_file_hash = old_file_hash.regen(translate.back(tr_path))
+            new_file_hash = old_file_hash.regen(translate_back(tr_path))
             if new_file_hash != old_file_hash:
                 checked.append((tr_path, new_file_hash))
         if len(checked) > 0:
@@ -998,7 +1090,7 @@ def _check_deferred(to_check: list[tuple[str, FileHash]] | None, step_i: int | N
         checked = []
         errors = ["Invalid deferred glob matches:"]
         for tr_path, old_file_hash in to_check:
-            new_file_hash = old_file_hash.regen(translate.back(tr_path))
+            new_file_hash = old_file_hash.regen(translate_back(tr_path))
             if new_file_hash != old_file_hash:
                 checked.append((tr_path, new_file_hash))
             if new_file_hash.is_unknown:

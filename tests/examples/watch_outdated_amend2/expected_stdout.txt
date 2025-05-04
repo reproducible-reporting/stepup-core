@@ -1,47 +1,50 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/4 |    SUCCESS │ ./plan.py
-        1/4 |      START │ cp -aT inp1.txt conv1.txt
-        2/4 |    SUCCESS │ cp -aT inp1.txt conv1.txt
-        2/4 |      START │ ./step.py subs1.txt > subs2.txt
-        3/4 |    SUCCESS │ ./step.py subs1.txt > subs2.txt
-        3/4 |      START │ ./step.py subs2.txt > subs3.txt
-        4/4 |    SUCCESS │ ./step.py subs2.txt > subs3.txt
+        0/1 |      START │ runpy ./plan.py
+        1/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |      START │ copy inp1.txt conv1.txt
+        2/4 |    SUCCESS │ copy inp1.txt conv1.txt
+        2/4 |      START │ runsh ./work.py subs1.txt > subs2.txt
+        3/4 |    SUCCESS │ runsh ./work.py subs1.txt > subs2.txt
+        3/4 |      START │ runsh ./work.py subs2.txt > subs3.txt
+        4/4 |    SUCCESS │ runsh ./work.py subs2.txt > subs3.txt
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         4/4 |      PHASE │ watch
+        4/4 |    UPDATED │ inp1.txt
         4/4 |    DELETED │ inp1.txt
         4/4 |    UPDATED │ inp2.txt
         4/4 |    UPDATED │ subs1.txt
         0/4 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/4 |    SUCCESS │ ./plan.py
-        1/4 |      START │ cp -aT inp2.txt conv2.txt
-        2/4 |    SUCCESS │ cp -aT inp2.txt conv2.txt
-        2/4 |  DROPAMEND │ ./step.py subs1.txt > subs2.txt
+        0/1 |      START │ runpy ./plan.py
+        1/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |      START │ copy inp2.txt conv2.txt
+        2/4 |    SUCCESS │ copy inp2.txt conv2.txt
+        2/4 |  DROPAMEND │ runsh ./work.py subs1.txt > subs2.txt
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest dd7228ea ➜ 05ee5732, out_digest 9ac3231c ➜ (unset)
+Modified step hash   explained, inp_digest ee5e7a2b ➜ a9cb5a94, out_digest 9ac3231c ➜ (unset)
 Deleted inp hash     conv1.txt
 Modified inp hash    subs1.txt (digest f927920a ➜ 2ab04a00)
 ──────────────────────── Remained the same (or missing) ────────────────────────
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
-        2/4 |      START │ ./step.py subs1.txt > subs2.txt
-        3/4 |    SUCCESS │ ./step.py subs1.txt > subs2.txt
-        3/4 |  DROPAMEND │ ./step.py subs2.txt > subs3.txt
+        2/4 |      START │ runsh ./work.py subs1.txt > subs2.txt
+        3/4 |    SUCCESS │ runsh ./work.py subs1.txt > subs2.txt
+        3/4 |  DROPAMEND │ runsh ./work.py subs2.txt > subs3.txt
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest 12870c12 ➜ dd179fa7, out_digest 19bfd411 ➜ (unset)
+Modified step hash   explained, inp_digest 5a447d2e ➜ f4832644, out_digest 19bfd411 ➜ (unset)
 Deleted inp hash     conv1.txt
 Modified inp hash    subs2.txt (digest f927920a ➜ 2ab04a00)
 ──────────────────────── Remained the same (or missing) ────────────────────────
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
-        3/4 |      START │ ./step.py subs2.txt > subs3.txt
-        4/4 |    SUCCESS │ ./step.py subs2.txt > subs3.txt
+        3/4 |      START │ runsh ./work.py subs2.txt > subs3.txt
+        4/4 |    SUCCESS │ runsh ./work.py subs2.txt > subs3.txt
         4/4 |   DIRECTOR │ Trying to delete 1 outdated output(s).
         4/4 |      CLEAN │ conv1.txt
         4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch
+        4/4 |    UPDATED │ inp2.txt
+        4/4 |  UNCHANGED │ inp2.txt
         4/4 |   DIRECTOR │ Stopping workers.
         4/4 |   DIRECTOR │ See you!

@@ -1,23 +1,23 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:analyzed.txt
             supplies   file:plan.py
-            supplies   step:./plan.py
-            supplies   step:cat analyzed.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh cat analyzed.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
                  ngm = ['data.txt'] {}
            explained = yes
@@ -25,17 +25,17 @@ step:./plan.py
             consumes   file:./
             consumes   file:plan.py
              creates   file:analyzed.txt
-             creates   step:cat analyzed.txt
+             creates   step:stepup.core.actions.runsh cat analyzed.txt
 
 file:analyzed.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:cat analyzed.txt
+            supplies   step:stepup.core.actions.runsh cat analyzed.txt
 
-step:cat analyzed.txt
+step:stepup.core.actions.runsh cat analyzed.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:analyzed.txt

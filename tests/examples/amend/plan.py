@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from stepup.core.api import static, step
+from stepup.core.api import runpy, runsh, static
 
 static("inp1.txt")
-step("./step.py", inp=["inp1.txt"], out=["out1.txt"])
-step("echo word2 > inp2.txt", out=["inp2.txt"])
+runpy("./work.py", inp=["inp1.txt"], out=["out1.txt"])
+runsh("echo word2 > inp2.txt", out=["inp2.txt"])

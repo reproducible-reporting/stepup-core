@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -11,25 +11,25 @@ file:./
             supplies   file:ch-2-theory/
             supplies   file:ch-3-conclusions/
             supplies   file:plan.py
-            supplies   step:./plan.py
-            supplies   step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
-            supplies   step:cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
-            supplies   step:cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
-            supplies   step:cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
-            supplies   step:cp -aT ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
-            supplies   step:cp -aT ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
-            supplies   step:cp -aT ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
-            supplies   step:cp -aT ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
-            supplies   step:cp -aT ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
-            supplies   step:cp -aT ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+            supplies   step:stepup.core.actions.copy ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
+            supplies   step:stepup.core.actions.copy ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
+            supplies   step:stepup.core.actions.copy ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
+            supplies   step:stepup.core.actions.copy ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
+            supplies   step:stepup.core.actions.copy ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
+            supplies   step:stepup.core.actions.copy ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+            supplies   step:stepup.core.actions.runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
+            supplies   step:stepup.core.actions.runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
+            supplies   step:stepup.core.actions.runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
                  ngm = ['ch-${*ch}-${*name}/'] {'ch': '[0-9]'}
                  ngm = ['ch-1-intro/sec-${*ch}-${*sec}-${*name}.txt'] {'ch': '1', 'sec': '[0-9]'}
@@ -47,74 +47,74 @@ step:./plan.py
              creates   file:ch-3-conclusions/
              creates   file:ch-3-conclusions/sec-3-1-summary.txt
              creates   file:ch-3-conclusions/sec-3-2-outlook.txt
-             creates   step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
-             creates   step:cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
-             creates   step:cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
-             creates   step:cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
-             creates   step:cp -aT ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
-             creates   step:cp -aT ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
-             creates   step:cp -aT ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
-             creates   step:cp -aT ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
-             creates   step:cp -aT ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
-             creates   step:cp -aT ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+             creates   step:stepup.core.actions.copy ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
+             creates   step:stepup.core.actions.copy ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
+             creates   step:stepup.core.actions.copy ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
+             creates   step:stepup.core.actions.copy ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
+             creates   step:stepup.core.actions.copy ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
+             creates   step:stepup.core.actions.copy ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+             creates   step:stepup.core.actions.runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+             creates   step:stepup.core.actions.runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
+             creates   step:stepup.core.actions.runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
+             creates   step:stepup.core.actions.runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
 
 file:ch-1-intro/
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             supplies   file:ch-1-intro/ch-1-compiled.md
             supplies   file:ch-1-intro/sec-1-1-blabla.md
             supplies   file:ch-1-intro/sec-1-1-blabla.txt
             supplies   file:ch-1-intro/sec-1-2-some-more.md
             supplies   file:ch-1-intro/sec-1-2-some-more.txt
-            supplies   step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
-            supplies   step:cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
-            supplies   step:cp -aT ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
-            supplies   step:cp -aT ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
+            supplies   step:stepup.core.actions.copy ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
+            supplies   step:stepup.core.actions.copy ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
+            supplies   step:stepup.core.actions.runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+            supplies   step:stepup.core.actions.runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
 
 file:ch-2-theory/
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             supplies   file:ch-2-theory/ch-2-compiled.md
             supplies   file:ch-2-theory/sec-2-1-basics.md
             supplies   file:ch-2-theory/sec-2-1-basics.txt
             supplies   file:ch-2-theory/sec-2-2-advanced.md
             supplies   file:ch-2-theory/sec-2-2-advanced.txt
-            supplies   step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
-            supplies   step:cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
-            supplies   step:cp -aT ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
-            supplies   step:cp -aT ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
+            supplies   step:stepup.core.actions.copy ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
+            supplies   step:stepup.core.actions.copy ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
+            supplies   step:stepup.core.actions.runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+            supplies   step:stepup.core.actions.runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
 
 file:ch-3-conclusions/
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             supplies   file:ch-3-conclusions/ch-3-compiled.md
             supplies   file:ch-3-conclusions/sec-3-1-summary.md
             supplies   file:ch-3-conclusions/sec-3-1-summary.txt
             supplies   file:ch-3-conclusions/sec-3-2-outlook.md
             supplies   file:ch-3-conclusions/sec-3-2-outlook.txt
-            supplies   step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
-            supplies   step:cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
-            supplies   step:cp -aT ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
-            supplies   step:cp -aT ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+            supplies   step:stepup.core.actions.copy ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
+            supplies   step:stepup.core.actions.copy ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+            supplies   step:stepup.core.actions.runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+            supplies   step:stepup.core.actions.runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
 
 file:ch-1-intro/sec-1-1-blabla.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:ch-1-intro/
-            supplies   step:cp -aT ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
+            supplies   step:stepup.core.actions.copy ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
 
 file:ch-1-intro/sec-1-2-some-more.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:ch-1-intro/
-            supplies   step:cp -aT ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
+            supplies   step:stepup.core.actions.copy ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
 
-step:cp -aT ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
+step:stepup.core.actions.copy ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:ch-1-intro/
             consumes   file:ch-1-intro/sec-1-1-blabla.txt
@@ -123,14 +123,14 @@ step:cp -aT ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
 
 file:ch-1-intro/sec-1-1-blabla.md
                state = BUILT
-          created by   step:cp -aT ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
+          created by   step:stepup.core.actions.copy ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
             consumes   file:ch-1-intro/
-            consumes   step:cp -aT ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
-            supplies   step:cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
+            consumes   step:stepup.core.actions.copy ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
+            supplies   step:stepup.core.actions.runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
 
-step:cp -aT ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
+step:stepup.core.actions.copy ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:ch-1-intro/
             consumes   file:ch-1-intro/sec-1-2-some-more.txt
@@ -139,14 +139,14 @@ step:cp -aT ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
 
 file:ch-1-intro/sec-1-2-some-more.md
                state = BUILT
-          created by   step:cp -aT ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
+          created by   step:stepup.core.actions.copy ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
             consumes   file:ch-1-intro/
-            consumes   step:cp -aT ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
-            supplies   step:cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
+            consumes   step:stepup.core.actions.copy ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
+            supplies   step:stepup.core.actions.runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
 
-step:cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
+step:stepup.core.actions.runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:ch-1-intro/
             consumes   file:ch-1-intro/sec-1-1-blabla.md
@@ -156,26 +156,26 @@ step:cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-int
 
 file:ch-1-intro/ch-1-compiled.md
                state = BUILT
-          created by   step:cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
+          created by   step:stepup.core.actions.runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
             consumes   file:ch-1-intro/
-            consumes   step:cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
-            supplies   step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+            consumes   step:stepup.core.actions.runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
+            supplies   step:stepup.core.actions.runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
 
 file:ch-2-theory/sec-2-1-basics.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:ch-2-theory/
-            supplies   step:cp -aT ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
+            supplies   step:stepup.core.actions.copy ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
 
 file:ch-2-theory/sec-2-2-advanced.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:ch-2-theory/
-            supplies   step:cp -aT ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
+            supplies   step:stepup.core.actions.copy ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
 
-step:cp -aT ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
+step:stepup.core.actions.copy ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:ch-2-theory/
             consumes   file:ch-2-theory/sec-2-2-advanced.txt
@@ -184,14 +184,14 @@ step:cp -aT ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
 
 file:ch-2-theory/sec-2-2-advanced.md
                state = BUILT
-          created by   step:cp -aT ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
+          created by   step:stepup.core.actions.copy ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
             consumes   file:ch-2-theory/
-            consumes   step:cp -aT ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
-            supplies   step:cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
+            consumes   step:stepup.core.actions.copy ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
+            supplies   step:stepup.core.actions.runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
 
-step:cp -aT ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
+step:stepup.core.actions.copy ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:ch-2-theory/
             consumes   file:ch-2-theory/sec-2-1-basics.txt
@@ -200,14 +200,14 @@ step:cp -aT ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
 
 file:ch-2-theory/sec-2-1-basics.md
                state = BUILT
-          created by   step:cp -aT ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
+          created by   step:stepup.core.actions.copy ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
             consumes   file:ch-2-theory/
-            consumes   step:cp -aT ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
-            supplies   step:cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
+            consumes   step:stepup.core.actions.copy ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
+            supplies   step:stepup.core.actions.runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
 
-step:cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
+step:stepup.core.actions.runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:ch-2-theory/
             consumes   file:ch-2-theory/sec-2-1-basics.md
@@ -217,26 +217,26 @@ step:cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-th
 
 file:ch-2-theory/ch-2-compiled.md
                state = BUILT
-          created by   step:cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
+          created by   step:stepup.core.actions.runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
             consumes   file:ch-2-theory/
-            consumes   step:cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
-            supplies   step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+            consumes   step:stepup.core.actions.runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
+            supplies   step:stepup.core.actions.runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
 
 file:ch-3-conclusions/sec-3-1-summary.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:ch-3-conclusions/
-            supplies   step:cp -aT ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
+            supplies   step:stepup.core.actions.copy ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
 
 file:ch-3-conclusions/sec-3-2-outlook.txt
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:ch-3-conclusions/
-            supplies   step:cp -aT ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+            supplies   step:stepup.core.actions.copy ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
 
-step:cp -aT ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+step:stepup.core.actions.copy ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:ch-3-conclusions/
             consumes   file:ch-3-conclusions/sec-3-2-outlook.txt
@@ -245,14 +245,14 @@ step:cp -aT ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outloo
 
 file:ch-3-conclusions/sec-3-2-outlook.md
                state = BUILT
-          created by   step:cp -aT ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+          created by   step:stepup.core.actions.copy ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
             consumes   file:ch-3-conclusions/
-            consumes   step:cp -aT ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
-            supplies   step:cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
+            consumes   step:stepup.core.actions.copy ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+            supplies   step:stepup.core.actions.runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
 
-step:cp -aT ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
+step:stepup.core.actions.copy ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:ch-3-conclusions/
             consumes   file:ch-3-conclusions/sec-3-1-summary.txt
@@ -261,14 +261,14 @@ step:cp -aT ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summar
 
 file:ch-3-conclusions/sec-3-1-summary.md
                state = BUILT
-          created by   step:cp -aT ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
+          created by   step:stepup.core.actions.copy ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
             consumes   file:ch-3-conclusions/
-            consumes   step:cp -aT ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
-            supplies   step:cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
+            consumes   step:stepup.core.actions.copy ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
+            supplies   step:stepup.core.actions.runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
 
-step:cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
+step:stepup.core.actions.runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:ch-3-conclusions/
             consumes   file:ch-3-conclusions/sec-3-1-summary.md
@@ -278,14 +278,14 @@ step:cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md
 
 file:ch-3-conclusions/ch-3-compiled.md
                state = BUILT
-          created by   step:cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
+          created by   step:stepup.core.actions.runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
             consumes   file:ch-3-conclusions/
-            consumes   step:cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
-            supplies   step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+            consumes   step:stepup.core.actions.runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
+            supplies   step:stepup.core.actions.runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
 
-step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+step:stepup.core.actions.runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:ch-1-intro/
             consumes   file:ch-1-intro/ch-1-compiled.md
@@ -298,6 +298,6 @@ step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusio
 
 file:book.md
                state = BUILT
-          created by   step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+          created by   step:stepup.core.actions.runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
             consumes   file:./
-            consumes   step:cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+            consumes   step:stepup.core.actions.runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md

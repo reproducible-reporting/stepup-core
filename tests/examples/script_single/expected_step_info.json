@@ -1,5 +1,5 @@
 {
-  "command": "./generate.py run > stdout.txt 2> stderr.txt",
+  "action": "stepup.core.actions.runpy ./generate.py run",
   "workdir": "work/",
   "inp": [
     "config.json",
@@ -7,8 +7,6 @@
   ],
   "env": [],
   "out": [
-    "stderr.txt",
-    "stdout.txt",
     "test.csv"
   ],
   "vol": []

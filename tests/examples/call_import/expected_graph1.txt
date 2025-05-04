@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,39 +10,39 @@ file:./
             supplies   file:plan.py
             supplies   file:work.py
             supplies   file:work_out.json
-            supplies   step:./plan.py
-            supplies   step:./work.py --out=work_out.json --amend-out
+            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:stepup.core.actions.runpy ./work.py --out=work_out.json --amend-out
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:helper.py
              creates   file:work.py
-             creates   step:./work.py --out=work_out.json --amend-out
+             creates   step:stepup.core.actions.runpy ./work.py --out=work_out.json --amend-out
 
 file:helper.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./work.py --out=work_out.json --amend-out
+            supplies   step:stepup.core.actions.runpy ./work.py --out=work_out.json --amend-out
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
-            supplies   step:./work.py --out=work_out.json --amend-out
+            supplies   step:stepup.core.actions.runpy ./work.py --out=work_out.json --amend-out
 
-step:./work.py --out=work_out.json --amend-out
+step:stepup.core.actions.runpy ./work.py --out=work_out.json --amend-out
                state = SUCCEEDED
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:helper.py [amended]
             consumes   file:work.py
@@ -51,6 +51,6 @@ step:./work.py --out=work_out.json --amend-out
 
 file:work_out.json
                state = BUILT
-          created by   step:./work.py --out=work_out.json --amend-out
+          created by   step:stepup.core.actions.runpy ./work.py --out=work_out.json --amend-out
             consumes   file:./
-            consumes   step:./work.py --out=work_out.json --amend-out
+            consumes   step:stepup.core.actions.runpy ./work.py --out=work_out.json --amend-out

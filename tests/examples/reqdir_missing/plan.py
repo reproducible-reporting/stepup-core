@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
-from stepup.core.api import step
+from stepup.core.api import runsh
 
-step("echo hello > sub/dir/nested/hello.txt", out=["sub/dir/nested/hello.txt"])
+runsh("echo hello > sub/dir/nested/hello.txt", out=["sub/dir/nested/hello.txt"])

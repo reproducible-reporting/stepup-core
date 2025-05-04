@@ -1,25 +1,25 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/3 |    SUCCESS │ ./plan.py
-        1/3 |      START │ cp orig.txt copy1.txt
-        2/3 |    SUCCESS │ cp orig.txt copy1.txt
-        2/3 |      START │ cp copy1.txt copy2.txt
-        3/3 |    SUCCESS │ cp copy1.txt copy2.txt
+        0/1 |      START │ runpy ./plan.py
+        1/3 |    SUCCESS │ runpy ./plan.py
+        1/3 |      START │ runsh cp orig.txt copy1.txt
+        2/3 |    SUCCESS │ runsh cp orig.txt copy1.txt
+        2/3 |      START │ runsh cp copy1.txt copy2.txt
+        3/3 |    SUCCESS │ runsh cp copy1.txt copy2.txt
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
         3/3 |      PHASE │ watch
         3/3 |    UPDATED │ plan.py
         3/3 |    DELETED │ orig.txt
         0/3 |      PHASE │ run
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
         1/2 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              MISSING  orig.txt
             OUTDATED  copy1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Command               cp copy1.txt copy2.txt
+Action                stepup.core.actions.runsh cp copy1.txt copy2.txt
 Working directory     ./
 Inputs        STATIC  ./
             OUTDATED  (copy1.txt)

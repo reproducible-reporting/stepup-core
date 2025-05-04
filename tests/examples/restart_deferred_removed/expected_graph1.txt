@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
+             creates   step:stepup.core.actions.runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,36 +10,36 @@ file:./
             supplies   file:foo.txt
             supplies   file:plan.py
             supplies   file:static/
-            supplies   step:./plan.py
-            supplies   step:cp -aT static/bar.txt bar.txt
-            supplies   step:cp -aT static/foo.txt foo.txt
+            supplies   step:stepup.core.actions.copy static/bar.txt bar.txt
+            supplies   step:stepup.core.actions.copy static/foo.txt foo.txt
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:stepup.core.actions.runpy ./plan.py
 
-step:./plan.py
+step:stepup.core.actions.runpy ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   dg:static/**
-             creates   step:cp -aT static/bar.txt bar.txt
-             creates   step:cp -aT static/foo.txt foo.txt
+             creates   step:stepup.core.actions.copy static/bar.txt bar.txt
+             creates   step:stepup.core.actions.copy static/foo.txt foo.txt
 
 dg:static/**
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
              creates   file:static/
              creates   file:static/bar.txt
              creates   file:static/foo.txt
 
-step:cp -aT static/foo.txt foo.txt
+step:stepup.core.actions.copy static/foo.txt foo.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:static/
             consumes   file:static/foo.txt
@@ -52,25 +52,25 @@ file:static/
             consumes   file:./
             supplies   file:static/bar.txt
             supplies   file:static/foo.txt
-            supplies   step:cp -aT static/bar.txt bar.txt
-            supplies   step:cp -aT static/foo.txt foo.txt
+            supplies   step:stepup.core.actions.copy static/bar.txt bar.txt
+            supplies   step:stepup.core.actions.copy static/foo.txt foo.txt
 
 file:static/foo.txt
                state = STATIC
           created by   dg:static/**
             consumes   file:static/
-            supplies   step:cp -aT static/foo.txt foo.txt
+            supplies   step:stepup.core.actions.copy static/foo.txt foo.txt
 
 file:foo.txt
                state = BUILT
-          created by   step:cp -aT static/foo.txt foo.txt
+          created by   step:stepup.core.actions.copy static/foo.txt foo.txt
             consumes   file:./
-            consumes   step:cp -aT static/foo.txt foo.txt
+            consumes   step:stepup.core.actions.copy static/foo.txt foo.txt
 
-step:cp -aT static/bar.txt bar.txt
+step:stepup.core.actions.copy static/bar.txt bar.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:./plan.py
+          created by   step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:static/
             consumes   file:static/bar.txt
@@ -81,10 +81,10 @@ file:static/bar.txt
                state = STATIC
           created by   dg:static/**
             consumes   file:static/
-            supplies   step:cp -aT static/bar.txt bar.txt
+            supplies   step:stepup.core.actions.copy static/bar.txt bar.txt
 
 file:bar.txt
                state = BUILT
-          created by   step:cp -aT static/bar.txt bar.txt
+          created by   step:stepup.core.actions.copy static/bar.txt bar.txt
             consumes   file:./
-            consumes   step:cp -aT static/bar.txt bar.txt
+            consumes   step:stepup.core.actions.copy static/bar.txt bar.txt
