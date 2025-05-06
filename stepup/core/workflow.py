@@ -26,7 +26,6 @@ import logging
 import os
 import pickle
 import re
-import shlex
 import stat
 import textwrap
 from collections.abc import Collection, Iterator
@@ -171,7 +170,7 @@ class Workflow(Cascade):
         for step in to_mark_pending:
             step.mark_pending(input_changed=True)
 
-    def initialize_boot(self, path_plan: str) -> bool:
+    def initialize_boot(self) -> bool:
         """Initialize the (new) boot script.
 
         Returns
@@ -179,21 +178,15 @@ class Workflow(Cascade):
         initialized
             Whether the boot script was (re)initialized.
         """
-        if os.sep in path_plan:
-            raise ValueError(
-                "The initial plan.py cannot contain directory separators and "
-                "must be in the current directory."
-            )
-        command = shlex.quote(f"./{path_plan}")
-        action = f"stepup.core.actions.runpy {command}"
+        action = "stepup.core.actions.runpy ./plan.py"
         nodes = {node.key(): node for node in self.root.products()}
         del nodes["root:"]
         if (
             len(nodes) >= 3
             and "file:./" in nodes
             and nodes["file:./"].get_state() == FileState.STATIC
-            and f"file:{path_plan}" in nodes
-            and nodes[f"file:{path_plan}"].get_state() == FileState.STATIC
+            and "file:plan.py" in nodes
+            and nodes["file:plan.py"].get_state() == FileState.STATIC
             and f"step:{action}" in nodes
         ):
             # The boot steps are already present (from a previous invocation of stepup).
@@ -202,10 +195,10 @@ class Workflow(Cascade):
         # Need to (re)initialize the boot steps.
         for node in nodes.values():
             node.orphan()
-        to_check = self.declare_missing(self.root, ["./", path_plan])
+        to_check = self.declare_missing(self.root, ["./", "plan.py"])
         checked = [(path, file_hash.regen(path)) for path, file_hash in to_check]
         self.update_file_hashes(checked, "confirmed")
-        self.define_step(self.root, action, inp_paths=[path_plan])
+        self.define_step(self.root, action, inp_paths=["plan.py"])
         return True
 
     @staticmethod

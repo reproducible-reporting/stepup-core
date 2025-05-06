@@ -21,7 +21,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ### Changed
 
-- Breaking changes:
+- Breaking:
     - The database schema was incremented because steps now execute "actions",
       which can be shell commands in subprocesses, but also other things,
       such as executing a Python script without starting a new process.
@@ -38,6 +38,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
     - Simplify `Runner.send_to_worker()`.
     - Simplify Job classes.
     - Various minor cleanups.
+
+### Removed
+
+- The `stepup` command no longer accepts an argument to specify an alternative for `plan.py`.
 
 ## [2.1.7][] - 2025-04-24 {: #v2.1.7 }
 

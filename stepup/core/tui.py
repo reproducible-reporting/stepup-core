@@ -53,8 +53,8 @@ async def async_main():
         args.root.cd()
 
     # Sanity check before creating a subdirectory.
-    if not args.plan_py.is_file():
-        raise RuntimeError(f"File {args.plan_py} does not exist.")
+    if not Path("plan.py").is_file():
+        raise RuntimeError("File plan.py does not exist.")
 
     # Check if another StepUp director is already/still running.
     if Path(".stepup/director.log").exists():
@@ -105,7 +105,6 @@ async def async_main():
             [
                 "-m",
                 "stepup.core.director",
-                args.plan_py,
                 director_socket_path,
                 f"--reporter={reporter_socket_path}",
                 f"--num-workers={num_workers}",
@@ -237,9 +236,6 @@ def parse_args():
     """Parse command-line arguments."""
     version = get_version("stepup")
     parser = argparse.ArgumentParser(prog="stepup", description="The StepUp build tool")
-    parser.add_argument(
-        "plan_py", type=Path, default=Path("plan.py"), help="Top-level build script", nargs="?"
-    )
     parser.add_argument(
         "--num-workers",
         "-n",

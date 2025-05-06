@@ -79,7 +79,6 @@ async def async_main():
             returncode = await serve(
                 args.director_socket,
                 num_workers,
-                args.plan,
                 reporter,
                 args.show_perf,
                 args.explain_rerun,
@@ -102,12 +101,6 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="stepup-director",
         description="Launch the director.",
-    )
-    parser.add_argument(
-        "plan",
-        type=Path,
-        default="plan.py",
-        help="The top-level plan.py script (must be in current directory).",
     )
     parser.add_argument(
         "director_socket",
@@ -191,7 +184,6 @@ def interpret_num_workers(num_workers: Decimal) -> int:
 async def serve(
     director_socket_path: Path,
     num_workers: int,
-    path_plan: Path,
     reporter: ReporterClient,
     show_perf: bool,
     explain_rerun: bool,
@@ -207,8 +199,6 @@ async def serve(
         The socket to listen to for remote calls.
     num_workers
         The number of worker processes.
-    path_plan
-        The initial `plan.py` file.
     reporter
         The reporter client for sending information back to
         the terminal user interface.
@@ -234,7 +224,7 @@ async def serve(
         raise ValueError(f"Number of workers must be strictly positive, got {num_workers}")
     if do_watch_first and not do_watch:
         raise ValueError("do_watch_first cannot be set without do_watch.")
-    check_plan(path_plan)
+    check_plan("plan.py")
 
     # Create basic components
     con = sqlite3.connect(".stepup/graph.db", cached_statements=1024)
@@ -256,7 +246,7 @@ async def serve(
     )
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(
-        scheduler, workflow, dblock, reporter, runner, watcher, path_plan, stop_event
+        scheduler, workflow, dblock, reporter, runner, watcher, stop_event
     )
 
     # Initialize the workflow
@@ -299,7 +289,6 @@ class DirectorHandler:
     reporter: ReporterClient = attrs.field()
     runner: Runner = attrs.field()
     watcher: Watcher | None = attrs.field()
-    path_plan: Path = attrs.field()
     stop_event: asyncio.Event = attrs.field()
     _shutdown_counter: int = attrs.field(init=False, default=0)
 
@@ -315,10 +304,8 @@ class DirectorHandler:
         initialized
             Whether the boot script was (re)initialized.
         """
-        if self.path_plan.absolute().parent != Path.cwd():
-            raise ValueError("The plan script must be in the current directory.")
         async with self.dblock:
-            return self.workflow.initialize_boot(self.path_plan)
+            return self.workflow.initialize_boot()
 
     @allow_rpc
     async def missing(self, creator_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
