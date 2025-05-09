@@ -16,6 +16,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 - Option `stepup --no-progress` to disable progress information.
   This is sometimes useful when running `stepup` in a non-interactive environment.
+- A new API function [`loadns()`][stepup.core.api.loadns] to load variables from file.
+  Supported file formats are: JSON, Python, YAML, and TOML.
+  This will automatically amend the calling step with the loaded files as inputs.
+- The `render-jinja` feature from StepUp RepRep 2 has been migrated to StepUp Core 3.
 
 ### Changed
 

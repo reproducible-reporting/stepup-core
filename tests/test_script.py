@@ -21,7 +21,7 @@
 
 import pytest
 
-from stepup.core.script import _get_optional_path, _get_path_list
+from stepup.core.script import _get_path_list
 
 
 def test_get_path_list():
@@ -31,11 +31,3 @@ def test_get_path_list():
     assert _get_path_list("vol", info, "foo.py", "info") == []
     with pytest.raises(TypeError):
         _get_path_list("blub", info, "foo.py", "info")
-
-
-def test_optional_path():
-    info = {"stdout": "lalala", "stderr": 3}
-    assert _get_optional_path("stdout", info, "bar.py", "info") == "lalala"
-    assert _get_optional_path("stdstd", info, "bar.py", "info") is None
-    with pytest.raises(TypeError):
-        _get_optional_path("stderr", info, "bar.py", "info")

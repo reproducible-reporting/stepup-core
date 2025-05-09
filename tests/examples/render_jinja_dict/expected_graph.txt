@@ -1,0 +1,65 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:runsh ./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   file:rendered-trip1.txt
+            supplies   file:rendered-trip2.txt
+            supplies   file:template.txt
+            supplies   step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
+            supplies   step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'
+            supplies   step:runsh ./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:runsh ./plan.py
+
+step:runsh ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:template.txt
+             creates   step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
+             creates   step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'
+
+file:template.txt
+               state = STATIC
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            supplies   step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
+            supplies   step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'
+
+step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
+               state = SUCCEEDED
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            consumes   file:template.txt
+             creates   file:rendered-trip1.txt
+            supplies   file:rendered-trip1.txt
+
+file:rendered-trip1.txt
+               state = BUILT
+          created by   step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
+            consumes   file:./
+            consumes   step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
+
+step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'
+               state = SUCCEEDED
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            consumes   file:template.txt
+             creates   file:rendered-trip2.txt
+            supplies   file:rendered-trip2.txt
+
+file:rendered-trip2.txt
+               state = BUILT
+          created by   step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'
+            consumes   file:./
+            consumes   step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'

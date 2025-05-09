@@ -1,0 +1,84 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:runsh ./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   file:rendered-trip1.txt
+            supplies   file:rendered-trip2.txt
+            supplies   file:template.txt
+            supplies   file:trip1.yaml
+            supplies   file:trip2.yaml
+            supplies   step:render-jinja template.txt trip1.yaml rendered-trip1.txt
+            supplies   step:render-jinja template.txt trip2.yaml rendered-trip2.txt
+            supplies   step:runsh ./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:runsh ./plan.py
+
+step:runsh ./plan.py
+               state = SUCCEEDED
+                 ngm = ['trip*.yaml'] {}
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:template.txt
+             creates   file:trip1.yaml
+             creates   file:trip2.yaml
+             creates   step:render-jinja template.txt trip1.yaml rendered-trip1.txt
+             creates   step:render-jinja template.txt trip2.yaml rendered-trip2.txt
+
+file:template.txt
+               state = STATIC
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            supplies   step:render-jinja template.txt trip1.yaml rendered-trip1.txt
+            supplies   step:render-jinja template.txt trip2.yaml rendered-trip2.txt
+
+file:trip1.yaml
+               state = STATIC
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            supplies   step:render-jinja template.txt trip1.yaml rendered-trip1.txt
+
+file:trip2.yaml
+               state = STATIC
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            supplies   step:render-jinja template.txt trip2.yaml rendered-trip2.txt
+
+step:render-jinja template.txt trip1.yaml rendered-trip1.txt
+               state = SUCCEEDED
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            consumes   file:template.txt
+            consumes   file:trip1.yaml
+             creates   file:rendered-trip1.txt
+            supplies   file:rendered-trip1.txt
+
+file:rendered-trip1.txt
+               state = BUILT
+          created by   step:render-jinja template.txt trip1.yaml rendered-trip1.txt
+            consumes   file:./
+            consumes   step:render-jinja template.txt trip1.yaml rendered-trip1.txt
+
+step:render-jinja template.txt trip2.yaml rendered-trip2.txt
+               state = SUCCEEDED
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            consumes   file:template.txt
+            consumes   file:trip2.yaml
+             creates   file:rendered-trip2.txt
+            supplies   file:rendered-trip2.txt
+
+file:rendered-trip2.txt
+               state = BUILT
+          created by   step:render-jinja template.txt trip2.yaml rendered-trip2.txt
+            consumes   file:./
+            consumes   step:render-jinja template.txt trip2.yaml rendered-trip2.txt

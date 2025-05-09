@@ -1,0 +1,57 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:runsh ./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   file:rendered.md
+            supplies   file:template.md
+            supplies   file:variables.py
+            supplies   step:render-jinja template.md variables.py rendered.md
+            supplies   step:runsh ./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:runsh ./plan.py
+
+step:runsh ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:template.md
+             creates   file:variables.py
+             creates   step:render-jinja template.md variables.py rendered.md
+
+file:template.md
+               state = STATIC
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            supplies   step:render-jinja template.md variables.py rendered.md
+
+file:variables.py
+               state = STATIC
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            supplies   step:render-jinja template.md variables.py rendered.md
+
+step:render-jinja template.md variables.py rendered.md
+               state = SUCCEEDED
+             env_var = ENV_VAR_TEST_STEPUP_RENDER [amended]
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            consumes   file:template.md
+            consumes   file:variables.py
+             creates   file:rendered.md
+            supplies   file:rendered.md
+
+file:rendered.md
+               state = BUILT
+          created by   step:render-jinja template.md variables.py rendered.md
+            consumes   file:./
+            consumes   step:render-jinja template.md variables.py rendered.md

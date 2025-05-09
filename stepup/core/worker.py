@@ -575,6 +575,7 @@ class WorkThread(threading.Thread):
             shell=True,
             encoding="utf-8",
             errors="ignore",
+            env=os.environ,
         )
         self.pid_queue.put_nowait(p.pid)
         stdout, stderr = p.communicate()

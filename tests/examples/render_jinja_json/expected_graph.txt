@@ -1,0 +1,84 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:runsh ./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   file:rendered-trip1.txt
+            supplies   file:rendered-trip2.txt
+            supplies   file:template.txt
+            supplies   file:trip1.json
+            supplies   file:trip2.json
+            supplies   step:render-jinja template.txt trip1.json rendered-trip1.txt
+            supplies   step:render-jinja template.txt trip2.json rendered-trip2.txt
+            supplies   step:runsh ./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:runsh ./plan.py
+
+step:runsh ./plan.py
+               state = SUCCEEDED
+                 ngm = ['trip*.json'] {}
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:template.txt
+             creates   file:trip1.json
+             creates   file:trip2.json
+             creates   step:render-jinja template.txt trip1.json rendered-trip1.txt
+             creates   step:render-jinja template.txt trip2.json rendered-trip2.txt
+
+file:template.txt
+               state = STATIC
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            supplies   step:render-jinja template.txt trip1.json rendered-trip1.txt
+            supplies   step:render-jinja template.txt trip2.json rendered-trip2.txt
+
+file:trip1.json
+               state = STATIC
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            supplies   step:render-jinja template.txt trip1.json rendered-trip1.txt
+
+file:trip2.json
+               state = STATIC
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            supplies   step:render-jinja template.txt trip2.json rendered-trip2.txt
+
+step:render-jinja template.txt trip1.json rendered-trip1.txt
+               state = SUCCEEDED
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            consumes   file:template.txt
+            consumes   file:trip1.json
+             creates   file:rendered-trip1.txt
+            supplies   file:rendered-trip1.txt
+
+file:rendered-trip1.txt
+               state = BUILT
+          created by   step:render-jinja template.txt trip1.json rendered-trip1.txt
+            consumes   file:./
+            consumes   step:render-jinja template.txt trip1.json rendered-trip1.txt
+
+step:render-jinja template.txt trip2.json rendered-trip2.txt
+               state = SUCCEEDED
+          created by   step:runsh ./plan.py
+            consumes   file:./
+            consumes   file:template.txt
+            consumes   file:trip2.json
+             creates   file:rendered-trip2.txt
+            supplies   file:rendered-trip2.txt
+
+file:rendered-trip2.txt
+               state = BUILT
+          created by   step:render-jinja template.txt trip2.json rendered-trip2.txt
+            consumes   file:./
+            consumes   step:render-jinja template.txt trip2.json rendered-trip2.txt

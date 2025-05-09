@@ -22,7 +22,7 @@
 import pytest
 from path import Path
 
-from stepup.core.api import getenv
+from stepup.core.api import getenv, loadns
 
 
 def noop_amend(*_args, **_kwargs):
@@ -114,3 +114,22 @@ def test_getenv_default_multi3(monkeypatch, use_default):
         assert ps[0] == Path("../sub/asdf")
         assert isinstance(ps[1], Path)
         assert ps[1] == Path("../foo")
+
+
+def test_loadns_py1(path_tmp):
+    path_foo = path_tmp / "foo.py"
+    with open(path_foo, "w") as fh:
+        print("a = 10", file=fh)
+    ns = loadns(path_foo)
+    assert ns.a == 10
+
+
+def test_lloadns_py2(path_tmp):
+    path_foo = path_tmp / "foo.py"
+    with open(path_foo, "w") as fh:
+        print("a = 10", file=fh)
+    path_bar = path_tmp / "bar.py"
+    with open(path_bar, "w") as fh:
+        print("from foo import a", file=fh)
+    ns = loadns(path_bar)
+    assert ns.a == 10

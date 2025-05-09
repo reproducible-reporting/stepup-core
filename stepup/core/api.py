@@ -27,13 +27,18 @@ This module should not be imported by other stepup.core modules, safe for some n
 - inside the driver functions in `stepup.core.call` and `stepup.core.script`
 """
 
+import argparse
 import contextlib
 import json
 import os
 import pickle
+import runpy
 import shlex
+import sys
+import tomllib
 from collections.abc import Callable, Collection, Iterable, Iterator, Sequence
 
+import yaml
 from path import Path
 
 from .nglob import NGlobMulti
@@ -61,9 +66,12 @@ __all__ = (
     "getinfo",
     "glob",
     "graph",
+    "loadns",
     "mkdir",
     "plan",
     "pool",
+    "render_jinja",
+    "runsh",
     "script",
     "static",
     "step",
@@ -974,6 +982,151 @@ def script(
         "block": block,
     }
     return runsh(command, **step_kwargs)
+
+
+def loadns(
+    *paths_variables: str, dir_out: str | None = None, do_amend: bool = True
+) -> argparse.Namespace:
+    """Load variable from Python, JSON, TOML or YAML files and put them in a namespace.
+
+    Parameters
+    ----------
+    paths_variables
+        paths of Python, JSON, TOML or YAML files containing variable definitions.
+        They are loaded in the given order, so later variable definitions may overrule earlier ones.
+    dir_out
+        This is used to translate paths defined in the variables files
+        (relative to parent of the variable file)
+        to paths relative to the parent of the output of the rendering task.
+        If not given, the current working directory is used.
+        This is only relevant for variables loaded from Python files.
+    do_amend
+        If ``True``, All loaded files are amended as inputs to the current step.
+
+    Returns
+    -------
+    variables
+        A namespace with the variables.
+    """
+    if dir_out is None:
+        dir_out = Path.cwd()
+    variables = {}
+    for path_var in paths_variables:
+        path_var = Path(path_var)
+        if path_var.suffix == ".json":
+            with open(path_var) as fh:
+                variables.update(json.load(fh))
+        elif path_var.suffix == ".toml":
+            with open(path_var, "rb") as fh:
+                variables.update(tomllib.load(fh))
+        elif path_var.suffix in (".yaml", ".yml"):
+            with open(path_var) as fh:
+                variables.update(yaml.safe_load(fh))
+        elif path_var.suffix == ".py":
+            dir_py = path_var.parent.normpath()
+            fn_py = path_var.name
+            with contextlib.chdir(dir_py):
+                sys.path.insert(0, str(dir_py))
+                try:
+                    current = runpy.run_path(fn_py, run_name="<variables>")
+                finally:
+                    sys.path.remove(dir_py)
+            for name, value in current.items():
+                if isinstance(value, Path):
+                    value = value.relpath(dir_out)
+                variables[name] = value
+        else:
+            raise ValueError(f"unsupported variable file format: {path_var}")
+    if do_amend:
+        amend(inp=paths_variables)
+    return argparse.Namespace(**variables)
+
+
+def render_jinja(
+    *args: str | dict,
+    mode: str = "auto",
+    optional: bool = False,
+    block: bool = False,
+) -> StepInfo:
+    """Render the template with Jinja2.
+
+    Parameters
+    ----------
+    args
+        The first argument is the path to the template file.
+        All the following position arguments can be one of the following two types:
+
+        - Paths to Python, JSON, TOML or YAML files with variable definitions.
+          Variables defined in later files take precedence.
+        - A dictionary with additional variables.
+          These will be JSON-serialized and passed on the command-line to the Jinja renderer.
+          Variables in dictionaries take precedence over variables from files.
+          When multiple dictionaries are given, later ones take precedence.
+
+        The very last argument is an output destination (directory or file).
+    mode
+        The format of the Jinja placeholders:
+
+        - The default (auto) selects either `plain` or `latex`,
+          based on the extension of the output file.
+        - The `plain` format is the default Jinja style with curly brackets: `{{ }}` etc.
+        - The `latex` style replaces curly brackets by angle brackets: `<< >>` etc.
+    optional
+        If `True`, the step is only executed when needed by other steps.
+    block
+        If `True`, the step will always remain pending.
+
+    Returns
+    -------
+    step_info
+        Holds relevant information of the step, useful for defining follow-up steps.
+
+    Notes
+    -----
+    At least some variables must be given, either as a file containing variables or as a dictionary.
+    """
+    # Parse the positional arguments
+    if len(args) < 3:
+        raise ValueError(
+            "At least three positional arguments must be given: "
+            "the template, at least one file or dict with variables, and the destination."
+        )
+    path_template = args[0]
+    if not isinstance(path_template, str):
+        raise TypeError("The template argument must be a string.")
+    dest = args[-1]
+    if not isinstance(dest, str):
+        raise TypeError("The destination argument must be a string.")
+    variables = {}
+    paths_variables = []
+    for arg in args[1:-1]:
+        if isinstance(arg, str):
+            paths_variables.append(arg)
+        elif isinstance(arg, dict):
+            variables.update(arg)
+        else:
+            raise TypeError("The variables arguments must be strings (paths) or dictionaries.")
+
+    # Parse other arguments.
+    if mode not in ["auto", "plain", "latex"]:
+        raise ValueError(f"Unsupported mode {mode!r}. Must be one of 'auto', 'plain', 'latex'")
+    if len(paths_variables) == 0 and len(variables) == 0:
+        raise ValueError("At least one file with variable definitions needed.")
+    path_out = make_path_out(path_template, dest, None)
+
+    # Create the command
+    args = ["render-jinja", "${inp}", "${out}"]
+    if mode != "auto":
+        args.append(f"--mode={mode}")
+    if len(variables) > 0:
+        args.append("--json=" + shlex.quote(json.dumps(variables)))
+    return step(
+        " ".join(args),
+        inp=[path_template, *paths_variables],
+        out=path_out,
+        optional=optional,
+        block=block,
+    )
 
 
 #

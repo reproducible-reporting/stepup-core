@@ -25,6 +25,7 @@ import re
 import shlex
 import sqlite3
 import string
+import sys
 from collections.abc import Collection
 
 import attrs
@@ -37,6 +38,7 @@ __all__ = (
     "check_plan",
     "format_command",
     "format_digest",
+    "get_local_import_paths",
     "make_path_out",
     "myabsolute",
     "mynormpath",
@@ -265,6 +267,26 @@ def filter_dependencies(paths: Collection[str], *external_sources: str) -> set[P
                 result.add(myrelpath(path))
                 break
     return result
+
+
+def get_local_import_paths(script_path: Path | None = None) -> list[str]:
+    """Get all local files from `sys.modules`.
+
+    Files are only included if they are in `STEPUP_ROOT` or inside one of the paths in
+    `STEPUP_EXTERNAL_SOURCES`.
+    """
+
+    def iter_module_paths():
+        for module in sys.modules.values():
+            mod_path = getattr(module, "__file__", None)
+            if mod_path is not None:
+                yield mod_path
+
+    mod_paths = filter_dependencies(iter_module_paths())
+    # The script path is already included in the inputs.
+    if script_path is not None:
+        mod_paths.discard(script_path)
+    return sorted(mod_paths)
 
 
 @attrs.define

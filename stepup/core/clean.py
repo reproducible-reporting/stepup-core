@@ -35,6 +35,7 @@ from .utils import mynormpath, translate, translate_back
 
 
 def clean_subcommand(subparser: argparse.ArgumentParser) -> callable:
+    """Define tool CLI options."""
     parser = subparser.add_parser(
         "clean",
         help="Recursively remove outputs of a file or in a directory. "

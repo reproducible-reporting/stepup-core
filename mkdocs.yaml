@@ -80,6 +80,7 @@ nav:
     - getting_started/script_multiple.md
     - getting_started/no_rules.md
     - getting_started/distributed_plans.md
+    - getting_started/load_namespace.md
     - getting_started/automatic_cleaning.md
   - Advanced topics:
     - advanced_topics/introduction.md
@@ -93,6 +94,7 @@ nav:
     - advanced_topics/amending_steps.md
     - advanced_topics/variable_substitution.md
     - advanced_topics/here_and_root.md
+    - advanced_topics/render_jinja.md
     - advanced_topics/cyclic_dependencies.md
     - advanced_topics/amending_static_inputs.md
     - advanced_topics/manual_cleaning.md

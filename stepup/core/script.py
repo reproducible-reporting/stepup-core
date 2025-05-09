@@ -34,7 +34,7 @@ from parse import parse
 from path import Path
 
 from .stepinfo import dump_step_info
-from .utils import filter_dependencies, format_command
+from .utils import format_command, get_local_import_paths
 
 __all__ = ("driver",)
 
@@ -322,7 +322,7 @@ def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrap
     step_info = None
     if wrapper.has_single:
         static_paths, inp_paths, out_paths = wrapper.get_plan()
-        amend(inp=_get_local_import_paths(script_path))
+        amend(inp=get_local_import_paths(script_path))
         inp_paths.append(script_path)
         static(*static_paths)
         command = format_command(script_path) + " run"
@@ -330,7 +330,7 @@ def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrap
     if wrapper.has_cases:
         # First collect all cases
         cases = list(wrapper.generate_cases())
-        amend(inp=_get_local_import_paths(script_path))
+        amend(inp=get_local_import_paths(script_path))
         # Then create steps for all cases
         step_info = [] if step_info is None else [step_info]
         for case_args, case_kwargs in cases:
@@ -375,14 +375,14 @@ def _driver_run(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapp
             raise RuntimeError(f"Script has no info function: {script_path}")
         info = wrapper.filter_info(wrapper.get_info())
         wrapper.run(**info)
-        amend(inp=_get_local_import_paths(script_path))
+        amend(inp=get_local_import_paths(script_path))
         return
     if not wrapper.has_cases:
         raise RuntimeError(f"Script has no case_info function: {script_path}")
     case_args, case_kwargs = wrapper.parse(args.string)
     info = wrapper.filter_info(wrapper.get_case_info(*case_args, **case_kwargs))
     wrapper.run(**info)
-    amend(inp=_get_local_import_paths(script_path))
+    amend(inp=get_local_import_paths(script_path))
 
 
 def _get_path_list(name: str, info: dict, script_path: str, func_name: str) -> list[str]:
@@ -393,30 +393,3 @@ def _get_path_list(name: str, info: dict, script_path: str, func_name: str) -> l
     if not isinstance(paths, list) or not all(isinstance(path, str) for path in paths):
         raise TypeError(f"{name} is not a list of strings in function {func_name} in {script_path}")
     return paths
-
-
-def _get_optional_path(name: str, info: dict, script_path: str, func_name: str) -> str | None:
-    """Get an optional path from the info dict."""
-    path = info.get(name)
-    if path is None or isinstance(path, str):
-        return path
-    raise TypeError(f"{name} is not a string (or None) in function {func_name} in {script_path}")
-
-
-def _get_local_import_paths(script_path: Path) -> list[str]:
-    """Get all local files from `sys.modules`.
-
-    Files are only included if they are in `STEPUP_ROOT` or inside one of the paths in
-    `STEPUP_EXTERNAL_SOURCES`.
-    """
-
-    def iter_module_paths():
-        for module in sys.modules.values():
-            mod_path = getattr(module, "__file__", None)
-            if mod_path is not None:
-                yield mod_path
-
-    mod_paths = filter_dependencies(iter_module_paths())
-    # The script path is already included in the inputs.
-    mod_paths.discard(script_path)
-    return sorted(mod_paths)

@@ -30,6 +30,7 @@ dependencies = [
     # Ensure changes to these dependencies are reflected in .github/requirements-old.txt
     "asyncinotify>=4.0.9",
     "attrs>=22.1.0",
+    "jinja2>=3.1.6",
     "parse>=1.19.1",
     "path>=16.14.0",
     "rich>=13.0.0",
@@ -71,13 +72,15 @@ watch-update = "stepup.core.interact:watch_update_subcommand"
 watch-delete = "stepup.core.interact:watch_delete_subcommand"
 wait = "stepup.core.interact:wait_subcommand"
 join = "stepup.core.interact:join_subcommand"
+render-jinja = "stepup.core.render_jinja:render_jinja_subcommand"
 shutdown = "stepup.core.interact:shutdown_subcommand"
 status = "stepup.core.interact:status_subcommand"
 
 [project.entry-points."stepup.actions"]
-runsh = "stepup.core.actions:runsh"
-mkdir = "stepup.core.actions:mkdir"
 copy = "stepup.core.actions:copy"
+mkdir = "stepup.core.actions:mkdir"
+render-jinja = "stepup.core.render_jinja:render_jinja_action"
+runsh = "stepup.core.actions:runsh"
 
 [tool.pytest.ini_options]
 addopts = "-n auto -W error -W ignore::ResourceWarning"
