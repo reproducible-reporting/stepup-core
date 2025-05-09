@@ -3,12 +3,12 @@
 If you are working on a large project with several subdirectories,
 it may be useful to define the `STEPUP_ROOT` environment variable.
 It should contain the absolute path of the top-level directory
-where you would normally call the `stepup` and `cleanup` commands.
+where you would normally call the `stepup` command.
 (The top-level directory contains the `.stepup` subdirectory and the top-level `plan.py`.)
 
 With `STEPUP_ROOT` set, it is no longer necessary to change to the top-level directory
-before running `stepup` and `cleanup`.
-Also, the `cleanup` arguments will be interpreted correctly in subdirectories.
+before running `stepup boot`.
+Also, `stepup clean` arguments will be interpreted correctly in subdirectories.
 
 You can manually set `STEPUP_ROOT` in the top-level directory as follows:
 

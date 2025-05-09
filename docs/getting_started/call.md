@@ -6,7 +6,7 @@
 
 !!! warning
 
-    This feature is experimental and may change significantly in future 2.x releases.
+    This feature is experimental and may change significantly in the future.
 
 The [`call()`][stepup.core.api.call] function is a function wrapper for local executable scripts.
 These scripts can be written in any language,
@@ -40,7 +40,7 @@ in case the types of the parameters are not compatible with JSON.
 When the executable script produces a "return value",
 it should write this to an output file, either in JSON or PICKLE format.
 
-Because of the delayed execution, the `call()` function cannot return this value.
+Because of the delayed execution, the `call()` function cannot return any results.
 If you are familiar with Python's builtin `concurrent.futures` module,
 you can think of the output file of the script as the `Future` object that is returned by
 `concurrent.futures.Executor.submit()`.

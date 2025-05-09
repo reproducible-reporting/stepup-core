@@ -55,7 +55,7 @@ Now put some values in `dataset/bigfile.txt`, e.g.:
 {% include 'getting_started/static_glob_conditional/dataset/bigfile.txt' %}
 ```
 
-To run the example, make the scripts executable and fire up StepUp in non-interactive mode:
+To run the example, make the scripts executable and fire up StepUp:
 
 ```bash
 chmod +x expensive.py plan.py

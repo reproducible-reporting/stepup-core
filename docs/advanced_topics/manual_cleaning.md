@@ -19,8 +19,7 @@ Examples of such situations are:
 
 Simply removing outputs with the `rm` command is possible
 but quickly becomes tedious for larger projects.
-The `cleanup` program, a companion to `stepup`,
-can selectively remove numerous outputs with minimal end-user effort.
+The `step clean` tool can selectively remove numerous outputs with minimal end-user effort.
 You need to pass as arguments the files whose (indirect) outputs you want to remove.
 Such arguments can be one of the two things:
 
@@ -31,29 +30,29 @@ Such arguments can be one of the two things:
    Furthermore, if the directory is created in the build, it will also be removed.
 
 Files are removed recursively, so outputs of outputs are also cleaned up.
-`cleanup` will only remove files with status `OUTDATED`, `BUILT` or `VOLATILE`.
+`stepup clean` will only remove files with status `OUTDATED`, `BUILT` or `VOLATILE`.
 `STATIC` or `AWAITED` files, i.e.,
 files that are not the result of step execution, are never removed.
-In addition, `cleanup` compares the hash of a file to the last known hash,
+In addition, `stepup clean` compares the hash of a file to the last known hash,
 to make sure it only removes that contain changes made afterward without StepUp.
 
-By default, you need to run `cleanup` in the top-level directory where you also started `stepup`.
+By default, you need to run `stepup clean` in the top-level directory where you also started `stepup`.
 This requirement can be lifted by defining the `STEPUP_ROOT` environment variable,
 as explained in the [next tutorial](stepup_root.md).
 
 !!! note
 
-    As StepUp 2.0.0, `cleanup` also works when `stepup` is not running.
+    In StepUp 3.0.0, the old `cleanup` was renamed to `stepup clean`.
 
 ## Try the Following
 
 - The [Static Named Glob](static_named_glob.md) tutorial provides a good test case
-  for experimenting with `cleanup`.
-  For this example, run `stepup` without any arguments.
-  Then open a second terminal in the same directory and run `cleanup ch3/sec3_1_applications.txt`.
+  for experimenting with `stepup clean`.
+  For this example, run `stepup boot` without any arguments.
+  Then open a second terminal in the same directory and run `stepup clean ch3/sec3_1_applications.txt`.
   You will see that the following files have been deleted:
 
     - `ch3/sec3_1_applications.md`
     - `public/ch3.md`
 
-- In the same way as in the previous point, try removing all outputs with `cleanup ./`.
+- In the same way as in the previous point, try removing all outputs with `stepup clean ./`.

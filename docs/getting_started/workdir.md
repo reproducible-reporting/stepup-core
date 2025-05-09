@@ -39,6 +39,8 @@ This will create an output file `out/hello.txt`
 
 - The [`step()`][stepup.core.api.step] function
   and related functions that use `step()` internally
+  ([`runsh()`][stepup.core.api.runsh], [`plan()`][stepup.core.api.plan],
+  [`script()`][stepup.core.api.script], [`call()`][stepup.core.api.call], ...)
   all return a [`StepInfo`][stepup.core.stepinfo.StepInfo] object,
   which may be used for defining follow-up steps.
   The `StepInfo` objects follow the same convention:

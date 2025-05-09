@@ -15,7 +15,7 @@ The following `plan.py` defines two steps, with the second making use of the out
 The placeholders `${inp}` and `${out}` are replaced by the `inp` and `out` keyword arguments.
 (This happens early, before the steps are sent to the director process.)
 
-The [`graph()`][stepup.core.interact.graph] function writes the graph in a few formats,
+The [`graph()`][stepup.core.api.graph] function writes the graph in a few formats,
 which are used for visualization below.
 
 Now run StepUp with two workers:
@@ -30,7 +30,7 @@ You will see the following output:
 {% include 'getting_started/dependencies/stdout.txt' %}
 ```
 
-Despite the fact that StepUp has launched two workers, it carries out the steps sequentially,
+Despite the fact that StepUp has launched two workers, it carries out your `runsh` steps sequentially,
 because it knows that the output of the first step will be used by the second.
 
 Note, however, that the `echo` commands are already started before `./plan.py` has finished.
@@ -84,15 +84,15 @@ In this example, there are three nodes that create other nodes:
 - The `root` node is an internal node controlled by StepUp.
   Upon startup, StepUp creates `root` and a few other nodes by default:
     - The initial `plan.py` file
-    - The initial `./plan.py` step (with working directory `./`.)
+    - The initial `runsh ./plan.py` step (with working directory `./`).
     - The working directory `./` is created just like any other directory that is used.
 
-- The `./plan.py` step creates two nodes,
-  see the two `step()` function calls in the `plan.py` script above.
-    - The `grep` step.
-        - The `echo` step.
+- The `runsh ./plan.py` step creates two nodes,
+  see the two `runsh()` function calls in the `plan.py` script above.
+    - The `runsh grep ...` step.
+    - The `runsh echo ...` step.
 
-- The `echo` step creates one output file: `story.txt`.
+- The `runsh echo ...` step creates one output file: `story.txt`.
 
 This provenance graph is used by StepUp to decide which steps to keep and which to clean up.
 After some files have changed and StepUp is run again, some nodes may no longer be created.
@@ -128,7 +128,7 @@ Example:
 - Change the order of the two steps in `plan.py` and run `stepup boot -n 2`.
   The step `./plan.py` is executed because the file has changed,
   but the `echo` and `grep` steps are skipped.
-  This shows that `plan.py` is nothing but a plan, not its execution.
+  This shows that `plan.py` is nothing but a plan, and it does not execute the steps itself.
   When `plan.py` is executed, it simply sends instructions to the director process.
 
 - Rename the file `story.txt` to `lines.txt` (in both steps) and restart StepUp.

@@ -22,78 +22,6 @@
 Most of these tools are used for testing purposes
 They can also be employed to create keyboard shortcuts within your IDE,
 or to interact with StepUp running in the background on a remote server.
-
-For example, one may bind the following command to an IDE's keyboard shortcut:
-
-```bash
-stepup run
-```
-
-This command must be executed in the top-level directory
-where a `stepup` command is running in interactive mode.
-(One may also set the environment variable `STEPUP_ROOT` instead.)
-
-## Configuration of a Task in VSCode
-
-You can define a
-[Custom Task in VSCode](https://code.visualstudio.com/docs/editor/tasks#_custom-tasks)
-to start the run phase of a StepUp instance running in a terminal.
-
-For this example, we will assume the following:
-
-- You have an `.envrc` file that defines the environment variable `STEPUP_ROOT`
-  and you have configured and installed [direnv](https://direnv.net/).
-- You have an interactive StepUp instance running in a terminal (with `stepup -w`).
-- You want to use the `ctrl+'` keybinding to start the run phase
-  while you are editing a file in the StepUp project.
-
-Add the following to your user `tasks.json` file:
-
-```json
-{
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "StepUp run",
-      "type": "shell",
-      "command": "eval \\"$(direnv export bash)\\"; stepup run",
-      "options": {
-        "cwd": "${fileDirname}"
-      },
-      "presentation": {
-        "echo": true,
-        "reveal": "silent",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": false,
-        "clear": true
-      }
-    }
-  ]
-}
-```
-
-This will create a task that executes the command in the directory of the file you are editing.
-With `eval \"$(direnv export bash)\"`, the environment variables from your `.envrc` file are loaded.
-The rest of the `command` field is the same as the command we used in the first example.
-
-The following `keybindings.json` file will bind `ctrl+'` to run the task:
-
-```json
-[
-  {
-    "key": "ctrl+'",
-    "command": "workbench.action.tasks.runTask",
-    "args": "StepUp run"
-  }
-]
-```
-
-VSCode will automatically save the file when you run the task with this keybinding.
-
-Instead of this shortcut, you can also use `stepup -W`,
-which will automatically rerun the build as soon as you delete, save or add a relevant file.
-
 """
 
 import argparse
@@ -109,16 +37,30 @@ __all__ = ()
 
 
 def shutdown(args: argparse.Namespace):
-    """Stop the director."""
+    """Drain the schedule. wait for running steps to complete and then exit StepUp."""
     get_rpc_client(get_socket()).call.shutdown()
 
 
 def shutdown_tool(subparser: argparse.ArgumentParser) -> callable:
     subparser.add_parser(
         "shutdown",
-        help="Stop the director. Call again to kill running steps.",
+        help="Drain the scheduler, wait for running steps to complete and then exit StepUp. "
+        "Call again to kill running steps.",
     )
     return shutdown
+
+
+def drain(args: argparse.Namespace):
+    """Drain the scheduler. (No new steps are started.)"""
+    get_rpc_client(get_socket()).call.drain()
+
+
+def drain_tool(subparser: argparse.ArgumentParser) -> callable:
+    subparser.add_parser(
+        "drain",
+        help="Drain the scheduler. (No new steps are started.)",
+    )
+    return drain
 
 
 def join(args: argparse.Namespace):

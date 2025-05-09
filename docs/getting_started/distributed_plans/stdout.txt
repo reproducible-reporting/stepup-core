@@ -1,21 +1,21 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post3)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post12)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./plan.py  # wd=sub/
-   SUCCESS │ ./plan.py  # wd=sub/
-     START │ cat part2.txt  # wd=sub/
-   SUCCESS │ cat part2.txt  # wd=sub/
+     START │ runsh ./plan.py
+   SUCCESS │ runsh ./plan.py
+     START │ runsh ./plan.py  # wd=sub/
+   SUCCESS │ runsh ./plan.py  # wd=sub/
+     START │ runsh cat part2.txt  # wd=sub/
+   SUCCESS │ runsh cat part2.txt  # wd=sub/
 ─────────────────────────────── Standard output ────────────────────────────────
 This is part 2.
 ────────────────────────────────────────────────────────────────────────────────
-     START │ cat ../part1.txt  # wd=sub/
-   SUCCESS │ cat ../part1.txt  # wd=sub/
+     START │ runsh cat ../part1.txt  # wd=sub/
+   SUCCESS │ runsh cat ../part1.txt  # wd=sub/
 ─────────────────────────────── Standard output ────────────────────────────────
 This is part 1.
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-  DIRECTOR │ Stopping workers.
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Stopping workers
   DIRECTOR │ See you!

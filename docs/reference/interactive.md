@@ -1,12 +1,18 @@
-# Interactive Command Reference
+# Interactive Usage Reference
 
 !!! note
+
+    Changes as of StepUp 3.0.0:
+
+    - One has to start the StepUp workflow with `stepup boot` instead of `stepup`.
 
     Changes as of StepUp 2.0.0:
 
     - The command-line options related to interactive usage have changed.
     - Keyboard interaction is always available, irrespective of the command-line options.
     - The `f` and `t` keys have been removed.
+
+## Terminal User Interface
 
 By default, StepUp performs a single pass execution of the workflow.
 You can use StepUp interactively by adding
@@ -44,5 +50,102 @@ These commands are defined as follows:
 Note that these interactive keys also work without the `-w` or `-W` option,
 except for `r` which only has an effect during the *watch phase*.
 
-Note that `SIGINT` (pressing `Ctrl+C`) and `SIGTERM` (sending a `kill` signal)
-are also supported to stop StepUp.
+Note that the `SIGINT` signal (pressing `Ctrl+C`) are also supported to stop StepUp.
+
+## Interacting With a Background StepUp process
+
+You can run StepUp in the background in several ways:
+
+- Simply start it as `stepup boot > stepup.log &`
+  and then use `tail -f stepup.log` to see the output.
+- Start StepUp inside a `screen` or `tmux` session.
+- Start StepUp in a Slurm/PBS/... batch job on a cluster.
+
+In all these cases, keyboard interaction is not possible.
+However, you can still interact with StepUp as follows:
+
+1. Open a terminal on the machine where StepUp is running.
+2. Go to the directory where StepUp is running with `cd`.
+3. Run one of the following commands:
+
+    - `stepup run`
+    - `stepup shutdown`
+    - `stepup drain`
+    - `stepup join`
+    - `stepup graph`
+    - `stepup status` (Prints detailed status of the workflow)
+
+## Interacting With StepUp From Within an IDE
+
+If you want to avoid switching to a terminal to restart StepUp,
+you can run it in "watch mode" (`stepup boot -w`) and configure your IDE
+to bind the following command to an IDE's keyboard shortcut:
+
+```bash
+stepup run
+```
+
+This command must be executed in the top-level directory
+where a `stepup boot` command is running in interactive mode.
+(One may also set the environment variable `STEPUP_ROOT` instead.)
+
+### Configuration of a Task in VSCode
+
+You can define a
+[Custom Task in VSCode](https://code.visualstudio.com/docs/editor/tasks#_custom-tasks)
+to start the run phase of a StepUp instance running in a terminal.
+
+For this example, we will assume the following:
+
+- You have an `.envrc` file that defines the environment variable `STEPUP_ROOT`
+  and you have configured and installed [direnv](https://direnv.net/).
+- You have an interactive StepUp instance running in a terminal (with `stepup -w`).
+- You want to use the `ctrl+'` keybinding to start the run phase
+  while you are editing a file in the StepUp project.
+
+Add the following to your user `tasks.json` file:
+
+```json
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "StepUp run",
+      "type": "shell",
+      "command": "eval \\"$(direnv export bash)\\"; stepup run",
+      "options": {
+        "cwd": "${fileDirname}"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    }
+  ]
+}
+```
+
+This will create a task that executes the command in the directory of the file you are editing.
+With `eval \"$(direnv export bash)\"`, the environment variables from your `.envrc` file are loaded.
+The rest of the `command` field is the same as the command we used in the first example.
+
+The following `keybindings.json` file will bind `ctrl+'` to run the task:
+
+```json
+[
+  {
+    "key": "ctrl+'",
+    "command": "workbench.action.tasks.runTask",
+    "args": "StepUp run"
+  }
+]
+```
+
+VSCode will automatically save the file when you run the task with this keybinding.
+
+Instead of this shortcut, you can also use `stepup boot -W`,
+which will automatically rerun the build as soon as you delete, save or add a relevant file.

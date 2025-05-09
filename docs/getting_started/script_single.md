@@ -88,8 +88,6 @@ def info():
         "inp": ..., # a single input path or a list of input paths
         "out": ..., # a single output path or a list of input paths
         "static": ..., # declare a static file or a list of static files
-        "stdout": ..., # redirect the standard output to a file (StepUp 1.3.0)
-        "stderr": ..., # redirect the standard error to a file (StepUp 1.3.0)
         "just_any": "argument that you want to add",
     }
 
@@ -107,7 +105,7 @@ if __name__ == "__main__":
 
         All dictionary items are optional.
         The `info()` function can even return an empty dictionary.
-        The keys `inp`, `out`, `static`, `stdout` and `stderr` affect the planning the run part,
+        The keys `inp`, `out` and `static` affect the planning the run part,
         as explained in the comments above.
 
 - The `run()` function is called to perform the useful work and

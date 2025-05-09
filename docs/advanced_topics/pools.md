@@ -5,7 +5,7 @@ so StepUp will launch any queued step as soon as a worker becomes available.
 A "pool" is a simple mechanism to limit parallelization in the few cases that this would be counterproductive:
 
 1. Some programs behave poorly (have bugs) when multiple instances are running in parallel.
-   Here are a few examples encountered in the development of StepUp RepRep:
+   Here are a few examples encountered (and now also resolved) in the development of StepUp RepRep:
     - [Inkscape/issue4716](https://gitlab.com/inkscape/inkscape/-/issues/4716)
     - [markdown-katex/issue16](https://github.com/mbarkhau/markdown-katex/issues/16)
 
@@ -17,9 +17,6 @@ A "pool" is a simple mechanism to limit parallelization in the few cases that th
 One defines a pool with [`pool(name, size)`][stepup.core.api.pool].
 The size is the maximum number of steps running concurrently within the pool.
 Steps are assigned to a pool by defining them with the `pool=name` keyword argument.
-
-For StepUp, mainly the first use case (working around concurrency bugs) is relevant,
-for which the pool size is 1.
 
 ## Example
 

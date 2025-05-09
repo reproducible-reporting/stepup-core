@@ -2,8 +2,8 @@
 
 When steps use input files written by you, this must be explicitly stated in `plan.py`
 by declaring the human-written files as *static files*.
-This informs StepUp that it does not need to wait for other steps
-whose outputs are the required files.
+This informs StepUp that such files are readily available,
+unlike files that are outputs of steps that still need to be executed.
 
 ## Example
 

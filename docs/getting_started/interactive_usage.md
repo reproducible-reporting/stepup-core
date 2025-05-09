@@ -2,7 +2,10 @@
 
 !!! note
 
-    The command-line options related to interactive usage have changed in StepUp 2.0.0
+    The command-line options related to interactive usage have changed in StepUp 3.0.0
+
+    More detailed information on interactive usage can be found in the
+    [Interactive Usage Reference](../reference/interactive.md).
 
 All previous tutorials have run StepUp non-interactively, for the sake of simplicity.
 In practice, this is mainly useful when building projects in batch jobs, e.g., in the cloud.
@@ -14,7 +17,7 @@ to demonstrate the interactive use of StepUp.
 Running StepUp as follows will not exit the terminal user interface:
 
 ```bash
-stepup -w
+stepup boot -w
 ```
 
 After the line `PHASE │ watch` appears, StepUp just waits for changes to the (static) files.

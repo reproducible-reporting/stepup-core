@@ -17,7 +17,7 @@ Make this file executable with `chmod +x plan.py`.
 
 1. The first line is required to have the plan executed by the Python 3 interpreter.
 2. The second line imports the [`runsh()`][stepup.core.api.runsh] function from StepUp Core.
-   (It stands for "run in shell".)
+   (It stands for "**run** in a **sh**ell".)
    This module contains functions to communicate with the director process
    of StepUp to define steps and other parts of the workflow.
 3. The last line defines a step that writes `Hello World` to the standard output.
@@ -52,7 +52,7 @@ Let's analyze the output:
   (The hash signs represent random characters.)
 - The `START` and `SUCCESS` lines are shown for steps executed by StepUp:
     - The step `./plan.py` is created by default and runs the script that you just created.
-    - Then the step `echo Hello World` is the step defined in `plan.py`.
+    - Then the step `runsh echo Hello World` is defined in `plan.py`.
 - When a step produces output, it is shown after the step has completed.
 - When no more steps can be executed,
   StepUp checks if it can clean up outdated outpus and then exits.
@@ -73,7 +73,7 @@ The startup sequence is now a bit longer because StepUp loads the workflow from 
 which was created in the first run.
 It looks for relevant file changes and because `plan.py` has not changed,
 it will not rerun it.
-Even if file time stamps have changed, it will also check if files have actually changed
+If file time stamps have changed, it will also check if files have actually changed
 by comparing a [Blake2 hash](https://en.wikipedia.org/wiki/BLAKE_(hash_function)#BLAKE2)
 of input files, used environment variables and produced outputs.
 When you manually remove `.stepup/graph.db`,

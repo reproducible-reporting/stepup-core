@@ -1,11 +1,11 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post16)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post12)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
   DIRECTOR │ Launched worker 1
      PHASE │ run
-     START │ runpy ./plan.py
+     START │ runsh ./plan.py
      START │ runsh echo First line. > story.txt; echo Second line. >> story.txt
-   SUCCESS │ runpy ./plan.py
+   SUCCESS │ runsh ./plan.py
    SUCCESS │ runsh echo First line. > story.txt; echo Second line. >> story.txt
      START │ runsh grep First story.txt
    SUCCESS │ runsh grep First story.txt

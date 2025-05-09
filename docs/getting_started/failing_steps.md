@@ -19,6 +19,6 @@ Here, we provide some guidance on how to handle failing steps.
   If the source of the problem is unrelated to STATIC files known to StepUp,
   fixing the problem will not result in a file change that StepUp can detect.
   Therefore, when you restart StepUp from scratch,
-  it will automatically rerun previously failed steps.
-  However, when working interactively with `-w` or `-W`,
-  failed steps will not be rerun automatically.
+  it will rerun all previously failed steps.
+  When working interactively with `-w` or `-W`,
+  failed steps will are only rerun if their inputs have changed.

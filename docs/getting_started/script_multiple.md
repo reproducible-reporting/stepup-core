@@ -23,8 +23,6 @@ def case_info(case: int):
         "inp": ..., # a single input path or a list of input paths
         "out": ..., # a single output path or a list of input paths
         "static": ..., # declare a static file or a list of static files
-        "stdout": ..., # redirect the standard output to a file (StepUp 1.3.0)
-        "stderr": ..., # redirect the standard error to a file (StepUp 1.3.0)
         "just_any": "argument that you want to add",
     }
 
