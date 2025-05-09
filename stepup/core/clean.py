@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""Command-line interface to manually clean up output files and/or directories."""
+"""Command-line interface to clean up output files and/or directories."""
 
 import argparse
 import os
@@ -34,10 +34,33 @@ from .hash import FileHash
 from .utils import mynormpath, translate, translate_back
 
 
-def main():
-    """Main program."""
-    args = parse_args()
+def clean_tool(subparser: argparse.ArgumentParser) -> callable:
+    parser = subparser.add_parser(
+        "clean",
+        help="Recursively remove outputs of a file or in a directory. "
+        "This script follows the dependency graph only, not the provenance graph, to find outputs.",
+    )
+    parser.add_argument(
+        "paths",
+        nargs="+",
+        help="A list of paths to consider for the cleanup. "
+        "Given a file, all depending outputs will be cleaned. "
+        "The file itself is also removed if it is not static. "
+        "Given a directory, all containing outputs will be removed. "
+        "The directory itself is also removed if it is not static. "
+        "The cleanup is performed recursively: outputs of outputs are also removed, etc.",
+    )
+    parser.add_argument(
+        "-d",
+        "--dry-run",
+        action="store_true",
+        help="Do not remove any files, just show what would be done.",
+    )
+    return main
 
+
+def main(args: argparse.Namespace):
+    """Main program."""
     # Get all unique paths relative to STEPUP_ROOT, possible amended with a trailing slash.
     tr_paths = set()
     for path in args.paths:
@@ -56,12 +79,12 @@ def main():
             src.backup(dst)
         finally:
             src.close()
-        cleanup(dst, tr_paths, args)
+        clean(dst, tr_paths, args)
     finally:
         dst.close()
 
 
-def cleanup(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace):
+def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace):
     """Perform the cleanup of the given paths.
 
     Parameters
@@ -178,32 +201,6 @@ def search_consuming_paths(
     finally:
         con.execute(DROP_PATHS)
         con.execute(DROP_CONSUMERS)
-
-
-def parse_args():
-    """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(
-        prog="cleanup",
-        description="Recursively remove outputs of a file or in a directory.\n\n"
-        "This script follows the dependency graph only, not the provenance graph, to find outputs.",
-    )
-    parser.add_argument(
-        "paths",
-        nargs="+",
-        help="A list of paths to consider for the cleanup. "
-        "Given a file, all depending outputs will be cleaned. "
-        "The file itself is also removed if it is not static. "
-        "Given a directory, all containing outputs will be removed. "
-        "The directory itself is also removed if it is not static. "
-        "The cleanup is performed recursively: outputs of outputs are also removed, etc.",
-    )
-    parser.add_argument(
-        "-d",
-        "--dry-run",
-        action="store_true",
-        help="Do not remove any files, just show what would be done.",
-    )
-    return parser.parse_args()
 
 
 if __name__ == "__main__":

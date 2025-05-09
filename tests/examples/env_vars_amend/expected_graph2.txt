@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,35 +9,35 @@ file:./
             supplies   file:demovars.py
             supplies   file:output.txt
             supplies   file:plan.py
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runsh ./demovars.py > output.txt
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./demovars.py > output.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:demovars.py
-             creates   step:stepup.core.actions.runsh ./demovars.py > output.txt
+             creates   step:runsh ./demovars.py > output.txt
 
 file:demovars.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runsh ./demovars.py > output.txt
+            supplies   step:runsh ./demovars.py > output.txt
 
-step:stepup.core.actions.runsh ./demovars.py > output.txt
+step:runsh ./demovars.py > output.txt
                state = SUCCEEDED
              env_var = ENV_VAR_TEST_STEPUP_SDASFD [amended]
            explained = yes
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:demovars.py
              creates   file:output.txt
@@ -45,6 +45,6 @@ step:stepup.core.actions.runsh ./demovars.py > output.txt
 
 file:output.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh ./demovars.py > output.txt
+          created by   step:runsh ./demovars.py > output.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh ./demovars.py > output.txt
+            consumes   step:runsh ./demovars.py > output.txt

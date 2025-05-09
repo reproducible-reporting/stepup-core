@@ -21,12 +21,15 @@
 
 Actions are functions that can be safely executed by a worker,
 which means they are subject to some restrictions:
+
 - They should not have side effects (e.g., modifying global variables).
+  Importing modules is usually fine.
 - They should not use stdin or stdout. (They can write to stderr.)
 - The accept a single string parameter.
 - They return an integer returncode.
 """
 
+import argparse
 import os
 import shlex
 import shutil
@@ -114,3 +117,41 @@ def mkdir(argstr: str) -> int:
         raise ValueError("mkdir requires exactly one argument")
     os.makedirs(args[0], exist_ok=True)
     return 0
+
+
+def act(args: argparse.Namespace) -> int:
+    """Execute an action.
+
+    Parameters
+    ----------
+    action
+        The action to execute.
+    argstr
+        The arguments to pass to the action.
+
+    Returns
+    -------
+    exitcode
+        The exit code of the command.
+    """
+    # Make a dummy work thread to execute the action.
+    work_thread = WorkThread(shlex.join(args.action))
+    return work_thread.run()
+
+
+def act_tool(subparser: argparse.ArgumentParser) -> callable:
+    """Create a subparser for the action tool.
+
+    Parameters
+    ----------
+    subparser
+        The subparser to add the action tool to.
+
+    Returns
+    -------
+    callable
+        The action function.
+    """
+    parser = subparser.add_parser("act", help="Execute an action.")
+    parser.add_argument("action", help="The action to execute.", nargs="+")
+    return act

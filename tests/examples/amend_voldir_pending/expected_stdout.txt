@@ -13,7 +13,7 @@ nonexisting/
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              AWAITED  nonexisting/
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runpy ./demo.py
+Action                runpy ./demo.py
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (nonexisting/) [amended]

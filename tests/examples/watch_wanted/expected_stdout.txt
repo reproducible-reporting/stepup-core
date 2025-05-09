@@ -8,13 +8,13 @@
              AWAITED  input1.txt
              AWAITED  input2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runsh cp input1.txt output1.txt
+Action                runsh cp input1.txt output1.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (input1.txt)
 Outputs      AWAITED  output1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runsh cp input2.txt output2.txt
+Action                runsh cp input2.txt output2.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (input2.txt)
@@ -32,19 +32,19 @@ Outputs      AWAITED  output2.txt
              AWAITED  input1.txt
              AWAITED  input2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runpy ./plan.py
+Action                runpy ./plan.py
 Working directory     ./
 Declares      STATIC  static.txt
 Inputs        STATIC  ./
              MISSING  plan.py
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runsh cp input1.txt output1.txt
+Action                runsh cp input1.txt output1.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (input1.txt)
 Outputs      AWAITED  output1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runsh cp input2.txt output2.txt
+Action                runsh cp input2.txt output2.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (input2.txt)

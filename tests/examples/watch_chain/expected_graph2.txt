@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -13,60 +13,60 @@ file:./
             supplies   file:plan.py
             supplies   file:report.txt
             supplies   file:use_config.py
-            supplies   step:stepup.core.actions.copy report.txt copy.txt
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runpy ./use_config.py
-            supplies   step:stepup.core.actions.runsh echo All is fine. > other.log
-            supplies   step:stepup.core.actions.runsh echo log written to other.log. > report.txt
+            supplies   step:copy report.txt copy.txt
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./use_config.py
+            supplies   step:runsh echo All is fine. > other.log
+            supplies   step:runsh echo log written to other.log. > report.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:config.json
              creates   file:use_config.py
-             creates   step:stepup.core.actions.copy report.txt copy.txt
-             creates   step:stepup.core.actions.runpy ./use_config.py
+             creates   step:copy report.txt copy.txt
+             creates   step:runpy ./use_config.py
 
 file:config.json
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./use_config.py
+            supplies   step:runpy ./use_config.py
 
 file:use_config.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./use_config.py
+            supplies   step:runpy ./use_config.py
 
-step:stepup.core.actions.runpy ./use_config.py
+step:runpy ./use_config.py
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:config.json
             consumes   file:use_config.py
              creates   file:output.txt
-             creates   step:stepup.core.actions.runsh echo All is fine. > other.log
-             creates   step:stepup.core.actions.runsh echo log written to other.log. > report.txt
+             creates   step:runsh echo All is fine. > other.log
+             creates   step:runsh echo log written to other.log. > report.txt
             supplies   file:output.txt
 
 file:output.txt
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./use_config.py
+          created by   step:runpy ./use_config.py
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./use_config.py
+            consumes   step:runpy ./use_config.py
 
-step:stepup.core.actions.copy report.txt copy.txt
+step:copy report.txt copy.txt
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:report.txt
              creates   file:copy.txt
@@ -74,33 +74,33 @@ step:stepup.core.actions.copy report.txt copy.txt
 
 file:report.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh echo log written to other.log. > report.txt
+          created by   step:runsh echo log written to other.log. > report.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh echo log written to other.log. > report.txt
-            supplies   step:stepup.core.actions.copy report.txt copy.txt
+            consumes   step:runsh echo log written to other.log. > report.txt
+            supplies   step:copy report.txt copy.txt
 
 file:copy.txt
                state = BUILT
-          created by   step:stepup.core.actions.copy report.txt copy.txt
+          created by   step:copy report.txt copy.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.copy report.txt copy.txt
+            consumes   step:copy report.txt copy.txt
 
-step:stepup.core.actions.runsh echo All is fine. > other.log
+step:runsh echo All is fine. > other.log
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./use_config.py
+          created by   step:runpy ./use_config.py
             consumes   file:./
              creates   file:other.log
             supplies   file:other.log
 
 file:other.log
                state = BUILT
-          created by   step:stepup.core.actions.runsh echo All is fine. > other.log
+          created by   step:runsh echo All is fine. > other.log
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh echo All is fine. > other.log
+            consumes   step:runsh echo All is fine. > other.log
 
-step:stepup.core.actions.runsh echo log written to other.log. > report.txt
+step:runsh echo log written to other.log. > report.txt
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./use_config.py
+          created by   step:runpy ./use_config.py
             consumes   file:./
              creates   file:report.txt
             supplies   file:report.txt

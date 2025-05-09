@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -13,19 +13,19 @@ file:./
             supplies   file:script is cool.py
             supplies   file:the road to hell is paved with whitespace.txt
             supplies   file:white space leaves a lot of room for mistakes.txt
-            supplies   step:stepup.core.actions.copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-            supplies   step:stepup.core.actions.runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
-            supplies   step:stepup.core.actions.runpy './script is cool.py' plan
-            supplies   step:stepup.core.actions.runpy './script is cool.py' run
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+            supplies   step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
+            supplies   step:runpy './script is cool.py' plan
+            supplies   step:runpy './script is cool.py' run
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -33,33 +33,33 @@ step:stepup.core.actions.runpy ./plan.py
              creates   file:README NOW.txt
              creates   file:call is cool.py
              creates   file:script is cool.py
-             creates   step:stepup.core.actions.copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-             creates   step:stepup.core.actions.runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
-             creates   step:stepup.core.actions.runpy './script is cool.py' plan
+             creates   step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+             creates   step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
+             creates   step:runpy './script is cool.py' plan
 
 file:README NOW.txt
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-            supplies   step:stepup.core.actions.runpy './script is cool.py' run
+            supplies   step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+            supplies   step:runpy './script is cool.py' run
 
 file:call is cool.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
+            supplies   step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
 
 file:script is cool.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy './script is cool.py' plan
-            supplies   step:stepup.core.actions.runpy './script is cool.py' run
+            supplies   step:runpy './script is cool.py' plan
+            supplies   step:runpy './script is cool.py' run
 
-step:stepup.core.actions.copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:README NOW.txt
              creates   file:white space leaves a lot of room for mistakes.txt
@@ -67,34 +67,34 @@ step:stepup.core.actions.copy 'README NOW.txt' 'white space leaves a lot of room
 
 file:white space leaves a lot of room for mistakes.txt
                state = BUILT
-          created by   step:stepup.core.actions.copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+          created by   step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
             consumes   file:./
-            consumes   step:stepup.core.actions.copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+            consumes   step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
 
-step:stepup.core.actions.runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
+step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:call is cool.py
              creates   file:call is cool_out.json
             supplies   file:call is cool_out.json [amended]
 
-step:stepup.core.actions.runpy './script is cool.py' plan
+step:runpy './script is cool.py' plan
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:script is cool.py
-             creates   step:stepup.core.actions.runpy './script is cool.py' run
+             creates   step:runpy './script is cool.py' run
 
 file:call is cool_out.json
                state = BUILT
-          created by   step:stepup.core.actions.runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
+          created by   step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
+            consumes   step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
 
-step:stepup.core.actions.runpy './script is cool.py' run
+step:runpy './script is cool.py' run
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy './script is cool.py' plan
+          created by   step:runpy './script is cool.py' plan
             consumes   file:./
             consumes   file:README NOW.txt
             consumes   file:script is cool.py
@@ -103,6 +103,6 @@ step:stepup.core.actions.runpy './script is cool.py' run
 
 file:the road to hell is paved with whitespace.txt
                state = BUILT
-          created by   step:stepup.core.actions.runpy './script is cool.py' run
+          created by   step:runpy './script is cool.py' run
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy './script is cool.py' run
+            consumes   step:runpy './script is cool.py' run

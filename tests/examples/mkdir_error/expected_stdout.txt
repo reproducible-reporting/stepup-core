@@ -8,7 +8,7 @@
              AWAITED  sub/blub/
              AWAITED  sub/
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.mkdir sub/blub/pup/
+Action                mkdir sub/blub/pup/
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (sub/blub/)

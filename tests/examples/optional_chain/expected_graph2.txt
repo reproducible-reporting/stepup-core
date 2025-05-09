@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -12,68 +12,68 @@ file:./
             supplies   file:foo2.txt
             supplies   file:plan.py
             supplies   file:spam.txt
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runsh cat bar.txt > egg.txt
-            supplies   step:stepup.core.actions.runsh cat egg.txt > spam.txt
-            supplies   step:stepup.core.actions.runsh cat foo1.txt foo2.txt > bar.txt
-            supplies   step:stepup.core.actions.runsh echo inp1 > foo1.txt
-            supplies   step:stepup.core.actions.runsh echo inp2 > foo2.txt
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh cat bar.txt > egg.txt
+            supplies   step:runsh cat egg.txt > spam.txt
+            supplies   step:runsh cat foo1.txt foo2.txt > bar.txt
+            supplies   step:runsh echo inp1 > foo1.txt
+            supplies   step:runsh echo inp2 > foo2.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:stepup.core.actions.runsh cat bar.txt > egg.txt
-             creates   step:stepup.core.actions.runsh cat egg.txt > spam.txt
-             creates   step:stepup.core.actions.runsh cat foo1.txt foo2.txt > bar.txt
-             creates   step:stepup.core.actions.runsh echo inp1 > foo1.txt
-             creates   step:stepup.core.actions.runsh echo inp2 > foo2.txt
+             creates   step:runsh cat bar.txt > egg.txt
+             creates   step:runsh cat egg.txt > spam.txt
+             creates   step:runsh cat foo1.txt foo2.txt > bar.txt
+             creates   step:runsh echo inp1 > foo1.txt
+             creates   step:runsh echo inp2 > foo2.txt
 
-step:stepup.core.actions.runsh echo inp1 > foo1.txt
+step:runsh echo inp1 > foo1.txt
                state = SUCCEEDED
            mandatory = REQUIRED
            explained = yes
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:foo1.txt
             supplies   file:foo1.txt
 
 file:foo1.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh echo inp1 > foo1.txt
+          created by   step:runsh echo inp1 > foo1.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh echo inp1 > foo1.txt
-            supplies   step:stepup.core.actions.runsh cat foo1.txt foo2.txt > bar.txt
+            consumes   step:runsh echo inp1 > foo1.txt
+            supplies   step:runsh cat foo1.txt foo2.txt > bar.txt
 
-step:stepup.core.actions.runsh echo inp2 > foo2.txt
+step:runsh echo inp2 > foo2.txt
                state = SUCCEEDED
            mandatory = REQUIRED
            explained = yes
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:foo2.txt
             supplies   file:foo2.txt
 
 file:foo2.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh echo inp2 > foo2.txt
+          created by   step:runsh echo inp2 > foo2.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh echo inp2 > foo2.txt
-            supplies   step:stepup.core.actions.runsh cat foo1.txt foo2.txt > bar.txt
+            consumes   step:runsh echo inp2 > foo2.txt
+            supplies   step:runsh cat foo1.txt foo2.txt > bar.txt
 
-step:stepup.core.actions.runsh cat foo1.txt foo2.txt > bar.txt
+step:runsh cat foo1.txt foo2.txt > bar.txt
                state = SUCCEEDED
            mandatory = REQUIRED
            explained = yes
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:foo1.txt
             consumes   file:foo2.txt
@@ -82,16 +82,16 @@ step:stepup.core.actions.runsh cat foo1.txt foo2.txt > bar.txt
 
 file:bar.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh cat foo1.txt foo2.txt > bar.txt
+          created by   step:runsh cat foo1.txt foo2.txt > bar.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh cat foo1.txt foo2.txt > bar.txt
-            supplies   step:stepup.core.actions.runsh cat bar.txt > egg.txt
+            consumes   step:runsh cat foo1.txt foo2.txt > bar.txt
+            supplies   step:runsh cat bar.txt > egg.txt
 
-step:stepup.core.actions.runsh cat bar.txt > egg.txt
+step:runsh cat bar.txt > egg.txt
                state = SUCCEEDED
            mandatory = REQUIRED
            explained = yes
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:bar.txt
              creates   file:egg.txt
@@ -99,15 +99,15 @@ step:stepup.core.actions.runsh cat bar.txt > egg.txt
 
 file:egg.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh cat bar.txt > egg.txt
+          created by   step:runsh cat bar.txt > egg.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh cat bar.txt > egg.txt
-            supplies   step:stepup.core.actions.runsh cat egg.txt > spam.txt
+            consumes   step:runsh cat bar.txt > egg.txt
+            supplies   step:runsh cat egg.txt > spam.txt
 
-step:stepup.core.actions.runsh cat egg.txt > spam.txt
+step:runsh cat egg.txt > spam.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:egg.txt
              creates   file:spam.txt
@@ -115,6 +115,6 @@ step:stepup.core.actions.runsh cat egg.txt > spam.txt
 
 file:spam.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh cat egg.txt > spam.txt
+          created by   step:runsh cat egg.txt > spam.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh cat egg.txt > spam.txt
+            consumes   step:runsh cat egg.txt > spam.txt

@@ -21,7 +21,7 @@ Make it executable and run it with StepUp as follows:
 
 ```bash
 chmod +x plan.py
-stepup -n 1
+stepup boot -n 1
 ```
 
 You should get the following output:

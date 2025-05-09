@@ -4,7 +4,7 @@
         0/1 |      START │ runpy ./plan.py
         0/1 |       FAIL │ runpy ./plan.py
 ────────────────────────────────── Step info ───────────────────────────────────
-Action                stepup.core.actions.runpy ./plan.py
+Command               stepup act runpy ./plan.py
 Return code           1
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
@@ -17,7 +17,7 @@ Return code           1
              MISSING  static/
              MISSING  static/foo/bar/README.md
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runsh cat static/foo/bar/README.md
+Action                runsh cat static/foo/bar/README.md
 Working directory     ./
 Inputs        STATIC  ./
              MISSING  static/foo/bar/

@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,25 +10,25 @@ file:./
             supplies   file:plan.py
             supplies   file:second.txt
             supplies   file:third.txt
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runsh cp -v first.txt second.txt
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh cp -v first.txt second.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:stepup.core.actions.runsh cp -v first.txt second.txt
+             creates   step:runsh cp -v first.txt second.txt
 
-step:stepup.core.actions.runsh cp -v first.txt second.txt
+step:runsh cp -v first.txt second.txt
                state = PENDING
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   (file:first.txt)
             consumes   file:./
              creates   file:second.txt
@@ -39,16 +39,16 @@ step:stepup.core.actions.runsh cp -v first.txt second.txt
 (file:first.txt)
                state = AWAITED
             consumes   file:./
-            supplies   step:stepup.core.actions.runsh cp -v first.txt second.txt
+            supplies   step:runsh cp -v first.txt second.txt
 
 file:second.txt
                state = AWAITED
-          created by   step:stepup.core.actions.runsh cp -v first.txt second.txt
+          created by   step:runsh cp -v first.txt second.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh cp -v first.txt second.txt
+            consumes   step:runsh cp -v first.txt second.txt
 
 file:third.txt
                state = VOLATILE
-          created by   step:stepup.core.actions.runsh cp -v first.txt second.txt
+          created by   step:runsh cp -v first.txt second.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh cp -v first.txt second.txt
+            consumes   step:runsh cp -v first.txt second.txt

@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making failed steps
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest d9e628eb ➜ a1e737f5, size 264 ➜ 252)

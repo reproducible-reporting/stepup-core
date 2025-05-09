@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making failed steps
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    UPDATED │ ENV_VAR_TEST_STEPUP_IDX ='3' ➜ ='1'
@@ -8,7 +8,7 @@
         2/3 |      PHASE │ run
         2/3 |     NOSKIP │ runpy ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest ef39a1f8 ➜ 64c88b1f, out_digest 786a02f7 ➜ (unset)
+Modified step hash   explained, inp_digest 0fb56b6b ➜ 27021013, out_digest 786a02f7 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_IDX ='3' ➜ ='1'
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./

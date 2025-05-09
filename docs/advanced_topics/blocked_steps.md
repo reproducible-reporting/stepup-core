@@ -47,7 +47,7 @@ Make this plan executable and run it with StepUp:
 
 ```bash
 chmod +x plan.py
-stepup -n 1
+stepup boot -n 1
 ```
 
 You should get the following terminal output:

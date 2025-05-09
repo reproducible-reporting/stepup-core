@@ -1,38 +1,38 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:oops.txt
             supplies   file:plan.py
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runsh rm .sjdksjdfkjasdfkdjsak
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh rm .sjdksjdfkjasdfkdjsak
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:stepup.core.actions.runsh rm .sjdksjdfkjasdfkdjsak
+             creates   step:runsh rm .sjdksjdfkjasdfkdjsak
 
-step:stepup.core.actions.runsh rm .sjdksjdfkjasdfkdjsak
+step:runsh rm .sjdksjdfkjasdfkdjsak
                state = FAILED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:oops.txt
             supplies   file:oops.txt
 
 file:oops.txt
                state = AWAITED
-          created by   step:stepup.core.actions.runsh rm .sjdksjdfkjasdfkdjsak
+          created by   step:runsh rm .sjdksjdfkjasdfkdjsak
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh rm .sjdksjdfkjasdfkdjsak
+            consumes   step:runsh rm .sjdksjdfkjasdfkdjsak

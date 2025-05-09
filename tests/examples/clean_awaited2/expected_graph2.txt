@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,32 +9,32 @@ file:./
             supplies   file:input.txt
             supplies   file:output.txt
             supplies   file:plan.py
-            supplies   step:stepup.core.actions.copy input.txt output.txt
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:copy input.txt output.txt
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:input.txt
-             creates   step:stepup.core.actions.copy input.txt output.txt
+             creates   step:copy input.txt output.txt
 
 file:input.txt
                state = MISSING
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.copy input.txt output.txt
+            supplies   step:copy input.txt output.txt
 
-step:stepup.core.actions.copy input.txt output.txt
+step:copy input.txt output.txt
                state = PENDING
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:input.txt
              creates   file:output.txt
@@ -42,6 +42,6 @@ step:stepup.core.actions.copy input.txt output.txt
 
 file:output.txt
                state = AWAITED
-          created by   step:stepup.core.actions.copy input.txt output.txt
+          created by   step:copy input.txt output.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.copy input.txt output.txt
+            consumes   step:copy input.txt output.txt

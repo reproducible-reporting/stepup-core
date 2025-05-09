@@ -7,7 +7,7 @@
         2/3 |    SUCCESS │ runpy ./work.py
         2/2 |       FAIL │ runsh cat f1.txt f2.txt > f3.txt
 ────────────────────────────────── Step info ───────────────────────────────────
-Action                stepup.core.actions.runsh cat f1.txt f2.txt > f3.txt
+Command               stepup act runsh cat f1.txt f2.txt > f3.txt
 ──────────────────────────────── Invalid inputs ────────────────────────────────
 Input changed unexpectedly: f1.txt (digest 7ea59e7a ➜ a97fe9ac, size 3 ➜ 15)
 ────────────────────────────────────────────────────────────────────────────────

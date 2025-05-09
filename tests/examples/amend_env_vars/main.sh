@@ -1,5 +1,5 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and cleanup.
+# Exit on first error and clean up.
 set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
@@ -7,20 +7,12 @@ rm -rvf $(cat .gitignore)
 # Run the example
 export INP_VAR_TEST_STEPUP_FOO="foo"
 export INP_VAR_TEST_STEPUP_BAR="bar"
-stepup -w -n 1 & # > current_stdout.txt &
-
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
+stepup boot -n 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph")
-join()
-EOD
+stepup wait
+stepup graph current_graph
+stepup join
 
 # Wait for background processes, if any.
 wait

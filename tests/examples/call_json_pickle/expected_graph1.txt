@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -12,17 +12,17 @@ file:./
             supplies   file:join_out.json
             supplies   file:plan.py
             supplies   file:write.py
-            supplies   step:stepup.core.actions.runpy ./join.py --inp=join_inp.json --out=join_out.json
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runpy ./write.py --inp=join_out.json --out=write_out.json --amend-out
+            supplies   step:runpy ./join.py --inp=join_inp.json --out=join_out.json
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./write.py --inp=join_out.json --out=write_out.json --amend-out
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_CALL_FORMAT [amended]
           created by   root:
@@ -31,32 +31,32 @@ step:stepup.core.actions.runpy ./plan.py
              creates   file:join.py
              creates   file:join_inp.json
              creates   file:write.py
-             creates   step:stepup.core.actions.runpy ./join.py --inp=join_inp.json --out=join_out.json
-             creates   step:stepup.core.actions.runpy ./write.py --inp=join_out.json --out=write_out.json --amend-out
+             creates   step:runpy ./join.py --inp=join_inp.json --out=join_out.json
+             creates   step:runpy ./write.py --inp=join_out.json --out=write_out.json --amend-out
             supplies   file:join_inp.json [amended]
 
 file:join.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./join.py --inp=join_inp.json --out=join_out.json
+            supplies   step:runpy ./join.py --inp=join_inp.json --out=join_out.json
 
 file:write.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./write.py --inp=join_out.json --out=write_out.json --amend-out
+            supplies   step:runpy ./write.py --inp=join_out.json --out=write_out.json --amend-out
 
 file:join_inp.json
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runpy ./join.py --inp=join_inp.json --out=join_out.json
+            consumes   step:runpy ./plan.py
+            supplies   step:runpy ./join.py --inp=join_inp.json --out=join_out.json
 
-step:stepup.core.actions.runpy ./join.py --inp=join_inp.json --out=join_out.json
+step:runpy ./join.py --inp=join_inp.json --out=join_out.json
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:join.py
             consumes   file:join_inp.json
@@ -65,14 +65,14 @@ step:stepup.core.actions.runpy ./join.py --inp=join_inp.json --out=join_out.json
 
 file:join_out.json
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./join.py --inp=join_inp.json --out=join_out.json
+          created by   step:runpy ./join.py --inp=join_inp.json --out=join_out.json
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./join.py --inp=join_inp.json --out=join_out.json
-            supplies   step:stepup.core.actions.runpy ./write.py --inp=join_out.json --out=write_out.json --amend-out
+            consumes   step:runpy ./join.py --inp=join_inp.json --out=join_out.json
+            supplies   step:runpy ./write.py --inp=join_out.json --out=write_out.json --amend-out
 
-step:stepup.core.actions.runpy ./write.py --inp=join_out.json --out=write_out.json --amend-out
+step:runpy ./write.py --inp=join_out.json --out=write_out.json --amend-out
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:join_out.json
             consumes   file:write.py
@@ -81,6 +81,6 @@ step:stepup.core.actions.runpy ./write.py --inp=join_out.json --out=write_out.js
 
 file:check.txt
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./write.py --inp=join_out.json --out=write_out.json --amend-out
+          created by   step:runpy ./write.py --inp=join_out.json --out=write_out.json --amend-out
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./write.py --inp=join_out.json --out=write_out.json --amend-out
+            consumes   step:runpy ./write.py --inp=join_out.json --out=write_out.json --amend-out

@@ -24,7 +24,7 @@ Run the plan interactively with StepUp:
 
 ```bash
 chmod +x plan.py
-stepup -n 1
+stepup boot -n 1
 ```
 
 You should get the following screen output:

@@ -1,5 +1,5 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and cleanup.
+# Exit on first error and clean up.
 set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
@@ -12,19 +12,11 @@ echo "tx" > tail_x.txt
 echo "hy" > head_y.txt
 
 # Run the example
-stepup -w -e -n 1 & # > current_stdout1.txt &
-
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
+stepup boot -n 1 -w -e & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph1")
-EOD
+stepup wait
+stepup graph current_graph1
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
@@ -35,14 +27,11 @@ grep 'hx tx' paste_x.txt
 # Modify nglob results and rerun
 echo "ty" > tail_y.txt
 echo "hz" > head_z.txt
-python3 - << EOD
-from stepup.core.interact import *
-watch_update("tail_y.txt")
-watch_update("head_z.txt")
-run()
-wait()
-graph("current_graph2")
-EOD
+stepup watch-update tail_y.txt
+stepup watch-update head_z.txt
+stepup run
+stepup wait
+stepup graph current_graph2
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
@@ -53,14 +42,11 @@ grep 'hy ty' paste_y.txt
 
 # Modify nglob results and rerun
 rm tail_y.txt
-python3 - << EOD
-from stepup.core.interact import *
-watch_delete("tail_y.txt")
-run()
-wait()
-graph("current_graph3")
-join()
-EOD
+stepup watch-delete tail_y.txt
+stepup run
+stepup wait
+stepup graph current_graph3
+stepup join
 
 # Wait for background processes, if any.
 wait
@@ -76,19 +62,11 @@ grep 'hx tx' paste_x.txt
 echo "ty" > tail_y.txt
 echo "tz" > tail_z.txt
 rm .stepup/*.log
-stepup -w -e -n 1 & # > current_stdout2.txt &
+stepup boot -n 1 -w -e & # > current_stdout2.txt &
 
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
-
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph4")
-join()
-EOD
+stepup wait
+stepup graph current_graph4
+stepup join
 
 # Wait for background processes, if any.
 wait

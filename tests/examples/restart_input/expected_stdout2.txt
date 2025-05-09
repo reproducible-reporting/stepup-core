@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making failed steps
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ input.txt (digest 5d470882 ➜ 4e2397d6, size 6 ➜ 7)

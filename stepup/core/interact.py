@@ -17,40 +17,21 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""Application Programming Interface (API) for interactive use of the director process.
+"""Collection of tools to interact with the StepUp director.
 
-Most of these functions are used for writing tests.
-They can also be employed to create keyboard shortcuts within your IDE.
+Most of these tools are used for testing purposes
+They can also be employed to create keyboard shortcuts within your IDE,
+or to interact with StepUp running in the background on a remote server.
 
 For example, one may bind the following command to an IDE's keyboard shortcut:
 
 ```bash
-STEPUP_DIRECTOR_SOCKET=$(python -c "import stepup.core.director; \
-print(stepup.core.director.get_socket())") \
-python -c 'from stepup.core.interact import run; run()'
+stepup run
 ```
 
 This command must be executed in the top-level directory
 where a `stepup` command is running in interactive mode.
-
-You can better understand how the above example works by breaking it down into two parts:
-
-- The command `python -c "import stepup.core.director; print(stepup.core.director.get_socket())"`
-  prints the path to the socket where the director listens for instructions.
-  This is a randomized temporary path that is created when `stepup` is started.
-  (For technical reasons, this path cannot be deterministic
-  and must be read from `.stepup/log/director`.)
-  By wrapping this command in `STEPUP_DIRECTOR_SOCKET=$(...)`, the path will be
-  assigned to an environment variable `STEPUP_DIRECTOR_SOCKET`,
-  which will be available for the second Python call.
-- The part `python -c 'from stepup.core.interact import run; run()'`
-  has the same effect as pressing `r` in the terminal where StepUp is running.
-  The variable `STEPUP_DIRECTOR_SOCKET` tells which instance of StepUp to interact with.
-
-    (When StepUp runs `plan.py` scripts, they also use this environment variable
-    to interact with the director process.
-    Because these are subprocesses of the director,
-    the `STEPUP_DIRECTOR_SOCKET` is set by the director.)
+(One may also set the environment variable `STEPUP_ROOT` instead.)
 
 ## Configuration of a Task in VSCode
 
@@ -75,10 +56,7 @@ Add the following to your user `tasks.json` file:
     {
       "label": "StepUp run",
       "type": "shell",
-      "command": "eval \\"$(direnv export bash)\\"; \
-STEPUP_DIRECTOR_SOCKET=$(python -c 'import stepup.core.director; \
-print(stepup.core.director.get_socket())') \
-python -c 'from stepup.core.interact import run; run()'",
+      "command": "eval \\"$(direnv export bash)\\"; stepup run",
       "options": {
         "cwd": "${fileDirname}"
       },
@@ -118,38 +96,142 @@ which will automatically rerun the build as soon as you delete, save or add a re
 
 """
 
-from .api import RPC_CLIENT
+import argparse
 
-__all__ = ("graph", "join", "run", "wait", "watch_delete", "watch_update")
+from rich import print  # noqa: A004
 
+from .api import get_rpc_client
+from .director import get_socket
+from .file import FileState
+from .step import StepState
 
-def run():
-    """Exit the watch phase and start running steps whose inputs have changed."""
-    RPC_CLIENT.call.run()
-
-
-def graph(prefix: str):
-    """Write the workflow graph files in text and dot formats."""
-    return RPC_CLIENT.call.graph(prefix)
+__all__ = ()
 
 
-def watch_update(path: str):
-    """Block until the watcher has observed an update of the file."""
-    RPC_CLIENT.call.watch_update(path, _rpc_timeout=-1)
+def shutdown(args: argparse.Namespace):
+    """Stop the director."""
+    get_rpc_client(get_socket()).call.shutdown()
 
 
-def watch_delete(path: str):
-    """Block until the watcher has observed the deletion of the file."""
-    RPC_CLIENT.call.watch_delete(path, _rpc_timeout=-1)
+def shutdown_tool(subparser: argparse.ArgumentParser) -> callable:
+    subparser.add_parser(
+        "shutdown",
+        help="Stop the director. Call again to kill running steps.",
+    )
+    return shutdown
 
 
-def wait():
-    """Block until the runner has become idle."""
-    RPC_CLIENT.call.wait(_rpc_timeout=-1)
-
-
-def join():
+def join(args: argparse.Namespace):
     """Wait for the runner to become idle and stop the director.
 
     This is the same as `wait()` followed by `shutdown()`."""
-    RPC_CLIENT.call.join(_rpc_timeout=-1)
+    get_rpc_client(get_socket()).call.join(_rpc_timeout=-1)
+
+
+def join_tool(subparser: argparse.ArgumentParser) -> callable:
+    subparser.add_parser(
+        "join",
+        help="Wait for the runner to become idle and stop the director.",
+    )
+    return join
+
+
+def graph(args: argparse.Namespace):
+    """Write the workflow graph files in text and dot formats."""
+    get_rpc_client(get_socket()).call.graph(args.prefix)
+
+
+def graph_tool(subparser: argparse.ArgumentParser) -> callable:
+    parser = subparser.add_parser(
+        "graph",
+        help="Write the workflow graph files in text and dot formats.",
+    )
+    parser.add_argument(
+        "prefix",
+        help="Prefix for the output files. The files will be named <prefix>.txt and <prefix>.dot.",
+    )
+    return graph
+
+
+def status(args: argparse.Namespace):
+    """Print the status of the director."""
+    status = get_rpc_client(get_socket()).call.status()
+    print("[bold underline]Step counts[/]")
+    for value, count in status["step_counts"].items():
+        print(f"  {StepState(value).name:10s} {count:6d}")
+    print()
+    print("[bold underline]File counts[/]")
+    for value, count in status["file_counts"].items():
+        print(f"  {FileState(value).name:10s} {count:6d}")
+    print()
+    print("[bold underline]Running steps[/]")
+    for action in status["running_steps"]:
+        print(f"  {action}")
+
+
+def status_tool(subparser: argparse.ArgumentParser) -> callable:
+    subparser.add_parser(
+        "status",
+        help="Print the status of the director.",
+    )
+    return status
+
+
+def run(args: argparse.Namespace):
+    """Exit the watch phase and start running steps whose inputs have changed."""
+    get_rpc_client(get_socket()).call.run()
+
+
+def run_tool(subparser: argparse.ArgumentParser) -> callable:
+    subparser.add_parser(
+        "run",
+        help="Exit the watch phase and start running steps whose inputs have changed.",
+    )
+    return run
+
+
+def watch_update(args: argparse.Namespace):
+    """Block until the watcher has observed an update of the file."""
+    get_rpc_client(get_socket()).call.watch_update(args.path, _rpc_timeout=-1)
+
+
+def watch_update_tool(subparser: argparse.ArgumentParser) -> callable:
+    parser = subparser.add_parser(
+        "watch-update",
+        help="Block until the watcher has observed an update of the file.",
+    )
+    parser.add_argument(
+        "path",
+        help="Path to the file to watch.",
+    )
+    return watch_update
+
+
+def watch_delete(args: argparse.Namespace):
+    """Block until the watcher has observed the deletion of the file."""
+    get_rpc_client(get_socket()).call.watch_delete(args.path, _rpc_timeout=-1)
+
+
+def watch_delete_tool(subparser: argparse.ArgumentParser) -> callable:
+    parser = subparser.add_parser(
+        "watch-delete",
+        help="Block until the watcher has observed the deletion of the file.",
+    )
+    parser.add_argument(
+        "path",
+        help="Path to the file to watch.",
+    )
+    return watch_delete
+
+
+def wait(args: argparse.Namespace):
+    """Block until the runner has become idle."""
+    get_rpc_client(get_socket()).call.wait(_rpc_timeout=-1)
+
+
+def wait_tool(subparser: argparse.ArgumentParser) -> callable:
+    subparser.add_parser(
+        "wait",
+        help="Block until the runner has become idle.",
+    )
+    return wait

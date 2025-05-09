@@ -22,7 +22,7 @@ pong.txt
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              AWAITED  pong.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runpy ./work.py
+Action                runpy ./work.py
 Working directory     ./
 Inputs        STATIC  ./
               STATIC  work.py

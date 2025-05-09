@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -11,16 +11,16 @@ file:./
             supplies   file:plan.py
             supplies   file:subs.txt
             supplies   file:work.py
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runpy ./work.py
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./work.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
@@ -29,27 +29,27 @@ step:stepup.core.actions.runpy ./plan.py
              creates   dg:inp*.txt
              creates   file:subs.txt
              creates   file:work.py
-             creates   step:stepup.core.actions.runpy ./work.py
+             creates   step:runpy ./work.py
 
 file:subs.txt
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./work.py
+            supplies   step:runpy ./work.py
 
 file:work.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
 
 dg:inp*.txt
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
              creates   file:inp2.txt
 
-step:stepup.core.actions.runpy ./work.py
+step:runpy ./work.py
                state = SUCCEEDED
            explained = yes
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:inp2.txt [amended]
             consumes   file:subs.txt
@@ -58,12 +58,12 @@ step:stepup.core.actions.runpy ./work.py
 
 file:copy.txt
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./work.py
+          created by   step:runpy ./work.py
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./work.py
+            consumes   step:runpy ./work.py
 
 file:inp2.txt
                state = STATIC
           created by   dg:inp*.txt
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./work.py
+            supplies   step:runpy ./work.py

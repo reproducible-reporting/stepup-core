@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,27 +9,27 @@ file:./
             supplies   file:copy.txt
             supplies   file:plan.py
             supplies   file:static/
-            supplies   step:stepup.core.actions.copy static/sub/foo.txt copy.txt
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:copy static/sub/foo.txt copy.txt
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
              env_var = ENV_VAR_TEST_STEPUP_INP [amended]
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   dg:static/**
-             creates   step:stepup.core.actions.copy static/sub/foo.txt copy.txt
+             creates   step:copy static/sub/foo.txt copy.txt
 
-step:stepup.core.actions.copy static/sub/foo.txt copy.txt
+step:copy static/sub/foo.txt copy.txt
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:static/sub/
             consumes   file:static/sub/foo.txt
@@ -41,7 +41,7 @@ file:static/sub/
           created by   dg:static/**
             consumes   file:static/
             supplies   file:static/sub/foo.txt
-            supplies   step:stepup.core.actions.copy static/sub/foo.txt copy.txt
+            supplies   step:copy static/sub/foo.txt copy.txt
 
 file:static/
                state = STATIC
@@ -53,16 +53,16 @@ file:static/sub/foo.txt
                state = STATIC
           created by   dg:static/**
             consumes   file:static/sub/
-            supplies   step:stepup.core.actions.copy static/sub/foo.txt copy.txt
+            supplies   step:copy static/sub/foo.txt copy.txt
 
 file:copy.txt
                state = BUILT
-          created by   step:stepup.core.actions.copy static/sub/foo.txt copy.txt
+          created by   step:copy static/sub/foo.txt copy.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.copy static/sub/foo.txt copy.txt
+            consumes   step:copy static/sub/foo.txt copy.txt
 
 dg:static/**
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
              creates   file:static/
              creates   file:static/sub/
              creates   file:static/sub/foo.txt

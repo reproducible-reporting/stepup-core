@@ -21,14 +21,12 @@
 
 import argparse
 import asyncio
-import os
 import subprocess
 import sys
 import tempfile
 import termios
 import threading
 from decimal import Decimal
-from importlib.metadata import version as get_version
 
 import attrs
 from path import Path
@@ -37,17 +35,17 @@ from .asyncio import stoppable_iterator, wait_for_path
 from .director import interpret_num_workers
 from .reporter import ReporterClient, ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
-from .utils import string_to_bool
 
 __all__ = ()
 
 
-def main():
-    asyncio.run(async_main())
+def boot(args: argparse.Namespace):
+    asyncio.run(async_boot(args))
 
 
-async def async_main():
-    args = parse_args()
+async def async_boot(args: argparse.Namespace):
+    if args.watch_first:
+        args.watch = True
     if args.root.absolute() != Path.cwd():
         print("Changing to", args.root)
         args.root.cd()
@@ -232,26 +230,20 @@ async def keyboard(
                 await reporter("KEYBOARD", f"Unsupported key {ch}", pages)
 
 
-def parse_args():
+def boot_tool(subparsers) -> callable:
     """Parse command-line arguments."""
-    version = get_version("stepup")
-    parser = argparse.ArgumentParser(prog="stepup", description="The StepUp build tool")
+    parser = subparsers.add_parser(
+        "boot",
+        help="Boot the StepUp terminal user interface and director process.",
+    )
     parser.add_argument(
         "--num-workers",
         "-n",
         type=Decimal,
         default=Decimal("1.2"),
-        help="Number of workers running in parallel. "
+        help="Number of parallel workers. "
         "When given as a real number with digits after the comma, "
         "it is multiplied with the number of available cores. [default=%(default)s]",
-    )
-    debug = string_to_bool(os.getenv("STEPUP_DEBUG", "0"))
-    parser.add_argument(
-        "--log-level",
-        "-l",
-        default=os.getenv("STEPUP_LOG_LEVEL", "DEBUG" if debug else "WARNING").upper(),
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level. [default=%(default)s]",
     )
     parser.add_argument(
         "--show-perf",
@@ -267,7 +259,6 @@ def parse_args():
         action="store_true",
         help="Explain for every step with recording info why it cannot be skipped.",
     )
-    parser.add_argument("--version", "-V", action="version", version="%(prog)s " + version)
     parser.add_argument(
         "--watch",
         "-w",
@@ -301,24 +292,10 @@ def parse_args():
         "(This can be useful to simplify and reduce the output.)",
     )
     parser.add_argument(
-        "--root",
-        type=Path,
-        default=Path(os.getenv("STEPUP_ROOT", os.getcwd())),
-        help="Directory containing top-level plan.py [default=%(default)s]",
-    )
-    parser.add_argument(
         "--perf",
         default=None,
         nargs="?",
         const=500,
         help="Run the director under perf record, by default at a frequency of 500 Hz.",
     )
-
-    args = parser.parse_args()
-    if args.watch_first:
-        args.watch = True
-    return args
-
-
-if __name__ == "__main__":
-    main()
+    return boot

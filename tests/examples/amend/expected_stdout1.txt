@@ -20,7 +20,7 @@ inp2.txt
         2/3 |      PHASE │ run
         2/3 |     NOSKIP │ runsh echo word2 > inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 7e338bbc, out_digest e27820eb ➜ c01f6e39
+Modified step hash   explained, inp_digest dffe40ae, out_digest e27820eb ➜ c01f6e39
 Modified out hash    inp2.txt (digest 55af8bcf ➜ b0c92f99, size 6 ➜ 15)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./

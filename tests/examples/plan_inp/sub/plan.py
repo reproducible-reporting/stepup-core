@@ -10,7 +10,7 @@ from stepup.core.api import getinfo
 info = getinfo()
 
 # Just checking for the sake of the test:
-assert info.action == "stepup.core.actions.runpy ./plan.py"
+assert info.action == "runpy ./plan.py"
 assert info.workdir == "sub/"
 assert info.inp == ["inp.txt", "plan.py"]
 assert info.env == []

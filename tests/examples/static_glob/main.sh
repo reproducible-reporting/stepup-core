@@ -1,5 +1,5 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and cleanup.
+# Exit on first error and clean up.
 set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
@@ -9,19 +9,11 @@ echo "First input" > inp1.txt
 echo "Second input" > inp2.txt
 
 # Run the example
-stepup -w -e -n 1 & # > current_stdout1.txt &
-
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
+stepup boot -n 1 -w -e & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph1")
-EOD
+stepup wait
+stepup graph current_graph1
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
@@ -34,15 +26,12 @@ grep Second out2.txt
 # Modify nglob results and rerun
 echo "Third input" > inp3.txt
 rm inp1.txt
-python3 - << EOD
-from stepup.core.interact import *
-watch_update("inp3.txt")
-watch_delete("inp1.txt")
-run()
-wait()
-graph("current_graph2")
-join()
-EOD
+stepup watch-update inp3.txt
+stepup watch-delete inp1.txt
+stepup run
+stepup wait
+stepup graph current_graph2
+stepup join
 
 # Wait for background processes, if any.
 wait
@@ -59,19 +48,11 @@ grep Third out3.txt
 echo "Fourth input" > inp4.txt
 rm inp2.txt
 rm .stepup/*.log
-stepup -w -e -n 1 & # > current_stdout2.txt &
+stepup boot -n 1 -w -e & # > current_stdout2.txt &
 
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
-
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph3")
-join()
-EOD
+stepup wait
+stepup graph current_graph3
+stepup join
 
 # Wait for background processes, if any.
 wait

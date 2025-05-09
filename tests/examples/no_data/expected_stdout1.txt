@@ -19,7 +19,7 @@ and watch some football.
         1/2 |    SUCCESS │ runpy ./plan.py
         1/2 |       SKIP │ runsh cat analyzed.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 449cdfed, out_digest 786a02f7
+Same step hash       explained, inp_digest f25e1ed7, out_digest 786a02f7
 Same inp hash        ./
 Same inp hash        analyzed.txt
 ────────────────────────────────────────────────────────────────────────────────

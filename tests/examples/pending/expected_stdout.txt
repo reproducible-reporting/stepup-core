@@ -7,7 +7,7 @@
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              AWAITED  first.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runsh cp -v first.txt second.txt
+Action                runsh cp -v first.txt second.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (first.txt)

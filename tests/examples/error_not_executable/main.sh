@@ -1,11 +1,11 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and cleanup.
+# Exit on first error and clean up.
 set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Run the example
-stepup -w -n 1 & # > current_stdout.txt &
+stepup boot -n 1 -w & # > current_stdout.txt &
 
 # Wait for background processes, if any.
 wait

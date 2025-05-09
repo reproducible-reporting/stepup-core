@@ -23,7 +23,7 @@ Make it executable and run StepUp with a specific value of the variable:
 
 ```bash
 chmod +x plan.py
-MYVAR=foo stepup -n 1
+MYVAR=foo stepup boot -n 1
 ```
 
 You will see the following output:
@@ -39,10 +39,10 @@ as discussed in the [tutorial on dependencies](../getting_started/dependencies.m
 
 ## Try the Following
 
-- Repeat `MYVAR=foo stepup -n 1` without making changes.
+- Repeat `MYVAR=foo stepup boot -n 1` without making changes.
   You will see that the `echo` step is skipped as expected.
 
-- Now run `MYVAR=bar stepup -n 1`.
+- Now run `MYVAR=bar stepup boot -n 1`.
   This time, the variable change will cause the step to be executed.
 
 ## Injecting Environment Variables
@@ -53,7 +53,7 @@ For example:
 
 ```python
 msg = "hello"
-step(f"MESSAGE={msg} " + "echo ${MESSAGE}")
+runsh(f"MESSAGE={msg} " + "echo ${MESSAGE}")
 ```
 
 Note that this is a different mechanism and it practically serves a different purpose.

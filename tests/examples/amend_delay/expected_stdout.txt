@@ -24,7 +24,7 @@ tmp1.txt
 ───────────────────────────── Missing output files ─────────────────────────────
 inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 2ab42b8f, out_digest c0d853a3 ➜ a03072aa
+Modified step hash   explained, inp_digest 3745c053, out_digest c0d853a3 ➜ a03072aa
 Modified out hash    inp2.txt (digest 42746c66 ➜ UNKNOWN, size 21 ➜ 0, mode -rw-r--r-- ➜ ?---------)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
@@ -33,7 +33,7 @@ Same inp hash        ./
         3/4 |    SUCCESS │ runsh echo Contents of inp2.txt > inp2.txt
         3/4 |       SKIP │ runsh ./work.py > log.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 51356bac, out_digest 7d6b25ba
+Same step hash       explained, inp_digest 7baa8d9e, out_digest 7d6b25ba
 Same inp hash        ./
 Same inp hash        inp0.txt
 Same inp hash        inp2.txt
@@ -49,7 +49,7 @@ Same out hash        log.txt
         2/4 |      PHASE │ run
         2/4 |  DROPAMEND │ runsh ./work.py > log.txt
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest 51356bac ➜ 83e67952, out_digest 7d6b25ba ➜ (unset)
+Modified step hash   explained, inp_digest 7baa8d9e ➜ 76443114, out_digest 7d6b25ba ➜ (unset)
 Modified inp hash    inp0.txt (digest 681fd532 ➜ 2dab5684)
 Deleted inp hash     tmp1.txt
 ──────────────────────── Remained the same (or missing) ────────────────────────
@@ -59,7 +59,7 @@ Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
         2/4 |     NOSKIP │ runsh cp inp1.txt tmp1.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest cb5d3967 ➜ 480dfa88, out_digest 10bf5516 ➜ (unset)
+Modified step hash   explained, inp_digest 6c669ae9 ➜ f10bfa46, out_digest 10bf5516 ➜ (unset)
 Modified inp hash    inp1.txt (digest 6c6e5eb3 ➜ e8869200, size 15 ➜ 16)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./

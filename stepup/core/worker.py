@@ -23,7 +23,6 @@ import argparse
 import asyncio
 import contextlib
 import ctypes
-import importlib
 import inspect
 import io
 import os
@@ -35,6 +34,7 @@ import sys
 import threading
 import traceback
 from collections.abc import AsyncGenerator
+from importlib.metadata import entry_points
 from runpy import run_path
 from time import perf_counter
 
@@ -520,23 +520,27 @@ class WorkThread(threading.Thread):
     def run(self):
         try:
             action_name, argstr = self.action.split(" ", 1)
-            module_name, function_name = action_name.rsplit(".", 1)
-            module = importlib.import_module(module_name)
-            action = getattr(module, function_name)
+            # Load the action entry point.
+            action_funcs = entry_points(group="stepup.actions", name=action_name)
+            if len(action_funcs) == 0:
+                raise ValueError(f"Action '{action_name}' not found")
+            if len(action_funcs) > 1:
+                raise AssertionError(f"Multiple actions found for '{action_name}'")
+            action_func = next(iter(action_funcs)).load()
             # Run some sanity checks
-            if not callable(action):
-                raise TypeError(f"Action {action} is not callable.")
+            if not callable(action_func):
+                raise TypeError(f"Action {action_name} is not callable.")
             # Check if the function exists and has the right signature
-            sgn = inspect.signature(action)
+            sgn = inspect.signature(action_func)
             if sgn.return_annotation is not int:
-                raise TypeError(f"Action {action} does not return an int.")
+                raise TypeError(f"Action {action_name} does not return an int.")
             kwargs = {"argstr": argstr}
             if "work_thread" in sgn.parameters:
                 kwargs["work_thread"] = self
             # Finally run the action
-            returncode = action(**kwargs)
+            returncode = action_func(**kwargs)
             if not isinstance(returncode, int):
-                raise TypeError(f"Action {action} does not return an int.")
+                raise TypeError(f"Action {action_name} does not return an int.")
             self.returncode = returncode
         except BaseException as exc:  # noqa: BLE001
             # Catch all exceptions and print them to stderr.
@@ -583,9 +587,9 @@ class WorkThread(threading.Thread):
         if p.returncode != 0:
             print(f"Command failed with return code {p.returncode}: {argstr}", file=sys.stderr)
         if stdout is not None and len(stdout) > 0:
-            print(stdout)
+            sys.stdout.write(stdout)
         if stderr is not None and len(stderr) > 0:
-            print(stderr, file=sys.stderr)
+            sys.stderr.write(stderr)
         return p.returncode
 
     def runpy(self, script: str, args: list[str]) -> int:
@@ -927,9 +931,11 @@ class WorkerHandler:
     async def report(self):
         pages = []
         if not self.step.success:
-            lines = [f"Action                {self.step.action}"]
-            if self.step.workdir != "./":
-                lines.append(f"Working directory     {self.step.workdir}")
+            if self.step.workdir == "./":
+                command = f"stepup act {self.step.action}"
+            else:
+                command = f"(cd {self.step.workdir} && stepup act {self.step.action})"
+            lines = [f"Command               {command}"]
             if self.step.returncode is not None:
                 lines.append(f"Return code           {self.step.returncode}")
             pages.append(("Step info", "\n".join(lines)))

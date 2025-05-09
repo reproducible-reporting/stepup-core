@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making failed steps
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    DELETED │ inp1.txt
@@ -12,14 +12,14 @@
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              MISSING  inp1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runpy ./work1.py
+Action                runpy ./work1.py
 Working directory     ./
 Inputs        STATIC  ./
               STATIC  work1.py
              MISSING  (inp1.txt)
 Outputs     OUTDATED  out1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runpy ./work3.py
+Action                runpy ./work3.py
 Working directory     ./
 Inputs        STATIC  ./
               STATIC  work3.py

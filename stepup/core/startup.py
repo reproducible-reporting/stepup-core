@@ -46,7 +46,7 @@ async def startup_from_db(
     con = workflow.con
 
     await reporter("STARTUP", "Making failed steps pending")
-    # Make steps pending again if they are QUEUED, RUNNING or FAILED.
+    # Make steps pending if they are QUEUED, RUNNING or FAILED.
     # QUEUED, RUNNING are uncommon, but can happen if the director crashes.
     async with dblock:
         # Steps that were running are considered failed.

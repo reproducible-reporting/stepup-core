@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making failed steps
         0/0 |    STARTUP │ Watching 2 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ sub/plan.py (mode -rw-r--r-- ➜ -rwxr-xr-x)

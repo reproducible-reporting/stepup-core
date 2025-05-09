@@ -6,7 +6,7 @@
         1/2 |      START │ runsh cat line.txt >> log.txt; exit 1
         1/1 |       FAIL │ runsh cat line.txt >> log.txt; exit 1
 ────────────────────────────────── Step info ───────────────────────────────────
-Action                stepup.core.actions.runsh cat line.txt >> log.txt; exit 1
+Command               stepup act runsh cat line.txt >> log.txt; exit 1
 Return code           1
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)

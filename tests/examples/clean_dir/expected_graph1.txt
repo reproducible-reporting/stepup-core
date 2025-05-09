@@ -1,57 +1,57 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:plan.py
             supplies   file:sub/
-            supplies   step:stepup.core.actions.copy sub/inp.txt sub/tmp.txt
-            supplies   step:stepup.core.actions.copy sub/tmp.txt sub/out.txt
-            supplies   step:stepup.core.actions.mkdir sub/
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runsh echo hello > sub/inp.txt
+            supplies   step:copy sub/inp.txt sub/tmp.txt
+            supplies   step:copy sub/tmp.txt sub/out.txt
+            supplies   step:mkdir sub/
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh echo hello > sub/inp.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:stepup.core.actions.copy sub/inp.txt sub/tmp.txt
-             creates   step:stepup.core.actions.copy sub/tmp.txt sub/out.txt
-             creates   step:stepup.core.actions.mkdir sub/
-             creates   step:stepup.core.actions.runsh echo hello > sub/inp.txt
+             creates   step:copy sub/inp.txt sub/tmp.txt
+             creates   step:copy sub/tmp.txt sub/out.txt
+             creates   step:mkdir sub/
+             creates   step:runsh echo hello > sub/inp.txt
 
-step:stepup.core.actions.mkdir sub/
+step:mkdir sub/
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:sub/
             supplies   file:sub/
 
 file:sub/
                state = BUILT
-          created by   step:stepup.core.actions.mkdir sub/
+          created by   step:mkdir sub/
             consumes   file:./
-            consumes   step:stepup.core.actions.mkdir sub/
+            consumes   step:mkdir sub/
             supplies   file:sub/inp.txt
             supplies   file:sub/out.txt
             supplies   file:sub/tmp.txt
-            supplies   step:stepup.core.actions.copy sub/inp.txt sub/tmp.txt
-            supplies   step:stepup.core.actions.copy sub/tmp.txt sub/out.txt
-            supplies   step:stepup.core.actions.runsh echo hello > sub/inp.txt
+            supplies   step:copy sub/inp.txt sub/tmp.txt
+            supplies   step:copy sub/tmp.txt sub/out.txt
+            supplies   step:runsh echo hello > sub/inp.txt
 
-step:stepup.core.actions.runsh echo hello > sub/inp.txt
+step:runsh echo hello > sub/inp.txt
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:sub/
              creates   file:sub/inp.txt
@@ -59,14 +59,14 @@ step:stepup.core.actions.runsh echo hello > sub/inp.txt
 
 file:sub/inp.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh echo hello > sub/inp.txt
+          created by   step:runsh echo hello > sub/inp.txt
             consumes   file:sub/
-            consumes   step:stepup.core.actions.runsh echo hello > sub/inp.txt
-            supplies   step:stepup.core.actions.copy sub/inp.txt sub/tmp.txt
+            consumes   step:runsh echo hello > sub/inp.txt
+            supplies   step:copy sub/inp.txt sub/tmp.txt
 
-step:stepup.core.actions.copy sub/inp.txt sub/tmp.txt
+step:copy sub/inp.txt sub/tmp.txt
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:sub/
             consumes   file:sub/inp.txt
@@ -75,14 +75,14 @@ step:stepup.core.actions.copy sub/inp.txt sub/tmp.txt
 
 file:sub/tmp.txt
                state = BUILT
-          created by   step:stepup.core.actions.copy sub/inp.txt sub/tmp.txt
+          created by   step:copy sub/inp.txt sub/tmp.txt
             consumes   file:sub/
-            consumes   step:stepup.core.actions.copy sub/inp.txt sub/tmp.txt
-            supplies   step:stepup.core.actions.copy sub/tmp.txt sub/out.txt
+            consumes   step:copy sub/inp.txt sub/tmp.txt
+            supplies   step:copy sub/tmp.txt sub/out.txt
 
-step:stepup.core.actions.copy sub/tmp.txt sub/out.txt
+step:copy sub/tmp.txt sub/out.txt
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:sub/
             consumes   file:sub/tmp.txt
@@ -91,6 +91,6 @@ step:stepup.core.actions.copy sub/tmp.txt sub/out.txt
 
 file:sub/out.txt
                state = BUILT
-          created by   step:stepup.core.actions.copy sub/tmp.txt sub/out.txt
+          created by   step:copy sub/tmp.txt sub/out.txt
             consumes   file:sub/
-            consumes   step:stepup.core.actions.copy sub/tmp.txt sub/out.txt
+            consumes   step:copy sub/tmp.txt sub/out.txt

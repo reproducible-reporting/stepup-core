@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,29 +9,29 @@ file:./
             supplies   file:bar.txt
             supplies   file:foo.txt
             supplies   file:plan.py
-            supplies   step:stepup.core.actions.copy foo.txt bar.txt
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runsh echo test > foo.txt
+            supplies   step:copy foo.txt bar.txt
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh echo test > foo.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:stepup.core.actions.copy foo.txt bar.txt
-             creates   step:stepup.core.actions.runsh echo test > foo.txt
+             creates   step:copy foo.txt bar.txt
+             creates   step:runsh echo test > foo.txt
 
-step:stepup.core.actions.copy foo.txt bar.txt
+step:copy foo.txt bar.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:foo.txt
              creates   file:bar.txt
@@ -39,21 +39,21 @@ step:stepup.core.actions.copy foo.txt bar.txt
 
 file:foo.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh echo test > foo.txt
+          created by   step:runsh echo test > foo.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh echo test > foo.txt
-            supplies   step:stepup.core.actions.copy foo.txt bar.txt
+            consumes   step:runsh echo test > foo.txt
+            supplies   step:copy foo.txt bar.txt
 
 file:bar.txt
                state = BUILT
-          created by   step:stepup.core.actions.copy foo.txt bar.txt
+          created by   step:copy foo.txt bar.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.copy foo.txt bar.txt
+            consumes   step:copy foo.txt bar.txt
 
-step:stepup.core.actions.runsh echo test > foo.txt
+step:runsh echo test > foo.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:foo.txt
             supplies   file:foo.txt

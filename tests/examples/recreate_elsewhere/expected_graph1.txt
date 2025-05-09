@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,17 +10,17 @@ file:./
             supplies   file:out.txt
             supplies   file:outer.py
             supplies   file:plan.py
-            supplies   step:stepup.core.actions.runpy ./inner.py
-            supplies   step:stepup.core.actions.runpy ./outer.py foo
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./inner.py
+            supplies   step:runpy ./outer.py foo
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
@@ -28,32 +28,32 @@ step:stepup.core.actions.runpy ./plan.py
             consumes   file:plan.py
              creates   file:inner.py
              creates   file:outer.py
-             creates   step:stepup.core.actions.runpy ./outer.py foo
+             creates   step:runpy ./outer.py foo
 
 file:inner.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./inner.py
+            supplies   step:runpy ./inner.py
 
 file:outer.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./outer.py foo
+            supplies   step:runpy ./outer.py foo
 
-step:stepup.core.actions.runpy ./outer.py foo
+step:runpy ./outer.py foo
                state = SUCCEEDED
            explained = yes
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:outer.py
-             creates   step:stepup.core.actions.runpy ./inner.py
+             creates   step:runpy ./inner.py
 
-step:stepup.core.actions.runpy ./inner.py
+step:runpy ./inner.py
                state = SUCCEEDED
            explained = yes
-          created by   step:stepup.core.actions.runpy ./outer.py foo
+          created by   step:runpy ./outer.py foo
             consumes   file:./
             consumes   file:inner.py
              creates   file:out.txt
@@ -61,6 +61,6 @@ step:stepup.core.actions.runpy ./inner.py
 
 file:out.txt
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./inner.py
+          created by   step:runpy ./inner.py
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./inner.py
+            consumes   step:runpy ./inner.py

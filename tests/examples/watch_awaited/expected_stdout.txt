@@ -7,7 +7,7 @@
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              AWAITED  inp.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.copy inp.txt out.txt
+Action                copy inp.txt out.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (inp.txt)
@@ -21,7 +21,7 @@ Outputs      AWAITED  out.txt
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              AWAITED  inp.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.copy inp.txt out.txt
+Action                copy inp.txt out.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (inp.txt)

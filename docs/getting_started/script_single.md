@@ -27,7 +27,7 @@ script("executable", workdir="sub")
 is roughly equivalent to:
 
 ```python
-step("./executable plan", inp="executable", workdir="sub")
+runsh("./executable plan", inp="executable", workdir="sub")
 ```
 
 Note that the use of a subdirectory is not required.
@@ -148,7 +148,7 @@ Finally, make the Python scripts executable and give StepUp a spin:
 
 ```bash
 chmod +x generate.py plan.py
-stepup -n 1
+stepup boot -n 1
 ```
 
 You should see the following output on screen:

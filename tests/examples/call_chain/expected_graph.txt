@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -12,17 +12,17 @@ file:./
             supplies   file:plan.py
             supplies   file:square.py
             supplies   file:square_out.json
-            supplies   step:stepup.core.actions.runpy ./add.py --inp=add_inp.json --out=add_out.json --amend-out
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runpy ./square.py --inp=add_out.json --out=square_out.json --amend-out
+            supplies   step:runpy ./add.py --inp=add_inp.json --out=add_out.json --amend-out
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./square.py --inp=add_out.json --out=square_out.json --amend-out
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -30,41 +30,41 @@ step:stepup.core.actions.runpy ./plan.py
              creates   file:add.py
              creates   file:add_inp.json
              creates   file:square.py
-             creates   step:stepup.core.actions.runpy ./add.py --inp=add_inp.json --out=add_out.json --amend-out
-             creates   step:stepup.core.actions.runpy ./square.py --inp=add_out.json --out=square_out.json --amend-out
+             creates   step:runpy ./add.py --inp=add_inp.json --out=add_out.json --amend-out
+             creates   step:runpy ./square.py --inp=add_out.json --out=square_out.json --amend-out
             supplies   file:add_inp.json [amended]
 
 file:add.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./add.py --inp=add_inp.json --out=add_out.json --amend-out
+            supplies   step:runpy ./add.py --inp=add_inp.json --out=add_out.json --amend-out
 
 file:square.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./square.py --inp=add_out.json --out=square_out.json --amend-out
+            supplies   step:runpy ./square.py --inp=add_out.json --out=square_out.json --amend-out
 
 file:add_inp.json
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runpy ./add.py --inp=add_inp.json --out=add_out.json --amend-out
+            consumes   step:runpy ./plan.py
+            supplies   step:runpy ./add.py --inp=add_inp.json --out=add_out.json --amend-out
 
-step:stepup.core.actions.runpy ./add.py --inp=add_inp.json --out=add_out.json --amend-out
+step:runpy ./add.py --inp=add_inp.json --out=add_out.json --amend-out
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:add.py
             consumes   file:add_inp.json
              creates   file:add_out.json
             supplies   file:add_out.json [amended]
 
-step:stepup.core.actions.runpy ./square.py --inp=add_out.json --out=square_out.json --amend-out
+step:runpy ./square.py --inp=add_out.json --out=square_out.json --amend-out
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:add_out.json
             consumes   file:square.py
@@ -73,13 +73,13 @@ step:stepup.core.actions.runpy ./square.py --inp=add_out.json --out=square_out.j
 
 file:add_out.json
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./add.py --inp=add_inp.json --out=add_out.json --amend-out
+          created by   step:runpy ./add.py --inp=add_inp.json --out=add_out.json --amend-out
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./add.py --inp=add_inp.json --out=add_out.json --amend-out
-            supplies   step:stepup.core.actions.runpy ./square.py --inp=add_out.json --out=square_out.json --amend-out
+            consumes   step:runpy ./add.py --inp=add_inp.json --out=add_out.json --amend-out
+            supplies   step:runpy ./square.py --inp=add_out.json --out=square_out.json --amend-out
 
 file:square_out.json
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./square.py --inp=add_out.json --out=square_out.json --amend-out
+          created by   step:runpy ./square.py --inp=add_out.json --out=square_out.json --amend-out
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./square.py --inp=add_out.json --out=square_out.json --amend-out
+            consumes   step:runpy ./square.py --inp=add_out.json --out=square_out.json --amend-out

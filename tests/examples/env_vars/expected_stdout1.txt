@@ -13,7 +13,7 @@
         2/3 |      PHASE │ run
         2/3 |     NOSKIP │ runpy ./demovars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest a538162a ➜ 135be572, out_digest 786a02f7 ➜ (unset)
+Modified step hash   explained, inp_digest f282d1d5 ➜ 1e81dae1, out_digest 786a02f7 ➜ (unset)
 Modified inp hash    variables.json (digest 9fcdaff9 ➜ b38f0cd4, size 35 ➜ 67)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
@@ -23,7 +23,7 @@ Same inp hash        demovars.py
         2/3 |    SUCCESS │ runpy ./demovars.py
         2/3 |     NOSKIP │ runsh ./printvars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 48e8e890 ➜ 2d1ffa9a, out_digest 31d3017c ➜ (unset)
+Modified step hash   explained, inp_digest e9732ac9 ➜ 0f69921d, out_digest 31d3017c ➜ (unset)
 Added env var        ENV_VAR_TEST_STEPUP_DFTHYH ='BBBB'
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./

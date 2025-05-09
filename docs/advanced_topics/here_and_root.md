@@ -46,7 +46,7 @@ Make the scripts executable and run everything as follows:
 
 ```bash
 chmod +x plan.py sub/plan.py
-stepup -n 1
+stepup boot -n 1
 ```
 
 You should get the following terminal output:
@@ -83,8 +83,8 @@ Any variables present in the environment variable will also be substituted once.
 
 - Modify the scripts `plan.py` and `sub/plan.py` to utilize a `DST` variable as explained above.
   To achieve this, define `DST` externally, for instance,
-  by starting StepUp as `DST='../public/${HERE}' stepup -n 1`.
+  by starting StepUp as `DST='../public/${HERE}' stepup boot -n 1`.
 
 - As a follow-up to the previous point, run StepUp with a different `DST` value.
-  For example: `DST='../out/${HERE}' stepup -n 1`.
+  For example: `DST='../out/${HERE}' stepup boot -n 1`.
   You will see that all old output files get cleaned up after the new output is created.

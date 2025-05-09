@@ -13,7 +13,7 @@
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  inp.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runpy ./work.py
+Action                runpy ./work.py
 Working directory     ./
 Inputs        STATIC  ./
              MISSING  inp.txt [amended]

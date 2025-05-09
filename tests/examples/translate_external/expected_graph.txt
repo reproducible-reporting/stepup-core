@@ -3,38 +3,38 @@ root:
              creates   file:../../
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:../
             supplies   file:plan.py
-            supplies   step:stepup.core.actions.mkdir ../public/
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:mkdir ../public/
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:../../common/
              creates   file:../../common/script.py
-             creates   step:stepup.core.actions.mkdir ../public/
-             creates   step:stepup.core.actions.runpy ./script.py  # wd=../../common/
+             creates   step:mkdir ../public/
+             creates   step:runpy ./script.py  # wd=../../common/
 
 file:../../common/
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:../../
             supplies   file:../../common/script.py
-            supplies   step:stepup.core.actions.runpy ./script.py  # wd=../../common/
+            supplies   step:runpy ./script.py  # wd=../../common/
 
 file:../../
                state = STATIC
@@ -48,16 +48,16 @@ file:../
             consumes   file:./
             supplies   file:../../
             supplies   file:../public/
-            supplies   step:stepup.core.actions.mkdir ../public/
+            supplies   step:mkdir ../public/
 
 file:../../common/script.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:../../common/
 
-step:stepup.core.actions.mkdir ../public/
+step:mkdir ../public/
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:../
             consumes   file:./
              creates   file:../public/
@@ -65,15 +65,15 @@ step:stepup.core.actions.mkdir ../public/
 
 file:../public/
                state = BUILT
-          created by   step:stepup.core.actions.mkdir ../public/
+          created by   step:mkdir ../public/
             consumes   file:../
-            consumes   step:stepup.core.actions.mkdir ../public/
+            consumes   step:mkdir ../public/
             supplies   file:../public/foo.txt
-            supplies   step:stepup.core.actions.runpy ./script.py  # wd=../../common/
+            supplies   step:runpy ./script.py  # wd=../../common/
 
-step:stepup.core.actions.runpy ./script.py  # wd=../../common/
+step:runpy ./script.py  # wd=../../common/
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:../../common/
             consumes   file:../public/ [amended]
              creates   file:../public/foo.txt
@@ -81,6 +81,6 @@ step:stepup.core.actions.runpy ./script.py  # wd=../../common/
 
 file:../public/foo.txt
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./script.py  # wd=../../common/
+          created by   step:runpy ./script.py  # wd=../../common/
             consumes   file:../public/
-            consumes   step:stepup.core.actions.runpy ./script.py  # wd=../../common/
+            consumes   step:runpy ./script.py  # wd=../../common/

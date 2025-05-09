@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making failed steps
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
@@ -6,7 +6,7 @@
         1/3 |      PHASE │ run
         1/3 |     NOSKIP │ copy inp.txt out.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 7fa99086 ➜ 4aae57e1, out_digest d88d72dc ➜ (unset)
+Modified step hash   explained, inp_digest 09c843c2 ➜ e183d803, out_digest d88d72dc ➜ (unset)
 Modified inp hash    inp.txt (digest ef13f276 ➜ 4f4f82c6)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
@@ -15,7 +15,7 @@ Same inp hash        ./
         2/3 |    SUCCESS │ copy inp.txt out.txt
         2/3 |     NOSKIP │ copy out.txt final.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 4be02bff ➜ 433e1ec3, out_digest a44a1173 ➜ (unset)
+Modified step hash   explained, inp_digest dac1c996 ➜ e2c8ecbe, out_digest a44a1173 ➜ (unset)
 Modified inp hash    out.txt (digest ef13f276 ➜ 4f4f82c6)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./

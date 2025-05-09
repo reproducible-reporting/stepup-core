@@ -56,9 +56,11 @@ __all__ = (
     "amend",
     "call",
     "copy",
+    "get_rpc_client",
     "getenv",
     "getinfo",
     "glob",
+    "graph",
     "mkdir",
     "plan",
     "pool",
@@ -447,6 +449,11 @@ def getinfo() -> StepInfo:
     return step_info
 
 
+def graph(prefix: str):
+    """Write the workflow graph files in text and dot formats."""
+    return RPC_CLIENT.call.graph(prefix)
+
+
 #
 # Composite functions, created with the functions above.
 #
@@ -475,7 +482,7 @@ def runsh(
         The command to execute, which will be interpreted by the shell.
     """
     return step(
-        f"stepup.core.actions.runsh {command}",
+        f"runsh {command}",
         inp=inp,
         env=env,
         out=out,
@@ -512,7 +519,7 @@ def runpy(
         Shell expressions are not interpreted.
     """
     return step(
-        f"stepup.core.actions.runpy {command}",
+        f"runpy {command}",
         inp=inp,
         env=env,
         out=out,
@@ -607,7 +614,7 @@ def copy(src: str, dst: str, *, optional: bool = False, block: bool = False) -> 
     path_dst = make_path_out(src, dst, None)
     amend(env=amended_env_vars)
     return step(
-        "stepup.core.actions.copy ${inp} ${out}",
+        "copy ${inp} ${out}",
         inp=path_src,
         out=path_dst,
         optional=optional,
@@ -641,7 +648,7 @@ def mkdir(dirname: str, *, optional: bool = False, block: bool = False) -> StepI
         dirname += "/"
     dirname = mynormpath(dirname)
     amend(env=amended_env_vars)
-    return step(f"stepup.core.actions.mkdir {dirname}", out=dirname, optional=optional, block=block)
+    return step(f"mkdir {dirname}", out=dirname, optional=optional, block=block)
 
 
 def getenv(
@@ -1112,15 +1119,15 @@ def _check_inp_paths(inp_paths: Iterable[Path]):
             raise ValueError(f"{message}: {inp_path}")
 
 
-def _get_rpc_client():
+def get_rpc_client(socket: str | None = None):
     """Try setting up a Synchronous RPC client or fall back to the dummy client if that fails."""
-    stepup_director_socket = os.getenv("STEPUP_DIRECTOR_SOCKET")
+    stepup_director_socket = os.getenv("STEPUP_DIRECTOR_SOCKET", socket)
     if stepup_director_socket is None:
         return DummySyncRPCClient()
     return SocketSyncRPCClient(stepup_director_socket)
 
 
-RPC_CLIENT = _get_rpc_client()
+RPC_CLIENT = get_rpc_client()
 
 
 def _get_step_i() -> int:

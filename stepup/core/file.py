@@ -283,7 +283,7 @@ class File(Node):
             for step in self.consumers(Step):
                 step.mark_pending(input_changed=True)
         elif state == FileState.AWAITED:
-            # Mark the creator pending again, as to make sure the file is rebuilt.
+            # Mark the creator pending, as to make sure the file is rebuilt.
             creator = self.creator()
             if creator.kind() == "step":
                 creator.mark_pending()

@@ -8,7 +8,7 @@
         2/4 |      START │ runpy ./work.py
         2/3 |       FAIL │ runpy ./work.py
 ────────────────────────────────── Step info ───────────────────────────────────
-Action                stepup.core.actions.runpy ./work.py
+Command               stepup act runpy ./work.py
 Return code           0
 ──────────────────────────────── Invalid inputs ────────────────────────────────
 Input changed unexpectedly: f1.txt (digest 7ea59e7a ➜ a97fe9ac, size 3 ➜ 15)

@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -14,16 +14,16 @@ file:./
             supplies   file:sub/
             supplies   file:vol1.txt
             supplies   file:vol2.txt
-            supplies   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./getinfo.py  # wd=sub/
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -33,47 +33,47 @@ step:stepup.core.actions.runpy ./plan.py
              creates   file:sub/
              creates   file:sub/getinfo.py
              creates   file:sub/inp0.txt
-             creates   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+             creates   step:runpy ./getinfo.py  # wd=sub/
 
 file:README.txt
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+            supplies   step:runpy ./getinfo.py  # wd=sub/
 
 file:inp1.txt
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+            supplies   step:runpy ./getinfo.py  # wd=sub/
 
 file:sub/
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   file:sub/getinfo.py
             supplies   file:sub/inp0.txt
             supplies   file:sub/out1.txt
             supplies   file:sub/vol0.txt
-            supplies   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+            supplies   step:runpy ./getinfo.py  # wd=sub/
 
 file:sub/getinfo.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:sub/
 
 file:sub/inp0.txt
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:sub/
-            supplies   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+            supplies   step:runpy ./getinfo.py  # wd=sub/
 
-step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+step:runpy ./getinfo.py  # wd=sub/
                state = SUCCEEDED
              env_var = BAR
                      = EGG [amended]
                      = FOO
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:README.txt
             consumes   file:inp1.txt [amended]
@@ -94,36 +94,36 @@ step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
 
 file:out0.txt
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+          created by   step:runpy ./getinfo.py  # wd=sub/
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+            consumes   step:runpy ./getinfo.py  # wd=sub/
 
 file:sub/out1.txt
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+          created by   step:runpy ./getinfo.py  # wd=sub/
             consumes   file:sub/
-            consumes   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+            consumes   step:runpy ./getinfo.py  # wd=sub/
 
 file:sub/vol0.txt
                state = VOLATILE
-          created by   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+          created by   step:runpy ./getinfo.py  # wd=sub/
             consumes   file:sub/
-            consumes   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+            consumes   step:runpy ./getinfo.py  # wd=sub/
 
 file:vol1.txt
                state = VOLATILE
-          created by   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+          created by   step:runpy ./getinfo.py  # wd=sub/
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+            consumes   step:runpy ./getinfo.py  # wd=sub/
 
 file:out2.txt
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+          created by   step:runpy ./getinfo.py  # wd=sub/
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+            consumes   step:runpy ./getinfo.py  # wd=sub/
 
 file:vol2.txt
                state = VOLATILE
-          created by   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+          created by   step:runpy ./getinfo.py  # wd=sub/
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./getinfo.py  # wd=sub/
+            consumes   step:runpy ./getinfo.py  # wd=sub/

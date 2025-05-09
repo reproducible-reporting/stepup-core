@@ -1,41 +1,41 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:README.txt
             supplies   file:plan.py
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runsh cat README.txt
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh cat README.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   dg:*.md
              creates   dg:README.*
-             creates   step:stepup.core.actions.runsh cat README.txt
+             creates   step:runsh cat README.txt
 
 dg:README.*
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
              creates   file:README.txt
 
 dg:*.md
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
 
-step:stepup.core.actions.runsh cat README.txt
+step:runsh cat README.txt
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:README.txt
 
@@ -43,4 +43,4 @@ file:README.txt
                state = STATIC
           created by   dg:README.*
             consumes   file:./
-            supplies   step:stepup.core.actions.runsh cat README.txt
+            supplies   step:runsh cat README.txt

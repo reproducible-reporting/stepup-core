@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -13,18 +13,18 @@ file:./
             supplies   file:plan.py
             supplies   file:work.out
             supplies   file:work.py
-            supplies   step:stepup.core.actions.copy data1.txt optional1.txt
-            supplies   step:stepup.core.actions.copy data2.txt optional2.txt
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runsh ./work.py
+            supplies   step:copy data1.txt optional1.txt
+            supplies   step:copy data2.txt optional2.txt
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./work.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -32,32 +32,32 @@ step:stepup.core.actions.runpy ./plan.py
              creates   file:data1.txt
              creates   file:data2.txt
              creates   file:work.py
-             creates   step:stepup.core.actions.copy data1.txt optional1.txt
-             creates   step:stepup.core.actions.copy data2.txt optional2.txt
-             creates   step:stepup.core.actions.runsh ./work.py
+             creates   step:copy data1.txt optional1.txt
+             creates   step:copy data2.txt optional2.txt
+             creates   step:runsh ./work.py
 
 file:data1.txt
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.copy data1.txt optional1.txt
+            supplies   step:copy data1.txt optional1.txt
 
 file:data2.txt
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.copy data2.txt optional2.txt
+            supplies   step:copy data2.txt optional2.txt
 
 file:work.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runsh ./work.py
+            supplies   step:runsh ./work.py
 
-step:stepup.core.actions.copy data1.txt optional1.txt
+step:copy data1.txt optional1.txt
                state = SUCCEEDED
            mandatory = REQUIRED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:data1.txt
              creates   file:optional1.txt
@@ -65,15 +65,15 @@ step:stepup.core.actions.copy data1.txt optional1.txt
 
 file:optional1.txt
                state = BUILT
-          created by   step:stepup.core.actions.copy data1.txt optional1.txt
+          created by   step:copy data1.txt optional1.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.copy data1.txt optional1.txt
-            supplies   step:stepup.core.actions.runsh ./work.py
+            consumes   step:copy data1.txt optional1.txt
+            supplies   step:runsh ./work.py
 
-step:stepup.core.actions.copy data2.txt optional2.txt
+step:copy data2.txt optional2.txt
                state = SUCCEEDED
            mandatory = REQUIRED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:data2.txt
              creates   file:optional2.txt
@@ -81,14 +81,14 @@ step:stepup.core.actions.copy data2.txt optional2.txt
 
 file:optional2.txt
                state = BUILT
-          created by   step:stepup.core.actions.copy data2.txt optional2.txt
+          created by   step:copy data2.txt optional2.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.copy data2.txt optional2.txt
-            supplies   step:stepup.core.actions.runsh ./work.py
+            consumes   step:copy data2.txt optional2.txt
+            supplies   step:runsh ./work.py
 
-step:stepup.core.actions.runsh ./work.py
+step:runsh ./work.py
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:optional1.txt [amended]
             consumes   file:optional2.txt [amended]
@@ -98,6 +98,6 @@ step:stepup.core.actions.runsh ./work.py
 
 file:work.out
                state = BUILT
-          created by   step:stepup.core.actions.runsh ./work.py
+          created by   step:runsh ./work.py
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh ./work.py
+            consumes   step:runsh ./work.py

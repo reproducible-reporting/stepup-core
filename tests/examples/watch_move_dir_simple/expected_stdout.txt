@@ -15,7 +15,7 @@
              MISSING  data/sub/
              MISSING  data/sub/inp.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runsh cat data/sub/inp.txt > data/sub/out.txt
+Action                runsh cat data/sub/inp.txt > data/sub/out.txt
 Working directory     ./
 Inputs        STATIC  ./
              MISSING  data/sub/

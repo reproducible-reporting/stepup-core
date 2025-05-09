@@ -41,7 +41,7 @@ Make the plan executable and run it with StepUp:
 
 ```bash
 chmod +x plan.py
-stepup -n 4
+stepup boot -n 4
 ```
 
 You should get the following output:
@@ -56,7 +56,7 @@ the third `sleep+echo` is only started after the previous two have finished.
 
 ## Try the Following
 
-- Run `stepup -n 4` again without making changes.
+- Run `stepup boot -n 4` again without making changes.
   Skipping of steps requires some computation and comparison of hashes,
   which is done by worker processes.
   However, these hash computations are never subject to pool size restrictions.

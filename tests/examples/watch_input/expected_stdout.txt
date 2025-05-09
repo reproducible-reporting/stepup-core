@@ -13,7 +13,7 @@
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  input.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runsh cp input.txt output.txt
+Action                runsh cp input.txt output.txt
 Working directory     ./
 Inputs        STATIC  ./
              MISSING  input.txt

@@ -15,7 +15,7 @@
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  plan.py
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runpy ./plan.py
+Action                runpy ./plan.py
 Working directory     ./
 Declares      STATIC  original.txt
 Inputs        STATIC  ./

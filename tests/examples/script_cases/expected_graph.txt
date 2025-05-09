@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -12,62 +12,62 @@ file:./
             supplies   file:helper.py
             supplies   file:plan.py
             supplies   file:work.py
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runpy ./work.py plan --step-info=current_step_info.json
-            supplies   step:stepup.core.actions.runpy ./work.py run +7.0
-            supplies   step:stepup.core.actions.runpy ./work.py run -- -5.0
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./work.py plan --step-info=current_step_info.json
+            supplies   step:runpy ./work.py run +7.0
+            supplies   step:runpy ./work.py run -- -5.0
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:helper.py
              creates   file:work.py
-             creates   step:stepup.core.actions.runpy ./work.py plan --step-info=current_step_info.json
+             creates   step:runpy ./work.py plan --step-info=current_step_info.json
 
 file:helper.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./work.py plan --step-info=current_step_info.json
-            supplies   step:stepup.core.actions.runpy ./work.py run +7.0
-            supplies   step:stepup.core.actions.runpy ./work.py run -- -5.0
+            supplies   step:runpy ./work.py plan --step-info=current_step_info.json
+            supplies   step:runpy ./work.py run +7.0
+            supplies   step:runpy ./work.py run -- -5.0
 
 file:work.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./work.py plan --step-info=current_step_info.json
-            supplies   step:stepup.core.actions.runpy ./work.py run +7.0
-            supplies   step:stepup.core.actions.runpy ./work.py run -- -5.0
+            supplies   step:runpy ./work.py plan --step-info=current_step_info.json
+            supplies   step:runpy ./work.py run +7.0
+            supplies   step:runpy ./work.py run -- -5.0
 
-step:stepup.core.actions.runpy ./work.py plan --step-info=current_step_info.json
+step:runpy ./work.py plan --step-info=current_step_info.json
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:helper.py [amended]
             consumes   file:work.py
              creates   file:current_step_info.json
-             creates   step:stepup.core.actions.runpy ./work.py run +7.0
-             creates   step:stepup.core.actions.runpy ./work.py run -- -5.0
+             creates   step:runpy ./work.py run +7.0
+             creates   step:runpy ./work.py run -- -5.0
             supplies   file:current_step_info.json
 
 file:current_step_info.json
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./work.py plan --step-info=current_step_info.json
+          created by   step:runpy ./work.py plan --step-info=current_step_info.json
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./work.py plan --step-info=current_step_info.json
+            consumes   step:runpy ./work.py plan --step-info=current_step_info.json
 
-step:stepup.core.actions.runpy ./work.py run -- -5.0
+step:runpy ./work.py run -- -5.0
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./work.py plan --step-info=current_step_info.json
+          created by   step:runpy ./work.py plan --step-info=current_step_info.json
             consumes   file:./
             consumes   file:helper.py [amended]
             consumes   file:work.py
@@ -76,13 +76,13 @@ step:stepup.core.actions.runpy ./work.py run -- -5.0
 
 file:data-5.0.txt
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./work.py run -- -5.0
+          created by   step:runpy ./work.py run -- -5.0
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./work.py run -- -5.0
+            consumes   step:runpy ./work.py run -- -5.0
 
-step:stepup.core.actions.runpy ./work.py run +7.0
+step:runpy ./work.py run +7.0
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./work.py plan --step-info=current_step_info.json
+          created by   step:runpy ./work.py plan --step-info=current_step_info.json
             consumes   file:./
             consumes   file:helper.py [amended]
             consumes   file:work.py
@@ -91,6 +91,6 @@ step:stepup.core.actions.runpy ./work.py run +7.0
 
 file:data+7.0.txt
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./work.py run +7.0
+          created by   step:runpy ./work.py run +7.0
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./work.py run +7.0
+            consumes   step:runpy ./work.py run +7.0

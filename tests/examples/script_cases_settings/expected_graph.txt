@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -12,18 +12,18 @@ file:./
             supplies   file:plan.py
             supplies   file:settings.py
             supplies   file:work.py
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runpy ./work.py plan
-            supplies   step:stepup.core.actions.runpy ./work.py run +0.3
-            supplies   step:stepup.core.actions.runpy ./work.py run -- -1.2
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./work.py plan
+            supplies   step:runpy ./work.py run +0.3
+            supplies   step:runpy ./work.py run -- -1.2
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -31,45 +31,45 @@ step:stepup.core.actions.runpy ./plan.py
              creates   file:helper.py
              creates   file:settings.py
              creates   file:work.py
-             creates   step:stepup.core.actions.runpy ./work.py plan
+             creates   step:runpy ./work.py plan
 
 file:helper.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./work.py plan
-            supplies   step:stepup.core.actions.runpy ./work.py run +0.3
-            supplies   step:stepup.core.actions.runpy ./work.py run -- -1.2
+            supplies   step:runpy ./work.py plan
+            supplies   step:runpy ./work.py run +0.3
+            supplies   step:runpy ./work.py run -- -1.2
 
 file:settings.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./work.py plan
-            supplies   step:stepup.core.actions.runpy ./work.py run +0.3
-            supplies   step:stepup.core.actions.runpy ./work.py run -- -1.2
+            supplies   step:runpy ./work.py plan
+            supplies   step:runpy ./work.py run +0.3
+            supplies   step:runpy ./work.py run -- -1.2
 
 file:work.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./work.py plan
-            supplies   step:stepup.core.actions.runpy ./work.py run +0.3
-            supplies   step:stepup.core.actions.runpy ./work.py run -- -1.2
+            supplies   step:runpy ./work.py plan
+            supplies   step:runpy ./work.py run +0.3
+            supplies   step:runpy ./work.py run -- -1.2
 
-step:stepup.core.actions.runpy ./work.py plan
+step:runpy ./work.py plan
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:helper.py [amended]
             consumes   file:settings.py [amended]
             consumes   file:work.py
-             creates   step:stepup.core.actions.runpy ./work.py run +0.3
-             creates   step:stepup.core.actions.runpy ./work.py run -- -1.2
+             creates   step:runpy ./work.py run +0.3
+             creates   step:runpy ./work.py run -- -1.2
 
-step:stepup.core.actions.runpy ./work.py run +0.3
+step:runpy ./work.py run +0.3
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./work.py plan
+          created by   step:runpy ./work.py plan
             consumes   file:./
             consumes   file:helper.py [amended]
             consumes   file:settings.py [amended]
@@ -79,13 +79,13 @@ step:stepup.core.actions.runpy ./work.py run +0.3
 
 file:data+0.3.txt
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./work.py run +0.3
+          created by   step:runpy ./work.py run +0.3
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./work.py run +0.3
+            consumes   step:runpy ./work.py run +0.3
 
-step:stepup.core.actions.runpy ./work.py run -- -1.2
+step:runpy ./work.py run -- -1.2
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./work.py plan
+          created by   step:runpy ./work.py plan
             consumes   file:./
             consumes   file:helper.py [amended]
             consumes   file:settings.py [amended]
@@ -95,6 +95,6 @@ step:stepup.core.actions.runpy ./work.py run -- -1.2
 
 file:data-1.2.txt
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./work.py run -- -1.2
+          created by   step:runpy ./work.py run -- -1.2
             consumes   file:./
-            consumes   step:stepup.core.actions.runpy ./work.py run -- -1.2
+            consumes   step:runpy ./work.py run -- -1.2

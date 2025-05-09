@@ -3,7 +3,7 @@
 
 from path import Path
 
-from stepup.core.api import glob, static, step
+from stepup.core.api import glob, runsh, static
 
 
 def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
@@ -12,7 +12,7 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
     This information is embedded in the comments of `main.sh` and the commands
 
     ```
-    stepup -n 1 | sed -f ../../clean_stdout.sed > stdout.txt
+    stepup boot -n 1 | sed -f ../../clean_stdout.sed > stdout.txt
     # INP: input
     # ROOT: root/ (optional)
     ```
@@ -60,7 +60,7 @@ def main():
         static(inp)
         inp.append(Path("run_example.py"))
         inp.append(path_main)
-        step(f"./run_example.py {path_main} {root}", inp=inp, out=out)
+        runsh(f"./run_example.py {path_main} {root}", inp=inp, out=out)
 
 
 if __name__ == "__main__":

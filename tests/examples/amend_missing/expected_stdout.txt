@@ -14,7 +14,7 @@ missing.txt
         2/3 |      START │ runpy ./work.py
         2/2 |       FAIL │ runpy ./work.py
 ────────────────────────────────── Step info ───────────────────────────────────
-Action                stepup.core.actions.runpy ./work.py
+Command               stepup act runpy ./work.py
 Return code           1
 ──────────────────────────────── Invalid inputs ────────────────────────────────
 Input vanished unexpectedly: missing.txt

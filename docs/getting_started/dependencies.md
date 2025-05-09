@@ -21,7 +21,7 @@ which are used for visualization below.
 Now run StepUp with two workers:
 
 ```bash
-stepup -n 2
+stepup boot -n 2
 ```
 
 You will see the following output:
@@ -120,12 +120,12 @@ Example:
 
 ## Try the Following
 
-- Run `stepup -n 2` again. As expected, the steps are now skipped.
+- Run `stepup boot -n 2` again. As expected, the steps are now skipped.
 
-- Modify the `grep` command to select the second line and run `stepup -n 2` again.
+- Modify the `grep` command to select the second line and run `stepup boot -n 2` again.
   The `echo` commands are skipped as they have not changed.
 
-- Change the order of the two steps in `plan.py` and run `stepup -n 2`.
+- Change the order of the two steps in `plan.py` and run `stepup boot -n 2`.
   The step `./plan.py` is executed because the file has changed,
   but the `echo` and `grep` steps are skipped.
   This shows that `plan.py` is nothing but a plan, not its execution.

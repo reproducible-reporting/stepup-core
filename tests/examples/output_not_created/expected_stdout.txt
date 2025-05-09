@@ -8,7 +8,7 @@
         2/3 |      START │ runsh cp input.txt wrong.txt
         2/2 |       FAIL │ runsh cp input.txt wrong.txt
 ────────────────────────────────── Step info ───────────────────────────────────
-Action                stepup.core.actions.runsh cp input.txt wrong.txt
+Command               stepup act runsh cp input.txt wrong.txt
 Return code           0
 ───────────────────────── Expected outputs not created ─────────────────────────
 output.txt

@@ -21,7 +21,7 @@
 
 from conftest import declare_static, fake_hash
 
-from stepup.core.cleanup import search_consuming_paths
+from stepup.core.clean import search_consuming_paths
 from stepup.core.enums import FileState
 from stepup.core.file import File
 from stepup.core.hash import FileHash

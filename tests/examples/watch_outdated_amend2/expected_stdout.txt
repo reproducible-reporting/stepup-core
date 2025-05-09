@@ -22,7 +22,7 @@
         2/4 |    SUCCESS │ copy inp2.txt conv2.txt
         2/4 |  DROPAMEND │ runsh ./work.py subs1.txt > subs2.txt
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest ee5e7a2b ➜ a9cb5a94, out_digest 9ac3231c ➜ (unset)
+Modified step hash   explained, inp_digest 7c38308a ➜ 186195d7, out_digest 9ac3231c ➜ (unset)
 Deleted inp hash     conv1.txt
 Modified inp hash    subs1.txt (digest f927920a ➜ 2ab04a00)
 ──────────────────────── Remained the same (or missing) ────────────────────────
@@ -32,7 +32,7 @@ Same inp hash        ./
         3/4 |    SUCCESS │ runsh ./work.py subs1.txt > subs2.txt
         3/4 |  DROPAMEND │ runsh ./work.py subs2.txt > subs3.txt
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest 5a447d2e ➜ f4832644, out_digest 19bfd411 ➜ (unset)
+Modified step hash   explained, inp_digest 8209b805 ➜ 14dda00c, out_digest 19bfd411 ➜ (unset)
 Deleted inp hash     conv1.txt
 Modified inp hash    subs2.txt (digest f927920a ➜ 2ab04a00)
 ──────────────────────── Remained the same (or missing) ────────────────────────

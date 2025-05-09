@@ -273,7 +273,7 @@ async def serve(
         # In case of an exception, set the stop event, so other parts know they can stop waiting.
         stop_event.set()
         # Regular shutdown
-        await reporter("DIRECTOR", "Stopping workers.")
+        await reporter("DIRECTOR", "Stopping workers")
         await runner.stop_workers()
         exit_event.set()
         await rpc_server
@@ -458,7 +458,7 @@ class DirectorHandler:
 
     @allow_rpc
     async def getinfo(self, step_i: int) -> StepInfo:
-        """Return step information, consisent with return values of functions in stepup.core.api.
+        """Return step information, consistent with return values of functions in stepup.core.api.
 
         For the sake of consistency, amended step arguments are not included.
         """
@@ -524,6 +524,21 @@ class DirectorHandler:
                 print(self.workflow.format_dot_provenance(), file=fh)
             with open(f"{prefix}_dependency.dot", "w") as fh:
                 print(self.workflow.format_dot_dependency(), file=fh)
+
+    @allow_rpc
+    async def status(self) -> dict[str]:
+        """Return the status of the director.
+
+        Returns
+        -------
+        status
+            A dictionary with the number of steps in each state and the running steps"""
+        async with self.dblock:
+            return {
+                "step_counts": self.workflow.get_step_counts(),
+                "file_counts": self.workflow.get_file_counts(),
+                "running_steps": [step.label for step in self.workflow.steps(StepState.RUNNING)],
+            }
 
     @allow_rpc
     async def run(self):

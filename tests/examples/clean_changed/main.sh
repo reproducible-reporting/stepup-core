@@ -1,24 +1,16 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and cleanup.
+# Exit on first error and clean up.
 set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Run the example
-stepup -w -n 1 & # > current_stdout.txt &
-
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
+stepup boot -n 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph")
-join()
-EOD
+stepup wait
+stepup graph current_graph
+stepup join
 
 # Wait for background processes, if any.
 wait
@@ -30,8 +22,8 @@ wait
 # Mofify hello.txt externally to StepUp
 echo changed > hello.txt
 
-# Call cleanup to remove all outputs
-cleanup . > current_cleanup.txt
+# Call stepup clean to remove all outputs
+stepup clean . > current_cleanup.txt
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1

@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,41 +9,41 @@ file:./
             supplies   file:input.txt
             supplies   file:output.txt
             supplies   file:plan.py
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runsh cp input.txt wrong.txt
-            supplies   step:stepup.core.actions.runsh touch input.txt
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh cp input.txt wrong.txt
+            supplies   step:runsh touch input.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:stepup.core.actions.runsh cp input.txt wrong.txt
-             creates   step:stepup.core.actions.runsh touch input.txt
+             creates   step:runsh cp input.txt wrong.txt
+             creates   step:runsh touch input.txt
 
-step:stepup.core.actions.runsh touch input.txt
+step:runsh touch input.txt
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:input.txt
             supplies   file:input.txt
 
 file:input.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh touch input.txt
+          created by   step:runsh touch input.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh touch input.txt
-            supplies   step:stepup.core.actions.runsh cp input.txt wrong.txt
+            consumes   step:runsh touch input.txt
+            supplies   step:runsh cp input.txt wrong.txt
 
-step:stepup.core.actions.runsh cp input.txt wrong.txt
+step:runsh cp input.txt wrong.txt
                state = FAILED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:input.txt
              creates   file:output.txt
@@ -51,6 +51,6 @@ step:stepup.core.actions.runsh cp input.txt wrong.txt
 
 file:output.txt
                state = AWAITED
-          created by   step:stepup.core.actions.runsh cp input.txt wrong.txt
+          created by   step:runsh cp input.txt wrong.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh cp input.txt wrong.txt
+            consumes   step:runsh cp input.txt wrong.txt

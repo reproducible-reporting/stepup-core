@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making failed steps
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest 9314583f ➜ 6e9dda14)
@@ -7,7 +7,7 @@
         2/3 |      PHASE │ run
         2/3 |     NOSKIP │ runpy ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 1c20e117 ➜ c72ca333, out_digest 786a02f7 ➜ (unset)
+Modified step hash   explained, inp_digest 22c1ad07 ➜ 0c6453b7, out_digest 786a02f7 ➜ (unset)
 Modified inp hash    plan.py (digest 9314583f ➜ 6e9dda14)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./

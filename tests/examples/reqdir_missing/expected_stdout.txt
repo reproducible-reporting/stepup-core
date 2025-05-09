@@ -9,7 +9,7 @@
              AWAITED  sub/dir/
              AWAITED  sub/
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runsh echo hello > sub/dir/nested/hello.txt
+Action                runsh echo hello > sub/dir/nested/hello.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (sub/dir/nested/)

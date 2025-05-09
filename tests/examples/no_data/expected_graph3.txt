@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,17 +9,17 @@ file:./
             supplies   file:analyzed.txt
             supplies   file:data.txt
             supplies   file:plan.py
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runsh cat analyzed.txt
-            supplies   step:stepup.core.actions.runsh grep -i foo data.txt > analyzed.txt
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh cat analyzed.txt
+            supplies   step:runsh grep -i foo data.txt > analyzed.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
                  ngm = ['data.txt'] {}
            explained = yes
@@ -27,33 +27,33 @@ step:stepup.core.actions.runpy ./plan.py
             consumes   file:./
             consumes   file:plan.py
              creates   file:data.txt
-             creates   step:stepup.core.actions.runsh cat analyzed.txt
-             creates   step:stepup.core.actions.runsh grep -i foo data.txt > analyzed.txt
+             creates   step:runsh cat analyzed.txt
+             creates   step:runsh grep -i foo data.txt > analyzed.txt
 
 file:analyzed.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh grep -i foo data.txt > analyzed.txt
+          created by   step:runsh grep -i foo data.txt > analyzed.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh grep -i foo data.txt > analyzed.txt
-            supplies   step:stepup.core.actions.runsh cat analyzed.txt
+            consumes   step:runsh grep -i foo data.txt > analyzed.txt
+            supplies   step:runsh cat analyzed.txt
 
-step:stepup.core.actions.runsh cat analyzed.txt
+step:runsh cat analyzed.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:analyzed.txt
 
 file:data.txt
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runsh grep -i foo data.txt > analyzed.txt
+            supplies   step:runsh grep -i foo data.txt > analyzed.txt
 
-step:stepup.core.actions.runsh grep -i foo data.txt > analyzed.txt
+step:runsh grep -i foo data.txt > analyzed.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:data.txt
              creates   file:analyzed.txt

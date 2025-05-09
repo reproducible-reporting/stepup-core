@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,34 +10,34 @@ file:./
             supplies   file:copy2.txt
             supplies   file:orig.txt
             supplies   file:plan.py
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runsh cp copy1.txt copy2.txt
-            supplies   step:stepup.core.actions.runsh cp orig.txt copy1.txt
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh cp copy1.txt copy2.txt
+            supplies   step:runsh cp orig.txt copy1.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:orig.txt
-             creates   step:stepup.core.actions.runsh cp copy1.txt copy2.txt
-             creates   step:stepup.core.actions.runsh cp orig.txt copy1.txt
+             creates   step:runsh cp copy1.txt copy2.txt
+             creates   step:runsh cp orig.txt copy1.txt
 
 file:orig.txt
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runsh cp orig.txt copy1.txt
+            supplies   step:runsh cp orig.txt copy1.txt
 
-step:stepup.core.actions.runsh cp orig.txt copy1.txt
+step:runsh cp orig.txt copy1.txt
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:orig.txt
              creates   file:copy1.txt
@@ -45,14 +45,14 @@ step:stepup.core.actions.runsh cp orig.txt copy1.txt
 
 file:copy1.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh cp orig.txt copy1.txt
+          created by   step:runsh cp orig.txt copy1.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh cp orig.txt copy1.txt
-            supplies   step:stepup.core.actions.runsh cp copy1.txt copy2.txt
+            consumes   step:runsh cp orig.txt copy1.txt
+            supplies   step:runsh cp copy1.txt copy2.txt
 
-step:stepup.core.actions.runsh cp copy1.txt copy2.txt
+step:runsh cp copy1.txt copy2.txt
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:copy1.txt
              creates   file:copy2.txt
@@ -60,6 +60,6 @@ step:stepup.core.actions.runsh cp copy1.txt copy2.txt
 
 file:copy2.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh cp copy1.txt copy2.txt
+          created by   step:runsh cp copy1.txt copy2.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh cp copy1.txt copy2.txt
+            consumes   step:runsh cp copy1.txt copy2.txt

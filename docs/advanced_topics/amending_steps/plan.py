@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-from stepup.core.api import static, step
+from stepup.core.api import runsh, static
 
 static("step.py")
-step("./step.py", inp=["step.py", "sources.txt"])
-step("echo input.txt > ${out}", out="sources.txt")
-step("echo You better read this. > input.txt", out="input.txt", optional=True)
+runsh("./step.py", inp=["step.py", "sources.txt"])
+runsh("echo input.txt > ${out}", out="sources.txt")
+runsh("echo You better read this. > input.txt", out="input.txt", optional=True)

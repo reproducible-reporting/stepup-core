@@ -58,8 +58,26 @@ Source = "https://github.com/reproducible-reporting/stepup-core/"
 Changelog = "https://reproducible-reporting.github.io/stepup-core/changelog/"
 
 [project.scripts]
-stepup = "stepup.core.tui:main"
-cleanup = "stepup.core.cleanup:main"
+stepup = "stepup.core.__main__:main"
+
+[project.entry-points."stepup.tools"]
+act = "stepup.core.actions:act_tool"
+boot = "stepup.core.tui:boot_tool"
+clean = "stepup.core.clean:clean_tool"
+run = "stepup.core.interact:run_tool"
+graph = "stepup.core.interact:graph_tool"
+watch-update = "stepup.core.interact:watch_update_tool"
+watch-delete = "stepup.core.interact:watch_delete_tool"
+wait = "stepup.core.interact:wait_tool"
+join = "stepup.core.interact:join_tool"
+shutdown = "stepup.core.interact:shutdown_tool"
+status = "stepup.core.interact:status_tool"
+
+[project.entry-points."stepup.actions"]
+runsh = "stepup.core.actions:runsh"
+runpy = "stepup.core.actions:runpy"
+mkdir = "stepup.core.actions:mkdir"
+copy = "stepup.core.actions:copy"
 
 [tool.pytest.ini_options]
 addopts = "-n auto -W error -W ignore::ResourceWarning"

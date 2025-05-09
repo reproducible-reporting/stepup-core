@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making failed steps
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ inp1.txt (digest 2600b478 ➜ 827c3d5c)
@@ -8,7 +8,7 @@
         2/4 |      PHASE │ run
         2/4 |  DROPAMEND │ runpy ./work.py
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest f9b922b0 ➜ 5d86900f, out_digest 59af1c47 ➜ (unset)
+Modified step hash   explained, inp_digest 06eedcaf ➜ 25bb42c6, out_digest 59af1c47 ➜ (unset)
 Modified inp hash    inp2.txt (digest 3618355c ➜ bc82e0ae)
 Deleted inp hash     out1.txt
 ──────────────────────── Remained the same (or missing) ────────────────────────
@@ -17,7 +17,7 @@ Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
         2/4 |     NOSKIP │ runpy ./prep.py run
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 38604c85 ➜ 008e2009, out_digest dc5a1639 ➜ (unset)
+Modified step hash   explained, inp_digest 7a3200f3 ➜ a9ad636f, out_digest dc5a1639 ➜ (unset)
 Modified inp hash    inp1.txt (digest 2600b478 ➜ 827c3d5c)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./

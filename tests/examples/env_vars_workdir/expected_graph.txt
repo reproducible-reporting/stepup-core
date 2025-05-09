@@ -1,22 +1,22 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:plan.py
             supplies   file:sub/
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
              env_var = INP_VAR_TEST_STEPUP_WORKDIR [amended]
           created by   root:
@@ -24,25 +24,25 @@ step:stepup.core.actions.runpy ./plan.py
             consumes   file:plan.py
              creates   file:sub/
              creates   file:sub/input.txt
-             creates   step:stepup.core.actions.runsh cat input.txt > output.txt  # wd=sub/
+             creates   step:runsh cat input.txt > output.txt  # wd=sub/
 
 file:sub/
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   file:sub/input.txt
             supplies   file:sub/output.txt
-            supplies   step:stepup.core.actions.runsh cat input.txt > output.txt  # wd=sub/
+            supplies   step:runsh cat input.txt > output.txt  # wd=sub/
 
 file:sub/input.txt
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:sub/
-            supplies   step:stepup.core.actions.runsh cat input.txt > output.txt  # wd=sub/
+            supplies   step:runsh cat input.txt > output.txt  # wd=sub/
 
-step:stepup.core.actions.runsh cat input.txt > output.txt  # wd=sub/
+step:runsh cat input.txt > output.txt  # wd=sub/
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:sub/
             consumes   file:sub/input.txt
              creates   file:sub/output.txt
@@ -50,6 +50,6 @@ step:stepup.core.actions.runsh cat input.txt > output.txt  # wd=sub/
 
 file:sub/output.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh cat input.txt > output.txt  # wd=sub/
+          created by   step:runsh cat input.txt > output.txt  # wd=sub/
             consumes   file:sub/
-            consumes   step:stepup.core.actions.runsh cat input.txt > output.txt  # wd=sub/
+            consumes   step:runsh cat input.txt > output.txt  # wd=sub/

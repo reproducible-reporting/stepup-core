@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making failed steps
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ inp.txt (digest UNKNOWN ➜ f60ce482, size 0 ➜ 6, mode ?--------- ➜ -rw-r--r--)
@@ -9,7 +9,7 @@
 ───────────────────────────── Missing output files ─────────────────────────────
 out.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   compact ➜ explained, inp_digest d33dc28b, out_digest d26e67b0 ➜ 870e35dd
+Modified step hash   compact ➜ explained, inp_digest 0b753a13, out_digest d26e67b0 ➜ 870e35dd
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |      START │ copy inp.txt out.txt
         2/2 |    SUCCESS │ copy inp.txt out.txt

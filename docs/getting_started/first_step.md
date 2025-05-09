@@ -16,11 +16,12 @@ Create a file `plan.py` with the following contents:
 Make this file executable with `chmod +x plan.py`.
 
 1. The first line is required to have the plan executed by the Python 3 interpreter.
-2. The second line imports the [`step()`][stepup.core.api.step] function from StepUp Core.
+2. The second line imports the [`runsh()`][stepup.core.api.runsh] function from StepUp Core.
+   (It stands for "run in shell".)
    This module contains functions to communicate with the director process
    of StepUp to define steps and other parts of the workflow.
 3. The last line defines a step that writes `Hello World` to the standard output.
-   The (first) argument of `step()` is a single string
+   The (first) argument of `runsh()` is a single string
    that can be interpreted by the default shell, typically `/usr/bin/sh`.
    You may use IO redirection, pipes, and other features supported by the shell.
    (StepUp will not provide any standard input.
@@ -29,9 +30,11 @@ Make this file executable with `chmod +x plan.py`.
 In the same directory, run:
 
 ```bash
-stepup -n 1
+stepup boot -n 1
 ```
 
+- The `boot` subcommand starts the StepUp terminal user interface and
+  the director process in the background, which will begin executing steps defined in `plan.py`.
 - The option `-n 1` sets the maximum number of workers to 1, i.e. no parallel execution of steps.
 
 You should see the following output, with colors if your virtual terminal supports them:
@@ -42,7 +45,7 @@ You should see the following output, with colors if your virtual terminal suppor
 
 Let's analyze the output:
 
-- The first three lines are part of StepUp startup sequence.
+- The first four lines are part of StepUp startup sequence.
   The address `/tmp/stepup-########/director`
   is a [Unix domain socket](https://en.wikipedia.org/wiki/Unix_domain_socket)
   through which the director receives instructions from other processes to define the workflow.
@@ -57,7 +60,7 @@ Let's analyze the output:
 Now repeat the execution of StepUp with:
 
 ```bash
-stepup -n 1
+stepup boot -n 1
 ```
 
 You will see a slightly different output:
@@ -76,9 +79,24 @@ of input files, used environment variables and produced outputs.
 When you manually remove `.stepup/graph.db`,
 StepUp will not know anymore that it already executed some steps and runs all of them again.
 
+## `runsh()` versus `step()`
+
+Prior to StepUp 3, the `runsh()` function was named `step()`.
+The `step()` function also exists in StepUp 3, but has a different and more general purpose.
+The following two lines are equivalent:
+
+```python
+runsh("echo Hello World")
+step("runsh echo Hello World")
+```
+
+The second form is a more low-level way to define step that explicitly states the `runsh` action.
+This is mainly useful when creating extensions for StepUp, which often need other actions than `runsh`.
+For most end users, the first form is more convenient and should be preferred.
+
 ## Try the Following
 
-- Change the arguments of the `echo` command in `plan.py` and run `stepup -n 1` again.
+- Change the arguments of the `echo` command in `plan.py` and run `stepup boot -n 1` again.
   As expected, StepUp detects the change and repeats the `plan.py` and `echo` steps.
 
 - Normally, you would never run `./plan.py` directly as a normal Python script, i.e.,

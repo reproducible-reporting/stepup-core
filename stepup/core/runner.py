@@ -166,10 +166,10 @@ class Runner:
         async with self.dblock:
             self.returncode = await report_completion(self.workflow, self.scheduler, self.reporter)
         if self.returncode != ReturnCode.SUCCESS:
-            await self.reporter("WARNING", "Skipping file cleanup due to incomplete build.")
+            await self.reporter("WARNING", "Skipping file cleanup due to incomplete build")
             await clean_queue(self.scheduler, self.dblock, self.reporter)
         elif not self.do_remove_outdated:
-            await self.reporter("WARNING", "Skipping file cleanup at user's request (--no-clean).")
+            await self.reporter("WARNING", "Skipping file cleanup at user's request (--no-clean)")
         else:
             async with self.dblock:
                 self.workflow.clean()
@@ -353,7 +353,7 @@ async def remove_outdated_outputs(workflow: Workflow, dblock: DBLock, reporter: 
     """Remove outdated outputs from the file system and reset their state in the database."""
     await reporter(
         "DIRECTOR",
-        f"Trying to delete {len(workflow.to_be_deleted)} outdated output(s).",
+        f"Trying to delete {len(workflow.to_be_deleted)} outdated output(s)",
     )
     workflow.to_be_deleted.sort(reverse=True)
     # Remove the files from the file system.
@@ -377,7 +377,7 @@ async def remove_outdated_outputs(workflow: Workflow, dblock: DBLock, reporter: 
 
 
 async def clean_queue(scheduler: Scheduler, dblock: DBLock, reporter: ReporterClient):
-    """Clean the scheduler queue and make queued steps pending again."""
+    """Clean the scheduler queue and make queued steps pending."""
     if scheduler.onhold:
         count = 0
         async with dblock:
@@ -386,4 +386,4 @@ async def clean_queue(scheduler: Scheduler, dblock: DBLock, reporter: ReporterCl
                 job.step.set_state(StepState.PENDING)
                 count += 1
         if count > 0:
-            await reporter("WARNING", f"Made {count} step(s) in the queue pending again.")
+            await reporter("WARNING", f"Made {count} step(s) in the queue pending.")

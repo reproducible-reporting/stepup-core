@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making failed steps
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    DELETED │ asource1.txt
@@ -12,7 +12,7 @@
 ───────────────────────────── Missing output files ─────────────────────────────
 data2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest f417c5d4, out_digest a04d333e ➜ 525a401d
+Modified step hash   explained, inp_digest 7aaaabbb, out_digest a04d333e ➜ 525a401d
 Modified out hash    data2.txt (digest 28b7cc0a ➜ UNKNOWN, size 25 ➜ 0, mode -rw-r--r-- ➜ ?---------)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
@@ -24,7 +24,7 @@ Same inp hash        asource2.txt
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  asource1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runsh ./work.py > log.txt
+Action                runsh ./work.py > log.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  data1.txt
@@ -32,7 +32,7 @@ Inputs        STATIC  ./
                BUILT  data2.txt [amended]
 Outputs      AWAITED  log.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.copy asource1.txt data1.txt
+Action                copy asource1.txt data1.txt
 Working directory     ./
 Inputs        STATIC  ./
              MISSING  asource1.txt

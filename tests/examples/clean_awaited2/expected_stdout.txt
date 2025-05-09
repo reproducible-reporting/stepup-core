@@ -15,7 +15,7 @@
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  input.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.copy input.txt output.txt
+Action                copy input.txt output.txt
 Working directory     ./
 Inputs        STATIC  ./
              MISSING  input.txt

@@ -1,25 +1,17 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and cleanup.
+# Exit on first error and clean up.
 set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Run the example
-stepup -w -n 1 & # > current_stdout.txt &
+stepup boot -n 1 -w & # > current_stdout.txt &
 PID=$!
 
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
-
 # Get the graph after completion of the pending steps.
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph")
-join()
-EOD
+stepup wait
+stepup graph current_graph
+stepup join
 
 # Wait for background processes, if any.
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
@@ -32,50 +24,32 @@ set +e; wait -fn $PID; RETURNCODE=$?; set -e
 [[ -f second.txt ]] || exit 1
 
 # Start stepup without checking expected output because watchdog file
+
 # order is not reproducible.
 rm .stepup/*.log
-stepup -w -n 1 &
-
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
+stepup boot -n 1 -w &
 
 # Wait for watch phase.
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-EOD
+stepup wait
 
-# Unset STEPUP_DIRECTOR_SOCKET because cleanup should work without it.
-unset STEPUP_DIRECTOR_SOCKET
-
-# Test cleanup that has no effect
-cleanup plan.py
+# Test stepup clean that has no effect
+stepup clean plan.py
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ -f first.txt ]] || exit 1
 [[ -f second.txt ]] || exit 1
 
-# Test cleanup that removes first and second
-cleanup ./
+# Test stepup clean that removes first and second
+stepup clean ./
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ ! -f first.txt ]] || exit 1
 [[ ! -f second.txt ]] || exit 1
 
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
-
 # Exit stepup
-python3 - << EOD
-from stepup.core.interact import *
-join()
-EOD
+stepup join
 
 # Wait for background processes, if any.
 wait

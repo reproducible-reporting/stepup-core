@@ -4,21 +4,10 @@
         0/1 |      START │ runpy ./plan.py
         1/2 |    SUCCESS │ runpy ./plan.py
         1/2 |      START │ runpy ./plan.py  # wd=data/
-        1/2 |       FAIL │ runpy ./plan.py  # wd=data/
-────────────────────────────────── Step info ───────────────────────────────────
-Action                stepup.core.actions.runpy ./plan.py
-Working directory     data/
-Return code           1
-─────────────────────────────── Standard output ────────────────────────────────
-stepup.core.actions.runpy ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'
-──────────────────────────────── Standard error ────────────────────────────────
-(stripped)
-────────────────────────────────────────────────────────────────────────────────
-        1/2 |      START │ runpy ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
-        2/2 |    SUCCESS │ runpy ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
-        2/2 |    WARNING │ 1 step(s) failed.
-        2/2 |    WARNING │ Skipping file cleanup due to incomplete build.
-        2/2 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-        2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ Stopping workers.
-        2/2 |   DIRECTOR │ See you!
+        2/3 |    SUCCESS │ runpy ./plan.py  # wd=data/
+        2/3 |      START │ runpy ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
+        3/3 |    SUCCESS │ runpy ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ See you!

@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making failed steps
         0/0 |    STARTUP │ Watching 2 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest e011ae03 ➜ fa5849da, size 152 ➜ 123)
@@ -10,7 +10,7 @@
         0/3 |      PHASE │ run
         0/3 |     NOSKIP │ runpy ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest dc9a611c ➜ 3f614bef, out_digest 786a02f7 ➜ (unset)
+Modified step hash   explained, inp_digest d7c3d294 ➜ fc0f40c6, out_digest 786a02f7 ➜ (unset)
 Modified inp hash    plan.py (digest e011ae03 ➜ fa5849da, size 152 ➜ 123)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
@@ -19,7 +19,7 @@ Same inp hash        ./
         1/2 |    SUCCESS │ runpy ./plan.py
         1/2 |     NOSKIP │ copy static/bar.txt bar.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 27e06602 ➜ f848c955, out_digest 74597035 ➜ (unset)
+Modified step hash   explained, inp_digest cb60e88b ➜ a25d6e66, out_digest 74597035 ➜ (unset)
 Modified inp hash    static/bar.txt (digest a69cc588 ➜ 8f30ea8a, size 4 ➜ 6)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./

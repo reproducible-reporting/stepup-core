@@ -1,23 +1,15 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and cleanup.
+# Exit on first error and clean up.
 set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Run the plan.
 echo version1 > inp.txt
-stepup -w -e -n 1 & # > current_stdout1.txt &
+stepup boot -n 1 -w -e & # > current_stdout1.txt &
 
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
-
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph1")
-EOD
+stepup wait
+stepup graph current_graph1
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
@@ -29,12 +21,9 @@ grep version1 final.txt
 
 # Change  the input and make sure the change is observed, but don't update the output.
 echo version2 > inp.txt
-python3 - << EOD
-from stepup.core.interact import *
-watch_update("inp.txt")
-graph("current_graph2")
-join()
-EOD
+stepup watch-update inp.txt
+stepup graph current_graph2
+stepup join
 
 # Wait for background processes, if any.
 wait
@@ -50,20 +39,12 @@ grep version1 final.txt
 # Restart StepUp after removing the output.
 echo version2 > inp.txt
 rm .stepup/*.log
-stepup -w -e -n 1 & # > current_stdout2.txt &
+stepup boot -n 1 -w -e & # > current_stdout2.txt &
 PID=$!
 
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
-
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph3")
-join()
-EOD
+stepup wait
+stepup graph current_graph3
+stepup join
 
 # Wait for background processes, if any.
 set +e; wait -fn $PID; RETURNCODE=$?; set -e

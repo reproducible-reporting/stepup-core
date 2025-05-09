@@ -38,7 +38,7 @@ Make the Python scripts executable and run them as follows:
 
 ```bash
 chmod +x plan.py step.py
-MYVAR=foo stepup -n 1
+MYVAR=foo stepup boot -n 1
 ```
 
 You should get the following terminal output:
@@ -60,8 +60,8 @@ the variable must exist or an exception is raised.
 
 ## Try the Following
 
-- Run StepUp without defining `MYVAR`: `stepup -n 1`.
+- Run StepUp without defining `MYVAR`: `stepup boot -n 1`.
   As explained above, this raises an exception.
-- Run StepUp by also defining `MYNUM`: `MYVAR=foo MYNUM=1 stepup -n 1`.
+- Run StepUp by also defining `MYNUM`: `MYVAR=foo MYNUM=1 stepup boot -n 1`.
   Now the string `'1'` is shown in the output `dst_foo.txt`.
   Note that environment variables are always strings, and need to be converted to other types if needed.

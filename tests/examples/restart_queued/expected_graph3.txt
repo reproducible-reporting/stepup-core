@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,36 +10,36 @@ file:./
             supplies   file:inp.txt
             supplies   file:out.txt
             supplies   file:plan.py
-            supplies   step:stepup.core.actions.copy inp.txt out.txt
-            supplies   step:stepup.core.actions.copy out.txt final.txt
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:copy inp.txt out.txt
+            supplies   step:copy out.txt final.txt
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:inp.txt
-             creates   step:stepup.core.actions.copy inp.txt out.txt
-             creates   step:stepup.core.actions.copy out.txt final.txt
+             creates   step:copy inp.txt out.txt
+             creates   step:copy out.txt final.txt
 
 file:inp.txt
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.copy inp.txt out.txt
+            supplies   step:copy inp.txt out.txt
 
-step:stepup.core.actions.copy inp.txt out.txt
+step:copy inp.txt out.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:inp.txt
              creates   file:out.txt
@@ -47,15 +47,15 @@ step:stepup.core.actions.copy inp.txt out.txt
 
 file:out.txt
                state = BUILT
-          created by   step:stepup.core.actions.copy inp.txt out.txt
+          created by   step:copy inp.txt out.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.copy inp.txt out.txt
-            supplies   step:stepup.core.actions.copy out.txt final.txt
+            consumes   step:copy inp.txt out.txt
+            supplies   step:copy out.txt final.txt
 
-step:stepup.core.actions.copy out.txt final.txt
+step:copy out.txt final.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:out.txt
              creates   file:final.txt
@@ -63,6 +63,6 @@ step:stepup.core.actions.copy out.txt final.txt
 
 file:final.txt
                state = BUILT
-          created by   step:stepup.core.actions.copy out.txt final.txt
+          created by   step:copy out.txt final.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.copy out.txt final.txt
+            consumes   step:copy out.txt final.txt

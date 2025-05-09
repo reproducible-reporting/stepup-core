@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,48 +9,48 @@ file:./
             supplies   file:missing.txt
             supplies   file:plan.py
             supplies   file:work.py
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runpy ./work.py
-            supplies   step:stepup.core.actions.runsh echo Will be deleted by accident > missing.txt
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./work.py
+            supplies   step:runsh echo Will be deleted by accident > missing.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:work.py
-             creates   step:stepup.core.actions.runpy ./work.py
-             creates   step:stepup.core.actions.runsh echo Will be deleted by accident > missing.txt
+             creates   step:runpy ./work.py
+             creates   step:runsh echo Will be deleted by accident > missing.txt
 
 file:work.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./work.py
+            supplies   step:runpy ./work.py
 
-step:stepup.core.actions.runpy ./work.py
+step:runpy ./work.py
                state = FAILED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:missing.txt [amended]
             consumes   file:work.py
 
-step:stepup.core.actions.runsh echo Will be deleted by accident > missing.txt
+step:runsh echo Will be deleted by accident > missing.txt
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:missing.txt
             supplies   file:missing.txt
 
 file:missing.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh echo Will be deleted by accident > missing.txt
+          created by   step:runsh echo Will be deleted by accident > missing.txt
             consumes   file:./
-            consumes   step:stepup.core.actions.runsh echo Will be deleted by accident > missing.txt
-            supplies   step:stepup.core.actions.runpy ./work.py
+            consumes   step:runsh echo Will be deleted by accident > missing.txt
+            supplies   step:runpy ./work.py

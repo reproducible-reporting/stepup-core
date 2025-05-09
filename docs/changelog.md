@@ -31,6 +31,18 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
       The syntax of an `action` is similar to a shell command:
       It consists of `module.submodule.function arg1 arg2 ...`.
     - [runsh()][stepup.core.api.runsh] mimics the behavior of the old `step()` function.
+    - The `stepup` command now uses subcommands to run different tools within StepUp.
+    The following tools have been implemented:
+        - `stepup act`: Execute an action, mostly for debugging.
+        - `stepup boot`: Equivalent to just `stepup` in StepUp 2.
+        - `stepup clean`: Equivalent to `cleanup` in StepUp 2.`
+        - `stepup join`: Wait for the runner to complete all steps and then shut down StepUp.
+        - `stepup graph`: Write out the current graph of a running StepUp instance.
+        - `stepup shutdown`: Stop the director process. Repeate to kill running steps.
+        - `stepup status`: Print the status of the director process.
+        - `stepup wait`: Wait for the runner to complete all steps.
+        - `stepup watch-update`: Wait until the watcher observe a file update.
+        - `stepup watch-delete`: Wait until the watcher observe a file deletion.
 - Internals:
     - Improved type hints in the code.
     - The environment variable `STEPUP_STEP_KEY` (string)

@@ -19,7 +19,7 @@
              MISSING  orig.txt
             OUTDATED  copy1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.runsh cp copy1.txt copy2.txt
+Action                runsh cp copy1.txt copy2.txt
 Working directory     ./
 Inputs        STATIC  ./
             OUTDATED  (copy1.txt)

@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
-from stepup.core.api import step
+from stepup.core.api import runsh
 
-step("date > date.txt", vol="date.txt")
+runsh("date > date.txt", vol="date.txt")

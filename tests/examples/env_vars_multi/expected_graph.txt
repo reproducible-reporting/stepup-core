@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -11,16 +11,16 @@ file:./
             supplies   file:inp.txt
             supplies   file:out.txt
             supplies   file:plan.py
-            supplies   step:stepup.core.actions.copy ../inp.txt ../out.txt  # wd=bar/
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:copy ../inp.txt ../out.txt  # wd=bar/
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -30,55 +30,55 @@ step:stepup.core.actions.runpy ./plan.py
              creates   file:foo/
              creates   file:foo/inp.txt
              creates   file:inp.txt
-             creates   step:stepup.core.actions.runpy ./plan.py  # wd=bar/
+             creates   step:runpy ./plan.py  # wd=bar/
 
 file:bar/
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   file:bar/plan.py
-            supplies   step:stepup.core.actions.copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
-            supplies   step:stepup.core.actions.copy ../inp.txt ../out.txt  # wd=bar/
-            supplies   step:stepup.core.actions.runpy ./plan.py  # wd=bar/
+            supplies   step:copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
+            supplies   step:copy ../inp.txt ../out.txt  # wd=bar/
+            supplies   step:runpy ./plan.py  # wd=bar/
 
 file:bar/plan.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:bar/
-            supplies   step:stepup.core.actions.runpy ./plan.py  # wd=bar/
+            supplies   step:runpy ./plan.py  # wd=bar/
 
 file:foo/
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   file:foo/inp.txt
             supplies   file:foo/out.txt
-            supplies   step:stepup.core.actions.copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
+            supplies   step:copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
 
 file:foo/inp.txt
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:foo/
-            supplies   step:stepup.core.actions.copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
+            supplies   step:copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
 
 file:inp.txt
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.copy ../inp.txt ../out.txt  # wd=bar/
+            supplies   step:copy ../inp.txt ../out.txt  # wd=bar/
 
-step:stepup.core.actions.runpy ./plan.py  # wd=bar/
+step:runpy ./plan.py  # wd=bar/
                state = SUCCEEDED
              env_var = INPS [amended]
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:bar/
             consumes   file:bar/plan.py
-             creates   step:stepup.core.actions.copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
-             creates   step:stepup.core.actions.copy ../inp.txt ../out.txt  # wd=bar/
+             creates   step:copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
+             creates   step:copy ../inp.txt ../out.txt  # wd=bar/
 
-step:stepup.core.actions.copy ../inp.txt ../out.txt  # wd=bar/
+step:copy ../inp.txt ../out.txt  # wd=bar/
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py  # wd=bar/
+          created by   step:runpy ./plan.py  # wd=bar/
             consumes   file:./
             consumes   file:bar/
             consumes   file:inp.txt
@@ -87,13 +87,13 @@ step:stepup.core.actions.copy ../inp.txt ../out.txt  # wd=bar/
 
 file:out.txt
                state = BUILT
-          created by   step:stepup.core.actions.copy ../inp.txt ../out.txt  # wd=bar/
+          created by   step:copy ../inp.txt ../out.txt  # wd=bar/
             consumes   file:./
-            consumes   step:stepup.core.actions.copy ../inp.txt ../out.txt  # wd=bar/
+            consumes   step:copy ../inp.txt ../out.txt  # wd=bar/
 
-step:stepup.core.actions.copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
+step:copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py  # wd=bar/
+          created by   step:runpy ./plan.py  # wd=bar/
             consumes   file:bar/
             consumes   file:foo/
             consumes   file:foo/inp.txt
@@ -102,6 +102,6 @@ step:stepup.core.actions.copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
 
 file:foo/out.txt
                state = BUILT
-          created by   step:stepup.core.actions.copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
+          created by   step:copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
             consumes   file:foo/
-            consumes   step:stepup.core.actions.copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
+            consumes   step:copy ../foo/inp.txt ../foo/out.txt  # wd=bar/

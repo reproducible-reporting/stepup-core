@@ -7,7 +7,7 @@
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              AWAITED  missing.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.copy missing.txt hello.txt
+Action                copy missing.txt hello.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (missing.txt)
@@ -21,7 +21,7 @@ Outputs      AWAITED  hello.txt
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              AWAITED  missing.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.copy missing.txt hello.txt
+Action                copy missing.txt hello.txt
 Working directory     ./
 Inputs        STATIC  ./
              AWAITED  (missing.txt)

@@ -6,7 +6,7 @@
         1/2 |      START │ runsh rm .sjdksjdfkjasdfkdjsak
         1/1 |       FAIL │ runsh rm .sjdksjdfkjasdfkdjsak
 ────────────────────────────────── Step info ───────────────────────────────────
-Action                stepup.core.actions.runsh rm .sjdksjdfkjasdfkdjsak
+Command               stepup act runsh rm .sjdksjdfkjasdfkdjsak
 Return code           1
 ───────────────────────── Expected outputs not created ─────────────────────────
 oops.txt

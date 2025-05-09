@@ -6,7 +6,7 @@
         1/2 |      START │ runpy ./work.py
         1/1 |       FAIL │ runpy ./work.py
 ────────────────────────────────── Step info ───────────────────────────────────
-Action                stepup.core.actions.runpy ./work.py
+Command               stepup act runpy ./work.py
 Return code           1
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)

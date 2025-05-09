@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making failed steps
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    UPDATED │ ENV_VAR_TEST_STEPUP_AWDFTD ='AAAA' ➜ ='DDDD'
@@ -9,7 +9,7 @@
         2/3 |      PHASE │ run
         2/3 |     NOSKIP │ runsh ./printvars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest ea445fce ➜ 31641d00, out_digest 8b927ea1 ➜ (unset)
+Modified step hash   explained, inp_digest de6a10bd ➜ 03c72f21, out_digest 8b927ea1 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_AWDFTD (unset) ➜ ='DDDD'
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./

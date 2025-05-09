@@ -1,5 +1,5 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and cleanup.
+# Exit on first error and clean up.
 set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
@@ -9,20 +9,12 @@ echo "This is the first half and" > asource1.txt
 echo "this is the second half." > asource2.txt
 
 # Run the plan.
-stepup -w -e -n 1 & # > current_stdout1.txt &
-
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
+stepup boot -n 1 -w -e & # > current_stdout1.txt &
 
 # Initial graph
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph1")
-join()
-EOD
+stepup wait
+stepup graph current_graph1
+stepup join
 
 # Wait for background processes, if any.
 wait
@@ -38,21 +30,13 @@ wait
 # Remove both intermediates the output and one of the inputs, and restart.
 # There should be pending steps because some input is missing.
 rm data1.txt data2.txt log.txt asource1.txt
-stepup -w -e -n 1 --log-level INFO & # > current_stdout2.txt &
+stepup --log-level INFO boot -n 1 -w -e & # > current_stdout2.txt &
 PID=$!
 
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
-
 # Initial graph
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph2")
-join()
-EOD
+stepup wait
+stepup graph current_graph2
+stepup join
 
 # Wait for background processes, if any.
 set +e; wait -fn $PID; RETURNCODE=$?; set -e

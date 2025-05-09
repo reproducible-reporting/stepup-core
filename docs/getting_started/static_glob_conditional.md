@@ -59,7 +59,7 @@ To run the example, make the scripts executable and fire up StepUp in non-intera
 
 ```bash
 chmod +x expensive.py plan.py
-stepup -n 1
+stepup boot -n 1
 ```
 
 You should get the following output:
@@ -72,7 +72,7 @@ Now, simulate the situation where the dataset is absent by renaming the director
 
 ```bash
 mv dataset tmp
-stepup -n 1
+stepup boot -n 1
 ```
 
 The new output reveals that the dataset is completely ignored

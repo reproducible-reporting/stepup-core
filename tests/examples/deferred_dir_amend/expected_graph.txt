@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -11,16 +11,16 @@ file:./
             supplies   file:dir_vol/
             supplies   file:plan.py
             supplies   file:work.py
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runpy ./work.py
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./work.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -28,23 +28,23 @@ step:stepup.core.actions.runpy ./plan.py
              creates   dg:dir_*/
              creates   file:dir_inp/inp.txt
              creates   file:work.py
-             creates   step:stepup.core.actions.runpy ./work.py
+             creates   step:runpy ./work.py
 
 dg:dir_*/
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
              creates   file:dir_inp/
              creates   file:dir_out/
              creates   file:dir_vol/
 
 file:work.py
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./work.py
+            supplies   step:runpy ./work.py
 
-step:stepup.core.actions.runpy ./work.py
+step:runpy ./work.py
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:dir_inp/inp.txt [amended]
             consumes   file:dir_out/ [amended]
@@ -57,9 +57,9 @@ step:stepup.core.actions.runpy ./work.py
 
 file:dir_inp/inp.txt
                state = STATIC
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:dir_inp/
-            supplies   step:stepup.core.actions.runpy ./work.py
+            supplies   step:runpy ./work.py
 
 file:dir_inp/
                state = STATIC
@@ -72,23 +72,23 @@ file:dir_out/
           created by   dg:dir_*/
             consumes   file:./
             supplies   file:dir_out/out.txt
-            supplies   step:stepup.core.actions.runpy ./work.py
+            supplies   step:runpy ./work.py
 
 file:dir_vol/
                state = STATIC
           created by   dg:dir_*/
             consumes   file:./
             supplies   file:dir_vol/vol.txt
-            supplies   step:stepup.core.actions.runpy ./work.py
+            supplies   step:runpy ./work.py
 
 file:dir_out/out.txt
                state = BUILT
-          created by   step:stepup.core.actions.runpy ./work.py
+          created by   step:runpy ./work.py
             consumes   file:dir_out/
-            consumes   step:stepup.core.actions.runpy ./work.py
+            consumes   step:runpy ./work.py
 
 file:dir_vol/vol.txt
                state = VOLATILE
-          created by   step:stepup.core.actions.runpy ./work.py
+          created by   step:runpy ./work.py
             consumes   file:dir_vol/
-            consumes   step:stepup.core.actions.runpy ./work.py
+            consumes   step:runpy ./work.py

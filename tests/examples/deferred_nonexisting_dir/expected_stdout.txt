@@ -17,7 +17,7 @@
              MISSING  sub/
              MISSING  sub/message.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                stepup.core.actions.copy sub/message.txt message.txt
+Action                copy sub/message.txt message.txt
 Working directory     ./
 Inputs        STATIC  ./
              MISSING  sub/

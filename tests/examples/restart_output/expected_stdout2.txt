@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making failed steps
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    DELETED │ copy.txt
@@ -9,7 +9,7 @@
 ───────────────────────────── Missing output files ─────────────────────────────
 copy.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 3fa88109, out_digest e8a9704b ➜ 11483ded
+Modified step hash   explained, inp_digest 7613266c, out_digest e8a9704b ➜ 11483ded
 Modified out hash    copy.txt (digest 9d30180e ➜ UNKNOWN, size 10 ➜ 0, mode -rw-r--r-- ➜ ?---------)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./

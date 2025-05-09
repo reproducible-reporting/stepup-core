@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:stepup.core.actions.runpy ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,44 +9,44 @@ file:./
             supplies   file:exists/
             supplies   file:plan.py
             supplies   file:sub/
-            supplies   step:stepup.core.actions.mkdir exists/
-            supplies   step:stepup.core.actions.mkdir sub/
-            supplies   step:stepup.core.actions.runpy ./plan.py
-            supplies   step:stepup.core.actions.runsh echo a > sub/foo.txt
+            supplies   step:mkdir exists/
+            supplies   step:mkdir sub/
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh echo a > sub/foo.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:stepup.core.actions.runpy ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:stepup.core.actions.runpy ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:stepup.core.actions.mkdir exists/
-             creates   step:stepup.core.actions.mkdir sub/
-             creates   step:stepup.core.actions.runsh echo a > sub/foo.txt
+             creates   step:mkdir exists/
+             creates   step:mkdir sub/
+             creates   step:runsh echo a > sub/foo.txt
 
-step:stepup.core.actions.mkdir sub/
+step:mkdir sub/
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:sub/
             supplies   file:sub/
 
 file:sub/
                state = BUILT
-          created by   step:stepup.core.actions.mkdir sub/
+          created by   step:mkdir sub/
             consumes   file:./
-            consumes   step:stepup.core.actions.mkdir sub/
+            consumes   step:mkdir sub/
             supplies   file:sub/foo.txt
-            supplies   step:stepup.core.actions.runsh echo a > sub/foo.txt
+            supplies   step:runsh echo a > sub/foo.txt
 
-step:stepup.core.actions.runsh echo a > sub/foo.txt
+step:runsh echo a > sub/foo.txt
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:sub/
              creates   file:sub/foo.txt
@@ -54,19 +54,19 @@ step:stepup.core.actions.runsh echo a > sub/foo.txt
 
 file:sub/foo.txt
                state = BUILT
-          created by   step:stepup.core.actions.runsh echo a > sub/foo.txt
+          created by   step:runsh echo a > sub/foo.txt
             consumes   file:sub/
-            consumes   step:stepup.core.actions.runsh echo a > sub/foo.txt
+            consumes   step:runsh echo a > sub/foo.txt
 
-step:stepup.core.actions.mkdir exists/
+step:mkdir exists/
                state = SUCCEEDED
-          created by   step:stepup.core.actions.runpy ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:exists/
             supplies   file:exists/
 
 file:exists/
                state = BUILT
-          created by   step:stepup.core.actions.mkdir exists/
+          created by   step:mkdir exists/
             consumes   file:./
-            consumes   step:stepup.core.actions.mkdir exists/
+            consumes   step:mkdir exists/

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import copy, glob, mkdir, step
+from stepup.core.api import copy, glob, mkdir, runsh
 
 # Make all chapter directories static
 glob("ch*/")
@@ -16,4 +16,4 @@ for match in glob("ch${*ch}/sec${*ch}_${*sec}_${*name}.txt", ch="[0-9]", sec="[0
 # Concatenate all markdown files per chapter
 mkdir("public/")
 for ch, paths_md in md_chapter.items():
-    step("cat ${inp} > ${out}", inp=paths_md, out=f"public/ch{ch}.md")
+    runsh("cat ${inp} > ${out}", inp=paths_md, out=f"public/ch{ch}.md")

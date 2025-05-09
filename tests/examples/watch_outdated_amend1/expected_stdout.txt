@@ -12,7 +12,7 @@
         1/2 |      PHASE │ run
         1/2 |  DROPAMEND │ runpy ./work.py
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest 03817490 ➜ aba3b94d, out_digest afcdb0f9 ➜ (unset)
+Modified step hash   explained, inp_digest 88de6a17 ➜ 0bca8b51, out_digest afcdb0f9 ➜ (unset)
 Deleted inp hash     inp1.txt
 Modified inp hash    subs.txt (digest 30d31453 ➜ c273a7ee)
 ──────────────────────── Remained the same (or missing) ────────────────────────

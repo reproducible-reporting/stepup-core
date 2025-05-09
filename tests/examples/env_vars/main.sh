@@ -1,5 +1,5 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and cleanup.
+# Exit on first error and clean up.
 set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
@@ -10,19 +10,11 @@ export ENV_VAR_TEST_STEPUP_DFTHYH="BBBB"
 
 # Run the example
 cp variables1.json variables.json
-stepup -w -e -n 1 & # > current_stdout1.txt &
-
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
+stepup boot -n 1 -w -e & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph1")
-EOD
+stepup wait
+stepup graph current_graph1
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
@@ -31,13 +23,10 @@ cp current_variables.txt current_variables1.txt
 
 # Rerun with changed file variables.json
 cp variables2.json variables.json
-python3 - << EOD
-from stepup.core.interact import *
-watch_update("variables.json")
-run()
-wait()
-graph("current_graph2")
-EOD
+stepup watch-update variables.json
+stepup run
+stepup wait
+stepup graph current_graph2
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
@@ -47,14 +36,11 @@ cp current_variables.txt current_variables2.txt
 
 # Rerun with UNchanged file variables.json
 touch variables.json
-python3 - << EOD
-from stepup.core.interact import *
-watch_update("variables.json")
-run()
-wait()
-graph("current_graph3")
-join()
-EOD
+stepup watch-update variables.json
+stepup run
+stepup wait
+stepup graph current_graph3
+stepup join
 
 # Wait for background processes, if any.
 wait
@@ -68,20 +54,12 @@ cp current_variables.txt current_variables3.txt
 # Change a variable and restart
 export ENV_VAR_TEST_STEPUP_DFTHYH="CCCC"
 rm .stepup/*.log
-stepup -w -e -n 1 & # > current_stdout2.txt &
-
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
+stepup boot -n 1 -w -e & # > current_stdout2.txt &
 
 # Get the graph after completion of the pending steps.
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph4")
-join()
-EOD
+stepup wait
+stepup graph current_graph4
+stepup join
 
 # Wait for background processes, if any.
 wait
@@ -95,20 +73,12 @@ cp current_variables.txt current_variables4.txt
 # unset a variable and restart
 unset ENV_VAR_TEST_STEPUP_AWDFTD
 rm .stepup/*.log
-stepup -w -e -n 1 & # > current_stdout3.txt &
-
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
+stepup boot -n 1 -w -e & # > current_stdout3.txt &
 
 # Get the graph after completion of the pending steps.
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph5")
-join()
-EOD
+stepup wait
+stepup graph current_graph5
+stepup join
 
 # Wait for background processes, if any.
 wait
@@ -122,20 +92,12 @@ cp current_variables.txt current_variables5.txt
 # Set a variable again and restart
 export ENV_VAR_TEST_STEPUP_AWDFTD="DDDD"
 rm .stepup/*.log
-stepup -w -e -n 1 & # > current_stdout4.txt &
-
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
+stepup boot -n 1 -w -e & # > current_stdout4.txt &
 
 # Get the graph after completion of the pending steps.
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph6")
-join()
-EOD
+stepup wait
+stepup graph current_graph6
+stepup join
 
 # Wait for background processes, if any.
 wait

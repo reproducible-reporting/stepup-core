@@ -25,7 +25,7 @@ call("executable", parameter="value")
 is roughly equivalent to
 
 ```python
-step("./executable '{\"parameter\": \"value\"}'", inp="executable")
+runsh("./executable '{\"parameter\": \"value\"}'", inp="executable")
 ```
 
 (It also works without any parameters.)
@@ -92,7 +92,7 @@ Finally, make the Python scripts executable and start StepUp:
 
 ```bash
 chmod +x wavegen.py plan.py
-stepup -n 1
+stepup boot -n 1
 ```
 
 You should see the following output on screen:

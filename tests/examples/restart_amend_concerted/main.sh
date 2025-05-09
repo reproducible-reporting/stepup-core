@@ -1,5 +1,5 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and cleanup.
+# Exit on first error and clean up.
 set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
@@ -7,20 +7,12 @@ rm -rvf $(cat .gitignore)
 # Run the first plan.
 echo a1 > inp1.txt
 echo a2 > inp2.txt
-stepup -w -e -n 1 & # > current_stdout1.txt &
-
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
+stepup boot -n 1 -w -e & # > current_stdout1.txt &
 
 # Run StepUp for a first time.
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph1")
-join()
-EOD
+stepup wait
+stepup graph current_graph1
+stepup join
 
 # Wait for background processes, if any.
 wait
@@ -36,20 +28,12 @@ grep a2 out2.txt || exit 1
 rm .stepup/*.log
 echo b1 > inp1.txt
 echo b2 > inp2.txt
-stepup -w -e -n 1 & # > current_stdout2.txt &
-
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
+stepup boot -n 1 -w -e & # > current_stdout2.txt &
 
 # Restart StepUp.
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph2")
-join()
-EOD
+stepup wait
+stepup graph current_graph2
+stepup join
 
 # Wait for background processes, if any.
 wait

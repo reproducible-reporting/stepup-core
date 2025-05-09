@@ -1,24 +1,16 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and cleanup.
+# Exit on first error and clean up.
 set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Run the initial plan.
 cp config1.json config.json
-stepup -w -n 1 --log-level INFO & # > current_stdout.txt &
-
-# Wait for the director and get its socket.
-export STEPUP_DIRECTOR_SOCKET=$(
-  python -c "import stepup.core.director; print(stepup.core.director.get_socket())"
-)
+stepup --log-level INFO boot -n 1 -w & # > current_stdout.txt &
 
 # Initial graph
-python3 - << EOD
-from stepup.core.interact import *
-wait()
-graph("current_graph1")
-EOD
+stepup wait
+stepup graph current_graph1
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
@@ -29,14 +21,11 @@ grep script.log copy.txt
 
 # Modify config.json and rerun.
 cp config2.json config.json
-python3 - << EOD
-from stepup.core.interact import *
-watch_update("config.json")
-run()
-wait()
-graph("current_graph2")
-join()
-EOD
+stepup watch-update config.json
+stepup run
+stepup wait
+stepup graph current_graph2
+stepup join
 
 # Wait for background processes, if any.
 wait
