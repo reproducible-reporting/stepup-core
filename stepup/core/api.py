@@ -533,9 +533,6 @@ def plan(
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
     """
-    # TODO: remove subs_env_vars (already in step)
-    with subs_env_vars() as subs:
-        subdir = subs(subdir)
     return runsh(
         "./plan.py",
         inp=["plan.py", *_str_to_list(inp)],

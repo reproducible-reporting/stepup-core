@@ -616,7 +616,6 @@ def has_shebang(executable: Path) -> bool:
 class WorkerHandler:
     """RPC Handler in the worker process to respond to requests from the WorkerClient."""
 
-    director_socket_path: str
     reporter: ReporterClient = attrs.field()
     show_perf: bool = attrs.field()
     explain_rerun: bool = attrs.field()
@@ -853,8 +852,6 @@ class WorkerHandler:
         await self.reporter("START", self.step.description)
 
         # For internal use only:
-        os.environ["STEPUP_DIRECTOR_SOCKET"] = self.director_socket_path  # TODO only once
-        os.environ["STEPUP_ROOT"] = str(Path.cwd())  # TODO only once, just take PWD?
         os.environ["STEPUP_STEP_I"] = str(self.step.i)
         # Client code may use the following:
         os.environ["ROOT"] = str(Path.cwd().relpath(self.step.workdir))
@@ -1015,10 +1012,12 @@ def parse_args():
 
 async def async_main():
     args = parse_args()
+    os.environ["STEPUP_DIRECTOR_SOCKET"] = args.director_socket
+    os.environ["STEPUP_ROOT"] = str(Path.cwd())
     print(f"PID {os.getpid()}", file=sys.stderr)
     async with ReporterClient.socket(args.reporter_socket) as reporter:
         # Create the worker handler for the RPC server.
-        handler = WorkerHandler(args.director_socket, reporter, args.show_perf, args.explain_rerun)
+        handler = WorkerHandler(reporter, args.show_perf, args.explain_rerun)
         await serve_socket_rpc(handler, args.worker_socket, handler.stop_event)
 
 

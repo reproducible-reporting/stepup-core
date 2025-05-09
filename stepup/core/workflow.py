@@ -563,7 +563,6 @@ class Workflow(Cascade):
         file_hashes
             A list of `(path, file_hash)` tuples.
         """
-        # TODO: also return state, needs updating too
         self.con.execute("DROP TABLE IF EXISTS temp.paths")
         try:
             self.con.execute("CREATE TABLE temp.paths(path TEXT PRIMARY KEY)")
