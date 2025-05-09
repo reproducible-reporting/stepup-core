@@ -100,7 +100,7 @@ def mkdir(argstr: str) -> int:
     return 0
 
 
-def act(args: argparse.Namespace) -> int:
+def act_tool(args: argparse.Namespace) -> int:
     """Execute an action.
 
     Parameters
@@ -120,7 +120,7 @@ def act(args: argparse.Namespace) -> int:
     return work_thread.run()
 
 
-def act_tool(subparser: argparse.ArgumentParser) -> callable:
+def act_subcommand(subparser: argparse.ArgumentParser) -> callable:
     """Create a subparser for the action tool.
 
     Parameters
@@ -135,4 +135,4 @@ def act_tool(subparser: argparse.ArgumentParser) -> callable:
     """
     parser = subparser.add_parser("act", help="Execute an action.")
     parser.add_argument("action", help="The action to execute.", nargs="+")
-    return act
+    return act_tool

@@ -9,7 +9,7 @@ While it is rarely needed to create a new tool, you can do so as follows:
     ```python
     import argparse
 
-    def custom(args: argparse.Namespace) -> int:
+    def custom_tool(args: argparse.Namespace) -> int:
         ...
     ```
 
@@ -22,21 +22,21 @@ While it is rarely needed to create a new tool, you can do so as follows:
     ```python
     import argparse
 
-    def custom_tool(subparser: argparse.ArgumentParser) -> callable:
+    def custom_subcommand(subparser: argparse.ArgumentParser) -> callable:
         parser = subparser.add_parser(
             "name",
             help="Description of the tool",
         )
         parser.add_argument(...)
         ...
-        return custom
+        return custom_tool
     ```
 
 3. Add an entry point in `pyproject.toml` that points to this function:
 
     ```toml
     [project.entry-points."stepup.tools"]
-    custom = "your.package:custom_tool"
+    custom = "your.package:custom_subcommand"
     ```
 
-    where you replace `your.package` with the name of the module that contains `custom_tool`.
+    where you replace `your.package` with the name of the module that contains `custom_command`.

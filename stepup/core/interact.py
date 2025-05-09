@@ -36,54 +36,54 @@ from .step import StepState
 __all__ = ()
 
 
-def shutdown(args: argparse.Namespace):
+def shutdown_tool(args: argparse.Namespace):
     """Drain the schedule. wait for running steps to complete and then exit StepUp."""
     get_rpc_client(get_socket()).call.shutdown()
 
 
-def shutdown_tool(subparser: argparse.ArgumentParser) -> callable:
+def shutdown_subcommand(subparser: argparse.ArgumentParser) -> callable:
     subparser.add_parser(
         "shutdown",
         help="Drain the scheduler, wait for running steps to complete and then exit StepUp. "
         "Call again to kill running steps.",
     )
-    return shutdown
+    return shutdown_tool
 
 
-def drain(args: argparse.Namespace):
+def drain_tool(args: argparse.Namespace):
     """Drain the scheduler. (No new steps are started.)"""
     get_rpc_client(get_socket()).call.drain()
 
 
-def drain_tool(subparser: argparse.ArgumentParser) -> callable:
+def drain_subcommand(subparser: argparse.ArgumentParser) -> callable:
     subparser.add_parser(
         "drain",
         help="Drain the scheduler. (No new steps are started.)",
     )
-    return drain
+    return drain_tool
 
 
-def join(args: argparse.Namespace):
+def join_tool(args: argparse.Namespace):
     """Wait for the runner to become idle and stop the director.
 
     This is the same as `wait()` followed by `shutdown()`."""
     get_rpc_client(get_socket()).call.join(_rpc_timeout=-1)
 
 
-def join_tool(subparser: argparse.ArgumentParser) -> callable:
+def join_subcommand(subparser: argparse.ArgumentParser) -> callable:
     subparser.add_parser(
         "join",
         help="Wait for the runner to become idle and stop the director.",
     )
-    return join
+    return join_tool
 
 
-def graph(args: argparse.Namespace):
+def graph_tool(args: argparse.Namespace):
     """Write the workflow graph files in text and dot formats."""
     get_rpc_client(get_socket()).call.graph(args.prefix)
 
 
-def graph_tool(subparser: argparse.ArgumentParser) -> callable:
+def graph_subcommand(subparser: argparse.ArgumentParser) -> callable:
     parser = subparser.add_parser(
         "graph",
         help="Write the workflow graph files in text and dot formats.",
@@ -92,10 +92,10 @@ def graph_tool(subparser: argparse.ArgumentParser) -> callable:
         "prefix",
         help="Prefix for the output files. The files will be named <prefix>.txt and <prefix>.dot.",
     )
-    return graph
+    return graph_tool
 
 
-def status(args: argparse.Namespace):
+def status_tool(args: argparse.Namespace):
     """Print the status of the director."""
     status = get_rpc_client(get_socket()).call.status()
     print("[bold underline]Step counts[/]")
@@ -111,33 +111,33 @@ def status(args: argparse.Namespace):
         print(f"  {action}")
 
 
-def status_tool(subparser: argparse.ArgumentParser) -> callable:
+def status_subcommand(subparser: argparse.ArgumentParser) -> callable:
     subparser.add_parser(
         "status",
         help="Print the status of the director.",
     )
-    return status
+    return status_tool
 
 
-def run(args: argparse.Namespace):
+def run_tool(args: argparse.Namespace):
     """Exit the watch phase and start running steps whose inputs have changed."""
     get_rpc_client(get_socket()).call.run()
 
 
-def run_tool(subparser: argparse.ArgumentParser) -> callable:
+def run_subcommand(subparser: argparse.ArgumentParser) -> callable:
     subparser.add_parser(
         "run",
         help="Exit the watch phase and start running steps whose inputs have changed.",
     )
-    return run
+    return run_tool
 
 
-def watch_update(args: argparse.Namespace):
+def watch_update_tool(args: argparse.Namespace):
     """Block until the watcher has observed an update of the file."""
     get_rpc_client(get_socket()).call.watch_update(args.path, _rpc_timeout=-1)
 
 
-def watch_update_tool(subparser: argparse.ArgumentParser) -> callable:
+def watch_update_subcommand(subparser: argparse.ArgumentParser) -> callable:
     parser = subparser.add_parser(
         "watch-update",
         help="Block until the watcher has observed an update of the file.",
@@ -146,15 +146,15 @@ def watch_update_tool(subparser: argparse.ArgumentParser) -> callable:
         "path",
         help="Path to the file to watch.",
     )
-    return watch_update
+    return watch_update_tool
 
 
-def watch_delete(args: argparse.Namespace):
+def watch_delete_tool(args: argparse.Namespace):
     """Block until the watcher has observed the deletion of the file."""
     get_rpc_client(get_socket()).call.watch_delete(args.path, _rpc_timeout=-1)
 
 
-def watch_delete_tool(subparser: argparse.ArgumentParser) -> callable:
+def watch_delete_subcommand(subparser: argparse.ArgumentParser) -> callable:
     parser = subparser.add_parser(
         "watch-delete",
         help="Block until the watcher has observed the deletion of the file.",
@@ -163,17 +163,17 @@ def watch_delete_tool(subparser: argparse.ArgumentParser) -> callable:
         "path",
         help="Path to the file to watch.",
     )
-    return watch_delete
+    return watch_delete_tool
 
 
-def wait(args: argparse.Namespace):
+def wait_tool(args: argparse.Namespace):
     """Block until the runner has become idle."""
     get_rpc_client(get_socket()).call.wait(_rpc_timeout=-1)
 
 
-def wait_tool(subparser: argparse.ArgumentParser) -> callable:
+def wait_subcommand(subparser: argparse.ArgumentParser) -> callable:
     subparser.add_parser(
         "wait",
         help="Block until the runner has become idle.",
     )
-    return wait
+    return wait_tool

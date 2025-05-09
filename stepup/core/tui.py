@@ -39,7 +39,7 @@ from .rpc import AsyncRPCClient, serve_socket_rpc
 __all__ = ()
 
 
-def boot(args: argparse.Namespace):
+def boot_tool(args: argparse.Namespace):
     asyncio.run(async_boot(args))
 
 
@@ -230,7 +230,7 @@ async def keyboard(
                 await reporter("KEYBOARD", f"Unsupported key {ch}", pages)
 
 
-def boot_tool(subparsers) -> callable:
+def boot_subcommand(subparsers) -> callable:
     """Parse command-line arguments."""
     parser = subparsers.add_parser(
         "boot",
@@ -298,4 +298,4 @@ def boot_tool(subparsers) -> callable:
         const=500,
         help="Run the director under perf record, by default at a frequency of 500 Hz.",
     )
-    return boot
+    return boot_tool

@@ -34,7 +34,7 @@ from .hash import FileHash
 from .utils import mynormpath, translate, translate_back
 
 
-def clean_tool(subparser: argparse.ArgumentParser) -> callable:
+def clean_subcommand(subparser: argparse.ArgumentParser) -> callable:
     parser = subparser.add_parser(
         "clean",
         help="Recursively remove outputs of a file or in a directory. "
@@ -56,10 +56,10 @@ def clean_tool(subparser: argparse.ArgumentParser) -> callable:
         action="store_true",
         help="Do not remove any files, just show what would be done.",
     )
-    return main
+    return clean_tool
 
 
-def main(args: argparse.Namespace):
+def clean_tool(args: argparse.Namespace):
     """Main program."""
     # Get all unique paths relative to STEPUP_ROOT, possible amended with a trailing slash.
     tr_paths = set()
@@ -201,7 +201,3 @@ def search_consuming_paths(
     finally:
         con.execute(DROP_PATHS)
         con.execute(DROP_CONSUMERS)
-
-
-if __name__ == "__main__":
-    main()
