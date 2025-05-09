@@ -496,10 +496,7 @@ class WorkerStep:
     @property
     def description(self):
         """A shorter form of the full action, without module name."""
-        action_name, argstr = self.action.split(" ", 1)
-        function_name = action_name.rsplit(".", 1)[-1]
-        function = f"{function_name} {argstr}"
-        return function if self.workdir == "./" else f"{function}  # wd={self.workdir}"
+        return self.action if self.workdir == "./" else f"{self.action}  # wd={self.workdir}"
 
 
 class WorkThread(threading.Thread):
