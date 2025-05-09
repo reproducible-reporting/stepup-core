@@ -57,21 +57,21 @@ FROM_SCRATCH_GRAPH = """\
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:plan.py
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -103,22 +103,22 @@ STATIC_GRAPH = """\
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:foo
             supplies   file:plan.py
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -127,7 +127,7 @@ step:runpy ./plan.py
 
 file:foo
                state = MISSING
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
 
 """
@@ -153,7 +153,7 @@ COPY_GRAPH = """\
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -161,16 +161,16 @@ file:./
             supplies   file:copy.txt
             supplies   file:original.txt
             supplies   file:plan.py
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
             supplies   step:runsh cp -v original.txt copy.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -180,7 +180,7 @@ step:runpy ./plan.py
 
 step:runsh cp -v original.txt copy.txt
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:original.txt
              creates   file:copy.txt
@@ -188,7 +188,7 @@ step:runsh cp -v original.txt copy.txt
 
 file:original.txt
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   step:runsh cp -v original.txt copy.txt
 

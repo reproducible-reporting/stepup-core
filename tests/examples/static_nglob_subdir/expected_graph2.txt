@@ -1,33 +1,33 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:plan.py
             supplies   file:sub/
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:sub/
              creates   file:sub/plan.py
-             creates   step:runpy ./plan.py  # wd=sub/
+             creates   step:runsh ./plan.py  # wd=sub/
 
 file:sub/
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   file:sub/inp1.txt
             supplies   file:sub/inp2.txt
@@ -39,19 +39,19 @@ file:sub/
             supplies   step:copy inp1.txt out1.txt  # wd=sub/
             supplies   step:copy inp2.txt out2.txt  # wd=sub/
             supplies   step:copy inp3.txt out3.txt  # wd=sub/
-            supplies   step:runpy ./plan.py  # wd=sub/
+            supplies   step:runsh ./plan.py  # wd=sub/
 
 file:sub/plan.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:sub/
-            supplies   step:runpy ./plan.py  # wd=sub/
+            supplies   step:runsh ./plan.py  # wd=sub/
 
-step:runpy ./plan.py  # wd=sub/
+step:runsh ./plan.py  # wd=sub/
                state = SUCCEEDED
                  ngm = ['sub/inp${*idx}.txt'] {'idx': '?'}
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:sub/
             consumes   file:sub/plan.py
              creates   file:sub/inp1.txt
@@ -63,19 +63,19 @@ step:runpy ./plan.py  # wd=sub/
 
 file:sub/inp1.txt
                state = STATIC
-          created by   step:runpy ./plan.py  # wd=sub/
+          created by   step:runsh ./plan.py  # wd=sub/
             consumes   file:sub/
             supplies   step:copy inp1.txt out1.txt  # wd=sub/
 
 file:sub/inp2.txt
                state = STATIC
-          created by   step:runpy ./plan.py  # wd=sub/
+          created by   step:runsh ./plan.py  # wd=sub/
             consumes   file:sub/
             supplies   step:copy inp2.txt out2.txt  # wd=sub/
 
 step:copy inp1.txt out1.txt  # wd=sub/
                state = SUCCEEDED
-          created by   step:runpy ./plan.py  # wd=sub/
+          created by   step:runsh ./plan.py  # wd=sub/
             consumes   file:sub/
             consumes   file:sub/inp1.txt
              creates   file:sub/out1.txt
@@ -89,7 +89,7 @@ file:sub/out1.txt
 
 step:copy inp2.txt out2.txt  # wd=sub/
                state = SUCCEEDED
-          created by   step:runpy ./plan.py  # wd=sub/
+          created by   step:runsh ./plan.py  # wd=sub/
             consumes   file:sub/
             consumes   file:sub/inp2.txt
              creates   file:sub/out2.txt
@@ -103,14 +103,14 @@ file:sub/out2.txt
 
 file:sub/inp3.txt
                state = STATIC
-          created by   step:runpy ./plan.py  # wd=sub/
+          created by   step:runsh ./plan.py  # wd=sub/
             consumes   file:sub/
             supplies   step:copy inp3.txt out3.txt  # wd=sub/
 
 step:copy inp3.txt out3.txt  # wd=sub/
                state = SUCCEEDED
            explained = yes
-          created by   step:runpy ./plan.py  # wd=sub/
+          created by   step:runsh ./plan.py  # wd=sub/
             consumes   file:sub/
             consumes   file:sub/inp3.txt
              creates   file:sub/out3.txt

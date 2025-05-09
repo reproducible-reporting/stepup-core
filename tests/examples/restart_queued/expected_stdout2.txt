@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps
+        0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
@@ -22,10 +22,10 @@ Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
         2/3 |      START │ copy out.txt final.txt
         3/3 |    SUCCESS │ copy out.txt final.txt
-        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |    WARNING │ Check logs: .stepup/warning.log
         3/3 |      PHASE │ watch
         3/3 |    UPDATED │ inp.txt
         3/3 |  UNCHANGED │ inp.txt
-        3/3 |   DIRECTOR │ Stopping workers.
+        3/3 |   DIRECTOR │ Stopping workers
         3/3 |   DIRECTOR │ See you!

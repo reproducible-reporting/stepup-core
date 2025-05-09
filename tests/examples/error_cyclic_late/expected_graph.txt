@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -9,16 +9,16 @@ file:./
             supplies   (file:first)
             supplies   file:plan.py
             supplies   file:second
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
             supplies   step:runsh cat first > second
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = FAILED
           created by   root:
             consumes   file:./
@@ -27,7 +27,7 @@ step:runpy ./plan.py
 
 step:runsh cat first > second
                state = PENDING
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   (file:first)
             consumes   file:./
              creates   file:second

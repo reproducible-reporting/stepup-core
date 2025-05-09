@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -11,34 +11,34 @@ file:./
             supplies   file:plan.py
             supplies   file:work.py
             supplies   file:work.txt
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
+            supplies   step:runsh ./plan.py
+            supplies   step:runsh ./work.py
             supplies   step:runsh echo ping > ping.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:work.py
-             creates   step:runpy ./work.py
+             creates   step:runsh ./work.py
              creates   step:runsh echo ping > ping.txt
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy ./work.py
+            supplies   step:runsh ./work.py
 
-step:runpy ./work.py
+step:runsh ./work.py
                state = PENDING
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   (file:pong.txt) [amended]
             consumes   file:./
             consumes   file:ping.txt [amended]
@@ -48,13 +48,13 @@ step:runpy ./work.py
 
 file:work.txt
                state = AWAITED
-          created by   step:runpy ./work.py
+          created by   step:runsh ./work.py
             consumes   file:./
-            consumes   step:runpy ./work.py
+            consumes   step:runsh ./work.py
 
 step:runsh echo ping > ping.txt
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
              creates   file:ping.txt
             supplies   file:ping.txt
@@ -64,9 +64,9 @@ file:ping.txt
           created by   step:runsh echo ping > ping.txt
             consumes   file:./
             consumes   step:runsh echo ping > ping.txt
-            supplies   step:runpy ./work.py
+            supplies   step:runsh ./work.py
 
 (file:pong.txt)
                state = AWAITED
             consumes   file:./
-            supplies   step:runpy ./work.py
+            supplies   step:runsh ./work.py

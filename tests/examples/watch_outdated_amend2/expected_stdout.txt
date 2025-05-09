@@ -1,23 +1,23 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/4 |    SUCCESS │ runpy ./plan.py
+        0/1 |      START │ runsh ./plan.py
+        1/4 |    SUCCESS │ runsh ./plan.py
         1/4 |      START │ copy inp1.txt conv1.txt
         2/4 |    SUCCESS │ copy inp1.txt conv1.txt
         2/4 |      START │ runsh ./work.py subs1.txt > subs2.txt
         3/4 |    SUCCESS │ runsh ./work.py subs1.txt > subs2.txt
         3/4 |      START │ runsh ./work.py subs2.txt > subs3.txt
         4/4 |    SUCCESS │ runsh ./work.py subs2.txt > subs3.txt
-        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |      PHASE │ watch
         4/4 |    UPDATED │ inp1.txt
         4/4 |    DELETED │ inp1.txt
         4/4 |    UPDATED │ inp2.txt
         4/4 |    UPDATED │ subs1.txt
         0/4 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/4 |    SUCCESS │ runpy ./plan.py
+        0/1 |      START │ runsh ./plan.py
+        1/4 |    SUCCESS │ runsh ./plan.py
         1/4 |      START │ copy inp2.txt conv2.txt
         2/4 |    SUCCESS │ copy inp2.txt conv2.txt
         2/4 |  DROPAMEND │ runsh ./work.py subs1.txt > subs2.txt
@@ -40,11 +40,11 @@ Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
         3/4 |      START │ runsh ./work.py subs2.txt > subs3.txt
         4/4 |    SUCCESS │ runsh ./work.py subs2.txt > subs3.txt
-        4/4 |   DIRECTOR │ Trying to delete 1 outdated output(s).
+        4/4 |   DIRECTOR │ Trying to delete 1 outdated output(s)
         4/4 |      CLEAN │ conv1.txt
         4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch
         4/4 |    UPDATED │ inp2.txt
         4/4 |  UNCHANGED │ inp2.txt
-        4/4 |   DIRECTOR │ Stopping workers.
+        4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

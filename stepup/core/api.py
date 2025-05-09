@@ -494,43 +494,6 @@ def runsh(
     )
 
 
-def runpy(
-    command: str,
-    *,
-    inp: Collection[str] | str = (),
-    env: Collection[str] | str = (),
-    out: Collection[str] | str = (),
-    vol: Collection[str] | str = (),
-    workdir: str = "./",
-    optional: bool = False,
-    pool: str | None = None,
-    block: bool = False,
-):
-    """Add a Python command to the build graph.
-
-    See [`step()`][stepup.core.api.step] for the documentation of all optional arguments
-    and the return value.
-
-    Parameters
-    ----------
-    command
-        The path of the script and its command line arguments.
-        Note that the script will not be executed in a shell or in a subprocess.
-        Shell expressions are not interpreted.
-    """
-    return step(
-        f"runpy {command}",
-        inp=inp,
-        env=env,
-        out=out,
-        vol=vol,
-        workdir=workdir,
-        optional=optional,
-        pool=pool,
-        block=block,
-    )
-
-
 def plan(
     subdir: str,
     *,
@@ -573,7 +536,7 @@ def plan(
     # TODO: remove subs_env_vars (already in step)
     with subs_env_vars() as subs:
         subdir = subs(subdir)
-    return runpy(
+    return runsh(
         "./plan.py",
         inp=["plan.py", *_str_to_list(inp)],
         env=env,
@@ -936,8 +899,6 @@ def call(
 
     # Finally, create a step
     step_kwargs.setdefault("inp", []).append(executable)
-    if executable.endswith(".py"):
-        return runpy(command, **step_kwargs)
     return runsh(command, **step_kwargs)
 
 
@@ -1015,8 +976,6 @@ def script(
         "pool": pool,
         "block": block,
     }
-    if executable.endswith(".py"):
-        return runpy(command, **step_kwargs)
     return runsh(command, **step_kwargs)
 
 

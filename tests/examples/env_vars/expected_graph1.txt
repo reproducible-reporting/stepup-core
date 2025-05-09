@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -11,17 +11,17 @@ file:./
             supplies   file:plan.py
             supplies   file:printvars.py
             supplies   file:variables.json
-            supplies   step:runpy ./demovars.py
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./demovars.py
+            supplies   step:runsh ./plan.py
             supplies   step:runsh ./printvars.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
@@ -30,30 +30,30 @@ step:runpy ./plan.py
              creates   file:demovars.py
              creates   file:printvars.py
              creates   file:variables.json
-             creates   step:runpy ./demovars.py
+             creates   step:runsh ./demovars.py
 
 file:demovars.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy ./demovars.py
+            supplies   step:runsh ./demovars.py
 
 file:printvars.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   step:runsh ./printvars.py
 
 file:variables.json
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy ./demovars.py
+            supplies   step:runsh ./demovars.py
 
-step:runpy ./demovars.py
+step:runsh ./demovars.py
                state = SUCCEEDED
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:demovars.py
             consumes   file:variables.json
@@ -63,7 +63,7 @@ step:runsh ./printvars.py
                state = SUCCEEDED
              env_var = ENV_VAR_TEST_STEPUP_AWDFTD
            explained = yes
-          created by   step:runpy ./demovars.py
+          created by   step:runsh ./demovars.py
             consumes   file:./
             consumes   file:printvars.py
              creates   file:current_variables.txt

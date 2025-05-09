@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps
+        0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
@@ -13,8 +13,8 @@ Return code           1
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
         1/1 |    WARNING │ 1 step(s) failed.
-        1/1 |    WARNING │ Skipping file cleanup due to incomplete build.
+        1/1 |    WARNING │ Skipping file cleanup due to incomplete build
         1/1 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
         1/1 |      PHASE │ watch
-        1/1 |   DIRECTOR │ Stopping workers.
+        1/1 |   DIRECTOR │ Stopping workers
         1/1 |   DIRECTOR │ See you!

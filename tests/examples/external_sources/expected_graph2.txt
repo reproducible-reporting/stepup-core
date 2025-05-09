@@ -2,7 +2,7 @@ root:
              creates   file:../
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -11,38 +11,38 @@ file:./
             supplies   file:plan.py
             supplies   file:worker.py
             supplies   file:worker_out.json
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./worker.py --out=worker_out.json --amend-out
+            supplies   step:runsh ./plan.py
+            supplies   step:runsh ./worker.py --out=worker_out.json --amend-out
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   dg:../pkgs/**
              creates   file:worker.py
-             creates   step:runpy ./worker.py --out=worker_out.json --amend-out
+             creates   step:runsh ./worker.py --out=worker_out.json --amend-out
 
 file:worker.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy ./worker.py --out=worker_out.json --amend-out
+            supplies   step:runsh ./worker.py --out=worker_out.json --amend-out
 
 dg:../pkgs/**
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
              creates   file:../pkgs/
              creates   file:../pkgs/helper.py
 
-step:runpy ./worker.py --out=worker_out.json --amend-out
+step:runsh ./worker.py --out=worker_out.json --amend-out
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:../pkgs/helper.py [amended]
             consumes   file:./
             consumes   file:worker.py
@@ -53,7 +53,7 @@ file:../pkgs/helper.py
                state = STATIC
           created by   dg:../pkgs/**
             consumes   file:../pkgs/
-            supplies   step:runpy ./worker.py --out=worker_out.json --amend-out
+            supplies   step:runsh ./worker.py --out=worker_out.json --amend-out
 
 file:../pkgs/
                state = STATIC
@@ -69,6 +69,6 @@ file:../
 
 file:worker_out.json
                state = BUILT
-          created by   step:runpy ./worker.py --out=worker_out.json --amend-out
+          created by   step:runsh ./worker.py --out=worker_out.json --amend-out
             consumes   file:./
-            consumes   step:runpy ./worker.py --out=worker_out.json --amend-out
+            consumes   step:runsh ./worker.py --out=worker_out.json --amend-out

@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps
+        0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ inp1.txt (digest 2600b478 ➜ 827c3d5c)
@@ -6,35 +6,35 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         2/4 |      PHASE │ run
-        2/4 |  DROPAMEND │ runpy ./work.py
+        2/4 |  DROPAMEND │ runsh ./work.py
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest 06eedcaf ➜ 25bb42c6, out_digest 59af1c47 ➜ (unset)
+Modified step hash   explained, inp_digest a1fa78f7 ➜ a7b78b8b, out_digest 59af1c47 ➜ (unset)
 Modified inp hash    inp2.txt (digest 3618355c ➜ bc82e0ae)
 Deleted inp hash     out1.txt
 ──────────────────────── Remained the same (or missing) ────────────────────────
 Same inp hash        ./
 Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
-        2/4 |     NOSKIP │ runpy ./prep.py run
+        2/4 |     NOSKIP │ runsh ./prep.py run
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 7a3200f3 ➜ a9ad636f, out_digest dc5a1639 ➜ (unset)
+Modified step hash   explained, inp_digest 8790874f ➜ 423d91de, out_digest dc5a1639 ➜ (unset)
 Modified inp hash    inp1.txt (digest 2600b478 ➜ 827c3d5c)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 Same inp hash        prep.py
 ────────────────────────────────────────────────────────────────────────────────
-        2/4 |      START │ runpy ./work.py
-        2/4 | RESCHEDULE │ runpy ./work.py
+        2/4 |      START │ runsh ./work.py
+        2/4 | RESCHEDULE │ runsh ./work.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 Missing inputs and/or required directories:
 out1.txt
 ────────────────────────────────────────────────────────────────────────────────
-        2/4 |      START │ runpy ./prep.py run
-        3/4 |    SUCCESS │ runpy ./prep.py run
-        3/4 |      START │ runpy ./work.py
-        4/4 |    SUCCESS │ runpy ./work.py
-        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/4 |      START │ runsh ./prep.py run
+        3/4 |    SUCCESS │ runsh ./prep.py run
+        3/4 |      START │ runsh ./work.py
+        4/4 |    SUCCESS │ runsh ./work.py
+        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch
-        4/4 |   DIRECTOR │ Stopping workers.
+        4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

@@ -1,8 +1,8 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-       1/11 |    SUCCESS │ runpy ./plan.py
+        0/1 |      START │ runsh ./plan.py
+       1/11 |    SUCCESS │ runsh ./plan.py
 ─────────────────────────────── Standard output ────────────────────────────────
 Planning ch 1 intro
 Planning sec 1 blabla
@@ -34,7 +34,7 @@ Planning sec 1 summary
       10/11 |    SUCCESS │ runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
       10/11 |      START │ runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
       11/11 |    SUCCESS │ runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
-      11/11 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+      11/11 |   DIRECTOR │ Trying to delete 0 outdated output(s)
       11/11 |      PHASE │ watch
       11/11 |    UPDATED │ ch-1-intro/sec-1-1-blabla.txt
       11/11 |    UPDATED │ ch-1-intro/sec-1-2-some-more.txt
@@ -50,8 +50,8 @@ Planning sec 1 summary
       11/11 |  UNCHANGED │ ch-3-conclusions/sec-3-1-summary.txt
       11/11 |  UNCHANGED │ ch-3-conclusions/sec-3-2-outlook.txt
        7/11 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-       8/11 |    SUCCESS │ runpy ./plan.py
+        0/1 |      START │ runsh ./plan.py
+       8/11 |    SUCCESS │ runsh ./plan.py
 ─────────────────────────────── Standard output ────────────────────────────────
 Planning ch 1 intro
 Planning sec 1 blabla
@@ -69,10 +69,10 @@ Planning sec 1 summary
       10/11 |    SUCCESS │ runsh cat ch-2-theory/sec-2-1-basics.md ch-2-theory/sec-2-2-original.md > ch-2-theory/ch-2-compiled.md
       10/11 |      START │ runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
       11/11 |    SUCCESS │ runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
-      11/11 |   DIRECTOR │ Trying to delete 1 outdated output(s).
+      11/11 |   DIRECTOR │ Trying to delete 1 outdated output(s)
       11/11 |      CLEAN │ ch-2-theory/sec-2-2-advanced.md
       11/11 |      PHASE │ watch
       11/11 |    UPDATED │ ch-2-theory/sec-2-2-original.txt
       11/11 |  UNCHANGED │ ch-2-theory/sec-2-2-original.txt
-      11/11 |   DIRECTOR │ Stopping workers.
+      11/11 |   DIRECTOR │ Stopping workers
       11/11 |   DIRECTOR │ See you!

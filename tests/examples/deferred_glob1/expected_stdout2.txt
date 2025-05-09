@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps
+        0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 3 director(y|ies) from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    UPDATED │ ENV_VAR_TEST_STEPUP_INP ='static/sub/foo.txt' ➜ ='static/sub/bar.txt'
@@ -6,13 +6,13 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/2 |    SUCCESS │ runpy ./plan.py
+        0/1 |      START │ runsh ./plan.py
+        1/2 |    SUCCESS │ runsh ./plan.py
         1/2 |      START │ copy static/sub/bar.txt copy.txt
         2/2 |    SUCCESS │ copy static/sub/bar.txt copy.txt
-        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |    UPDATED │ static/sub/bar.txt
         2/2 |  UNCHANGED │ static/sub/bar.txt
-        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ Stopping workers
         2/2 |   DIRECTOR │ See you!

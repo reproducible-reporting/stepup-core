@@ -1,23 +1,23 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:data/
             supplies   file:plan.py
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
             supplies   step:runsh cat data/sub/inp.txt > data/sub/out.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -29,13 +29,13 @@ step:runpy ./plan.py
 
 file:data/
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   file:data/sub/
 
 file:data/sub/
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:data/
             supplies   file:data/sub/inp.txt
             supplies   file:data/sub/out.txt
@@ -43,13 +43,13 @@ file:data/sub/
 
 file:data/sub/inp.txt
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:data/sub/
             supplies   step:runsh cat data/sub/inp.txt > data/sub/out.txt
 
 step:runsh cat data/sub/inp.txt > data/sub/out.txt
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:data/sub/
             consumes   file:data/sub/inp.txt

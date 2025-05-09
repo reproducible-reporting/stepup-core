@@ -1,23 +1,23 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:out2.txt
             supplies   file:plan.py
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
             supplies   step:runsh echo bye > out2.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
@@ -28,7 +28,7 @@ step:runpy ./plan.py
 step:runsh echo bye > out2.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
              creates   file:out2.txt
             supplies   file:out2.txt

@@ -1,15 +1,15 @@
-        0/0 |    STARTUP │ Making failed steps
+        0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ helper.py (digest 09a622ea ➜ 3f0a5a27, size 36 ➜ 38)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         2/4 |      PHASE │ run
-        2/4 |      START │ runpy ./work.py run first
-        3/4 |    SUCCESS │ runpy ./work.py run first
-        3/4 |      START │ runpy ./work.py run second
-        4/4 |    SUCCESS │ runpy ./work.py run second
-        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/4 |      START │ runsh ./work.py run first
+        3/4 |    SUCCESS │ runsh ./work.py run first
+        3/4 |      START │ runsh ./work.py run second
+        4/4 |    SUCCESS │ runsh ./work.py run second
+        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |      PHASE │ watch
-        4/4 |   DIRECTOR │ Stopping workers.
+        4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

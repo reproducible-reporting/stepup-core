@@ -1,15 +1,15 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/3 |    SUCCESS │ runpy ./plan.py
-        1/3 |      START │ runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
-        2/4 |    SUCCESS │ runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
-        2/4 |      START │ runpy ./generate.py run  # wd=work/
-        3/4 |    SUCCESS │ runpy ./generate.py run  # wd=work/
+        0/1 |      START │ runsh ./plan.py
+        1/3 |    SUCCESS │ runsh ./plan.py
+        1/3 |      START │ runsh ./generate.py plan --step-info=../current_step_info.json  # wd=work/
+        2/4 |    SUCCESS │ runsh ./generate.py plan --step-info=../current_step_info.json  # wd=work/
+        2/4 |      START │ runsh ./generate.py run  # wd=work/
+        3/4 |    SUCCESS │ runsh ./generate.py run  # wd=work/
         3/4 |      START │ copy work/test.csv work/copy.csv
         4/4 |    SUCCESS │ copy work/test.csv work/copy.csv
-        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |      PHASE │ watch
-        4/4 |   DIRECTOR │ Stopping workers.
+        4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

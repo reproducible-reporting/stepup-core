@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import runpy, static
+from stepup.core.api import runsh, static
 
 static(["variables.json", "demovars.py", "printvars.py"])
-runpy("./demovars.py", inp=["demovars.py", "variables.json"])
+runsh("./demovars.py", inp=["demovars.py", "variables.json"])

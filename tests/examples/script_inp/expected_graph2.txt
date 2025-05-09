@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -11,52 +11,52 @@ file:./
             supplies   file:out_spam.txt
             supplies   file:plan.py
             supplies   file:script.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./script.py plan
-            supplies   step:runpy ./script.py run egg
-            supplies   step:runpy ./script.py run spam
+            supplies   step:runsh ./plan.py
+            supplies   step:runsh ./script.py plan
+            supplies   step:runsh ./script.py run egg
+            supplies   step:runsh ./script.py run spam
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:config.txt
              creates   file:script.py
-             creates   step:runpy ./script.py plan
+             creates   step:runsh ./script.py plan
 
 file:config.txt
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy ./script.py plan
+            supplies   step:runsh ./script.py plan
 
 file:script.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy ./script.py plan
-            supplies   step:runpy ./script.py run egg
-            supplies   step:runpy ./script.py run spam
+            supplies   step:runsh ./script.py plan
+            supplies   step:runsh ./script.py run egg
+            supplies   step:runsh ./script.py run spam
 
-step:runpy ./script.py plan
+step:runsh ./script.py plan
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:config.txt
             consumes   file:script.py
-             creates   step:runpy ./script.py run egg
-             creates   step:runpy ./script.py run spam
+             creates   step:runsh ./script.py run egg
+             creates   step:runsh ./script.py run spam
 
-step:runpy ./script.py run egg
+step:runsh ./script.py run egg
                state = SUCCEEDED
-          created by   step:runpy ./script.py plan
+          created by   step:runsh ./script.py plan
             consumes   file:./
             consumes   file:script.py
              creates   file:out_egg.txt
@@ -64,13 +64,13 @@ step:runpy ./script.py run egg
 
 file:out_egg.txt
                state = BUILT
-          created by   step:runpy ./script.py run egg
+          created by   step:runsh ./script.py run egg
             consumes   file:./
-            consumes   step:runpy ./script.py run egg
+            consumes   step:runsh ./script.py run egg
 
-step:runpy ./script.py run spam
+step:runsh ./script.py run spam
                state = SUCCEEDED
-          created by   step:runpy ./script.py plan
+          created by   step:runsh ./script.py plan
             consumes   file:./
             consumes   file:script.py
              creates   file:out_spam.txt
@@ -78,6 +78,6 @@ step:runpy ./script.py run spam
 
 file:out_spam.txt
                state = BUILT
-          created by   step:runpy ./script.py run spam
+          created by   step:runsh ./script.py run spam
             consumes   file:./
-            consumes   step:runpy ./script.py run spam
+            consumes   step:runsh ./script.py run spam

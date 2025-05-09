@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -14,18 +14,18 @@ file:./
             supplies   file:the road to hell is paved with whitespace.txt
             supplies   file:white space leaves a lot of room for mistakes.txt
             supplies   step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-            supplies   step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
-            supplies   step:runpy './script is cool.py' plan
-            supplies   step:runpy './script is cool.py' run
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
+            supplies   step:runsh './script is cool.py' plan
+            supplies   step:runsh './script is cool.py' run
+            supplies   step:runsh ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -34,32 +34,32 @@ step:runpy ./plan.py
              creates   file:call is cool.py
              creates   file:script is cool.py
              creates   step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-             creates   step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
-             creates   step:runpy './script is cool.py' plan
+             creates   step:runsh './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
+             creates   step:runsh './script is cool.py' plan
 
 file:README NOW.txt
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-            supplies   step:runpy './script is cool.py' run
+            supplies   step:runsh './script is cool.py' run
 
 file:call is cool.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
+            supplies   step:runsh './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
 
 file:script is cool.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy './script is cool.py' plan
-            supplies   step:runpy './script is cool.py' run
+            supplies   step:runsh './script is cool.py' plan
+            supplies   step:runsh './script is cool.py' run
 
 step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:README NOW.txt
              creates   file:white space leaves a lot of room for mistakes.txt
@@ -71,30 +71,30 @@ file:white space leaves a lot of room for mistakes.txt
             consumes   file:./
             consumes   step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
 
-step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
+step:runsh './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:call is cool.py
              creates   file:call is cool_out.json
             supplies   file:call is cool_out.json [amended]
 
-step:runpy './script is cool.py' plan
+step:runsh './script is cool.py' plan
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:script is cool.py
-             creates   step:runpy './script is cool.py' run
+             creates   step:runsh './script is cool.py' run
 
 file:call is cool_out.json
                state = BUILT
-          created by   step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
+          created by   step:runsh './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
             consumes   file:./
-            consumes   step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
+            consumes   step:runsh './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
 
-step:runpy './script is cool.py' run
+step:runsh './script is cool.py' run
                state = SUCCEEDED
-          created by   step:runpy './script is cool.py' plan
+          created by   step:runsh './script is cool.py' plan
             consumes   file:./
             consumes   file:README NOW.txt
             consumes   file:script is cool.py
@@ -103,6 +103,6 @@ step:runpy './script is cool.py' run
 
 file:the road to hell is paved with whitespace.txt
                state = BUILT
-          created by   step:runpy './script is cool.py' run
+          created by   step:runsh './script is cool.py' run
             consumes   file:./
-            consumes   step:runpy './script is cool.py' run
+            consumes   step:runsh './script is cool.py' run

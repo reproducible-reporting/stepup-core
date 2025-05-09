@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps
+        0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    DELETED │ bye.txt
@@ -17,8 +17,8 @@ Inputs        STATIC  ./
              AWAITED  (missing.txt)
 Outputs      AWAITED  hello.txt
 ────────────────────────────────────────────────────────────────────────────────
-        2/3 |    WARNING │ Skipping file cleanup due to incomplete build.
+        2/3 |    WARNING │ Skipping file cleanup due to incomplete build
         2/3 |    WARNING │ Check logs: .stepup/warning.log
         2/3 |      PHASE │ watch
-        2/3 |   DIRECTOR │ Stopping workers.
+        2/3 |   DIRECTOR │ Stopping workers
         2/3 |   DIRECTOR │ See you!

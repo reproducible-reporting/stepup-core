@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -12,15 +12,15 @@ file:./
             supplies   file:plan.py
             supplies   step:copy inp.txt out.txt
             supplies   step:copy out.txt final.txt
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
@@ -32,14 +32,14 @@ step:runpy ./plan.py
 
 file:inp.txt
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   step:copy inp.txt out.txt
 
 step:copy inp.txt out.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:inp.txt
              creates   file:out.txt
@@ -55,7 +55,7 @@ file:out.txt
 step:copy out.txt final.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:out.txt
              creates   file:final.txt

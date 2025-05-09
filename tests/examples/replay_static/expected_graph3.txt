@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -11,32 +11,32 @@ file:./
             supplies   file:plan.py
             supplies   file:work.py
             supplies   step:copy inp.txt out.txt
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
+            supplies   step:runsh ./plan.py
+            supplies   step:runsh ./work.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:work.py
-             creates   step:runpy ./work.py
+             creates   step:runsh ./work.py
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy ./work.py
+            supplies   step:runsh ./work.py
 
-step:runpy ./work.py
+step:runsh ./work.py
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:work.py
              creates   file:inp.txt
@@ -44,13 +44,13 @@ step:runpy ./work.py
 
 file:inp.txt
                state = STATIC
-          created by   step:runpy ./work.py
+          created by   step:runsh ./work.py
             consumes   file:./
             supplies   step:copy inp.txt out.txt
 
 step:copy inp.txt out.txt
                state = SUCCEEDED
-          created by   step:runpy ./work.py
+          created by   step:runsh ./work.py
             consumes   file:./
             consumes   file:inp.txt
              creates   file:out.txt

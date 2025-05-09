@@ -75,7 +75,6 @@ status = "stepup.core.interact:status_tool"
 
 [project.entry-points."stepup.actions"]
 runsh = "stepup.core.actions:runsh"
-runpy = "stepup.core.actions:runpy"
 mkdir = "stepup.core.actions:mkdir"
 copy = "stepup.core.actions:copy"
 

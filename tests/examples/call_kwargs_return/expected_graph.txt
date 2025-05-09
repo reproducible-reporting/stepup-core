@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -10,43 +10,43 @@ file:./
             supplies   file:work.py
             supplies   file:work_inp.json
             supplies   file:work_out.json
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work.py --inp=work_inp.json --out=work_out.json --amend-out
+            supplies   step:runsh ./plan.py
+            supplies   step:runsh ./work.py --inp=work_inp.json --out=work_out.json --amend-out
             supplies   step:runsh cat work_out.json
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:work.py
              creates   file:work_inp.json
-             creates   step:runpy ./work.py --inp=work_inp.json --out=work_out.json --amend-out
+             creates   step:runsh ./work.py --inp=work_inp.json --out=work_out.json --amend-out
              creates   step:runsh cat work_out.json
             supplies   file:work_inp.json [amended]
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy ./work.py --inp=work_inp.json --out=work_out.json --amend-out
+            supplies   step:runsh ./work.py --inp=work_inp.json --out=work_out.json --amend-out
 
 file:work_inp.json
                state = BUILT
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            consumes   step:runpy ./plan.py
-            supplies   step:runpy ./work.py --inp=work_inp.json --out=work_out.json --amend-out
+            consumes   step:runsh ./plan.py
+            supplies   step:runsh ./work.py --inp=work_inp.json --out=work_out.json --amend-out
 
-step:runpy ./work.py --inp=work_inp.json --out=work_out.json --amend-out
+step:runsh ./work.py --inp=work_inp.json --out=work_out.json --amend-out
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:work.py
             consumes   file:work_inp.json
@@ -55,13 +55,13 @@ step:runpy ./work.py --inp=work_inp.json --out=work_out.json --amend-out
 
 step:runsh cat work_out.json
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:work_out.json
 
 file:work_out.json
                state = BUILT
-          created by   step:runpy ./work.py --inp=work_inp.json --out=work_out.json --amend-out
+          created by   step:runsh ./work.py --inp=work_inp.json --out=work_out.json --amend-out
             consumes   file:./
-            consumes   step:runpy ./work.py --inp=work_inp.json --out=work_out.json --amend-out
+            consumes   step:runsh ./work.py --inp=work_inp.json --out=work_out.json --amend-out
             supplies   step:runsh cat work_out.json

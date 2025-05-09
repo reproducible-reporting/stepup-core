@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -15,16 +15,16 @@ file:./
             supplies   file:work.py
             supplies   step:copy data1.txt optional1.txt
             supplies   step:copy data2.txt optional2.txt
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
             supplies   step:runsh ./work.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -38,26 +38,26 @@ step:runpy ./plan.py
 
 file:data1.txt
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   step:copy data1.txt optional1.txt
 
 file:data2.txt
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   step:copy data2.txt optional2.txt
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   step:runsh ./work.py
 
 step:copy data1.txt optional1.txt
                state = SUCCEEDED
            mandatory = REQUIRED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:data1.txt
              creates   file:optional1.txt
@@ -73,7 +73,7 @@ file:optional1.txt
 step:copy data2.txt optional2.txt
                state = SUCCEEDED
            mandatory = REQUIRED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:data2.txt
              creates   file:optional2.txt
@@ -88,7 +88,7 @@ file:optional2.txt
 
 step:runsh ./work.py
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:optional1.txt [amended]
             consumes   file:optional2.txt [amended]

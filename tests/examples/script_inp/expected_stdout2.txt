@@ -1,19 +1,19 @@
-        0/0 |    STARTUP │ Making failed steps
+        0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ config.txt (digest b44f3e9e ➜ 41683e13, size 9 ➜ 11)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         3/4 |      PHASE │ run
-        1/2 |      START │ runpy ./script.py plan
-        2/4 |    SUCCESS │ runpy ./script.py plan
-        2/4 |      START │ runpy ./script.py run egg
-        3/4 |    SUCCESS │ runpy ./script.py run egg
-        3/4 |      START │ runpy ./script.py run spam
-        4/4 |    SUCCESS │ runpy ./script.py run spam
-        4/4 |   DIRECTOR │ Trying to delete 2 outdated output(s).
+        1/2 |      START │ runsh ./script.py plan
+        2/4 |    SUCCESS │ runsh ./script.py plan
+        2/4 |      START │ runsh ./script.py run egg
+        3/4 |    SUCCESS │ runsh ./script.py run egg
+        3/4 |      START │ runsh ./script.py run spam
+        4/4 |    SUCCESS │ runsh ./script.py run spam
+        4/4 |   DIRECTOR │ Trying to delete 2 outdated output(s)
         4/4 |      CLEAN │ out_foo.txt
         4/4 |      CLEAN │ out_bar.txt
         4/4 |      PHASE │ watch
-        4/4 |   DIRECTOR │ Stopping workers.
+        4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

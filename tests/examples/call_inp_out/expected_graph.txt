@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -10,41 +10,41 @@ file:./
             supplies   file:foo.pickle
             supplies   file:plan.py
             supplies   file:special.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./special.py --inp=foo.pickle --out=bar.json
+            supplies   step:runsh ./plan.py
+            supplies   step:runsh ./special.py --inp=foo.pickle --out=bar.json
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:foo.pickle
              creates   file:special.py
-             creates   step:runpy ./special.py --inp=foo.pickle --out=bar.json
+             creates   step:runsh ./special.py --inp=foo.pickle --out=bar.json
             supplies   file:foo.pickle [amended]
 
 file:special.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy ./special.py --inp=foo.pickle --out=bar.json
+            supplies   step:runsh ./special.py --inp=foo.pickle --out=bar.json
 
 file:foo.pickle
                state = BUILT
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            consumes   step:runpy ./plan.py
-            supplies   step:runpy ./special.py --inp=foo.pickle --out=bar.json
+            consumes   step:runsh ./plan.py
+            supplies   step:runsh ./special.py --inp=foo.pickle --out=bar.json
 
-step:runpy ./special.py --inp=foo.pickle --out=bar.json
+step:runsh ./special.py --inp=foo.pickle --out=bar.json
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:foo.pickle
             consumes   file:special.py
@@ -53,6 +53,6 @@ step:runpy ./special.py --inp=foo.pickle --out=bar.json
 
 file:bar.json
                state = BUILT
-          created by   step:runpy ./special.py --inp=foo.pickle --out=bar.json
+          created by   step:runsh ./special.py --inp=foo.pickle --out=bar.json
             consumes   file:./
-            consumes   step:runpy ./special.py --inp=foo.pickle --out=bar.json
+            consumes   step:runsh ./special.py --inp=foo.pickle --out=bar.json

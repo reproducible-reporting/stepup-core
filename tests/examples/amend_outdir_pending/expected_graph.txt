@@ -1,32 +1,32 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   (file:nonexisting/)
             supplies   file:plan.py
-            supplies   step:runpy ./demo.py
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./demo.py
+            supplies   step:runsh ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
-             creates   step:runpy ./demo.py
+             creates   step:runsh ./demo.py
 
-step:runpy ./demo.py
+step:runsh ./demo.py
                state = PENDING
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   (file:nonexisting/) [amended]
             consumes   file:./
              creates   file:nonexisting/foo.out
@@ -36,10 +36,10 @@ step:runpy ./demo.py
                state = AWAITED
             consumes   file:./
             supplies   file:nonexisting/foo.out
-            supplies   step:runpy ./demo.py
+            supplies   step:runsh ./demo.py
 
 file:nonexisting/foo.out
                state = AWAITED
-          created by   step:runpy ./demo.py
+          created by   step:runsh ./demo.py
             consumes   (file:nonexisting/)
-            consumes   step:runpy ./demo.py
+            consumes   step:runsh ./demo.py

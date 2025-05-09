@@ -35,7 +35,6 @@ import threading
 import traceback
 from collections.abc import AsyncGenerator
 from importlib.metadata import entry_points
-from runpy import run_path
 from time import perf_counter
 
 import attrs
@@ -591,24 +590,6 @@ class WorkThread(threading.Thread):
         if stderr is not None and len(stderr) > 0:
             sys.stderr.write(stderr)
         return p.returncode
-
-    def runpy(self, script: str, args: list[str]) -> int:
-        """Run a Python script without creating a new process."""
-        # Sanity check of the executable (if it can be found)
-        if not has_shebang(Path(script)):
-            print(
-                f"Script does not start with a shebang: {script} (wd={Path.cwd()})",
-                file=sys.stderr,
-            )
-            return 1
-        # Run the script
-        original_argv = sys.argv
-        sys.argv = [script, *args]
-        try:
-            run_path(script, run_name="__main__")
-            return 0
-        finally:
-            sys.argv = original_argv
 
 
 def has_shebang(executable: Path) -> bool:

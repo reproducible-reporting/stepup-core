@@ -1,11 +1,11 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/2 |    SUCCESS │ runpy ./plan.py
+        0/1 |      START │ runsh ./plan.py
+        1/2 |    SUCCESS │ runsh ./plan.py
         1/2 |      START │ copy input.txt output.txt
         2/2 |    SUCCESS │ copy input.txt output.txt
-        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |    UPDATED │ input.txt
         2/2 |    DELETED │ output.txt
@@ -13,9 +13,9 @@
         1/2 |      PHASE │ run
         1/2 |      START │ copy input.txt output.txt
         2/2 |    SUCCESS │ copy input.txt output.txt
-        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |    UPDATED │ input.txt
         2/2 |  UNCHANGED │ input.txt
-        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ Stopping workers
         2/2 |   DIRECTOR │ See you!

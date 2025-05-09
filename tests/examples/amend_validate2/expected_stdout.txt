@@ -1,10 +1,10 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/3 |    SUCCESS │ runpy ./plan.py
-        1/3 |      START │ runpy ./work.py
-        1/3 | RESCHEDULE │ runpy ./work.py
+        0/1 |      START │ runsh ./plan.py
+        1/3 |    SUCCESS │ runsh ./plan.py
+        1/3 |      START │ runsh ./work.py
+        1/3 | RESCHEDULE │ runsh ./work.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 Missing inputs and/or required directories:
 ping.txt
@@ -12,8 +12,8 @@ pong.txt
 ────────────────────────────────────────────────────────────────────────────────
         1/3 |      START │ runsh echo ping > ping.txt
         2/3 |    SUCCESS │ runsh echo ping > ping.txt
-        2/3 |      START │ runpy ./work.py
-        2/3 | RESCHEDULE │ runpy ./work.py
+        2/3 |      START │ runsh ./work.py
+        2/3 | RESCHEDULE │ runsh ./work.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 Missing inputs and/or required directories:
 pong.txt
@@ -22,7 +22,7 @@ pong.txt
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              AWAITED  pong.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                runpy ./work.py
+Action                runsh ./work.py
 Working directory     ./
 Inputs        STATIC  ./
               STATIC  work.py
@@ -30,8 +30,8 @@ Inputs        STATIC  ./
              AWAITED  (pong.txt) [amended]
 Outputs      AWAITED  work.txt
 ────────────────────────────────────────────────────────────────────────────────
-        2/3 |    WARNING │ Skipping file cleanup due to incomplete build.
+        2/3 |    WARNING │ Skipping file cleanup due to incomplete build
         2/3 |    WARNING │ Check logs: .stepup/warning.log
         2/3 |      PHASE │ watch
-        2/3 |   DIRECTOR │ Stopping workers.
+        2/3 |   DIRECTOR │ Stopping workers
         2/3 |   DIRECTOR │ See you!

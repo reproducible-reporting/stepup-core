@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -10,15 +10,15 @@ file:./
             supplies   file:plan.py
             supplies   file:static/
             supplies   step:copy static/sub/bar.txt copy.txt
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
              env_var = ENV_VAR_TEST_STEPUP_INP [amended]
           created by   root:
@@ -48,7 +48,7 @@ file:copy.txt
 
 step:copy static/sub/bar.txt copy.txt
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:static/sub/
             consumes   file:static/sub/bar.txt
@@ -62,7 +62,7 @@ file:static/sub/bar.txt
             supplies   step:copy static/sub/bar.txt copy.txt
 
 dg:static/**
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
              creates   file:static/
              creates   file:static/sub/
              creates   file:static/sub/bar.txt

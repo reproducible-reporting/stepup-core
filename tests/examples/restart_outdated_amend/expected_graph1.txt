@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -11,16 +11,16 @@ file:./
             supplies   file:plan.py
             supplies   file:subs.txt
             supplies   file:work.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
+            supplies   step:runsh ./plan.py
+            supplies   step:runsh ./work.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
@@ -29,27 +29,27 @@ step:runpy ./plan.py
              creates   dg:inp*.txt
              creates   file:subs.txt
              creates   file:work.py
-             creates   step:runpy ./work.py
+             creates   step:runsh ./work.py
 
 file:subs.txt
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy ./work.py
+            supplies   step:runsh ./work.py
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
 
 dg:inp*.txt
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
              creates   file:inp1.txt
 
-step:runpy ./work.py
+step:runsh ./work.py
                state = SUCCEEDED
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:inp1.txt [amended]
             consumes   file:subs.txt
@@ -60,10 +60,10 @@ file:inp1.txt
                state = STATIC
           created by   dg:inp*.txt
             consumes   file:./
-            supplies   step:runpy ./work.py
+            supplies   step:runsh ./work.py
 
 file:copy.txt
                state = BUILT
-          created by   step:runpy ./work.py
+          created by   step:runsh ./work.py
             consumes   file:./
-            consumes   step:runpy ./work.py
+            consumes   step:runsh ./work.py

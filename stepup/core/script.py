@@ -316,9 +316,7 @@ def parse_args(script_path: str) -> argparse.Namespace:
 def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapper):
     """Create the step to plan the run part of the script."""
     # Local import because the StepUp client is not always needed.
-    from stepup.core.api import amend, runpy, runsh, static
-
-    runfunc = runpy if script_path.endswith(".py") else runsh
+    from stepup.core.api import amend, runsh, static
 
     # Plan the script.
     step_info = None
@@ -328,7 +326,7 @@ def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrap
         inp_paths.append(script_path)
         static(*static_paths)
         command = format_command(script_path) + " run"
-        step_info = runfunc(command, inp=inp_paths, out=out_paths, optional=args.optional)
+        step_info = runsh(command, inp=inp_paths, out=out_paths, optional=args.optional)
     if wrapper.has_cases:
         # First collect all cases
         cases = list(wrapper.generate_cases())
@@ -344,7 +342,7 @@ def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrap
             static(*static_paths)
             command = format_command(script_path) + " run " + argstr
             step_info.append(
-                runfunc(
+                runsh(
                     command,
                     inp=inp_paths,
                     out=out_paths,

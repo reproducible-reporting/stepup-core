@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -12,15 +12,15 @@ file:./
             supplies   file:sub/
             supplies   step:copy ../hop2.txt hop3.txt  # wd=sub/
             supplies   step:copy hop1.txt hop2.txt
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -29,32 +29,32 @@ step:runpy ./plan.py
              creates   file:sub/
              creates   file:sub/plan.py
              creates   step:copy hop1.txt hop2.txt
-             creates   step:runpy ./plan.py  # wd=sub/
+             creates   step:runsh ./plan.py  # wd=sub/
 
 file:hop1.txt
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   step:copy hop1.txt hop2.txt
 
 file:sub/
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   file:sub/hop3.txt
             supplies   file:sub/plan.py
             supplies   step:copy ../hop2.txt hop3.txt  # wd=sub/
-            supplies   step:runpy ./plan.py  # wd=sub/
+            supplies   step:runsh ./plan.py  # wd=sub/
 
 file:sub/plan.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:sub/
-            supplies   step:runpy ./plan.py  # wd=sub/
+            supplies   step:runsh ./plan.py  # wd=sub/
 
 step:copy hop1.txt hop2.txt
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:hop1.txt
              creates   file:hop2.txt
@@ -67,16 +67,16 @@ file:hop2.txt
             consumes   step:copy hop1.txt hop2.txt
             supplies   step:copy ../hop2.txt hop3.txt  # wd=sub/
 
-step:runpy ./plan.py  # wd=sub/
+step:runsh ./plan.py  # wd=sub/
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:sub/
             consumes   file:sub/plan.py
              creates   step:copy ../hop2.txt hop3.txt  # wd=sub/
 
 step:copy ../hop2.txt hop3.txt  # wd=sub/
                state = SUCCEEDED
-          created by   step:runpy ./plan.py  # wd=sub/
+          created by   step:runsh ./plan.py  # wd=sub/
             consumes   file:./
             consumes   file:hop2.txt
             consumes   file:sub/

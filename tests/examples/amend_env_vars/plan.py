@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import runpy, static
+from stepup.core.api import runsh, static
 
 static("foo.txt")
-runpy("./work.py")
+runsh("./work.py")

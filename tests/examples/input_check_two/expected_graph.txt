@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -11,41 +11,41 @@ file:./
             supplies   file:f3.txt
             supplies   file:plan.py
             supplies   file:work.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
+            supplies   step:runsh ./plan.py
+            supplies   step:runsh ./work.py
             supplies   step:runsh cat f1.txt f2.txt > f3.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:f1.txt
              creates   file:work.py
-             creates   step:runpy ./work.py
+             creates   step:runsh ./work.py
              creates   step:runsh cat f1.txt f2.txt > f3.txt
 
 file:f1.txt
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   step:runsh cat f1.txt f2.txt > f3.txt
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy ./work.py
+            supplies   step:runsh ./work.py
 
-step:runpy ./work.py
+step:runsh ./work.py
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:work.py
              creates   file:f2.txt
@@ -53,14 +53,14 @@ step:runpy ./work.py
 
 file:f2.txt
                state = BUILT
-          created by   step:runpy ./work.py
+          created by   step:runsh ./work.py
             consumes   file:./
-            consumes   step:runpy ./work.py
+            consumes   step:runsh ./work.py
             supplies   step:runsh cat f1.txt f2.txt > f3.txt
 
 step:runsh cat f1.txt f2.txt > f3.txt
                state = FAILED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:f1.txt
             consumes   file:f2.txt

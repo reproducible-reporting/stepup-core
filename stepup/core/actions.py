@@ -36,7 +36,7 @@ import shutil
 
 from .worker import WorkThread
 
-__all__ = ("copy", "mkdir", "runpy", "runsh")
+__all__ = ("copy", "mkdir", "runsh")
 
 
 def runsh(argstr: str, work_thread: WorkThread) -> int:
@@ -55,25 +55,6 @@ def runsh(argstr: str, work_thread: WorkThread) -> int:
         The exit code of the command.
     """
     return work_thread.runsh(argstr)
-
-
-def runpy(argstr: str, work_thread: WorkThread) -> int:
-    """Execute a Python script and return the returncode.
-
-    Parameters
-    ----------
-    args
-        Python script to execute and its arguments split into a list of strings.
-    work_thread
-        The work thread that is executing the command.
-
-    Returns
-    -------
-    exitcode
-        The exit code of the command.
-    """
-    args = shlex.split(argstr)
-    return work_thread.runpy(args[0], args[1:])
 
 
 def copy(argstr: str) -> int:

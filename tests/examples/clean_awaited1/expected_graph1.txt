@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -10,15 +10,15 @@ file:./
             supplies   file:hello.txt
             supplies   file:plan.py
             supplies   step:copy missing.txt hello.txt
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -27,7 +27,7 @@ step:runpy ./plan.py
 
 step:copy missing.txt hello.txt
                state = PENDING
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   (file:missing.txt)
             consumes   file:./
              creates   file:hello.txt

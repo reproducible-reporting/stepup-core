@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -11,7 +11,7 @@ file:./
             supplies   file:plan.py
             supplies   file:source1.txt
             supplies   file:source_both.txt
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
             supplies   step:runsh cp source1.txt copy1.txt
             supplies   step:runsh cp source_both.txt copy_both1.txt
 
@@ -19,9 +19,9 @@ file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
@@ -34,14 +34,14 @@ step:runpy ./plan.py
 
 file:source_both.txt
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   step:runsh cp source_both.txt copy_both1.txt
 
 step:runsh cp source_both.txt copy_both1.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:source_both.txt
              creates   file:copy_both1.txt
@@ -56,7 +56,7 @@ file:copy_both1.txt
 step:runsh cp source1.txt copy1.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:source1.txt
              creates   file:copy1.txt
@@ -64,7 +64,7 @@ step:runsh cp source1.txt copy1.txt
 
 file:source1.txt
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   step:runsh cp source1.txt copy1.txt
 

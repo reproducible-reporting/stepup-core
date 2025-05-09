@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -14,8 +14,8 @@ file:./
             supplies   file:script.log
             supplies   file:use_config.py
             supplies   step:copy report.txt copy.txt
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./use_config.py
+            supplies   step:runsh ./plan.py
+            supplies   step:runsh ./use_config.py
             supplies   step:runsh echo All is fine. > script.log
             supplies   step:runsh echo log written to script.log. > report.txt
 
@@ -23,9 +23,9 @@ file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -33,23 +33,23 @@ step:runpy ./plan.py
              creates   file:config.json
              creates   file:use_config.py
              creates   step:copy report.txt copy.txt
-             creates   step:runpy ./use_config.py
+             creates   step:runsh ./use_config.py
 
 file:config.json
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy ./use_config.py
+            supplies   step:runsh ./use_config.py
 
 file:use_config.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy ./use_config.py
+            supplies   step:runsh ./use_config.py
 
-step:runpy ./use_config.py
+step:runsh ./use_config.py
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:config.json
             consumes   file:use_config.py
@@ -60,13 +60,13 @@ step:runpy ./use_config.py
 
 file:output.txt
                state = BUILT
-          created by   step:runpy ./use_config.py
+          created by   step:runsh ./use_config.py
             consumes   file:./
-            consumes   step:runpy ./use_config.py
+            consumes   step:runsh ./use_config.py
 
 step:copy report.txt copy.txt
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:report.txt
              creates   file:copy.txt
@@ -87,7 +87,7 @@ file:copy.txt
 
 step:runsh echo All is fine. > script.log
                state = SUCCEEDED
-          created by   step:runpy ./use_config.py
+          created by   step:runsh ./use_config.py
             consumes   file:./
              creates   file:script.log
             supplies   file:script.log
@@ -100,7 +100,7 @@ file:script.log
 
 step:runsh echo log written to script.log. > report.txt
                state = SUCCEEDED
-          created by   step:runpy ./use_config.py
+          created by   step:runsh ./use_config.py
             consumes   file:./
              creates   file:report.txt
             supplies   file:report.txt

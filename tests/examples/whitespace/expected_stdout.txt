@@ -1,19 +1,19 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/4 |    SUCCESS │ runpy ./plan.py
+        0/1 |      START │ runsh ./plan.py
+        1/4 |    SUCCESS │ runsh ./plan.py
         1/4 |      START │ copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
         2/4 |    SUCCESS │ copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-        2/4 |      START │ runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
-        3/4 |    SUCCESS │ runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
-        3/4 |      START │ runpy './script is cool.py' plan
-        4/5 |    SUCCESS │ runpy './script is cool.py' plan
-        4/5 |      START │ runpy './script is cool.py' run
-        5/5 |    SUCCESS │ runpy './script is cool.py' run
-        5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/4 |      START │ runsh './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
+        3/4 |    SUCCESS │ runsh './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
+        3/4 |      START │ runsh './script is cool.py' plan
+        4/5 |    SUCCESS │ runsh './script is cool.py' plan
+        4/5 |      START │ runsh './script is cool.py' run
+        5/5 |    SUCCESS │ runsh './script is cool.py' run
+        5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         5/5 |      PHASE │ watch
         5/5 |    UPDATED │ README NOW.txt
         5/5 |  UNCHANGED │ README NOW.txt
-        5/5 |   DIRECTOR │ Stopping workers.
+        5/5 |   DIRECTOR │ Stopping workers
         5/5 |   DIRECTOR │ See you!

@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -10,16 +10,16 @@ file:./
             supplies   file:FOO-stdout.txt
             supplies   file:FOO.txt
             supplies   file:plan.py
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
             supplies   step:runsh grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
              env_var = ENV_VAR_TEST_STEPUP_PREFIX [amended]
            explained = yes
@@ -31,7 +31,7 @@ step:runpy ./plan.py
 
 file:FOO.txt
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   step:runsh grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
 
@@ -39,7 +39,7 @@ step:runsh grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.
                state = SUCCEEDED
              env_var = ENV_VAR_TEST_STEPUP_PREFIX
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:FOO.txt
              creates   file:FOO-stderr.txt

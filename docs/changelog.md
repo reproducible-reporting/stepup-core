@@ -16,8 +16,6 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 - Option `stepup --no-progress` to disable progress information.
   This is sometimes useful when running `stepup` in a non-interactive environment.
-- The [runpy()][stepup.core.api.runpy] function can now be used to schedule a Python script.
-  This will be more efficient than using `runsh()` because it does not start a new subprocess.
 
 ### Changed
 

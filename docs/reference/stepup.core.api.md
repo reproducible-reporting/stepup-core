@@ -25,8 +25,6 @@ may undergo larger changes and are not intended to be API stable.
 
 ### ::: stepup.core.api.runsh
 
-### ::: stepup.core.api.runpy
-
 ### ::: stepup.core.api.plan
 
 ### ::: stepup.core.api.copy

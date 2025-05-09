@@ -2,7 +2,7 @@ root:
              creates   file:../
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -12,15 +12,15 @@ file:./
             supplies   file:www/
             supplies   step:mkdir ../public/
             supplies   step:mkdir ../public/www/
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
              env_var = PUBLIC [amended]
           created by   root:
@@ -30,26 +30,26 @@ step:runpy ./plan.py
              creates   file:www/plan.py
              creates   step:mkdir ../public/
              creates   step:mkdir ../public/www/
-             creates   step:runpy ./plan.py  # wd=www/
+             creates   step:runsh ./plan.py  # wd=www/
 
 file:www/
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   file:www/index.md
             supplies   file:www/plan.py
             supplies   step:copy index.md ../../public/www/index.md  # wd=www/
-            supplies   step:runpy ./plan.py  # wd=www/
+            supplies   step:runsh ./plan.py  # wd=www/
 
 file:www/plan.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:www/
-            supplies   step:runpy ./plan.py  # wd=www/
+            supplies   step:runsh ./plan.py  # wd=www/
 
 step:mkdir ../public/
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:../
             consumes   file:./
              creates   file:../public/
@@ -72,7 +72,7 @@ file:../public/
 
 step:mkdir ../public/www/
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:../public/
             consumes   file:./
              creates   file:../public/www/
@@ -86,12 +86,12 @@ file:../public/www/
             supplies   file:../public/www/index.md
             supplies   step:copy index.md ../../public/www/index.md  # wd=www/
 
-step:runpy ./plan.py  # wd=www/
+step:runsh ./plan.py  # wd=www/
                state = SUCCEEDED
              env_var = HERE [amended]
                      = PUBLIC [amended]
                      = ROOT [amended]
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:www/
             consumes   file:www/plan.py
              creates   file:www/index.md
@@ -99,13 +99,13 @@ step:runpy ./plan.py  # wd=www/
 
 file:www/index.md
                state = STATIC
-          created by   step:runpy ./plan.py  # wd=www/
+          created by   step:runsh ./plan.py  # wd=www/
             consumes   file:www/
             supplies   step:copy index.md ../../public/www/index.md  # wd=www/
 
 step:copy index.md ../../public/www/index.md  # wd=www/
                state = SUCCEEDED
-          created by   step:runpy ./plan.py  # wd=www/
+          created by   step:runsh ./plan.py  # wd=www/
             consumes   file:../public/www/
             consumes   file:www/
             consumes   file:www/index.md

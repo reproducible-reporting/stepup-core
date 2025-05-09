@@ -1,8 +1,8 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/1 |    SUCCESS │ runpy ./plan.py
+        0/1 |      START │ runsh ./plan.py
+        1/1 |    SUCCESS │ runsh ./plan.py
 ─────────────────────────────── Standard output ────────────────────────────────
 data/
 data/sub/
@@ -10,7 +10,7 @@ data/sub/test3.xyz
 data/test1.txt
 data/test2.dat
 ────────────────────────────────────────────────────────────────────────────────
-        1/1 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        1/1 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         1/1 |      PHASE │ watch
-        1/1 |   DIRECTOR │ Stopping workers.
+        1/1 |   DIRECTOR │ Stopping workers
         1/1 |   DIRECTOR │ See you!

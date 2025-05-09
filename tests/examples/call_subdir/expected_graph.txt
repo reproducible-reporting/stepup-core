@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -9,15 +9,15 @@ file:./
             supplies   file:data/
             supplies   file:plan.py
             supplies   file:scripts/
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -26,54 +26,54 @@ step:runpy ./plan.py
              creates   file:data/plan.py
              creates   file:scripts/
              creates   file:scripts/repeat.py
-             creates   step:runpy ./plan.py  # wd=data/
+             creates   step:runsh ./plan.py  # wd=data/
 
 file:data/
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   file:data/multi.txt
             supplies   file:data/plan.py
             supplies   file:data/single.txt
-            supplies   step:runpy ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
-            supplies   step:runpy ./plan.py  # wd=data/
+            supplies   step:runsh ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
+            supplies   step:runsh ./plan.py  # wd=data/
 
 file:data/plan.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:data/
-            supplies   step:runpy ./plan.py  # wd=data/
+            supplies   step:runsh ./plan.py  # wd=data/
 
 file:scripts/
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   file:scripts/repeat.py
-            supplies   step:runpy ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
+            supplies   step:runsh ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
 
 file:scripts/repeat.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:scripts/
-            supplies   step:runpy ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
+            supplies   step:runsh ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
 
-step:runpy ./plan.py  # wd=data/
+step:runsh ./plan.py  # wd=data/
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:data/
             consumes   file:data/plan.py
              creates   file:data/single.txt
-             creates   step:runpy ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
+             creates   step:runsh ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
 
 file:data/single.txt
                state = STATIC
-          created by   step:runpy ./plan.py  # wd=data/
+          created by   step:runsh ./plan.py  # wd=data/
             consumes   file:data/
-            supplies   step:runpy ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
+            supplies   step:runsh ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
 
-step:runpy ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
+step:runsh ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
                state = SUCCEEDED
-          created by   step:runpy ./plan.py  # wd=data/
+          created by   step:runsh ./plan.py  # wd=data/
             consumes   file:data/
             consumes   file:data/single.txt
             consumes   file:scripts/
@@ -83,6 +83,6 @@ step:runpy ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.
 
 file:data/multi.txt
                state = BUILT
-          created by   step:runpy ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
+          created by   step:runsh ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
             consumes   file:data/
-            consumes   step:runpy ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
+            consumes   step:runsh ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/

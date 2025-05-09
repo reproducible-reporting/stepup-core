@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps
+        0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    DELETED │ copy.txt
@@ -17,10 +17,10 @@ Same inp hash        original.txt
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |      START │ copy original.txt copy.txt
         2/2 |    SUCCESS │ copy original.txt copy.txt
-        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |    WARNING │ Check logs: .stepup/warning.log
         2/2 |      PHASE │ watch
         2/2 |    UPDATED │ original.txt
         2/2 |  UNCHANGED │ original.txt
-        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ Stopping workers
         2/2 |   DIRECTOR │ See you!

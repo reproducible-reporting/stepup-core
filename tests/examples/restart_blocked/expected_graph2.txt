@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:runsh ./plan.py
 
 file:./
                state = STATIC
@@ -14,16 +14,16 @@ file:./
             supplies   file:plan.py
             supplies   step:copy initial.txt input.txt
             supplies   step:copy output.txt final.txt
-            supplies   step:runpy ./expensive.py
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./expensive.py
+            supplies   step:runsh ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runpy ./plan.py
+            supplies   step:runsh ./plan.py
 
-step:runpy ./plan.py
+step:runsh ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -32,23 +32,23 @@ step:runpy ./plan.py
              creates   file:initial.txt
              creates   step:copy initial.txt input.txt
              creates   step:copy output.txt final.txt
-             creates   step:runpy ./expensive.py
+             creates   step:runsh ./expensive.py
 
 file:expensive.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
-            supplies   step:runpy ./expensive.py
+            supplies   step:runsh ./expensive.py
 
 file:initial.txt
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             supplies   step:copy initial.txt input.txt
 
 step:copy initial.txt input.txt
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:initial.txt
              creates   file:input.txt
@@ -59,11 +59,11 @@ file:input.txt
           created by   step:copy initial.txt input.txt
             consumes   file:./
             consumes   step:copy initial.txt input.txt
-            supplies   step:runpy ./expensive.py
+            supplies   step:runsh ./expensive.py
 
-step:runpy ./expensive.py
+step:runsh ./expensive.py
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:expensive.py
             consumes   file:input.txt
@@ -72,14 +72,14 @@ step:runpy ./expensive.py
 
 file:output.txt
                state = BUILT
-          created by   step:runpy ./expensive.py
+          created by   step:runsh ./expensive.py
             consumes   file:./
-            consumes   step:runpy ./expensive.py
+            consumes   step:runsh ./expensive.py
             supplies   step:copy output.txt final.txt
 
 step:copy output.txt final.txt
                state = SUCCEEDED
-          created by   step:runpy ./plan.py
+          created by   step:runsh ./plan.py
             consumes   file:./
             consumes   file:output.txt
              creates   file:final.txt

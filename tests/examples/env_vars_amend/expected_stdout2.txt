@@ -1,4 +1,4 @@
-        0/0 |    STARTUP │ Making failed steps
+        0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    UPDATED │ ENV_VAR_TEST_STEPUP_SDASFD ='AAAA' ➜ ='BBBB'
@@ -16,8 +16,8 @@ Same inp hash        demovars.py
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |      START │ runsh ./demovars.py > output.txt
         2/2 |    SUCCESS │ runsh ./demovars.py > output.txt
-        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |    WARNING │ Check logs: .stepup/warning.log
         2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ Stopping workers.
+        2/2 |   DIRECTOR │ Stopping workers
         2/2 |   DIRECTOR │ See you!

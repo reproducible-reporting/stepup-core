@@ -1,8 +1,8 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/4 |    SUCCESS │ runpy ./plan.py
+        0/1 |      START │ runsh ./plan.py
+        1/4 |    SUCCESS │ runsh ./plan.py
         1/4 |      START │ runsh ./work.py > log.txt
         1/4 | RESCHEDULE │ runsh ./work.py > log.txt
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
@@ -15,7 +15,7 @@ tmp1.txt
         3/4 |    SUCCESS │ runsh echo Contents of inp2.txt > inp2.txt
         3/4 |      START │ runsh ./work.py > log.txt
         4/4 |    SUCCESS │ runsh ./work.py > log.txt
-        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch
         4/4 |    DELETED │ inp2.txt
@@ -41,7 +41,7 @@ Same inp hash        tmp1.txt
 Same inp hash        work.py
 Same out hash        log.txt
 ────────────────────────────────────────────────────────────────────────────────
-        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch
         4/4 |    UPDATED │ inp0.txt
@@ -74,8 +74,8 @@ tmp1.txt
         3/4 |    SUCCESS │ runsh cp inp1.txt tmp1.txt
         3/4 |      START │ runsh ./work.py > log.txt
         4/4 |    SUCCESS │ runsh ./work.py > log.txt
-        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch
-        4/4 |   DIRECTOR │ Stopping workers.
+        4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

@@ -1,8 +1,8 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/5 |    SUCCESS │ runpy ./plan.py
+        0/1 |      START │ runsh ./plan.py
+        1/5 |    SUCCESS │ runsh ./plan.py
         1/5 |      START │ mkdir sub/
         2/5 |    SUCCESS │ mkdir sub/
         2/5 |      START │ runsh echo hello > sub/inp.txt
@@ -11,11 +11,11 @@
         4/5 |    SUCCESS │ copy sub/inp.txt sub/tmp.txt
         4/5 |      START │ copy sub/tmp.txt sub/out.txt
         5/5 |    SUCCESS │ copy sub/tmp.txt sub/out.txt
-        5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s).
+        5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         5/5 |      PHASE │ watch
         5/5 |    DELETED │ sub/tmp.txt
         5/5 |    DELETED │ sub/out.txt
         5/5 |    DELETED │ sub/inp.txt
         5/5 |    DELETED │ sub/
-        5/5 |   DIRECTOR │ Stopping workers.
+        5/5 |   DIRECTOR │ Stopping workers
         5/5 |   DIRECTOR │ See you!
