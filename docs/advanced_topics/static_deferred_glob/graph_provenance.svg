@@ -65,7 +65,7 @@
 <g id="node6" class="node">
 <title>4</title>
 <ellipse fill="#80b1d3" stroke="black" stroke-width="0" cx="231" cy="-100.35" rx="78.67" ry="19.45"/>
-<text text-anchor="middle" x="231" y="-96.8" font-family="IBM Plex Sans" font-size="14.00">runsh ./plan.py</text>
+<text text-anchor="middle" x="231" y="-96.8" font-family="IBM Plex Sans" font-size="14.00">runpy ./plan.py</text>
 </g>
 <!-- 1&#45;&gt;4 -->
 <g id="edge4" class="edge">

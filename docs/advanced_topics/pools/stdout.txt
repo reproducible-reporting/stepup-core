@@ -1,14 +1,14 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post25)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post18)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
   DIRECTOR │ Launched worker 1
   DIRECTOR │ Launched worker 2
   DIRECTOR │ Launched worker 3
      PHASE │ run
-     START │ runsh ./plan.py
+     START │ runpy ./plan.py
      START │ runsh sleep 0.1; echo A
      START │ runsh sleep 0.1; echo B
-   SUCCESS │ runsh ./plan.py
+   SUCCESS │ runpy ./plan.py
    SUCCESS │ runsh sleep 0.1; echo A
 ─────────────────────────────── Standard output ────────────────────────────────
 A

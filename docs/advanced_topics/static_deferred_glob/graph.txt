@@ -1,14 +1,14 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:foo.txt
             supplies   file:plan.py
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
             supplies   step:runsh cat foo.txt
 
 file:plan.py
@@ -17,9 +17,9 @@ file:plan.py
                      = c06cfff6 cac658dd cb03a194 6d8aefe9 8c018060 90ddad78 522a3f82 310a4dcf
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = RUNNING
           created by   root:
             consumes   file:./
@@ -28,12 +28,12 @@ step:runsh ./plan.py
              creates   step:runsh cat foo.txt
 
 dg:*.txt
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
              creates   file:foo.txt
 
 step:runsh cat foo.txt
                state = QUEUED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:foo.txt
 

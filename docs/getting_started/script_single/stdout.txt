@@ -1,13 +1,13 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post25)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post18)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
-     START │ runsh ./plan.py
-   SUCCESS │ runsh ./plan.py
-     START │ runsh ./generate.py plan
-   SUCCESS │ runsh ./generate.py plan
-     START │ runsh ./generate.py run
-   SUCCESS │ runsh ./generate.py run
+     START │ runpy ./plan.py
+   SUCCESS │ runpy ./plan.py
+     START │ runpy ./generate.py plan
+   SUCCESS │ runpy ./generate.py plan
+     START │ runpy ./generate.py run
+   SUCCESS │ runpy ./generate.py run
   DIRECTOR │ Trying to delete 0 outdated output(s)
   DIRECTOR │ Stopping workers
   DIRECTOR │ See you!

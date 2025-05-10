@@ -1,16 +1,16 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post25)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post18)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
-     START │ runsh ./plan.py
-   SUCCESS │ runsh ./plan.py
-     START │ runsh ./plot.py plan
-   SUCCESS │ runsh ./plot.py plan
+     START │ runpy ./plan.py
+   SUCCESS │ runpy ./plan.py
+     START │ runpy ./plot.py plan
+   SUCCESS │ runpy ./plot.py plan
    WARNING │ 1 step(s) remained pending due to incomplete requirements
 ─────────────────────────────── Orphaned inputs ────────────────────────────────
              AWAITED  logmap_3.200.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
-Action                runsh ./plot.py run
+Action                runpy ./plot.py run
 Working directory     ./
 Inputs        STATIC  ./
               STATIC  matplotlibrc

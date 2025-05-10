@@ -1,25 +1,39 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post25)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post18)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
-     START │ runsh ./plan.py
-      FAIL │ runsh ./plan.py
+     START │ runpy ./plan.py
+      FAIL │ runpy ./plan.py
 ────────────────────────────────── Step info ───────────────────────────────────
-Command               stepup act runsh ./plan.py
+Command               stepup act runpy ./plan.py
 Return code           1
 ──────────────────────────────── Standard error ────────────────────────────────
-Command failed with return code 1: ./plan.py
+Command failed with return code 1: venv/bin/python -
+stdin:
+import sys
+import runpy
+from stepup.core.api import amend
+from stepup.core.utils import get_local_import_paths
+sys.argv = ['./plan.py']
+try:
+    runpy.run_path('./plan.py', run_name="__main__")
+finally:
+    amend(inp=get_local_import_paths())
 Traceback (most recent call last):
-  File "docs/advanced_topics/cyclic_dependencies/./plan.py", line 5, in <module>
+  File "<stdin>", line 7, in <module>
+  File "<frozen runpy>", line 287, in run_path
+  File "<frozen runpy>", line 98, in _run_module_code
+  File "<frozen runpy>", line 88, in _run_code
+  File "./plan.py", line 5, in <module>
     copy("b.txt", "a.txt")
     ~~~~^^^^^^^^^^^^^^^^^^
-  File "stepup/core/api.py", line 579, in copy
+  File "stepup/core/api.py", line 620, in copy
     return step(
         "copy ${inp} ${out}",
     ...<3 lines>...
         block=block,
     )
-  File "stepup/core/api.py", line 319, in step
+  File "stepup/core/api.py", line 327, in step
     to_check = RPC_CLIENT.call.step(
         _get_step_i(),
     ...<8 lines>...
@@ -45,7 +59,7 @@ Traceback (most recent call last):
         ^^^^^^^^^^^^
     )
     ^
-  File "stepup/core/workflow.py", line 853, in define_step
+  File "stepup/core/workflow.py", line 852, in define_step
     file.add_supplier(step)
     ~~~~~~~~~~~~~~~~~^^^^^^
   File "stepup/core/file.py", line 172, in add_supplier

@@ -1,15 +1,15 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post25)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post18)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
   DIRECTOR │ Launched worker 1
      PHASE │ run
-     START │ runsh ./plan.py
+     START │ runpy ./plan.py
      START │ runsh echo hello > hello.txt
    SUCCESS │ runsh echo hello > hello.txt
+   SUCCESS │ runpy ./plan.py
      START │ mkdir sub/
    SUCCESS │ runpy ./plan.py
    SUCCESS │ mkdir sub/
-   SUCCESS │ runsh ./plan.py
      START │ copy hello.txt sub/hello.txt
    SUCCESS │ copy hello.txt sub/hello.txt
   DIRECTOR │ Trying to delete 0 outdated output(s)

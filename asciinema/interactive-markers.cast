@@ -1,0 +1,5 @@
+[7.5, "m", "src/foo.txt is modified"]
+[11.0, "m", "user presses ? = help message"]
+[16.0, "m", "user presses r = run"]
+[22.0, "m", "src/spam.txt is added"]
+[25.5, "m", "user presses r = run"]

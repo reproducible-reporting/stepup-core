@@ -1,14 +1,14 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:plan.py
             supplies   file:story.txt
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
             supplies   step:runsh echo First line. > story.txt; echo Second line. >> story.txt
             supplies   step:runsh grep First story.txt
 
@@ -18,9 +18,9 @@ file:plan.py
                      = 562374b1 bad3d28b e1012b39 060b4911 43f0fa3f adb3186b 7cdc4b72 30da2e87
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = RUNNING
           created by   root:
             consumes   file:./
@@ -30,7 +30,7 @@ step:runsh ./plan.py
 
 step:runsh echo First line. > story.txt; echo Second line. >> story.txt
                state = RUNNING
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:story.txt
             supplies   file:story.txt
@@ -44,6 +44,6 @@ file:story.txt
 
 step:runsh grep First story.txt
                state = PENDING
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:story.txt

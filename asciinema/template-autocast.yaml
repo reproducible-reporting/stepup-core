@@ -1,0 +1,18 @@
+settings:
+  title: StepUp RepRep 3 Demonstration on the template repository
+  width: 80
+  height: 24
+  shell:
+    program: /usr/bin/sh
+    prompt: "$ "
+    line_split: ' \'
+    quit_command: exit
+
+instructions:
+  - !Interactive
+    command: stepup boot -n 4 -w
+    keys:
+      - 18s
+      - r
+      - 10s
+      - q

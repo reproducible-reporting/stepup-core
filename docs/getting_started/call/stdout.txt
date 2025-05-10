@@ -1,13 +1,13 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post25)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post18)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
-     START │ runsh ./plan.py
-   SUCCESS │ runsh ./plan.py
-     START │ runsh ./wavegen.py '{"freq": 440.0, "duration": 1.0}' --out=wave1.json
-   SUCCESS │ runsh ./wavegen.py '{"freq": 440.0, "duration": 1.0}' --out=wave1.json
-     START │ runsh ./wavegen.py '{"freq": 380.0, "duration": 0.5, "rate": 22050}' --out=wave2.json
-   SUCCESS │ runsh ./wavegen.py '{"freq": 380.0, "duration": 0.5, "rate": 22050}' --out=wave2.json
+     START │ runpy ./plan.py
+   SUCCESS │ runpy ./plan.py
+     START │ runpy ./wavegen.py '{"freq": 440.0, "duration": 1.0}' --out=wave1.json
+   SUCCESS │ runpy ./wavegen.py '{"freq": 440.0, "duration": 1.0}' --out=wave1.json
+     START │ runpy ./wavegen.py '{"freq": 380.0, "duration": 0.5, "rate": 22050}' --out=wave2.json
+   SUCCESS │ runpy ./wavegen.py '{"freq": 380.0, "duration": 0.5, "rate": 22050}' --out=wave2.json
   DIRECTOR │ Trying to delete 0 outdated output(s)
   DIRECTOR │ Stopping workers
   DIRECTOR │ See you!

@@ -1,0 +1,22 @@
+settings:
+  title: StepUp RepRep 3 Demonstration for the tutorial on interactive use
+  width: 80
+  height: 24
+  shell:
+    program: /usr/bin/sh
+    prompt: "$ "
+    line_split: ' \'
+    quit_command: exit
+
+instructions:
+  - !Interactive
+    command: stepup boot -n 2 -w
+    keys:
+      - 9s
+      - '?'
+      - 5s
+      - r
+      - 9s
+      - r
+      - 3s
+      - q

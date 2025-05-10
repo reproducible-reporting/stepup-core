@@ -1,0 +1,13 @@
+settings:
+  title: StepUp RepRep 3 Demonstration on the tutorial examples
+  width: 80
+  height: 24
+  shell:
+    program: /usr/bin/sh
+    prompt: "$ "
+    line_split: ' \'
+    quit_command: exit
+
+instructions:
+  - !Command
+    command: stepup boot -n 4
