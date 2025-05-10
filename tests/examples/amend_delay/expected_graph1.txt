@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -13,7 +13,7 @@ file:./
             supplies   file:plan.py
             supplies   file:tmp1.txt
             supplies   file:work.py
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
             supplies   step:runsh ./work.py > log.txt
             supplies   step:runsh cp inp1.txt tmp1.txt
             supplies   step:runsh echo Contents of inp2.txt > inp2.txt
@@ -22,9 +22,9 @@ file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
@@ -39,14 +39,14 @@ step:runsh ./plan.py
 
 file:work.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:runsh ./work.py > log.txt
 
 step:runsh ./work.py > log.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:inp0.txt [amended]
             consumes   file:inp2.txt [amended]
@@ -63,20 +63,20 @@ file:log.txt
 
 file:inp0.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:runsh ./work.py > log.txt
 
 file:inp1.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:runsh cp inp1.txt tmp1.txt
 
 step:runsh cp inp1.txt tmp1.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:inp1.txt
              creates   file:tmp1.txt
@@ -92,7 +92,7 @@ file:tmp1.txt
 step:runsh echo Contents of inp2.txt > inp2.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:inp2.txt
             supplies   file:inp2.txt

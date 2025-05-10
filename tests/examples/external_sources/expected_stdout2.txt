@@ -6,8 +6,8 @@ Changing to ${CASE}/project
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
-        1/2 |      START │ runsh ./worker.py --out=worker_out.json --amend-out
-        2/2 |    SUCCESS │ runsh ./worker.py --out=worker_out.json --amend-out
+        1/2 |      START │ runpy ./worker.py --out=worker_out.json --amend-out
+        2/2 |    SUCCESS │ runpy ./worker.py --out=worker_out.json --amend-out
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |   DIRECTOR │ Stopping workers

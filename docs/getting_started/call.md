@@ -31,6 +31,7 @@ runsh("./executable '{\"parameter\": \"value\"}'", inp="executable")
 (It also works without any parameters.)
 The script `executable` is expected to decode the JSON given on the command-line,
 and then use these parameters.
+Note that if the script has the `.py` extension, `runpy()` is used instead of `runsh()`.
 
 The [`call()`][stepup.core.api.call] function supports many optional arguments
 that control with which options the executable is called.

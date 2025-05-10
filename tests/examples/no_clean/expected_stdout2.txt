@@ -5,8 +5,8 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
-        0/1 |      START │ runsh ./plan.py
-        1/2 |    SUCCESS │ runsh ./plan.py
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
         1/2 |      START │ runsh echo Hello > test2.txt
         2/2 |    SUCCESS │ runsh echo Hello > test2.txt
         2/2 |    WARNING │ Skipping file cleanup at user's request (--no-clean)

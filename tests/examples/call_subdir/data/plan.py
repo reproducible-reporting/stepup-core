@@ -6,7 +6,7 @@ root = getenv("ROOT", path=True)
 repeat = call(root / "scripts/repeat.py", inp=[None, "single.txt"], out=[False, "multi.txt"], n=5)
 
 EXPECTED_COMMAND = """
-runsh ../scripts/repeat.py
+runpy ../scripts/repeat.py
 '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'
 """.replace("\n", " ").strip()
 if repeat.action != EXPECTED_COMMAND:

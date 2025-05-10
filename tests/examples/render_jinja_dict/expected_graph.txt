@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -12,15 +12,15 @@ file:./
             supplies   file:template.txt
             supplies   step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
             supplies   step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -31,14 +31,14 @@ step:runsh ./plan.py
 
 file:template.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
             supplies   step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'
 
 step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:template.txt
              creates   file:rendered-trip1.txt
@@ -52,7 +52,7 @@ file:rendered-trip1.txt
 
 step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:template.txt
              creates   file:rendered-trip2.txt

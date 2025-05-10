@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -14,15 +14,15 @@ file:./
             supplies   file:trip2.toml
             supplies   step:render-jinja template.txt trip1.toml rendered-trip1.txt
             supplies   step:render-jinja template.txt trip2.toml rendered-trip2.txt
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
                  ngm = ['trip*.toml'] {}
           created by   root:
@@ -36,26 +36,26 @@ step:runsh ./plan.py
 
 file:template.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:render-jinja template.txt trip1.toml rendered-trip1.txt
             supplies   step:render-jinja template.txt trip2.toml rendered-trip2.txt
 
 file:trip1.toml
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:render-jinja template.txt trip1.toml rendered-trip1.txt
 
 file:trip2.toml
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:render-jinja template.txt trip2.toml rendered-trip2.txt
 
 step:render-jinja template.txt trip1.toml rendered-trip1.txt
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:template.txt
             consumes   file:trip1.toml
@@ -70,7 +70,7 @@ file:rendered-trip1.txt
 
 step:render-jinja template.txt trip2.toml rendered-trip2.txt
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:template.txt
             consumes   file:trip2.toml

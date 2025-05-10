@@ -1,8 +1,8 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runsh ./plan.py
-        1/4 |    SUCCESS │ runsh ./plan.py
+        0/1 |      START │ runpy ./plan.py
+        1/4 |    SUCCESS │ runpy ./plan.py
         1/4 |      START │ copy inp1.txt conv1.txt
         2/4 |    SUCCESS │ copy inp1.txt conv1.txt
         2/4 |      START │ runsh ./work.py subs1.txt > subs2.txt
@@ -16,8 +16,8 @@
         4/4 |    UPDATED │ inp2.txt
         4/4 |    UPDATED │ subs1.txt
         0/4 |      PHASE │ run
-        0/1 |      START │ runsh ./plan.py
-        1/4 |    SUCCESS │ runsh ./plan.py
+        0/1 |      START │ runpy ./plan.py
+        1/4 |    SUCCESS │ runpy ./plan.py
         1/4 |      START │ copy inp2.txt conv2.txt
         2/4 |    SUCCESS │ copy inp2.txt conv2.txt
         2/4 |  DROPAMEND │ runsh ./work.py subs1.txt > subs2.txt

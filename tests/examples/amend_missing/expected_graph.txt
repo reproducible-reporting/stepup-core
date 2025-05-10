@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,41 +9,41 @@ file:./
             supplies   file:missing.txt
             supplies   file:plan.py
             supplies   file:work.py
-            supplies   step:runsh ./plan.py
-            supplies   step:runsh ./work.py
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./work.py
             supplies   step:runsh echo Will be deleted by accident > missing.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:work.py
-             creates   step:runsh ./work.py
+             creates   step:runpy ./work.py
              creates   step:runsh echo Will be deleted by accident > missing.txt
 
 file:work.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:runsh ./work.py
+            supplies   step:runpy ./work.py
 
-step:runsh ./work.py
+step:runpy ./work.py
                state = FAILED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:missing.txt [amended]
             consumes   file:work.py
 
 step:runsh echo Will be deleted by accident > missing.txt
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:missing.txt
             supplies   file:missing.txt
@@ -53,4 +53,4 @@ file:missing.txt
           created by   step:runsh echo Will be deleted by accident > missing.txt
             consumes   file:./
             consumes   step:runsh echo Will be deleted by accident > missing.txt
-            supplies   step:runsh ./work.py
+            supplies   step:runpy ./work.py

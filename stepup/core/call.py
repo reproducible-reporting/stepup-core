@@ -31,8 +31,6 @@ from typing import Any
 
 from path import Path
 
-from .utils import get_local_import_paths
-
 __all__ = ("driver",)
 
 
@@ -112,7 +110,7 @@ def driver(obj: Any = None):
     out = []
     if not (result is None or args.path_out is None) and args.amend_out:
         out.append(args.path_out)
-    amend(inp=get_local_import_paths(script_path), out=out)
+    amend(out=out)
 
     # Save the result if not None
     if result is not None:

@@ -6,8 +6,8 @@
         0/0 |    UPDATED │ tail_z.txt
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
-        0/1 |      START │ runsh ./plan.py
-        2/4 |    SUCCESS │ runsh ./plan.py
+        0/1 |      START │ runpy ./plan.py
+        2/4 |    SUCCESS │ runpy ./plan.py
         2/4 |      START │ runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
         3/4 |    SUCCESS │ runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
         3/4 |      START │ runsh paste -d ' ' head_z.txt tail_z.txt > paste_z.txt

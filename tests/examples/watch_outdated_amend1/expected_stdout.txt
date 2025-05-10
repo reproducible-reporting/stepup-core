@@ -1,25 +1,25 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runsh ./plan.py
-        1/2 |    SUCCESS │ runsh ./plan.py
-        1/2 |      START │ runsh ./work.py
-        2/2 |    SUCCESS │ runsh ./work.py
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |      START │ runpy ./work.py
+        2/2 |    SUCCESS │ runpy ./work.py
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |    DELETED │ inp1.txt
         2/2 |    UPDATED │ subs.txt
         1/2 |      PHASE │ run
-        1/2 |  DROPAMEND │ runsh ./work.py
+        1/2 |  DROPAMEND │ runpy ./work.py
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest dee4761b ➜ bdc22e23, out_digest afcdb0f9 ➜ (unset)
+Modified step hash   explained, inp_digest 88de6a17 ➜ 0bca8b51, out_digest afcdb0f9 ➜ (unset)
 Deleted inp hash     inp1.txt
 Modified inp hash    subs.txt (digest 30d31453 ➜ c273a7ee)
 ──────────────────────── Remained the same (or missing) ────────────────────────
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |      START │ runsh ./work.py
-        2/2 |    SUCCESS │ runsh ./work.py
+        1/2 |      START │ runpy ./work.py
+        2/2 |    SUCCESS │ runpy ./work.py
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |    WARNING │ Check logs: .stepup/warning.log
         2/2 |      PHASE │ watch

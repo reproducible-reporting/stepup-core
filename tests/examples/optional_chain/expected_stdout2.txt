@@ -5,15 +5,15 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |     NOSKIP │ runsh ./plan.py
+        0/1 |     NOSKIP │ runpy ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest ce2f352e ➜ 66f1ac71, out_digest 786a02f7 ➜ (unset)
+Modified step hash   explained, inp_digest 9202e178 ➜ f6030146, out_digest 786a02f7 ➜ (unset)
 Modified inp hash    plan.py (digest 47ac7281 ➜ f556bdc3, size 357 ➜ 420)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
-        0/1 |      START │ runsh ./plan.py
-        1/6 |    SUCCESS │ runsh ./plan.py
+        0/1 |      START │ runpy ./plan.py
+        1/6 |    SUCCESS │ runpy ./plan.py
         1/6 |      START │ runsh echo inp1 > foo1.txt
         2/6 |    SUCCESS │ runsh echo inp1 > foo1.txt
         2/6 |      START │ runsh echo inp2 > foo2.txt

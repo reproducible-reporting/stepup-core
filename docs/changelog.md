@@ -19,6 +19,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - A new API function [`loadns()`][stepup.core.api.loadns] to load variables from file.
   Supported file formats are: JSON, Python, YAML, and TOML.
   This will automatically amend the calling step with the loaded files as inputs.
+- The [runpy()][stepup.core.api.runpy] function can now be used to schedule a Python script.
+  This automatically amends locall imported modules as inputs to the step.
 - The `render-jinja` feature from StepUp RepRep 2 has been migrated to StepUp Core 3.
 
 ### Changed

@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,7 +9,7 @@ file:./
             supplies   file:first.txt
             supplies   file:plan.py
             supplies   file:second.txt
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
             supplies   step:runsh cp -v first.txt second.txt
             supplies   step:runsh echo "spam" > first.txt
 
@@ -17,9 +17,9 @@ file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -29,7 +29,7 @@ step:runsh ./plan.py
 
 step:runsh echo "spam" > first.txt
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:first.txt
             supplies   file:first.txt
@@ -43,7 +43,7 @@ file:first.txt
 
 step:runsh cp -v first.txt second.txt
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:first.txt
              creates   file:second.txt

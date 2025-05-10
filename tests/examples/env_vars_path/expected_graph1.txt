@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,16 +10,16 @@ file:./
             supplies   file:README-stdout.txt
             supplies   file:README.txt
             supplies   file:plan.py
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
             supplies   step:runsh grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
              env_var = ENV_VAR_TEST_STEPUP_PREFIX [amended]
            explained = yes
@@ -31,7 +31,7 @@ step:runsh ./plan.py
 
 file:README.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:runsh grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
 
@@ -39,7 +39,7 @@ step:runsh grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-s
                state = SUCCEEDED
              env_var = ENV_VAR_TEST_STEPUP_PREFIX
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:README.txt
              creates   file:README-stderr.txt

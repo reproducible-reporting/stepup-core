@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -13,18 +13,18 @@ file:./
             supplies   file:plan.py
             supplies   file:prep.py
             supplies   file:work.py
-            supplies   step:runsh ./plan.py
-            supplies   step:runsh ./prep.py plan
-            supplies   step:runsh ./prep.py run
-            supplies   step:runsh ./work.py
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./prep.py plan
+            supplies   step:runpy ./prep.py run
+            supplies   step:runpy ./work.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
@@ -34,38 +34,38 @@ step:runsh ./plan.py
              creates   file:inp2.txt
              creates   file:prep.py
              creates   file:work.py
-             creates   step:runsh ./prep.py plan
-             creates   step:runsh ./work.py
+             creates   step:runpy ./prep.py plan
+             creates   step:runpy ./work.py
 
 file:inp1.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:runsh ./prep.py run
+            supplies   step:runpy ./prep.py run
 
 file:inp2.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:runsh ./work.py
+            supplies   step:runpy ./work.py
 
 file:prep.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:runsh ./prep.py plan
-            supplies   step:runsh ./prep.py run
+            supplies   step:runpy ./prep.py plan
+            supplies   step:runpy ./prep.py run
 
 file:work.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:runsh ./work.py
+            supplies   step:runpy ./work.py
 
-step:runsh ./work.py
+step:runpy ./work.py
                state = SUCCEEDED
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:inp2.txt
             consumes   file:out1.txt [amended]
@@ -75,29 +75,29 @@ step:runsh ./work.py
 
 file:out2.txt
                state = BUILT
-          created by   step:runsh ./work.py
+          created by   step:runpy ./work.py
             consumes   file:./
-            consumes   step:runsh ./work.py
+            consumes   step:runpy ./work.py
 
-step:runsh ./prep.py plan
+step:runpy ./prep.py plan
                state = SUCCEEDED
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:prep.py
-             creates   step:runsh ./prep.py run
+             creates   step:runpy ./prep.py run
 
 file:out1.txt
                state = BUILT
-          created by   step:runsh ./prep.py run
+          created by   step:runpy ./prep.py run
             consumes   file:./
-            consumes   step:runsh ./prep.py run
-            supplies   step:runsh ./work.py
+            consumes   step:runpy ./prep.py run
+            supplies   step:runpy ./work.py
 
-step:runsh ./prep.py run
+step:runpy ./prep.py run
                state = SUCCEEDED
            explained = yes
-          created by   step:runsh ./prep.py plan
+          created by   step:runpy ./prep.py plan
             consumes   file:./
             consumes   file:inp1.txt
             consumes   file:prep.py

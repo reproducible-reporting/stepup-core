@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -13,15 +13,15 @@ file:./
             supplies   step:copy static/preamble.inc.tex public/preamble.inc.tex
             supplies   step:mkdir public/
             supplies   step:render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
              env_var = PUBLIC [amended]
           created by   root:
@@ -31,10 +31,10 @@ step:runsh ./plan.py
              creates   file:variables.py
              creates   step:copy static/preamble.inc.tex public/preamble.inc.tex
              creates   step:mkdir public/
-             creates   step:runsh ./plan.py  # wd=static/
+             creates   step:runpy ./plan.py  # wd=static/
 
 dg:static/**
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
              creates   file:static/
              creates   file:static/main.tex
              creates   file:static/plan.py
@@ -43,13 +43,13 @@ dg:static/**
 
 file:variables.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
 
 step:mkdir public/
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:public/
             supplies   file:public/
@@ -66,7 +66,7 @@ file:public/
 
 step:copy static/preamble.inc.tex public/preamble.inc.tex
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:public/
             consumes   file:static/
@@ -84,7 +84,7 @@ file:static/
             supplies   file:static/variables.py
             supplies   step:copy static/preamble.inc.tex public/preamble.inc.tex
             supplies   step:render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
-            supplies   step:runsh ./plan.py  # wd=static/
+            supplies   step:runpy ./plan.py  # wd=static/
 
 file:static/preamble.inc.tex
                state = STATIC
@@ -98,10 +98,10 @@ file:public/preamble.inc.tex
             consumes   file:public/
             consumes   step:copy static/preamble.inc.tex public/preamble.inc.tex
 
-step:runsh ./plan.py  # wd=static/
+step:runpy ./plan.py  # wd=static/
                state = SUCCEEDED
              env_var = PUBLIC [amended]
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:static/
             consumes   file:static/plan.py
              creates   step:render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
@@ -110,12 +110,12 @@ file:static/plan.py
                state = STATIC
           created by   dg:static/**
             consumes   file:static/
-            supplies   step:runsh ./plan.py  # wd=static/
+            supplies   step:runpy ./plan.py  # wd=static/
 
 step:render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
                state = SUCCEEDED
              env_var = PUBLIC [amended]
-          created by   step:runsh ./plan.py  # wd=static/
+          created by   step:runpy ./plan.py  # wd=static/
             consumes   file:./
             consumes   file:public/
             consumes   file:static/

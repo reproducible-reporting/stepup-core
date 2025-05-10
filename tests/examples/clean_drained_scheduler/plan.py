@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-from stepup.core.api import amend, runsh, static
+from stepup.core.api import amend, runpy, static
 
 static("cases.txt", "work.py")
 amend(inp="cases.txt")
 with open("cases.txt") as fh:
     for line in fh:
         case = line.strip()
-        runsh("./work.py ${out}", inp=["work.py", "cases.txt"], out=case)
+        runpy("./work.py ${out}", inp=["work.py", "cases.txt"], out=case)

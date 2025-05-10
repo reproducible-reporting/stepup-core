@@ -178,7 +178,7 @@ class Workflow(Cascade):
         initialized
             Whether the boot script was (re)initialized.
         """
-        action = "runsh ./plan.py"
+        action = "runpy ./plan.py"
         nodes = {node.key(): node for node in self.root.products()}
         del nodes["root:"]
         if (

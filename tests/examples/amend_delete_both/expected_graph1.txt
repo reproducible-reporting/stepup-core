@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -15,16 +15,16 @@ file:./
             supplies   file:work.py
             supplies   step:copy asource1.txt data1.txt
             supplies   step:copy asource2.txt data2.txt
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
             supplies   step:runsh ./work.py > log.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
@@ -40,7 +40,7 @@ step:runsh ./plan.py
 step:runsh ./work.py > log.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:data1.txt
             consumes   file:data2.txt [amended]
@@ -57,7 +57,7 @@ file:data1.txt
 
 file:work.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:runsh ./work.py > log.txt
 
@@ -69,20 +69,20 @@ file:log.txt
 
 file:asource1.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:copy asource1.txt data1.txt
 
 file:asource2.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:copy asource2.txt data2.txt
 
 step:copy asource1.txt data1.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:asource1.txt
              creates   file:data1.txt
@@ -91,7 +91,7 @@ step:copy asource1.txt data1.txt
 step:copy asource2.txt data2.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:asource2.txt
              creates   file:data2.txt

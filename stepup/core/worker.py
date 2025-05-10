@@ -499,6 +499,19 @@ class WorkerStep:
         return self.action if self.workdir == "./" else f"{self.action}  # wd={self.workdir}"
 
 
+PYCODE_WRAPPER = """\
+import sys
+import runpy
+from stepup.core.api import amend
+from stepup.core.utils import get_local_import_paths
+sys.argv = {argv}
+try:
+    runpy.run_path({script}, run_name="__main__")
+finally:
+    amend(inp=get_local_import_paths())
+"""
+
+
 class WorkThread(threading.Thread):
     """Thread to run actions in the worker process."""
 
@@ -546,13 +559,15 @@ class WorkThread(threading.Thread):
             if self.loop is not None:
                 self.loop.call_soon_threadsafe(self.done.set)
 
-    def runsh(self, argstr: str) -> int:
+    def runsh(self, argstr: str, inpstr: str | None = None) -> int:
         """Run a shell command in a subprocess of the worker process.
 
         Parameters
         ----------
         argstr
             The command to execute in the shell.
+        inpstr
+            Standard input to the command. If `None`, stdin is closed.
 
         Returns
         -------
@@ -569,7 +584,7 @@ class WorkThread(threading.Thread):
             return 1
         p = subprocess.Popen(
             argstr,
-            stdin=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL if inpstr is None else subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             shell=True,
@@ -578,16 +593,33 @@ class WorkThread(threading.Thread):
             env=os.environ,
         )
         self.pid_queue.put_nowait(p.pid)
-        stdout, stderr = p.communicate()
+        stdout, stderr = p.communicate(inpstr)
         with contextlib.suppress(queue.Empty):
             self.pid_queue.get_nowait()
         if p.returncode != 0:
             print(f"Command failed with return code {p.returncode}: {argstr}", file=sys.stderr)
+            if inpstr is not None:
+                print(f"stdin:\n{inpstr}", file=sys.stderr)
         if stdout is not None and len(stdout) > 0:
             sys.stdout.write(stdout)
         if stderr is not None and len(stderr) > 0:
             sys.stderr.write(stderr)
         return p.returncode
+
+    def runpy(self, script: str, args: list[str]) -> int:
+        """Run a Python script and amend all local imports as inputs."""
+        # Sanity check of the executable (if it can be found)
+        if not has_shebang(Path(script)):
+            print(
+                f"Script does not start with a shebang: {script} (wd={Path.cwd()})",
+                file=sys.stderr,
+            )
+            return 1
+        # Run the script
+        return self.runsh(
+            f"{sys.executable} -",
+            PYCODE_WRAPPER.format(argv=repr([script, *args]), script=repr(script)),
+        )
 
 
 def has_shebang(executable: Path) -> bool:

@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,35 +10,35 @@ file:./
             supplies   file:data2.json
             supplies   file:generate.py
             supplies   file:plan.py
-            supplies   step:runsh ./generate.py '{"size": 10}' --out=data1.json
-            supplies   step:runsh ./generate.py '{"size": 20}' --out=data2.json
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./generate.py '{"size": 10}' --out=data1.json
+            supplies   step:runpy ./generate.py '{"size": 20}' --out=data2.json
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:generate.py
-             creates   step:runsh ./generate.py '{"size": 10}' --out=data1.json
-             creates   step:runsh ./generate.py '{"size": 20}' --out=data2.json
+             creates   step:runpy ./generate.py '{"size": 10}' --out=data1.json
+             creates   step:runpy ./generate.py '{"size": 20}' --out=data2.json
 
 file:generate.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:runsh ./generate.py '{"size": 10}' --out=data1.json
-            supplies   step:runsh ./generate.py '{"size": 20}' --out=data2.json
+            supplies   step:runpy ./generate.py '{"size": 10}' --out=data1.json
+            supplies   step:runpy ./generate.py '{"size": 20}' --out=data2.json
 
-step:runsh ./generate.py '{"size": 10}' --out=data1.json
+step:runpy ./generate.py '{"size": 10}' --out=data1.json
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:generate.py
              creates   file:data1.json
@@ -46,13 +46,13 @@ step:runsh ./generate.py '{"size": 10}' --out=data1.json
 
 file:data1.json
                state = BUILT
-          created by   step:runsh ./generate.py '{"size": 10}' --out=data1.json
+          created by   step:runpy ./generate.py '{"size": 10}' --out=data1.json
             consumes   file:./
-            consumes   step:runsh ./generate.py '{"size": 10}' --out=data1.json
+            consumes   step:runpy ./generate.py '{"size": 10}' --out=data1.json
 
-step:runsh ./generate.py '{"size": 20}' --out=data2.json
+step:runpy ./generate.py '{"size": 20}' --out=data2.json
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:generate.py
              creates   file:data2.json
@@ -60,6 +60,6 @@ step:runsh ./generate.py '{"size": 20}' --out=data2.json
 
 file:data2.json
                state = BUILT
-          created by   step:runsh ./generate.py '{"size": 20}' --out=data2.json
+          created by   step:runpy ./generate.py '{"size": 20}' --out=data2.json
             consumes   file:./
-            consumes   step:runsh ./generate.py '{"size": 20}' --out=data2.json
+            consumes   step:runpy ./generate.py '{"size": 20}' --out=data2.json

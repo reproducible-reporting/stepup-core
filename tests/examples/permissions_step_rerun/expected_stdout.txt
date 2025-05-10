@@ -1,12 +1,12 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runsh ./plan.py
-        1/2 |    SUCCESS │ runsh ./plan.py
-        1/2 |      START │ runsh ./work.py
-        1/1 |       FAIL │ runsh ./work.py
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |      START │ runpy ./work.py
+        1/1 |       FAIL │ runpy ./work.py
 ────────────────────────────────── Step info ───────────────────────────────────
-Command               stepup act runsh ./work.py
+Command               stepup act runpy ./work.py
 Return code           1
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
@@ -17,8 +17,8 @@ Return code           1
         1/1 |      PHASE │ watch
         1/1 |    UPDATED │ work.py
         1/2 |      PHASE │ run
-        1/2 |      START │ runsh ./work.py
-        2/2 |    SUCCESS │ runsh ./work.py
+        1/2 |      START │ runpy ./work.py
+        2/2 |    SUCCESS │ runpy ./work.py
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |   DIRECTOR │ Stopping workers

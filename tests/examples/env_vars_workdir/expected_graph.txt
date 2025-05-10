@@ -1,22 +1,22 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   file:plan.py
             supplies   file:sub/
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
              env_var = INP_VAR_TEST_STEPUP_WORKDIR [amended]
           created by   root:
@@ -28,7 +28,7 @@ step:runsh ./plan.py
 
 file:sub/
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   file:sub/input.txt
             supplies   file:sub/output.txt
@@ -36,13 +36,13 @@ file:sub/
 
 file:sub/input.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:sub/
             supplies   step:runsh cat input.txt > output.txt  # wd=sub/
 
 step:runsh cat input.txt > output.txt  # wd=sub/
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:sub/
             consumes   file:sub/input.txt
              creates   file:sub/output.txt

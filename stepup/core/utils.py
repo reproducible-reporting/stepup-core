@@ -279,7 +279,7 @@ def get_local_import_paths(script_path: Path | None = None) -> list[str]:
     def iter_module_paths():
         for module in sys.modules.values():
             mod_path = getattr(module, "__file__", None)
-            if mod_path is not None:
+            if not (mod_path is None or mod_path.startswith("<")):
                 yield mod_path
 
     mod_paths = filter_dependencies(iter_module_paths())

@@ -32,11 +32,11 @@ import contextlib
 import json
 import os
 import pickle
-import runpy
 import shlex
 import sys
 import tomllib
 from collections.abc import Callable, Collection, Iterable, Iterator, Sequence
+from runpy import run_path
 
 import yaml
 from path import Path
@@ -502,6 +502,42 @@ def runsh(
     )
 
 
+def runpy(
+    command: str,
+    *,
+    inp: Collection[str] | str = (),
+    env: Collection[str] | str = (),
+    out: Collection[str] | str = (),
+    vol: Collection[str] | str = (),
+    workdir: str = "./",
+    optional: bool = False,
+    pool: str | None = None,
+    block: bool = False,
+):
+    """Add a Python command to the build graph.
+
+    See [`step()`][stepup.core.api.step] for the documentation of all optional arguments
+    and the return value.
+
+    Parameters
+    ----------
+    command
+        The path of the script and its command line arguments.
+        Local imports will be detected and amended as inputs to the script.
+    """
+    return step(
+        f"runpy {command}",
+        inp=inp,
+        env=env,
+        out=out,
+        vol=vol,
+        workdir=workdir,
+        optional=optional,
+        pool=pool,
+        block=block,
+    )
+
+
 def plan(
     subdir: str,
     *,
@@ -541,7 +577,7 @@ def plan(
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
     """
-    return runsh(
+    return runpy(
         "./plan.py",
         inp=["plan.py", *_str_to_list(inp)],
         env=env,
@@ -904,6 +940,8 @@ def call(
 
     # Finally, create a step
     step_kwargs.setdefault("inp", []).append(executable)
+    if executable.endswith(".py"):
+        return runpy(command, **step_kwargs)
     return runsh(command, **step_kwargs)
 
 
@@ -981,6 +1019,8 @@ def script(
         "pool": pool,
         "block": block,
     }
+    if executable.endswith(".py"):
+        return runpy(command, **step_kwargs)
     return runsh(command, **step_kwargs)
 
 
@@ -1028,7 +1068,7 @@ def loadns(
             with contextlib.chdir(dir_py):
                 sys.path.insert(0, str(dir_py))
                 try:
-                    current = runpy.run_path(fn_py, run_name="<variables>")
+                    current = run_path(fn_py, run_name="<variables>")
                 finally:
                     sys.path.remove(dir_py)
             for name, value in current.items():

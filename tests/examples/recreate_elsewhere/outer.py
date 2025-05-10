@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh
+from stepup.core.api import runpy
 
-runsh("./inner.py", inp="inner.py", out="out.txt")
+runpy("./inner.py", inp="inner.py", out="out.txt")

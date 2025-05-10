@@ -1,12 +1,12 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runsh ./plan.py
-        1/4 |    SUCCESS │ runsh ./plan.py
+        0/1 |      START │ runpy ./plan.py
+        1/4 |    SUCCESS │ runpy ./plan.py
         1/4 |      START │ mkdir public/
         2/4 |    SUCCESS │ mkdir public/
-        2/4 |      START │ runsh ./plan.py  # wd=static/
-        3/5 |    SUCCESS │ runsh ./plan.py  # wd=static/
+        2/4 |      START │ runpy ./plan.py  # wd=static/
+        3/5 |    SUCCESS │ runpy ./plan.py  # wd=static/
         3/5 |      START │ copy static/preamble.inc.tex public/preamble.inc.tex
         4/5 |    SUCCESS │ copy static/preamble.inc.tex public/preamble.inc.tex
         4/5 |      START │ render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/

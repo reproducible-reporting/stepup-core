@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -11,15 +11,15 @@ file:./
             supplies   file:template.md
             supplies   file:variables.py
             supplies   step:render-jinja template.md variables.py rendered.md
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -30,20 +30,20 @@ step:runsh ./plan.py
 
 file:template.md
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:render-jinja template.md variables.py rendered.md
 
 file:variables.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:render-jinja template.md variables.py rendered.md
 
 step:render-jinja template.md variables.py rendered.md
                state = SUCCEEDED
              env_var = ENV_VAR_TEST_STEPUP_RENDER [amended]
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:template.md
             consumes   file:variables.py

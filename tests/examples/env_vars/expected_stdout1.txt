@@ -1,26 +1,26 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runsh ./plan.py
-        1/2 |    SUCCESS │ runsh ./plan.py
-        1/2 |      START │ runsh ./demovars.py
-        2/3 |    SUCCESS │ runsh ./demovars.py
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |      START │ runpy ./demovars.py
+        2/3 |    SUCCESS │ runpy ./demovars.py
         2/3 |      START │ runsh ./printvars.py
         3/3 |    SUCCESS │ runsh ./printvars.py
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |      PHASE │ watch
         3/3 |    UPDATED │ variables.json
         2/3 |      PHASE │ run
-        2/3 |     NOSKIP │ runsh ./demovars.py
+        2/3 |     NOSKIP │ runpy ./demovars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 63f00dff ➜ dbee82c5, out_digest 786a02f7 ➜ (unset)
+Modified step hash   explained, inp_digest f282d1d5 ➜ 1e81dae1, out_digest 786a02f7 ➜ (unset)
 Modified inp hash    variables.json (digest 9fcdaff9 ➜ b38f0cd4, size 35 ➜ 67)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 Same inp hash        demovars.py
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |      START │ runsh ./demovars.py
-        2/3 |    SUCCESS │ runsh ./demovars.py
+        1/2 |      START │ runpy ./demovars.py
+        2/3 |    SUCCESS │ runpy ./demovars.py
         2/3 |     NOSKIP │ runsh ./printvars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest e9732ac9 ➜ 0f69921d, out_digest 31d3017c ➜ (unset)

@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,16 +10,16 @@ file:./
             supplies   file:plan.py
             supplies   file:work/
             supplies   step:copy work/test.csv work/copy.csv
-            supplies   step:runsh ./generate.py plan --step-info=../current_step_info.json  # wd=work/
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -27,47 +27,47 @@ step:runsh ./plan.py
              creates   file:work/
              creates   file:work/generate.py
              creates   step:copy work/test.csv work/copy.csv
-             creates   step:runsh ./generate.py plan --step-info=../current_step_info.json  # wd=work/
+             creates   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
 
 file:work/
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   file:work/config.json
             supplies   file:work/copy.csv
             supplies   file:work/generate.py
             supplies   file:work/test.csv
             supplies   step:copy work/test.csv work/copy.csv
-            supplies   step:runsh ./generate.py plan --step-info=../current_step_info.json  # wd=work/
-            supplies   step:runsh ./generate.py run  # wd=work/
+            supplies   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
+            supplies   step:runpy ./generate.py run  # wd=work/
 
 file:work/generate.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:work/
-            supplies   step:runsh ./generate.py plan --step-info=../current_step_info.json  # wd=work/
-            supplies   step:runsh ./generate.py run  # wd=work/
+            supplies   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
+            supplies   step:runpy ./generate.py run  # wd=work/
 
-step:runsh ./generate.py plan --step-info=../current_step_info.json  # wd=work/
+step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:work/
             consumes   file:work/generate.py
              creates   file:current_step_info.json
              creates   file:work/config.json
-             creates   step:runsh ./generate.py run  # wd=work/
+             creates   step:runpy ./generate.py run  # wd=work/
             supplies   file:current_step_info.json
 
 file:current_step_info.json
                state = BUILT
-          created by   step:runsh ./generate.py plan --step-info=../current_step_info.json  # wd=work/
+          created by   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
             consumes   file:./
-            consumes   step:runsh ./generate.py plan --step-info=../current_step_info.json  # wd=work/
+            consumes   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
 
 step:copy work/test.csv work/copy.csv
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:work/
             consumes   file:work/test.csv
@@ -76,9 +76,9 @@ step:copy work/test.csv work/copy.csv
 
 file:work/test.csv
                state = BUILT
-          created by   step:runsh ./generate.py run  # wd=work/
+          created by   step:runpy ./generate.py run  # wd=work/
             consumes   file:work/
-            consumes   step:runsh ./generate.py run  # wd=work/
+            consumes   step:runpy ./generate.py run  # wd=work/
             supplies   step:copy work/test.csv work/copy.csv
 
 file:work/copy.csv
@@ -89,13 +89,13 @@ file:work/copy.csv
 
 file:work/config.json
                state = STATIC
-          created by   step:runsh ./generate.py plan --step-info=../current_step_info.json  # wd=work/
+          created by   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
             consumes   file:work/
-            supplies   step:runsh ./generate.py run  # wd=work/
+            supplies   step:runpy ./generate.py run  # wd=work/
 
-step:runsh ./generate.py run  # wd=work/
+step:runpy ./generate.py run  # wd=work/
                state = SUCCEEDED
-          created by   step:runsh ./generate.py plan --step-info=../current_step_info.json  # wd=work/
+          created by   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
             consumes   file:work/
             consumes   file:work/config.json
             consumes   file:work/generate.py

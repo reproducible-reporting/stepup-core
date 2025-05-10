@@ -13,7 +13,10 @@ To help you decide which one to use, consider the following:
 
 - The **script protocol** is most convenient when you prefer to have all the details of the script,
   including the planning (inputs, outputs, ...) and execution, in a single source file.
-  Such self-contained scripts are easier to understand and maintain.
+  Such self-contained scripts can be easier to understand and maintain.
+
+If both seem overkill, you can also use the [`runpy()`][stepup.core.api.runpy] function directly in `plan.py`.
+See [Running Python scripts](first_runpy.md) for an example.
 
 ## Script Protocol
 
@@ -34,6 +37,7 @@ Note that the use of a subdirectory is not required.
 The `./executable plan` step is expected to define additional steps
 to actually run something useful with the executable.
 A common scenario is to plan a single `./executable run` step with appropriate inputs and outputs.
+Note that if the script has the `.py` extension, `runpy()` is used instead of `runsh()`.
 
 When the `optional=True` keyword argument is given to the `script()` function,
 it executes `./executable plan --optional`.

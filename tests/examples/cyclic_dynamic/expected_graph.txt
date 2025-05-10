@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -13,9 +13,9 @@ file:./
             supplies   file:plan.py
             supplies   file:work1.py
             supplies   file:work2.py
-            supplies   step:runsh ./plan.py
-            supplies   step:runsh ./work1.py
-            supplies   step:runsh ./work2.py
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./work1.py
+            supplies   step:runpy ./work2.py
             supplies   step:runsh echo first > inp1.txt
             supplies   step:runsh echo second > inp2.txt
 
@@ -23,33 +23,33 @@ file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:work1.py
              creates   file:work2.py
-             creates   step:runsh ./work1.py
-             creates   step:runsh ./work2.py
+             creates   step:runpy ./work1.py
+             creates   step:runpy ./work2.py
 
 file:work1.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:runsh ./work1.py
+            supplies   step:runpy ./work1.py
 
 file:work2.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:runsh ./work2.py
+            supplies   step:runpy ./work2.py
 
-step:runsh ./work1.py
+step:runpy ./work1.py
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:inp2.txt [amended]
             consumes   file:work1.py
@@ -57,9 +57,9 @@ step:runsh ./work1.py
              creates   step:runsh echo first > inp1.txt
             supplies   file:out2.txt [amended]
 
-step:runsh ./work2.py
+step:runpy ./work2.py
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:inp1.txt [amended]
             consumes   file:work2.py
@@ -69,7 +69,7 @@ step:runsh ./work2.py
 
 step:runsh echo first > inp1.txt
                state = SUCCEEDED
-          created by   step:runsh ./work1.py
+          created by   step:runpy ./work1.py
             consumes   file:./
              creates   file:inp1.txt
             supplies   file:inp1.txt
@@ -79,30 +79,30 @@ file:inp1.txt
           created by   step:runsh echo first > inp1.txt
             consumes   file:./
             consumes   step:runsh echo first > inp1.txt
-            supplies   step:runsh ./work2.py
+            supplies   step:runpy ./work2.py
 
 file:inp2.txt
                state = BUILT
           created by   step:runsh echo second > inp2.txt
             consumes   file:./
             consumes   step:runsh echo second > inp2.txt
-            supplies   step:runsh ./work1.py
+            supplies   step:runpy ./work1.py
 
 file:out2.txt
                state = BUILT
-          created by   step:runsh ./work1.py
+          created by   step:runpy ./work1.py
             consumes   file:./
-            consumes   step:runsh ./work1.py
+            consumes   step:runpy ./work1.py
 
 step:runsh echo second > inp2.txt
                state = SUCCEEDED
-          created by   step:runsh ./work2.py
+          created by   step:runpy ./work2.py
             consumes   file:./
              creates   file:inp2.txt
             supplies   file:inp2.txt
 
 file:out1.txt
                state = BUILT
-          created by   step:runsh ./work2.py
+          created by   step:runpy ./work2.py
             consumes   file:./
-            consumes   step:runsh ./work2.py
+            consumes   step:runpy ./work2.py

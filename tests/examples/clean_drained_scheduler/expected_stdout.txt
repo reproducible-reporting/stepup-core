@@ -1,12 +1,12 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runsh ./plan.py
-        1/3 |    SUCCESS │ runsh ./plan.py
-        1/3 |      START │ runsh ./work.py case1.txt
-        1/2 |       FAIL │ runsh ./work.py case1.txt
+        0/1 |      START │ runpy ./plan.py
+        1/3 |    SUCCESS │ runpy ./plan.py
+        1/3 |      START │ runpy ./work.py case1.txt
+        1/2 |       FAIL │ runpy ./work.py case1.txt
 ────────────────────────────────── Step info ───────────────────────────────────
-Command               stepup act runsh ./work.py case1.txt
+Command               stepup act runpy ./work.py case1.txt
 Return code           0
 ──────────────────────────────── Invalid inputs ────────────────────────────────
 Input changed unexpectedly: cases.txt (digest 125bc6a0 ➜ 2863481f)
@@ -20,12 +20,12 @@ Input changed unexpectedly: cases.txt (digest 125bc6a0 ➜ 2863481f)
         1/2 |      PHASE │ watch
         1/2 |    UPDATED │ cases.txt
         0/3 |      PHASE │ run
-        0/1 |      START │ runsh ./plan.py
-        1/3 |    SUCCESS │ runsh ./plan.py
-        1/3 |      START │ runsh ./work.py case3.txt
-        2/3 |    SUCCESS │ runsh ./work.py case3.txt
-        2/3 |      START │ runsh ./work.py case4.txt
-        3/3 |    SUCCESS │ runsh ./work.py case4.txt
+        0/1 |      START │ runpy ./plan.py
+        1/3 |    SUCCESS │ runpy ./plan.py
+        1/3 |      START │ runpy ./work.py case3.txt
+        2/3 |    SUCCESS │ runpy ./work.py case3.txt
+        2/3 |      START │ runpy ./work.py case4.txt
+        3/3 |    SUCCESS │ runpy ./work.py case4.txt
         3/3 |   DIRECTOR │ Trying to delete 1 outdated output(s)
         3/3 |      CLEAN │ case1.txt
         3/3 |      PHASE │ watch

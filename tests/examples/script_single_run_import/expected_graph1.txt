@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -10,48 +10,48 @@ file:./
             supplies   file:helper.py
             supplies   file:plan.py
             supplies   file:work.py
-            supplies   step:runsh ./plan.py
-            supplies   step:runsh ./work.py plan
-            supplies   step:runsh ./work.py run
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./work.py plan
+            supplies   step:runpy ./work.py run
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:helper.py
              creates   file:work.py
-             creates   step:runsh ./work.py plan
+             creates   step:runpy ./work.py plan
 
 file:helper.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:runsh ./work.py run
+            supplies   step:runpy ./work.py run
 
 file:work.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:runsh ./work.py plan
-            supplies   step:runsh ./work.py run
+            supplies   step:runpy ./work.py plan
+            supplies   step:runpy ./work.py run
 
-step:runsh ./work.py plan
+step:runpy ./work.py plan
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:work.py
-             creates   step:runsh ./work.py run
+             creates   step:runpy ./work.py run
 
-step:runsh ./work.py run
+step:runpy ./work.py run
                state = SUCCEEDED
-          created by   step:runsh ./work.py plan
+          created by   step:runpy ./work.py plan
             consumes   file:./
             consumes   file:helper.py [amended]
             consumes   file:work.py
@@ -60,6 +60,6 @@ step:runsh ./work.py run
 
 file:hello.txt
                state = BUILT
-          created by   step:runsh ./work.py run
+          created by   step:runpy ./work.py run
             consumes   file:./
-            consumes   step:runsh ./work.py run
+            consumes   step:runpy ./work.py run

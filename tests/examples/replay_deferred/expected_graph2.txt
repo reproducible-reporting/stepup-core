@@ -1,26 +1,26 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
           created by   root:
             supplies   (file:inp.txt)
-            supplies   (step:runsh ./work.py)
+            supplies   (step:runpy ./work.py)
             supplies   file:out.txt
             supplies   file:plan.py
             supplies   file:work.py
             supplies   step:copy inp.txt out.txt
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -30,11 +30,11 @@ step:runsh ./plan.py
 
 file:work.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   (step:runsh ./work.py)
+            supplies   (step:runpy ./work.py)
 
-(step:runsh ./work.py)
+(step:runpy ./work.py)
                state = SUCCEEDED
             consumes   file:./
             consumes   file:work.py
@@ -42,7 +42,7 @@ file:work.py
 
 step:copy inp.txt out.txt
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   (file:inp.txt)
             consumes   file:./
              creates   file:out.txt
@@ -61,5 +61,5 @@ file:out.txt
             consumes   step:copy inp.txt out.txt
 
 (dg:inp.*)
-          created by   (step:runsh ./work.py)
+          created by   (step:runpy ./work.py)
              creates   (file:inp.txt)

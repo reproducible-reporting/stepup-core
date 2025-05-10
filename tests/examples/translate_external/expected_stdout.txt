@@ -1,12 +1,12 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runsh ./plan.py
-        1/3 |    SUCCESS │ runsh ./plan.py
+        0/1 |      START │ runpy ./plan.py
+        1/3 |    SUCCESS │ runpy ./plan.py
         1/3 |      START │ mkdir ../public/
         2/3 |    SUCCESS │ mkdir ../public/
-        2/3 |      START │ runsh ./script.py  # wd=../../common/
-        3/3 |    SUCCESS │ runsh ./script.py  # wd=../../common/
+        2/3 |      START │ runpy ./script.py  # wd=../../common/
+        3/3 |    SUCCESS │ runpy ./script.py  # wd=../../common/
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |      PHASE │ watch
         3/3 |   DIRECTOR │ Stopping workers

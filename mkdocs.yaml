@@ -67,6 +67,7 @@ nav:
   - Getting started:
     - getting_started/introduction.md
     - getting_started/first_step.md
+    - getting_started/first_runpy.md
     - getting_started/dependencies.md
     - getting_started/static_files.md
     - getting_started/copy_mkdir.md

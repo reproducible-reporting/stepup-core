@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -11,7 +11,7 @@ file:./
             supplies   file:foo1.txt
             supplies   file:foo2.txt
             supplies   file:plan.py
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
             supplies   step:runsh cat bar.txt > egg.txt
             supplies   step:runsh cat foo1.txt foo2.txt > bar.txt
             supplies   step:runsh echo inp1 > foo1.txt
@@ -21,9 +21,9 @@ file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
            explained = yes
           created by   root:
@@ -38,7 +38,7 @@ step:runsh echo inp1 > foo1.txt
                state = PENDING
            mandatory = NO
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:foo1.txt
             supplies   file:foo1.txt
@@ -54,7 +54,7 @@ step:runsh echo inp2 > foo2.txt
                state = PENDING
            mandatory = NO
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:foo2.txt
             supplies   file:foo2.txt
@@ -70,7 +70,7 @@ step:runsh cat foo1.txt foo2.txt > bar.txt
                state = PENDING
            mandatory = NO
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:foo1.txt
             consumes   file:foo2.txt
@@ -88,7 +88,7 @@ step:runsh cat bar.txt > egg.txt
                state = PENDING
            mandatory = NO
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:bar.txt
              creates   file:egg.txt

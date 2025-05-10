@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -11,52 +11,52 @@ file:./
             supplies   file:out_foo.txt
             supplies   file:plan.py
             supplies   file:script.py
-            supplies   step:runsh ./plan.py
-            supplies   step:runsh ./script.py plan
-            supplies   step:runsh ./script.py run bar
-            supplies   step:runsh ./script.py run foo
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./script.py plan
+            supplies   step:runpy ./script.py run bar
+            supplies   step:runpy ./script.py run foo
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
             consumes   file:plan.py
              creates   file:config.txt
              creates   file:script.py
-             creates   step:runsh ./script.py plan
+             creates   step:runpy ./script.py plan
 
 file:config.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:runsh ./script.py plan
+            supplies   step:runpy ./script.py plan
 
 file:script.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:runsh ./script.py plan
-            supplies   step:runsh ./script.py run bar
-            supplies   step:runsh ./script.py run foo
+            supplies   step:runpy ./script.py plan
+            supplies   step:runpy ./script.py run bar
+            supplies   step:runpy ./script.py run foo
 
-step:runsh ./script.py plan
+step:runpy ./script.py plan
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:config.txt
             consumes   file:script.py
-             creates   step:runsh ./script.py run bar
-             creates   step:runsh ./script.py run foo
+             creates   step:runpy ./script.py run bar
+             creates   step:runpy ./script.py run foo
 
-step:runsh ./script.py run foo
+step:runpy ./script.py run foo
                state = SUCCEEDED
-          created by   step:runsh ./script.py plan
+          created by   step:runpy ./script.py plan
             consumes   file:./
             consumes   file:script.py
              creates   file:out_foo.txt
@@ -64,13 +64,13 @@ step:runsh ./script.py run foo
 
 file:out_foo.txt
                state = BUILT
-          created by   step:runsh ./script.py run foo
+          created by   step:runpy ./script.py run foo
             consumes   file:./
-            consumes   step:runsh ./script.py run foo
+            consumes   step:runpy ./script.py run foo
 
-step:runsh ./script.py run bar
+step:runpy ./script.py run bar
                state = SUCCEEDED
-          created by   step:runsh ./script.py plan
+          created by   step:runpy ./script.py plan
             consumes   file:./
             consumes   file:script.py
              creates   file:out_bar.txt
@@ -78,6 +78,6 @@ step:runsh ./script.py run bar
 
 file:out_bar.txt
                state = BUILT
-          created by   step:runsh ./script.py run bar
+          created by   step:runpy ./script.py run bar
             consumes   file:./
-            consumes   step:runsh ./script.py run bar
+            consumes   step:runpy ./script.py run bar

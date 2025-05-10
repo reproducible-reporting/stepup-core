@@ -5,8 +5,8 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         0/3 |      PHASE │ run
-        0/1 |      START │ runsh ./plan.py
-        1/1 |    SUCCESS │ runsh ./plan.py
+        0/1 |      START │ runpy ./plan.py
+        1/1 |    SUCCESS │ runpy ./plan.py
         1/1 |   DIRECTOR │ Trying to delete 2 outdated output(s)
         1/1 |      CLEAN │ out2.txt
         1/1 |      CLEAN │ foo2.txt

@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -11,16 +11,16 @@ file:./
             supplies   file:paste_x.txt
             supplies   file:plan.py
             supplies   file:tail_x.txt
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
             supplies   step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
                  ngm = ['head_${*char}.txt', 'tail_${*char}.txt'] {'char': '?'}
            explained = yes
@@ -34,25 +34,25 @@ step:runsh ./plan.py
 
 file:head_x.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 file:head_y.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
 
 file:tail_x.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:head_x.txt
             consumes   file:tail_x.txt

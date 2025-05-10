@@ -80,6 +80,7 @@ status = "stepup.core.interact:status_subcommand"
 copy = "stepup.core.actions:copy"
 mkdir = "stepup.core.actions:mkdir"
 render-jinja = "stepup.core.render_jinja:render_jinja_action"
+runpy = "stepup.core.actions:runpy"
 runsh = "stepup.core.actions:runsh"
 
 [tool.pytest.ini_options]

@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -14,16 +14,16 @@ file:./
             supplies   file:work1.py
             supplies   file:work2.py
             supplies   file:work3.py
-            supplies   step:runsh ./plan.py
-            supplies   step:runsh ./work1.py
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./work1.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
                  ngm = ['inp?.txt'] {}
                  ngm = ['work?.py'] {}
@@ -36,43 +36,43 @@ step:runsh ./plan.py
              creates   file:work1.py
              creates   file:work2.py
              creates   file:work3.py
-             creates   step:runsh ./work1.py
+             creates   step:runpy ./work1.py
 
 file:inp1.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:runsh ./work1.py
+            supplies   step:runpy ./work1.py
 
 file:inp2.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
 
 file:inp3.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
 
 file:work1.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
-            supplies   step:runsh ./work1.py
+            supplies   step:runpy ./work1.py
 
 file:work2.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
 
 file:work3.py
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
 
-step:runsh ./work1.py
+step:runpy ./work1.py
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:inp1.txt
             consumes   file:work1.py
@@ -81,6 +81,6 @@ step:runsh ./work1.py
 
 file:out1.txt
                state = BUILT
-          created by   step:runsh ./work1.py
+          created by   step:runpy ./work1.py
             consumes   file:./
-            consumes   step:runsh ./work1.py
+            consumes   step:runpy ./work1.py

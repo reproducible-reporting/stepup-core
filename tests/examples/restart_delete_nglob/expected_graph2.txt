@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -12,15 +12,15 @@ file:./
             supplies   file:plan.py
             supplies   step:copy inp2.txt out2.txt
             supplies   step:copy out2.txt foo2.txt
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
                  ngm = ['inp*.txt'] {}
            explained = yes
@@ -33,13 +33,13 @@ step:runsh ./plan.py
 
 file:inp2.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:copy inp2.txt out2.txt
 
 step:copy inp2.txt out2.txt
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:inp2.txt
              creates   file:out2.txt
@@ -54,7 +54,7 @@ file:out2.txt
 
 step:copy out2.txt foo2.txt
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:out2.txt
              creates   file:foo2.txt

@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh
+from stepup.core.api import runpy
 
-runsh("./demo.py")
+runpy("./demo.py")

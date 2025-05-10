@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -21,15 +21,15 @@ file:./
             supplies   step:copy raw2.txt converted2.txt
             supplies   step:copy raw3.txt converted3.txt
             supplies   step:copy raw4.txt converted4.txt
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
              env_var = ENV_VAR_TEST_STEPUP_IDX [amended]
                  ngm = ['raw*.txt'] {}
@@ -49,25 +49,25 @@ step:runsh ./plan.py
 
 file:raw1.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:copy raw1.txt converted1.txt
 
 file:raw2.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:copy raw2.txt converted2.txt
 
 file:raw3.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:copy raw3.txt converted3.txt
 
 file:raw4.txt
                state = STATIC
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             supplies   step:copy raw4.txt converted4.txt
 
@@ -75,7 +75,7 @@ step:copy raw1.txt converted1.txt
                state = SUCCEEDED
            mandatory = REQUIRED
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:raw1.txt
              creates   file:converted1.txt
@@ -91,7 +91,7 @@ file:converted1.txt
 step:copy raw2.txt converted2.txt
                state = PENDING
            mandatory = NO
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:raw2.txt
              creates   file:converted2.txt
@@ -107,7 +107,7 @@ step:copy raw3.txt converted3.txt
                state = PENDING
            mandatory = NO
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:raw3.txt
              creates   file:converted3.txt
@@ -122,7 +122,7 @@ file:converted3.txt
 step:copy raw4.txt converted4.txt
                state = PENDING
            mandatory = NO
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:raw4.txt
              creates   file:converted4.txt
@@ -143,7 +143,7 @@ file:used.txt
 step:copy converted1.txt used.txt
                state = SUCCEEDED
            explained = yes
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:converted1.txt
              creates   file:used.txt

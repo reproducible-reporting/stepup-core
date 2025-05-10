@@ -1,7 +1,7 @@
 root:
              creates   file:./
              creates   file:plan.py
-             creates   step:runsh ./plan.py
+             creates   step:runpy ./plan.py
 
 file:./
                state = STATIC
@@ -9,7 +9,7 @@ file:./
             supplies   file:plan.py
             supplies   file:test1.txt
             supplies   file:test2.txt
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
             supplies   step:runsh cat test2.txt
             supplies   step:runsh echo test1 > test1.txt
             supplies   step:runsh echo test2 > test2.txt
@@ -18,9 +18,9 @@ file:plan.py
                state = STATIC
           created by   root:
             consumes   file:./
-            supplies   step:runsh ./plan.py
+            supplies   step:runpy ./plan.py
 
-step:runsh ./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
           created by   root:
             consumes   file:./
@@ -32,7 +32,7 @@ step:runsh ./plan.py
 step:runsh echo test1 > test1.txt
                state = PENDING
            mandatory = NO
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:test1.txt
             supplies   file:test1.txt
@@ -46,7 +46,7 @@ file:test1.txt
 step:runsh echo test2 > test2.txt
                state = SUCCEEDED
            mandatory = REQUIRED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:test2.txt
             supplies   file:test2.txt
@@ -60,6 +60,6 @@ file:test2.txt
 
 step:runsh cat test2.txt
                state = SUCCEEDED
-          created by   step:runsh ./plan.py
+          created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:test2.txt
