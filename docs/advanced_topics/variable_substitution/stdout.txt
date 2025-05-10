@@ -1,4 +1,4 @@
-        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post12)
+        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post25)
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run

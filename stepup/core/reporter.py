@@ -21,15 +21,17 @@
 
 import asyncio
 import contextlib
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Iterable
 from time import perf_counter
 
 import attrs
 from path import Path
-from rich.console import Console
+from rich.console import Console, RenderableType
 from rich.markup import escape as escape_markup
 from rich.progress import BarColumn, MofNCompleteColumn, TaskID, TextColumn
 from rich.progress import Progress as ProgressBar
+from rich.rule import Rule
+from rich.text import Text
 from rich.theme import Theme
 
 from .enums import StepState
@@ -64,6 +66,14 @@ class ReporterClient:
         if self.client is not None:
             await self.client.call.set_num_workers(num_workers)
 
+    async def start_step(self, description: str, step_i: int):
+        if self.client is not None:
+            await self.client.call.start_step(description, step_i)
+
+    async def stop_step(self, step_i: int):
+        if self.client is not None:
+            await self.client.call.stop_step(step_i)
+
     async def update_step_counts(self, step_counter: dict[StepState, int]):
         if self.client is not None:
             await self.client.call.update_step_counts(step_counter)
@@ -87,17 +97,56 @@ class ReporterClient:
         await self.close()
 
 
+class StepUpProgressBar(ProgressBar):
+    """Custom progress bar to handle the case where the console is not a terminal."""
+
+    def __init__(self, *args, **kwargs):
+        self._num_workers = 0
+        self._running = {}
+        super().__init__(*args, **kwargs)
+
+    def set_num_workers(self, num_workers: int):
+        """Set the number of workers in the progress bar."""
+        self._num_workers = num_workers
+
+    def start_step(self, start: float, description: str, step_i: int):
+        """Start a step in the progress bar."""
+        self._running[step_i] = (start, description)
+
+    def stop_step(self, step_i: int):
+        """Stop a step in the progress bar."""
+        self._running.pop(step_i, None)
+
+    def get_renderables(self) -> Iterable[RenderableType]:
+        if len(self._running) > 0:
+            running = sorted(self._running.values())[: self.console.height // 2 - 1]
+            rule_message = f"Active workers {len(self._running)}/{self._num_workers}"
+            if len(running) < len(self._running):
+                rule_message += f" ({len(running)} shown)"
+            yield Rule(rule_message, style="bold")
+            for start, description in running:
+                elapsed = perf_counter() - start
+                text = Text(
+                    no_wrap=True,
+                    overflow="crop",
+                )
+                text.append("   RUNNING", "bold cyan")
+                text.append(" │ ")
+                text.append(f"{elapsed:6.1f}", "gray50")
+                text.append(f" {description}")
+                yield text
+        yield from super().get_renderables()
+
+
 @attrs.define
 class ReporterHandler:
     show_perf: bool = attrs.field(default=False)
     show_progress: bool = attrs.field(default=True)
     stop_event: asyncio.Event = attrs.field(factory=asyncio.Event)
-    _num_workers: int = attrs.field(init=False, default=0)
     _step_counts: dict[StepState, int] = attrs.field(init=False, factory=dict)
     _num_digits: int = attrs.field(init=False, default=3)
     console: Console = attrs.field(init=False)
     progress_bar: ProgressBar | None = attrs.field(init=False)
-    task_id_running: TaskID | None = attrs.field(init=False)
     task_id_step: TaskID | None = attrs.field(init=False)
     start: float = attrs.field(init=False, factory=perf_counter)
 
@@ -105,9 +154,9 @@ class ReporterHandler:
     def _default_console(self):
         theme = Theme(
             {
-                "rule.line": "bold gray42",
-                "bar.complete": "bold grey82",
-                "bar.finished": "bold grey82",
+                "rule.line": "bold gray50",
+                "bar.complete": "bold white",
+                "bar.finished": "bold white",
             }
         )
         return Console(highlight=False, theme=theme)
@@ -116,24 +165,17 @@ class ReporterHandler:
     def _default_progress_bar(self):
         if not (self.show_progress and self.console.is_terminal):
             return None
-        progress_bar = ProgressBar(
+        progress_bar = StepUpProgressBar(
             TextColumn("{task.description}"),
             BarColumn(None),
             MofNCompleteColumn(),
             transient=True,
             console=self.console,
-            auto_refresh=False,
+            auto_refresh=True,
+            refresh_per_second=2,
         )
         progress_bar.start()
         return progress_bar
-
-    @task_id_running.default
-    def _default_task_id_running(self):
-        return (
-            self.progress_bar.add_task("🛠 ", total=0, visible=True)
-            if self.show_progress and self.console.is_terminal
-            else None
-        )
 
     @task_id_step.default
     def _default_task_id_step(self):
@@ -142,12 +184,6 @@ class ReporterHandler:
             if self.show_progress and self.console.is_terminal
             else None
         )
-
-    @allow_rpc
-    def shutdown(self):
-        if self.progress_bar is not None:
-            self.progress_bar.stop()
-        self.stop_event.set()
 
     @allow_rpc
     def report(self, action: str, description: str, pages: list[tuple[str, str]]):
@@ -162,12 +198,10 @@ class ReporterHandler:
             self._num_digits = nd
             if self.console.is_terminal:
                 self.progress_bar.update(
-                    self.task_id_running, completed=nrun, total=self._num_workers
+                    self.task_id_step,
+                    completed=nsuc,
+                    total=nsuc + nrun + npen,
                 )
-                self.progress_bar.update(
-                    self.task_id_step, completed=nsuc, total=nsuc + nrun + npen
-                )
-                self.progress_bar.refresh()
 
         # Action info
         action_color = {
@@ -183,31 +217,34 @@ class ReporterHandler:
             "DROPAMEND": "yellow",
             "WARNING": "yellow",
             "UNCHANGED": "cyan",
-            "PHASE": "white",
+            "PHASE": "",
         }.get(action, "magenta")
-        descr_color = {"START": "grey82"}.get(action, "grey46")
 
         # Print action with extra info
         description = escape_markup(description)
-        line = f"[bold {action_color}]{action:>10s}[/] │ [{descr_color}]{description}[/]"
+        line = f"[bold {action_color}]{action:>10s}[/] │ "
+        if action == "START":
+            line += description
+        else:
+            line += f"[gray50]{description}[/]"
         if self.show_perf:
             now = perf_counter()
-            line = f"[gray46]{perf_counter() - self.start:7.2f} {nrun:{nd}d} [/]" + line
+            line = f"[gray50]{perf_counter() - self.start:7.2f} {nrun:{nd}d} [/]" + line
             if action == "PHASE":
                 self.start = now
         if not self.console.is_terminal and self.show_progress:
             # If not a terminal, the progress bars are not shown,
             # so we need to print the completed and total number of steps.
             progress = f"{nsuc}/{nsuc + nrun + npen}"
-            line = f"[gray46]{progress:>11s} | [/]" + line
+            line = f"[gray50]{progress:>11s} | [/]" + line
         self.console.print(
             line, no_wrap=self.console.is_terminal, soft_wrap=not self.console.is_terminal
         )
 
         # Pages if any
         for title, page in pages:
-            self.console.rule(f"[grey82]{title}[/]")
-            self.console.print(f"[gray42]{escape_markup(page)}[/]", soft_wrap=True)
+            self.console.rule(f"[white]{title}[/]")
+            self.console.print(f"[gray50]{escape_markup(page)}[/]", soft_wrap=True)
         if len(pages) > 0:
             self.console.rule()
 
@@ -234,7 +271,20 @@ class ReporterHandler:
 
     @allow_rpc
     def set_num_workers(self, num_workers: int):
-        self._num_workers = num_workers
+        """Set the number of workers in the progress bar."""
+        if self.progress_bar is not None:
+            self.progress_bar.set_num_workers(num_workers)
+
+    @allow_rpc
+    def start_step(self, description: str, step_i: int):
+        if self.progress_bar is not None:
+            self.progress_bar.start_step(perf_counter(), description, step_i)
+            self.progress_bar.refresh()
+
+    @allow_rpc
+    def stop_step(self, step_i: int):
+        if self.progress_bar is not None:
+            self.progress_bar.stop_step(step_i)
 
     @allow_rpc
     def update_step_counts(self, step_counts: dict[StepState, int]):
@@ -250,3 +300,9 @@ class ReporterHandler:
         ]
         if len(paths_log) > 0:
             self.report("WARNING", "Check logs: {}".format(" ".join(paths_log)), [])
+
+    @allow_rpc
+    def shutdown(self):
+        if self.progress_bar is not None:
+            self.progress_bar.stop()
+        self.stop_event.set()

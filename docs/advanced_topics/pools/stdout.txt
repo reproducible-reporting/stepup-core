@@ -1,4 +1,4 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post12)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post25)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
   DIRECTOR │ Launched worker 1
@@ -13,11 +13,11 @@
 ─────────────────────────────── Standard output ────────────────────────────────
 A
 ────────────────────────────────────────────────────────────────────────────────
+     START │ runsh sleep 0.1; echo C
    SUCCESS │ runsh sleep 0.1; echo B
 ─────────────────────────────── Standard output ────────────────────────────────
 B
 ────────────────────────────────────────────────────────────────────────────────
-     START │ runsh sleep 0.1; echo C
    SUCCESS │ runsh sleep 0.1; echo C
 ─────────────────────────────── Standard output ────────────────────────────────
 C

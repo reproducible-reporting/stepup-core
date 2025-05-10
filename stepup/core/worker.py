@@ -883,6 +883,7 @@ class WorkerHandler:
     @allow_rpc
     async def run(self):
         await self.reporter("START", self.step.description)
+        await self.reporter.start_step(self.step.description, self.step.i)
 
         # For internal use only:
         os.environ["STEPUP_STEP_I"] = str(self.step.i)
@@ -975,6 +976,7 @@ class WorkerHandler:
             action = "SUCCESS"
         else:
             action = "FAIL"
+        await self.reporter.stop_step(self.step.i)
         await self.reporter(action, self.step.description, pages)
         self.step = None
 
