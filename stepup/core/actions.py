@@ -33,6 +33,7 @@ import argparse
 import os
 import shlex
 import shutil
+from importlib.metadata import entry_points
 
 from .worker import WorkThread
 
@@ -135,7 +136,7 @@ def act_tool(args: argparse.Namespace) -> int:
         The exit code of the command.
     """
     # Make a dummy work thread to execute the action.
-    work_thread = WorkThread(shlex.join(args.action))
+    work_thread = WorkThread(f"{shlex.quote(args.action_name)} {shlex.join(args.action_args)}")
     return work_thread.run()
 
 
@@ -153,5 +154,7 @@ def act_subcommand(subparser: argparse.ArgumentParser) -> callable:
         The action function.
     """
     parser = subparser.add_parser("act", help="Execute an action.")
-    parser.add_argument("action", help="The action to execute.", nargs="+")
+    action_names = sorted(ep.name for ep in entry_points(group="stepup.actions"))
+    parser.add_argument("action_name", help="The action to execute.", choices=action_names)
+    parser.add_argument("action_args", help="The arguments for the action.", nargs="*")
     return act_tool
