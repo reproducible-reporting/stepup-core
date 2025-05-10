@@ -221,59 +221,57 @@ def format_command(executable: str) -> str:
     return shlex.quote(executable if executable.startswith(("./", "../")) else f"./{executable}")
 
 
-def filter_dependencies(paths: Collection[str], *external_sources: str) -> set[Path]:
-    """Select only paths that are children of a source directory and make relative.
+def filter_dependencies(paths: Collection[str]) -> set[Path]:
+    """Select path retained by the `${STEPUP_PATH_FILTER}`.
 
     Parameters
     ----------
     paths
         A collection of paths to filter.
         Relative paths are assumed to be relative to the current working directory.
-    external_sources
-        A collection of paths that are considered external sources.
-        Relative paths are assumed to be relative to the current working directory.
 
     Returns
     -------
     filtered_paths
-        A collection of relative paths that are under `STEPUP_ROOT`
-        or any of `external_sources` or `${STEPUP_EXTERNAL_SOURCES}`.
-
-    Notes
-    -----
-    The list of source directories consists of:
-    - `STEPUP_ROOT` (if not set, the current directory is used.)
-    - Paths in `external_sources`
-    - Paths in the environment variable `${STEPUP_EXTERNAL_SOURCES}` (if set.)
-      When `${STEPUP_EXTERNAL_SOURCES}` contains relative paths,
-      they are assumed to be relative to `STEPUP_ROOT`.
-      (It acts as global variable, so its interpretation should be the same in all directories.)
+        A collection of paths relative to `${STEPUP_ROOT}` that were retained by the filter.
     """
-    # Get paths for all local imports.
-    sources_roots = [Path(os.environ.get("STEPUP_ROOT", Path.cwd())).absolute() / ""]
-    global_external_sources = os.environ.get("STEPUP_EXTERNAL_SOURCES")
-    if global_external_sources is not None:
-        sources_roots.extend(
-            translate_back(source).absolute() / "" for source in global_external_sources.split(":")
-        )
-    sources_roots.extend(Path(source).absolute() / "" for source in external_sources)
+    # Parse the ${STEPUP_PATH_FILTER} environment variable.
+    filter_str = os.environ.get("STEPUP_PATH_FILTER", "-venv")
+    filter_str += ":+.:-/"
+    rules = []
+    stepup_root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
+    for filter_item in filter_str.split(":"):
+        if filter_item == "":
+            continue
+        if filter_item.startswith("+"):
+            keep = True
+        elif filter_item.startswith("-"):
+            keep = False
+        else:
+            raise ValueError(f"Invalid filter item: {filter_item}")
+        prefix = filter_item[1:]
+        if not prefix.startswith("/"):
+            prefix = mynormpath(stepup_root / prefix)
+        rules.append((prefix, keep))
 
-    # Filter paths that are under the source directories.
+    # Filter paths according to the rules.
     result = set()
     for path in paths:
         abspath = myabsolute(path)
-        for sources_root in sources_roots:
-            if abspath.startswith(sources_root):
-                result.add(myrelpath(path))
+        for prefix, keep in rules:
+            if abspath.startswith(prefix):
+                if keep:
+                    result.add(myrelpath(path))
                 break
+        else:
+            raise AssertionError("No matching rule found for path: {path}")
     return result
 
 
 def get_local_import_paths(script_path: Path | None = None) -> list[str]:
     """Get all local files from `sys.modules`.
 
-    Files are only included if they are in `STEPUP_ROOT` or inside one of the paths in
-    `STEPUP_EXTERNAL_SOURCES`.
+    Files are only included if they match the `${STEPUP_PATH_FILTER}` environment variable.
     """
 
     def iter_module_paths():

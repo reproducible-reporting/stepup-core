@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example
 export STEPUP_ROOT="${PWD}/project"
-export STEPUP_EXTERNAL_SOURCES="${PWD}/pkgs"
+export STEPUP_PATH_FILTER="+${PWD}/pkgs"
 export PYTHONPATH="${PWD}/pkgs:${PYTHONPATH}"
 cp pkgs/helper1.py pkgs/helper.py
 stepup boot -n 1 -w & # > current_stdout1.txt &

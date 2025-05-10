@@ -76,8 +76,10 @@ It can be used in two ways:
 
 In both cases, the script driver will detect local modules that are imported in the script,
 and amend these as required inputs.
-By default, only the modules inside `STEPUP_ROOT` are treated as dependencies.
-You can specify additional directories in the `STEPUP_EXTERNAL_SOURCES` environment variable.
+By default, only the modules inside `${STEPUP_ROOT}`
+(but not in `${STEPUP_ROOT}/venv*`) are treated as dependencies.
+You can control the filtering of automatically detected dependencies with the
+[`STEPUP_PATH_FILTER` environment variable](../reference/environment_variables.md).
 
 ## Single Case Script Driver
 

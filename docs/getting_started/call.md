@@ -70,8 +70,10 @@ The usage of this `driver()` function is illustrated in the example below.
 Note that the `driver()` function also detects local modules that are imported in the script,
 and amends these as required inputs.
 Changes to modules imported in your Python script will automatically trigger a re-run of the script.
-By default, only the modules inside `STEPUP_ROOT` are treated as dependencies.
-You can specify additional directories in the [`STEPUP_EXTERNAL_SOURCES` environment variable](../reference/environment_variables.md).
+By default, only the modules inside `${STEPUP_ROOT}`
+(but not in `${STEPUP_ROOT}/venv*`) are treated as dependencies.
+You can control the filtering of automatically detected dependencies with the
+[`STEPUP_PATH_FILTER` environment variable](../reference/environment_variables.md).
 
 ## Example
 

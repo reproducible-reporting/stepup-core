@@ -26,6 +26,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 ### Changed
 
 - Breaking:
+    - The environment variable `${STEPUP_EXTERNAL_SOURCES}` has been replaced by the more versatile `${STEPUP_PATH_FILTER}`.
+      See [Environment variables](reference/environment_variables.md) for more details.
     - The database schema was incremented because steps now execute "actions",
       which can be shell commands in subprocesses, but also other things,
       such as executing a Python script without starting a new process.
