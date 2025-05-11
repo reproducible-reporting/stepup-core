@@ -52,6 +52,7 @@ from .utils import (
     make_path_out,
     mynormpath,
     myparent,
+    string_to_list,
     translate,
     translate_back,
 )
@@ -230,10 +231,6 @@ def glob(
     return nglob_multi
 
 
-def _str_to_list(arg: Collection[str] | str) -> list[str]:
-    return [arg] if isinstance(arg, str) else list(arg)
-
-
 def step(
     action: str,
     *,
@@ -299,10 +296,10 @@ def step(
     Relative paths in `inp`, `out` and `vol` are relative to the working directory of the new step.
     """
     # Pre-process the arguments for the Director process.
-    inp_paths = _str_to_list(inp)
-    env_vars = _str_to_list(env)
-    out_paths = _str_to_list(out)
-    vol_paths = _str_to_list(vol)
+    inp_paths = string_to_list(inp)
+    env_vars = string_to_list(env)
+    out_paths = string_to_list(out)
+    vol_paths = string_to_list(vol)
     if not workdir.endswith("/"):
         workdir = f"{workdir}/"
     amended_env_vars = set()
@@ -404,10 +401,10 @@ def amend(
     and before creating the output and volatile files.
     """
     # Pre-process the arguments for the Director process.
-    inp_paths = _str_to_list(inp)
-    env_vars = _str_to_list(env)
-    out_paths = _str_to_list(out)
-    vol_paths = _str_to_list(vol)
+    inp_paths = string_to_list(inp)
+    env_vars = string_to_list(env)
+    out_paths = string_to_list(out)
+    vol_paths = string_to_list(vol)
     if all(len(collection) == 0 for collection in [inp_paths, env_vars, out_paths, vol_paths]):
         return
     env_vars = set(env_vars)
@@ -579,7 +576,7 @@ def plan(
     """
     return runpy(
         "./plan.py",
-        inp=["plan.py", *_str_to_list(inp)],
+        inp=["plan.py", *string_to_list(inp)],
         env=env,
         out=out,
         vol=vol,
@@ -1001,13 +998,13 @@ def script(
         executable = subs(executable)
         workdir = subs(workdir)
     command = format_command(executable) + " plan"
-    out = _str_to_list(out)
+    out = string_to_list(out)
     if step_info is not None:
         command += " --step-info=" + shlex.quote(step_info)
         out.append(step_info)
     if optional:
         command += " --optional"
-    inp = _str_to_list(inp)
+    inp = string_to_list(inp)
     inp.append(executable)
     step_kwargs = {
         "inp": inp,

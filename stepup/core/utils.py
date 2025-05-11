@@ -46,6 +46,7 @@ __all__ = (
     "myrelpath",
     "remove_path",
     "string_to_bool",
+    "string_to_list",
     "translate",
     "translate_back",
 )
@@ -356,6 +357,10 @@ def translate_back(path: str, workdir: str = ".") -> Path:
         here = Path(os.getenv("HERE", myrelpath("./", root)))
         path = myrelpath(root / path, root / here / workdir)
     return path
+
+
+def string_to_list(arg: Collection[str] | str) -> list[str]:
+    return [arg] if isinstance(arg, str) else list(arg)
 
 
 def string_to_bool(v: str | bool) -> bool:
