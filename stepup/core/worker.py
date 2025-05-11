@@ -528,7 +528,12 @@ class WorkThread(threading.Thread):
 
     def run(self):
         try:
-            action_name, argstr = self.action.split(" ", 1)
+            action_parts = self.action.split(" ", 1)
+            if len(action_parts) == 1:
+                action_name = action_parts[0]
+                argstr = ""
+            else:
+                action_name, argstr = self.action.split(" ", 1)
             # Load the action entry point.
             action_funcs = entry_points(group="stepup.actions", name=action_name)
             if len(action_funcs) == 0:
