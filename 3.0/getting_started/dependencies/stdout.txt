@@ -1,0 +1,17 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+  DIRECTOR │ Launched worker 1
+     PHASE │ run
+     START │ runpy ./plan.py
+     START │ runsh echo First line. > story.txt; echo Second line. >> story.txt
+   SUCCESS │ runsh echo First line. > story.txt; echo Second line. >> story.txt
+     START │ runsh grep First story.txt
+   SUCCESS │ runpy ./plan.py
+   SUCCESS │ runsh grep First story.txt
+─────────────────────────────── Standard output ────────────────────────────────
+First line.
+────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Stopping workers
+  DIRECTOR │ See you!

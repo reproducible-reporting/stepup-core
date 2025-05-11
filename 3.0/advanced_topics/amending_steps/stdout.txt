@@ -1,0 +1,26 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ runpy ./plan.py
+   SUCCESS │ runpy ./plan.py
+     START │ runsh echo input.txt > sources.txt
+   SUCCESS │ runsh echo input.txt > sources.txt
+     START │ runsh ./step.py
+RESCHEDULE │ runsh ./step.py
+──────────────── Rescheduling due to unavailable amended inputs ────────────────
+Missing inputs and/or required directories:
+input.txt
+────────────────────────────────────────────────────────────────────────────────
+     START │ runsh echo You better read this. > input.txt
+   SUCCESS │ runsh echo You better read this. > input.txt
+     START │ runsh ./step.py
+   SUCCESS │ runsh ./step.py
+─────────────────────────────── Standard output ────────────────────────────────
+Contents of input.txt:
+You better read this.
+────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+   WARNING │ Check logs: .stepup/warning.log
+  DIRECTOR │ Stopping workers
+  DIRECTOR │ See you!

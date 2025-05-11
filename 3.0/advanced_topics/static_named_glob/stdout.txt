@@ -1,0 +1,33 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ runpy ./plan.py
+   SUCCESS │ runpy ./plan.py
+     START │ copy ch1/sec1_1_introduction.txt ch1/sec1_1_introduction.md
+   SUCCESS │ copy ch1/sec1_1_introduction.txt ch1/sec1_1_introduction.md
+     START │ copy ch1/sec1_2_objectives.txt ch1/sec1_2_objectives.md
+   SUCCESS │ copy ch1/sec1_2_objectives.txt ch1/sec1_2_objectives.md
+     START │ copy ch2/sec2_1_mathematical_requisites.txt ch2/sec2_1_mathematical_requisites.md
+   SUCCESS │ copy ch2/sec2_1_mathematical_requisites.txt ch2/sec2_1_mathematical_requisites.md
+     START │ copy ch2/sec2_2_theory.txt ch2/sec2_2_theory.md
+   SUCCESS │ copy ch2/sec2_2_theory.txt ch2/sec2_2_theory.md
+     START │ copy ch3/sec3_1_applications.txt ch3/sec3_1_applications.md
+   SUCCESS │ copy ch3/sec3_1_applications.txt ch3/sec3_1_applications.md
+     START │ copy ch3/sec3_2_discussion.txt ch3/sec3_2_discussion.md
+   SUCCESS │ copy ch3/sec3_2_discussion.txt ch3/sec3_2_discussion.md
+     START │ copy ch4/sec4_1_summary.txt ch4/sec4_1_summary.md
+   SUCCESS │ copy ch4/sec4_1_summary.txt ch4/sec4_1_summary.md
+     START │ mkdir public/
+   SUCCESS │ mkdir public/
+     START │ runsh cat ch1/sec1_1_introduction.md ch1/sec1_2_objectives.md > public/ch1.md
+   SUCCESS │ runsh cat ch1/sec1_1_introduction.md ch1/sec1_2_objectives.md > public/ch1.md
+     START │ runsh cat ch2/sec2_1_mathematical_requisites.md ch2/sec2_2_theory.md > public/ch2.md
+   SUCCESS │ runsh cat ch2/sec2_1_mathematical_requisites.md ch2/sec2_2_theory.md > public/ch2.md
+     START │ runsh cat ch3/sec3_1_applications.md ch3/sec3_2_discussion.md > public/ch3.md
+   SUCCESS │ runsh cat ch3/sec3_1_applications.md ch3/sec3_2_discussion.md > public/ch3.md
+     START │ runsh cat ch4/sec4_1_summary.md > public/ch4.md
+   SUCCESS │ runsh cat ch4/sec4_1_summary.md > public/ch4.md
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Stopping workers
+  DIRECTOR │ See you!
