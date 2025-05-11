@@ -69,6 +69,12 @@ cd docs
 stepup
 ```
 
+(Keep this running.)
+Then open the live preview in your browser: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+and edit Markdown files in your IDE.
+
+Please, use [Semantic Line Breaks](https://sembr.org/)
+because it results in cleaner file diffs when editing documentation.
 Note that some scripts use [Graphviz](https://graphviz.org/) to generate diagrams,
 so you must have it installed on your system.
 

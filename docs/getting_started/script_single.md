@@ -16,7 +16,7 @@ To help you decide which one to use, consider the following:
   Such self-contained scripts can be easier to understand and maintain.
 
 If both seem overkill, you can also use the [`runpy()`][stepup.core.api.runpy] function directly in `plan.py`.
-See [Running Python scripts](first_runpy.md) for an example.
+See [Running Python Scripts](first_runpy.md) for an example.
 
 ## Script Protocol
 
@@ -35,7 +35,7 @@ runsh("./executable plan", inp="executable", workdir="sub")
 
 Note that the use of a subdirectory is not required.
 The `./executable plan` step is expected to define additional steps
-to actually run something useful with the executable.
+to actually do something useful with the executable.
 A common scenario is to plan a single `./executable run` step with appropriate inputs and outputs.
 Note that if the script has the `.py` extension, `runpy()` is used instead of `runsh()`.
 
@@ -74,8 +74,8 @@ It can be used in two ways:
 
 2. To run the same script with multiple combinations of inputs and outputs ([next tutorial](script_multiple.md)).
 
-In both cases, the script driver will detect local modules that are imported in the script,
-and amend these as required inputs.
+In both cases, the script driver will detect local modules that are imported by the script,
+and amend the script step with the loaded modules as required inputs.
 By default, only the modules inside `${STEPUP_ROOT}`
 (but not in `${STEPUP_ROOT}/venv*`) are treated as dependencies.
 You can control the filtering of automatically detected dependencies with the

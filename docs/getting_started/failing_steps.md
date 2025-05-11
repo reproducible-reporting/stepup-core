@@ -1,4 +1,4 @@
-# Failing steps
+# Failing Steps
 
 The development of a StepUp workflow is an interactive process,
 where it is common to have failing steps.
@@ -21,4 +21,4 @@ Here, we provide some guidance on how to handle failing steps.
   Therefore, when you restart StepUp from scratch,
   it will rerun all previously failed steps.
   When working interactively with `-w` or `-W`,
-  failed steps will are only rerun if their inputs have changed.
+  failed steps will only rerun if their inputs have changed.

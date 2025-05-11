@@ -1,4 +1,4 @@
-# Working directory
+# Working Directory
 
 Every step is executed in a working directory, which you can specify when creating a step.
 If the arguments `inp`, `out` and `vol` contain relative paths,
@@ -35,7 +35,7 @@ You should get the following terminal output:
 
 This will create an output file `out/hello.txt`
 
-## Further reading
+## Further Reading
 
 - The [`step()`][stepup.core.api.step] function
   and related functions that use `step()` internally

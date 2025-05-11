@@ -2,14 +2,14 @@
 
 !!! note
 
-    Changes as of StepUp 3.0.0:
+    Changes since StepUp 3.0.0:
 
-    - One has to start the StepUp workflow with `stepup boot` instead of `stepup`.
+    - You have to start the StepUp workflow with `stepup boot` instead of `stepup`.
 
-    Changes as of StepUp 2.0.0:
+    Changes since StepUp 2.0.0:
 
-    - The command-line options related to interactive usage have changed.
-    - Keyboard interaction is always available, irrespective of the command-line options.
+    - The command line options related to interactive usage have changed.
+    - Keyboard interaction is always available, regardless of the command-line options.
     - The `f` and `t` keys have been removed.
 
 ## Terminal User Interface
@@ -17,8 +17,8 @@
 By default, StepUp performs a single pass execution of the workflow.
 You can use StepUp interactively by adding
 `-w` (manual re-run) or `-W` (automatic re-run) to the command line.
-When pressing a key on the keyboard, StepUp responds by executing a corresponding command.
-If the key is not associated with any command, the following help message appears:
+When a key is pressed on the keyboard, StepUp responds by executing a corresponding command.
+If the key is not associated with a command, the following help message appears:
 
 ```text
 ───────────────────────────────────── Keys ─────────────────────────────────────
@@ -52,34 +52,34 @@ except for `r` which only has an effect during the *watch phase*.
 
 Note that the `SIGINT` signal (pressing `Ctrl+C`) are also supported to stop StepUp.
 
-## Interacting With a Background StepUp process
+## Interacting With a Background StepUp Process
 
 You can run StepUp in the background in several ways:
 
-- Simply start it as `stepup boot > stepup.log &`
+- Just start it with `stepup boot > stepup.log &`
   and then use `tail -f stepup.log` to see the output.
-- Start StepUp inside a `screen` or `tmux` session.
-- Start StepUp in a Slurm/PBS/... batch job on a cluster.
+- Run StepUp inside a `screen` or `tmux` session.
+- Run StepUp in a Slurm/PBS/... batch job on a cluster.
 
 In all these cases, keyboard interaction is not possible.
 However, you can still interact with StepUp as follows:
 
-1. Open a terminal on the machine where StepUp is running.
-2. Go to the directory where StepUp is running with `cd`.
-3. Run one of the following commands:
+1. Open a terminal on the machine running StepUp.
+2. Use `cd` to go to the directory where StepUp is running.
+3. Execute one of the following commands:
 
     - `stepup run`
     - `stepup shutdown`
     - `stepup drain`
     - `stepup join`
     - `stepup graph`
-    - `stepup status` (Prints detailed status of the workflow)
+    - `stepup status` (prints detailed status of the workflow)
 
 ## Interacting With StepUp From Within an IDE
 
-If you want to avoid switching to a terminal to restart StepUp,
+If you don't want to switch to a terminal to restart StepUp while working in an IDE,
 you can run it in "watch mode" (`stepup boot -w`) and configure your IDE
-to bind the following command to an IDE's keyboard shortcut:
+to bind the following command to a keyboard shortcut:
 
 ```bash
 stepup run
@@ -87,7 +87,7 @@ stepup run
 
 This command must be executed in the top-level directory
 where a `stepup boot` command is running in interactive mode.
-(One may also set the environment variable `STEPUP_ROOT` instead.)
+(You can also set the `STEPUP_ROOT` environment variable instead.)
 
 ### Configuration of a Task in VSCode
 

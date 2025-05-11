@@ -1,7 +1,7 @@
 # Custom Tools
 
 A tool is a subcommand of the StepUp CLI.
-While it is rarely needed to create a new tool, you can do so as follows:
+While it is rarely necessary to create a new tool, you can do so as follows:
 
 1. Create a new Python function that implements the tool.
    This function should have a fixed signature:
@@ -13,7 +13,7 @@ While it is rarely needed to create a new tool, you can do so as follows:
         ...
     ```
 
-    The `args` argument is a `Namespace` object that contains the command-line arguments
+    The `args` argument is a `Namespace` object that contains the command line arguments
     passed to the tool.
 
 2. Create an additional new Python function that implements the argument parsers.
@@ -32,7 +32,7 @@ While it is rarely needed to create a new tool, you can do so as follows:
         return custom_tool
     ```
 
-3. Add an entry point in `pyproject.toml` that points to this function:
+3. Create an entry point in `pyproject.toml` pointing to this function:
 
     ```toml
     [project.entry-points."stepup.tools"]

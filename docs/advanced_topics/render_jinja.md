@@ -4,8 +4,8 @@
 Given a template file and a set of variables, Jinja renders the template, i.e. it inserts the variables.
 It allows you to create dynamic content by embedding Python-like expressions in your templates.
 
-This section will show how to use [`render_jinja()`][stepup.core.api.render_jinja].
-Internally, it makes use of StepUp's [`loadns()`][stepup.core.api.loadns] function to load variables,
+This section will show you how to use [`render_jinja()`][stepup.core.api.render_jinja].
+Internally, it uses StepUp's [`loadns()`][stepup.core.api.loadns] function to load variables,
 then uses Jinja2 to render a template, and finally writes the result to an output file.
 
 ## Example
@@ -24,7 +24,7 @@ Prepare a template file `email_template.txt` with the following contents:
 {% include 'advanced_topics/render_jinja/email_include.txt' %}
 ```
 
-Finally, create the configuration file `config.yaml` with the following contents:
+Finally, create the `config.yaml` configuration file with the following contents:
 
 ```yaml
 {% include 'advanced_topics/render_jinja/config.yaml' %}
@@ -44,7 +44,7 @@ You should see the following output:
 ```
 
 The result is a rendered email template with the values from the configuration file,
-written to the file `email.txt`:
+written to `email.txt`:
 
 ```text
 {% include 'advanced_topics/render_jinja/email.txt' %}
@@ -52,7 +52,7 @@ written to the file `email.txt`:
 
 ## Supported Delimiters
 
-Through the `mode` option, [`render_jinja()`][stepup.core.api.render_jinja]
+With the `mode` option, [`render_jinja()`][stepup.core.api.render_jinja]
 supports the following delimiters for Jinja templates:
 
 {% raw %}
@@ -68,15 +68,15 @@ supports the following delimiters for Jinja templates:
 
 {% endraw %}
 
-The default is `mode="auto"`, which automatically set the delimiters based on the file extension.
+The default is `mode="auto"`, which sets the delimiters automatically based on the file extension.
 
 ## Try the Following
 
-- Change the values in the configuration file `config.yaml` and run the plan again.
+- Change the values in `config.yaml` and run the plan again.
   The email template should be rendered with the new values.
 
 - You can also separate the loading of variables and the rendering of the template.
   The [`render_jinja()`][stepup.core.api.render_jinja] also accepts a dictionary of variables
-  instead of (or in additon to) file names with variables.
-  Use this to first load the variables with [`loadns()`][stepup.core.api.loadns],
+  instead of (or in addition to) filenames with variables.
+  Use this to load the variables with [`loadns()`][stepup.core.api.loadns] first,
   then pass the loaded variables to [`render_jinja()`][stepup.core.api.render_jinja].

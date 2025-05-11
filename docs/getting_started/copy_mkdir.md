@@ -1,4 +1,4 @@
-# Copy and mkdir
+# `copy` and `mkdir`
 
 Copying a file or making a directory can be planned using the [`copy()`][stepup.core.api.copy]
 and [`mkdir()`][stepup.core.api.mkdir] functions, respectively.

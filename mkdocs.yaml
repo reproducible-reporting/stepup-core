@@ -64,7 +64,7 @@ theme:
 nav:
   - Home: index.md
   - installation.md
-  - Getting started:
+  - Getting Started:
     - getting_started/introduction.md
     - getting_started/first_step.md
     - getting_started/first_runpy.md
@@ -83,7 +83,7 @@ nav:
     - getting_started/distributed_plans.md
     - getting_started/load_namespace.md
     - getting_started/automatic_cleaning.md
-  - Advanced topics:
+  - Advanced Topics:
     - advanced_topics/introduction.md
     - advanced_topics/static_named_glob.md
     - advanced_topics/static_deferred_glob.md

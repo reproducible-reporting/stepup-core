@@ -1,4 +1,4 @@
-# Function calls
+# Function Calls
 
 !!! note
 
@@ -14,7 +14,7 @@ as long as they adhere to the "call protocol" described below.
 StepUp provides a [`driver()`][stepup.core.call.driver] function in the module `stepup.core.call`
 to facilitate the implementation of Python scripts that adhere to the call protocol.
 
-## Call protocol
+## Call Protocol
 
 In its simplest form, the following use of `call()` in a `plan.py` script
 
@@ -42,11 +42,11 @@ When the executable script produces a "return value",
 it should write this to an output file, either in JSON or PICKLE format.
 
 Because of the delayed execution, the `call()` function cannot return any results.
-If you are familiar with Python's builtin `concurrent.futures` module,
-you can think of the output file of the script as the `Future` object that is returned by
+If you are familiar with Python's built-in `concurrent.futures` module,
+you can think of the script's output file as the `Future` object that is returned by
 `concurrent.futures.Executor.submit()`.
 The `call()` function returns a [`StepInfo`][stepup.core.stepinfo.StepInfo] object
-from which you can extract the output file path.
+from which you can extract the path of the output file.
 
 To fully support the `call()` protocol,
 the executable must be able to handle the following command-line arguments:
@@ -60,7 +60,7 @@ the executable must be able to handle the following command-line arguments:
 - `--amend-out`:
   If given, the executable must call `amend(out=PATH_OUT)` before writing the output file.
 
-## Call driver
+## Call Driver
 
 StepUp implements a [`driver()`][stepup.core.call.driver] function
 in the module `stepup.core.call` that greatly facilitates
@@ -104,7 +104,7 @@ You should see the following output on screen:
 {% include 'getting_started/call/stdout.txt' %}
 ```
 
-## Practical considerations
+## Practical Considerations
 
 - As shown by the example, the `driver()` function takes care of
   parsing the command-line arguments in the call protocol and amending the output.

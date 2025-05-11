@@ -1,4 +1,4 @@
-# HERE and ROOT variables
+# HERE and ROOT Variables
 
 When a worker runs a step, it defines several environment variables,
 including `HERE` and `ROOT`, which can be relevant for writing advanced scripts.

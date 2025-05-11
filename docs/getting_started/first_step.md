@@ -81,7 +81,7 @@ StepUp will not know anymore that it already executed some steps and runs all of
 
 ## `runsh()` versus `step()`
 
-Prior to StepUp 3, the `runsh()` function was named `step()`.
+Before StepUp 3, the `runsh()` function was called `step()`.
 The `step()` function also exists in StepUp 3, but has a different and more general purpose.
 The following two lines are equivalent:
 
@@ -90,8 +90,9 @@ runsh("echo Hello World")
 step("runsh echo Hello World")
 ```
 
-The second form is a more low-level way to define step that explicitly states the `runsh` action.
-This is mainly useful when creating extensions for StepUp, which often need other actions than `runsh`.
+The second form is a more low-level way to define step, explicitly specifying the `runsh` action.
+This is mainly useful when creating extensions for StepUp,
+which often require actions other than `runsh`.
 For most end users, the first form is more convenient and should be preferred.
 
 ## Try the Following

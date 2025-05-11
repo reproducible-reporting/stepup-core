@@ -1,19 +1,19 @@
 # Introduction
 
 StepUp Core is a build tool without domain-specific features.
-It can be extended easily to support domain-specific build featuers.
-At the moment, there is one main extension, namely [StepUp RepRep](https://reproducible-reporting.github.io/stepup-reprep/).
+It can be easily extended to support domain-specific build features.
+Currently, there is one major extension, [StepUp RepRep](https://reproducible-reporting.github.io/stepup-reprep/).
 
 This section discusses how to create a new extension package for StepUp Core.
-In a nutshell, you can create a new Python package, optionally using the same `stepup` namespace.
-In this package, there are three types of components you can implement:
+In short, you can create a new Python package, optionally using the same `stepup` namespace.
+There are three types of components you can implement in an extension package:
 
 1. **API functions** to send new steps (and other information) to the StepUp director process.
 
-    > These are usually making use of the [Basic (and Composite) API functions](../reference/stepup.core.api.md)
+    > These are typically making use of the [Basic (and Composite) API functions](../reference/stepup.core.api.md)
     > in the `stepup.core.api` module.
     > An example of this is the [`runsh()`][stepup.core.api.runsh] function,
-    > which is used to run a shell command.
+    > which is used to execute a shell command.
 
 2. **An action**, which implements the execution of a step.
 

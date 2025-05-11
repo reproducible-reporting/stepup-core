@@ -1,4 +1,4 @@
-# StepInfo objects
+# StepInfo Objects
 
 !!! note
 

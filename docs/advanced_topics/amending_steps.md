@@ -1,4 +1,4 @@
-# Amending steps
+# Amending Steps
 
 Every step in StepUp can inform the director process of additional inputs
 or environment variables it uses, or of additional (volatile) outputs it creates.

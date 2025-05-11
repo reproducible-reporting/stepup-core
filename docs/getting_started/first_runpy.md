@@ -1,12 +1,12 @@
-# Running Python scripts
+# Running Python Scripts
 
 In principle, you can incorporate any Python script into a StepUp workflow
-with the [`runsh()`][stepup.core.api.runsh] function.
+using the [`runsh()`][stepup.core.api.runsh] function.
 However, it is recommended to use the [`runpy()`][stepup.core.api.runpy] function instead.
-It will automatically detect modules imported by the script,
-and if these correspond to local files in your workflow,
-the files are amended as required inputs of the step.
-This way, when the local modules have changed, StepUp knows the script must be re-executed.
+It will automatically detect thje modules imported by the script,
+and if they correspond to local files in your workflow,
+the step is amended with these files as required inputs.
+This way, if the local modules have changed, StepUp will know the script needs to run again.
 
 ## Example
 
@@ -28,7 +28,7 @@ Finally, create a `helper.py` script that is imported by `work.py`:
 {% include 'getting_started/first_runpy/helper.py' %}
 ```
 
-Make the relevant scripts executable and run StepUp:
+Make the appropriate scripts executable and run StepUp:
 
 ```bash
 chmod +x plan.py work.py
@@ -44,29 +44,29 @@ You should see the following output:
 ## Try the Following
 
 Change the value of the variable `message` in `helper.py` and rerun StepUp with `stepup boot -n 1`.
-Only `work.py` will be re-executed, because `plan.py` has not changed.
+Only `work.py` is rerun, since `plan.py` has not changed.
 
 ## Notes
 
-- You can control which imports are treated as "local" with the environment variable
-  `STEPUP_PATH_FILTER`. See [Environment Variables](../reference/environment_variables.md).
+- You can control which imports are treated as "local" with
+  the `STEPUP_PATH_FILTER` environment variable.
+  See [Environment Variables](../reference/environment_variables.md).
 
-- StepUp also provides more elaborate interface for running (Python) scripts,
+- StepUp also provides more sophisticated interfaces for running (Python) scripts,
   which are described in the following sections:
 
-    - [Script (single)](./script_single.md)
-    - [Script (multiple)](./script_multiple.md)
-    - [Function calls](./call.md)
+    - [Script (Single Case)](./script_single.md)
+    - [Script (Multiple Cases)](./script_multiple.md)
+    - [Function Calls](./call.md)
 
-- While uncommon, it is also possible to generate the Python file `helper.py` dynamically.
-  In this case, the script `work.py` should only be executed when a previous step has created `helper.py`.
-  To make this work, you must add the `inp` argument explicitly:
+- Although not common, it is also possible to dynamically generate the Python file `helper.py`.
+  In this case, the `work.py` script should only be executed after a previous step has created `helper.py`.
+  For this to work, you must explicitly add the `inp` argument:
 
     ```python
     runpy("./generate.py > ${out}", out=["helper.py"])
     runpy("./work.py", inp=["helper.py"])
     ```
 
-    The reason is that the execution of `work.py` will fail when `helper.py` is not present.
-    By adding the `inp` option, StepUp knows that it should only execute `work.py`
-    after `helper.py` has become available.
+    The reason for this is that the running `work.py` will fail if `helper.py` does not exist.
+    By adding the `inp` option, StepUp knows not to run `work.py` until `helper.py` is available.
