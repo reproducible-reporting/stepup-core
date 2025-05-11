@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import static, step
+from stepup.core.api import runsh, static
 
 static("out/")
-step("echo 'a friendly file' > ${out}", workdir="out/", out="hello.txt")
+runsh("echo 'a friendly file' > ${out}", workdir="out/", out="hello.txt")

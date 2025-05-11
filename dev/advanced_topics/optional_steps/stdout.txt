@@ -1,17 +1,24 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post3)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./generate.py plan --optional
-   SUCCESS │ ./generate.py plan --optional
-     START │ ./plot.py plan
-   SUCCESS │ ./plot.py plan
-     START │ ./generate.py run logmap_3.200
-   SUCCESS │ ./generate.py run logmap_3.200
-     START │ ./plot.py run
-   SUCCESS │ ./plot.py run
-  DIRECTOR │ Trying to delete 0 outdated output(s).
-  DIRECTOR │ Stopping workers.
+     START │ runpy ./plan.py
+   SUCCESS │ runpy ./plan.py
+     START │ runpy ./plot.py plan
+   SUCCESS │ runpy ./plot.py plan
+   WARNING │ 1 step(s) remained pending due to incomplete requirements
+─────────────────────────────── Orphaned inputs ────────────────────────────────
+             AWAITED  logmap_3.200.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Action                runpy ./plot.py run
+Working directory     ./
+Inputs        STATIC  ./
+              STATIC  matplotlibrc
+              STATIC  plot.py
+             AWAITED  (logmap_3.200.txt)
+Outputs      AWAITED  plot_logmap.png
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping file cleanup due to incomplete build
+   WARNING │ Check logs: .stepup/warning.log
+  DIRECTOR │ Stopping workers
   DIRECTOR │ See you!

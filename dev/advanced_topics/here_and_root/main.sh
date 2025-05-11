@@ -2,7 +2,7 @@
 git clean -qdfX .
 export COLUMNS=80
 unset STEPUP_ROOT
-(cd source; stepup -n 1) | sed -f ../../clean_stdout.sed > stdout.txt
+(cd source; stepup boot -n 1) | sed -f ../../clean_stdout.sed > stdout.txt
 
 # ROOT: source/
 # INP: source/plan.py
