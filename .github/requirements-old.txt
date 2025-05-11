@@ -4,3 +4,4 @@ attrs==22.1.0
 parse==1.19.1
 path==16.14.0
 rich==13.0.0
+pyyaml==6.0
