@@ -30,7 +30,5 @@ Same inp hash        static/
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |    WARNING │ Check logs: .stepup/warning.log
         2/2 |      PHASE │ watch
-        2/2 |    UPDATED │ static/bar.txt
-        2/2 |  UNCHANGED │ static/bar.txt
         2/2 |   DIRECTOR │ Stopping workers
         2/2 |   DIRECTOR │ See you!

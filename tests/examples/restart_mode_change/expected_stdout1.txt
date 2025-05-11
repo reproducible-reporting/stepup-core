@@ -7,7 +7,5 @@
         2/2 |    SUCCESS │ copy input.txt output.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
-        2/2 |    UPDATED │ input.txt
-        2/2 |  UNCHANGED │ input.txt
         2/2 |   DIRECTOR │ Stopping workers
         2/2 |   DIRECTOR │ See you!

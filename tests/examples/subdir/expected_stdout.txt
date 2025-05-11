@@ -23,7 +23,5 @@ plan("sub/")
 ────────────────────────────────────────────────────────────────────────────────
         5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         5/5 |      PHASE │ watch
-        5/5 |    UPDATED │ example.txt
-        5/5 |  UNCHANGED │ example.txt
         5/5 |   DIRECTOR │ Stopping workers
         5/5 |   DIRECTOR │ See you!

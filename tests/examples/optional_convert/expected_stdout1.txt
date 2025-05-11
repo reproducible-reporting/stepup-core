@@ -9,8 +9,6 @@
         3/3 |    SUCCESS │ copy converted3.txt used.txt
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |      PHASE │ watch
-        3/3 |    UPDATED │ raw3.txt
-        3/3 |  UNCHANGED │ raw3.txt
         3/3 |      PHASE │ run
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |      PHASE │ watch

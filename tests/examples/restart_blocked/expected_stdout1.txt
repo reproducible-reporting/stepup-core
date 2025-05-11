@@ -12,7 +12,5 @@ step:runpy ./expensive.py
         2/4 |    WARNING │ Skipping file cleanup due to incomplete build
         2/4 |    WARNING │ Check logs: .stepup/warning.log
         2/4 |      PHASE │ watch
-        2/4 |    UPDATED │ initial.txt
-        2/4 |  UNCHANGED │ initial.txt
         2/4 |   DIRECTOR │ Stopping workers
         2/4 |   DIRECTOR │ See you!

@@ -11,9 +11,5 @@
         4/4 |    SUCCESS │ copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |      PHASE │ watch
-        4/4 |    UPDATED │ inp.txt
-        4/4 |    UPDATED │ foo/inp.txt
-        4/4 |  UNCHANGED │ foo/inp.txt
-        4/4 |  UNCHANGED │ inp.txt
         4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

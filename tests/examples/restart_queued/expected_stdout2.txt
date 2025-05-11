@@ -25,7 +25,5 @@ Same inp hash        ./
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |    WARNING │ Check logs: .stepup/warning.log
         3/3 |      PHASE │ watch
-        3/3 |    UPDATED │ inp.txt
-        3/3 |  UNCHANGED │ inp.txt
         3/3 |   DIRECTOR │ Stopping workers
         3/3 |   DIRECTOR │ See you!

@@ -96,7 +96,7 @@ def copy(argstr: str) -> int:
     src, dst = args
     shutil.copy2(src, dst)
     st = os.stat(src)
-    os.chown(src, st.st_uid, st.st_gid)
+    os.chown(dst, st.st_uid, st.st_gid)
     return 0
 
 

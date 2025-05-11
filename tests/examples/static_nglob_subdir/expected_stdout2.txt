@@ -11,7 +11,5 @@
         5/5 |    SUCCESS │ copy inp3.txt out3.txt  # wd=sub/
         5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         5/5 |      PHASE │ watch
-        5/5 |    UPDATED │ sub/inp3.txt
-        5/5 |  UNCHANGED │ sub/inp3.txt
         5/5 |   DIRECTOR │ Stopping workers
         5/5 |   DIRECTOR │ See you!

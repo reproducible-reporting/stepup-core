@@ -16,7 +16,5 @@ Modified step hash   compact ➜ explained, inp_digest 0b753a13, out_digest d26e
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |    WARNING │ Check logs: .stepup/warning.log
         2/2 |      PHASE │ watch
-        2/2 |    UPDATED │ inp.txt
-        2/2 |  UNCHANGED │ inp.txt
         2/2 |   DIRECTOR │ Stopping workers
         2/2 |   DIRECTOR │ See you!

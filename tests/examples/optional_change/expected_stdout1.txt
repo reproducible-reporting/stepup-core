@@ -9,7 +9,5 @@
         3/3 |    SUCCESS │ copy hop2.txt hop3.txt
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |      PHASE │ watch
-        3/3 |    UPDATED │ hop1.txt
-        3/3 |  UNCHANGED │ hop1.txt
         3/3 |   DIRECTOR │ Stopping workers
         3/3 |   DIRECTOR │ See you!

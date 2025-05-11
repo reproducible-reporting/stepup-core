@@ -13,9 +13,5 @@
         5/5 |    SUCCESS │ copy out2.txt foo2.txt
         5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         5/5 |      PHASE │ watch
-        5/5 |    UPDATED │ inp1.txt
-        5/5 |    UPDATED │ inp2.txt
-        5/5 |  UNCHANGED │ inp1.txt
-        5/5 |  UNCHANGED │ inp2.txt
         5/5 |   DIRECTOR │ Stopping workers
         5/5 |   DIRECTOR │ See you!

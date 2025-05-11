@@ -14,7 +14,5 @@ Changing to ${CASE}/source
         5/5 |    SUCCESS │ copy index.md ../../public/www/index.md  # wd=www/
         5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         5/5 |      PHASE │ watch
-        5/5 |    UPDATED │ www/index.md
-        5/5 |  UNCHANGED │ www/index.md
         5/5 |   DIRECTOR │ Stopping workers
         5/5 |   DIRECTOR │ See you!

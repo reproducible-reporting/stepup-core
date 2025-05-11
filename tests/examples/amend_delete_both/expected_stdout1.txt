@@ -11,9 +11,5 @@
         4/4 |    SUCCESS │ runsh ./work.py > log.txt
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |      PHASE │ watch
-        4/4 |    UPDATED │ asource1.txt
-        4/4 |    UPDATED │ asource2.txt
-        4/4 |  UNCHANGED │ asource1.txt
-        4/4 |  UNCHANGED │ asource2.txt
         4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

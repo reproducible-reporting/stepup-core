@@ -7,7 +7,6 @@
         2/2 |    SUCCESS │ copy sub/message.txt message.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
-        2/2 |    UPDATED │ sub/message.txt
         2/2 |    DELETED │ sub/message.txt
         2/2 |    DELETED │ sub/
         2/2 |    DELETED │ message.txt
@@ -34,7 +33,5 @@ Outputs      AWAITED  message.txt
         2/2 |    SUCCESS │ copy sub/message.txt message.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
-        2/2 |    UPDATED │ sub/message.txt
-        2/2 |  UNCHANGED │ sub/message.txt
         2/2 |   DIRECTOR │ Stopping workers
         2/2 |   DIRECTOR │ See you!

@@ -13,7 +13,5 @@
         3/3 |   DIRECTOR │ Trying to delete 1 outdated output(s)
         3/3 |      CLEAN │ out2.txt
         3/3 |      PHASE │ watch
-        3/3 |    UPDATED │ inp4.txt
-        3/3 |  UNCHANGED │ inp4.txt
         3/3 |   DIRECTOR │ Stopping workers
         3/3 |   DIRECTOR │ See you!

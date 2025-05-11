@@ -11,9 +11,5 @@
         4/4 |    SUCCESS │ copy inp2.txt out2.txt  # wd=sub/
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |      PHASE │ watch
-        4/4 |    UPDATED │ sub/inp1.txt
-        4/4 |    UPDATED │ sub/inp2.txt
-        4/4 |  UNCHANGED │ sub/inp1.txt
-        4/4 |  UNCHANGED │ sub/inp2.txt
         4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

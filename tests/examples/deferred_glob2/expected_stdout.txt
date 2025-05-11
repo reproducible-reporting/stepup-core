@@ -7,9 +7,7 @@
         2/2 |    SUCCESS │ copy static/sub/foo.txt copy.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
-        2/2 |    UPDATED │ static/sub/foo.txt
         2/2 |    UPDATED │ plan.py
-        2/2 |  UNCHANGED │ static/sub/foo.txt
         1/2 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
         1/1 |    SUCCESS │ runpy ./plan.py

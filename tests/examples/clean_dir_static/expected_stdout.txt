@@ -9,9 +9,7 @@
         3/3 |    SUCCESS │ copy sub/tmp.txt sub/out.txt
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |      PHASE │ watch
-        3/3 |    UPDATED │ sub/inp.txt
         3/3 |    DELETED │ sub/tmp.txt
         3/3 |    DELETED │ sub/out.txt
-        3/3 |  UNCHANGED │ sub/inp.txt
         3/3 |   DIRECTOR │ Stopping workers
         3/3 |   DIRECTOR │ See you!

@@ -34,7 +34,5 @@ Same inp hash        raw3.txt
         3/3 |      CLEAN │ converted1.txt
         3/3 |    WARNING │ Check logs: .stepup/warning.log
         3/3 |      PHASE │ watch
-        3/3 |    UPDATED │ raw3.txt
-        3/3 |  UNCHANGED │ raw3.txt
         3/3 |   DIRECTOR │ Stopping workers
         3/3 |   DIRECTOR │ See you!

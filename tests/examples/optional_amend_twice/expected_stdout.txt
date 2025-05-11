@@ -24,9 +24,7 @@ optional2.txt
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch
-        4/4 |    UPDATED │ data1.txt
         4/4 |    UPDATED │ data2.txt
-        4/4 |  UNCHANGED │ data1.txt
         2/4 |      PHASE │ run
         1/2 |      START │ runsh ./work.py
         2/4 | RESCHEDULE │ runsh ./work.py
@@ -41,7 +39,5 @@ optional2.txt
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch
-        4/4 |    UPDATED │ data2.txt
-        4/4 |  UNCHANGED │ data2.txt
         4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

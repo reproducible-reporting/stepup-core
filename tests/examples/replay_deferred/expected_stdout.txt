@@ -9,9 +9,7 @@
         3/3 |    SUCCESS │ copy inp.txt out.txt
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |      PHASE │ watch
-        3/3 |    UPDATED │ inp.txt
         3/3 |    UPDATED │ plan.py
-        3/3 |  UNCHANGED │ inp.txt
         2/3 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
         2/2 |    SUCCESS │ runpy ./plan.py
