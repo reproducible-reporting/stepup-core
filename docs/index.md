@@ -131,8 +131,8 @@ with "Step" reflecting how StepUp defines operations as individual *steps*.
 
 - A **keyboard shortcut** can be defined in most IDEs to start
   a new *run phase* of an active StepUp director.
-  The command `python -c 'from stepup.core.interact import run; run()'`
-  will instruct the director to run pending steps due to file changes.
+  The command `stepup run` will instruct the director to run pending steps due to file changes.
+  See [Interactive Usage Reference](./reference/interactive.md) for more details.
 
 - While a step is running, it can inform StepUp that it needs **additional inputs**,
   in which case the step will be rescheduled for later execution
