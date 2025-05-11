@@ -1,4 +1,4 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post18)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
    STARTUP │ Making failed steps pending
    STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files

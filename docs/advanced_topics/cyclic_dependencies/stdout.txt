@@ -1,4 +1,4 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 2.1.7.post18)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
@@ -9,16 +9,6 @@ Command               stepup act runpy ./plan.py
 Return code           1
 ──────────────────────────────── Standard error ────────────────────────────────
 Command failed with return code 1: venv/bin/python -
-stdin:
-import sys
-import runpy
-from stepup.core.api import amend
-from stepup.core.utils import get_local_import_paths
-sys.argv = ['./plan.py']
-try:
-    runpy.run_path('./plan.py', run_name="__main__")
-finally:
-    amend(inp=get_local_import_paths())
 Traceback (most recent call last):
   File "<stdin>", line 7, in <module>
   File "<frozen runpy>", line 287, in run_path
@@ -27,13 +17,13 @@ Traceback (most recent call last):
   File "./plan.py", line 5, in <module>
     copy("b.txt", "a.txt")
     ~~~~^^^^^^^^^^^^^^^^^^
-  File "stepup/core/api.py", line 620, in copy
+  File "stepup/core/api.py", line 617, in copy
     return step(
         "copy ${inp} ${out}",
     ...<3 lines>...
         block=block,
     )
-  File "stepup/core/api.py", line 327, in step
+  File "stepup/core/api.py", line 324, in step
     to_check = RPC_CLIENT.call.step(
         _get_step_i(),
     ...<8 lines>...

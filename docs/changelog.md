@@ -10,7 +10,15 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no summary yet)
+(no changes yet)
+
+## [3.0.0][] - 2025-05-11 {: #v3.0.0 }
+
+Major release with breaking changes.
+Highlights: custom entry points for the `stepup` subcommands and executable actions,
+new/migrated API functions (`loadns()`, `runpy()`, `render_jinja()`),
+improved interactions with StepUp running in the background,
+and improved terminal user interface.
 
 ### Added
 
