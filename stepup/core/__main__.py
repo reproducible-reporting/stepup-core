@@ -43,7 +43,7 @@ def build_parser() -> tuple[argparse.ArgumentParser, list[callable]]:
     # Base argument parser
     parser = argparse.ArgumentParser(
         prog="stepup",
-        description="If no tool is specified, the default tool is 'boot'.",
+        description="General purpose dynamic build tool.",
     )
     version = get_version("stepup")
     parser.add_argument("--version", "-V", action="version", version="%(prog)s " + version)
