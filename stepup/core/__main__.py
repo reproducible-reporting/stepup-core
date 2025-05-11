@@ -64,7 +64,7 @@ def build_parser() -> tuple[argparse.ArgumentParser, list[callable]]:
 
     # Load tool entry points
     subparsers = parser.add_subparsers(dest="tool", required=False)
-    tool_eps = entry_points(group="stepup.tools")
+    tool_eps = sorted(entry_points(group="stepup.tools"), key=lambda ep: ep.name)
     tool_funcs = {}
     for tool_ep in tool_eps:
         tool = tool_ep.load()
