@@ -68,7 +68,7 @@ The following recording shows the terminal output when starting StepUp from scra
 with two workers, changing `src/foo.txt` and re-running,
 followed by adding `src/spam.txt` and re-running:
 
-<script src="https://asciinema.org/a/657277.js" id="asciicast-657277" async="true"></script>
+<script src="https://asciinema.org/a/718834.js" id="asciicast-718834" async="true"></script>
 
 ## Watch mode with automatic re-run
 

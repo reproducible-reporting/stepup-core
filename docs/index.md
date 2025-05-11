@@ -18,7 +18,7 @@ extension for creating **rep**roducible **rep**orts: papers, presentations, thes
 
 The following screen recording provides a quick visual impression of StepUp's terminal user interface.
 
-<script src="https://asciinema.org/a/656610.js" id="asciicast-656610" async="true"></script>
+<script src="https://asciinema.org/a/718833.js" id="asciicast-718833" async="true"></script>
 
 ## Why Was StepUp Created?
 

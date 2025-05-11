@@ -58,10 +58,14 @@ Create the recording with the following command:
 ./template-runall.sh
 ```
 
+Set the thumbnail frame to 5 seconds.
+
 Description for Asciinema:
 
 ```markdown
-This just a simple use case to give a visual impression of the terminal user interface of StepUp.
+This a simple example use case to give a quick visual impression of the terminal user interface of StepUp.
+
+See [StepUp Core documentation](https://reproducible-reporting.github.io/stepup-core/) for more details.
 ```
 
 ## Recording for the interactive tutorial
@@ -72,8 +76,12 @@ Create the recording with the following command:
 ./interactive-runall.sh
 ```
 
+Set the thumbnail frame to 10 seconds.
+
 Description for Asciinema:
 
 ```markdown
+This a simple demonstration of the interactive use of StepUp.
+
 See StepUp Core tutorial [getting_started/interactive_usage/](https://reproducible-reporting.github.io/stepup-core/getting_started/interactive_usage/)
 ```
