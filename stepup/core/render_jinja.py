@@ -43,7 +43,7 @@ __all__ = ("render_jinja",)
 
 def add_parser_args(parser: argparse.ArgumentParser):
     """Add the command line arguments to the parser."""
-    parser.add_argument("path_in", help="The input file")
+    parser.add_argument("path_in", type=Path, help="The input file")
     parser.add_argument(
         "paths_variables",
         nargs="*",
@@ -54,7 +54,7 @@ def add_parser_args(parser: argparse.ArgumentParser):
         "Python files have the advantage of supporting more types and logic. "
         "path.Path instances are interpreted as relative to parent of the variable file.",
     )
-    parser.add_argument("path_out", help="The output file")
+    parser.add_argument("path_out", type=Path, help="The output file")
     parser.add_argument(
         "--mode",
         choices=["auto", "plain", "latex"],
@@ -102,9 +102,12 @@ def render_jinja_tool(args: argparse.Namespace) -> int:
     amend(inp=get_local_import_paths())
     if args.json is not None:
         variables.update(json.loads(args.json))
+    # Render the template
     result = render_jinja(args.path_in, variables, latex)
     with open(args.path_out, "w") as fh:
         fh.write(result)
+    # Clone the permissions from the input file to the output file
+    args.path_out.chmod(args.path_in.stat().st_mode)
     return 0
 
 
