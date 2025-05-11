@@ -559,20 +559,24 @@ class WorkThread(threading.Thread):
             if self.loop is not None:
                 self.loop.call_soon_threadsafe(self.done.set)
 
-    def runsh(self, argstr: str, inpstr: str | None = None) -> int:
+    def runsh(self, argstr: str, stdin: str | None = None) -> tuple[int, str | None, str | None]:
         """Run a shell command in a subprocess of the worker process.
 
         Parameters
         ----------
         argstr
             The command to execute in the shell.
-        inpstr
+        stdin
             Standard input to the command. If `None`, stdin is closed.
 
         Returns
         -------
         returncode
             The return code of the command.
+        stdout
+            The standard output of the command.
+        stderr
+            The standard error of the command.
         """
         # Sanity check of the executable (if it can be found)
         executable = Path(shlex.split(argstr)[0])
@@ -581,10 +585,10 @@ class WorkThread(threading.Thread):
                 f"Script does not start with a shebang: {executable} (wd={Path.cwd()})",
                 file=sys.stderr,
             )
-            return 1
+            return 1, None, None
         p = subprocess.Popen(
             argstr,
-            stdin=subprocess.DEVNULL if inpstr is None else subprocess.PIPE,
+            stdin=subprocess.DEVNULL if stdin is None else subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             shell=True,
@@ -593,18 +597,21 @@ class WorkThread(threading.Thread):
             env=os.environ,
         )
         self.pid_queue.put_nowait(p.pid)
-        stdout, stderr = p.communicate(inpstr)
+        stdout, stderr = p.communicate(stdin)
         with contextlib.suppress(queue.Empty):
             self.pid_queue.get_nowait()
-        if p.returncode != 0:
-            print(f"Command failed with return code {p.returncode}: {argstr}", file=sys.stderr)
-            if inpstr is not None:
-                print(f"stdin:\n{inpstr}", file=sys.stderr)
+        return p.returncode, stdout, stderr
+
+    def runsh_verbose(self, argstr: str, stdin: str | None = None) -> int:
+        """Same as `runsh`, but print stuff and only return the returncode."""
+        returncode, stdout, stderr = self.runsh(argstr, stdin)
+        if returncode != 0:
+            print(f"Command failed with return code {returncode}: {argstr}", file=sys.stderr)
         if stdout is not None and len(stdout) > 0:
             sys.stdout.write(stdout)
         if stderr is not None and len(stderr) > 0:
             sys.stderr.write(stderr)
-        return p.returncode
+        return returncode
 
     def runpy(self, script: str, args: list[str]) -> int:
         """Run a Python script and amend all local imports as inputs."""
@@ -616,7 +623,7 @@ class WorkThread(threading.Thread):
             )
             return 1
         # Run the script
-        return self.runsh(
+        return self.runsh_verbose(
             f"{sys.executable} -",
             PYCODE_WRAPPER.format(argv=repr([script, *args]), script=repr(script)),
         )

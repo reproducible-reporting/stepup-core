@@ -55,7 +55,7 @@ def runsh(argstr: str, work_thread: WorkThread) -> int:
     exitcode
         The exit code of the command.
     """
-    return work_thread.runsh(argstr)
+    return work_thread.runsh_verbose(argstr)
 
 
 def runpy(argstr: str, work_thread: WorkThread) -> int:

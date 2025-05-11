@@ -81,7 +81,7 @@ def render_jinja_action(argstr: str, work_thread: WorkThread) -> int:
     args = parser.parse_args(shlex.split(argstr))
     if work_thread.is_alive() and any(path.endswith(".py") for path in args.paths_variables):
         # Run the rendering in a subprocess to accurately deduce local imports
-        return work_thread.runsh(f"stepup act render-jinja {argstr}")
+        return work_thread.runsh_verbose(f"stepup act render-jinja {argstr}")
     return render_jinja_tool(args)
 
 
