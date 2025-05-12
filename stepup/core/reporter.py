@@ -130,10 +130,8 @@ class StepUpProgressBar(ProgressBar):
                     no_wrap=True,
                     overflow="crop",
                 )
-                text.append("   RUNNING", "bold cyan")
-                text.append(" │ ")
-                text.append(f"{elapsed:6.1f}", "gray50")
-                text.append(f" {description}")
+                text.append(f"{elapsed:10.0f}", "bold gray50")
+                text.append(f" │ {description}")
                 yield text
         yield from super().get_renderables()
 
