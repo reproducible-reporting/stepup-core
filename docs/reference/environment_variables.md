@@ -1,5 +1,7 @@
 # Environment Variables
 
+## Configuration of StepUp
+
 The following environment variables can be used to configure StepUp.
 
 - `STEPUP_DEBUG`: Set to `"1"` to enable debug output.
@@ -45,3 +47,17 @@ export STEPUP_ROOT=${PWD}
 
 When you change to the project directory (or any of its subdirectories) in your shell,
 the environment variables will be set automatically.
+
+## Environment Variables in Worker Processes
+
+The following environment variables are set when a worker runs a step:
+
+- `HERE` and `ROOT`, as documented in the tutorial on [`HERE` and `ROOT` variables](../advanced_topics/here_and_root.md)
+- `STEPUP_STEP_I` is a unique integer index for the current step.
+  This is mainly relevant for StepUp and has little significance for users implementing workflows.
+- `STEPUP_STEP_INP_DIGEST` is a hex-formatted digest of all the inputs to the step
+  (including environment variables used).
+  This is useful in special cases.
+  For example, it can be used to decide if cached results from a previously interrupted run of the step
+  are still valid.
+  It can also be useful when action submit jobs to a scheduler, to decide if a running job is still valid.

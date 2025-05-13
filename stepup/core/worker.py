@@ -475,6 +475,15 @@ class WorkerStep:
     inp_messages: list = attrs.field(init=False, factory=list)
     """Messages related to input validation issues: unexpected changes and deleted inputs."""
 
+    inp_digest: bytes = attrs.field(init=False, default=b"")
+    """The input digest, which can be useful for some actions.
+
+    They may use this to decide if cached results from a previously interrupted run
+    of the same stepo are still valid.
+    This can also be useful when action submit jobs to a scheduler,
+    to decide if a running job is still valid.
+    """
+
     out_missing: list = attrs.field(init=False, factory=list)
     """List of expected output files that were not created."""
 
@@ -794,7 +803,11 @@ class WorkerHandler:
         label = self.step.action
         if self.step.workdir != "./":
             label += f"  # wd={self.step.workdir}"
-        return StepHash.from_inp(f"{label}", self.explain_rerun, all_inp_hashes, env_var_values), []
+        result = StepHash.from_inp(f"{label}", self.explain_rerun, all_inp_hashes, env_var_values)
+
+        # Copy the inp_digest, because it can be useful for some actions.
+        self.step.inp_digest = result.inp_digest
+        return result, []
 
     @allow_rpc
     def compute_out_step_hash(
@@ -897,11 +910,14 @@ class WorkerHandler:
         await self.reporter("START", self.step.description)
         await self.reporter.start_step(self.step.description, self.step.i)
 
-        # For internal use only:
+        # For internal use in actions:
         os.environ["STEPUP_STEP_I"] = str(self.step.i)
         # Client code may use the following:
+        os.environ["STEPUP_STEP_INP_DIGEST"] = self.step.inp_digest.hex()
         os.environ["ROOT"] = str(Path.cwd().relpath(self.step.workdir))
         os.environ["HERE"] = str(self.step.workdir.relpath())
+        # Note: the variables defined here should be listed in stepup.core.api.getenv
+
         # Create IO redirection for stdout and stderr
         step_err = io.StringIO()
         step_out = io.StringIO()
@@ -921,6 +937,12 @@ class WorkerHandler:
             self.step.thread = None
         self.step.stdout = step_out.getvalue()
         self.step.stderr = step_err.getvalue()
+
+        # Clean up environment variables (to avoid potential confusion)
+        del os.environ["STEPUP_STEP_I"]
+        del os.environ["STEPUP_STEP_INP_DIGEST"]
+        del os.environ["ROOT"]
+        del os.environ["HERE"]
 
         # Process results of the step.
         if self.show_perf:

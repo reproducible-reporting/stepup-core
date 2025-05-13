@@ -698,7 +698,8 @@ def getenv(
     path = path or back or multi
     value = os.getenv(name, default)
     # Do not amend environment variables set by the worker.
-    if name not in ["HERE", "ROOT"]:
+    # See stepup.core.worker.WorkerHandler.run
+    if name not in ["HERE", "ROOT", "STEPUP_STEP_I", "STEPUP_STEP_INP_DIGEST"]:
         amend(env=name)
     if multi:
         if value is None:

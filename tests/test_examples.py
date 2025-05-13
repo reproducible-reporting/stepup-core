@@ -89,6 +89,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "external_sources",
         "getinfo",
         "here",
+        "inp_digest",
         "input_check_changed",
         "input_check_deleted",
         "input_check_three",

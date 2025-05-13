@@ -12,6 +12,23 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no changes yet)
 
+## [3.0.1][] - 2025-05-13 {: #v3.0.1 }
+
+Minor tweaks, improved progress format and `STEPUP_STEP_INP_DIGEST` environment variable.
+
+### Added
+
+- The `STEPUP_STEP_INP_DIGEST` environment variable is set in the worker processes to
+  the hex-formatted digest of the inputs of the step.
+
+### Changed
+
+- Improved timer format of running steps in progress bar.
+
+### Fixed
+
+- Minor documentation and configuration fixes.
+
 ## [3.0.0][] - 2025-05-11 {: #v3.0.0 }
 
 Major release with breaking changes.
@@ -540,6 +557,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[3.0.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.1
 [3.0.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.0
 [2.1.7]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.7
 [2.1.6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.6
