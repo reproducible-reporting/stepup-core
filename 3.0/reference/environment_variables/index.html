@@ -1421,6 +1421,19 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Environment Variables
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -1432,6 +1445,43 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-of-stepup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration of StepUp
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables-in-worker-processes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment Variables in Worker Processes
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1668,6 +1718,32 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-of-stepup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration of StepUp
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables-in-worker-processes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment Variables in Worker Processes
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1691,6 +1767,7 @@
 
 
 <h1 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h1>
+<h2 id="configuration-of-stepup">Configuration of StepUp<a class="headerlink" href="#configuration-of-stepup" title="Permanent link">&para;</a></h2>
 <p>The following environment variables can be used to configure StepUp.</p>
 <ul>
 <li><code>STEPUP_DEBUG</code>: Set to <code>"1"</code> to enable debug output.
@@ -1735,6 +1812,19 @@ in the root directory of your project, e.g. with the following contents:</p>
 </span></code></pre></div>
 <p>When you change to the project directory (or any of its subdirectories) in your shell,
 the environment variables will be set automatically.</p>
+<h2 id="environment-variables-in-worker-processes">Environment Variables in Worker Processes<a class="headerlink" href="#environment-variables-in-worker-processes" title="Permanent link">&para;</a></h2>
+<p>The following environment variables are set when a worker runs a step:</p>
+<ul>
+<li><code>HERE</code> and <code>ROOT</code>, as documented in the tutorial on <a href="../../advanced_topics/here_and_root/"><code>HERE</code> and <code>ROOT</code> variables</a></li>
+<li><code>STEPUP_STEP_I</code> is a unique integer index for the current step.
+  This is mainly relevant for StepUp and has little significance for users implementing workflows.</li>
+<li><code>STEPUP_STEP_INP_DIGEST</code> is a hex-formatted digest of all the inputs to the step
+  (including environment variables used).
+  This is useful in special cases.
+  For example, it can be used to decide if cached results from a previously interrupted run of the step
+  are still valid.
+  It can also be useful when action submit jobs to a scheduler, to decide if a running job is still valid.</li>
+</ul>
 
 
 
