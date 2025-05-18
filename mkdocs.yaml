@@ -108,6 +108,7 @@ nav:
     - reference/stepup.core.script.md
     - reference/stepup.core.stepinfo.md
     - reference/interactive.md
+    - reference/returncode.md
     - reference/environment_variables.md
   - Extending StepUp:
     - extending/introduction.md

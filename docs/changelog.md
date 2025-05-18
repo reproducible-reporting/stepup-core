@@ -10,7 +10,19 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+(no summary yet)
+
+### Changed
+
+- The meaning of the `stepup` return codes has changed to a combination of flags:
+
+    - `1` = internal error (Python exception)
+    - `2` = at least one step failed
+    - `4` = at least one step remained pending
+    - `8` = at least one step was still runnable
+
+  Some sums of return codes are possible.
+  For example `6` means that at least one step failed and at least one step remained pending.
 
 ## [3.0.1][] - 2025-05-13 {: #v3.0.1 }
 

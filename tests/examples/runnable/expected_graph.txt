@@ -1,0 +1,47 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:runpy ./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:msg.txt
+            supplies   file:plan.py
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh cat msg.txt
+            supplies   step:runsh sleep 5; echo hello > msg.txt
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:runpy ./plan.py
+
+step:runpy ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:runsh cat msg.txt
+             creates   step:runsh sleep 5; echo hello > msg.txt
+
+step:runsh sleep 5; echo hello > msg.txt
+               state = RUNNING
+          created by   step:runpy ./plan.py
+            consumes   file:./
+             creates   file:msg.txt
+            supplies   file:msg.txt
+
+file:msg.txt
+               state = AWAITED
+          created by   step:runsh sleep 5; echo hello > msg.txt
+            consumes   file:./
+            consumes   step:runsh sleep 5; echo hello > msg.txt
+            supplies   step:runsh cat msg.txt
+
+step:runsh cat msg.txt
+               state = PENDING
+          created by   step:runpy ./plan.py
+            consumes   file:./
+            consumes   file:msg.txt

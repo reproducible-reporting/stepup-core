@@ -19,26 +19,26 @@
 # --
 """Enumerate objects used in other StepUp modules."""
 
-import enum
+from enum import Enum, Flag, auto
 
 __all__ = ("Change", "DirWatch", "FileState", "Mandatory", "ReturnCode", "StepState")
 
 
-class ReturnCode(enum.Enum):
-    SUCCESS = 0
-    """All (mandatory) steps completed successfully."""
-
-    INTERNAL = 1
+class ReturnCode(Flag):
+    INTERNAL = auto()
     """Exception raised, not related to failing steps in the workflow"""
 
-    FAILED = 2
-    """Some steps failed (and possibly some remain pending)."""
+    FAILED = auto()
+    """Some steps failed."""
 
-    PENDING = 3
-    """Some steps remained pending (no failures)."""
+    PENDING = auto()
+    """Some steps remained pending."""
+
+    RUNNABLE = auto()
+    """Some steps are runnable. Stopped early due to shutdown, drain, etc."""
 
 
-class FileState(enum.Enum):
+class FileState(Enum):
     """State of a file in the StepUp workflow.
 
     STATIC and BUILT files are ready to be used as inputs.
@@ -88,7 +88,7 @@ class FileState(enum.Enum):
     """
 
 
-class StepState(enum.Enum):
+class StepState(Enum):
     PENDING = 21
     """The step still needs to be executed."""
 
@@ -105,7 +105,7 @@ class StepState(enum.Enum):
     """The step has failed (exit code non-zero)."""
 
 
-class Mandatory(enum.Enum):
+class Mandatory(Enum):
     YES = 31
     """The step must be executed (default)."""
 
@@ -116,7 +116,7 @@ class Mandatory(enum.Enum):
     """The step is optional and not required by another mandatory or required step."""
 
 
-class Change(enum.Enum):
+class Change(Enum):
     UPDATED = 41
     """A file on disk has been added or changed."""
 
@@ -124,7 +124,7 @@ class Change(enum.Enum):
     """A file on disk has been deleted."""
 
 
-class DirWatch(enum.Enum):
+class DirWatch(Enum):
     """Flag to change the watched directories through the Workflow.dir_queue."""
 
     START = 51

@@ -165,9 +165,10 @@ class Runner:
         """Final steps after the runner has executed a bunch of jobs."""
         async with self.dblock:
             self.returncode = await report_completion(self.workflow, self.scheduler, self.reporter)
-        if self.returncode != ReturnCode.SUCCESS:
+        if self.returncode.value != 0:
             await self.reporter("WARNING", "Skipping file cleanup due to incomplete build")
-            await clean_queue(self.scheduler, self.dblock, self.reporter)
+            if await clean_queue(self.scheduler, self.dblock, self.reporter):
+                self.returncode |= ReturnCode.RUNNABLE
         elif not self.do_remove_outdated:
             await self.reporter("WARNING", "Skipping file cleanup at user's request (--no-clean)")
         else:
@@ -259,16 +260,15 @@ async def report_completion(
     workflow: Workflow, scheduler: Scheduler, reporter: ReporterClient
 ) -> ReturnCode:
     """Report parts of the workflow that could not be executed."""
-    returncode = ReturnCode.SUCCESS
+    returncode = ReturnCode(0)
     steps_failed = list(workflow.steps(StepState.FAILED))
     num_failed = len(steps_failed)
     if num_failed > 0:
-        returncode = ReturnCode.FAILED
+        returncode |= ReturnCode.FAILED
         await reporter("WARNING", f"{num_failed} step(s) failed.")
 
     if scheduler.onhold:
-        if returncode == ReturnCode.SUCCESS:
-            returncode = ReturnCode.PENDING
+        returncode |= ReturnCode.PENDING
         await reporter("WARNING", "Scheduler is put on hold. Not reporting pending steps.")
         return returncode
 
@@ -325,8 +325,7 @@ async def report_completion(
             pending_pages.append(("PENDING Step", "\n".join(lines)))
 
         if num_pending > 0:
-            if returncode != ReturnCode.FAILED:
-                returncode = ReturnCode.PENDING
+            returncode |= ReturnCode.PENDING
             lead = f"{num_pending} step(s) remained pending due to"
             if len(block_lines) > 0:
                 block_page = ("Blocked steps", "\n".join(block_lines))
@@ -376,7 +375,7 @@ async def remove_outdated_outputs(workflow: Workflow, dblock: DBLock, reporter: 
     workflow.to_be_deleted.clear()
 
 
-async def clean_queue(scheduler: Scheduler, dblock: DBLock, reporter: ReporterClient):
+async def clean_queue(scheduler: Scheduler, dblock: DBLock, reporter: ReporterClient) -> bool:
     """Clean the scheduler queue and make queued steps pending."""
     if scheduler.onhold:
         count = 0
@@ -387,3 +386,5 @@ async def clean_queue(scheduler: Scheduler, dblock: DBLock, reporter: ReporterCl
                 count += 1
         if count > 0:
             await reporter("WARNING", f"Made {count} step(s) in the queue pending.")
+            return True
+    return False

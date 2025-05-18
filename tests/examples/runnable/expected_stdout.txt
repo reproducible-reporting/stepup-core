@@ -1,0 +1,15 @@
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ runpy ./plan.py
+        1/3 |    SUCCESS │ runpy ./plan.py
+        1/3 |      START │ runsh sleep 5; echo hello > msg.txt
+        1/3 |   DIRECTOR │ Waiting for steps to complete before shutdown.
+        2/3 |    SUCCESS │ runsh sleep 5; echo hello > msg.txt
+        2/3 |    WARNING │ Scheduler is put on hold. Not reporting pending steps.
+        2/3 |    WARNING │ Skipping file cleanup due to incomplete build
+        2/3 |    WARNING │ Made 1 step(s) in the queue pending.
+        2/3 |    WARNING │ Check logs: .stepup/warning.log
+        2/3 |      PHASE │ watch
+        2/3 |   DIRECTOR │ Stopping workers
+        2/3 |   DIRECTOR │ See you!
