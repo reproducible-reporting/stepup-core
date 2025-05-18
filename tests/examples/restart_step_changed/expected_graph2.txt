@@ -1,0 +1,59 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:runpy ./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:copy.txt
+            supplies   file:original.txt
+            supplies   file:plan.py
+            supplies   step:copy original.txt copy.txt
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh echo 2 > original.txt
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:runpy ./plan.py
+
+step:runpy ./plan.py
+               state = SUCCEEDED
+           explained = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:copy original.txt copy.txt
+             creates   step:runsh echo 2 > original.txt
+
+file:original.txt
+               state = BUILT
+          created by   step:runsh echo 2 > original.txt
+            consumes   file:./
+            consumes   step:runsh echo 2 > original.txt
+            supplies   step:copy original.txt copy.txt
+
+step:copy original.txt copy.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:runpy ./plan.py
+            consumes   file:./
+            consumes   file:original.txt
+             creates   file:copy.txt
+            supplies   file:copy.txt
+
+file:copy.txt
+               state = BUILT
+          created by   step:copy original.txt copy.txt
+            consumes   file:./
+            consumes   step:copy original.txt copy.txt
+
+step:runsh echo 2 > original.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:runpy ./plan.py
+            consumes   file:./
+             creates   file:original.txt
+            supplies   file:original.txt

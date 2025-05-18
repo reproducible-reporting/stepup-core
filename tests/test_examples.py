@@ -153,6 +153,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "restart_queued",
         "restart_static_remove1",
         "restart_static_remove2",
+        "restart_step_changed",
         "reqdir_missing",
         "runnable",
         "script_cases",

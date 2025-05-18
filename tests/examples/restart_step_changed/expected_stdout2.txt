@@ -1,0 +1,32 @@
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    UPDATED │ plan.py (digest c7684629 ➜ 8a8cb796)
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        2/3 |      PHASE │ run
+        2/3 |     NOSKIP │ runpy ./plan.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest 3421f124 ➜ e0a2dd2f, out_digest 786a02f7 ➜ (unset)
+Modified inp hash    plan.py (digest c7684629 ➜ 8a8cb796)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+────────────────────────────────────────────────────────────────────────────────
+        0/1 |      START │ runpy ./plan.py
+        1/3 |    SUCCESS │ runpy ./plan.py
+        1/3 |      START │ runsh echo 2 > original.txt
+        2/3 |    SUCCESS │ runsh echo 2 > original.txt
+        2/3 |     NOSKIP │ copy original.txt copy.txt
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest 5c697420 ➜ 07d99fa7, out_digest a7acc5b8 ➜ (unset)
+Modified inp hash    original.txt (digest 0ac7a4a0 ➜ fb3bc27b)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+────────────────────────────────────────────────────────────────────────────────
+        2/3 |      START │ copy original.txt copy.txt
+        3/3 |    SUCCESS │ copy original.txt copy.txt
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
+        3/3 |    WARNING │ Check logs: .stepup/warning.log
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers
+        3/3 |   DIRECTOR │ See you!

@@ -910,7 +910,8 @@ class Step(Node):
         """Set succeeded or failed step pending (again).
 
         There can be many reasons for making a step pending,
-        e.g. inputs changes, outputs disappaered, environment variables changed.
+        e.g. inputs changes, outputs disappeared, environment variables changed.
+        This is also called when orphaned steps are recreated whose inputs are no longer valid.
 
         Parameters
         ----------

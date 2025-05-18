@@ -48,6 +48,8 @@ __all__ = ("Workflow",)
 logger = logging.getLogger(__name__)
 
 
+# Find all inputs of steps (recursively through creator-product relations) that are missing,
+# and whose creator is a deferred glob.
 RECURSE_DEFERRED_INPUTS = f"""
 WITH RECURSIVE missing(i, label, creator_kind) AS (
     SELECT node.i, node.label, cnode.kind FROM node
@@ -64,6 +66,22 @@ WITH RECURSIVE missing(i, label, creator_kind) AS (
     WHERE node.kind = 'file' AND file.state = {FileState.MISSING.value}
 )
 SELECT i, label FROM missing WHERE creator_kind = 'dg'
+"""
+
+# Recursively find all product steps and finally select those whose inputs are awaited or outdated.
+RECURSE_OUTDATED_STEPS = f"""
+WITH RECURSIVE outdated(i, label) AS (
+    SELECT node.i, node.label FROM node
+    WHERE node.i = ?
+    UNION
+    SELECT product_node.i, product_node.label FROM node AS product_node
+    JOIN outdated ON product_node.creator = outdated.i
+    WHERE product_node.kind = 'step'
+)
+SELECT DISTINCT outdated.i, outdated.label FROM outdated
+JOIN dependency ON dependency.consumer = outdated.i
+JOIN file ON dependency.supplier = file.node
+WHERE file.state IN ({FileState.AWAITED.value}, {FileState.OUTDATED.value})
 """
 
 
@@ -922,8 +940,14 @@ class Workflow(Cascade):
         # Restore the step and its products (recursively).
         old_step.recreate(creator)
 
-        # Look for missing inputs and their parents and determine which match a deferred glob.
-        # These still need to be checked.
+        # If inputs of the recreated steps are AWAITED or OUTDATED, these steps must be rescheduled.
+        for i, label in self.con.execute(RECURSE_OUTDATED_STEPS, (old_step.i,)):
+            step = Step(self, i, label)
+            step.mark_pending(input_changed=True)
+
+        # Look for MISSING inputs and determine which were created by a deferred glob.
+        # Their existence still needs to be checked by the client and ideally confirmed as existing
+        # in a follow-up call to `confirm_static`.
         deferred = {
             File(self, i, label)
             for i, label in self.con.execute(RECURSE_DEFERRED_INPUTS, (old_step.i,))

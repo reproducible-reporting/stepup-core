@@ -472,6 +472,7 @@ class ConnectionWrapper:
         self._print_caller("execute")
         if self._explain:
             print(sql, file=sys.stderr)
+            print(f"  {data}", file=sys.stderr)
             nodes = {}
             from anytree import Node as TreeNode
             from anytree import RenderTree

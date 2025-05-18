@@ -24,6 +24,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   Some sums of return codes are possible.
   For example `6` means that at least one step failed and at least one step remained pending.
 
+## Fixed
+
+- Steps were not made pending when their inputs were created by a new step after a restart.
+  This is fixed.
+
 ## [3.0.1][] - 2025-05-13 {: #v3.0.1 }
 
 Minor tweaks, improved progress format and `STEPUP_STEP_INP_DIGEST` environment variable.

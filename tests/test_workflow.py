@@ -32,7 +32,7 @@ from stepup.core.file import File
 from stepup.core.hash import FileHash, StepHash
 from stepup.core.nglob import NGlobMulti
 from stepup.core.step import HAS_UNCERTAIN_CREATORS, RECURSE_PRODUCTS_PENDING, Step
-from stepup.core.workflow import RECURSE_DEFERRED_INPUTS, Workflow
+from stepup.core.workflow import RECURSE_DEFERRED_INPUTS, RECURSE_OUTDATED_STEPS, Workflow
 
 TEST_FILE_GRAPH = """\
 root:
@@ -2328,6 +2328,30 @@ def test_sql_recurse_products_pending_tree(wfp: Workflow):
     assert len(rows) == 2
     assert Step(wfp, *rows[0]) == egg
     assert Step(wfp, *rows[1]) == step1
+
+
+def test_recurse_outdated_steps1(wfp: Workflow):
+    plan = wfp.find(Step, "./plan.py")
+    wfp.define_step(plan, "prog", inp_paths=["data.txt"])
+    prog = wfp.find(Step, "prog")
+    rows = wfp.con.execute(RECURSE_OUTDATED_STEPS, (prog.i,)).fetchall()
+    assert len(rows) == 1
+    assert Step(wfp, *rows[0]) == prog
+
+
+def test_recurse_outdated_steps2(wfp: Workflow):
+    plan = wfp.find(Step, "./plan.py")
+    wfp.define_step(plan, "prog1", inp_paths=["data1.txt"])
+    prog1 = wfp.find(Step, "prog1")
+    wfp.define_step(prog1, "prog2", inp_paths=["data2.txt"])
+    prog2 = wfp.find(Step, "prog2")
+    wfp.define_step(prog1, "prog3", inp_paths=["data3.txt"])
+    declare_static(wfp, plan, ["data3.txt"])
+
+    rows = wfp.con.execute(RECURSE_OUTDATED_STEPS, (prog1.i,)).fetchall()
+    assert len(rows) == 2
+    assert Step(wfp, *rows[0]) == prog1
+    assert Step(wfp, *rows[1]) == prog2
 
 
 def test_recurse_deferred_inputs1(wfp: Workflow):
