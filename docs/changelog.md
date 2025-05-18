@@ -10,7 +10,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no summary yet)
+(no changes yet)
+
+## [3.0.2][] - 2025-05-18 {: #v3.0.2 }
+
+Improved return code and a bugfix.
 
 ### Changed
 
@@ -574,6 +578,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[3.0.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.2
 [3.0.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.1
 [3.0.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.0
 [2.1.7]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.1.7
