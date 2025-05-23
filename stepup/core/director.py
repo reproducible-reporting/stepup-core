@@ -48,7 +48,7 @@ from .scheduler import Scheduler
 from .startup import startup_from_db
 from .stepinfo import StepInfo
 from .utils import DBLock, check_plan, mynormpath
-from .watcher import Watcher
+from .watcher import WATCHER_AVAILABLE, Watcher
 from .workflow import Workflow
 
 __all__ = ("get_socket", "interpret_num_workers", "serve")
@@ -145,22 +145,23 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Explain for every step with recording info why it cannot be skipped.",
     )
-    parser.add_argument(
-        "--watch",
-        "-w",
-        default=False,
-        action="store_true",
-        help="Watch file changes after completing the run phase. "
-        "When not given, the director exists after completing the run phase.",
-    )
-    parser.add_argument(
-        "--watch-first",
-        "-W",
-        default=False,
-        action="store_true",
-        help="Exit watch phase and start the runner after the first file change. "
-        "This implies --watch.",
-    )
+    if WATCHER_AVAILABLE:
+        parser.add_argument(
+            "--watch",
+            "-w",
+            default=False,
+            action="store_true",
+            help="Watch file changes after completing the run phase. "
+            "When not given, the director exists after completing the run phase.",
+        )
+        parser.add_argument(
+            "--watch-first",
+            "-W",
+            default=False,
+            action="store_true",
+            help="Exit watch phase and start the runner after the first file change. "
+            "This implies --watch.",
+        )
     parser.add_argument(
         "--no-clean",
         dest="do_clean",
@@ -169,15 +170,21 @@ def parse_args() -> argparse.Namespace:
         help="Do not remove outdated output files.",
     )
     args = parser.parse_args()
-    if args.watch_first:
-        args.watch = True
+    if WATCHER_AVAILABLE:
+        if args.watch_first:
+            args.watch = True
+    else:
+        args.watch = False
+        args.watch_first = False
     return args
 
 
 def interpret_num_workers(num_workers: Decimal) -> int:
     """Convert the command-line argument num-workers into an integer."""
     if num_workers.as_tuple().exponent < 0:
-        return int(len(os.sched_getaffinity(0)) * num_workers)
+        if hasattr(os, "sched_getaffinity"):
+            return int(len(os.sched_getaffinity(0)) * num_workers)
+        return int(os.cpu_count() * num_workers)
     return int(num_workers)
 
 

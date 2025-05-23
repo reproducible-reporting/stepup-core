@@ -20,9 +20,9 @@
 """Watch for file changes and update the workflow accordingly."""
 
 import asyncio
+import sys
 
 import attrs
-from asyncinotify import Inotify, Mask, Watch
 from path import Path
 
 from .asyncio import stoppable_iterator
@@ -32,7 +32,22 @@ from .reporter import ReporterClient
 from .utils import DBLock
 from .workflow import Workflow
 
-__all__ = ("Watcher",)
+WATCHER_AVAILABLE = sys.platform == "linux"
+if WATCHER_AVAILABLE:
+    from asyncinotify import Inotify, Mask, Watch
+else:
+    # Dummy classes for non-linux platforms to avoid type errors below.
+    class Inotify:
+        pass
+
+    class Mask:
+        pass
+
+    class Watch:
+        pass
+
+
+__all__ = ("WATCHER_AVAILABLE", "Watcher")
 
 
 @attrs.define
