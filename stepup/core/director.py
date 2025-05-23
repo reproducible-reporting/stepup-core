@@ -182,7 +182,9 @@ def parse_args() -> argparse.Namespace:
 def interpret_num_workers(num_workers: Decimal) -> int:
     """Convert the command-line argument num-workers into an integer."""
     if num_workers.as_tuple().exponent < 0:
-        return int(len(os.sched_getaffinity(0)) * num_workers)
+        if hasattr(os, "sched_getaffinity"):
+            return int(len(os.sched_getaffinity(0)) * num_workers)
+        return int(os.cpu_count() * num_workers)
     return int(num_workers)
 
 
