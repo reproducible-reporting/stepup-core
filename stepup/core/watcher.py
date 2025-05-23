@@ -36,7 +36,7 @@ WATCHER_AVAILABLE = sys.platform == "linux"
 if WATCHER_AVAILABLE:
     from asyncinotify import Inotify, Mask, Watch
 else:
-
+    # Dummy classes for non-linux platforms to avoid type errors below.
     class Inotify:
         pass
 
