@@ -35,6 +35,7 @@ from .asyncio import stoppable_iterator, wait_for_path
 from .director import interpret_num_workers
 from .reporter import ReporterClient, ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
+from .watcher import WATCHER_AVAILABLE
 
 __all__ = ()
 
@@ -44,7 +45,7 @@ def boot_tool(args: argparse.Namespace):
 
 
 async def async_boot(args: argparse.Namespace):
-    if args.watch_first:
+    if WATCHER_AVAILABLE and args.watch_first:
         args.watch = True
     if args.root.absolute() != Path.cwd():
         print("Changing to", args.root)
@@ -113,10 +114,11 @@ async def async_boot(args: argparse.Namespace):
             argv.append("--show-perf")
         if args.explain_rerun:
             argv.append("--explain-rerun")
-        if args.watch:
-            argv.append("--watch")
-        if args.watch_first:
-            argv.append("--watch-first")
+        if WATCHER_AVAILABLE:
+            if args.watch:
+                argv.append("--watch")
+            if args.watch_first:
+                argv.append("--watch-first")
         if not args.do_clean:
             argv.append("--no-clean")
         returncode = 1  # Internal error unless it is overriden later by the director subprocess
@@ -259,23 +261,24 @@ def boot_subcommand(subparsers) -> callable:
         action="store_true",
         help="Explain for every step with recording info why it cannot be skipped.",
     )
-    parser.add_argument(
-        "--watch",
-        "-w",
-        default=False,
-        action="store_true",
-        help="StepUp will watch for file changes after all runnable steps have been executed. "
-        "By pressing r, it will rerun steps  that have become pending due to the file changes. "
-        "(Only supported on Linux.)",
-    )
-    parser.add_argument(
-        "--watch-first",
-        "-W",
-        default=False,
-        action="store_true",
-        help="Start the runner after observing the first file change in watch mode. "
-        "This implies --watch. (Only supported on Linux.)",
-    )
+    if WATCHER_AVAILABLE:
+        parser.add_argument(
+            "--watch",
+            "-w",
+            default=False,
+            action="store_true",
+            help="StepUp will watch for file changes after all runnable steps have been executed. "
+            "By pressing r, it will rerun steps  that have become pending due to the file changes. "
+            "(Only supported on Linux.)",
+        )
+        parser.add_argument(
+            "--watch-first",
+            "-W",
+            default=False,
+            action="store_true",
+            help="Start the runner after observing the first file change in watch mode. "
+            "This implies --watch. (Only supported on Linux.)",
+        )
     parser.add_argument(
         "--no-clean",
         dest="do_clean",

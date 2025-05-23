@@ -1,0 +1,44 @@
+# Simply check that something works on macOS
+name: smoke
+on:
+  push:
+    branches:
+      # Run tests for change on the main branch ...
+      - main
+    tags-ignore:
+      # ... but not for tags (avoids duplicate work) ...
+      - '**'
+    paths:
+      # ... and only if relevant files have changed.
+      - stepup/**
+      - pyproject.toml
+      - .github/workflows/pytest.yaml
+  pull_request:
+    # Run tests on pull requests ...
+    paths:
+      # ... only if relevant files have changed.
+      - stepup/**
+      - pyproject.toml
+      - .github/workflows/pytest.yaml
+
+jobs:
+  tests:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install oldest versions of supported dependencies
+        if: ${{ matrix.python-version == '3.11'}}
+        run: pip install -r .github/requirements-old.txt
+      - name: Install development version
+        run: pip install -e .
+      - name: Run a simple example
+        run: |
+          cd docs
+          STEPUP_DEBUG=1 STEPUP_SYNC_RPC_TIMEOUT=10 stepup boot -n 1.0
