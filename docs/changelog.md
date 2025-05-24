@@ -12,6 +12,13 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no changes yet)
 
+## [3.0.3][] - 2025-05-18 {: #v3.0.3 }
+
+### Fixed
+
+- Make `stepup boot` work on macOS, albeit without the `--watch` option.
+  (The `--watch` option is implemented using the `asyncinotify` library, which is Linux only.)
+
 ## [3.0.2][] - 2025-05-18 {: #v3.0.2 }
 
 Improved return code and a bugfix.
