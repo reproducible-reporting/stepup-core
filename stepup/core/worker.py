@@ -594,11 +594,7 @@ class WorkThread(threading.Thread):
         """
         # Sanity check of the executable (if it can be found)
         executable = Path(shlex.split(argstr)[0])
-        if not has_shebang(executable):
-            print(
-                f"Script does not start with a shebang: {executable} (wd={Path.cwd()})",
-                file=sys.stderr,
-            )
+        if not check_executable(executable):
             return 1, None, None
         p = subprocess.Popen(
             argstr,
@@ -630,11 +626,7 @@ class WorkThread(threading.Thread):
     def runpy(self, script: str, args: list[str]) -> int:
         """Run a Python script and amend all local imports as inputs."""
         # Sanity check of the executable (if it can be found)
-        if not has_shebang(Path(script)):
-            print(
-                f"Script does not start with a shebang: {script} (wd={Path.cwd()})",
-                file=sys.stderr,
-            )
+        if not check_executable(Path(script), shebang="#!/usr/bin/env python3"):
             return 1
         # Run the script
         return self.runsh_verbose(
@@ -643,8 +635,11 @@ class WorkThread(threading.Thread):
         )
 
 
-def has_shebang(executable: Path) -> bool:
-    """Return `True` if a script has a shebang and is executable, or if the file is not a script."""
+def check_executable(executable: Path, shebang: str | None = None) -> bool:
+    """Return `True` if the executable looks fine.
+
+    Print informative message and return `False` otherwise.
+    """
     # See https://en.wikipedia.org/wiki/Shebang_%28Unix%29
     if not executable.is_file():
         # The executable is probably in the PATH,
@@ -653,6 +648,7 @@ def has_shebang(executable: Path) -> bool:
     # Check if the file is executable
     if not executable.access(os.X_OK):
         # This is not a script, so not checking the shebang.
+        print(f"File is not executable: {executable} (wd={Path.cwd()})", file=sys.stderr)
         return False
     # Check if the file is binary.
     # https://stackoverflow.com/a/7392391
@@ -663,7 +659,21 @@ def has_shebang(executable: Path) -> bool:
     if bool(head.translate(None, printable_text_chars)):
         # This is unlikely to be a script, so not checking the shebang.
         return True
-    return head[:3] == b"#!/"
+    if shebang is None:
+        if head[:3] != b"#!/":
+            print(
+                f"Script does not start with a shebang: {executable} (wd={Path.cwd()})",
+                file=sys.stderr,
+            )
+            return False
+    elif not head.startswith(shebang.encode("utf-8")):
+        print(
+            f"Script does not start with the expected shebang ({shebang}): "
+            f"{executable} (wd={Path.cwd()})",
+            file=sys.stderr,
+        )
+        return False
+    return True
 
 
 @attrs.define

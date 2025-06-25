@@ -1,0 +1,38 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:runpy ./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:plan.py
+            supplies   file:simple.py
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./simple.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:runpy ./plan.py
+
+step:runpy ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:simple.py
+             creates   step:runpy ./simple.py
+
+file:simple.py
+               state = STATIC
+          created by   step:runpy ./plan.py
+            consumes   file:./
+            supplies   step:runpy ./simple.py
+
+step:runpy ./simple.py
+               state = FAILED
+          created by   step:runpy ./plan.py
+            consumes   file:./
+            consumes   file:simple.py

@@ -6,6 +6,12 @@ repos:
     - id: check-ast
     - id: check-case-conflict
     - id: check-executables-have-shebangs
+      exclude: |
+        (?x)^(
+          tests/examples/error_plan_no_shebang/plan.py|
+          tests/examples/error_runsh_no_shebang/simple.sh|
+          tests/examples/error_runpy_no_shebang/simple.py
+        )$
     - id: check-json
     - id: check-merge-conflict
     - id: check-symlinks

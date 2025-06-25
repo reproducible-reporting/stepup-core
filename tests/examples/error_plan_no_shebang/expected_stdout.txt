@@ -1,0 +1,12 @@
+        0/0 |      ERROR │ The director raised an exception.
+────────────────────────────────── Traceback ───────────────────────────────────
+Traceback (most recent call last):
+  File "${PWD}/stepup/core/director.py", line ---, in async_main
+    returncode = await serve(
+               File "${PWD}/stepup/core/director.py", line ---, in serve
+    check_plan("plan.py")
+  File "${PWD}/stepup/core/utils.py", line ---, in check_plan
+    raise ValueError(f"First line of plan differs from '{shebang}': {path_plan}")
+ValueError: First line of plan differs from '#!/usr/bin/env python3': plan.py
+────────────────────────────────────────────────────────────────────────────────
+        0/0 |   DIRECTOR │ See you!

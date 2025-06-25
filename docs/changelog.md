@@ -14,8 +14,9 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ### Fixed
 
-- Minor bug: when a step failed and its action contained options,
+- Minor: when a step failed and its action contained options,
   the command in the output did not work in the terminal. This has been fixed.
+- Minor: improve error messages when file permissions or shebangs are incorrect.
 
 ## [3.0.3][] - 2025-05-18 {: #v3.0.3 }
 
