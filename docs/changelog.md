@@ -10,7 +10,9 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no summary yet)
+(no changes yet)
+
+## [3.0.4][] - 2025-06-25 {: #v3.0.4 }
 
 ### Fixed
 
