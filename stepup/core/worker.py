@@ -974,11 +974,15 @@ class WorkerHandler:
     async def report(self):
         pages = []
         if not self.step.success:
-            if self.step.workdir == "./":
-                command = f"stepup act {self.step.action}"
-            else:
-                command = f"(cd {self.step.workdir} && stepup act {self.step.action})"
+            # Format command such that it can be copied and pasted into a shell.
+            command = "stepup act "
+            if any(word.startswith("-") for word in shlex.split(self.step.action)):
+                command += "-- "
+            command += self.step.action
+            if self.step.workdir != "./":
+                command = f"(cd {self.step.workdir} && {command})"
             lines = [f"Command               {command}"]
+            # Other info on the execution of the step
             if self.step.returncode is not None:
                 lines.append(f"Return code           {self.step.returncode}")
             pages.append(("Step info", "\n".join(lines)))

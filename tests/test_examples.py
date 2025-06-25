@@ -84,6 +84,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "error_main_fails",
         "error_not_executable",
         "error_overlap_deferred",
+        "error_runsh_opts",
         "error_static_dir",
         "error_step",
         "external_sources",
