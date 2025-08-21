@@ -167,6 +167,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "script_cases_settings",
         "script_inp",
         "script_single",
+        "script_single_optional",
         "script_single_run_import",
         "static",
         "static_abs",

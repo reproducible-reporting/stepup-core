@@ -1,0 +1,57 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:runpy ./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:generate.py
+            supplies   file:plan.py
+            supplies   file:runout.txt
+            supplies   step:runpy ./generate.py plan --optional
+            supplies   step:runpy ./generate.py run
+            supplies   step:runpy ./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:runpy ./plan.py
+
+step:runpy ./plan.py
+               state = SUCCEEDED
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:generate.py
+             creates   step:runpy ./generate.py plan --optional
+
+file:generate.py
+               state = STATIC
+          created by   step:runpy ./plan.py
+            consumes   file:./
+            supplies   step:runpy ./generate.py plan --optional
+            supplies   step:runpy ./generate.py run
+
+step:runpy ./generate.py plan --optional
+               state = SUCCEEDED
+          created by   step:runpy ./plan.py
+            consumes   file:./
+            consumes   file:generate.py
+             creates   step:runpy ./generate.py run
+
+step:runpy ./generate.py run
+               state = PENDING
+           mandatory = NO
+          created by   step:runpy ./generate.py plan --optional
+            consumes   file:./
+            consumes   file:generate.py
+             creates   file:runout.txt
+            supplies   file:runout.txt
+
+file:runout.txt
+               state = AWAITED
+          created by   step:runpy ./generate.py run
+            consumes   file:./
+            consumes   step:runpy ./generate.py run

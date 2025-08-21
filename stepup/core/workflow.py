@@ -373,11 +373,11 @@ class Workflow(Cascade):
         Parameters
         ----------
         node
-            The node to supply to.
+            The file or step node to supply to.
         path
-            The file that should supply to the step.
+            The path of the file that should supply to the node.
         new
-            When `True` the (file, step) relationship must be new.
+            When `True` the (file, node) relationship must be new.
             If not, a `GraphError` is raised.
 
         Returns

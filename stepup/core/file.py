@@ -162,7 +162,7 @@ class File(Node):
         Parameters
         ----------
         supplier
-            Other node that supplies to thise node.
+            Other node that supplies to this node.
 
         Returns
         -------

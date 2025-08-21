@@ -1013,7 +1013,6 @@ def script(
         "out": out,
         "vol": vol,
         "workdir": workdir,
-        "optional": optional,
         "pool": pool,
         "block": block,
     }

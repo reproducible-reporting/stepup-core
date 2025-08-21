@@ -10,7 +10,15 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+This is a minor bugfix release.
+
+### Fixed
+
+- Fix optional script bug.
+  The script interface creates at least two steps: a plan and one or more run steps.
+  When the `optional=True` option is used, the plan step must be mandatory,
+  which was not the case.
+  With this fix, StepUp can decide which optional run steps need to be executed.
 
 ## [3.0.4][] - 2025-06-25 {: #v3.0.4 }
 

@@ -286,7 +286,7 @@ class Step(Node):
         Parameters
         ----------
         supplier
-            Other node that supplies to thise node.
+            Other node that supplies to this node.
 
         Returns
         -------
@@ -295,6 +295,9 @@ class Step(Node):
         """
         idep = super().add_supplier(supplier)
         if self.get_mandatory() != Mandatory.NO:
+            # Loop over steps supplying to the supplying file,
+            # i.e. two edges up in the graph (step -> file -> step),
+            # and make them required.
             for step in supplier.suppliers(Step):
                 step.make_required()
         return idep
