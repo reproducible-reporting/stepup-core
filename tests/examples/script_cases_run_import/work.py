@@ -14,7 +14,8 @@ def case_info(label):
 
 
 def run(out, label):
-    from helper import func
+    # Local import to test module dependency scanning.
+    from helper import func  # noqa: PLC0415
 
     with open(out, "w") as fh:
         print(f"{label}: {func()}", file=fh)

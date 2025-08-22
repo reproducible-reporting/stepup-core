@@ -7,7 +7,8 @@ def info():
 
 
 def run(out):
-    from helper import func
+    # Local import to test module dependency scanning.
+    from helper import func  # noqa: PLC0415
 
     with open(out, "w") as fh:
         print(func(), file=fh)

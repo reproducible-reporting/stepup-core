@@ -8,7 +8,8 @@ CASE_FMT = "{:+03.1f}"
 
 
 def cases():
-    from settings import values
+    # Local import to test module dependency scanning.
+    from settings import values  # noqa: PLC0415
 
     yield from values
 

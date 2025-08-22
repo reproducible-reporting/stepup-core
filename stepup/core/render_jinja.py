@@ -87,7 +87,8 @@ def render_jinja_action(argstr: str, work_thread: WorkThread) -> int:
 
 def render_jinja_tool(args: argparse.Namespace) -> int:
     """Main program."""
-    from stepup.core.api import amend, loadns
+    # Local import to delay activation synchronous connection to StepUp directory until needed.
+    from stepup.core.api import amend, loadns  # noqa: PLC0415
 
     if args.mode == "plain":
         latex = False

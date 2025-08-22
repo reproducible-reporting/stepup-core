@@ -516,7 +516,7 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
         if name.startswith("_"):
             raise ValueError("Methods starting with underscores are not allowed.")
         if _rpc_timeout is None:
-            _rpc_timeout = float(os.environ.get("STEPUP_SYNC_RPC_TIMEOUT", 300))
+            _rpc_timeout = float(os.environ.get("STEPUP_SYNC_RPC_TIMEOUT", "300"))
 
         request = pickle.dumps([name, args, kwargs], protocol=pickle.HIGHEST_PROTOCOL)
         self.counter += 1

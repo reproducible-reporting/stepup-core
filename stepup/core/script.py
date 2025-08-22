@@ -315,8 +315,8 @@ def parse_args(script_path: str) -> argparse.Namespace:
 
 def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapper):
     """Create the step to plan the run part of the script."""
-    # Local import because the StepUp client is not always needed.
-    from stepup.core.api import runpy, runsh, static
+    # Local import to delay activation synchronous connection to StepUp directory until needed.
+    from stepup.core.api import runpy, runsh, static  # noqa: PLC0415
 
     runfunc = runpy if script_path.endswith(".py") else runsh
 

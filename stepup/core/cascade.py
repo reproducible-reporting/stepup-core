@@ -474,8 +474,9 @@ class ConnectionWrapper:
             print(sql, file=sys.stderr)
             print(f"  {data}", file=sys.stderr)
             nodes = {}
-            from anytree import Node as TreeNode
-            from anytree import RenderTree
+            # Local imports to avoid dependency for production usage.
+            from anytree import Node as TreeNode  # noqa: PLC0415
+            from anytree import RenderTree  # noqa: PLC0415
 
             for step in self._con.execute(f"EXPLAIN QUERY PLAN {sql}", data):
                 node_id, parent_id, _, detail = step

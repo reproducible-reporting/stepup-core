@@ -228,7 +228,8 @@ class File(Node):
 
         In case of a directory, also notify the watcher by putting it on the dir_queue.
         """
-        from .step import Step
+        # Local import to avoid cyclic imports.
+        from .step import Step  # noqa: PLC0415
 
         if self.get_state() in [FileState.STATIC, FileState.BUILT]:
             for step in self.consumers(Step):
@@ -262,8 +263,9 @@ class File(Node):
             # Request rerun of creator
             self.creator().mark_pending()
         if state != FileState.VOLATILE:
-            # Make all consumers pending
-            from .step import Step
+            # Make all consumers pending.
+            # Local import to avoid cyclic imports.
+            from .step import Step  # noqa: PLC0415
 
             for step in self.consumers(Step):
                 step.mark_pending()
@@ -277,8 +279,9 @@ class File(Node):
         """
         state = self.get_state()
         if state == FileState.STATIC:
-            # Mark all consumers pending
-            from .step import Step
+            # Mark all consumers pending.
+            # Local import to avoid cyclic imports.
+            from .step import Step  # noqa: PLC0415
 
             for step in self.consumers(Step):
                 step.mark_pending(input_changed=True)
@@ -293,7 +296,8 @@ class File(Node):
         if state == FileState.BUILT:
             logger.info("Mark %s file OUTDATED: %s", state, self.path)
             self.set_state(FileState.OUTDATED)
-            from .step import Step
+            # Local import to avoid cyclic imports.
+            from .step import Step  # noqa: PLC0415
 
             for step in self.consumers(Step):
                 step.mark_pending(input_changed=True)

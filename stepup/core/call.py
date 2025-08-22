@@ -101,7 +101,7 @@ def driver(obj: Any = None):
     result = run(**filtered_kwargs)
 
     # Use a local import because the API is only needed when the driver is called.
-    from .api import amend
+    from .api import amend  # noqa: PLC0415
 
     # Amend inputs using imported modules.
     # This goes a bit against good practice, in the sense that amending should be done early.

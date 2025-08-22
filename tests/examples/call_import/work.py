@@ -3,7 +3,8 @@ from stepup.core.call import driver
 
 
 def run():
-    from helper import func
+    # Local import to test module dependency scanning.
+    from helper import func  # noqa: PLC0415
 
     return func()
 

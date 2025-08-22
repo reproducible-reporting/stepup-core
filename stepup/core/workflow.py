@@ -309,9 +309,7 @@ class Workflow(Cascade):
     def missing_paths(self) -> Iterator[str]:
         """Iterate over static files that have been deleted or were never confirmed."""
         sql = (
-            "SELECT label FROM node JOIN file ON node.i = file.node "
-            "WHERE state = ? AND NOT orphan"
-            ""
+            "SELECT label FROM node JOIN file ON node.i = file.node WHERE state = ? AND NOT orphan"
         )
         for row in self.con.execute(sql, (FileState.MISSING.value,)):
             yield row[0]
