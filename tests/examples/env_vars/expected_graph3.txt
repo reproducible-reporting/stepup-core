@@ -23,6 +23,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
             consumes   file:./
@@ -52,6 +53,7 @@ file:variables.json
 
 step:runpy ./demovars.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:./

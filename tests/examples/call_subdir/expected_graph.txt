@@ -19,6 +19,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -59,6 +60,7 @@ file:scripts/repeat.py
 
 step:runpy ./plan.py  # wd=data/
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:data/
             consumes   file:data/plan.py
@@ -73,6 +75,7 @@ file:data/single.txt
 
 step:runpy ../scripts/repeat.py '{"n": 5, "inp": ["single.txt"], "out": ["multi.txt"]}'  # wd=data/
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py  # wd=data/
             consumes   file:data/
             consumes   file:data/single.txt

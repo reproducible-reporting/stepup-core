@@ -26,6 +26,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
                  ngm = ['head_${*char}.txt', 'tail_${*char}.txt'] {'char': '?'}
            explained = yes
           created by   root:

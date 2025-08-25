@@ -1,6 +1,7 @@
 Changing to ${CASE}/project
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 3 director(y|ies) from initial database
+        0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ ../pkgs/helper.py (digest ec8f09d3 ➜ 2a6225a3)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches

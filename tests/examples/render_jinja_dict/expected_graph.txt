@@ -22,6 +22,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -38,6 +39,7 @@ file:template.txt
 
 step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:template.txt
@@ -52,6 +54,7 @@ file:rendered-trip1.txt
 
 step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:template.txt

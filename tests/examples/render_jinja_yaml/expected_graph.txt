@@ -24,6 +24,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
                  ngm = ['trip*.yaml'] {}
           created by   root:
             consumes   file:./
@@ -55,6 +56,7 @@ file:trip2.yaml
 
 step:render-jinja template.txt trip1.yaml rendered-trip1.txt
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:template.txt
@@ -70,6 +72,7 @@ file:rendered-trip1.txt
 
 step:render-jinja template.txt trip2.yaml rendered-trip2.txt
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:template.txt

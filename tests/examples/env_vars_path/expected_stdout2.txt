@@ -8,11 +8,12 @@
         0/2 |      PHASE │ run
         0/2 |     NOSKIP │ runpy ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest eaa4fd92 ➜ 80e6f0c5, out_digest 786a02f7 ➜ (unset)
+Modified step hash   explained, inp_digest 747b4b89 ➜ 8d022ffe, out_digest 786a02f7 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_PREFIX ='README' ➜ ='FOO'
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 Same inp hash        plan.py
+Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
         0/1 |      START │ runpy ./plan.py
         1/2 |    SUCCESS │ runpy ./plan.py

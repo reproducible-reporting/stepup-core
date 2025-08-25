@@ -236,8 +236,12 @@ def filter_dependencies(paths: Collection[str]) -> set[Path]:
     filtered_paths
         A collection of paths relative to `${STEPUP_ROOT}` that were retained by the filter.
     """
+    # The getenv function from StepUp amends the current step to depend on the variable,
+    # to make sure that all steps using it get re-executed properly.
+    from stepup.core.api import getenv  # noqa: PLC0415
+
     # Parse the ${STEPUP_PATH_FILTER} environment variable.
-    filter_str = os.environ.get("STEPUP_PATH_FILTER", "-venv")
+    filter_str = getenv("STEPUP_PATH_FILTER", "-venv")
     filter_str += ":+.:-/"
     rules = []
     stepup_root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))

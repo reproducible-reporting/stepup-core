@@ -24,6 +24,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -68,6 +69,7 @@ file:pong.txt
 
 step:runpy ./work.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:ping.txt [amended]

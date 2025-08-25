@@ -24,6 +24,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -47,6 +48,7 @@ file:script.py
 
 step:runpy ./script.py plan
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:config.txt
@@ -56,6 +58,7 @@ step:runpy ./script.py plan
 
 step:runpy ./script.py run egg
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./script.py plan
             consumes   file:./
             consumes   file:script.py
@@ -70,6 +73,7 @@ file:out_egg.txt
 
 step:runpy ./script.py run spam
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./script.py plan
             consumes   file:./
             consumes   file:script.py

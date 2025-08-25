@@ -25,6 +25,7 @@ file:plan.py
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_CALL_FORMAT [amended]
+                     = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -62,6 +63,7 @@ file:join_inp.pickle
 
 step:runpy ./join.py --inp=join_inp.pickle --out=join_out.pickle
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:join.py
@@ -78,6 +80,7 @@ file:join_out.pickle
 
 step:runpy ./write.py --inp=join_out.pickle --out=write_out.pickle --amend-out
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:join_out.pickle

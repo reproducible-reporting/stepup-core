@@ -25,6 +25,7 @@ file:plan.py
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_CALL_FORMAT [amended]
+                     = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -56,6 +57,7 @@ file:join_inp.json
 
 step:runpy ./join.py --inp=join_inp.json --out=join_out.json
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:join.py
@@ -72,6 +74,7 @@ file:join_out.json
 
 step:runpy ./write.py --inp=join_out.json --out=write_out.json --amend-out
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:join_out.json

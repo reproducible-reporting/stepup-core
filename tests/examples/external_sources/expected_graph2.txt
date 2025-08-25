@@ -22,6 +22,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -42,6 +43,7 @@ dg:../pkgs/**
 
 step:runpy ./worker.py --out=worker_out.json --amend-out
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:../pkgs/helper.py [amended]
             consumes   file:./

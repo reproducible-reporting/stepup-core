@@ -1,5 +1,6 @@
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |    UPDATED │ inp3.txt

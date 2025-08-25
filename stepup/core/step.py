@@ -386,7 +386,13 @@ class Step(Node):
         return self.con.execute(sql, (self.i,)).fetchone()[0]
 
     def set_rescheduled_info(self, info: str):
-        self.con.execute("UPDATE step SET rescheduled_info = ? WHERE node = ?", (info, self.i))
+        self.con.execute(
+            "UPDATE step SET rescheduled_info = ? WHERE node = ? AND rescheduled_info = ''",
+            (info, self.i),
+        )
+
+    def clear_rescheduled_info(self):
+        self.con.execute("UPDATE step SET rescheduled_info = '' WHERE node = ?", (self.i,))
 
     def get_validate_amended(self) -> bool:
         sql = "SELECT validate_amended FROM step WHERE node = ?"
@@ -735,7 +741,7 @@ class Step(Node):
         # Queue the job.
         logger.info("Queue %s", job.name)
         self.set_state(StepState.QUEUED)
-        self.set_rescheduled_info("")
+        self.clear_rescheduled_info()
         self.set_validate_amended(False)
         self.workflow.job_queue.put_nowait(job)
         self.workflow.job_queue_changed.set()
@@ -765,7 +771,7 @@ class Step(Node):
         - output files that are in state BUILT
         """
         # Clear rescheduled_info
-        self.set_rescheduled_info("")
+        self.clear_rescheduled_info()
 
         # Drop amended suppliers.
         rows = list(

@@ -1,5 +1,6 @@
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest 14035a5d ➜ 0c3561e1, size 256 ➜ 103)
         0/0 |    DELETED │ inp.txt
@@ -8,7 +9,7 @@
         1/2 |      PHASE │ run
         1/2 |  DROPAMEND │ runpy ./plan.py
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   compact ➜ explained, inp_digest 9add9da4 ➜ a392377a, out_digest d26e67b0 ➜ (unset)
+Modified step hash   compact ➜ explained, inp_digest 2275db44 ➜ 4791e844, out_digest d26e67b0 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
         0/1 |      START │ runpy ./plan.py
         1/2 |    SUCCESS │ runpy ./plan.py

@@ -23,6 +23,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
                  ngm = ['inp*.txt'] {}
            explained = yes
           created by   root:

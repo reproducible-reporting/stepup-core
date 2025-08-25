@@ -31,6 +31,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
                  ngm = ['ch-${*ch}-${*name}/'] {'ch': '[0-9]'}
                  ngm = ['ch-1-intro/sec-${*ch}-${*sec}-${*name}.txt'] {'ch': '1', 'sec': '[0-9]'}
                  ngm = ['ch-2-theory/sec-${*ch}-${*sec}-${*name}.txt'] {'ch': '2', 'sec': '[0-9]'}

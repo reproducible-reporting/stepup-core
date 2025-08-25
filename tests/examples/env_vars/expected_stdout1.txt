@@ -13,11 +13,12 @@
         2/3 |      PHASE │ run
         2/3 |     NOSKIP │ runpy ./demovars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest f282d1d5 ➜ 1e81dae1, out_digest 786a02f7 ➜ (unset)
+Modified step hash   explained, inp_digest 286d4d03 ➜ df180cf8, out_digest 786a02f7 ➜ (unset)
 Modified inp hash    variables.json (digest 9fcdaff9 ➜ b38f0cd4, size 35 ➜ 67)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 Same inp hash        demovars.py
+Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |      START │ runpy ./demovars.py
         2/3 |    SUCCESS │ runpy ./demovars.py

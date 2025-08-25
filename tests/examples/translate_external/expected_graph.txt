@@ -21,6 +21,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -73,6 +74,7 @@ file:../public/
 
 step:runpy ./script.py  # wd=../../common/
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:../../common/
             consumes   file:../public/ [amended]

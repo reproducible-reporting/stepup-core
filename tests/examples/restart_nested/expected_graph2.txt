@@ -25,6 +25,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
                  ngm = ['inp?.txt'] {}
                  ngm = ['work?.py'] {}
           created by   root:
@@ -72,6 +73,7 @@ file:work3.py
 
 step:runpy ./work1.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:inp1.txt

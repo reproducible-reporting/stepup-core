@@ -1062,6 +1062,7 @@ class Workflow(Cascade):
                 itertools.chain(["Missing inputs and/or required directories:"], sorted(missing))
             )
         )
+        print(missing)
         return len(missing) == 0, self._build_to_check(deferred)
 
     def _amend_dep(self, idep):

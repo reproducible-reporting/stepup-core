@@ -1,5 +1,6 @@
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest 69db3100 ➜ 5c1bf9f6, size 157 ➜ 119)
         0/0 |    DELETED │ foo.txt
@@ -8,7 +9,7 @@
         1/3 |      PHASE │ run
         1/3 |     NOSKIP │ runpy ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   compact ➜ explained, inp_digest 73080e15 ➜ 9c3e30ac, out_digest 786a02f7 ➜ (unset)
+Modified step hash   compact ➜ explained, inp_digest 5259177a ➜ 53c6eec4, out_digest 786a02f7 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
         0/1 |      START │ runpy ./plan.py
         2/2 |    SUCCESS │ runpy ./plan.py

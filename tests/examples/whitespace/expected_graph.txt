@@ -27,6 +27,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -73,6 +74,7 @@ file:white space leaves a lot of room for mistakes.txt
 
 step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:call is cool.py
@@ -81,6 +83,7 @@ step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' 
 
 step:runpy './script is cool.py' plan
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:script is cool.py
@@ -94,6 +97,7 @@ file:call is cool_out.json
 
 step:runpy './script is cool.py' run
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy './script is cool.py' plan
             consumes   file:./
             consumes   file:README NOW.txt

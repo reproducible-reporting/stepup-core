@@ -117,6 +117,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "optional_cleanup",
         "optional_convert",
         "output_not_created",
+        "path_filter",
         "pending",
         "pending_cleanup",
         "pending_nested",

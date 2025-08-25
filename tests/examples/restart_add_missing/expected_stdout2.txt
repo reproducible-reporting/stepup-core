@@ -1,5 +1,6 @@
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ inp.txt (digest UNKNOWN ➜ f60ce482, size 0 ➜ 6, mode ?--------- ➜ -rw-r--r--)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches

@@ -1,0 +1,32 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:runpy ./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:paths.txt
+            supplies   file:plan.py
+            supplies   step:runpy ./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:runpy ./plan.py
+
+step:runpy ./plan.py
+               state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:paths.txt
+            supplies   file:paths.txt [amended]
+
+file:paths.txt
+               state = VOLATILE
+          created by   step:runpy ./plan.py
+            consumes   file:./
+            consumes   step:runpy ./plan.py

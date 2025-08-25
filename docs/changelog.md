@@ -10,6 +10,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(no changes yet)
+
+## [3.0.5][] - 2025-08-25 {: #v3.0.5 }
+
 This is a minor bugfix release.
 
 ### Fixed
@@ -19,6 +23,8 @@ This is a minor bugfix release.
   When the `optional=True` option is used, the plan step must be mandatory,
   which was not the case.
   With this fix, StepUp can decide which optional run steps need to be executed.
+- Use StepUp's `getenv` to access the `STEPUP_PATH_FILTER` variable,
+  so steps relying on it are re-executed when the variable is updated.
 
 ## [3.0.4][] - 2025-06-25 {: #v3.0.4 }
 
@@ -601,6 +607,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[3.0.5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.5
 [3.0.4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.4
 [3.0.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.3
 [3.0.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.2
