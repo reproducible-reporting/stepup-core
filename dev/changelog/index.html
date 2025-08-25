@@ -1656,7 +1656,16 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v3.0.5" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.0.5 - 2025-08-25
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3.0.5 - 2025-08-25">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2700,7 +2709,16 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v3.0.5" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.0.5 - 2025-08-25
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3.0.5 - 2025-08-25">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3691,6 +3709,8 @@
 and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-based Versioning</a>.
 (Changes to features documented as &ldquo;experimental&rdquo; will not increment macro and meso version numbers.)</p>
 <h2 id="unreleased"><a href="https://github.com/reproducible-reporting/stepup-core">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<p>(no changes yet)</p>
+<h2 id="v3.0.5"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.5">3.0.5</a> - 2025-08-25<a class="headerlink" href="#v3.0.5" title="Permanent link">&para;</a></h2>
 <p>This is a minor bugfix release.</p>
 <h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
 <ul>
@@ -3699,6 +3719,8 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   When the <code>optional=True</code> option is used, the plan step must be mandatory,
   which was not the case.
   With this fix, StepUp can decide which optional run steps need to be executed.</li>
+<li>Use StepUp&rsquo;s <code>getenv</code> to access the <code>STEPUP_PATH_FILTER</code> variable,
+  so steps relying on it are re-executed when the variable is updated.</li>
 </ul>
 <h2 id="v3.0.4"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.4">3.0.4</a> - 2025-06-25<a class="headerlink" href="#v3.0.4" title="Permanent link">&para;</a></h2>
 <h3 id="fixed_1">Fixed<a class="headerlink" href="#fixed_1" title="Permanent link">&para;</a></h3>
