@@ -461,7 +461,7 @@ class DirectorHandler:
         """Reschedule a step for the given reason."""
         async with self.dblock:
             step = self.workflow.node(Step, step_i)
-            step.set_rescheduled_info(reason)
+            step.add_rescheduled_info(reason)
 
     @allow_rpc
     async def getinfo(self, step_i: int) -> StepInfo:

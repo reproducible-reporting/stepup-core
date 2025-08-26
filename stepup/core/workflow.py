@@ -1055,14 +1055,12 @@ class Workflow(Cascade):
             new_idep = file.add_supplier(step)
             self._amend_dep(new_idep)
 
-        step.set_rescheduled_info(
-            ""
-            if len(missing) == 0
-            else "\n".join(
-                itertools.chain(["Missing inputs and/or required directories:"], sorted(missing))
+        if len(missing) > 0:
+            step.add_rescheduled_info(
+                "Missing inputs and/or required directories:\n"
+                + "\n".join(itertools.chain(sorted(missing)))
             )
-        )
-        print(missing)
+
         return len(missing) == 0, self._build_to_check(deferred)
 
     def _amend_dep(self, idep):

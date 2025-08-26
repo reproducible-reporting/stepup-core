@@ -385,10 +385,13 @@ class Step(Node):
         sql = "SELECT rescheduled_info FROM step WHERE node = ?"
         return self.con.execute(sql, (self.i,)).fetchone()[0]
 
-    def set_rescheduled_info(self, info: str):
+    def add_rescheduled_info(self, info: str):
+        print("HERE", info)
         self.con.execute(
-            "UPDATE step SET rescheduled_info = ? WHERE node = ? AND rescheduled_info = ''",
-            (info, self.i),
+            "UPDATE step SET rescheduled_info = CASE rescheduled_info"
+            " WHEN '' THEN :info ELSE CONCAT(rescheduled_info, '\n', :info) END"
+            " WHERE node = :i",
+            {"info": info, "i": self.i},
         )
 
     def clear_rescheduled_info(self):

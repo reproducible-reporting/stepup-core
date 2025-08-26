@@ -2454,3 +2454,17 @@ def test_get_file_hashes(wfp: Workflow):
         ("data.txt", fake_hash("data.txt")),
         ("other.txt", FileHash.unknown()),
     ]
+
+
+def test_add_rescheduled_info(wfs: Workflow):
+    wfs.define_step(wfs.root, "echo")
+    echo = wfs.find(Step, "echo")
+    echo.add_rescheduled_info("because, like...\n...you know, right")
+    assert echo.get_rescheduled_info().splitlines() == ["because, like...", "...you know, right"]
+    echo.add_rescheduled_info("you know what...\n...I mean, come on!")
+    assert echo.get_rescheduled_info().splitlines() == [
+        "because, like...",
+        "...you know, right",
+        "you know what...",
+        "...I mean, come on!",
+    ]
