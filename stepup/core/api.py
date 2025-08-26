@@ -358,6 +358,13 @@ class InputNotFoundError(Exception):
     """Raised when amended inputs are not available yet."""
 
 
+# A history used to avoid amending the same information twice.
+# This effectively reduces the amount of amend API calls.
+AMEND_HISTORY = {
+    "step_i": None,
+}
+
+
 def amend(
     *,
     inp: Collection[str] | str = (),
@@ -410,12 +417,34 @@ def amend(
     env_vars = set(env_vars)
     with subs_env_vars() as subs:
         su_inp_paths = [subs(inp_path) for inp_path in inp_paths]
-        tr_inp_paths = [translate(inp_path) for inp_path in su_inp_paths]
-        tr_out_paths = [translate(subs(out_path)) for out_path in out_paths]
-        tr_vol_paths = [translate(subs(vol_path)) for vol_path in vol_paths]
+        tr_inp_paths = {translate(inp_path) for inp_path in su_inp_paths}
+        tr_out_paths = {translate(subs(out_path)) for out_path in out_paths}
+        tr_vol_paths = {translate(subs(vol_path)) for vol_path in vol_paths}
+
+    # Clear the history if the worker started a new step.
+    step_i = _get_step_i()
+    if step_i != AMEND_HISTORY["step_i"]:
+        AMEND_HISTORY["step_i"] = step_i
+        AMEND_HISTORY["inp"] = set()
+        AMEND_HISTORY["env"] = set()
+        AMEND_HISTORY["out"] = set()
+        AMEND_HISTORY["vol"] = set()
+
+    # Filter out previously amended information
+    tr_inp_paths.difference_update(AMEND_HISTORY["inp"])
+    env_vars.difference_update(AMEND_HISTORY["env"])
+    tr_out_paths.difference_update(AMEND_HISTORY["out"])
+    tr_vol_paths.difference_update(AMEND_HISTORY["vol"])
+
+    if (
+        len(tr_inp_paths) == 0
+        and len(env_vars) == 0
+        and len(tr_out_paths) == 0
+        and len(tr_vol_paths) == 0
+    ):
+        return
 
     # Finally, amend for real.
-    step_i = _get_step_i()
     amend_result = RPC_CLIENT.call.amend(
         step_i,
         tr_inp_paths,
@@ -430,6 +459,12 @@ def amend(
         _check_deferred(to_check, step_i)
     # Double check that all inputs are indeed present.
     _check_inp_paths(su_inp_paths)
+
+    # Update the amendment history
+    AMEND_HISTORY["inp"].update(tr_inp_paths)
+    AMEND_HISTORY["env"].update(env_vars)
+    AMEND_HISTORY["out"].update(tr_out_paths)
+    AMEND_HISTORY["vol"].update(tr_vol_paths)
 
 
 def getinfo() -> StepInfo:

@@ -10,7 +10,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+(no summary yet)
+
+### Changed
+
+- Improved performance of the amend API by reducing the number of calls.
 
 ## [3.0.5][] - 2025-08-25 {: #v3.0.5 }
 
