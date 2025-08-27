@@ -10,7 +10,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no summary yet)
+(no changes yet)
+
+## [3.0.6][] - 2025-08-27 {: #v3.0.6 }
+
+This minor release improves the performance of the amend API.
 
 ### Changed
 
@@ -611,6 +615,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[3.0.6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.6
 [3.0.5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.5
 [3.0.4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.4
 [3.0.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.3
