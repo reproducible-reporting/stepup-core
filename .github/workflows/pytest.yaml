@@ -26,8 +26,12 @@ jobs:
   tests:
     strategy:
       matrix:
-        python-version: ['3.11', '3.13']
-    runs-on: ubuntu-latest
+        include:
+          - python-version: '3.11'
+            ubuntu-version: '22.04'
+          - python-version: '3.13'
+            ubuntu-version: '24.04'
+    runs-on: ubuntu-${{ matrix.ubuntu-version }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
