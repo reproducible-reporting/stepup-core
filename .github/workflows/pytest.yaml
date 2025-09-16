@@ -43,7 +43,7 @@ jobs:
       - name: Install oldest versions of supported dependencies
         if: ${{ matrix.python-version == '3.11'}}
         run: pip install -r .github/requirements-old.txt
-      - name: Install development version
+      - name: Install latest commit version with all development dependencies
         run: pip install -e .[dev]
       - name: Run pytest
         # Enfore strict checks instead of trying to repair fixable issues.

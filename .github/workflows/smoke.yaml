@@ -36,8 +36,10 @@ jobs:
       - name: Install oldest versions of supported dependencies
         if: ${{ matrix.python-version == '3.11'}}
         run: pip install -r .github/requirements-old.txt
-      - name: Install development version
-        run: pip install -e .
+      - name: Setup Graphviz
+        uses: ts-graphviz/setup-graphviz@v2
+      - name: Install latest commit version and matplotlib
+        run: pip install -e . matplotlib
       - name: Run a simple example
         run: |
           cd docs
