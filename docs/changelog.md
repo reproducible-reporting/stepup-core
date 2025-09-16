@@ -12,6 +12,15 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no changes yet)
 
+## [3.0.7][] - 2025-09-16 {: #v3.0.7 }
+
+This minor release restores compatibility with older SQLite versions (<3.44.0).
+
+### Changed
+
+- Replace the `CONCAT` command by the `||` operator in SQL queries
+  to restore compatibility with SQLite versions older than 3.44.0.
+
 ## [3.0.6][] - 2025-08-27 {: #v3.0.6 }
 
 This minor release improves the performance of the amend API.
@@ -615,6 +624,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[3.0.7]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.7
 [3.0.6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.6
 [3.0.5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.5
 [3.0.4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.4

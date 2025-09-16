@@ -389,7 +389,7 @@ class Step(Node):
         print("HERE", info)
         self.con.execute(
             "UPDATE step SET rescheduled_info = CASE rescheduled_info"
-            " WHEN '' THEN :info ELSE CONCAT(rescheduled_info, '\n', :info) END"
+            " WHEN '' THEN :info ELSE (rescheduled_info || '\n' || :info) END"
             " WHERE node = :i",
             {"info": info, "i": self.i},
         )
