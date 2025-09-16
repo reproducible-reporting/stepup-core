@@ -12,6 +12,15 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no changes yet)
 
+## [3.0.8][] - 2025-09-16 {: #v3.0.8 }
+
+This minor release primarily fixes some testing issues.
+
+### Changed
+
+- Drop amend cache manually at the start of a new step.
+  This avoids cache errors when rerunning the same step on the same worker process.
+
 ## [3.0.7][] - 2025-09-16 {: #v3.0.7 }
 
 This minor release restores compatibility with older SQLite versions (<3.44.0).
@@ -624,6 +633,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[3.0.8]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.8
 [3.0.7]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.7
 [3.0.6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.6
 [3.0.5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.5

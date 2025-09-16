@@ -553,13 +553,17 @@ class WorkThread(threading.Thread):
             # Run some sanity checks
             if not callable(action_func):
                 raise TypeError(f"Action {action_name} is not callable.")
-            # Check if the function exists and has the right signature
+            # Check if the function has the right signature
             sgn = inspect.signature(action_func)
             if sgn.return_annotation is not int:
                 raise TypeError(f"Action {action_name} does not return an int.")
             kwargs = {"argstr": argstr}
             if "work_thread" in sgn.parameters:
                 kwargs["work_thread"] = self
+            # Clean the amend cache
+            from .api import _drop_amend_history  # noqa: PLC0415
+
+            _drop_amend_history()
             # Finally run the action
             returncode = action_func(**kwargs)
             if not isinstance(returncode, int):

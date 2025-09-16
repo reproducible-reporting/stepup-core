@@ -360,9 +360,17 @@ class InputNotFoundError(Exception):
 
 # A history used to avoid amending the same information twice.
 # This effectively reduces the amount of amend API calls.
-AMEND_HISTORY = {
-    "step_i": None,
-}
+AMEND_HISTORY = {}
+
+
+def _drop_amend_history():
+    AMEND_HISTORY["inp"] = set()
+    AMEND_HISTORY["env"] = set()
+    AMEND_HISTORY["out"] = set()
+    AMEND_HISTORY["vol"] = set()
+
+
+_drop_amend_history()
 
 
 def amend(
@@ -421,15 +429,6 @@ def amend(
         tr_out_paths = {translate(subs(out_path)) for out_path in out_paths}
         tr_vol_paths = {translate(subs(vol_path)) for vol_path in vol_paths}
 
-    # Clear the history if the worker started a new step.
-    step_i = _get_step_i()
-    if step_i != AMEND_HISTORY["step_i"]:
-        AMEND_HISTORY["step_i"] = step_i
-        AMEND_HISTORY["inp"] = set()
-        AMEND_HISTORY["env"] = set()
-        AMEND_HISTORY["out"] = set()
-        AMEND_HISTORY["vol"] = set()
-
     # Filter out previously amended information
     tr_inp_paths.difference_update(AMEND_HISTORY["inp"])
     env_vars.difference_update(AMEND_HISTORY["env"])
@@ -445,6 +444,7 @@ def amend(
         return
 
     # Finally, amend for real.
+    step_i = _get_step_i()
     amend_result = RPC_CLIENT.call.amend(
         step_i,
         tr_inp_paths,
