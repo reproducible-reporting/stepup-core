@@ -1066,6 +1066,7 @@ def loadns(
     paths_variables
         paths of Python, JSON, TOML or YAML files containing variable definitions.
         They are loaded in the given order, so later variable definitions may overrule earlier ones.
+        Environment variables in path names are substituted.
     dir_out
         This is used to translate paths defined in the variables files
         (relative to parent of the variable file)
@@ -1080,8 +1081,13 @@ def loadns(
     variables
         A namespace with the variables.
     """
+    # Process arguments
     if dir_out is None:
         dir_out = Path.cwd()
+    with subs_env_vars() as subs:
+        paths_variables = [subs(path_var) for path_var in paths_variables]
+
+    # Build a dictionary of variables
     variables = {}
     for path_var in paths_variables:
         path_var = Path(path_var)
@@ -1111,6 +1117,8 @@ def loadns(
             raise ValueError(f"unsupported variable file format: {path_var}")
     if do_amend:
         amend(inp=paths_variables)
+
+    # Return as a namespace
     return argparse.Namespace(**variables)
 
 
@@ -1207,7 +1215,7 @@ def render_jinja(
 
 
 @contextlib.contextmanager
-def subs_env_vars() -> Iterator[Callable[[str | None], str | None]]:
+def subs_env_vars() -> Iterator[Callable[[str | None], Path | None]]:
     """A context manager for substituting environment variables and tracking the used variables.
 
     The context manager yields a function, `subs`, which takes a string with variables and

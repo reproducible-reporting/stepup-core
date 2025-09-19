@@ -124,7 +124,7 @@ def test_loadns_py1(path_tmp):
     assert ns.a == 10
 
 
-def test_lloadns_py2(path_tmp):
+def test_loadns_py2(path_tmp):
     path_foo = path_tmp / "foo.py"
     with open(path_foo, "w") as fh:
         print("a = 10", file=fh)
@@ -132,4 +132,13 @@ def test_lloadns_py2(path_tmp):
     with open(path_bar, "w") as fh:
         print("from foo import a", file=fh)
     ns = loadns(path_bar)
+    assert ns.a == 10
+
+
+def test_loadns_json(path_tmp, monkeypatch):
+    path_foo = path_tmp / "foo.json"
+    with open(path_foo, "w") as fh:
+        print('{"a": 10}', file=fh)
+    monkeypatch.setenv("STEPUP_LOADNS_JSON_FOO", "foo")
+    ns = loadns(path_tmp / "${STEPUP_LOADNS_JSON_FOO}.json")
     assert ns.a == 10

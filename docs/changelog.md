@@ -12,6 +12,14 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no changes yet)
 
+## [3.0.9][] - 2025-09-19 {: #v3.0.9 }
+
+This minor release with an improve `loadns()` function
+
+### Changed
+
+- The `loadns()` function now also accepts path arguments containing environment variables.
+
 ## [3.0.8][] - 2025-09-16 {: #v3.0.8 }
 
 This minor release primarily fixes some testing issues.
@@ -633,6 +641,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[3.0.9]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.9
 [3.0.8]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.8
 [3.0.7]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.7
 [3.0.6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.6
