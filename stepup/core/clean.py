@@ -31,7 +31,7 @@ from rich.table import Table
 from .cascade import DROP_CONSUMERS, INITIAL_CONSUMERS, RECURSE_CONSUMERS
 from .enums import FileState
 from .hash import FileHash
-from .utils import mynormpath, translate, translate_back
+from .utils import mynormpath, sqlite3_copy_in_memory, translate, translate_back
 
 
 def clean_subcommand(subparser: argparse.ArgumentParser) -> callable:
@@ -70,19 +70,11 @@ def clean_tool(args: argparse.Namespace):
             lo_path /= ""
         tr_paths.add(translate(lo_path))
 
-    # Copy the database in memory, close it and work on the copy.
+    # Copy the database in memory and work on the copy.
     root = Path(os.getenv("STEPUP_ROOT", "."))
     path_db = root / ".stepup/graph.db"
-    dst = sqlite3.Connection(":memory:")
-    try:
-        src = sqlite3.Connection(path_db)
-        try:
-            src.backup(dst)
-        finally:
-            src.close()
-        clean(dst, tr_paths, args)
-    finally:
-        dst.close()
+    with sqlite3_copy_in_memory(path_db) as con:
+        clean(con, tr_paths, args)
 
 
 def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace):

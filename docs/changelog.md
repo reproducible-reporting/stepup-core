@@ -10,7 +10,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+(no summary yet)
+
+### Added
+
+- The `stepup browse` command visualizes the graph in a web browser.
 
 ## [3.0.9][] - 2025-09-19 {: #v3.0.9 }
 

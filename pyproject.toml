@@ -63,6 +63,7 @@ stepup = "stepup.core.__main__:main"
 
 [project.entry-points."stepup.tools"]
 act = "stepup.core.actions:act_subcommand"
+browse = "stepup.core.browse:browse_subcommand"
 boot = "stepup.core.tui:boot_subcommand"
 clean = "stepup.core.clean:clean_subcommand"
 drain = "stepup.core.interact:drain_subcommand"

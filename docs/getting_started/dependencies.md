@@ -118,6 +118,25 @@ Example:
 - The new `plan.py` can also define new nodes, which simply extend the graph.
 - Nodes that are recreated with different properties will override any existing orphaned nodes.
 
+## Exploration of the Graph in a Web Browser
+
+You can explore the graph interactively in a web browser using the `stepup browse` command.
+Run the following command in the same directory as above:
+
+```bash
+stepup browse
+```
+
+This will show the following output:
+
+```text
+Server started http://localhost:8000
+Press Ctrl+C to stop the server.
+```
+
+Open this link in a web browser to inspect every node in the graph.
+The web server will load the graph in memory and will only reload it when requested.
+
 ## Try the Following
 
 - Run `stepup boot -n 2` again. As expected, the steps are now skipped.

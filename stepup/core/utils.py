@@ -20,13 +20,14 @@
 """Small utilities used throughout."""
 
 import asyncio
+import contextlib
 import os
 import re
 import shlex
 import sqlite3
 import string
 import sys
-from collections.abc import Collection
+from collections.abc import Collection, Iterator
 
 import attrs
 from path import Path
@@ -407,3 +408,18 @@ def string_to_bool(v: str | bool) -> bool:
             return False
         raise ValueError(f"Cannot interpret '{v}' as a boolean value.")
     raise TypeError(f"Expected a boolean value or string. Got {type(v).__name__}")
+
+
+@contextlib.contextmanager
+def sqlite3_copy_in_memory(path_db) -> Iterator[sqlite3.Connection]:
+    """Copy an SQLite database into memory and yield the connection."""
+    dst = sqlite3.Connection(":memory:")
+    try:
+        src = sqlite3.Connection(path_db)
+        try:
+            src.backup(dst)
+        finally:
+            src.close()
+        yield dst
+    finally:
+        dst.close()
