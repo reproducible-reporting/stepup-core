@@ -2,210 +2,210 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/changelog/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/development/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/installation/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/license/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/amending_static_inputs/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/amending_steps/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/blocked_steps/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/cyclic_dependencies/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/environment_variables/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/here_and_root/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/introduction/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/manual_cleaning/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/optional_steps/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/pools/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/render_jinja/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/static_deferred_glob/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/static_named_glob/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/step_info/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/stepup_root/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/variable_substitution/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/volatile_outputs/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/extending/action/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/extending/api/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/extending/introduction/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/extending/tool/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/automatic_cleaning/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/call/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/copy_mkdir/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/dependencies/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/distributed_plans/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/failing_steps/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/first_runpy/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/first_step/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/interactive_usage/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/introduction/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/load_namespace/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/no_rules/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/script_multiple/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/script_single/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/static_files/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/static_glob/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/static_glob_conditional/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/getting_started/workdir/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/reference/environment_variables/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/reference/interactive/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/reference/returncode/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/reference/stepup.core.api/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/reference/stepup.core.call/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/reference/stepup.core.nglob/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/reference/stepup.core.script/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/reference/stepup.core.stepinfo/</loc>
-         <lastmod>2025-09-27</lastmod>
+         <lastmod>2025-09-28</lastmod>
     </url>
 </urlset>
