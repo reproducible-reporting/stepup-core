@@ -10,6 +10,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(no changes yet)
+
 ## [3.1.0][] - 2025-09-28 {: #v3.1.0 }
 
 Graph browser (`stepup browse`) and improved `loadns()` function.
