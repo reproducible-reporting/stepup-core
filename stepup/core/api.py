@@ -52,6 +52,7 @@ from .utils import (
     make_path_out,
     mynormpath,
     myparent,
+    myrelpath,
     string_to_list,
     translate,
     translate_back,
@@ -1110,8 +1111,10 @@ def loadns(
                 finally:
                     sys.path.remove(dir_py)
             for name, value in current.items():
+                if name.startswith("_"):
+                    continue
                 if isinstance(value, Path):
-                    value = value.relpath(dir_out)
+                    value = myrelpath(value, dir_out)
                 variables[name] = value
         else:
             raise ValueError(f"unsupported variable file format: {path_var}")

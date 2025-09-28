@@ -10,11 +10,19 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no summary yet)
+## [3.1.0][] - 2025-09-28 {: #v3.1.0 }
+
+Graph browser (`stepup browse`) and improved `loadns()` function.
 
 ### Added
 
 - The `stepup browse` command visualizes the graph in a web browser.
+
+### Changed
+
+- Improved handling of variables in `loadns()` function:
+    - Keep trailing slashes in directory paths.
+    - Skip variables starting with `_`.
 
 ## [3.0.9][] - 2025-09-19 {: #v3.0.9 }
 
@@ -645,6 +653,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[3.1.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.1.0
 [3.0.9]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.9
 [3.0.8]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.8
 [3.0.7]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.7
