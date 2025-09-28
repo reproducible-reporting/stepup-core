@@ -1,0 +1,46 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:runpy ./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:foo.txt
+            supplies   file:plan.py
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh cat foo.txt
+
+file:plan.py
+               state = STATIC
+              digest = 93a71952 c0b7ae7f 75e3cc01 2c78c1dd 34c1581b 6b6f6988 7ecc1691 e8a11805
+                     = c06cfff6 cac658dd cb03a194 6d8aefe9 8c018060 90ddad78 522a3f82 310a4dcf
+          created by   root:
+            consumes   file:./
+            supplies   step:runpy ./plan.py
+
+step:runpy ./plan.py
+               state = RUNNING
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   dg:*.txt
+             creates   step:runsh cat foo.txt
+
+dg:*.txt
+          created by   step:runpy ./plan.py
+             creates   file:foo.txt
+
+step:runsh cat foo.txt
+               state = QUEUED
+          created by   step:runpy ./plan.py
+            consumes   file:./
+            consumes   file:foo.txt
+
+file:foo.txt
+               state = STATIC
+              digest = 0c64fa0d 9b93cfe0 46d049cd 30640438 385cec99 cf27db48 ad87ebb0 0f9d727d
+                     = 646e46e6 ded92d12 458876d7 ba4f147d 6401a78e ffb2f12d 0595392c 89cf2784
+          created by   dg:*.txt
+            consumes   file:./
+            supplies   step:runsh cat foo.txt

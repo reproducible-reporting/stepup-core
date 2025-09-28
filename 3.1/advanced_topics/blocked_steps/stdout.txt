@@ -1,0 +1,16 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ runpy ./plan.py
+   SUCCESS │ runpy ./plan.py
+     START │ runsh echo hello > a.txt
+   SUCCESS │ runsh echo hello > a.txt
+   WARNING │ 2 step(s) remained pending due to blocked steps
+──────────────────────────────── Blocked steps ─────────────────────────────────
+step:copy a.txt b.txt
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping file cleanup due to incomplete build
+   WARNING │ Check logs: .stepup/warning.log
+  DIRECTOR │ Stopping workers
+  DIRECTOR │ See you!

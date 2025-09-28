@@ -1,0 +1,7 @@
+backend: Agg
+figure.figsize: 6, 4
+figure.dpi: 150
+figure.constrained_layout.use: True
+axes.spines.top: False
+axes.spines.right: False
+savefig.dpi: 150

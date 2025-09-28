@@ -1,0 +1,13 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ runpy ./plan.py
+   SUCCESS │ runpy ./plan.py
+     START │ runpy ./wavegen.py '{"freq": 440.0, "duration": 1.0}' --out=wave1.json
+   SUCCESS │ runpy ./wavegen.py '{"freq": 440.0, "duration": 1.0}' --out=wave1.json
+     START │ runpy ./wavegen.py '{"freq": 380.0, "duration": 0.5, "rate": 22050}' --out=wave2.json
+   SUCCESS │ runpy ./wavegen.py '{"freq": 380.0, "duration": 0.5, "rate": 22050}' --out=wave2.json
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Stopping workers
+  DIRECTOR │ See you!

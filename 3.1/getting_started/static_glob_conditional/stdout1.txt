@@ -1,0 +1,16 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ runpy ./plan.py
+   SUCCESS │ runpy ./plan.py
+     START │ runsh ./expensive.py
+   SUCCESS │ runsh ./expensive.py
+     START │ runsh cat average.txt
+   SUCCESS │ runsh cat average.txt
+─────────────────────────────── Standard output ────────────────────────────────
+2.580000
+────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Stopping workers
+  DIRECTOR │ See you!
