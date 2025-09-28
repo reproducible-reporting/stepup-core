@@ -126,6 +126,15 @@ HTML_TEMPLATE = """\
     a:hover {
       text-decoration: underline;
     }
+    a#reload {
+      font-size: 1em;
+      border-radius: 4px;
+      margin: 5px;
+      padding: 3px 8px 3px 8px;
+      color: var(--background-color);
+      border: 0px;
+      background-color: var(--link-color);
+    }
     header {
     }
     main {
@@ -142,6 +151,7 @@ HTML_TEMPLATE = """\
       border-radius: 4px;
       margin: 5px;
       padding: 10px;
+      cursor: pointer;
     }
     input[type=text] {
       box-sizing: border-box;
@@ -169,7 +179,7 @@ HTML_TEMPLATE = """\
     .yes { color: var(--green); }
     .no { color: var(--red); }
     .required { color: var(--blue); }
-    td {
+    table.list tr td {
       vertical-align: top;
       padding-top: 2px;
       padding-bottom: 2px;
@@ -191,7 +201,7 @@ HTML_TEMPLATE = """\
 <body>
   <header>
     <a href="/"><h1>StepUp Graph Browser</h1></a>
-    <p>{{ path_db }} <a href="{{ reload_url }}">↻</a></p>
+    <p>{{ path_db }} <a id="reload" href="{{ reload_url }}">↻</a></p>
     <hr>
   </header>
   <main>
@@ -374,7 +384,7 @@ class GraphServer(BaseHTTPRequestHandler):
         ).fetchone()
         if creator is not None:
             yield "<h3>Creator</h3>"
-            yield "<table>"
+            yield '<table class="list">'
             creator_kind, creator_label, creator_orphan, creator_state_i = creator
             yield self._format_node(
                 creator_i, creator_kind, creator_label, creator_orphan, creator_state_i
@@ -383,7 +393,7 @@ class GraphServer(BaseHTTPRequestHandler):
 
         # Format the products
         yield "<h3>Products</h3>"
-        yield "<table>"
+        yield '<table class="list">'
         for prod_i, prod_kind, prod_label, state in self.con.execute(
             f"SELECT i, kind, label, {STATE_SQL} FROM node WHERE creator = ? ORDER BY kind, label",
             (node_i,),
@@ -393,7 +403,7 @@ class GraphServer(BaseHTTPRequestHandler):
 
         # Format the consumers
         yield "<h3>Consumers</h3>"
-        yield "<table>"
+        yield '<table class="list">'
         for cons_i, cons_kind, cons_label, amended, state in self.con.execute(
             f"SELECT node.i, kind, label, dependency.i IN amended_dep, {STATE_SQL} FROM node "
             "JOIN dependency ON dependency.consumer = node.i "
@@ -408,7 +418,7 @@ class GraphServer(BaseHTTPRequestHandler):
 
         # Format the suppliers
         yield "<h3>Suppliers</h3>"
-        yield "<table>"
+        yield '<table class="list">'
         for sup_i, sup_kind, sup_label, amended, state in self.con.execute(
             f"SELECT node.i, kind, label, dependency.i IN amended_dep, {STATE_SQL} FROM node "
             "JOIN dependency ON dependency.supplier = node.i "
@@ -450,7 +460,7 @@ class GraphServer(BaseHTTPRequestHandler):
             )
         rows = list(cur)
         yield f"<p><b>Number of matches:</b> {len(rows)}</p>"
-        yield "<table>"
+        yield '<table class="list">'
         for i, kind, label, orphan, state in rows:
             yield f"{self._format_node(i, kind, label, orphan, state)}"
         yield "</table>"
