@@ -12,6 +12,15 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no changes yet)
 
+## [3.1.1][] - 2025-09-30 {: #v3.1.1 }
+
+Minor bugfix release.
+
+### Fixed
+
+- Skip dynamically created modules with an ad hoc filename as their `__file__` attribute,
+  when tracking local imports of `runpy` actions.
+
 ## [3.1.0][] - 2025-09-28 {: #v3.1.0 }
 
 Graph browser (`stepup browse`) and improved `loadns()` function.
@@ -655,6 +664,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[3.1.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.1.1
 [3.1.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.1.0
 [3.0.9]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.9
 [3.0.8]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.8

@@ -278,13 +278,19 @@ def get_local_import_paths(script_path: Path | None = None) -> list[str]:
     """Get all local files from `sys.modules`.
 
     Files are only included if they match the `${STEPUP_PATH_FILTER}` environment variable.
+    Non-existing files will be ignored, as they can only be the result of a dynamically created
+    module, as in issue https://github.com/reproducible-reporting/stepup-core/issues/21
+    There is no risk of missing files that still need to be created,
+    as all imports have already been successfully resolved already at this point.
     """
 
     def iter_module_paths():
         for module in sys.modules.values():
             mod_path = getattr(module, "__file__", None)
             if not (mod_path is None or mod_path.startswith("<")):
-                yield mod_path
+                mod_path = mynormpath(mod_path)
+                if mod_path.exists():
+                    yield mod_path
 
     mod_paths = filter_dependencies(iter_module_paths())
     # The script path is already included in the inputs.

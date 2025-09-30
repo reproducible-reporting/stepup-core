@@ -72,6 +72,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "deferred_glob2",
         "deferred_nonexisting_dir",
         "deferred_subdir",
+        "dynamic_module",
         "env_vars",
         "env_vars_amend",
         "env_vars_multi",
