@@ -14,10 +14,15 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [3.1.1][] - 2025-09-30 {: #v3.1.1 }
 
-Minor bugfix release.
+Minor bugfix release and a basic logo.
+
+### Added
+
+- A basic logo for the documentation and the graph browser.
 
 ### Fixed
 
+- Exclude irrelevant files from Python package.
 - Skip dynamically created modules with an ad hoc filename as their `__file__` attribute,
   when tracking local imports of `runpy` actions.
 

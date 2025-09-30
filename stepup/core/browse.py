@@ -21,6 +21,7 @@
 
 import argparse
 import contextlib
+import importlib.resources
 import os
 import sqlite3
 import stat
@@ -68,6 +69,7 @@ HTML_TEMPLATE = """\
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" href="/logo.svg">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StepUp Graph Browser</title>
@@ -288,6 +290,15 @@ class GraphServer(BaseHTTPRequestHandler):
         env = jinja2.Environment(**env_kwargs)
 
         response_code = 200
+
+        if parsed.path == "/logo.svg":
+            self.send_response(200)
+            self.send_header("Content-type", "image/svg+xml")
+            self.end_headers()
+            data_svg = importlib.resources.files("stepup.core").joinpath("logo.svg").read_bytes()
+            self.wfile.write(data_svg)
+            return
+
         try:
             if parsed.path == "/":
                 main = self._main(env)

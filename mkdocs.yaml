@@ -28,6 +28,8 @@ extra:
     default: stable
 
 theme:
+  logo: logo.svg
+  favicon: logo.svg
   name: material
   custom_dir: overrides
   font:
