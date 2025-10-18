@@ -565,7 +565,10 @@ class WorkThread(threading.Thread):
 
             _drop_amend_history()
             # Finally run the action
-            returncode = action_func(**kwargs)
+            try:
+                returncode = action_func(**kwargs)
+            except SystemExit as exc:
+                returncode = exc.code if isinstance(exc.code, int) else 1
             if not isinstance(returncode, int):
                 raise TypeError(f"Action {action_name} does not return an int.")
             self.returncode = returncode

@@ -10,7 +10,13 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+(no summary yet)
+
+### Fixed
+
+- In worker processes, catch `SystemExit` exceptions from action functions
+  to set the return code of the action appropriately.
+  This avoids confusing tracebacks when an action calls `sys.exit()`.
 
 ## [3.1.1][] - 2025-09-30 {: #v3.1.1 }
 
