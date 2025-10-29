@@ -355,8 +355,8 @@ class GraphServer(BaseHTTPRequestHandler):
         if not args["i"][0].isdigit():
             raise ValueError("Node ID 'i' must be an integer.")
         node_i = int(args["i"][0])
-        (kind, label, creator_i, orphan) = self.con.execute(
-            "SELECT kind, label, creator, orphan FROM node WHERE i = ?", (node_i,)
+        (kind, label, creator_i) = self.con.execute(
+            "SELECT kind, label, creator FROM node WHERE i = ?", (node_i,)
         ).fetchone()
         yield f"<h2>Node {node_i}</h2>"
         yield f"<p><b>Kind:</b> {KIND_NAMES.get(kind, kind)}</p>"
