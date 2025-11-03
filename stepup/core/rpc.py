@@ -202,7 +202,7 @@ async def _handle_request(handler, name: str, args: list, kwargs: dict) -> tuple
             raise RPCError(f"Invalid arguments: {fmt_rpc_call(name, args, kwargs)}") from exc
         bound.apply_defaults()
         result = call(*bound.args, **bound.kwargs)
-        if asyncio.iscoroutinefunction(call):
+        if inspect.iscoroutinefunction(call):
             result = await result
         return result, False
     except BaseException as exc:  # noqa: BLE001

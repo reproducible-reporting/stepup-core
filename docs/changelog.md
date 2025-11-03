@@ -12,6 +12,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no summary yet)
 
+### Added
+
+- Tested with Python 3.14.
+
 ### Fixed
 
 - In worker processes, catch `SystemExit` exceptions from action functions
