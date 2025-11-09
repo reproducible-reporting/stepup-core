@@ -27,7 +27,7 @@ import pytest
 from stepup.core.scheduler import Pool, Scheduler
 
 
-@attrs.define(frozen=True)
+@attrs.define(frozen=True, order=True)
 class MockJob:
     _key: str = attrs.field()
     _pool: str = attrs.field()

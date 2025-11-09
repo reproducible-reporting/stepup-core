@@ -34,7 +34,7 @@ __all__ = ("Job", "RunJob", "ValidateAmendedJob")
 
 
 @attrs.define(frozen=True)
-class Job:
+class Job:  # noqa: PLW1641
     """A job managed by the scheduler."""
 
     step: "Step" = attrs.field()
@@ -42,6 +42,9 @@ class Job:
 
     _pool: str | None = attrs.field()
     """The pool in which the job should be executed, or None for no restriction."""
+
+    priority: tuple[int | float, ...] = attrs.field()
+    """The priority of the job, lower values indicate higher priority."""
 
     inp_hashes: list[tuple[str, "FileHash"]] = attrs.field()
     """The input hashes of the step, as a list of tuples (name, hash)."""
@@ -51,6 +54,39 @@ class Job:
 
     step_hash: "StepHash" = attrs.field()
     """The hash of the step if it was previously executed, or None if it was not."""
+
+    # Implement comparison in the base class,
+    # so jobs of different sub classes can be sorted by priority.
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Job):
+            return False
+        return self.priority == other.priority
+
+    def __ne__(self, other: object) -> bool:
+        if not isinstance(other, Job):
+            return True
+        return self.priority != other.priority
+
+    def __lt__(self, other: "Job") -> bool:
+        if not isinstance(other, Job):
+            return TypeError("Cannot compare Job with non-Job")
+        return self.priority < other.priority
+
+    def __le__(self, other: "Job") -> bool:
+        if not isinstance(other, Job):
+            return TypeError("Cannot compare Job with non-Job")
+        return self.priority <= other.priority
+
+    def __gt__(self, other: "Job") -> bool:
+        if not isinstance(other, Job):
+            return TypeError("Cannot compare Job with non-Job")
+        return self.priority > other.priority
+
+    def __ge__(self, other: "Job") -> bool:
+        if not isinstance(other, Job):
+            return TypeError("Cannot compare Job with non-Job")
+        return self.priority >= other.priority
 
     @property
     def pool(self) -> str | None:
@@ -104,7 +140,9 @@ class ValidateAmendedJob(Job):
         when amended inputs become available.
         """
         if must_run:
-            run_job = RunJob(self.step, self._pool, self.inp_hashes, self.env_vars, None)
+            run_job = RunJob(
+                self.step, self._pool, self.priority, self.inp_hashes, self.env_vars, None
+            )
             scheduler.job_queue.put_nowait(run_job)
             scheduler.changed.set()
 
@@ -138,6 +176,8 @@ class RunJob(Job):
 
     def finalize(self, must_run: bool, scheduler: "Scheduler"):
         if must_run:
-            run_job = RunJob(self.step, self._pool, self.inp_hashes, self.env_vars, None)
+            run_job = RunJob(
+                self.step, self._pool, self.priority, self.inp_hashes, self.env_vars, None
+            )
             scheduler.job_queue.put_nowait(run_job)
             scheduler.changed.set()

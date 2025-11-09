@@ -558,6 +558,7 @@ class DirectorHandler:
         if self.watcher is None or not self.watcher.active.is_set():
             return
         async with self.dblock:
+            # Make all failed steps pending again for rerun
             for step in self.workflow.steps(StepState.FAILED):
                 step.mark_pending()
         self.watcher.interrupt.set()

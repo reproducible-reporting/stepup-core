@@ -279,7 +279,7 @@ async def report_completion(
         block_lines = []
         for step in steps_pending:
             action, workdir = step.get_action_workdir()
-            _, _, block, mandatory, _ = step.properties()
+            _, _, block, mandatory, _, _ = step.properties()
             if mandatory == Mandatory.NO:
                 num_pending -= 1
                 continue

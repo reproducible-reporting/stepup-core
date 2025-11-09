@@ -16,22 +16,22 @@ Planning sec 1 summary
 ────────────────────────────────────────────────────────────────────────────────
        1/11 |      START │ copy ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
        2/11 |    SUCCESS │ copy ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
-       2/11 |      START │ copy ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
-       3/11 |    SUCCESS │ copy ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
-       3/11 |      START │ copy ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
-       4/11 |    SUCCESS │ copy ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
-       4/11 |      START │ copy ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
-       5/11 |    SUCCESS │ copy ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
-       5/11 |      START │ copy ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
-       6/11 |    SUCCESS │ copy ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
-       6/11 |      START │ copy ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
-       7/11 |    SUCCESS │ copy ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
-       7/11 |      START │ runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
-       8/11 |    SUCCESS │ runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
-       8/11 |      START │ runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
-       9/11 |    SUCCESS │ runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
-       9/11 |      START │ runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
-      10/11 |    SUCCESS │ runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
+       2/11 |      START │ copy ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
+       3/11 |    SUCCESS │ copy ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
+       3/11 |      START │ copy ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
+       4/11 |    SUCCESS │ copy ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
+       4/11 |      START │ copy ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+       5/11 |    SUCCESS │ copy ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+       5/11 |      START │ copy ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
+       6/11 |    SUCCESS │ copy ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
+       6/11 |      START │ copy ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
+       7/11 |    SUCCESS │ copy ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
+       7/11 |      START │ runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
+       8/11 |    SUCCESS │ runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
+       8/11 |      START │ runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
+       9/11 |    SUCCESS │ runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
+       9/11 |      START │ runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
+      10/11 |    SUCCESS │ runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
       10/11 |      START │ runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
       11/11 |    SUCCESS │ runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
       11/11 |   DIRECTOR │ Trying to delete 0 outdated output(s)

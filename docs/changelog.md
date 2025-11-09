@@ -10,11 +10,19 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no summary yet)
+## [3.1.2][] - 2025-11-09 {: #v3.1.2 }
+
+Tested with Python 3.14 and small performance improvement
 
 ### Added
 
 - Tested with Python 3.14.
+
+### Changed
+
+- The scheduler of StepUp uses job priorities to postpone rescheduled jobs
+  until all non-rescheduled jobs have been started.
+  This lowers the chance that it will be executed again to discover more missing dependencies.
 
 ### Fixed
 

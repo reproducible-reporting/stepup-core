@@ -218,7 +218,7 @@ class Step(Node):
 
     def format_properties(self) -> Iterator[tuple[str, str]]:
         """Iterate over key-value pairs that represent the properties of the node."""
-        state, pool, block, mandatory, _ = self.properties()
+        state, pool, block, mandatory, _, _ = self.properties()
         yield "state", state.name
         if mandatory != Mandatory.YES:
             yield "mandatory", mandatory.name
@@ -352,18 +352,20 @@ class Step(Node):
             amended = self.con.execute(sql, (idep,)).fetchone() is not None
             yield idep, f"{node_str} [amended]" if amended else node_str
 
-    def properties(self) -> tuple[str, Path, StepState, str, bool, Mandatory]:
+    def properties(self) -> tuple[str, Path, StepState, str, bool, Mandatory, str]:
         row = self.con.execute(
-            "SELECT state, pool, block, mandatory, validate_amended FROM step WHERE node = ?",
+            "SELECT state, pool, block, mandatory, validate_amended, rescheduled_info "
+            "FROM step WHERE node = ?",
             (self.i,),
         ).fetchone()
-        state_i, pool, block, mandatory_i, validate_amended = row
+        state_i, pool, block, mandatory_i, validate_amended, rescheduled_info = row
         return (
             StepState(state_i),
             pool,
             bool(block),
             Mandatory(mandatory_i),
             bool(validate_amended),
+            rescheduled_info,
         )
 
     #
@@ -380,13 +382,14 @@ class Step(Node):
 
     def set_state(self, state: StepState):
         self.con.execute("UPDATE step SET state = ? WHERE node = ?", (state.value, self.i))
+        if state in (StepState.SUCCEEDED, StepState.FAILED):
+            self.clear_rescheduled_info()
 
     def get_rescheduled_info(self) -> str:
         sql = "SELECT rescheduled_info FROM step WHERE node = ?"
         return self.con.execute(sql, (self.i,)).fetchone()[0]
 
     def add_rescheduled_info(self, info: str):
-        print("HERE", info)
         self.con.execute(
             "UPDATE step SET rescheduled_info = CASE rescheduled_info"
             " WHEN '' THEN :info ELSE (rescheduled_info || '\n' || :info) END"
@@ -683,7 +686,7 @@ class Step(Node):
     #
 
     def queue_if_appropriate(self):
-        state, pool, block, mandatory, validate_amended = self.properties()
+        state, pool, block, mandatory, validate_amended, rescheduled_info = self.properties()
 
         # Check basics that would prohibit scheduling impossible.
         if block:
@@ -731,15 +734,20 @@ class Step(Node):
         # Get a list of environment variables used.
         env_vars = list(self.env_vars())
 
+        # Determine priority (lower = earlier) based on rescheduled info.
+        # If a job has been rescheduled previously, it gets lower priority,
+        # because it is likely to discover more missing dependencies again.
+        priority = rescheduled_info.count("\n")
+
         if amended_inputs_ready or step_hash is None:
             # All (amended) inputs are ready, or the job is not skippable.
-            job = RunJob(self, pool, inp_hashes, env_vars, step_hash)
+            job = RunJob(self, pool, priority, inp_hashes, env_vars, step_hash)
         else:
             # If the initial inputs are ready, but the amended inputs are not,
             # and there is a step hash, we need to validate the amended inputs first.
             # If they are not available, and if the existing inputs have changed,
             # they may also no longer be needed.
-            job = ValidateAmendedJob(self, pool, inp_hashes, env_vars, step_hash)
+            job = ValidateAmendedJob(self, pool, priority, inp_hashes, env_vars, step_hash)
 
         # Queue the job.
         logger.info("Queue %s", job.name)

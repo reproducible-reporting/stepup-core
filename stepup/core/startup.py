@@ -59,11 +59,8 @@ async def startup_from_db(
             "UPDATE step SET state = ? WHERE state = ?",
             (StepState.PENDING.value, StepState.QUEUED.value),
         )
-        # Call mark_pending on all failed steps.
-        sql = "SELECT i, label FROM node JOIN step ON node.i = step.node WHERE state = ?"
-        data = (StepState.FAILED.value,)
-        for i, label in con.execute(sql, data):
-            step = Step(workflow, i, label)
+        # Make all failed steps pending again, as they can be retried.
+        for step in workflow.steps(StepState.FAILED):
             step.mark_pending()
 
     # Define pools
