@@ -687,6 +687,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[3.1.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.1.2
 [3.1.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.1.1
 [3.1.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.1.0
 [3.0.9]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.9
