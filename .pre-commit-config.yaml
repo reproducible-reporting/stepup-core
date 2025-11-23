@@ -31,17 +31,17 @@ repos:
   hooks:
     - id: remove-crlf
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.14.2
+  rev: v0.14.6
   hooks:
     - id: ruff-format
     - id: ruff-check
       args: ["--fix", "--show-fixes"]
 - repo: https://github.com/DavidAnson/markdownlint-cli2
-  rev: v0.18.1
+  rev: v0.19.1
   hooks:
   - id: markdownlint-cli2
     require_serial: true
 - repo: https://github.com/python-jsonschema/check-jsonschema
-  rev: 0.34.1
+  rev: 0.35.0
   hooks:
     - id: check-github-workflows
