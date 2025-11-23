@@ -1,5 +1,17 @@
-global-exclude *
-include pyproject.toml
-include MANIFEST.in
-include README.md
-recursive-include stepup *
+# Exclude documentation and development files
+prune .github
+prune .vscode
+prune asciinema
+prune docs
+prune overrides
+exclude .editorconfig
+exclude .gitignore
+exclude .markdownlint-cli2.jsonc
+exclude .pre-commit-config.yaml
+exclude mkdocs.yaml
+
+# Exclude tests for now. (Could be useful later for conda package.)
+prune tests
+
+# Exclude common build artifacts and cache files
+global-exclude *.py[cod] __pycache__ *.so
