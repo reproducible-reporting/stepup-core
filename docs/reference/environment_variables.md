@@ -9,7 +9,7 @@ The following environment variables can be used to configure StepUp.
 : Set to `0` to disable automatic cleaning of outdated output files.
 By default, StepUp automatically removes old output files that are no longer created
 by any step in the workflow.
-Overridden by the `--clean` and `--no-clean` command-line option.
+Overridden by the `--clean` and `--no-clean` command-line options.
 
 `STEPUP_DEBUG`
 

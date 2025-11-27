@@ -8,11 +8,14 @@ but it is enabled by default in StepUp.
 
 Sometimes, it can be helpful to postpone the cleanup
 until you are sure that the output files are no longer needed.
-This can be done in one of two ways:
+This can be done in one of three ways:
 
 1. Add the `--no-clean` option to the `stepup boot` command.
    This will prevent StepUp from removing any output files.
-2. [Block some steps](../advanced_topics/blocked_steps.md) by adding the `block=True` argument
+2. Set the environment variable `STEPUP_CLEAN=0`.
+   This can be overridden again by the `--clean` command-line option,
+   in case you want to perform such cleaning only occasionally.
+3. [Block some steps](../advanced_topics/blocked_steps.md) by adding the `block=True` argument
    to the `step()` function in your `plan.py` script.
 
 The main advantage of automatic cleaning is that it eliminates potential bugs and confusion
