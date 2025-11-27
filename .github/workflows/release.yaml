@@ -10,9 +10,12 @@ on:
       - 'v*'
     paths:
       # ... and only if relevant files have changed.
-      - docs/**
+      # This list must be conistent with MANIFEST.in.
       - stepup/**
       - pyproject.toml
+      - LICENSE
+      - MANIFEST.in
+      - README.md
       - .github/workflows/release.yaml
 
 env:

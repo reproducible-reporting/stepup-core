@@ -1,3 +1,5 @@
+# Update .github/workflows/release.yaml after making changes here.
+
 # Exclude documentation and development files
 prune .github
 prune .vscode
