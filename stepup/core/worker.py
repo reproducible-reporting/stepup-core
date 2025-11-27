@@ -1087,14 +1087,14 @@ def parse_args():
         "--show-perf",
         "-s",
         default=False,
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="Add performance details after every completed step.",
     )
     parser.add_argument(
         "--explain-rerun",
         "-e",
         default=False,
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="Explain for every step why it cannot be skipped.",
     )
     return parser.parse_args()

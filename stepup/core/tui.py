@@ -21,6 +21,7 @@
 
 import argparse
 import asyncio
+import os
 import subprocess
 import sys
 import tempfile
@@ -35,6 +36,7 @@ from .asyncio import stoppable_iterator, wait_for_path
 from .director import interpret_num_workers
 from .reporter import ReporterClient, ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
+from .utils import string_to_bool
 from .watcher import WATCHER_AVAILABLE
 
 __all__ = ()
@@ -119,7 +121,7 @@ async def async_boot(args: argparse.Namespace):
                 argv.append("--watch")
             if args.watch_first:
                 argv.append("--watch-first")
-        if not args.do_clean:
+        if not args.clean:
             argv.append("--no-clean")
         returncode = 1  # Internal error unless it is overriden later by the director subprocess
         try:
@@ -242,7 +244,7 @@ def boot_subcommand(subparsers) -> callable:
         "--num-workers",
         "-n",
         type=Decimal,
-        default=Decimal("1.2"),
+        default=Decimal(os.getenv("STEPUP_NUM_WORKERS", "1.2")),
         help="Number of parallel workers. "
         "When given as a real number with digits after the comma, "
         "it is multiplied with the number of available cores. [default=%(default)s]",
@@ -250,23 +252,23 @@ def boot_subcommand(subparsers) -> callable:
     parser.add_argument(
         "--show-perf",
         "-s",
-        default=0,
+        default=int(os.getenv("STEPUP_SHOW_PERF", "0")),
         action="count",
         help="Show the performance info on each line. Repeat for more detailed info.",
     )
     parser.add_argument(
         "--explain-rerun",
         "-e",
-        default=False,
-        action="store_true",
+        default=string_to_bool(os.getenv("STEPUP_EXPLAIN_RERUN", "0")),
+        action=argparse.BooleanOptionalAction,
         help="Explain for every step with recording info why it cannot be skipped.",
     )
     if WATCHER_AVAILABLE:
         parser.add_argument(
             "--watch",
             "-w",
-            default=False,
-            action="store_true",
+            default=string_to_bool(os.getenv("STEPUP_WATCH", "0")),
+            action=argparse.BooleanOptionalAction,
             help="StepUp will watch for file changes after all runnable steps have been executed. "
             "By pressing r, it will rerun steps  that have become pending due to the file changes. "
             "(Only supported on Linux.)",
@@ -274,31 +276,30 @@ def boot_subcommand(subparsers) -> callable:
         parser.add_argument(
             "--watch-first",
             "-W",
-            default=False,
-            action="store_true",
+            default=string_to_bool(os.getenv("STEPUP_WATCH_FIRST", "0")),
+            action=argparse.BooleanOptionalAction,
             help="Start the runner after observing the first file change in watch mode. "
             "This implies --watch. (Only supported on Linux.)",
         )
     parser.add_argument(
-        "--no-clean",
-        dest="do_clean",
-        default=True,
-        action="store_false",
-        help="Do not remove outdated output files.",
+        "--clean",
+        default=string_to_bool(os.getenv("STEPUP_CLEAN", "1")),
+        action=argparse.BooleanOptionalAction,
+        help="Remove outdated output files.",
     )
     parser.add_argument(
-        "--no-progress",
-        dest="progress",
-        default=True,
-        action="store_false",
-        help="Do not report progress information in the terminal user interface. "
+        "--progress",
+        default=string_to_bool(os.getenv("STEPUP_PROGRESS", "1")),
+        action=argparse.BooleanOptionalAction,
+        help="Report progress information in the terminal user interface. "
         "(This can be useful to simplify and reduce the output.)",
     )
     parser.add_argument(
         "--perf",
-        default=None,
+        default=os.getenv("STEPUP_PERF", None),
         nargs="?",
-        const=500,
-        help="Run the director under perf record, by default at a frequency of 500 Hz.",
+        const="500",
+        help="Run the director under perf record, by default at a frequency of 500 Hz. "
+        "(Only supported on Linux with perf installed.)",
     )
     return boot_tool

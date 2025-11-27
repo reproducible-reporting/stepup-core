@@ -84,7 +84,7 @@ async def async_main():
                 args.explain_rerun,
                 args.watch,
                 args.watch_first,
-                args.do_clean,
+                args.clean,
             )
         except Exception as exc:
             tbstr = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
@@ -135,14 +135,14 @@ def parse_args() -> argparse.Namespace:
         "--show-perf",
         "-s",
         default=False,
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="Add performance details after completed step.",
     )
     parser.add_argument(
         "--explain-rerun",
         "-e",
         default=False,
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="Explain for every step with recording info why it cannot be skipped.",
     )
     if WATCHER_AVAILABLE:
@@ -150,7 +150,7 @@ def parse_args() -> argparse.Namespace:
             "--watch",
             "-w",
             default=False,
-            action="store_true",
+            action=argparse.BooleanOptionalAction,
             help="Watch file changes after completing the run phase. "
             "When not given, the director exists after completing the run phase.",
         )
@@ -158,15 +158,15 @@ def parse_args() -> argparse.Namespace:
             "--watch-first",
             "-W",
             default=False,
-            action="store_true",
+            action=argparse.BooleanOptionalAction,
             help="Exit watch phase and start the runner after the first file change. "
             "This implies --watch.",
         )
     parser.add_argument(
-        "--no-clean",
-        dest="do_clean",
+        "--clean",
+        dest="clean",
         default=True,
-        action="store_false",
+        action=argparse.BooleanOptionalAction,
         help="Do not remove outdated output files.",
     )
     args = parser.parse_args()

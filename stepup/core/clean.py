@@ -54,7 +54,7 @@ def clean_subcommand(subparser: argparse.ArgumentParser) -> callable:
     parser.add_argument(
         "-d",
         "--dry-run",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="Do not remove any files, just show what would be done.",
     )
     return clean_tool

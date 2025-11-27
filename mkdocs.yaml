@@ -146,6 +146,7 @@ plugins:
 markdown_extensions:
   - admonition
   - attr_list
+  - def_list
   - smarty
   - pymdownx.highlight:
       anchor_linenums: true
