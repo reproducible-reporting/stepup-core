@@ -5,11 +5,11 @@
     This feature was introduced in StepUp 1.3.0.
 
 The [`step()`][stepup.core.api.step] function always return
-an instance of [`StepInfo`][stepup.core.api.StepInfo].
+an instance of [`StepInfo`][stepup.core.stepinfo.StepInfo].
 This object holds arguments used to define the step,
 which may be useful for creating follow-up steps.
 All API functions that create a step by calling the [`step()`][stepup.core.api.step] function
-also return the [`StepInfo`][stepup.core.api.StepInfo] object.
+also return the [`StepInfo`][stepup.core.stepinfo.StepInfo] object.
 
 Especially for higher-level API functions that create more advanced steps,
 such as the ones in [StepUp RepRep](https://reproducible-reporting.github.io/stepup-reprep/),
