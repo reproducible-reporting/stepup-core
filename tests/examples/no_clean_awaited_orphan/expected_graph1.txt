@@ -6,8 +6,10 @@ root:
 file:./
                state = STATIC
           created by   root:
+            supplies   (file:bogus.txt)
             supplies   file:plan.py
             supplies   file:test1.txt
+            supplies   file:test2.txt
             supplies   step:runpy ./plan.py
             supplies   step:runsh echo Hello > test1.txt
 
@@ -26,14 +28,28 @@ step:runpy ./plan.py
              creates   step:runsh echo Hello > test1.txt
 
 step:runsh echo Hello > test1.txt
-               state = SUCCEEDED
+               state = PENDING
           created by   step:runpy ./plan.py
+            consumes   (file:bogus.txt)
             consumes   file:./
              creates   file:test1.txt
+             creates   file:test2.txt
             supplies   file:test1.txt
+            supplies   file:test2.txt
+
+(file:bogus.txt)
+               state = AWAITED
+            consumes   file:./
+            supplies   step:runsh echo Hello > test1.txt
 
 file:test1.txt
-               state = BUILT
+               state = AWAITED
+          created by   step:runsh echo Hello > test1.txt
+            consumes   file:./
+            consumes   step:runsh echo Hello > test1.txt
+
+file:test2.txt
+               state = AWAITED
           created by   step:runsh echo Hello > test1.txt
             consumes   file:./
             consumes   step:runsh echo Hello > test1.txt

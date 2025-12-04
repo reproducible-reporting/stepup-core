@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
 from stepup.core.api import runsh
 
-runsh("echo Hello > test2.txt")
+runsh("echo Hello > test2.txt", out="test2.txt")

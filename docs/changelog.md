@@ -12,6 +12,15 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no changes yet)
 
+## [3.1.4][] - 2025-12-04 {: #v3.1.4 }
+
+Minor bugfix release.
+
+### Fixed
+
+- Fix a bug in the consistency checks upon startup that (rarely) resulted in false positives.
+  This bug was more likely to be triggered with the `--no-clean` option.
+
 ## [3.1.3][] - 2025-11-27 {: #v3.1.3 }
 
 ### Changed
@@ -699,6 +708,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[3.1.4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.1.4
 [3.1.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.1.3
 [3.1.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.1.2
 [3.1.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.1.1

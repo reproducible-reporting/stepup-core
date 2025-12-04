@@ -6,6 +6,8 @@ root:
 file:./
                state = STATIC
           created by   root:
+            supplies   (file:bogus.txt)
+            supplies   (file:test2.txt)
             supplies   file:plan.py
             supplies   file:test1.txt
             supplies   step:runpy ./plan.py
@@ -30,10 +32,20 @@ step:runsh echo Hello > test1.txt
           created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:test1.txt
+            supplies   (file:test2.txt)
             supplies   file:test1.txt
+
+(file:bogus.txt)
+               state = AWAITED
+            consumes   file:./
 
 file:test1.txt
                state = BUILT
           created by   step:runsh echo Hello > test1.txt
+            consumes   file:./
+            consumes   step:runsh echo Hello > test1.txt
+
+(file:test2.txt)
+               state = AWAITED
             consumes   file:./
             consumes   step:runsh echo Hello > test1.txt

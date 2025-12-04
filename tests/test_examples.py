@@ -105,6 +105,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "mkdir",
         "mkdir_error",
         "no_clean",
+        "no_clean_awaited_orphan",
         "no_data",
         "no_plan",
         "no_shebang",

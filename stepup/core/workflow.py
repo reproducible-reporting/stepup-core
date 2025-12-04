@@ -171,7 +171,7 @@ class Workflow(Cascade):
             "SELECT file.state, fnode.label, snode.i, snode.label FROM node AS fnode "
             "JOIN file ON fnode.i = file.node JOIN dependency ON fnode.i = consumer "
             "JOIN node AS snode ON snode.i = supplier JOIN step ON step.node = snode.i "
-            "WHERE step.state = ? AND file.state NOT IN (?, ?)"
+            "WHERE step.state = ? AND file.state NOT IN (?, ?) AND NOT fnode.orphan"
         )
         data = (StepState.SUCCEEDED.value, FileState.BUILT.value, FileState.VOLATILE.value)
         to_mark_pending = set()
