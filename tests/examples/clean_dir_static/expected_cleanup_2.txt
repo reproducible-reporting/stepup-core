@@ -1,0 +1,2 @@
+rm sub/tmp.txt
+rm sub/out.txt

@@ -32,7 +32,7 @@ from stepup.core.workflow import Workflow
 def test_cleanup_simple1(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "cp bar.txt foo.txt", inp_paths=["bar.txt"], out_paths=["foo.txt"])
-    assert search_consuming_paths(wfp.con, ["bar.txt"]) == []
+    assert search_consuming_paths(wfp.con, ["bar.txt"], False) == []
 
 
 def test_cleanup_simple2(wfp: Workflow):
@@ -41,7 +41,9 @@ def test_cleanup_simple2(wfp: Workflow):
     wfp.define_step(plan, "cp bar.txt foo.txt", inp_paths=["bar.txt"], out_paths=["foo.txt"])
     file_hash = fake_hash("foo.txt")
     wfp.update_file_hashes([("foo.txt", file_hash)], "succeeded")
-    assert search_consuming_paths(wfp.con, ["bar.txt"]) == [("foo.txt", FileState.BUILT, file_hash)]
+    assert search_consuming_paths(wfp.con, ["bar.txt"], False) == [
+        ("foo.txt", FileState.BUILT, False, file_hash)
+    ]
 
 
 def test_cleanup_simple3(wfp: Workflow):
@@ -51,8 +53,8 @@ def test_cleanup_simple3(wfp: Workflow):
     file_hash = fake_hash("foo.txt")
     wfp.update_file_hashes([("foo.txt", file_hash)], "succeeded")
     wfp.find(File, "foo.txt").set_state(FileState.OUTDATED)
-    assert search_consuming_paths(wfp.con, ["bar.txt"]) == [
-        ("foo.txt", FileState.OUTDATED, file_hash),
+    assert search_consuming_paths(wfp.con, ["bar.txt"], False) == [
+        ("foo.txt", FileState.OUTDATED, False, file_hash),
     ]
 
 
@@ -62,9 +64,9 @@ def test_cleanup_simple4(wfp: Workflow):
     file_hash = fake_hash("foo.txt")
     wfp.update_file_hashes([("foo.txt", file_hash)], "succeeded")
     wfp.define_step(plan, "prog2", inp_paths=["foo.txt"], vol_paths=["egg.txt"])
-    assert search_consuming_paths(wfp.con, ["bar.txt"]) == [
-        ("foo.txt", FileState.BUILT, file_hash),
-        ("egg.txt", FileState.VOLATILE, FileHash.unknown()),
+    assert search_consuming_paths(wfp.con, ["bar.txt"], False) == [
+        ("foo.txt", FileState.BUILT, False, file_hash),
+        ("egg.txt", FileState.VOLATILE, False, FileHash.unknown()),
     ]
 
 
@@ -72,6 +74,18 @@ def test_cleanup_volatile(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "prog1", inp_paths=["inp.txt"], vol_paths=["vol.txt"])
     # Volatile files are always removed, without checking hashes
-    assert search_consuming_paths(wfp.con, ["inp.txt"]) == [
-        ("vol.txt", FileState.VOLATILE, FileHash.unknown()),
+    assert search_consuming_paths(wfp.con, ["inp.txt"], False) == [
+        ("vol.txt", FileState.VOLATILE, False, FileHash.unknown()),
+    ]
+
+
+def test_cleanup_orphaned(wfp: Workflow):
+    plan = wfp.find(Step, "./plan.py")
+    wfp.define_step(plan, "prog1", inp_paths=["inp.txt"], out_paths=["out.txt"])
+    file_hash = fake_hash("out.txt")
+    wfp.update_file_hashes([("out.txt", file_hash)], "succeeded")
+    # Mark step (and indirectly its output file) as orphaned
+    wfp.find(Step, "prog1").orphan()
+    assert search_consuming_paths(wfp.con, ["inp.txt"], False) == [
+        ("out.txt", FileState.BUILT, True, file_hash),
     ]

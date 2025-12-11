@@ -33,7 +33,7 @@ stepup boot -n 1 -w &
 stepup wait
 
 # Test stepup clean that has no effect
-stepup clean plan.py
+stepup clean plan.py --all --commit
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
@@ -41,7 +41,7 @@ stepup clean plan.py
 [[ -f second.txt ]] || exit 1
 
 # Test stepup clean that removes first and second
-stepup clean ./
+stepup clean --all --commit
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1

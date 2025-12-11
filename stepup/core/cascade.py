@@ -232,7 +232,15 @@ class Node:
         return self.cascade._node_classes[kind](self.cascade, i, label)
 
     def creator_orphan(self) -> tuple[Self, bool] | tuple[None, None]:
-        """Return the creator of the node."""
+        """Return the creator of the node.
+
+        Returns
+        -------
+        creator
+            The creator node, or `None` if there is no creator.
+        is_orphan
+            Whether the creator node is orphaned.
+        """
         row = self.con.execute(
             "SELECT i, kind, label, orphan "
             "FROM node WHERE i = (SELECT creator FROM node WHERE i = ?)",

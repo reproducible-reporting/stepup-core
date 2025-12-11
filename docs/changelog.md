@@ -12,6 +12,18 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no changes yet)
 
+### Changed
+
+- Safer and more versatile `stepup clean` implementation:
+    - By default, no files are removed. Use the `--commit` option to actually remove files.
+    - The standard output consists of bash commands, which can be inspected, grepped
+      and/or executed in a terminal to remove the files.
+    - Unless the `--all` option is used, only orphaned files are removed.
+      (These are outputs of old steps that are no longer part of the workflow.
+      StepUp cleans these up automatically unless you run `stepup boot --no-clean`.)
+    - By default, modified output files were never removed.
+      Use the `--unsafe` option to override this safety mechanism.
+
 ## [3.1.4][] - 2025-12-04 {: #v3.1.4 }
 
 Minor bugfix release.

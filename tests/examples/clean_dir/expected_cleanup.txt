@@ -1,12 +1,4 @@
-?f sub/tmp.txt
- f sub/out.txt
- f sub/inp.txt
- d sub/
-
-       Cleanup summary    ┏━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━┓
-┃ Category    ┃ Files ┃ Dirs ┃
-┡━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━┩
-│ Not found   │     1 │    0 │
-│ Not removed │     0 │    0 │
-│ Removed     │     2 │    1 │
-└─────────────┴───────┴──────┘
+# rm sub/tmp.txt  # Already gone!
+rm sub/out.txt
+rm sub/inp.txt
+rmdir sub/

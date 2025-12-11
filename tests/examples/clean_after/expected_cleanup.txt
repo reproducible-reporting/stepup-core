@@ -1,11 +1,3 @@
- f ../sub/out.txt
- f ../sub/inp.txt
-!d ../sub/
-
-       Cleanup summary    ┏━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━┓
-┃ Category    ┃ Files ┃ Dirs ┃
-┡━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━┩
-│ Not found   │     0 │    0 │
-│ Not removed │     0 │    1 │
-│ Removed     │     2 │    0 │
-└─────────────┴───────┴──────┘
+rm ../sub/out.txt
+rm ../sub/inp.txt
+rmdir ../sub/  # Removal failed!

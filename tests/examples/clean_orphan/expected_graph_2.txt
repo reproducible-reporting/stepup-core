@@ -1,0 +1,53 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:runpy ./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   (file:hello1.txt)
+            supplies   (step:runsh echo hello1 > hello1.txt)
+            supplies   file:hello2.txt
+            supplies   file:plan.py
+            supplies   step:runpy ./plan.py
+            supplies   step:runsh echo hello2 > hello2.txt
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:runpy ./plan.py
+
+step:runpy ./plan.py
+               state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   step:runsh echo hello2 > hello2.txt
+
+(step:runsh echo hello1 > hello1.txt)
+               state = SUCCEEDED
+            consumes   file:./
+             creates   (file:hello1.txt)
+            supplies   (file:hello1.txt)
+
+(file:hello1.txt)
+               state = BUILT
+          created by   (step:runsh echo hello1 > hello1.txt)
+            consumes   (step:runsh echo hello1 > hello1.txt)
+            consumes   file:./
+
+step:runsh echo hello2 > hello2.txt
+               state = SUCCEEDED
+          created by   step:runpy ./plan.py
+            consumes   file:./
+             creates   file:hello2.txt
+            supplies   file:hello2.txt
+
+file:hello2.txt
+               state = BUILT
+          created by   step:runsh echo hello2 > hello2.txt
+            consumes   file:./
+            consumes   step:runsh echo hello2 > hello2.txt

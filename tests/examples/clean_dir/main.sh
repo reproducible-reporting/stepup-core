@@ -19,7 +19,7 @@ stepup graph current_graph1
 [[ -f sub/out.txt ]] || exit 1
 
 rm sub/tmp.txt
-stepup clean sub/ > current_cleanup.txt
+stepup clean sub/ --all --commit > current_cleanup.txt
 
 # Get the graph after completion of the pending steps.
 stepup graph current_graph2

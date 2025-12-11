@@ -1,0 +1,3 @@
+# Note: No files or directories are actually removed.
+# Use the --commit option to execute the removals.
+rm hello1.txt  # Orphaned output!

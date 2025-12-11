@@ -1,0 +1,1 @@
+rm hello1.txt  # Orphaned output!

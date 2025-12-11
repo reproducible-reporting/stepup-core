@@ -69,7 +69,7 @@ stepup boot -n 1 -w &
 stepup wait
 
 # Test stepup clean with STEPUP_ROOT
-(export STEPUP_ROOT="${PWD}"; cd ch-3-conclusions; stepup clean sec-3-1-summary.txt)
+(export STEPUP_ROOT="${PWD}"; cd ch-3-conclusions; stepup clean --all --commit sec-3-1-summary.txt)
 [[ -f ch-3-conclusions/sec-3-1-summary.txt ]] || exit 1
 [[ ! -f ch-3-conclusions/sec-3-1-summary.md ]] || exit 1
 [[ -f ch-3-conclusions/sec-3-2-outlook.md ]] || exit 1

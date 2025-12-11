@@ -62,6 +62,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "clean_dir_static",
         "clean_drained_scheduler",
         "clean_nonexisting",
+        "clean_orphan",
         "cyclic_dynamic",
         "cyclic_static",
         "deferred_dir_amend",

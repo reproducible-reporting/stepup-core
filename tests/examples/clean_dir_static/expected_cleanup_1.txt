@@ -1,0 +1,4 @@
+# Note: No files or directories are actually removed.
+# Use the --commit option to execute the removals.
+rm sub/tmp.txt
+rm sub/out.txt

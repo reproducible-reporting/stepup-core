@@ -33,7 +33,7 @@ wait
 grep overwritten hello.txt
 
 # Call stepup clean to remove all outputs
-stepup clean . > current_cleanup.txt
+stepup clean --all --commit > current_cleanup.txt
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1

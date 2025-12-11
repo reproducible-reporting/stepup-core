@@ -17,7 +17,23 @@ stepup graph current_graph1
 [[ -f sub/tmp.txt ]] || exit 1
 [[ -f sub/out.txt ]] || exit 1
 
-stepup clean sub > current_cleanup.txt
+# Dry run of cleanup
+stepup clean sub --all > current_cleanup_1.txt
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit 1
+[[ -f sub/inp.txt ]] || exit 1
+[[ -f sub/tmp.txt ]] || exit 1
+[[ -f sub/out.txt ]] || exit 1
+
+# Real cleanup
+stepup clean sub --all --commit > current_cleanup_2.txt
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit 1
+[[ -f sub/inp.txt ]] || exit 1
+[[ ! -f sub/tmp.txt ]] || exit 1
+[[ ! -f sub/out.txt ]] || exit 1
 
 # Get the graph after completion of the pending steps.
 stepup graph current_graph2
@@ -25,9 +41,3 @@ stepup join
 
 # Wait for background processes, if any.
 wait
-
-# Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit 1
-[[ -f sub/inp.txt ]] || exit 1
-[[ ! -f sub/tmp.txt ]] || exit 1
-[[ ! -f sub/out.txt ]] || exit 1

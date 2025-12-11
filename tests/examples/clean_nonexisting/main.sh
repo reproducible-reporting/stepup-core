@@ -15,7 +15,7 @@ stepup graph current_graph1
 [[ -f plan.py ]] || exit 1
 [[ -f bar.txt ]] || exit 1
 
-stepup clean blabla.txt > current_cleanup.txt
+stepup clean blabla.txt --all --commit > current_cleanup.txt
 
 # Get the graph after completion of the pending steps.
 stepup graph current_graph2
