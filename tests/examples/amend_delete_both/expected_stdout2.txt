@@ -21,7 +21,7 @@ Same inp hash        asource2.txt
 ────────────────────────────────────────────────────────────────────────────────
         1/4 |      START │ copy asource2.txt data2.txt
         2/4 |    SUCCESS │ copy asource2.txt data2.txt
-        2/4 |    WARNING │ 2 step(s) remained pending due to incomplete requirements
+        2/4 |    WARNING │ 2 step(s) remained pending due to ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  asource1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────

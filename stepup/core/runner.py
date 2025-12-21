@@ -326,10 +326,10 @@ async def report_completion(
 
         if num_pending > 0:
             returncode |= ReturnCode.PENDING
-            lead = f"{num_pending} step(s) remained pending due to"
+            descr = f"{num_pending} step(s) remained pending due to ..."
             if len(block_lines) > 0:
                 block_page = ("Blocked steps", "\n".join(block_lines))
-                await reporter("WARNING", f"{lead} blocked steps", [block_page])
+                await reporter("WARNING", descr, [block_page])
             else:
                 # Insert pages with orphaned and missing inputs in front.
                 orphaned_page = "\n".join(
@@ -337,14 +337,14 @@ async def report_completion(
                     for path, file_state in workflow.orphaned_inp_paths()
                 )
                 if orphaned_page != "":
-                    pending_pages.insert(0, ("Orphaned inputs", orphaned_page))
+                    pending_pages.insert(0, ("Incomplete requirements", orphaned_page))
                 missing_page = "\n".join(
                     f"             MISSING  {path}" for path in workflow.missing_paths()
                 )
                 if missing_page != "":
                     pending_pages.insert(0, ("Missing inputs", missing_page))
                 # Finally, report the workflow steps that are pending.
-                await reporter("WARNING", f"{lead} incomplete requirements", pending_pages)
+                await reporter("WARNING", descr, pending_pages)
     return returncode
 
 

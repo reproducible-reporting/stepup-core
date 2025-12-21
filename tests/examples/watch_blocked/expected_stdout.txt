@@ -5,7 +5,7 @@
         1/4 |    SUCCESS │ runpy ./plan.py
         1/4 |      START │ copy initial.txt input.txt
         2/4 |    SUCCESS │ copy initial.txt input.txt
-        2/4 |    WARNING │ 2 step(s) remained pending due to blocked steps
+        2/4 |    WARNING │ 2 step(s) remained pending due to ...
 ──────────────────────────────── Blocked steps ─────────────────────────────────
 step:runpy ./expensive.py
 ────────────────────────────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@
         2/2 |    UPDATED │ output.txt
         2/2 |    DELETED │ input.txt
         1/2 |      PHASE │ run
-        1/2 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
+        1/2 |    WARNING │ 1 step(s) remained pending due to ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  input.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────

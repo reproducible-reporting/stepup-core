@@ -3,8 +3,8 @@
         0/1 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
         1/2 |    SUCCESS │ runpy ./plan.py
-        1/2 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
-─────────────────────────────── Orphaned inputs ────────────────────────────────
+        1/2 |    WARNING │ 1 step(s) remained pending due to ...
+─────────────────────────── Incomplete requirements ────────────────────────────
              AWAITED  bogus.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                runsh echo Hello > test1.txt

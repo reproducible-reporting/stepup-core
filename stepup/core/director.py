@@ -74,7 +74,7 @@ async def async_main():
         num_workers = interpret_num_workers(args.num_workers)
         await reporter.set_num_workers(num_workers)
         version = get_version("stepup")
-        await reporter("DIRECTOR", f"Listening on {args.director_socket} (StepUp {version})")
+        await reporter("DIRECTOR", f"Listening on {args.director_socket} (StepUp Core {version})")
         try:
             returncode = await serve(
                 args.director_socket,
@@ -634,7 +634,7 @@ def get_socket() -> str:
                         return path_socket
                     message = (
                         f"Socket {path_socket} read from {path_director_log} does not exist. "
-                        "Stepup not running?"
+                        "StepUp not running?"
                     )
                 else:
                     message = f"File {path_director_log} does not start with SOCKET line."

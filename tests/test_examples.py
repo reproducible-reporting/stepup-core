@@ -43,6 +43,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "amend_validate1",
         "amend_validate2",
         "amend_voldir_pending",
+        "awaited_orphan",
         "call_chain",
         "call_import",
         "call_inp_out",

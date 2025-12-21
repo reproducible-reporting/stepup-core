@@ -297,11 +297,12 @@ class Workflow(Cascade):
             yield Step(self, i, label)
 
     def orphaned_inp_paths(self) -> Iterator[str, FileState]:
-        """Iterate over input paths that are used by steps by have not been created yet."""
+        """Iterate over orphaned input paths used by non-orphaned steps."""
         sql = (
             "SELECT node.label, file.state FROM node JOIN file ON node.i = file.node "
             "WHERE node.orphan = TRUE "
-            "AND EXISTS (SELECT 1 FROM dependency WHERE supplier = file.node)"
+            "AND EXISTS (SELECT 1 FROM dependency JOIN node ON node.i = dependency.consumer "
+            "WHERE supplier = file.node AND not node.orphan)"
         )
         for row in self.con.execute(sql):
             yield row[0], FileState(row[1])

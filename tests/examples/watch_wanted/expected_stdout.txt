@@ -3,8 +3,8 @@
         0/1 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
         1/3 |    SUCCESS │ runpy ./plan.py
-        1/3 |    WARNING │ 2 step(s) remained pending due to incomplete requirements
-─────────────────────────────── Orphaned inputs ────────────────────────────────
+        1/3 |    WARNING │ 2 step(s) remained pending due to ...
+─────────────────────────── Incomplete requirements ────────────────────────────
              AWAITED  input1.txt
              AWAITED  input2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -25,10 +25,10 @@ Outputs      AWAITED  output2.txt
         1/3 |      PHASE │ watch
         1/3 |    DELETED │ plan.py
         0/3 |      PHASE │ run
-        0/3 |    WARNING │ 3 step(s) remained pending due to incomplete requirements
+        0/3 |    WARNING │ 3 step(s) remained pending due to ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  plan.py
-─────────────────────────────── Orphaned inputs ────────────────────────────────
+─────────────────────────── Incomplete requirements ────────────────────────────
              AWAITED  input1.txt
              AWAITED  input2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────

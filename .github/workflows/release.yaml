@@ -10,7 +10,7 @@ on:
       - 'v*'
     paths:
       # ... and only if relevant files have changed.
-      # This list must be conistent with MANIFEST.in.
+      # This list must be consistent with MANIFEST.in.
       - stepup/**
       - pyproject.toml
       - LICENSE

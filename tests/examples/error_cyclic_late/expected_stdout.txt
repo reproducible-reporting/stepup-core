@@ -10,8 +10,8 @@ Return code           1
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
         0/1 |    WARNING │ 1 step(s) failed.
-        0/1 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
-─────────────────────────────── Orphaned inputs ────────────────────────────────
+        0/1 |    WARNING │ 1 step(s) remained pending due to ...
+─────────────────────────── Incomplete requirements ────────────────────────────
              AWAITED  first
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                runsh cat first > second

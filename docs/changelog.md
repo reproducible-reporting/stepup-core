@@ -24,6 +24,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
     - By default, modified output files were never removed.
       Use the `--unsafe` option to override this safety mechanism.
 
+### Fixed
+
+- Fix list of incomplete requirements when steps remain pending.
+
 ## [3.1.4][] - 2025-12-04 {: #v3.1.4 }
 
 Minor bugfix release.

@@ -10,7 +10,7 @@ Return code           1
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
         0/1 |    WARNING │ 1 step(s) failed.
-        0/1 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
+        0/1 |    WARNING │ 1 step(s) remained pending due to ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  static/foo/bar/
              MISSING  static/foo/

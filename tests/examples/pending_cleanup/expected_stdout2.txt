@@ -8,8 +8,8 @@
         1/3 |      PHASE │ run
         1/3 |      START │ runsh echo soon gone > bye.txt
         2/3 |    SUCCESS │ runsh echo soon gone > bye.txt
-        2/3 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
-─────────────────────────────── Orphaned inputs ────────────────────────────────
+        2/3 |    WARNING │ 1 step(s) remained pending due to ...
+─────────────────────────── Incomplete requirements ────────────────────────────
              AWAITED  missing.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                runsh echo data > hello.txt

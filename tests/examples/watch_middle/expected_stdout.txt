@@ -11,7 +11,7 @@
         3/3 |      PHASE │ watch
         3/3 |    DELETED │ plan.py
         2/3 |      PHASE │ run
-        2/3 |    WARNING │ 1 step(s) remained pending due to incomplete requirements
+        2/3 |    WARNING │ 1 step(s) remained pending due to ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  plan.py
 ───────────────────────────────── PENDING Step ─────────────────────────────────
