@@ -137,7 +137,8 @@ def act_tool(args: argparse.Namespace) -> int:
     """
     # Make a dummy work thread to execute the action.
     work_thread = WorkThread(f"{shlex.quote(args.action_name)} {shlex.join(args.action_args)}")
-    return work_thread.run()
+    work_thread.run()
+    return work_thread.returncode
 
 
 def act_subcommand(subparser: argparse.ArgumentParser) -> callable:

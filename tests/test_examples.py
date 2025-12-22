@@ -135,6 +135,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "pool_restart",
         "recreate_elsewhere",
         "render_jinja_dict",
+        "render_jinja_fail",
         "render_jinja_json",
         "render_jinja_python",
         "render_jinja_relpath",

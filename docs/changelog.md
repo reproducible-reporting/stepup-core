@@ -27,6 +27,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 ### Fixed
 
 - Fix list of incomplete requirements when steps remain pending.
+- Fixed returncode of `stepup act` and some other `stepup` subcommands.
 
 ## [3.1.4][] - 2025-12-04 {: #v3.1.4 }
 

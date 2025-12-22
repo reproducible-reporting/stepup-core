@@ -49,7 +49,7 @@ def browse_subcommand(subparser: argparse.ArgumentParser) -> callable:
     return browse_tool
 
 
-def browse_tool(args: argparse.Namespace) -> None:
+def browse_tool(args: argparse.Namespace) -> int:
     """Launch a web server to browse the build graph and print the URL to the console."""
     # Copy the database in memory and work on the copy.
     root = Path(os.getenv("STEPUP_ROOT", "."))
@@ -63,6 +63,7 @@ def browse_tool(args: argparse.Namespace) -> None:
     with contextlib.suppress(KeyboardInterrupt):
         server.serve_forever()
     server.server_close()
+    return 0
 
 
 HTML_TEMPLATE = """\

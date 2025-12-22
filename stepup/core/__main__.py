@@ -21,6 +21,7 @@
 
 import argparse
 import os
+import sys
 from importlib.metadata import entry_points
 from importlib.metadata import version as get_version
 
@@ -34,7 +35,7 @@ def main():
     args = parser.parse_args()
     tool_func = tool_funcs.get(args.tool)
     if tool_func is not None:
-        tool_func(args)
+        sys.exit(tool_func(args))
     else:
         parser.print_help()
 
