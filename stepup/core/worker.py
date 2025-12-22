@@ -319,7 +319,7 @@ class WorkerClient:
         env_vars: list[str],
         *,
         check_hash: bool = True,
-    ) -> AsyncGenerator[StepHash, None]:
+    ) -> AsyncGenerator[StepHash | None, None]:
         """Let the worker know what step it will be working on.
 
         Parameters
@@ -332,6 +332,12 @@ class WorkerClient:
             List of environment variable names used by the step.
         check_hash
             If `True`, unexpected changes in input files will cause an error.
+
+        Yields
+        ------
+        new_step_hash
+            The new hash of the step, with the input part already computed, if available.
+            `None` is yielded if, unexpectedly, some inputs are missing or have changed.
         """
         error_pages = []
         try:
@@ -750,8 +756,8 @@ class WorkerHandler:
         Returns
         -------
         step_hash
-            The hash of the step, with the input part already computed, if available.
-            `None` is returned if some inputs are missing or have changed unexpectedly.
+            The new hash of the step, with the input part already computed, if available.
+            `None` is yielded if, unexpectedly, some inputs are missing or have changed.
         """
         if self.step is not None:
             raise RPCError(
@@ -787,8 +793,13 @@ class WorkerHandler:
         Returns
         -------
         step_hash
-            The hash of the step, with the input part already computed, if available.
-            `None` is returned if some inputs are missing or have changed unexpectedly.
+            The new hash of the step, with the input part already computed, if available.
+            `None` is yielded if, unexpectedly, some inputs are missing or have changed.
+        new_inp_hashes
+            List of tuples of input paths and their file hashes.
+            These only include the new hashes of changed input files,
+            so they can be updated in StepUp's workflow database if desired.
+            Unchanged ones are not included.
         """
         # Check the input hashes
         messages = []
@@ -848,7 +859,8 @@ class WorkerHandler:
             The updated hash of the step, or `None` if some outputs are missing.
         new_out_hashes
             List of tuples of output paths and their file hashes.
-            These are the updated hashes of the output files.
+            These only include the new hashes of changed output files,
+            so they can be updated in StepUp's workflow database if desired.
             Unchanged ones are not included.
         """
         # Check the output hashes
@@ -892,14 +904,16 @@ class WorkerHandler:
         -------
         step_hash
             The newly computed hash of the step,
-            or None of there are unexpected changes in the input files.
+            or None if there are unexpected changes in the input files.
         new_inp_hashes
             List of tuples of input paths and their file hashes.
-            These are the updated hashes of the input files.
+            These only include the new hashes of changed input files,
+            so they can be updated in StepUp's workflow database if desired.
             Unchanged ones are not included.
         new_out_hashes
             List of tuples of output paths and their file hashes.
-            These are the updated hashes of the output files.
+            These only include the new hashes of changed output files,
+            so they can be updated in StepUp's workflow database if desired.
             Unchanged ones are not included.
         """
         step_hash, new_inp_hashes = self.compute_inp_step_hash(inp_hashes, env_vars)
