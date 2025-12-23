@@ -76,7 +76,7 @@ def clean_subcommand(subparser: argparse.ArgumentParser) -> callable:
     return clean_tool
 
 
-def clean_tool(args: argparse.Namespace) -> int:
+def clean_tool(args: argparse.Namespace):
     """Main program."""
     # Translate all unique paths so they are relative to STEPUP_ROOT,
     # because this is how they are stored in the database. (tr_ prefix)
@@ -93,7 +93,6 @@ def clean_tool(args: argparse.Namespace) -> int:
     path_db = root / ".stepup/graph.db"
     with sqlite3_copy_in_memory(path_db) as con:
         clean(con, tr_paths, args)
-    return 0
 
 
 def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace):

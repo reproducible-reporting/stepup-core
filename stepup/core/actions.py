@@ -33,6 +33,7 @@ import argparse
 import os
 import shlex
 import shutil
+import sys
 from importlib.metadata import entry_points
 
 from .worker import WorkThread
@@ -120,7 +121,7 @@ def mkdir(argstr: str) -> int:
     return 0
 
 
-def act_tool(args: argparse.Namespace) -> int:
+def act_tool(args: argparse.Namespace):
     """Execute an action.
 
     Parameters
@@ -138,7 +139,7 @@ def act_tool(args: argparse.Namespace) -> int:
     # Make a dummy work thread to execute the action.
     work_thread = WorkThread(f"{shlex.quote(args.action_name)} {shlex.join(args.action_args)}")
     work_thread.run()
-    return work_thread.returncode
+    sys.exit(work_thread.returncode)
 
 
 def act_subcommand(subparser: argparse.ArgumentParser) -> callable:

@@ -82,10 +82,11 @@ def render_jinja_action(argstr: str, work_thread: WorkThread) -> int:
     if work_thread.is_alive() and any(path.endswith(".py") for path in args.paths_variables):
         # Run the rendering in a subprocess to accurately deduce local imports
         return work_thread.runsh_verbose(f"stepup act render-jinja {argstr}")
-    return render_jinja_tool(args)
+    render_jinja_tool(args)
+    return 0
 
 
-def render_jinja_tool(args: argparse.Namespace) -> int:
+def render_jinja_tool(args: argparse.Namespace):
     """Main program."""
     # Local import to delay activation synchronous connection to StepUp directory until needed.
     from stepup.core.api import amend, loadns  # noqa: PLC0415
@@ -109,7 +110,6 @@ def render_jinja_tool(args: argparse.Namespace) -> int:
         fh.write(result)
     # Clone the permissions from the input file to the output file
     args.path_out.chmod(args.path_in.stat().st_mode)
-    return 0
 
 
 def render_jinja(
