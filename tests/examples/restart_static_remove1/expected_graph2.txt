@@ -36,6 +36,7 @@ file:README.txt
 
 step:copy README.txt backup.txt
                state = SUCCEEDED
+           explained = yes
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:README.txt

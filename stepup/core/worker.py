@@ -266,6 +266,7 @@ class WorkerClient:
 
             # Run the step
             async with self.dblock:
+                step.set_dirty(False)
                 step.set_state(StepState.RUNNING)
                 step.clean_before_run()
                 step_counts = self.workflow.get_step_counts()

@@ -77,6 +77,7 @@ file:sub/inp2.txt
 
 step:copy inp1.txt out1.txt  # wd=sub/
                state = SUCCEEDED
+           explained = yes
           created by   step:runpy ./plan.py  # wd=sub/
             consumes   file:sub/
             consumes   file:sub/inp1.txt
@@ -91,6 +92,7 @@ file:sub/out1.txt
 
 step:copy inp2.txt out2.txt  # wd=sub/
                state = SUCCEEDED
+           explained = yes
           created by   step:runpy ./plan.py  # wd=sub/
             consumes   file:sub/
             consumes   file:sub/inp2.txt

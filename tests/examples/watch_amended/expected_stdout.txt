@@ -9,6 +9,12 @@
         2/2 |      PHASE │ watch
         2/2 |    DELETED │ inp.txt
         1/2 |      PHASE │ run
+        1/2 |      START │ runpy ./work.py
+        1/2 | RESCHEDULE │ runpy ./work.py
+──────────────── Rescheduling due to unavailable amended inputs ────────────────
+Missing inputs and/or required directories:
+inp.txt
+────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ 1 step(s) remained pending due to ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  inp.txt
@@ -25,7 +31,8 @@ Outputs     OUTDATED  out.txt [amended]
         1/2 |      PHASE │ watch
         1/2 |    UPDATED │ inp.txt
         1/2 |      PHASE │ run
-        1/2 |       SKIP │ runpy ./work.py
+        1/2 |      START │ runpy ./work.py
+        2/2 |    SUCCESS │ runpy ./work.py
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |    UPDATED │ inp.txt

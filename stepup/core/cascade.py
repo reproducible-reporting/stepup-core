@@ -561,7 +561,8 @@ class Cascade:
         # Schema 1 became outdated due to new step_hash table.
         # While making this change, the enums were also made more intuitive.
         # Schema 2 became outdated due to the worker actions.
-        return 3
+        # Schema 3 became outdated due to a change in step table (dirty field).
+        return 4
 
     @classmethod
     def schema(cls) -> str:

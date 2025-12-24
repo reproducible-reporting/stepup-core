@@ -223,8 +223,8 @@ class File(Node):
     # Run phase
     #
 
-    def release_pending(self):
-        """Check all steps using this one as input and queue them if possible.
+    def completed(self):
+        """Check all steps using this file as input and queue them if possible.
 
         In case of a directory, also notify the watcher by putting it on the dir_queue.
         """
@@ -232,8 +232,8 @@ class File(Node):
         from .step import Step  # noqa: PLC0415
 
         if self.get_state() in [FileState.STATIC, FileState.BUILT]:
-            for step in self.consumers(Step):
-                step.set_validate_amended()
+            for step in self.consumers(Step, include_orphans=True):
+                step.mark_pending()
                 step.queue_if_appropriate()
             if self.path.endswith("/"):
                 self.workflow.dir_queue.put_nowait((DirWatch.START, self.path))
@@ -284,7 +284,7 @@ class File(Node):
             from .step import Step  # noqa: PLC0415
 
             for step in self.consumers(Step):
-                step.mark_pending(input_changed=True)
+                step.mark_pending()
         elif state == FileState.AWAITED:
             # Mark the creator pending, as to make sure the file is rebuilt.
             creator = self.creator()
@@ -300,6 +300,6 @@ class File(Node):
             from .step import Step  # noqa: PLC0415
 
             for step in self.consumers(Step):
-                step.mark_pending(input_changed=True)
+                step.mark_pending()
         elif state != FileState.OUTDATED:
             raise ValueError(f"Cannot make file oudated when its state is {state}")

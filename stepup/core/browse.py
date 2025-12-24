@@ -180,6 +180,8 @@ HTML_TEMPLATE = """\
     .failed { color: var(--red); }
     .yes { color: var(--green); }
     .no { color: var(--red); }
+    .dirty { color: var(--red); }
+    .clean { color: var(--green); }
     .required { color: var(--blue); }
     table.list tr td {
       vertical-align: top;
@@ -364,8 +366,8 @@ class GraphServer(BaseHTTPRequestHandler):
 
         # Format the state (if a file or a step)
         if kind == "step":
-            (state_i, mandatory_i) = self.con.execute(
-                "SELECT state, mandatory FROM step WHERE node = ?", (node_i,)
+            (state_i, mandatory_i, dirty) = self.con.execute(
+                "SELECT state, mandatory, dirty FROM step WHERE node = ?", (node_i,)
             ).fetchone()
             state = StepState(state_i)
             mandatory = Mandatory(mandatory_i)
@@ -373,6 +375,10 @@ class GraphServer(BaseHTTPRequestHandler):
             yield (
                 f'<p>Mandatory: <span class="{mandatory.name.lower()}">{mandatory.name}</span></p>'
             )
+            if dirty:
+                yield '<p>Dirty: <span class="dirty">YES</span></p>'
+            else:
+                yield '<p>Dirty: <span class="clean">NO</span></p>'
         elif kind == "file":
             (state_i, digest, mode, mtime, size, inode) = self.con.execute(
                 "SELECT state, digest, mode, mtime, size, inode FROM file WHERE node = ?", (node_i,)

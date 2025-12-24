@@ -95,7 +95,7 @@ file:out1.txt
             consumes   step:runpy ./work1.py
 
 step:runpy ./work2.py
-               state = SUCCEEDED
+               state = PENDING
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./work1.py
             consumes   file:./

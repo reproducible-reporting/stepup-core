@@ -1,0 +1,28 @@
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/1 |      PHASE │ run
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |      START │ runpy ./work.py
+        1/2 | RESCHEDULE │ runpy ./work.py
+──────────────── Rescheduling due to unavailable amended inputs ────────────────
+Missing inputs and/or required directories:
+inp2.txt
+─────────────────────────────── Standard output ────────────────────────────────
+First input
+────────────────────────────────────────────────────────────────────────────────
+        1/2 |    WARNING │ 1 step(s) remained pending due to ...
+─────────────────────────── Incomplete requirements ────────────────────────────
+             AWAITED  inp2.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Action                runpy ./work.py
+Working directory     ./
+Inputs        STATIC  ./
+              STATIC  inp1.txt [amended]
+             AWAITED  (inp2.txt) [amended]
+────────────────────────────────────────────────────────────────────────────────
+        1/2 |    WARNING │ Skipping file cleanup due to incomplete build
+        1/2 |    WARNING │ Check logs: .stepup/warning.log
+        1/2 |      PHASE │ watch
+        1/2 |   DIRECTOR │ Stopping workers
+        1/2 |   DIRECTOR │ See you!

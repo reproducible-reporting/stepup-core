@@ -5,10 +5,11 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |    UPDATED │ inp1.txt
         0/0 |   DIRECTOR │ Launched worker 0
-        1/4 |      PHASE │ run
+        0/4 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
-        2/4 |    SUCCESS │ runpy ./plan.py
-        2/4 |       SKIP │ runpy ./work1.py
+        1/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |       SKIP │ runpy ./work1.py
+        2/4 |       SKIP │ runpy ./work2.py
         3/4 |      START │ runpy ./work3.py
         4/4 |    SUCCESS │ runpy ./work3.py
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)

@@ -8,7 +8,15 @@
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
-        2/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |       SKIP │ runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       explained, inp_digest aa041ffc, out_digest 42fc782e
+Same inp hash        ./
+Same inp hash        head_x.txt
+Same inp hash        tail_x.txt
+Same out hash        paste_x.txt
+────────────────────────────────────────────────────────────────────────────────
         2/4 |      START │ runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
         3/4 |    SUCCESS │ runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
         3/4 |      START │ runsh paste -d ' ' head_z.txt tail_z.txt > paste_z.txt

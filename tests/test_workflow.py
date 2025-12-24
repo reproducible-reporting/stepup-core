@@ -853,6 +853,7 @@ def test_define_queued_step_skip_extra(wfp: Workflow):
     )
     assert keep_going
     assert to_check == []
+    foo.set_dirty(False)
     wfp.update_file_hashes([("log", fake_hash("log")), ("aout", fake_hash("aout"))], "succeeded")
     foo.completed(StepHash(b"foo_ok", None, b"zzz", None))
     assert foo.get_state() == StepState.SUCCEEDED
@@ -872,21 +873,24 @@ def test_define_queued_step_skip_extra(wfp: Workflow):
     wfp.job_queue_changed.clear()
     foo.mark_pending()
     assert not wfp.job_queue_changed.is_set()
+    foo_state, _, _, _, foo_dirty, _ = foo.properties()
     assert foo.get_hash() is not None
-    assert foo.get_state() == StepState.PENDING
-    assert not foo.get_validate_amended()
+    assert foo_state == StepState.PENDING
+    assert foo_dirty
     assert not foo.is_orphan()
 
     assert wfp.find(File, "log").get_state() == FileState.OUTDATED
-
+    # bar should also become pending
+    bar_state, _, _, _, bar_dirty, _ = bar.properties()
     assert bar.get_hash() is not None
-    assert bar.get_state() == StepState.PENDING
-    assert bar.get_validate_amended()
+    assert bar_state == StepState.PENDING
+    assert bar_dirty
     spam = wfp.find(File, "spam")
     assert spam is not None
     assert spam.get_state() == FileState.VOLATILE
 
     # Simulate rerun
+    foo.mark_pending()
     foo.queue_if_appropriate()
     assert wfp.job_queue_changed.is_set()
     assert foo.get_state() == StepState.QUEUED
@@ -920,7 +924,6 @@ def test_skip_step_amended_orphaned_input(wfp: Workflow):
     wfp.update_file_hashes([("log", fake_hash("log")), ("aout", fake_hash("aout"))], "succeeded")
     foo.completed(StepHash(b"foo_ok", None, b"zzz", None))
     assert foo.get_state() == StepState.SUCCEEDED
-    txt = wfp.format_str()
 
     # Make ainp orphan and check state
     wfp.job_queue_changed.clear()
@@ -932,13 +935,12 @@ def test_skip_step_amended_orphaned_input(wfp: Workflow):
     assert foo.get_state() == StepState.SUCCEEDED
     assert wfp.find(File, "log").get_state() == FileState.BUILT
 
-    # not even skip
+    # When ainp reappears, foo should be requeued because ainp may have changed.
     declare_static(wfp, plan, ["ainp"])
     assert foo.get_hash() is not None
-    assert foo.get_state() == StepState.SUCCEEDED
+    assert foo.get_state() == StepState.QUEUED
     log = wfp.find(File, "log")
-    assert log.get_state() == FileState.BUILT
-    assert wfp.format_str() == txt
+    assert log.get_state() == FileState.OUTDATED
 
 
 def test_skip_ngm(wfp: Workflow):
@@ -2320,6 +2322,7 @@ def test_sql_recurse_products_pending_tree(wfp: Workflow):
 
     # Set the states so that there should be two pending steps that are potentially queuable.
     foo.set_state(StepState.RUNNING)
+    bar.set_dirty(False)
     bar.set_state(StepState.SUCCEEDED)
     spam.set_state(StepState.RUNNING)
 

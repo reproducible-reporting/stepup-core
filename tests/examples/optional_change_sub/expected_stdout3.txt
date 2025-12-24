@@ -7,7 +7,10 @@
         0/0 |   DIRECTOR │ Launched worker 0
         3/4 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
-        4/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |       SKIP │ copy hop1.txt hop2.txt
+        2/4 |       SKIP │ runpy ./plan.py  # wd=sub/
+        3/4 |       SKIP │ copy ../hop2.txt hop3.txt  # wd=sub/
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |      PHASE │ watch
         4/4 |   DIRECTOR │ Stopping workers

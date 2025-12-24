@@ -40,7 +40,7 @@ Planning sec 1 summary
       11/11 |    UPDATED │ ch-2-theory/sec-2-2-original.txt
        7/11 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
-       8/11 |    SUCCESS │ runpy ./plan.py
+       1/11 |    SUCCESS │ runpy ./plan.py
 ─────────────────────────────── Standard output ────────────────────────────────
 Planning ch 1 intro
 Planning sec 1 blabla
@@ -52,8 +52,15 @@ Planning ch 3 conclusions
 Planning sec 2 outlook
 Planning sec 1 summary
 ────────────────────────────────────────────────────────────────────────────────
-       8/11 |      START │ copy ch-2-theory/sec-2-2-original.txt ch-2-theory/sec-2-2-original.md
-       9/11 |    SUCCESS │ copy ch-2-theory/sec-2-2-original.txt ch-2-theory/sec-2-2-original.md
+       1/11 |       SKIP │ copy ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
+       2/11 |       SKIP │ runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
+       3/11 |       SKIP │ copy ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
+       4/11 |       SKIP │ copy ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+       5/11 |       SKIP │ runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
+       6/11 |      START │ copy ch-2-theory/sec-2-2-original.txt ch-2-theory/sec-2-2-original.md
+       7/11 |    SUCCESS │ copy ch-2-theory/sec-2-2-original.txt ch-2-theory/sec-2-2-original.md
+       7/11 |       SKIP │ copy ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
+       8/11 |       SKIP │ copy ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
        9/11 |      START │ runsh cat ch-2-theory/sec-2-1-basics.md ch-2-theory/sec-2-2-original.md > ch-2-theory/ch-2-compiled.md
       10/11 |    SUCCESS │ runsh cat ch-2-theory/sec-2-1-basics.md ch-2-theory/sec-2-2-original.md > ch-2-theory/ch-2-compiled.md
       10/11 |      START │ runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md

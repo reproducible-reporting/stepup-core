@@ -23,7 +23,7 @@ wait
 [[ -f copy.txt ]] || exit 1
 grep inp1 copy.txt
 
-# Change subs.txt and rerstart.
+# Change subs.txt and restart.
 rm inp1.txt
 echo inp2 > inp2.txt
 echo inp2.txt > subs.txt

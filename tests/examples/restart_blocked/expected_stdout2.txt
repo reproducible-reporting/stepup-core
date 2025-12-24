@@ -7,7 +7,8 @@
         0/0 |   DIRECTOR │ Launched worker 0
         1/4 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
-        2/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |       SKIP │ copy initial.txt input.txt
         2/4 |      START │ runpy ./expensive.py
         3/4 |    SUCCESS │ runpy ./expensive.py
 ─────────────────────────────── Standard output ────────────────────────────────

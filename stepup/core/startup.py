@@ -102,7 +102,7 @@ async def startup_from_db(
                     seen.add(name)
         async with dblock:
             for step in to_mark_pending:
-                step.mark_pending(input_changed=True)
+                step.mark_pending()
 
     # Check for file changes and new glob matches
     await reporter("STARTUP", "Scanning initial database for changed files")

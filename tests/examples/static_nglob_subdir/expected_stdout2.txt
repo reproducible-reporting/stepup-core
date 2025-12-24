@@ -7,7 +7,15 @@
         0/0 |   DIRECTOR │ Launched worker 0
         3/4 |      PHASE │ run
         1/2 |      START │ runpy ./plan.py  # wd=sub/
-        4/5 |    SUCCESS │ runpy ./plan.py  # wd=sub/
+        2/5 |    SUCCESS │ runpy ./plan.py  # wd=sub/
+        2/5 |       SKIP │ copy inp1.txt out1.txt  # wd=sub/
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       compact, inp_digest c90ab996, out_digest aa0dd7b9
+────────────────────────────────────────────────────────────────────────────────
+        3/5 |       SKIP │ copy inp2.txt out2.txt  # wd=sub/
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       compact, inp_digest 34b1ffee, out_digest 5d84e883
+────────────────────────────────────────────────────────────────────────────────
         4/5 |      START │ copy inp3.txt out3.txt  # wd=sub/
         5/5 |    SUCCESS │ copy inp3.txt out3.txt  # wd=sub/
         5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s)

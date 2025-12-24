@@ -12,7 +12,11 @@
 Modified step hash   compact ➜ explained, inp_digest 5259177a ➜ 53c6eec4, out_digest 786a02f7 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
         0/1 |      START │ runpy ./plan.py
-        2/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |       SKIP │ copy README.txt backup.txt
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       compact, inp_digest 4035fd0e, out_digest 92b11c4c
+────────────────────────────────────────────────────────────────────────────────
         2/2 |   DIRECTOR │ Trying to delete 1 outdated output(s)
         2/2 |      CLEAN │ bar.txt
         2/2 |    WARNING │ Check logs: .stepup/warning.log

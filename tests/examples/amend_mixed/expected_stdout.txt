@@ -47,16 +47,6 @@ Same out hash        log.txt
         4/4 |    UPDATED │ inp0.txt
         4/4 |    UPDATED │ inp1.txt
         2/4 |      PHASE │ run
-        2/4 |  DROPAMEND │ runsh ./work.py > log.txt
-────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest 7baa8d9e ➜ 76443114, out_digest 7d6b25ba ➜ (unset)
-Modified inp hash    inp0.txt (digest 681fd532 ➜ 2dab5684)
-Deleted inp hash     tmp1.txt
-──────────────────────── Remained the same (or missing) ────────────────────────
-Same inp hash        ./
-Same inp hash        inp2.txt
-Same inp hash        work.py
-────────────────────────────────────────────────────────────────────────────────
         2/4 |     NOSKIP │ runsh cp inp1.txt tmp1.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 6c669ae9 ➜ f10bfa46, out_digest 10bf5516 ➜ (unset)
@@ -64,14 +54,18 @@ Modified inp hash    inp1.txt (digest 6c6e5eb3 ➜ e8869200, size 15 ➜ 16)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
-        2/4 |      START │ runsh ./work.py > log.txt
-        2/4 | RESCHEDULE │ runsh ./work.py > log.txt
-──────────────── Rescheduling due to unavailable amended inputs ────────────────
-Missing inputs and/or required directories:
-tmp1.txt
-────────────────────────────────────────────────────────────────────────────────
         2/4 |      START │ runsh cp inp1.txt tmp1.txt
         3/4 |    SUCCESS │ runsh cp inp1.txt tmp1.txt
+        3/4 |     NOSKIP │ runsh ./work.py > log.txt
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest 7baa8d9e ➜ b7ada80c, out_digest 7d6b25ba ➜ (unset)
+Modified inp hash    inp0.txt (digest 681fd532 ➜ 2dab5684)
+Modified inp hash    tmp1.txt (digest 6c6e5eb3 ➜ e8869200, size 15 ➜ 16)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+Same inp hash        inp2.txt
+Same inp hash        work.py
+────────────────────────────────────────────────────────────────────────────────
         3/4 |      START │ runsh ./work.py > log.txt
         4/4 |    SUCCESS │ runsh ./work.py > log.txt
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)

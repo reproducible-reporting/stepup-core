@@ -1,0 +1,59 @@
+root:
+             creates   file:./
+             creates   file:plan.py
+             creates   step:runpy ./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:inp.txt
+            supplies   file:plan.py
+            supplies   file:work.py
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./work.py
+            supplies   step:runsh sleep 1; echo 'Some input for drop_amend example' > inp.txt
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:runpy ./plan.py
+
+step:runpy ./plan.py
+               state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
+           explained = yes
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   file:work.py
+             creates   step:runpy ./work.py
+             creates   step:runsh sleep 1; echo 'Some input for drop_amend example' > inp.txt
+
+file:work.py
+               state = STATIC
+          created by   step:runpy ./plan.py
+            consumes   file:./
+
+step:runpy ./work.py
+               state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
+           explained = yes
+          created by   step:runpy ./plan.py
+            consumes   file:./
+            consumes   file:inp.txt [amended]
+
+step:runsh sleep 1; echo 'Some input for drop_amend example' > inp.txt
+               state = SUCCEEDED
+           explained = yes
+          created by   step:runpy ./plan.py
+            consumes   file:./
+             creates   file:inp.txt
+            supplies   file:inp.txt
+
+file:inp.txt
+               state = BUILT
+          created by   step:runsh sleep 1; echo 'Some input for drop_amend example' > inp.txt
+            consumes   file:./
+            consumes   step:runsh sleep 1; echo 'Some input for drop_amend example' > inp.txt
+            supplies   step:runpy ./work.py

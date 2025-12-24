@@ -14,7 +14,17 @@ Modified out hash    inp2.txt (digest 55af8bcf ➜ 705a962e, size 6 ➜ 16)
 Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
         2/3 |      START │ runsh echo word2 > inp2.txt
-        3/3 |    SUCCESS │ runsh echo word2 > inp2.txt
+        2/3 |    SUCCESS │ runsh echo word2 > inp2.txt
+        2/3 |       SKIP │ runpy ./work.py
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       explained, inp_digest 5b05adbe, out_digest 50adc10b
+Same inp hash        ./
+Same inp hash        inp1.txt
+Same inp hash        inp2.txt
+Same env var         STEPUP_PATH_FILTER (unset)
+Same out hash        out1.txt
+Same out hash        out2.txt
+────────────────────────────────────────────────────────────────────────────────
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |    WARNING │ Check logs: .stepup/warning.log
         3/3 |      PHASE │ watch

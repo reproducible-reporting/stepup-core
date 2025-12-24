@@ -8,8 +8,8 @@
         0/0 |   DIRECTOR │ Launched worker 0
         1/4 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
-        2/4 |    SUCCESS │ runpy ./plan.py
-        2/4 |    WARNING │ 2 step(s) remained pending due to ...
+        1/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |    WARNING │ 3 step(s) remained pending due to ...
 ─────────────────────────── Incomplete requirements ────────────────────────────
              MISSING  inp1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -20,6 +20,13 @@ Inputs        STATIC  ./
              MISSING  (inp1.txt)
 Outputs     OUTDATED  out1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
+Action                runpy ./work2.py
+Working directory     ./
+Inputs        STATIC  ./
+              STATIC  work2.py
+              STATIC  inp2.txt
+Outputs        BUILT  out2.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                runpy ./work3.py
 Working directory     ./
 Inputs        STATIC  ./
@@ -27,8 +34,8 @@ Inputs        STATIC  ./
               STATIC  inp3.txt
 Outputs     OUTDATED  out3.txt
 ────────────────────────────────────────────────────────────────────────────────
-        2/4 |    WARNING │ Skipping file cleanup due to incomplete build
-        2/4 |    WARNING │ Check logs: .stepup/warning.log
-        2/4 |      PHASE │ watch
-        2/4 |   DIRECTOR │ Stopping workers
-        2/4 |   DIRECTOR │ See you!
+        1/4 |    WARNING │ Skipping file cleanup due to incomplete build
+        1/4 |    WARNING │ Check logs: .stepup/warning.log
+        1/4 |      PHASE │ watch
+        1/4 |   DIRECTOR │ Stopping workers
+        1/4 |   DIRECTOR │ See you!

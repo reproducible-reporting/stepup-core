@@ -7,7 +7,8 @@
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
-        2/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |       SKIP │ runpy ./generate.py plan --optional
         2/4 |      START │ runpy ./generate.py run
         3/4 |    SUCCESS │ runpy ./generate.py run
         3/4 |      START │ copy runout.txt copy.txt

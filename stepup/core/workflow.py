@@ -185,8 +185,23 @@ class Workflow(Cascade):
                 "%s output of succeeded step: path_out=%s step=%s", file_state.name, flabel, slabel
             )
             to_mark_pending.add(Step(self, si, slabel))
+
+        # Verify that succeeded steps are not dirty.
+        sql = (
+            "SELECT step.node, node.label FROM step JOIN node ON step.node = node.i "
+            "WHERE step.state = ? AND step.dirty = TRUE AND NOT node.orphan"
+        )
+        data = (StepState.SUCCEEDED.value,)
+        for si, slabel in self.con.execute(sql, data):
+            if strict:
+                raise GraphError(f"Dirty succeeded step: step={slabel}")
+            logger.error("Dirty succeeded step: step=%s", slabel)
+            to_mark_pending.add(Step(self, si, slabel))
+
+        # Mark steps pending to rerun steps that seem to be out of date,
+        # despite being marked succeeded.
         for step in to_mark_pending:
-            step.mark_pending(input_changed=True)
+            step.mark_pending()
 
     def initialize_boot(self) -> bool:
         """Initialize the (new) boot script.
@@ -488,17 +503,14 @@ class Workflow(Cascade):
             parent_state = parent_info.file.get_state()
             deferred_parents = parent_info.deferred
 
-        # Consistency checks for static and missing files.
-        if file_state == FileState.STATIC:
-            if not (parent_state is None or parent_state == FileState.STATIC):
-                raise GraphError(f"Static path does not have a static parent path node: {path}")
-            file.release_pending()
-        elif file_state == FileState.MISSING:
-            if not (parent_state is None or parent_state in (FileState.STATIC, FileState.MISSING)):
-                raise GraphError(
-                    f"Missing path does not have a static or missing parent path node: {path} "
-                    f"(Parent state is {parent_state.name}.)"
-                )
+        # Consistency checks for missing files.
+        if file_state == FileState.MISSING and not (
+            parent_state is None or parent_state in (FileState.STATIC, FileState.MISSING)
+        ):
+            raise GraphError(
+                f"Missing path does not have a static or missing parent path node: {path} "
+                f"(Parent state is {parent_state.name}.)"
+            )
         return file, deferred_parents
 
     def declare_missing(self, creator: Node, paths=Collection[str]) -> list[tuple[str, FileHash]]:
@@ -642,7 +654,7 @@ class Workflow(Cascade):
         # Files whose `externally_deleted` method must be called.
         deleted = []
         # File whose `release` method should be called
-        released = []
+        completed = []
         # Files whose state and hash must be updated.
         new_states_hashes = []
 
@@ -656,59 +668,59 @@ class Workflow(Cascade):
         # based on the cause of the hash updates.
         if cause == "external":
             # This is branch is relevant for the end of the watch phase or the startup of StepUp
-            for i, path, fh, old_state in records:
+            for i, path, new_fh, old_state in records:
                 if old_state == FileState.MISSING:
-                    if fh.is_unknown:
+                    if new_fh.is_unknown:
                         raise AssertionError(f"Missing updated to be missing again: {path}")
-                    new_states_hashes.append((i, FileState.STATIC, fh))
+                    new_states_hashes.append((i, FileState.STATIC, new_fh))
                     updated.append((i, path))
                 elif old_state == FileState.STATIC:
-                    if fh.is_unknown:
-                        new_states_hashes.append((i, FileState.MISSING, fh))
+                    if new_fh.is_unknown:
+                        new_states_hashes.append((i, FileState.MISSING, new_fh))
                         deleted.append((i, path))
                     else:
-                        new_states_hashes.append((i, FileState.STATIC, fh))
+                        new_states_hashes.append((i, FileState.STATIC, new_fh))
                         updated.append((i, path))
                 elif old_state in (FileState.BUILT, FileState.OUTDATED):
                     new_states_hashes.append((i, FileState.AWAITED, FileHash.unknown()))
-                    if fh.is_unknown:
+                    if new_fh.is_unknown:
                         deleted.append((i, path))
                     else:
                         updated.append((i, path))
                 else:
-                    raise_unexpected(path, old_state, fh)
+                    raise_unexpected(path, old_state, new_fh)
         elif cause == "succeeded":
             # This branch is relevant for when a step has succeeded
             # and its outputs should be marked as BUILT.
-            for i, path, fh, old_state in records:
+            for i, path, new_fh, old_state in records:
                 if old_state in (FileState.OUTDATED, FileState.AWAITED):
-                    if fh.is_unknown:
+                    if new_fh.is_unknown:
                         raise AssertionError(f"Unknown file hash after succeded step: {path}")
-                    new_states_hashes.append((i, FileState.BUILT, fh))
-                    released.append((i, path))
+                    new_states_hashes.append((i, FileState.BUILT, new_fh))
+                    completed.append((i, path))
                 else:
-                    raise_unexpected(path, old_state, fh)
+                    raise_unexpected(path, old_state, new_fh)
         elif cause == "failed":
             # This branch is relevant for when a step has failed or rescheduled
             # and its outputs should be marked as OUTDATED.
-            for i, path, fh, old_state in records:
+            for i, path, new_fh, old_state in records:
                 if old_state in (FileState.OUTDATED, FileState.AWAITED):
                     new_states_hashes.append(
-                        (i, FileState.AWAITED if fh.is_unknown else FileState.OUTDATED, fh)
+                        (i, FileState.AWAITED if new_fh.is_unknown else FileState.OUTDATED, new_fh)
                     )
                 else:
-                    raise_unexpected(path, old_state, fh)
+                    raise_unexpected(path, old_state, new_fh)
         elif cause == "confirmed":
             # This branch is relevant for when the client has confirmed the hashes
             # of missing files and they should be marked as STATIC.
-            for i, path, fh, old_state in records:
+            for i, path, new_fh, old_state in records:
                 if old_state == FileState.MISSING:
-                    if fh.is_unknown:
+                    if new_fh.is_unknown:
                         raise AssertionError(f"Missing file confirmed as missing: {path}")
-                    new_states_hashes.append((i, FileState.STATIC, fh))
-                    released.append((i, path))
+                    new_states_hashes.append((i, FileState.STATIC, new_fh))
+                    completed.append((i, path))
                 else:
-                    raise_unexpected(path, old_state, fh)
+                    raise_unexpected(path, old_state, new_fh)
         else:
             raise ValueError(f"Invalid cause for updating file hashes: {cause}")
 
@@ -730,18 +742,18 @@ class Workflow(Cascade):
 
         # Call File methods to further update the workflow.
         logger.info(
-            "Update file hashes: cause=%s updated=%s deleted=%s released=%s",
+            "Update file hashes: cause=%s updated=%s deleted=%s completed=%s",
             cause,
             updated,
             deleted,
-            released,
+            completed,
         )
         for i, path in updated:
             File(self, i, path).externally_updated()
         for i, path in deleted:
             File(self, i, path).externally_deleted()
-        for i, path in released:
-            File(self, i, path).release_pending()
+        for i, path in completed:
+            File(self, i, path).completed()
 
     def define_step(
         self,
@@ -942,7 +954,7 @@ class Workflow(Cascade):
         # If inputs of the recreated steps are AWAITED or OUTDATED, these steps must be rescheduled.
         for i, label in self.con.execute(RECURSE_OUTDATED_STEPS, (old_step.i,)):
             step = Step(self, i, label)
-            step.mark_pending(input_changed=True)
+            step.mark_pending()
 
         # Look for MISSING inputs and determine which were created by a deferred glob.
         # Their existence still needs to be checked by the client and ideally confirmed as existing
@@ -1136,7 +1148,7 @@ class Workflow(Cascade):
             (Mandatory.NO.value, StepState.PENDING.value),
         ):
             step = Step(self, i, label)
-            step.mark_pending(input_changed=True)
+            step.mark_pending()
         super().clean()
 
     #
@@ -1182,7 +1194,7 @@ class Workflow(Cascade):
                 step.delete_hash()
                 data = (pickle.dumps(evolved), i)
                 self.con.execute("UPDATE nglob_multi SET data = ? WHERE i = ?", data)
-                step.mark_pending(input_changed=True)
+                step.mark_pending()
 
     def queue_pending_steps(self):
         """Queue pending steps that can be executed."""

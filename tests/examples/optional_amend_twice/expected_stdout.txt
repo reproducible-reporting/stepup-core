@@ -26,18 +26,11 @@ optional2.txt
         4/4 |      PHASE │ watch
         4/4 |    UPDATED │ data2.txt
         2/4 |      PHASE │ run
-        1/2 |      START │ runsh ./work.py
-        2/4 | RESCHEDULE │ runsh ./work.py
-──────────────── Rescheduling due to unavailable amended inputs ────────────────
-Missing inputs and/or required directories:
-optional2.txt
-────────────────────────────────────────────────────────────────────────────────
         2/4 |      START │ copy data2.txt optional2.txt
         3/4 |    SUCCESS │ copy data2.txt optional2.txt
         1/2 |      START │ runsh ./work.py
         4/4 |    SUCCESS │ runsh ./work.py
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch
         4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

@@ -7,16 +7,6 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         2/4 |      PHASE │ run
-        2/4 |  DROPAMEND │ runpy ./work.py
-────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest d400b587 ➜ 987797c4, out_digest 59af1c47 ➜ (unset)
-Modified inp hash    inp2.txt (digest 3618355c ➜ bc82e0ae)
-Deleted inp hash     out1.txt
-──────────────────────── Remained the same (or missing) ────────────────────────
-Same inp hash        ./
-Same inp hash        work.py
-Same env var         STEPUP_PATH_FILTER (unset)
-────────────────────────────────────────────────────────────────────────────────
         2/4 |     NOSKIP │ runpy ./prep.py run
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest c5d0515b ➜ cc9cde39, out_digest dc5a1639 ➜ (unset)
@@ -26,14 +16,18 @@ Same inp hash        ./
 Same inp hash        prep.py
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-        2/4 |      START │ runpy ./work.py
-        2/4 | RESCHEDULE │ runpy ./work.py
-──────────────── Rescheduling due to unavailable amended inputs ────────────────
-Missing inputs and/or required directories:
-out1.txt
-────────────────────────────────────────────────────────────────────────────────
         2/4 |      START │ runpy ./prep.py run
         3/4 |    SUCCESS │ runpy ./prep.py run
+        3/4 |     NOSKIP │ runpy ./work.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest d400b587 ➜ ed5d3629, out_digest 59af1c47 ➜ (unset)
+Modified inp hash    inp2.txt (digest 3618355c ➜ bc82e0ae)
+Modified inp hash    out1.txt (digest 2600b478 ➜ 827c3d5c)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+Same inp hash        work.py
+Same env var         STEPUP_PATH_FILTER (unset)
+────────────────────────────────────────────────────────────────────────────────
         3/4 |      START │ runpy ./work.py
         4/4 |    SUCCESS │ runpy ./work.py
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)

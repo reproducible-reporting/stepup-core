@@ -17,7 +17,15 @@ Same env var         STEPUP_PATH_FILTER (unset)
         0/1 |      START │ runpy ./plan.py
         1/2 |    SUCCESS │ runpy ./plan.py
         1/2 |      START │ runpy ./outer.py bar
-        3/3 |    SUCCESS │ runpy ./outer.py bar
+        2/3 |    SUCCESS │ runpy ./outer.py bar
+        2/3 |       SKIP │ runpy ./inner.py
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       explained, inp_digest bba0613f, out_digest 27087b39
+Same inp hash        ./
+Same inp hash        inner.py
+Same env var         STEPUP_PATH_FILTER (unset)
+Same out hash        out.txt
+────────────────────────────────────────────────────────────────────────────────
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |    WARNING │ Check logs: .stepup/warning.log
         3/3 |      PHASE │ watch

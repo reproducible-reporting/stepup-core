@@ -36,7 +36,7 @@ file:work.py
             supplies   (step:runpy ./work.py)
 
 (step:runpy ./work.py)
-               state = SUCCEEDED
+               state = PENDING
              env_var = STEPUP_PATH_FILTER [amended]
             consumes   file:./
             consumes   file:work.py

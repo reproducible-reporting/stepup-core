@@ -10,7 +10,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+Improved scheduling of steps with amended inputs and safer `stepup clean` implementation.
 
 ### Changed
 
@@ -23,6 +23,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
       StepUp cleans these up automatically unless you run `stepup boot --no-clean`.)
     - By default, modified output files were never removed.
       Use the `--unsafe` option to override this safety mechanism.
+- Improved correctness and efficiency of scheduling of steps with amended inputs.
+  This change reduces unnecessary re-execution of steps in some scenarios.
+  The implementation requires a database schema version increase,
+  meaning that the workflow will be completely rebuilt after an upgrade to this version.
 
 ### Fixed
 

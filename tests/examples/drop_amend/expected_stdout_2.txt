@@ -1,0 +1,32 @@
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
+        0/0 |    STARTUP │ Making steps pending that use changed environment variables
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    UPDATED │ plan.py (digest c3da9003 ➜ c033dc26, size 219 ➜ 267)
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        2/3 |      PHASE │ run
+        2/3 |     NOSKIP │ runpy ./plan.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest 2c456309 ➜ 6ed29299, out_digest 786a02f7 ➜ (unset)
+Modified inp hash    plan.py (digest c3da9003 ➜ c033dc26, size 219 ➜ 267)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        ./
+Same env var         STEPUP_PATH_FILTER (unset)
+────────────────────────────────────────────────────────────────────────────────
+        0/1 |      START │ runpy ./plan.py
+        1/3 |    SUCCESS │ runpy ./plan.py
+        1/3 |      START │ runsh sleep 0.5; echo 'Some input for drop_amend example' > inp.txt
+        2/3 |    SUCCESS │ runsh sleep 0.5; echo 'Some input for drop_amend example' > inp.txt
+        2/3 |       SKIP │ runpy ./work.py
+───────────────────────────── No changes observed ──────────────────────────────
+Same step hash       explained, inp_digest 3e183506, out_digest 786a02f7
+Same inp hash        ./
+Same inp hash        inp.txt
+Same env var         STEPUP_PATH_FILTER (unset)
+────────────────────────────────────────────────────────────────────────────────
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
+        3/3 |    WARNING │ Check logs: .stepup/warning.log
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ Stopping workers
+        3/3 |   DIRECTOR │ See you!

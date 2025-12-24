@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS step (
     pool TEXT,
     block INTEGER NOT NULL CHECK(block IN (0, 1)),
     mandatory INTEGER NOT NULL CHECK(mandatory >= 31 AND mandatory <= 33),
-    validate_amended INTEGER NOT NULL CHECK(block IN (0, 1)),
+    dirty INTEGER NOT NULL CHECK(dirty IN (0, 1)),
     rescheduled_info TEXT NOT NULL,
     FOREIGN KEY (node) REFERENCES node(i)
 ) WITHOUT ROWID;
@@ -199,6 +199,7 @@ class Step(Node):
         **kwargs,
     ):
         """Create extra information in the database about this node."""
+        # Note that dirty is set to True for new steps by default.
         self.con.execute(
             "INSERT OR REPLACE INTO step VALUES(:node, :state, :pool, :block, :mandatory, 1, '')",
             {
@@ -354,17 +355,17 @@ class Step(Node):
 
     def properties(self) -> tuple[str, Path, StepState, str, bool, Mandatory, str]:
         row = self.con.execute(
-            "SELECT state, pool, block, mandatory, validate_amended, rescheduled_info "
+            "SELECT state, pool, block, mandatory, dirty, rescheduled_info "
             "FROM step WHERE node = ?",
             (self.i,),
         ).fetchone()
-        state_i, pool, block, mandatory_i, validate_amended, rescheduled_info = row
+        state_i, pool, block, mandatory_i, dirty, rescheduled_info = row
         return (
             StepState(state_i),
             pool,
             bool(block),
             Mandatory(mandatory_i),
-            bool(validate_amended),
+            bool(dirty),
             rescheduled_info,
         )
 
@@ -400,12 +401,28 @@ class Step(Node):
     def clear_rescheduled_info(self):
         self.con.execute("UPDATE step SET rescheduled_info = '' WHERE node = ?", (self.i,))
 
-    def get_validate_amended(self) -> bool:
-        sql = "SELECT validate_amended FROM step WHERE node = ?"
-        return bool(self.con.execute(sql, (self.i,)).fetchone()[0])
+    def set_dirty(self, value: bool = True):
+        """Flag that inputs or outputs of the step have potentially changed.
 
-    def set_validate_amended(self, value: bool = True):
-        sql = "UPDATE step SET validate_amended = ? WHERE node = ?"
+        Relevant changes include:
+
+        - Content changed of files used as input.
+        - Outputs changed or removed externally.
+        - Environment variables used by the step have changed.
+        - The list of files used as input has changed (e.g. due to new files matching a glob).
+
+        False positives are allowed, but not false negatives.
+        In case of False positives, it is assumed that running (or trying to run) the step once
+        will clear the dirty flag.
+        Such reruns should never reinstate a false positive dirty flag,
+        as this would cause an infinite loop of reruns.
+
+        This flag is set to False after successful completion of the step.
+        In most cases, when a step is marked pending, this flag should be set to True.
+        Without this flag being set, there is no need to queue the step again.
+        Newly created steps have this flag set by default.
+        """
+        sql = "UPDATE step SET dirty = ? WHERE node = ?"
         self.con.execute(sql, (int(value), self.i))
 
     #
@@ -686,7 +703,7 @@ class Step(Node):
     #
 
     def queue_if_appropriate(self):
-        state, pool, block, mandatory, validate_amended, rescheduled_info = self.properties()
+        state, pool, block, mandatory, dirty, rescheduled_info = self.properties()
 
         # Check basics that would prohibit scheduling impossible.
         if block:
@@ -697,9 +714,11 @@ class Step(Node):
             return
         if state != StepState.PENDING:
             return
+        if not dirty:
+            return
 
         # Do not start a step if any of its (recursive) creators are not in a valid state.
-        # These may still produce or changes files relevant for this step.
+        # These may still produce or change files relevant for this step.
         if self.con.execute(HAS_UNCERTAIN_CREATORS, (self.i,)).fetchone()[0]:
             return
 
@@ -718,16 +737,25 @@ class Step(Node):
         cursor = self.con.execute(sql, (self.i,))
         for path, is_orphan, fs_value, is_amended, digest, mode, mtime, size, inode in cursor:
             file_state = FileState(fs_value)
-            if is_orphan or file_state not in (FileState.BUILT, FileState.STATIC):
-                if is_amended and validate_amended:
-                    amended_inputs_ready = False
-                else:
-                    # We are sure that the step cannot be started due to one of two conditions:
-                    # - Initial input is not ready.
-                    # - Amended input is not ready and not going to validate it.
+            if not is_orphan and file_state in (FileState.BUILT, FileState.STATIC):
+                # Input is ready, collect its hash and look no further.
+                inp_hashes.append((path, FileHash(digest, mode, mtime, size, inode)))
+                continue
+
+            if is_amended:
+                if not is_orphan and file_state in (FileState.AWAITED, FileState.OUTDATED):
+                    # We're still expecting an update, not queuing step yet.
                     return
             else:
-                inp_hashes.append((path, FileHash(digest, mode, mtime, size, inode)))
+                # Initial input not ready, cannot queue step yet.
+                return
+
+            # If we reach this code path, the current input is amended and
+            # (1) is orphaned or (2) has state MISSING or VOLATILE.
+            # In this case, we request to validate amended inputs first.
+            # This means that amended inputs will be discarded and rederived again
+            # if any of the initial or available amended inputs have changed.
+            amended_inputs_ready = False
 
         # Determine the appropriate job to queue.
         step_hash = self.get_hash()
@@ -753,7 +781,6 @@ class Step(Node):
         logger.info("Queue %s", job.name)
         self.set_state(StepState.QUEUED)
         self.clear_rescheduled_info()
-        self.set_validate_amended(False)
         self.workflow.job_queue.put_nowait(job)
         self.workflow.job_queue_changed.set()
 
@@ -872,23 +899,32 @@ class Step(Node):
                     file.set_state(FileState.OUTDATED)
             if rescheduled_info != "":
                 logger.info("Rescheduled step: %s", self.label)
-                self.set_state(StepState.PENDING)
+                self.set_state(StepState.FAILED)
                 self.delete_hash()
                 # The missing inputs may have appeared by the time the step ended,
                 # so we need to check if we can put the step back on the queue right away.
+                # We should not mark the step dirty though, as we have no indication here
+                # that inputs or outputs have changed.
+                self.mark_pending(dirty=False)
                 self.queue_if_appropriate()
             else:
                 logger.info("Failed step: %s", self.label)
+                self.set_dirty(True)
                 self.set_state(StepState.FAILED)
                 self.delete_hash()
         else:
             logger.info("Succeeded step: %s", self.label)
+            # Step needs to be set dirty to False again, despite having done this before running it.
+            # A step may create its own inputs and amend them during its run, which will
+            # set the dirty flag to True again.
+            # If the step succeeded, we can safely reset the dirty flag.
+            self.set_dirty(False)
             self.set_state(StepState.SUCCEEDED)
             # Update states, needed for files that have not changed since previous run.
             for file in self.products(File):
                 if file.get_state() == FileState.OUTDATED:
                     file.set_state(FileState.BUILT)
-                    file.release_pending()
+                    file.completed()
             # Pending steps that are created by this step may possibly be queued.
             # Such steps need to be searched recursively, because they are only queued
             # when all their (recursive) creators are in a valid state.
@@ -926,7 +962,7 @@ class Step(Node):
     # Watch phase
     #
 
-    def mark_pending(self, *, input_changed: bool = False):
+    def mark_pending(self, *, dirty: bool = True):
         """Set succeeded or failed step pending (again).
 
         There can be many reasons for making a step pending,
@@ -935,16 +971,16 @@ class Step(Node):
 
         Parameters
         ----------
-        input_changed
-            Set to True when one of the inputs or environment variables (may) have changed.
-            The changes will be checked and if relevant, amended step arguments will be
-            refreshed, because they can be affected by the changes in inputs.
+        dirty
+            Set to False if a step is made pending without having a direct indication that
+            inputs or outputs have changed.
+            This may be relevant when there may have been file changes and the step is rescheduled.
         """
-        if input_changed:
-            self.set_validate_amended()
+        if dirty:
+            self.set_dirty()
         state = self.get_state()
-        if state == StepState.RUNNING:
-            raise RuntimeError("Cannot make a running step pending")
+        # Note that PENDING, QUEUED, and RUNNING can be ignored.
+        # This method may be called on RUNNING steps that create their own amended inputs.
         if state in (StepState.SUCCEEDED, StepState.FAILED):
             logger.info("Mark %s step PENDING: %s", state.name, self.label)
             self.set_state(StepState.PENDING)
