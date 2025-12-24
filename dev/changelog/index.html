@@ -5007,7 +5007,7 @@
 and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-based Versioning</a>.
 (Changes to features documented as &ldquo;experimental&rdquo; will not increment macro and meso version numbers.)</p>
 <h2 id="unreleased"><a href="https://github.com/reproducible-reporting/stepup-core">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
-<p>(no changes yet)</p>
+<p>Improved scheduling of steps with amended inputs and safer <code>stepup clean</code> implementation.</p>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Safer and more versatile <code>stepup clean</code> implementation:<ul>
@@ -5021,6 +5021,10 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   Use the <code>--unsafe</code> option to override this safety mechanism.</li>
 </ul>
 </li>
+<li>Improved correctness and efficiency of scheduling of steps with amended inputs.
+  This change reduces unnecessary re-execution of steps in some scenarios.
+  The implementation requires a database schema version increase,
+  meaning that the workflow will be completely rebuilt after an upgrade to this version.</li>
 </ul>
 <h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
 <ul>
