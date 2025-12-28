@@ -10,6 +10,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(no changes yet)
+
+## [3.2.0][] - 2025-12-28 {: #v3.2.0 }
+
 Improved scheduling of steps with amended inputs and safer `stepup clean` implementation.
 
 ### Changed
@@ -729,6 +733,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[3.2.0]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.0
 [3.1.4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.1.4
 [3.1.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.1.3
 [3.1.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.1.2
