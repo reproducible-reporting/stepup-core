@@ -1,0 +1,27 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+  DIRECTOR │ Launched worker 1
+  DIRECTOR │ Launched worker 2
+  DIRECTOR │ Launched worker 3
+     PHASE │ run
+     START │ runpy ./plan.py
+     START │ runsh sleep 0.1; echo A
+     START │ runsh sleep 0.1; echo B
+   SUCCESS │ runpy ./plan.py
+   SUCCESS │ runsh sleep 0.1; echo A
+─────────────────────────────── Standard output ────────────────────────────────
+A
+────────────────────────────────────────────────────────────────────────────────
+   SUCCESS │ runsh sleep 0.1; echo B
+─────────────────────────────── Standard output ────────────────────────────────
+B
+────────────────────────────────────────────────────────────────────────────────
+     START │ runsh sleep 0.1; echo C
+   SUCCESS │ runsh sleep 0.1; echo C
+─────────────────────────────── Standard output ────────────────────────────────
+C
+────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Stopping workers
+  DIRECTOR │ See you!

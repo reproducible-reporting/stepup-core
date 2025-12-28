@@ -1,0 +1,11 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ runpy ./plan.py
+   SUCCESS │ runpy ./plan.py
+     START │ render-jinja email_template.txt config.yaml email.txt
+   SUCCESS │ render-jinja email_template.txt config.yaml email.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Stopping workers
+  DIRECTOR │ See you!

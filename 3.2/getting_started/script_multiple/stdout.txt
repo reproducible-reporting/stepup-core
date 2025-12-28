@@ -1,0 +1,15 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+   STARTUP │ (Re)initialized boot script
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ runpy ./plan.py
+   SUCCESS │ runpy ./plan.py
+     START │ runpy ./plot.py plan
+   SUCCESS │ runpy ./plot.py plan
+     START │ runpy ./plot.py run plot_ebbr
+   SUCCESS │ runpy ./plot.py run plot_ebbr
+     START │ runpy ./plot.py run plot_ebos
+   SUCCESS │ runpy ./plot.py run plot_ebos
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Stopping workers
+  DIRECTOR │ See you!

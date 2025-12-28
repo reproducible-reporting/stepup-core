@@ -1,0 +1,15 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching 2 director(y|ies) from initial database
+   STARTUP │ Scanning initial database for changed files
+   DELETED │ dataset/
+   DELETED │ dataset/bigfile.txt
+   STARTUP │ Scanning initial database for new nglob matches
+  DIRECTOR │ Launched worker 0
+     PHASE │ run
+     START │ runpy ./plan.py
+   SUCCESS │ runpy ./plan.py
+      SKIP │ runsh cat average.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Stopping workers
+  DIRECTOR │ See you!
