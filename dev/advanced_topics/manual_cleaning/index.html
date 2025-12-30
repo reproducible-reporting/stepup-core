@@ -2099,29 +2099,41 @@ Examples of such situations are:</p>
 </li>
 </ul>
 <p>Simply removing outputs with the <code>rm</code> command is possible
-but quickly becomes tedious for larger projects.
-The <code>step clean</code> tool can selectively remove numerous outputs with minimal end-user effort.
+but quickly becomes tedious for larger projects.</p>
+<p>The <code>stepup clean</code> tool can selectively remove numerous outputs with minimal end-user effort.
 You need to pass as arguments the files whose (indirect) outputs you want to remove.
 Such arguments can be one of the two things:</p>
 <ol>
 <li>
-<p>If a file is given, all outputs using this file as input will be removed.
-   Furthermore, if the file itself is also a build output, it will also be removed.</p>
+<p>If a file is given, that file and all outputs using this file (indirectly) as input
+   are considered for removal.</p>
 </li>
 <li>
-<p>If a directory is given, all outputs will be removed from this directory.
-   Furthermore, if the directory is created in the build, it will also be removed.</p>
+<p>If a directory is given, that directory and all contained outputs are considered for removal.</p>
 </li>
 </ol>
-<p>Files are removed recursively, so outputs of outputs are also cleaned up.
-<code>stepup clean</code> will only remove files with status <code>OUTDATED</code>, <code>BUILT</code> or <code>VOLATILE</code>.
-<code>STATIC</code> or <code>AWAITED</code> files, i.e.,
-files that are not the result of step execution, are never removed.
-In addition, <code>stepup clean</code> compares the hash of a file to the last known hash,
-to make sure it only removes that contain changes made afterward without StepUp.</p>
-<p>By default, you need to run <code>stepup clean</code> in the top-level directory where you also started <code>stepup</code>.
-This requirement can be lifted by defining the <code>STEPUP_ROOT</code> environment variable,
-as explained in the <a href="../stepup_root/">next tutorial</a>.</p>
+<p>When running <code>stepup clean</code> without options, it will only print which files would be removed,
+without actually deleting anything.
+To actually delete files, you need to pass the <code>--commit</code> or <code>-c</code> option.</p>
+<p>From the files that are considered for removal, one can further select which files to delete.</p>
+<ul>
+<li>
+<p>Without the <code>--all</code> option, only files that are no longer produced by any step
+  are removed, similar to the automatic cleaning of StepUp.</p>
+</li>
+<li>
+<p>With the <code>--all</code> option, all the selected output files are removed.</p>
+</li>
+</ul>
+<p>The removal itself has a safety check:
+<code>stepup clean</code> compares the hash of a file to the last known hash
+to make sure it does not remove files that have been modified since they were created by the workflow.
+This check can be disabled with the <code>--unsafe</code> option.</p>
+<p>The <code>stepup clean</code> tool only removes files or directories.
+It never changes StepUp&rsquo;s workflow database.
+Hence, removed files remain in StepUp&rsquo;s workflow as orphaned nodes,
+until one runs <code>stepup boot</code> (with <code>--clean</code> or <code>STEPUP_CLEAN=1</code>)
+to trigger automatic cleaning.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>In StepUp 3.0.0, the old <code>cleanup</code> was renamed to <code>stepup clean</code>.</p>
@@ -2132,7 +2144,8 @@ as explained in the <a href="../stepup_root/">next tutorial</a>.</p>
 <p>The <a href="../static_named_glob/">Static Named Glob</a> tutorial provides a good test case
   for experimenting with <code>stepup clean</code>.
   For this example, run <code>stepup boot</code> without any arguments.
-  Then open a second terminal in the same directory and run <code>stepup clean ch3/sec3_1_applications.txt</code>.
+  Then open a second terminal in the same directory and run
+  <code>stepup clean ch3/sec3_1_applications.txt --all</code>.
   You will see that the following files have been deleted:</p>
 <ul>
 <li><code>ch3/sec3_1_applications.md</code></li>
@@ -2140,7 +2153,7 @@ as explained in the <a href="../stepup_root/">next tutorial</a>.</p>
 </ul>
 </li>
 <li>
-<p>In the same way as in the previous point, try removing all outputs with <code>stepup clean ./</code>.</p>
+<p>In the same way as in the previous point, try removing all outputs with <code>stepup clean . --all</code>.</p>
 </li>
 </ul>
 
