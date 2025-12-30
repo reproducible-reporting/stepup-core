@@ -30,6 +30,7 @@ step:runpy ./plan.py
 
 step:runsh cat src1.txt
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   (file:src1.txt)
             consumes   file:./
@@ -41,6 +42,7 @@ step:runsh cat src1.txt
 
 step:runsh cat src2.txt
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   (file:src2.txt)
             consumes   file:./

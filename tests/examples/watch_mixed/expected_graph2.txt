@@ -35,6 +35,7 @@ step:runpy ./plan.py
 
 (step:runsh cp orig.txt copy1.txt)
                state = PENDING
+               dirty = yes
             consumes   (file:orig.txt)
             consumes   file:./
              creates   (file:copy1.txt)
@@ -49,6 +50,7 @@ step:runpy ./plan.py
 
 step:runsh cp copy1.txt copy2.txt
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   (file:copy1.txt)
             consumes   file:./

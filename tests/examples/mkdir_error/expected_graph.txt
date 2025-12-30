@@ -27,6 +27,7 @@ step:runpy ./plan.py
 
 step:mkdir sub/blub/pup/
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   (file:sub/blub/)
             consumes   file:./

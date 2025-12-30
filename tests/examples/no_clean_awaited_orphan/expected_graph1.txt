@@ -29,6 +29,7 @@ step:runpy ./plan.py
 
 step:runsh echo Hello > test1.txt
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   (file:bogus.txt)
             consumes   file:./

@@ -30,6 +30,7 @@ from stepup.core.utils import (
     myabsolute,
     mynormpath,
     myparent,
+    myrealpath,
     myrelpath,
     translate,
     translate_back,
@@ -85,6 +86,16 @@ def test_myabsolute(inp: str):
     assert myabsolute(inp).normpath() == Path(inp).absolute()
 
 
+def test_myrealpath(tmp_path: Path):
+    (tmp_path / "dir").mkdir()
+    (tmp_path / "dir/file.txt").write_text("hello")
+    (tmp_path / "link").symlink_to(tmp_path / "dir/file.txt")
+    (tmp_path / "dir/linkdir").symlink_to(tmp_path / "dir")
+    assert myrealpath(str(tmp_path / "link")) == str(tmp_path / "dir/file.txt")
+    assert myrealpath(str(tmp_path / "dir/linkdir/file.txt")) == str(tmp_path / "dir/file.txt")
+    assert myrealpath(str(tmp_path / "dir/linkdir/")) == str(tmp_path / "dir/")
+
+
 @pytest.mark.parametrize(
     ("inp", "out"),
     [
@@ -122,7 +133,7 @@ def test_make_path_out():
         make_path_out("foo.pdf", None, None)
 
 
-def test_mak_path_out_other_exts():
+def test_make_path_out_other_exts():
     assert make_path_out("foo.svg", None, ".pdf", [".png"]) == "foo.pdf"
     assert make_path_out("foo.svg", "bar.png", ".pdf", [".png"]) == "bar.png"
     with pytest.raises(ValueError):

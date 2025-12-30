@@ -38,6 +38,7 @@ step:runpy ./plan.py
 step:runsh echo inp1 > foo1.txt
                state = PENDING
            mandatory = NO
+               dirty = yes
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:./
@@ -54,6 +55,7 @@ file:foo1.txt
 step:runsh echo inp2 > foo2.txt
                state = PENDING
            mandatory = NO
+               dirty = yes
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:./
@@ -70,6 +72,7 @@ file:foo2.txt
 step:runsh cat foo1.txt foo2.txt > bar.txt
                state = PENDING
            mandatory = NO
+               dirty = yes
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:./
@@ -88,6 +91,7 @@ file:bar.txt
 step:runsh cat bar.txt > egg.txt
                state = PENDING
            mandatory = NO
+               dirty = yes
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:./

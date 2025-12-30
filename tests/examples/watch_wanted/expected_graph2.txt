@@ -24,6 +24,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = PENDING
+               dirty = yes
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:./
@@ -39,6 +40,7 @@ file:static.txt
 
 step:runsh cp input1.txt output1.txt
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   (file:input1.txt)
             consumes   file:./
@@ -58,6 +60,7 @@ file:output1.txt
 
 step:runsh cp input2.txt output2.txt
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   (file:input2.txt)
             consumes   file:./

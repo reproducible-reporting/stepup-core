@@ -34,6 +34,7 @@ dg:sub/**
 
 step:copy sub/message.txt message.txt
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:sub/

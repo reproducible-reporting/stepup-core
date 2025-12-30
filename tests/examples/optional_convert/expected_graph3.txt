@@ -92,6 +92,7 @@ file:converted1.txt
 step:copy raw2.txt converted2.txt
                state = PENDING
            mandatory = NO
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:raw2.txt
@@ -107,6 +108,7 @@ file:converted2.txt
 step:copy raw3.txt converted3.txt
                state = PENDING
            mandatory = NO
+               dirty = yes
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:./
@@ -123,6 +125,7 @@ file:converted3.txt
 step:copy raw4.txt converted4.txt
                state = PENDING
            mandatory = NO
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:raw4.txt

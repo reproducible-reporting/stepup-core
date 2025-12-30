@@ -34,6 +34,7 @@ file:simple.sh
 
 step:runsh ./simple.sh
                state = FAILED
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:simple.sh

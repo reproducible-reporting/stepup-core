@@ -1,0 +1,76 @@
+root:
+             creates   file:../
+             creates   file:./
+             creates   file:plan.py
+             creates   step:runpy ./plan.py
+
+file:./
+               state = STATIC
+          created by   root:
+            supplies   file:../
+            supplies   file:plan.py
+            supplies   file:worker.py
+            supplies   file:worker_out.json
+            supplies   step:runpy ./plan.py
+            supplies   step:runpy ./worker.py --out=worker_out.json --amend-out
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   step:runpy ./plan.py
+
+step:runpy ./plan.py
+               state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   root:
+            consumes   file:./
+            consumes   file:plan.py
+             creates   dg:../pkgs_a/**
+             creates   file:worker.py
+             creates   step:runpy ./worker.py --out=worker_out.json --amend-out
+
+file:worker.py
+               state = STATIC
+          created by   step:runpy ./plan.py
+            consumes   file:./
+            supplies   step:runpy ./worker.py --out=worker_out.json --amend-out
+
+dg:../pkgs_a/**
+          created by   step:runpy ./plan.py
+             creates   file:../pkgs_a/
+             creates   file:../pkgs_a/helper.py
+
+step:runpy ./worker.py --out=worker_out.json --amend-out
+               state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   step:runpy ./plan.py
+            consumes   file:../pkgs_a/helper.py [amended]
+            consumes   file:./
+            consumes   file:worker.py
+             creates   file:worker_out.json
+            supplies   file:worker_out.json [amended]
+
+file:worker_out.json
+               state = BUILT
+          created by   step:runpy ./worker.py --out=worker_out.json --amend-out
+            consumes   file:./
+            consumes   step:runpy ./worker.py --out=worker_out.json --amend-out
+
+file:../pkgs_a/helper.py
+               state = STATIC
+          created by   dg:../pkgs_a/**
+            consumes   file:../pkgs_a/
+            supplies   step:runpy ./worker.py --out=worker_out.json --amend-out
+
+file:../pkgs_a/
+               state = STATIC
+          created by   dg:../pkgs_a/**
+            consumes   file:../
+            supplies   file:../pkgs_a/helper.py
+
+file:../
+               state = STATIC
+          created by   root:
+            consumes   file:./
+            supplies   file:../pkgs_a/

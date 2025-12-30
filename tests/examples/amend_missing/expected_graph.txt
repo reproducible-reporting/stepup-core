@@ -37,6 +37,7 @@ file:work.py
 
 step:runpy ./work.py
                state = FAILED
+               dirty = yes
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:./

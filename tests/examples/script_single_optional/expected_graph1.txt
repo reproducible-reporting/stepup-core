@@ -46,6 +46,7 @@ step:runpy ./generate.py plan --optional
 step:runpy ./generate.py run
                state = PENDING
            mandatory = NO
+               dirty = yes
           created by   step:runpy ./generate.py plan --optional
             consumes   file:./
             consumes   file:generate.py

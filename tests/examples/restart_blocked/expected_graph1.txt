@@ -64,7 +64,8 @@ file:input.txt
 
 step:runpy ./expensive.py
                state = PENDING
-               block = True
+               dirty = yes
+             blocked = yes
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:expensive.py
@@ -81,6 +82,7 @@ file:output.txt
 
 step:copy output.txt final.txt
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:output.txt

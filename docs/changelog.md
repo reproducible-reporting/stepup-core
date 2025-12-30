@@ -10,7 +10,16 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+(no summary yet)
+
+### Changed
+
+- `stepup browse` shows more details of steps.
+- Improve logging of worker processes and Python scripts executed with the `runpy` action.
+
+### Fixes
+
+- Fix filtering of automatically detected dependencies when paths differ due to symlinks.
 
 ## [3.2.0][] - 2025-12-28 {: #v3.2.0 }
 

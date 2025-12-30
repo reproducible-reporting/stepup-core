@@ -28,6 +28,7 @@ step:runpy ./plan.py
 
 step:copy missing.txt hello.txt
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   (file:missing.txt)
             consumes   file:./

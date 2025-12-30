@@ -219,14 +219,16 @@ class Step(Node):
 
     def format_properties(self) -> Iterator[tuple[str, str]]:
         """Iterate over key-value pairs that represent the properties of the node."""
-        state, pool, block, mandatory, _, _ = self.properties()
+        state, pool, block, mandatory, dirty, _ = self.properties()
         yield "state", state.name
         if mandatory != Mandatory.YES:
             yield "mandatory", mandatory.name
         if pool is not None:
             yield "pool", pool
+        if dirty:
+            yield "dirty", "yes"
         if block:
-            yield "block", block
+            yield "blocked", "yes"
 
         sql = "SELECT name, amended FROM env_var WHERE node = ?"
         label = "env_var"

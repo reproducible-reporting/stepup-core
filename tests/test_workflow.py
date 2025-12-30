@@ -98,6 +98,7 @@ file:./
 
 step:cp foo.txt sub/bar.txt
                state = PENDING
+               dirty = yes
           created by   root:
             consumes   (file:foo.txt)
             consumes   (file:sub/)
@@ -140,6 +141,7 @@ file:./
 
 step:cp foo.txt sub/bar.txt
                state = RUNNING
+               dirty = yes
           created by   root:
             consumes   (file:foo.txt)
             consumes   (file:spam.txt) [amended]
@@ -266,6 +268,7 @@ file:./
 
 step:cp foo.txt bar.txt
                state = PENDING
+               dirty = yes
           created by   root:
             consumes   (file:foo.txt)
             consumes   file:./
@@ -299,6 +302,7 @@ file:./
 
 step:cp foo.txt bar.txt
                state = QUEUED
+               dirty = yes
           created by   root:
             consumes   file:./
             consumes   file:foo.txt
@@ -378,6 +382,7 @@ file:./
 
 step:cp foo.txt bar.txt
                state = PENDING
+               dirty = yes
           inp_digest = 17c1d560 3cf7bd4f 875210d7 6f1c045e ec1786c6 771bf4c9 9828f0fc 3c5ffc68
                      = ba2cf591 7c8fd611 1251a6a6 d282a090 3655e75e 44340b1a 4871a82d cb207b00
           out_digest = 392846e6 3d2af07d 9faa4b77 53f1e1c8 50ed5498 1c819a0b ea142875 4811867b
@@ -760,6 +765,7 @@ file:plan.py
 
 step:./plan.py
                state = RUNNING
+               dirty = yes
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -1047,6 +1053,7 @@ file:plan.py
 
 step:./plan.py
                state = RUNNING
+               dirty = yes
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -1197,6 +1204,7 @@ file:plan.py
 
 step:./plan.py
                state = RUNNING
+               dirty = yes
           created by   root:
             consumes   file:./
             consumes   file:plan.py
@@ -1204,6 +1212,7 @@ step:./plan.py
 
 step:touch log
                state = QUEUED
+               dirty = yes
                  ngm = ['*.txt'] {}
           created by   step:./plan.py
             consumes   file:./

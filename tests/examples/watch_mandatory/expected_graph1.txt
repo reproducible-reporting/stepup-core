@@ -28,6 +28,7 @@ step:runpy ./plan.py
 step:runsh echo hello > foo.txt
                state = PENDING
            mandatory = NO
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:foo.txt

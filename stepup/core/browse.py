@@ -23,6 +23,7 @@ import argparse
 import contextlib
 import importlib.resources
 import os
+import pickle
 import sqlite3
 import stat
 import traceback
@@ -366,8 +367,9 @@ class GraphServer(BaseHTTPRequestHandler):
 
         # Format the state (if a file or a step)
         if kind == "step":
-            (state_i, mandatory_i, dirty) = self.con.execute(
-                "SELECT state, mandatory, dirty FROM step WHERE node = ?", (node_i,)
+            sql_props = "SELECT state, pool, block, mandatory, dirty FROM step WHERE node = ?"
+            state_i, pool, block, mandatory_i, dirty = self.con.execute(
+                sql_props, (node_i,)
             ).fetchone()
             state = StepState(state_i)
             mandatory = Mandatory(mandatory_i)
@@ -379,6 +381,38 @@ class GraphServer(BaseHTTPRequestHandler):
                 yield '<p>Dirty: <span class="dirty">YES</span></p>'
             else:
                 yield '<p>Dirty: <span class="clean">NO</span></p>'
+            if pool is not None:
+                yield f"<p><b>Pool:</b> {pool}</p>"
+            if block:
+                yield "<p><b>This step is blocked.</b></p>"
+
+            sql_env = "SELECT name, amended FROM env_var WHERE node = ?"
+            env_vars = list(self.con.execute(sql_env, (node_i,)))
+            if len(env_vars) > 0:
+                yield "<h3>Uses Environment Variables</h3><ul>"
+                for env_var, amended in env_vars:
+                    yield (
+                        f"<li>{env_var} <i>[amended]</i></li>" if amended else f"<li>{env_var}</li>"
+                    )
+                yield "</ul>"
+
+            sql_ngm = "SELECT data FROM nglob_multi WHERE node = ?"
+            ngms = list(self.con.execute(sql_ngm, (node_i,)))
+            if len(ngms) > 0:
+                yield "<h3>Defines NGlob Multis</h3><ul>"
+                for row in ngms:
+                    ngm = pickle.loads(row[0])
+                    yield f"<li>{[ngs.pattern for ngs in ngm.nglob_singles]} {ngm.subs}</li>"
+                yield "</ul>"
+
+            sql_pooldefs = "SELECT name, size FROM pool_definition WHERE node = ?"
+            pooldefs = list(self.con.execute(sql_pooldefs, (node_i,)))
+            if len(pooldefs) > 0:
+                yield "<h3>Defines Pools</h3><ul>"
+                for pool, size in pooldefs:
+                    yield f"<li>{pool} = {size}</li>"
+                yield "</ul>"
+
         elif kind == "file":
             (state_i, digest, mode, mtime, size, inode) = self.con.execute(
                 "SELECT state, digest, mode, mtime, size, inode FROM file WHERE node = ?", (node_i,)
@@ -427,10 +461,7 @@ class GraphServer(BaseHTTPRequestHandler):
             "WHERE dependency.supplier = ? ORDER BY node.kind, node.label",
             (node_i,),
         ):
-            node_str = self._format_node(cons_i, cons_kind, cons_label, False, state)
-            if amended:
-                node_str += " <b>[amended]</b>"
-            yield node_str
+            yield self._format_node(cons_i, cons_kind, cons_label, False, state, amended)
         yield "</table>"
 
         # Format the suppliers
@@ -442,10 +473,7 @@ class GraphServer(BaseHTTPRequestHandler):
             "WHERE dependency.consumer = ? ORDER BY node.kind, node.label",
             (node_i,),
         ):
-            node_str = self._format_node(sup_i, sup_kind, sup_label, False, state)
-            if amended:
-                node_str += " <b>[amended]</b>"
-            yield node_str
+            yield self._format_node(sup_i, sup_kind, sup_label, False, state, amended)
         yield "</table>"
 
     def _search(self, env, args):
@@ -494,14 +522,24 @@ class GraphServer(BaseHTTPRequestHandler):
     # --- helpers ---
 
     def _format_node(
-        self, i: int, kind: str, label: str, orphan: bool, state: int | None = None
+        self,
+        i: int,
+        kind: str,
+        label: str,
+        orphan: bool,
+        state: int | None = None,
+        amended: bool = False,
     ) -> str:
         sym = KIND_SYMBOLS.get(kind, f"?{kind}?")
         node_str = f"{label}"
         if i is not None:
             node_str = f'<a href="/node/?i={i}">{node_str}</a>'
+        if len(label) == 0:
+            node_str = f"[{kind}]"
         if orphan:
             node_str = f"({node_str})"
+        if amended:
+            node_str += " <i>[amended]</i>"
         if state is None:
             state_str = ""
         elif kind == "file":

@@ -27,6 +27,7 @@ step:runpy ./plan.py
 
 step:runsh echo hello > sub/dir/nested/hello.txt
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   (file:sub/dir/nested/)
             consumes   file:./

@@ -37,6 +37,7 @@ file:work.py
 
 (step:runpy ./work.py)
                state = PENDING
+               dirty = yes
              env_var = STEPUP_PATH_FILTER [amended]
             consumes   file:./
             consumes   file:work.py

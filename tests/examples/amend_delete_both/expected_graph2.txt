@@ -40,6 +40,7 @@ step:runpy ./plan.py
 
 step:runsh ./work.py > log.txt
                state = PENDING
+               dirty = yes
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:./
@@ -82,6 +83,7 @@ file:asource2.txt
 
 step:copy asource1.txt data1.txt
                state = PENDING
+               dirty = yes
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:./

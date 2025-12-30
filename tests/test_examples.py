@@ -98,6 +98,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "error_static_dir",
         "error_step",
         "external_sources",
+        "filter_deps_symlink",
         "getinfo",
         "here",
         "inp_digest",

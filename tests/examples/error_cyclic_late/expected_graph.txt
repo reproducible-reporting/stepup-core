@@ -20,6 +20,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = FAILED
+               dirty = yes
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:./
@@ -28,6 +29,7 @@ step:runpy ./plan.py
 
 step:runsh cat first > second
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   (file:first)
             consumes   file:./

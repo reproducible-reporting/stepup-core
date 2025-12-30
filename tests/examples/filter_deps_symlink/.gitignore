@@ -1,0 +1,6 @@
+project/.stepup
+current*
+project/worker_out.json
+pkgs_a/__pycache__/
+pkgs_b
+pkgs_c

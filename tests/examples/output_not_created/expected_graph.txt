@@ -44,6 +44,7 @@ file:input.txt
 
 step:runsh cp input.txt wrong.txt
                state = FAILED
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:input.txt

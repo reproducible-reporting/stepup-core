@@ -35,6 +35,7 @@ file:work.py
 
 step:runpy ./work.py
                state = FAILED
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:work.py

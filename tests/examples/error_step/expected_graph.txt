@@ -27,6 +27,7 @@ step:runpy ./plan.py
 
 step:runsh rm .sjdksjdfkjasdfkdjsak
                state = FAILED
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   file:./
              creates   file:oops.txt

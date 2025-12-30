@@ -50,6 +50,7 @@ file:data/sub/inp.txt
 
 step:runsh cat data/sub/inp.txt > data/sub/out.txt
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:data/sub/

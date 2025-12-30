@@ -26,5 +26,6 @@ step:runpy ./plan.py
 
 step:runsh ls --this-option-does-not-exist
                state = FAILED
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   file:./

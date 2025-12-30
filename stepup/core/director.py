@@ -70,6 +70,7 @@ async def async_main():
     )
     print(f"SOCKET {args.director_socket}", file=sys.stderr)
     print(f"PID {os.getpid()}", file=sys.stderr)
+    print(f"LOG_LEVEL {args.log_level}", file=sys.stderr)
     async with ReporterClient.socket(args.reporter_socket) as reporter:
         num_workers = interpret_num_workers(args.num_workers)
         await reporter.set_num_workers(num_workers)

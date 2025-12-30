@@ -43,6 +43,7 @@ file:msg.txt
 
 step:runsh cat msg.txt
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:msg.txt

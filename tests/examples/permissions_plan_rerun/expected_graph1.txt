@@ -41,6 +41,7 @@ file:sub/plan.py
 
 step:runpy ./plan.py  # wd=sub/
                state = FAILED
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   file:sub/
             consumes   file:sub/plan.py

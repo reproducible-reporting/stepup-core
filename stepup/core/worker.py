@@ -25,6 +25,7 @@ import contextlib
 import ctypes
 import inspect
 import io
+import logging
 import os
 import queue
 import resource
@@ -48,7 +49,7 @@ from .reporter import ReporterClient
 from .rpc import AsyncRPCClient, allow_rpc, serve_socket_rpc
 from .scheduler import Scheduler
 from .step import Step, split_step_label
-from .utils import DBLock
+from .utils import DBLock, string_to_bool
 from .workflow import Workflow
 
 __all__ = ("WorkThread", "WorkerClient", "WorkerHandler", "WorkerStep")
@@ -57,6 +58,9 @@ __all__ = ("WorkThread", "WorkerClient", "WorkerHandler", "WorkerStep")
 #
 # In the main director process
 #
+
+
+logger = logging.getLogger(__name__)
 
 
 @attrs.define
@@ -109,6 +113,7 @@ class WorkerClient:
             self.director_socket_path,
             worker_socket_path,
             str(self.idx),
+            f"--log-level={logging.getLevelName(logging.root.level)}",
         ]
         if self.show_perf:
             argv.append("--show-perf")
@@ -516,10 +521,18 @@ class WorkerStep:
 
 
 PYCODE_WRAPPER = """\
+import logging
+import os
 import sys
 import runpy
+from path import Path
 from stepup.core.api import amend
 from stepup.core.utils import get_local_import_paths
+logging.basicConfig(
+    format="%(asctime)s  %(levelname)8s  %(name)24s  ::  %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    level=logging.{log_level},
+)
 sys.argv = {argv}
 try:
     runpy.run_path({script}, run_name="__main__")
@@ -645,7 +658,11 @@ class WorkThread(threading.Thread):
         # Run the script
         return self.runsh_verbose(
             f"{sys.executable} -",
-            PYCODE_WRAPPER.format(argv=repr([script, *args]), script=repr(script)),
+            PYCODE_WRAPPER.format(
+                argv=repr([script, *args]),
+                script=repr(script),
+                log_level=logging.getLevelName(logging.root.level),
+            ),
         )
 
 
@@ -1090,6 +1107,14 @@ def parse_args():
     parser.add_argument("director_socket", type=Path, help="Socket of the director")
     parser.add_argument("worker_socket", type=Path, help="Socket of the worker (to be created)")
     parser.add_argument("worker_idx", type=int, help="Worker index")
+    debug = string_to_bool(os.getenv("STEPUP_DEBUG", "0"))
+    parser.add_argument(
+        "--log-level",
+        "-l",
+        default=os.getenv("STEPUP_LOG_LEVEL", "DEBUG" if debug else "WARNING").upper(),
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level. [default=%(default)s]",
+    )
     parser.add_argument(
         "--reporter",
         "-r",
@@ -1117,9 +1142,15 @@ def parse_args():
 
 async def async_main():
     args = parse_args()
+    logging.basicConfig(
+        format="%(asctime)s  %(levelname)8s  %(name)24s  ::  %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        level=args.log_level,
+    )
     os.environ["STEPUP_DIRECTOR_SOCKET"] = args.director_socket
     os.environ["STEPUP_ROOT"] = str(Path.cwd())
     print(f"PID {os.getpid()}", file=sys.stderr)
+    print(f"LOG_LEVEL {args.log_level}", file=sys.stderr)
     async with ReporterClient.socket(args.reporter_socket) as reporter:
         # Create the worker handler for the RPC server.
         handler = WorkerHandler(reporter, args.show_perf, args.explain_rerun)

@@ -62,6 +62,7 @@ file:f2.txt
 
 step:runsh cat f1.txt f2.txt > f3.txt
                state = FAILED
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   file:./
             consumes   file:f1.txt

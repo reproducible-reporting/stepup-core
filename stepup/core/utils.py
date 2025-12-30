@@ -21,6 +21,7 @@
 
 import asyncio
 import contextlib
+import logging
 import os
 import re
 import shlex
@@ -37,6 +38,7 @@ __all__ = (
     "DBLock",
     "check_inp_path",
     "check_plan",
+    "filter_dependencies",
     "format_command",
     "format_digest",
     "get_local_import_paths",
@@ -44,6 +46,7 @@ __all__ = (
     "myabsolute",
     "mynormpath",
     "myparent",
+    "myrealpath",
     "myrelpath",
     "remove_path",
     "string_to_bool",
@@ -51,6 +54,9 @@ __all__ = (
     "translate",
     "translate_back",
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 #
@@ -61,6 +67,14 @@ __all__ = (
 def mynormpath(path: str) -> Path:
     """Normalize the path but keep the trailing separator"""
     result = Path(path).normpath()
+    if path.endswith(os.sep) and not result.endswith("/"):
+        result = result / ""
+    return result
+
+
+def myrealpath(path: str) -> Path:
+    """Like Path.realpath path but keep the trailing separator"""
+    result = Path(path).realpath()
     if path.endswith(os.sep) and not result.endswith("/"):
         result = result / ""
     return result
@@ -257,20 +271,21 @@ def filter_dependencies(paths: Collection[str]) -> set[Path]:
             raise ValueError(f"Invalid filter item: {filter_item}")
         prefix = filter_item[1:]
         if not prefix.startswith("/"):
-            prefix = mynormpath(stepup_root / prefix)
+            prefix = myrealpath(stepup_root / prefix)
         rules.append((prefix, keep))
 
     # Filter paths according to the rules.
     result = set()
+    realpwd = myrealpath(os.getcwd())
     for path in paths:
-        abspath = myabsolute(path)
+        abspath = myrealpath(path)
         for prefix, keep in rules:
             if abspath.startswith(prefix):
                 if keep:
-                    result.add(myrelpath(path))
+                    result.add(myrelpath(abspath, realpwd))
                 break
         else:
-            raise AssertionError("No matching rule found for path: {path}")
+            raise AssertionError(f"No matching rule found for path: {path}")
     return result
 
 

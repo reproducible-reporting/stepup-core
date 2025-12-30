@@ -29,6 +29,7 @@ step:runpy ./plan.py
 
 step:runsh cp -v first.txt second.txt
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
             consumes   (file:first.txt)
             consumes   file:./

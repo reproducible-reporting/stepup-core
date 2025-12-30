@@ -3,7 +3,7 @@ The directory `project` contains a simple StepUp projects
 with a script that uses an external source.
 The external source is a Python script in the directory `pkgs`,
 which is included in the `PYTHONPATH`.
-By settings `STEPUP_EXTERNAL_SOURCES` to `pkgs`,
+By settings `STEPUP_PATH_FILTER` to `+../pkgs`,
 StepUp's `script` and `call` drivers will treat imports from modules in `pkgs`
 as dependencies to be tracked.
 To test this feature, there are two versions of `helper.py` in `pkgs`.
