@@ -832,7 +832,7 @@ class Cascade:
         while cleaned_some:
             cleaned_some = False
             # Look for orphans without consumers or products.
-            # As long is nodes have consumers or products, they cannot be removed.
+            # As long nodes have consumers or products, they cannot be removed.
             query = (
                 "SELECT i, kind, label FROM node WHERE orphan = TRUE AND "
                 "NOT EXISTS (SELECT 1 FROM node AS cnode WHERE node.i = cnode.creator) AND "

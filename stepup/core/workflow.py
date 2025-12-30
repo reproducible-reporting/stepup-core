@@ -1118,6 +1118,21 @@ class Workflow(Cascade):
         return self.declare_missing(dg, matching_paths)
 
     def clean(self):
+        # Search for parent directories of STEPUP_ROOT that are no longer used.
+        # The are not cleaned up like other unused directories,
+        # because they are treated as "always static" with the root node as creator.
+        parent_stack = []
+        iparent = 1
+        while True:
+            node = self.find(File, "../" * iparent)
+            if node is None:
+                break
+            parent_stack.insert(0, node)
+            iparent += 1
+        for node in parent_stack:
+            if any(node.consumers()):
+                break
+            node.orphan()
         # Get rid of deferred glob files that are no longer used.
         for dg in self.nodes(DeferredGlob):
             files = sorted(dg.products(), reverse=True, key=(lambda node: node.path))

@@ -2480,3 +2480,16 @@ def test_add_rescheduled_info(wfs: Workflow):
         "you know what...",
         "...I mean, come on!",
     ]
+
+
+def test_clean_stepup_root_parents(wfs: Workflow):
+    declare_static(wfs, wfs.root, ["../", "../../", "../../../", "../foo.txt"])
+    assert wfs.find(File, "../").get_state() == FileState.STATIC
+    assert wfs.find(File, "../../").get_state() == FileState.STATIC
+    assert wfs.find(File, "../../../").get_state() == FileState.STATIC
+    assert wfs.find(File, "../foo.txt").get_state() == FileState.STATIC
+    wfs.clean()
+    assert wfs.find(File, "../").get_state() == FileState.STATIC
+    assert wfs.find(File, "../../") is None
+    assert wfs.find(File, "../../../") is None
+    assert wfs.find(File, "../foo.txt").get_state() == FileState.STATIC
