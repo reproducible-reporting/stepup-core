@@ -4,7 +4,7 @@ site_url: https://reproducible-reporting.github.io/stepup-core/
 edit_uri: edit/main/docs/
 site_description: StepUp Core Documentation
 site_author: Toon Verstraelen
-copyright: 2024-2025, Toon Verstraelen
+copyright: 2024-2026, Toon Verstraelen
 
 watch:
   - stepup

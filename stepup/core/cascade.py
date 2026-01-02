@@ -1,5 +1,5 @@
 # StepUp Core provides the basic framework for the StepUp build tool.
-# © 2024–2025 Toon Verstraelen
+# Copyright 2024-2026 Toon Verstraelen
 #
 # This file is part of StepUp Core.
 #
@@ -398,7 +398,7 @@ class Node:
         Parameters
         ----------
         supplier
-            Other node that supplies to thise node.
+            Other node that supplies to this node.
 
         Returns
         -------

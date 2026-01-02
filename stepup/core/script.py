@@ -1,5 +1,5 @@
 # StepUp Script extends StepUp with scripts that combine planning and running.
-# © 2024–2025 Toon Verstraelen
+# Copyright 2024-2026 Toon Verstraelen
 #
 # This file is part of StepUp Script.
 #
