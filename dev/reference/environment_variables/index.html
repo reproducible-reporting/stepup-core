@@ -2131,6 +2131,13 @@ Possible values are <code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>,
 The default is <code>WARNING</code>.
 Overridden by the <code>--log-level</code> command-line option.</p>
 </dd>
+<dt><code>STEPUP_NUM_WORKERS</code></dt>
+<dd>
+<p>The number of worker processes to use for executing steps.
+When given as a floating point number, the value is multiplied by the number of available CPU cores.
+Overridden by the <code>--num-workers</code> command-line option.
+The default is <code>1.2</code>.</p>
+</dd>
 <dt><code>STEPUP_PATH_FILTER</code></dt>
 <dd>
 <p>a colon-separated list of filters
