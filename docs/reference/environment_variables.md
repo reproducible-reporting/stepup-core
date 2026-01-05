@@ -32,6 +32,13 @@ Possible values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, and `CRITICAL`.
 The default is `WARNING`.
 Overridden by the `--log-level` command-line option.
 
+`STEPUP_NUM_WORKERS`
+
+: The number of worker processes to use for executing steps.
+When given as a floating point number, the value is multiplied by the number of available CPU cores.
+Overridden by the `--num-workers` command-line option.
+The default is `1.2`.
+
 `STEPUP_PATH_FILTER`
 
 : a colon-separated list of filters
