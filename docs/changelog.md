@@ -10,7 +10,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+(no summary yet)
+
+### Added
+
+- Report timings at the end of the worker log files.
 
 ## [3.2.1][] - 2026-01-02 {: #v3.2.1 }
 

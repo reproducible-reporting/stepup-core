@@ -25,6 +25,7 @@ import contextlib
 import ctypes
 import inspect
 import io
+import json
 import logging
 import os
 import queue
@@ -708,6 +709,38 @@ def check_executable(executable: Path, shebang: str | None = None) -> bool:
 
 
 @attrs.define
+class Timer:
+    """Context managers to construct a JSON string with times spent in typical worker tasks."""
+
+    start: float = attrs.field(init=False, factory=perf_counter)
+    sections: dict[str, float] = attrs.field(init=False, factory=dict)
+
+    @contextlib.contextmanager
+    def section(self, section: str):
+        """Context manager for a timed section.
+
+        Parameters
+        ----------
+        section
+            The name of the section.
+        """
+        time = perf_counter()
+        try:
+            yield
+        finally:
+            time = perf_counter() - time
+            self.sections[section] = self.sections.get(section, 0.0) + time
+
+    def report(self):
+        """Write the timings line to standard error."""
+        time = perf_counter() - self.start
+        sections = self.sections.copy()
+        sections["idle/other"] = time - sum(sections.values())
+        sections["total"] = time
+        print(f"TIMINGS: {json.dumps(sections)}", file=sys.stderr)
+
+
+@attrs.define
 class WorkerHandler:
     """RPC Handler in the worker process to respond to requests from the WorkerClient."""
 
@@ -716,6 +749,7 @@ class WorkerHandler:
     explain_rerun: bool = attrs.field()
     stop_event: asyncio.Event = attrs.field(factory=asyncio.Event)
     step: WorkerStep | None = attrs.field(init=False, default=None)
+    timer: Timer = attrs.field(init=False, factory=Timer)
 
     @allow_rpc
     def shutdown(self):
@@ -777,18 +811,19 @@ class WorkerHandler:
             The new hash of the step, with the input part already computed, if available.
             `None` is yielded if, unexpectedly, some inputs are missing or have changed.
         """
-        if self.step is not None:
-            raise RPCError(
-                "Worker cannot initiate two steps at the same time. "
-                f"Still working on {self.step.action}"
-            )
+        with self.timer.section("new_step"):
+            if self.step is not None:
+                raise RPCError(
+                    "Worker cannot initiate two steps at the same time. "
+                    f"Still working on {self.step.action}"
+                )
 
-        # Create the step
-        action, workdir = split_step_label(label)
-        self.step = WorkerStep(i, action, workdir)
+            # Create the step
+            action, workdir = split_step_label(label)
+            self.step = WorkerStep(i, action, workdir)
 
-        # Create initial StepHash
-        return self.compute_inp_step_hash(inp_hashes, env_vars, check_hash)[0]
+            # Create initial StepHash
+            return self.compute_inp_step_hash(inp_hashes, env_vars, check_hash)[0]
 
     def compute_inp_step_hash(
         self,
@@ -819,41 +854,44 @@ class WorkerHandler:
             so they can be updated in StepUp's workflow database if desired.
             Unchanged ones are not included.
         """
-        # Check the input hashes
-        messages = []
-        new_inp_hashes = []
-        all_inp_hashes = []
-        for path, old_file_hash in old_inp_hashes:
-            new_file_hash = old_file_hash.regen(path)
-            all_inp_hashes.append((path, new_file_hash))
-            if check_hash and new_file_hash != old_file_hash:
-                if new_file_hash.is_unknown:
-                    messages.append(f"Input vanished unexpectedly: {path} ")
-                else:
-                    messages.append(
-                        f"Input changed unexpectedly: {path} "
-                        + fmt_file_hash_diff(old_file_hash, new_file_hash)
-                    )
-                new_inp_hashes.append((path, new_file_hash))
+        with self.timer.section("compute_inp_step_hash"):
+            # Check the input hashes
+            messages = []
+            new_inp_hashes = []
+            all_inp_hashes = []
+            for path, old_file_hash in old_inp_hashes:
+                new_file_hash = old_file_hash.regen(path)
+                all_inp_hashes.append((path, new_file_hash))
+                if check_hash and new_file_hash != old_file_hash:
+                    if new_file_hash.is_unknown:
+                        messages.append(f"Input vanished unexpectedly: {path} ")
+                    else:
+                        messages.append(
+                            f"Input changed unexpectedly: {path} "
+                            + fmt_file_hash_diff(old_file_hash, new_file_hash)
+                        )
+                    new_inp_hashes.append((path, new_file_hash))
 
-        # If there are unexpected issues with inputs, bail out.
-        if len(messages) > 0:
-            self.step.inp_messages = messages
-            self.step.success = False
-            return None, new_inp_hashes
+            # If there are unexpected issues with inputs, bail out.
+            if len(messages) > 0:
+                self.step.inp_messages = messages
+                self.step.success = False
+                return None, new_inp_hashes
 
-        # Add the environment variables to the hash
-        env_var_values = [(env_var, os.environ.get(env_var)) for env_var in env_vars]
+            # Add the environment variables to the hash
+            env_var_values = [(env_var, os.environ.get(env_var)) for env_var in env_vars]
 
-        # Create the StepHash
-        label = self.step.action
-        if self.step.workdir != "./":
-            label += f"  # wd={self.step.workdir}"
-        result = StepHash.from_inp(f"{label}", self.explain_rerun, all_inp_hashes, env_var_values)
+            # Create the StepHash
+            label = self.step.action
+            if self.step.workdir != "./":
+                label += f"  # wd={self.step.workdir}"
+            result = StepHash.from_inp(
+                f"{label}", self.explain_rerun, all_inp_hashes, env_var_values
+            )
 
-        # Copy the inp_digest, because it can be useful for some actions.
-        self.step.inp_digest = result.inp_digest
-        return result, []
+            # Copy the inp_digest, because it can be useful for some actions.
+            self.step.inp_digest = result.inp_digest
+            return result, []
 
     @allow_rpc
     def compute_out_step_hash(
@@ -881,22 +919,23 @@ class WorkerHandler:
             so they can be updated in StepUp's workflow database if desired.
             Unchanged ones are not included.
         """
-        # Check the output hashes
-        new_out_hashes = []
-        all_out_hashes = []
-        for path, old_file_hash in sorted(old_out_hashes):
-            new_file_hash = old_file_hash.regen(path)
-            all_out_hashes.append((path, new_file_hash))
-            if new_file_hash != old_file_hash:
-                new_out_hashes.append((path, new_file_hash))
-            if new_file_hash.is_unknown:
-                self.step.out_missing.append(path)
-                self.step.success = False
+        with self.timer.section("compute_out_step_hash"):
+            # Check the output hashes
+            new_out_hashes = []
+            all_out_hashes = []
+            for path, old_file_hash in sorted(old_out_hashes):
+                new_file_hash = old_file_hash.regen(path)
+                all_out_hashes.append((path, new_file_hash))
+                if new_file_hash != old_file_hash:
+                    new_out_hashes.append((path, new_file_hash))
+                if new_file_hash.is_unknown:
+                    self.step.out_missing.append(path)
+                    self.step.success = False
 
-        # Update the step hash
-        if step_hash is not None:
-            step_hash = step_hash.evolve_out(all_out_hashes)
-        return step_hash, new_out_hashes
+            # Update the step hash
+            if step_hash is not None:
+                step_hash = step_hash.evolve_out(all_out_hashes)
+            return step_hash, new_out_hashes
 
     @allow_rpc
     def compute_full_step_hash(
@@ -956,57 +995,58 @@ class WorkerHandler:
 
     @allow_rpc
     async def run(self):
-        await self.reporter("START", self.step.description)
-        await self.reporter.start_step(self.step.description, self.step.i)
+        with self.timer.section("run"):
+            await self.reporter("START", self.step.description)
+            await self.reporter.start_step(self.step.description, self.step.i)
 
-        # For internal use in actions:
-        os.environ["STEPUP_STEP_I"] = str(self.step.i)
-        # Client code may use the following:
-        os.environ["STEPUP_STEP_INP_DIGEST"] = self.step.inp_digest.hex()
-        os.environ["ROOT"] = str(Path.cwd().relpath(self.step.workdir))
-        os.environ["HERE"] = str(self.step.workdir.relpath())
-        # Note: the variables defined here should be listed in stepup.core.api.getenv
+            # For internal use in actions:
+            os.environ["STEPUP_STEP_I"] = str(self.step.i)
+            # Client code may use the following:
+            os.environ["STEPUP_STEP_INP_DIGEST"] = self.step.inp_digest.hex()
+            os.environ["ROOT"] = str(Path.cwd().relpath(self.step.workdir))
+            os.environ["HERE"] = str(self.step.workdir.relpath())
+            # Note: the variables defined here should be listed in stepup.core.api.getenv
 
-        # Create IO redirection for stdout and stderr
-        step_err = io.StringIO()
-        step_out = io.StringIO()
-        with (
-            contextlib.chdir(self.step.workdir),
-            contextlib.redirect_stderr(step_err),
-            contextlib.redirect_stdout(step_out),
-        ):
+            # Create IO redirection for stdout and stderr
+            step_err = io.StringIO()
+            step_out = io.StringIO()
+            with (
+                contextlib.chdir(self.step.workdir),
+                contextlib.redirect_stderr(step_err),
+                contextlib.redirect_stdout(step_out),
+            ):
+                if self.show_perf:
+                    ru_initial = resource.getrusage(resource.RUSAGE_CHILDREN)
+                    pt_initial = perf_counter()
+                self.step.thread = WorkThread(self.step.action)
+                self.step.thread.start()
+                await self.step.thread.done.wait()
+                self.step.thread.join()
+                self.step.returncode = self.step.thread.returncode
+                self.step.thread = None
+            self.step.stdout = step_out.getvalue()
+            self.step.stderr = step_err.getvalue()
+
+            # Clean up environment variables (to avoid potential confusion)
+            del os.environ["STEPUP_STEP_I"]
+            del os.environ["STEPUP_STEP_INP_DIGEST"]
+            del os.environ["ROOT"]
+            del os.environ["HERE"]
+
+            # Process results of the step.
             if self.show_perf:
-                ru_initial = resource.getrusage(resource.RUSAGE_CHILDREN)
-                pt_initial = perf_counter()
-            self.step.thread = WorkThread(self.step.action)
-            self.step.thread.start()
-            await self.step.thread.done.wait()
-            self.step.thread.join()
-            self.step.returncode = self.step.thread.returncode
-            self.step.thread = None
-        self.step.stdout = step_out.getvalue()
-        self.step.stderr = step_err.getvalue()
-
-        # Clean up environment variables (to avoid potential confusion)
-        del os.environ["STEPUP_STEP_I"]
-        del os.environ["STEPUP_STEP_INP_DIGEST"]
-        del os.environ["ROOT"]
-        del os.environ["HERE"]
-
-        # Process results of the step.
-        if self.show_perf:
-            ru_final = resource.getrusage(resource.RUSAGE_CHILDREN)
-            utime = ru_final.ru_utime - ru_initial.ru_utime
-            stime = ru_final.ru_stime - ru_initial.ru_stime
-            wtime = perf_counter() - pt_initial
-            ru_lines = [
-                f"User CPU time [s]:   {utime:9.4f}",
-                f"System CPU time [s]: {stime:9.4f}",
-                f"Total CPU time [s]:  {utime + stime:9.4f}",
-                f"Wall time [s]:       {wtime:9.4f}",
-            ]
-            self.step.perf_info = "\n".join(ru_lines)
-        self.step.success = self.step.returncode == 0
+                ru_final = resource.getrusage(resource.RUSAGE_CHILDREN)
+                utime = ru_final.ru_utime - ru_initial.ru_utime
+                stime = ru_final.ru_stime - ru_initial.ru_stime
+                wtime = perf_counter() - pt_initial
+                ru_lines = [
+                    f"User CPU time [s]:   {utime:9.4f}",
+                    f"System CPU time [s]: {stime:9.4f}",
+                    f"Total CPU time [s]:  {utime + stime:9.4f}",
+                    f"Wall time [s]:       {wtime:9.4f}",
+                ]
+                self.step.perf_info = "\n".join(ru_lines)
+            self.step.success = self.step.returncode == 0
 
     @allow_rpc
     def get_success(self) -> bool:
@@ -1021,51 +1061,52 @@ class WorkerHandler:
 
     @allow_rpc
     async def report(self):
-        pages = []
-        if not self.step.success:
-            # Format command such that it can be copied and pasted into a shell.
-            command = "stepup act "
-            if any(word.startswith("-") for word in shlex.split(self.step.action)):
-                command += "-- "
-            command += self.step.action
-            if self.step.workdir != "./":
-                command = f"(cd {self.step.workdir} && {command})"
-            lines = [f"Command               {command}"]
-            # Other info on the execution of the step
-            if self.step.returncode is not None:
-                lines.append(f"Return code           {self.step.returncode}")
-            pages.append(("Step info", "\n".join(lines)))
-        if len(self.step.perf_info) > 0:
-            pages.append(("Performance details", self.step.perf_info))
-        if self.step.rescheduled_info != "":
-            pages.append(
-                (
-                    "Rescheduling due to unavailable amended inputs",
-                    self.step.rescheduled_info,
+        with self.timer.section("report"):
+            pages = []
+            if not self.step.success:
+                # Format command such that it can be copied and pasted into a shell.
+                command = "stepup act "
+                if any(word.startswith("-") for word in shlex.split(self.step.action)):
+                    command += "-- "
+                command += self.step.action
+                if self.step.workdir != "./":
+                    command = f"(cd {self.step.workdir} && {command})"
+                lines = [f"Command               {command}"]
+                # Other info on the execution of the step
+                if self.step.returncode is not None:
+                    lines.append(f"Return code           {self.step.returncode}")
+                pages.append(("Step info", "\n".join(lines)))
+            if len(self.step.perf_info) > 0:
+                pages.append(("Performance details", self.step.perf_info))
+            if self.step.rescheduled_info != "":
+                pages.append(
+                    (
+                        "Rescheduling due to unavailable amended inputs",
+                        self.step.rescheduled_info,
+                    )
                 )
-            )
-        else:
-            if len(self.step.inp_messages) > 0:
-                self.step.inp_messages.sort()
-                pages.append(("Invalid inputs", "\n".join(self.step.inp_messages)))
-            if len(self.step.out_missing) > 0:
-                self.step.out_missing.sort()
-                pages.append(("Expected outputs not created", "\n".join(self.step.out_missing)))
-        stdout = self.step.stdout.rstrip()
-        if len(stdout) > 0:
-            pages.append(("Standard output", stdout))
-        stderr = self.step.stderr.rstrip()
-        if len(stderr) > 0:
-            pages.append(("Standard error", stderr))
-        if self.step.rescheduled_info != "":
-            action = "RESCHEDULE"
-        elif self.step.success:
-            action = "SUCCESS"
-        else:
-            action = "FAIL"
-        await self.reporter.stop_step(self.step.i)
-        await self.reporter(action, self.step.description, pages)
-        self.step = None
+            else:
+                if len(self.step.inp_messages) > 0:
+                    self.step.inp_messages.sort()
+                    pages.append(("Invalid inputs", "\n".join(self.step.inp_messages)))
+                if len(self.step.out_missing) > 0:
+                    self.step.out_missing.sort()
+                    pages.append(("Expected outputs not created", "\n".join(self.step.out_missing)))
+            stdout = self.step.stdout.rstrip()
+            if len(stdout) > 0:
+                pages.append(("Standard output", stdout))
+            stderr = self.step.stderr.rstrip()
+            if len(stderr) > 0:
+                pages.append(("Standard error", stderr))
+            if self.step.rescheduled_info != "":
+                action = "RESCHEDULE"
+            elif self.step.success:
+                action = "SUCCESS"
+            else:
+                action = "FAIL"
+            await self.reporter.stop_step(self.step.i)
+            await self.reporter(action, self.step.description, pages)
+            self.step = None
 
     @allow_rpc
     async def skip(self, step_hash: StepHash):
@@ -1155,6 +1196,7 @@ async def async_main():
         # Create the worker handler for the RPC server.
         handler = WorkerHandler(reporter, args.show_perf, args.explain_rerun)
         await serve_socket_rpc(handler, args.worker_socket, handler.stop_event)
+        handler.timer.report()
 
 
 def main():
