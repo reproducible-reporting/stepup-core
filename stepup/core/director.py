@@ -34,7 +34,10 @@ from importlib.metadata import version as get_version
 import attrs
 from path import Path
 
-from stepup.core.step import Step
+try:
+    import yappi
+except ImportError:
+    yappi = None
 
 from .asyncio import wait_for_events
 from .enums import ReturnCode, StepState
@@ -46,6 +49,7 @@ from .rpc import allow_rpc, serve_socket_rpc
 from .runner import Runner
 from .scheduler import Scheduler
 from .startup import startup_from_db
+from .step import Step
 from .stepinfo import StepInfo
 from .utils import DBLock, check_plan, mynormpath
 from .watcher import WATCHER_AVAILABLE, Watcher
@@ -71,6 +75,15 @@ async def async_main():
     print(f"SOCKET {args.director_socket}", file=sys.stderr)
     print(f"PID {os.getpid()}", file=sys.stderr)
     print(f"LOG_LEVEL {args.log_level}", file=sys.stderr)
+    if args.yappi:
+        if yappi is None:
+            print(
+                "Yappi profiling requested, but the yappi module is not installed.",
+                file=sys.stderr,
+            )
+        else:
+            yappi.set_clock_type("cpu")
+            yappi.start(builtins=True, profile_threads=True)
     async with ReporterClient.socket(args.reporter_socket) as reporter:
         num_workers = interpret_num_workers(args.num_workers)
         await reporter.set_num_workers(num_workers)
@@ -95,6 +108,10 @@ async def async_main():
         finally:
             await reporter("DIRECTOR", "See you!")
             await reporter.shutdown()
+            if args.yappi and yappi is not None:
+                yappi.stop()
+                stats = yappi.get_func_stats()
+                stats.save(".stepup/director.prof", type="pstat")
         sys.exit(returncode.value)
 
 
@@ -169,6 +186,12 @@ def parse_args() -> argparse.Namespace:
         default=True,
         action=argparse.BooleanOptionalAction,
         help="Do not remove outdated output files.",
+    )
+    parser.add_argument(
+        "--yappi",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Profile the director with Yappi (must be installed).",
     )
     args = parser.parse_args()
     if WATCHER_AVAILABLE:

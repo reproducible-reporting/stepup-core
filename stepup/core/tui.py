@@ -123,6 +123,8 @@ async def async_boot(args: argparse.Namespace):
                 argv.append("--watch-first")
         if not args.clean:
             argv.append("--no-clean")
+        if args.yappi:
+            argv.append("--yappi")
         returncode = 1  # Internal error unless it is overriden later by the director subprocess
         try:
             with open(".stepup/director.log", "w") as log_file:
@@ -299,7 +301,15 @@ def boot_subcommand(subparsers) -> callable:
         default=os.getenv("STEPUP_PERF", None),
         nargs="?",
         const="500",
-        help="Run the director under perf record, by default at a frequency of 500 Hz. "
+        help="Profile the director with perf, by default at a frequency of %(const)s Hz. "
         "(Only supported on Linux with perf installed.)",
+    )
+    parser.add_argument(
+        "--yappi",
+        default=string_to_bool(os.getenv("STEPUP_YAPPI", "0")),
+        action=argparse.BooleanOptionalAction,
+        help="Profile the director with Yappi (must be installed). "
+        "This produces a .stepup/director.prof file that can be analyzed with "
+        "tools like SnakeViz.",
     )
     return boot_tool
