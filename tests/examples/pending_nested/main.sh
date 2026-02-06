@@ -50,6 +50,11 @@ stepup join
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq 4 ]] || exit 1
 
+# Check that all outputs have become outdated
+grep 'OUTDATED  out1.txt' .stepup/warning.log
+grep 'OUTDATED  out2.txt' .stepup/warning.log
+grep 'OUTDATED  out3.txt' .stepup/warning.log
+
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ ! -f inp1.txt ]] || exit 1

@@ -987,6 +987,6 @@ class Step(Node):
             logger.info("Mark %s step PENDING: %s", state.name, self.label)
             self.set_state(StepState.PENDING)
             # First make all consumers (output files) pending
-            for file in self.consumers(File):
+            for file in self.consumers(File, include_orphans=True):
                 if file.get_state() == FileState.BUILT:
                     file.mark_outdated()

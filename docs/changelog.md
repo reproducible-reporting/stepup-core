@@ -17,6 +17,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - Add option to profile the directory process with [Yappi](https://github.com/sumerc/yappi).
 - Report timings at the end of the worker log files.
 
+### Fixes
+
+- Fix a queueing bug that caused some steps to remaining pending
+  when they should have been executed.
+
 ## [3.2.1][] - 2026-01-02 {: #v3.2.1 }
 
 Minor improvements and bugfix.

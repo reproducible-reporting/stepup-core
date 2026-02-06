@@ -108,7 +108,7 @@ step:runpy ./work2.py
             supplies   file:out2.txt
 
 file:out2.txt
-               state = BUILT
+               state = OUTDATED
           created by   step:runpy ./work2.py
             consumes   file:./
             consumes   step:runpy ./work2.py

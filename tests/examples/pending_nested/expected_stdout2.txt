@@ -25,7 +25,7 @@ Working directory     ./
 Inputs        STATIC  ./
               STATIC  work2.py
               STATIC  inp2.txt
-Outputs        BUILT  out2.txt
+Outputs     OUTDATED  out2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                runpy ./work3.py
 Working directory     ./

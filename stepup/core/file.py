@@ -299,7 +299,7 @@ class File(Node):
             # Local import to avoid cyclic imports.
             from .step import Step  # noqa: PLC0415
 
-            for step in self.consumers(Step):
+            for step in self.consumers(Step, include_orphans=True):
                 step.mark_pending()
         elif state != FileState.OUTDATED:
             raise ValueError(f"Cannot make file oudated when its state is {state}")

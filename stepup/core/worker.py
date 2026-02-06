@@ -229,8 +229,6 @@ class WorkerClient:
                 return True
 
             # Delegate the calculation of the output part of the step hash to the worker.
-            # With skipping=True, the worker knows the outputs should not have changed
-            # and will report it on screen.
             new_step_hash, new_out_hashes = await self.compute_out_step_hash(step, new_step_hash)
 
             if step_hash.out_digest != new_step_hash.out_digest:
