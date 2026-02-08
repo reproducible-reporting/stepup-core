@@ -2131,6 +2131,13 @@ Possible values are <code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>,
 The default is <code>WARNING</code>.
 Overridden by the <code>--log-level</code> command-line option.</p>
 </dd>
+<dt><code>STEPUP_NUM_WORKERS</code></dt>
+<dd>
+<p>The number of worker processes to use for executing steps.
+When given as a floating point number, the value is multiplied by the number of available CPU cores.
+Overridden by the <code>--num-workers</code> command-line option.
+The default is <code>1.2</code>.</p>
+</dd>
 <dt><code>STEPUP_PATH_FILTER</code></dt>
 <dd>
 <p>a colon-separated list of filters
@@ -2161,8 +2168,10 @@ This feature can be used for several purposes:</p>
 <dt><code>STEPUP_PERF</code></dt>
 <dd>
 <p>Set to a frequency in Hz to enable performance monitoring of the director process
-with Linux perf profiler.
-Overridden by the <code>--perf</code> command-line option.</p>
+with <a href="https://perfwiki.github.io/main/">Linux perf profiler</a>.
+Overridden by the <code>--perf</code> command-line option.
+See the section on <a href="../../development/#profiling">Profiling</a>
+in the development documentation for more details.</p>
 </dd>
 <dt><code>STEPUP_PROGRESS</code></dt>
 <dd>
@@ -2202,6 +2211,13 @@ when relevant file changes are observed.
 Hence, there is no need to press the <code>r</code> key, and can leave the terminal UI unattended.
 This implies <code>STEPUP_WATCH=1</code>.
 Overridden by the <code>--watch-first</code> and <code>--no-watch-first</code> command-line options.</p>
+</dd>
+<dt><code>STEPUP_YAPPI</code></dt>
+<dd>
+<p>Set to <code>1</code> or <code>yes</code> to profile the director process with the <a href="https://github.com/sumerc/yappi">Yappi profiler</a>.
+Overridden by the <code>--yappi</code> and <code>--no-yappi</code> command-line option.
+See the section on <a href="../../development/#profiling">Profiling</a>
+in the development documentation for more details.</p>
 </dd>
 </dl>
 <p>We recommend using tools like <a href="https://direnv.net/">direnv</a> to manage these variables.
