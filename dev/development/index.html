@@ -2022,6 +2022,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#profiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profiling
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2138,6 +2149,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#profiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profiling
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2219,6 +2241,34 @@ so you must have it installed on your system.</p>
   Do not forget to extend the links at the bottom of the file.</li>
 <li>Make a new commit and tag it with <code>vX.Y.Z</code>.</li>
 <li>Trigger the PyPI GitHub Action: <code>git push origin main --tags</code>.</li>
+</ul>
+<h2 id="profiling">Profiling<a class="headerlink" href="#profiling" title="Permanent link">&para;</a></h2>
+<p>StepUp has built-in support for profiling the director process with
+the Linux perf profiler and the Yappi profiler.
+It is assumed that you have Perf or Yappi installed on your system.</p>
+<ul>
+<li>
+<p>To profile with <a href="https://perfwiki.github.io/main/">Perf on Linux</a>,
+  set the <code>STEPUP_PERF</code> environment variable to a frequency in Hz,
+  or pass the frequency with the <code>--perf</code> command-line option.
+  Support for Perf <a href="https://docs.python.org/3/howto/perf_profiling.html">was included in Python 3.12</a>
+  and will not work on older versions.</p>
+<p>Enabling Perf will result in a file <code>.stepup/perf.data</code> containing the profiling data.
+Use <code>perf script</code> to convert this file to a human-readable format:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>perf<span class="w"> </span>script<span class="w"> </span>-i<span class="w"> </span>.stepup/perf.data<span class="w"> </span>&gt;<span class="w"> </span>perf.txt
+</span></code></pre></div>
+<p>The resulting <code>perf.txt</code> file can be analyzed with tools like <a href="https://www.speedscope.app/">Speedscope</a>.</p>
+</li>
+<li>
+<p>To profile with <a href="https://github.com/sumerc/yappi">Yappi</a>,
+  set the <code>STEPUP_YAPPI</code> environment variable to <code>1</code> or <code>yes</code>,
+  or pass <code>--yappi</code> on the command line.
+  This will result in a file <code>.stepup/director.prof</code> containing the profiling data.
+  This file can be analyzed with tools like <a href="https://jiffyclub.github.io/snakeviz/">SnakeViz</a>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>pip<span class="w"> </span>install<span class="w"> </span>snakeviz
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>snakeviz<span class="w"> </span>.stepup/director.prof
+</span></code></pre></div>
+</li>
 </ul>
 
 
