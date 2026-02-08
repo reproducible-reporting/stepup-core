@@ -65,8 +65,10 @@ This feature can be used for several purposes:
 `STEPUP_PERF`
 
 : Set to a frequency in Hz to enable performance monitoring of the director process
-with Linux perf profiler.
+with [Linux perf profiler](https://perfwiki.github.io/main/).
 Overridden by the `--perf` command-line option.
+See the section on [Profiling](../development.md#profiling)
+in the development documentation for more details.
 
 `STEPUP_PROGRESS`
 
@@ -106,6 +108,13 @@ when relevant file changes are observed.
 Hence, there is no need to press the `r` key, and can leave the terminal UI unattended.
 This implies `STEPUP_WATCH=1`.
 Overridden by the `--watch-first` and `--no-watch-first` command-line options.
+
+`STEPUP_YAPPI`
+
+: Set to `1` or `yes` to profile the director process with the [Yappi profiler](https://github.com/sumerc/yappi).
+Overridden by the `--yappi` and `--no-yappi` command-line option.
+See the section on [Profiling](../development.md#profiling)
+in the development documentation for more details.
 
 We recommend using tools like [direnv](https://direnv.net/) to manage these variables.
 Once `direnv` is installed and configured, you can create a `.envrc` file

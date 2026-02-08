@@ -84,3 +84,35 @@ so you must have it installed on your system.
   Do not forget to extend the links at the bottom of the file.
 - Make a new commit and tag it with `vX.Y.Z`.
 - Trigger the PyPI GitHub Action: `git push origin main --tags`.
+
+## Profiling
+
+StepUp has built-in support for profiling the director process with
+the Linux perf profiler and the Yappi profiler.
+It is assumed that you have Perf or Yappi installed on your system.
+
+- To profile with [Perf on Linux](https://perfwiki.github.io/main/),
+  set the `STEPUP_PERF` environment variable to a frequency in Hz,
+  or pass the frequency with the `--perf` command-line option.
+  Support for Perf [was included in Python 3.12](https://docs.python.org/3/howto/perf_profiling.html)
+  and will not work on older versions.
+
+    Enabling Perf will result in a file `.stepup/perf.data` containing the profiling data.
+    Use `perf script` to convert this file to a human-readable format:
+
+    ```bash
+    perf script -i .stepup/perf.data > perf.txt
+    ```
+
+    The resulting `perf.txt` file can be analyzed with tools like [Speedscope](https://www.speedscope.app/).
+
+- To profile with [Yappi](https://github.com/sumerc/yappi),
+  set the `STEPUP_YAPPI` environment variable to `1` or `yes`,
+  or pass `--yappi` on the command line.
+  This will result in a file `.stepup/director.prof` containing the profiling data.
+  This file can be analyzed with tools like [SnakeViz](https://jiffyclub.github.io/snakeviz/):
+
+    ```bash
+    pip install snakeviz
+    snakeviz .stepup/director.prof
+    ```
