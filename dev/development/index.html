@@ -2244,16 +2244,19 @@ so you must have it installed on your system.</p>
 </ul>
 <h2 id="profiling">Profiling<a class="headerlink" href="#profiling" title="Permanent link">&para;</a></h2>
 <p>StepUp has built-in support for profiling the director process with
-the Linux perf profiler and the Yappi profiler.
-It is assumed that you have Perf or Yappi installed on your system.</p>
+the Linux <code>perf</code> profiler and the Yappi profiler.
+These instructions assume you are running on Linux and have the <code>perf</code> userspace tool and/or Yappi installed.</p>
 <ul>
 <li>
-<p>To profile with <a href="https://perfwiki.github.io/main/">Perf on Linux</a>,
+<p>To profile with <a href="https://perfwiki.github.io/main/"><code>perf</code> on Linux</a>,
   set the <code>STEPUP_PERF</code> environment variable to a frequency in Hz,
-  or pass the frequency with the <code>--perf</code> command-line option.
-  Support for Perf <a href="https://docs.python.org/3/howto/perf_profiling.html">was included in Python 3.12</a>
-  and will not work on older versions.</p>
-<p>Enabling Perf will result in a file <code>.stepup/perf.data</code> containing the profiling data.
+  or pass the frequency with the <code>--perf</code> command-line option.</p>
+<p><code>perf</code>-based profiling requires a Linux system with the <code>perf</code> tool available,
+sufficient kernel permissions (for example, appropriate <code>perf_event_paranoid</code> settings
+or <code>CAP_PERFMON</code> capabilities), and a CPython build that supports <code>perf</code> trampolines as described
+in the  <a href="https://docs.python.org/3/howto/perf_profiling.html">Python <code>perf</code> profiling documentation</a>.
+Support for <code>perf</code> was added in CPython 3.12.</p>
+<p>Enabling <code>perf</code> will result in a file <code>.stepup/perf.data</code> containing the profiling data.
 Use <code>perf script</code> to convert this file to a human-readable format:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>perf<span class="w"> </span>script<span class="w"> </span>-i<span class="w"> </span>.stepup/perf.data<span class="w"> </span>&gt;<span class="w"> </span>perf.txt
 </span></code></pre></div>
