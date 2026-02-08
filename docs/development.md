@@ -88,16 +88,20 @@ so you must have it installed on your system.
 ## Profiling
 
 StepUp has built-in support for profiling the director process with
-the Linux perf profiler and the Yappi profiler.
-It is assumed that you have Perf or Yappi installed on your system.
+the Linux `perf` profiler and the Yappi profiler.
+These instructions assume you are running on Linux and have the `perf` userspace tool and/or Yappi installed.
 
-- To profile with [Perf on Linux](https://perfwiki.github.io/main/),
+- To profile with [`perf` on Linux](https://perfwiki.github.io/main/),
   set the `STEPUP_PERF` environment variable to a frequency in Hz,
   or pass the frequency with the `--perf` command-line option.
-  Support for Perf [was included in Python 3.12](https://docs.python.org/3/howto/perf_profiling.html)
-  and will not work on older versions.
 
-    Enabling Perf will result in a file `.stepup/perf.data` containing the profiling data.
+    `perf`-based profiling requires a Linux system with the `perf` tool available,
+    sufficient kernel permissions (for example, appropriate `perf_event_paranoid` settings
+    or `CAP_PERFMON` capabilities), and a CPython build that supports `perf` trampolines as described
+    in the  [Python `perf` profiling documentation](https://docs.python.org/3/howto/perf_profiling.html).
+    Support for `perf` was added in CPython 3.12.
+
+    Enabling `perf` will result in a file `.stepup/perf.data` containing the profiling data.
     Use `perf script` to convert this file to a human-readable format:
 
     ```bash
