@@ -36,7 +36,7 @@ from .cascade import Cascade, Node
 from .deferred_glob import DeferredGlob
 from .enums import FileState, Mandatory, StepState
 from .exceptions import GraphError
-from .file import File
+from .file import File, UInt64
 from .hash import FileHash, fmt_digest
 from .nglob import NGlobMulti, convert_nglob_to_regex, iter_wildcard_names
 from .step import Step
@@ -568,7 +568,8 @@ class Workflow(Cascade):
             sql = "INSERT INTO temp.missing VALUES (?)"
             self.con.executemany(sql, ((file.i,) for file in deferred))
             sql = (
-                "SELECT label, digest, mtime, mode, size, inode FROM temp.missing "
+                "SELECT label, digest, mtime, mode, size, inode AS 'inode [UINT64]' "
+                "FROM temp.missing "
                 "JOIN node ON node.i = temp.missing.node "
                 "JOIN file ON file.node = temp.missing.node"
             )
@@ -597,7 +598,7 @@ class Workflow(Cascade):
             self.con.execute("CREATE TABLE temp.paths(path TEXT PRIMARY KEY)")
             self.con.executemany("INSERT INTO temp.paths VALUES (?)", ((path,) for path in paths))
             sql = (
-                "SELECT label, digest, mode, mtime, size, inode FROM node "
+                "SELECT label, digest, mode, mtime, size, inode AS 'inode [UINT64]' FROM node "
                 "JOIN file ON file.node = node.i JOIN temp.paths ON label = temp.paths.path"
             )
             return [
@@ -735,7 +736,7 @@ class Workflow(Cascade):
             "UPDATE file SET state = ?, digest = ?, mode = ?, mtime = ?, size = ?, inode = ? "
             "WHERE node = ?",
             (
-                (state.value, fh.digest, fh.mode, fh.mtime, fh.size, fh.inode, i)
+                (state.value, fh.digest, fh.mode, fh.mtime, fh.size, UInt64(fh.inode), i)
                 for i, state, fh in new_states_hashes
             ),
         )
@@ -1141,7 +1142,7 @@ class Workflow(Cascade):
                     file.orphan()
         # Delete outputs of steps that are no longer mandatory.
         cur = self.con.execute(
-            "SELECT label, digest, mode, mtime, size, inode FROM file "
+            "SELECT label, digest, mode, mtime, size, inode AS 'inode [UINT64]' FROM file "
             "JOIN node ON node.i = file.node "
             "JOIN dependency ON node.i = consumer "
             "JOIN step ON step.node = supplier "

@@ -731,7 +731,7 @@ class Step(Node):
         sql = (
             "SELECT node.label, node.orphan, file.state, "
             "EXISTS (SELECT 1 FROM amended_dep WHERE amended_dep.i = dep.i), "
-            "file.digest, file.mode, file.mtime, file.size, file.inode "
+            "file.digest, file.mode, file.mtime, file.size, file.inode AS 'inode [UINT64]' "
             "FROM node JOIN dependency AS dep ON node.i = dep.supplier "
             "JOIN file ON file.node = node.i "
             "WHERE dep.consumer = ?"

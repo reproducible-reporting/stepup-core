@@ -109,7 +109,7 @@ def declare_static(workflow, creator, paths):
 @pytest.fixture
 def wfs() -> Iterator[Workflow]:
     """A workflow from scratch, no plan.py"""
-    workflow = Workflow(sqlite3.Connection(":memory:"))
+    workflow = Workflow(sqlite3.Connection(":memory:", detect_types=sqlite3.PARSE_COLNAMES))
     declare_static(workflow, workflow.root, ["./"])
     yield workflow
     workflow.check_consistency()
@@ -118,7 +118,7 @@ def wfs() -> Iterator[Workflow]:
 @pytest.fixture
 def wfp() -> Iterator[Workflow]:
     """A workflow with a boots step plan.py"""
-    workflow = Workflow(sqlite3.Connection(":memory:"))
+    workflow = Workflow(sqlite3.Connection(":memory:", detect_types=sqlite3.PARSE_COLNAMES))
     with workflow.con:
         # Prepare the basic workflow with a plan script.
         root = workflow.root

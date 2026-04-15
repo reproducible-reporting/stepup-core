@@ -175,7 +175,7 @@ def fmtnum(i: int):
 CREATE_INITIAL_PATHS = "CREATE TABLE temp.initial_path(path TEXT PRIMARY KEY) WITHOUT ROWID"
 
 SELECT_OUTPUTS = f"""
-SELECT label, file.state, orphan, digest, mode, mtime, size, inode FROM node
+SELECT label, file.state, orphan, digest, mode, mtime, size, inode AS 'inode [UINT64]' FROM node
 JOIN all_consumer ON node.i = all_consumer.current
 JOIN file ON file.node = all_consumer.current
 WHERE file.state in

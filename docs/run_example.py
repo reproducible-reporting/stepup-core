@@ -22,7 +22,9 @@ def main():
     root = Path(root)
     path_stepup = root / ".stepup/"
     path_graph = path_stepup / "graph.db"
-    con = sqlite3.Connection(f"file:{path_graph}?mode=ro", uri=True)
+    con = sqlite3.Connection(
+        f"file:{path_graph}?mode=ro", uri=True, detect_types=sqlite3.PARSE_COLNAMES
+    )
     out = [path_stepup]
     vol = [path_graph]
     for path, state_i in con.execute(SQL):

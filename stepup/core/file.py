@@ -20,8 +20,9 @@
 """A `File` is StepUp's node for an input or output file of a step."""
 
 import logging
+import sqlite3
 from collections.abc import Iterator
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 import attrs
 from path import Path
@@ -65,6 +66,31 @@ CREATE INDEX IF NOT EXISTS file_state ON file(state);
 """
 
 
+class UInt64(int):
+    """A wrapper to tell SQLite this int should be treated as an unsigned 64-bit value."""
+
+    MAX_SIGNED_64 = 2**63 - 1
+    MAX_WRAPAROUND_64 = 2**64
+    MAX_UNSIGNED_64 = MAX_WRAPAROUND_64 - 1
+
+    @staticmethod
+    def adapt(val: Self) -> int:
+        if not (0 <= val <= UInt64.MAX_UNSIGNED_64):
+            raise ValueError(f"Value {val} out of UINT64 range")
+        return val - UInt64.MAX_WRAPAROUND_64 if val > UInt64.MAX_SIGNED_64 else val
+
+    @staticmethod
+    def convert(val: int) -> Self:
+        val = int(val)
+        if val < 0:
+            val += UInt64.MAX_WRAPAROUND_64
+        return UInt64(val)
+
+
+sqlite3.register_adapter(UInt64, UInt64.adapt)
+sqlite3.register_converter("UINT64", UInt64.convert)
+
+
 @attrs.define
 class File(Node):
     """A concrete file on the filesystem (may also be a directory)."""
@@ -102,7 +128,10 @@ class File(Node):
         # If the file was previously BUILT or OUTDATED, and created again as AWAITED,
         # it should copy that state
         if state == FileState.AWAITED:
-            sql = "SELECT state, digest, mode, mtime, size, inode FROM file WHERE node = ?"
+            sql = (
+                "SELECT state, digest, mode, mtime, size, inode AS 'inode [UINT64]' FROM file "
+                "WHERE node = ?"
+            )
             row = self.con.execute(sql, (self.i,)).fetchone()
             if row is not None and row[0] in (FileState.BUILT.value, FileState.OUTDATED.value):
                 state = FileState(row[0])
@@ -121,7 +150,7 @@ class File(Node):
                 "mode": mode,
                 "mtime": mtime,
                 "size": size,
-                "inode": inode,
+                "inode": UInt64(inode),
             },
         )
         # If the state is BUILT, mark it as OUTDATED to force a rebuild.
@@ -215,8 +244,9 @@ class File(Node):
         self.con.execute(sql, (state.value, self.i))
 
     def get_hash(self) -> FileHash:
-        sql = "SELECT digest, mode, mtime, size, inode FROM file WHERE node = ?"
+        sql = "SELECT digest, mode, mtime, size, inode AS 'inode [UINT64]' FROM file WHERE node = ?"
         row = self.con.execute(sql, (self.i,)).fetchone()
+        print(row)
         return FileHash(*row)
 
     #

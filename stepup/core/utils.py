@@ -434,9 +434,9 @@ def string_to_bool(v: str | bool) -> bool:
 @contextlib.contextmanager
 def sqlite3_copy_in_memory(path_db) -> Iterator[sqlite3.Connection]:
     """Copy an SQLite database into memory and yield the connection."""
-    dst = sqlite3.Connection(":memory:")
+    dst = sqlite3.Connection(":memory:", detect_types=sqlite3.PARSE_COLNAMES)
     try:
-        src = sqlite3.Connection(path_db)
+        src = sqlite3.Connection(path_db, detect_types=sqlite3.PARSE_COLNAMES)
         try:
             src.backup(dst)
         finally:

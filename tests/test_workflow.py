@@ -19,6 +19,7 @@
 # --
 """Unit tests for stepup.core.workflow."""
 
+import hashlib
 from collections import Counter
 
 import pytest
@@ -2493,3 +2494,17 @@ def test_clean_stepup_root_parents(wfs: Workflow):
     assert wfs.find(File, "../../") is None
     assert wfs.find(File, "../../../") is None
     assert wfs.find(File, "../foo.txt").get_state() == FileState.STATIC
+
+
+def test_large_inode(wfp: Workflow):
+    plan = wfp.find(Step, "./plan.py")
+    large_inode = 0x8000000000000001
+    wfp.declare_missing(plan, ["foo.txt"])
+    wfp.update_file_hashes(
+        [("foo.txt", FileHash(hashlib.blake2b(b"foo").digest(), 0o644, 1.0, 10, large_inode))],
+        "confirmed",
+    )
+    foo = wfp.find(File, "foo.txt")
+    hash_info = foo.get_hash()
+    assert hash_info is not None
+    assert hash_info.inode == large_inode

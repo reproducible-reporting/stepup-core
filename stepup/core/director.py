@@ -258,7 +258,9 @@ async def serve(
     check_plan("plan.py")
 
     # Create basic components
-    con = sqlite3.connect(".stepup/graph.db", cached_statements=1024)
+    con = sqlite3.connect(
+        ".stepup/graph.db", cached_statements=1024, detect_types=sqlite3.PARSE_COLNAMES
+    )
     dblock = DBLock(con)
     workflow = Workflow(con)
     scheduler = Scheduler(workflow.job_queue, workflow.config_queue, workflow.job_queue_changed)

@@ -275,8 +275,8 @@ class GraphServer(BaseHTTPRequestHandler):
             print("Loading database...")
             if self.con is not None:
                 self.con.close()
-            self.con = sqlite3.Connection(":memory:")
-            src = sqlite3.Connection(self.path_db)
+            self.con = sqlite3.Connection(":memory:", detect_types=sqlite3.PARSE_COLNAMES)
+            src = sqlite3.Connection(self.path_db, detect_types=sqlite3.PARSE_COLNAMES)
             try:
                 src.backup(self.con)
             finally:
@@ -415,7 +415,9 @@ class GraphServer(BaseHTTPRequestHandler):
 
         elif kind == "file":
             (state_i, digest, mode, mtime, size, inode) = self.con.execute(
-                "SELECT state, digest, mode, mtime, size, inode FROM file WHERE node = ?", (node_i,)
+                "SELECT state, digest, mode, mtime, size, inode AS 'inode [UINT64]' FROM file "
+                "WHERE node = ?",
+                (node_i,),
             ).fetchone()
             state = FileState(state_i)
             yield f'<p><b>State:</b> <span class="{state.name.lower()}">{state.name}</span></p>'
