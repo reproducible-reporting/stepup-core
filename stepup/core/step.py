@@ -558,7 +558,7 @@ class Step(Node):
             fields.append("state")
             join_file = True
         if yield_hash:
-            fields.extend(["digest", "mode", "mtime", "size", "inode"])
+            fields.extend(["digest", "mode", "mtime", "size", "inode AS 'inode [UINT64]'"])
             join_file = True
         if yield_orphan:
             fields.append("orphan")
