@@ -246,7 +246,6 @@ class File(Node):
     def get_hash(self) -> FileHash:
         sql = "SELECT digest, mode, mtime, size, inode AS 'inode [UINT64]' FROM file WHERE node = ?"
         row = self.con.execute(sql, (self.i,)).fetchone()
-        print(row)
         return FileHash(*row)
 
     #

@@ -16,7 +16,7 @@ Bugfix release: support large inodes in SQLite storage
 
 - Fixed a bug in the representation of large inodes in SQLite storage.
   SQLite works with signed 64-bit integers, but inodes can be unsigned 64-bit integers.
-  They are now converted back and forth to fit transparantely,
+  They are now converted back and forth to fit transparently,
   by wrapping too large numbers around to negative values.
   This change is backward compatible.
 
