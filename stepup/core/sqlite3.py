@@ -20,6 +20,7 @@
 """Wrapper for SQLite3 functionality."""
 
 import contextlib
+import os
 import sqlite3
 from collections.abc import Iterator
 from typing import Self
@@ -52,7 +53,7 @@ sqlite3.register_adapter(UInt64, UInt64.adapt)
 sqlite3.register_converter("UINT64", UInt64.convert)
 
 
-def connect(path: str, **kwargs) -> sqlite3.Connection:
+def connect(path: str | os.PathLike[str], **kwargs) -> sqlite3.Connection:
     """Connect to a SQLite database, with the appropriate settings for StepUp.
 
     The following deviations from the default settings are used:
