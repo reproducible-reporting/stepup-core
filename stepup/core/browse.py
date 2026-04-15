@@ -24,7 +24,6 @@ import contextlib
 import importlib.resources
 import os
 import pickle
-import sqlite3
 import stat
 import traceback
 from collections.abc import Iterator
@@ -37,6 +36,7 @@ from path import Path
 
 from .enums import FileState, Mandatory, StepState
 from .hash import fmt_digest
+from .sqlite3 import connect
 
 
 def browse_subcommand(subparser: argparse.ArgumentParser) -> callable:
@@ -275,8 +275,8 @@ class GraphServer(BaseHTTPRequestHandler):
             print("Loading database...")
             if self.con is not None:
                 self.con.close()
-            self.con = sqlite3.Connection(":memory:", detect_types=sqlite3.PARSE_COLNAMES)
-            src = sqlite3.Connection(self.path_db, detect_types=sqlite3.PARSE_COLNAMES)
+            self.con = connect(":memory:")
+            src = connect(self.path_db)
             try:
                 src.backup(self.con)
             finally:

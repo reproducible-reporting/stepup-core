@@ -20,9 +20,8 @@
 """A `File` is StepUp's node for an input or output file of a step."""
 
 import logging
-import sqlite3
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 
 import attrs
 from path import Path
@@ -30,6 +29,7 @@ from path import Path
 from .cascade import Node
 from .enums import DirWatch, FileState
 from .hash import FileHash
+from .sqlite3 import UInt64
 from .utils import format_digest
 
 if TYPE_CHECKING:
@@ -64,31 +64,6 @@ CREATE TABLE IF NOT EXISTS file (
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS file_state ON file(state);
 """
-
-
-class UInt64(int):
-    """A wrapper to tell SQLite this int should be treated as an unsigned 64-bit value."""
-
-    MAX_SIGNED_64 = 2**63 - 1
-    MAX_WRAPAROUND_64 = 2**64
-    MAX_UNSIGNED_64 = MAX_WRAPAROUND_64 - 1
-
-    @staticmethod
-    def adapt(val: Self) -> int:
-        if not (0 <= val <= UInt64.MAX_UNSIGNED_64):
-            raise ValueError(f"Value {val} out of UINT64 range")
-        return val - UInt64.MAX_WRAPAROUND_64 if val > UInt64.MAX_SIGNED_64 else val
-
-    @staticmethod
-    def convert(val: int) -> Self:
-        val = int(val)
-        if val < 0:
-            val += UInt64.MAX_WRAPAROUND_64
-        return UInt64(val)
-
-
-sqlite3.register_adapter(UInt64, UInt64.adapt)
-sqlite3.register_converter("UINT64", UInt64.convert)
 
 
 @attrs.define

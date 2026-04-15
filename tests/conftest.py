@@ -23,7 +23,6 @@ import asyncio
 import contextlib
 import hashlib
 import os
-import sqlite3
 import stat
 from collections.abc import AsyncGenerator, Iterator
 
@@ -37,6 +36,7 @@ from stepup.core.file import File
 from stepup.core.hash import FileHash
 from stepup.core.reporter import ReporterClient
 from stepup.core.rpc import AsyncRPCClient
+from stepup.core.sqlite3 import connect
 from stepup.core.step import Step
 from stepup.core.workflow import Workflow
 
@@ -109,7 +109,7 @@ def declare_static(workflow, creator, paths):
 @pytest.fixture
 def wfs() -> Iterator[Workflow]:
     """A workflow from scratch, no plan.py"""
-    workflow = Workflow(sqlite3.Connection(":memory:", detect_types=sqlite3.PARSE_COLNAMES))
+    workflow = Workflow(connect(":memory:"))
     declare_static(workflow, workflow.root, ["./"])
     yield workflow
     workflow.check_consistency()
@@ -118,7 +118,7 @@ def wfs() -> Iterator[Workflow]:
 @pytest.fixture
 def wfp() -> Iterator[Workflow]:
     """A workflow with a boots step plan.py"""
-    workflow = Workflow(sqlite3.Connection(":memory:", detect_types=sqlite3.PARSE_COLNAMES))
+    workflow = Workflow(connect(":memory:"))
     with workflow.con:
         # Prepare the basic workflow with a plan script.
         root = workflow.root

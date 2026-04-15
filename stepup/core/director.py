@@ -24,7 +24,6 @@ import asyncio
 import logging
 import os
 import signal
-import sqlite3
 import sys
 import time
 import traceback
@@ -48,6 +47,7 @@ from .reporter import ReporterClient
 from .rpc import allow_rpc, serve_socket_rpc
 from .runner import Runner
 from .scheduler import Scheduler
+from .sqlite3 import connect
 from .startup import startup_from_db
 from .step import Step
 from .stepinfo import StepInfo
@@ -258,9 +258,7 @@ async def serve(
     check_plan("plan.py")
 
     # Create basic components
-    con = sqlite3.connect(
-        ".stepup/graph.db", cached_statements=1024, detect_types=sqlite3.PARSE_COLNAMES
-    )
+    con = connect(".stepup/graph.db")
     dblock = DBLock(con)
     workflow = Workflow(con)
     scheduler = Scheduler(workflow.job_queue, workflow.config_queue, workflow.job_queue_changed)

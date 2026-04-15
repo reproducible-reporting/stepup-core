@@ -562,6 +562,7 @@ class Cascade:
         # While making this change, the enums were also made more intuitive.
         # Schema 2 became outdated due to the worker actions.
         # Schema 3 became outdated due to a change in step table (dirty field).
+        # TODO: In the next schema, use UINT64 with PARSE_DECLTYPES instead of PARSE_COLNAMES.
         return 4
 
     @classmethod

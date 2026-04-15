@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Run one example and amend (volatile) outputs."""
 
-import sqlite3
 import subprocess
 import sys
 
@@ -9,6 +8,7 @@ from path import Path
 
 from stepup.core.api import amend
 from stepup.core.file import FileState
+from stepup.core.sqlite3 import connect
 
 SQL = "SELECT label, state FROM node JOIN file ON node.i = file.node"
 
@@ -22,9 +22,7 @@ def main():
     root = Path(root)
     path_stepup = root / ".stepup/"
     path_graph = path_stepup / "graph.db"
-    con = sqlite3.Connection(
-        f"file:{path_graph}?mode=ro", uri=True, detect_types=sqlite3.PARSE_COLNAMES
-    )
+    con = connect(f"file:{path_graph}?mode=ro", uri=True)
     out = [path_stepup]
     vol = [path_graph]
     for path, state_i in con.execute(SQL):
