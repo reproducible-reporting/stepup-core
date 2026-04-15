@@ -41,7 +41,7 @@ class UInt64(int):
         return val - UInt64.MAX_WRAPAROUND_64 if val > UInt64.MAX_SIGNED_64 else val
 
     @staticmethod
-    def convert(val: int) -> Self:
+    def convert(val: bytes) -> Self:
         val = int(val)
         if val < 0:
             val += UInt64.MAX_WRAPAROUND_64
