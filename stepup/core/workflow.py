@@ -569,14 +569,14 @@ class Workflow(Cascade):
             sql = "INSERT INTO temp.missing VALUES (?)"
             self.con.executemany(sql, ((file.i,) for file in deferred))
             sql = (
-                "SELECT label, digest, mtime, mode, size, inode AS 'inode [UINT64]' "
+                "SELECT label, digest, mode, mtime, size, inode AS 'inode [UINT64]' "
                 "FROM temp.missing "
                 "JOIN node ON node.i = temp.missing.node "
                 "JOIN file ON file.node = temp.missing.node"
             )
             return [
-                (path, FileHash(digest, mtime, mode, size, inode))
-                for path, digest, mtime, mode, size, inode in self.con.execute(sql)
+                (path, FileHash(digest, mode, mtime, size, inode))
+                for path, digest, mode, mtime, size, inode in self.con.execute(sql)
             ]
         finally:
             self.con.execute("DROP TABLE IF EXISTS temp.missing")
