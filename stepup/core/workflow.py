@@ -36,9 +36,10 @@ from .cascade import Cascade, Node
 from .deferred_glob import DeferredGlob
 from .enums import FileState, Mandatory, StepState
 from .exceptions import GraphError
-from .file import File, UInt64
+from .file import File
 from .hash import FileHash, fmt_digest
 from .nglob import NGlobMulti, convert_nglob_to_regex, iter_wildcard_names
+from .sqlite3 import UInt64
 from .step import Step
 from .utils import myparent, string_to_bool
 
