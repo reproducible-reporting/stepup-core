@@ -124,7 +124,7 @@ async def scan_file_changes(
 ) -> tuple[set[str], set[str]]:
     """Check all files in the workflow for changes."""
     sql = (
-        "SELECT label, state, digest, mode, mtime, size, inode "
+        "SELECT label, state, digest, mode, mtime, size, inode AS 'inode [UINT64]' "
         "FROM node JOIN file ON node.i = file.node AND state NOT IN (?, ?) AND NOT orphan"
     )
     data = (FileState.AWAITED.value, FileState.VOLATILE.value)

@@ -29,7 +29,8 @@ from rich.console import Console
 from .cascade import DROP_CONSUMERS, INITIAL_CONSUMERS, RECURSE_CONSUMERS
 from .enums import FileState
 from .hash import FileHash
-from .utils import mynormpath, sqlite3_copy_in_memory, translate, translate_back
+from .sqlite3 import copy_db_in_memory
+from .utils import mynormpath, translate, translate_back
 
 
 def clean_subcommand(subparser: argparse.ArgumentParser) -> callable:
@@ -91,7 +92,7 @@ def clean_tool(args: argparse.Namespace):
     # Copy the database in memory and work on the copy.
     root = Path(os.getenv("STEPUP_ROOT", "."))
     path_db = root / ".stepup/graph.db"
-    with sqlite3_copy_in_memory(path_db) as con:
+    with copy_db_in_memory(path_db) as con:
         clean(con, tr_paths, args)
 
 
@@ -175,7 +176,7 @@ def fmtnum(i: int):
 CREATE_INITIAL_PATHS = "CREATE TABLE temp.initial_path(path TEXT PRIMARY KEY) WITHOUT ROWID"
 
 SELECT_OUTPUTS = f"""
-SELECT label, file.state, orphan, digest, mode, mtime, size, inode FROM node
+SELECT label, file.state, orphan, digest, mode, mtime, size, inode AS 'inode [UINT64]' FROM node
 JOIN all_consumer ON node.i = all_consumer.current
 JOIN file ON file.node = all_consumer.current
 WHERE file.state in

@@ -10,7 +10,15 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+Bugfix release: support large inodes in SQLite storage
+
+### Fixed
+
+- Fixed a bug in the representation of large inodes in SQLite storage.
+  SQLite works with signed 64-bit integers, but inodes can be unsigned 64-bit integers.
+  They are now converted back and forth to fit transparently,
+  by wrapping too large numbers around to negative values.
+  This change is backward compatible.
 
 ## [3.2.2][] - 2026-02-08 {: #v3.2.3 }
 

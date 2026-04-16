@@ -29,6 +29,7 @@ from path import Path
 from .cascade import Node
 from .enums import DirWatch, FileState
 from .hash import FileHash
+from .sqlite3 import UInt64
 from .utils import format_digest
 
 if TYPE_CHECKING:
@@ -102,7 +103,10 @@ class File(Node):
         # If the file was previously BUILT or OUTDATED, and created again as AWAITED,
         # it should copy that state
         if state == FileState.AWAITED:
-            sql = "SELECT state, digest, mode, mtime, size, inode FROM file WHERE node = ?"
+            sql = (
+                "SELECT state, digest, mode, mtime, size, inode AS 'inode [UINT64]' FROM file "
+                "WHERE node = ?"
+            )
             row = self.con.execute(sql, (self.i,)).fetchone()
             if row is not None and row[0] in (FileState.BUILT.value, FileState.OUTDATED.value):
                 state = FileState(row[0])
@@ -121,7 +125,7 @@ class File(Node):
                 "mode": mode,
                 "mtime": mtime,
                 "size": size,
-                "inode": inode,
+                "inode": UInt64(inode),
             },
         )
         # If the state is BUILT, mark it as OUTDATED to force a rebuild.
@@ -215,7 +219,7 @@ class File(Node):
         self.con.execute(sql, (state.value, self.i))
 
     def get_hash(self) -> FileHash:
-        sql = "SELECT digest, mode, mtime, size, inode FROM file WHERE node = ?"
+        sql = "SELECT digest, mode, mtime, size, inode AS 'inode [UINT64]' FROM file WHERE node = ?"
         row = self.con.execute(sql, (self.i,)).fetchone()
         return FileHash(*row)
 
