@@ -45,7 +45,8 @@ Description for Asciinema recording:
   that are (indirectly) affected by the change in `generate.py`.
 - Finally, the user presses `q` to exit StepUp.
 
-See [StepUp RepRep documentation](https://reproducible-reporting.github.io/stepup-reprep/) for more details.
+See [StepUp RepRep documentation](https://reproducible-reporting.github.io/stepup-reprep/)
+for more details.
 
 (This recording was created with StepUp Core 3.0.0 and StepUp RepRep 3.0.0)
 ```

@@ -15,7 +15,8 @@ To help you decide which one to use, consider the following:
   including the planning (inputs, outputs, ...) and execution, in a single source file.
   Such self-contained scripts can be easier to understand and maintain.
 
-If both seem overkill, you can also use the [`runpy()`][stepup.core.api.runpy] function directly in `plan.py`.
+If both seem overkill, you can also use the [`runpy()`][stepup.core.api.runpy]
+function directly in `plan.py`.
 See [Running Python Scripts](first_runpy.md) for an example.
 
 ## Script Protocol
