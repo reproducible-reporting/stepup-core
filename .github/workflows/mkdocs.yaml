@@ -40,15 +40,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Get the source
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: 3.x
 
       # Prepare the environment for building docs.
       - name: Setup Pages
         id: pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       - name: Install development version
         run: pip install -e .[dev]
 
