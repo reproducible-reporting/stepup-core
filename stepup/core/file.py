@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS file (
   mode INTEGER NOT NULL CHECK(mode >= 0),
   mtime REAL NOT NULL CHECK(mtime >= 0),
   size INTEGER NOT NULL CHECK(size >= 0),
-  inode INTEGER NOT NULL,
+  inode UINT64 NOT NULL,
   FOREIGN KEY (node) REFERENCES node(i),
   CHECK (
     state IN ({FileState.MISSING.value}, {FileState.AWAITED.value}, {FileState.VOLATILE.value}) OR
@@ -103,10 +103,7 @@ class File(Node):
         # If the file was previously BUILT or OUTDATED, and created again as AWAITED,
         # it should copy that state
         if state == FileState.AWAITED:
-            sql = (
-                "SELECT state, digest, mode, mtime, size, inode AS 'inode [UINT64]' FROM file "
-                "WHERE node = ?"
-            )
+            sql = "SELECT state, digest, mode, mtime, size, inode FROM file WHERE node = ?"
             row = self.con.execute(sql, (self.i,)).fetchone()
             if row is not None and row[0] in (FileState.BUILT.value, FileState.OUTDATED.value):
                 state = FileState(row[0])
@@ -219,7 +216,7 @@ class File(Node):
         self.con.execute(sql, (state.value, self.i))
 
     def get_hash(self) -> FileHash:
-        sql = "SELECT digest, mode, mtime, size, inode AS 'inode [UINT64]' FROM file WHERE node = ?"
+        sql = "SELECT digest, mode, mtime, size, inode FROM file WHERE node = ?"
         row = self.con.execute(sql, (self.i,)).fetchone()
         return FileHash(*row)
 

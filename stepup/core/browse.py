@@ -415,8 +415,7 @@ class GraphServer(BaseHTTPRequestHandler):
 
         elif kind == "file":
             (state_i, digest, mode, mtime, size, inode) = self.con.execute(
-                "SELECT state, digest, mode, mtime, size, inode AS 'inode [UINT64]' FROM file "
-                "WHERE node = ?",
+                "SELECT state, digest, mode, mtime, size, inode FROM file WHERE node = ?",
                 (node_i,),
             ).fetchone()
             state = FileState(state_i)

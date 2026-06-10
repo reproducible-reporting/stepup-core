@@ -562,10 +562,11 @@ class Cascade:
         # While making this change, the enums were also made more intuitive.
         # Schema 2 became outdated due to the worker actions.
         # Schema 3 became outdated due to a change in step table (dirty field).
+        # Schema 4 became outdated due to:
+        # - the use of PARSE_DECLTYPES instead of PARSE_COLNAMES,
+        #   which requires using UINT64 for file inodes.
 
-        # Delayed Schema updates, for version 5:
-        # - Use UINT64 with PARSE_DECLTYPES instead of PARSE_COLNAMES.
-        return 4
+        return 5
 
     @classmethod
     def schema(cls) -> str:

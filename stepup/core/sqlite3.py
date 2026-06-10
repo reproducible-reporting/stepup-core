@@ -58,12 +58,12 @@ def connect(path: str | os.PathLike[str], **kwargs) -> sqlite3.Connection:
 
     The following deviations from the default settings are used:
 
-    - Types can be detected from column names,
+    - Types can be detected from declared column types,
       which allows us to use the custom UINT64 type for file inodes.
     - The `cached_statements` parameter is set to a large value to improve
       performance when executing many similar statements.
     """
-    my_kwargs = {"cached_statements": 1024, "detect_types": sqlite3.PARSE_COLNAMES}
+    my_kwargs = {"cached_statements": 1024, "detect_types": sqlite3.PARSE_DECLTYPES}
     my_kwargs.update(kwargs)
     return sqlite3.connect(path, **my_kwargs)
 

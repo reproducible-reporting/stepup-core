@@ -569,7 +569,7 @@ class Workflow(Cascade):
             sql = "INSERT INTO temp.missing VALUES (?)"
             self.con.executemany(sql, ((file.i,) for file in deferred))
             sql = (
-                "SELECT label, digest, mode, mtime, size, inode AS 'inode [UINT64]' "
+                "SELECT label, digest, mode, mtime, size, inode "
                 "FROM temp.missing "
                 "JOIN node ON node.i = temp.missing.node "
                 "JOIN file ON file.node = temp.missing.node"
@@ -599,7 +599,7 @@ class Workflow(Cascade):
             self.con.execute("CREATE TABLE temp.paths(path TEXT PRIMARY KEY)")
             self.con.executemany("INSERT INTO temp.paths VALUES (?)", ((path,) for path in paths))
             sql = (
-                "SELECT label, digest, mode, mtime, size, inode AS 'inode [UINT64]' FROM node "
+                "SELECT label, digest, mode, mtime, size, inode FROM node "
                 "JOIN file ON file.node = node.i JOIN temp.paths ON label = temp.paths.path"
             )
             return [
@@ -1143,7 +1143,7 @@ class Workflow(Cascade):
                     file.orphan()
         # Delete outputs of steps that are no longer mandatory.
         cur = self.con.execute(
-            "SELECT label, digest, mode, mtime, size, inode AS 'inode [UINT64]' FROM file "
+            "SELECT label, digest, mode, mtime, size, inode FROM file "
             "JOIN node ON node.i = file.node "
             "JOIN dependency ON node.i = consumer "
             "JOIN step ON step.node = supplier "
