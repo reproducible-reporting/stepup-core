@@ -295,8 +295,8 @@ f:one
 f:two
                value = 2
           created by   f:one
-            consumes   (f:zero)
             consumes   f:one
+            consumes   (f:zero)
              creates   f:three
             supplies   (f:four)
 

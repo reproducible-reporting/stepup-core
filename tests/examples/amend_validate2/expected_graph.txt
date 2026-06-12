@@ -25,8 +25,8 @@ step:runpy ./work.py
                state = PENDING
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   (file:pong.txt) [amended]
             consumes   file:ping.txt [amended]
+            consumes   (file:pong.txt) [amended]
             consumes   file:work.py
              creates   file:work.txt
             supplies   file:work.txt

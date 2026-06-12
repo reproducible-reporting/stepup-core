@@ -263,12 +263,13 @@ class Node:
 
     def products_str(self, node_type: type[NodeType] = Self) -> Iterator[str]:
         """Iterate over (a subset of) products of this node, formatted as strings."""
-        query = "SELECT kind, label, orphan FROM node WHERE creator = ?"
+        sql = "SELECT kind, label, orphan FROM node WHERE creator = ?"
         data = [self.i]
         if node_type is not Self:
-            query += " AND kind = ?"
+            sql += " AND kind = ?"
             data.append(node_type.kind())
-        for kind, label, is_orphan in self.con.execute(query, data):
+        sql += " ORDER BY kind, label"
+        for kind, label, is_orphan in self.con.execute(sql, data):
             node_str = f"{kind}:{label}"
             if is_orphan:
                 node_str = f"({node_str})"
@@ -311,15 +312,16 @@ class Node:
         node_type: type[NodeType] = Self,
         do_suppliers: bool = True,
     ) -> Iterator[tuple[int, str]]:
-        sql = "SELECT kind, label, orphan, dependency.i FROM node JOIN dependency ON node.i = "
+        sql = "SELECT kind, label, orphan, dependency.i FROM node JOIN dependency ON node.i ="
         if do_suppliers:
-            sql += "supplier WHERE consumer = ?"
+            sql += " supplier WHERE consumer = ?"
         else:
-            sql += "consumer WHERE supplier = ?"
+            sql += " consumer WHERE supplier = ?"
         data = [self.i]
         if node_type is not Self:
             sql += " AND kind = ?"
             data.append(node_type.kind())
+        sql += " ORDER BY kind, label"
         for kind, label, is_orphan, idep in self.cascade.con.execute(sql, data):
             node_str = f"{kind}:{label}"
             if is_orphan:
@@ -729,19 +731,11 @@ class Cascade:
             pairs = []
             if ci is not None and (label != clabel):
                 pairs.append(("created by", creator.key(cis_orphan)))
+            pairs.extend(("consumes", other_str) for _, other_str in node.suppliers_str())
             pairs.extend(
-                ("consumes", other_str)
-                for _, other_str in sorted(node.suppliers_str(), key=(lambda x: x[1]))
+                ("creates", other_str) for other_str in node.products_str() if other_str != "root:"
             )
-            pairs.extend(
-                ("creates", other_str)
-                for other_str in sorted(node.products_str())
-                if other_str != "root:"
-            )
-            pairs.extend(
-                ("supplies", other_str)
-                for _, other_str in sorted(node.consumers_str(), key=(lambda x: x[1]))
-            )
+            pairs.extend(("supplies", other_str) for _, other_str in node.consumers_str())
             for role, key in pairs:
                 lines.append(f"{role:>20s}   {key}")
             lines.append("")

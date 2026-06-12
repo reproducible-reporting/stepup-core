@@ -18,8 +18,8 @@ step:runsh echo Hello > test1.txt
                state = SUCCEEDED
           created by   step:runpy ./plan.py
              creates   file:test1.txt
-            supplies   (file:test2.txt)
             supplies   file:test1.txt
+            supplies   (file:test2.txt)
 
 (file:bogus.txt)
                state = AWAITED
