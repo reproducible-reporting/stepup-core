@@ -508,42 +508,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/static_files/" class="md-nav__link">
+      <a href="../../getting_started/copy/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Files
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/copy_mkdir/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    copy and mkdir
+    File copy
   
 
     
@@ -572,6 +544,62 @@
     
   
     Working Directory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/static_files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/static_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Root
   
 
     
@@ -992,34 +1020,6 @@
     
   
     Static Named Glob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../static_deferred_glob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static Deferred Glob
   
 
     
@@ -1537,7 +1537,7 @@
   <span class="md-ellipsis">
     
   
-    Reference
+    Migration
   
 
     
@@ -1550,6 +1550,88 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration/from3to4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from StepUp 3.X to 4.X
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1805,10 +1887,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -1826,8 +1908,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2128,7 +2210,7 @@ StepUp will know that it has to rerun the step instead of skipping it,
 even if input files have not changed.</p>
 <p>One can only change an environment variable by stopping StepUp,
 changing the variable, and then starting StepUp again.
-One cannot modify environment variables while StepUp is running.</p>
+Environment variables cannot be modified while StepUp is running.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/environment_variables"><code>docs/advanced_topics/environment_variables/</code></a></p>
 <p>Create the following <code>plan.py</code>:</p>
@@ -2142,7 +2224,7 @@ One cannot modify environment variables while StepUp is running.</p>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nv">MYVAR</span><span class="o">=</span>foo<span class="w"> </span>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You will see the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>        0/0 |    STARTUP │ (Re)initialized boot script
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>        0/0 |   DIRECTOR │ Launched worker 0
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        0/1 |      PHASE │ run

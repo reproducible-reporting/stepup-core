@@ -635,42 +635,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../static_files/" class="md-nav__link">
+      <a href="../copy/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Files
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../copy_mkdir/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    copy and mkdir
+    File copy
   
 
     
@@ -699,6 +671,62 @@
     
   
     Working Directory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static_files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Root
   
 
     
@@ -1137,34 +1165,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/static_deferred_glob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static Deferred Glob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../advanced_topics/optional_steps/" class="md-nav__link">
         
   
@@ -1582,7 +1582,7 @@
   <span class="md-ellipsis">
     
   
-    Reference
+    Migration
   
 
     
@@ -1595,6 +1595,88 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration/from3to4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from StepUp 3.X to 4.X
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1850,10 +1932,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -1871,8 +1953,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2213,7 +2295,7 @@
 
 <h1 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h1>
 <p>The &ldquo;Getting Started&rdquo; section consists of a series of short tutorials.
-Each tutorial introduces a few concepts at a time to maintain a gentle learning curve.
+Each tutorial gradually introduces a few concepts to maintain a gentle learning curve.
 The following initial competencies are assumed:</p>
 <ul>
 <li>Basic Python programming.</li>
@@ -2224,8 +2306,8 @@ The following initial competencies are assumed:</p>
 in serial mode (<code>-n 1</code>) and non-interactively.
 We believe this offers the best learning experience.
 However, StepUp really shines in more complex use cases and when used interactively.
-Once you know how StepUp works, you can impress yourself by effortlessly mastering
-the daunting complexity of your projects. :)</p>
+Once you become familiar with StepUp,
+you&rsquo;ll be able to make workflows that would be difficult to manage with other tools.</p>
 <h2 id="tutorial-source-files">Tutorial source files<a class="headerlink" href="#tutorial-source-files" title="Permanent link">&para;</a></h2>
 <p>Input files for each tutorial are stored in a corresponding subdirectory under
 <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started"><code>docs/getting_started/</code></a>
@@ -2243,46 +2325,57 @@ This workflow is represented by <em>two</em>
 <a href="https://en.wikipedia.org/wiki/Directed_acyclic_graph">direct acyclic graphs (DAGs)</a>,
 which comprise the same nodes.</p>
 <h4 id="nodes">Nodes<a class="headerlink" href="#nodes" title="Permanent link">&para;</a></h4>
-<p>The nodes of the graph can be instances of the following main classes:</p>
-<ul>
+<p>The nodes of the graph can be instances of the following two main classes:</p>
+<ol>
 <li>
 <p>A <code>Step</code> defines a program that can be executed with all the information for a specific execution:
-  working directory, command, arguments, inputs, outputs, etc.
-  A step can also be in one of the following states:</p>
+   working directory, command, arguments, inputs, outputs, etc.
+   A step can also be in one of the following states:</p>
 <ul>
-<li><code>PENDING</code>: the step cannot yet be scheduled
+<li><code>PENDING</code>:
+  the step cannot yet be scheduled
   because some inputs have not been declared or built yet.</li>
-<li><code>QUEUED</code>: all inputs are available and the step is waiting to be executed.</li>
-<li><code>RUNNING</code>: the step is being executed by one of the workers.</li>
-<li><code>SUCCEEDED</code>: the step has been successfully completed.</li>
-<li><code>FAILED</code>: the subprocess exited with a non-zero exit code or
-  some output files were not created.</li>
+<li><code>QUEUED</code>:
+  all inputs are available and the step is waiting to be executed.</li>
+<li><code>RUNNING</code>:
+  the step is being executed by one of the workers.</li>
+<li><code>SUCCEEDED</code>:
+  the step has been successfully completed.</li>
+<li><code>FAILED</code>:
+  the step failed because the subprocess exited with a non-zero exit code,
+  or expected output files were not created.</li>
 </ul>
 </li>
 <li>
 <p>A <code>File</code> defines a path and a status, which can be any of the following:</p>
 <ul>
-<li><code>AWAITED</code>: the file is the output of a step that has never been executed so far.
+<li><code>AWAITED</code>:
+  the file is the output of a step that has never been executed so far.
   (Such files are never deleted when cleaning up outputs.)</li>
-<li><code>BUILT</code>: the file is the output of a step that has been successfully executed.</li>
-<li><code>OUTDATED</code>: the file is the output of a step that has been executed,
+<li><code>BUILT</code>:
+  the file is the output of a step that has been successfully executed.</li>
+<li><code>OUTDATED</code>:
+  the file is the output of a step that has been executed,
   but inputs of the step have been modified since then.</li>
-<li><code>VOLATILE</code>: the file is (or can be) created by a step, but it is volatile.
+<li><code>VOLATILE</code>:
+  the file is (or can be) created by a step, but it is volatile.
   It cannot be used as input, no hashes are computed for it.
   These files are only registered so that they can be removed when appropriate.
   They are typically different every time they are created,
   even with the same inputs.</li>
-<li><code>STATIC</code>: the file is written by you and can only be an input to a step.
+<li><code>STATIC</code>:
+  the file is written by you and can only be an input to a step.
   (Note that step inputs can also be outputs of previous steps.)</li>
-<li><code>MISSING</code>: a static file that has gone missing.</li>
+<li><code>MISSING</code>:
+  a static file that has gone missing.</li>
 </ul>
 </li>
-</ul>
+</ol>
 <p>There are also a few special nodes:</p>
 <ul>
 <li>The <code>Root</code> node is the top-level node, of which there is only one.</li>
-<li>A <code>DeferredGlob</code> node contains a <a href="https://en.wikipedia.org/wiki/Glob_(programming)">glob</a>
-  pattern of files that are made static when they are used as input.</li>
+<li>A <code>StaticRoot</code> stores a directory name whose contents
+  (also in subdirectories) can only be static files.</li>
 </ul>
 <h4 id="edges">Edges<a class="headerlink" href="#edges" title="Permanent link">&para;</a></h4>
 <p>The StepUp workflow has two types of directed edges (arrows) connecting pairs of nodes.
@@ -2290,19 +2383,15 @@ Each type of edge is used to define a graph with its own rules and logic.</p>
 <ul>
 <li>
 <p>The <strong>&ldquo;dependency graph&rdquo;</strong> consists of <strong>&ldquo;supplier ➜ consumer&rdquo;</strong> edges.
-  In this graph, an edge points from a node
-  that provides <em>something</em> to a node that uses that <em>something</em>.
+  This graph shows which nodes use information from other nodes when the workflow is executed.
   A few examples:</p>
 <ul>
 <li>If a step uses a file as its input, it is the consumer of that file.</li>
 <li>Likewise, a step is the supplier of its outputs</li>
-<li>Every file is the consumer of its parent directory.
-  (The only exceptions are <code>./</code> and <code>/</code>.)</li>
-<li>A step is the consumer of its working directory.</li>
 </ul>
 <p>The following diagram from the <a href="../dependencies/">Dependencies tutorial</a>
 illustrates this type of edge.
-(Directories are not included, steps are blue ellipses, files are grey rectangles.)</p>
+(Steps are blue ellipses, files are grey rectangles.)</p>
 <p><img alt="graph_dependency.svg" src="../dependencies/graph_dependency.svg" /></p>
 <p>The build algorithm in StepUp will traverse <em>up</em>wards through this graph
 as it executes the steps, similarly to <a href="https://gittup.org/tup/">tup</a>.</p>

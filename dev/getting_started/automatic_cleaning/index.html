@@ -510,42 +510,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../static_files/" class="md-nav__link">
+      <a href="../copy/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Files
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../copy_mkdir/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    copy and mkdir
+    File copy
   
 
     
@@ -574,6 +546,62 @@
     
   
     Working Directory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static_files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Root
   
 
     
@@ -1070,34 +1098,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/static_deferred_glob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static Deferred Glob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../advanced_topics/optional_steps/" class="md-nav__link">
         
   
@@ -1515,7 +1515,7 @@
   <span class="md-ellipsis">
     
   
-    Reference
+    Migration
   
 
     
@@ -1528,6 +1528,88 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration/from3to4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from StepUp 3.X to 4.X
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1783,10 +1865,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -1804,8 +1886,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2095,10 +2177,10 @@ This can be done in one of three ways:</p>
 <li><a href="../../advanced_topics/blocked_steps/">Block some steps</a> by adding the <code>block=True</code> argument
    to the <code>step()</code> function in your <code>plan.py</code> script.</li>
 </ol>
-<p>The main advantage of automatic cleaning is that it eliminates potential bugs and confusion
-related to old output files that are no longer relevant.</p>
+<p>Automatic cleaning&rsquo;s primary advantage is preventing potential bugs and reducing confusion
+caused by outdated or irrelevant output files.</p>
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
-<p>To illustrate the automatic cleaning, take the files from the example <a href="../copy_mkdir/"><code>copy</code> and <code>mkdir</code></a>
+<p>To illustrate the automatic cleaning, take the files from the example <a href="../copy/">File copy</a>
 and start StepUp in interactive mode.
 Make the following changes and rerun the affected steps after each point by pressing <code>r</code> in the terminal:</p>
 <ul>

@@ -508,42 +508,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/static_files/" class="md-nav__link">
+      <a href="../../getting_started/copy/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Files
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/copy_mkdir/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    copy and mkdir
+    File copy
   
 
     
@@ -572,6 +544,62 @@
     
   
     Working Directory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/static_files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/static_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Root
   
 
     
@@ -992,34 +1020,6 @@
     
   
     Static Named Glob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../static_deferred_glob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static Deferred Glob
   
 
     
@@ -1526,7 +1526,7 @@
   <span class="md-ellipsis">
     
   
-    Reference
+    Migration
   
 
     
@@ -1539,6 +1539,88 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration/from3to4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from StepUp 3.X to 4.X
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1794,10 +1876,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -1815,8 +1897,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2111,25 +2193,25 @@ As a rule, StepUp will always try to execute all steps, and not doing so is the 
 </span></code></pre></div>
 <p>Imagine that <code>Step 2</code> is very expensive and you are developing a script for <code>Step 1</code>.
 In practice, it takes several iterations to get <code>Step 1</code> working properly.
-This can be verified by analyzing the file <code>converted.txt</code> or with unit tests.</p>
+This can be verified by analyzing the file <code>converted.txt</code> or by running unit tests.</p>
 <p>To avoid executing <code>Step 2</code> at every iteration in the development of <code>Step 1</code>,
 you can <strong>block</strong> this step.
 All step-creating functions accept an optional <code>block=True</code> keyword argument
 to prevent them from being executed.
-Blocking steps is a temporary measure, meant to be reverted once you&rsquo;re done with <code>Step 1</code>.</p>
-<p>Blocking steps has some consequences:</p>
+Blocked steps are intended to be a temporary measure,
+and to be reverted once you&rsquo;re done with <code>Step 1</code>.</p>
+<p>Blocking a step has some consequences:</p>
 <ul>
-<li>Blocked steps remain in the <code>PENDING</code> state,
+<li>A blocked step remains in the <code>PENDING</code> state,
   meaning that outdated output files are not cleaned up automatically.</li>
-<li>At the end of the <em>run phase</em>, a list of blocked steps is shown,
-  to remind the user that some steps are blocked.</li>
+<li>At the end of the <em>run phase</em>, all currently blocked steps are listed as a reminder.</li>
 <li>Subsequent steps, which use outputs of blocked or pending steps, also remain pending.</li>
 </ul>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/blocked_steps"><code>docs/advanced_topics/blocked_steps/</code></a></p>
 <p>The following <code>plan.py</code> illustrates the blocking mechanism.
-The copy commands are too simple and cheap to justify blocking,
-so this is just an example to illustrate the mechanism only.</p>
+Note that the copy commands are too cheap to justify blocking,
+so this is just an example illustrating the mechanism.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="ch">#!/usr/bin/env python3</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span><span class="p">,</span> <span class="n">runsh</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
@@ -2142,7 +2224,7 @@ so this is just an example to illustrate the mechanism only.</p>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should get the following terminal output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>     PHASE │ run
@@ -2150,7 +2232,7 @@ so this is just an example to illustrate the mechanism only.</p>
 </span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>   SUCCESS │ runpy ./plan.py
 </span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>     START │ runsh echo hello &gt; a.txt
 </span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>   SUCCESS │ runsh echo hello &gt; a.txt
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>   WARNING │ 2 step(s) remained pending due to blocked steps
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>   WARNING │ 2 step(s) remained pending due to ...
 </span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>──────────────────────────────── Blocked steps ─────────────────────────────────
 </span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>step:copy a.txt b.txt
 </span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>────────────────────────────────────────────────────────────────────────────────

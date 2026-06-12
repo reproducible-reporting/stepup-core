@@ -508,42 +508,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/static_files/" class="md-nav__link">
+      <a href="../../getting_started/copy/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Files
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/copy_mkdir/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    copy and mkdir
+    File copy
   
 
     
@@ -572,6 +544,62 @@
     
   
     Working Directory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/static_files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/static_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Root
   
 
     
@@ -992,34 +1020,6 @@
     
   
     Static Named Glob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../static_deferred_glob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static Deferred Glob
   
 
     
@@ -1526,7 +1526,7 @@
   <span class="md-ellipsis">
     
   
-    Reference
+    Migration
   
 
     
@@ -1539,6 +1539,88 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration/from3to4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from StepUp 3.X to 4.X
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1794,10 +1876,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -1815,8 +1897,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2100,7 +2182,7 @@
 
 
 <h1 id="pools">Pools<a class="headerlink" href="#pools" title="Permanent link">&para;</a></h1>
-<p>It is nearly always preferred to run steps in parallel when possible,
+<p>It is nearly always preferred to run steps in parallel when possible
 so StepUp will launch any queued step as soon as a worker becomes available.
 A &ldquo;pool&rdquo; is a simple mechanism to limit parallelization in the few cases that this would be counterproductive:</p>
 <ol>
@@ -2108,16 +2190,20 @@ A &ldquo;pool&rdquo; is a simple mechanism to limit parallelization in the few c
 <p>Some programs behave poorly (have bugs) when multiple instances are running in parallel.
    Here are a few examples encountered (and now also resolved) in the development of StepUp RepRep:</p>
 <ul>
-<li><a href="https://gitlab.com/inkscape/inkscape/-/issues/4716">Inkscape/issue4716</a></li>
-<li><a href="https://github.com/mbarkhau/markdown-katex/issues/16">markdown-katex/issue16</a></li>
+<li>
+<p><a href="https://gitlab.com/inkscape/inkscape/-/issues/4716">Inkscape/issue4716</a></p>
+</li>
+<li>
+<p><a href="https://github.com/mbarkhau/markdown-katex/issues/16">markdown-katex/issue16</a></p>
+</li>
 </ul>
 </li>
 <li>
 <p>Some steps may consume a lot of resources, such as memory,
-   and would require more resources than available when running in parallel.</p>
+   requiring more resources than available when running in parallel.</p>
 </li>
 <li>
-<p>Software licenses may not allow for more than a given number of instances running in parallel.</p>
+<p>Some software licenses may limit the number of instances running in parallel.</p>
 </li>
 </ol>
 <p>One defines a pool with <a class="autorefs autorefs-internal" title="stepup.core.api.pool(name, size)" href="../../reference/stepup.core.api/#stepup.core.api.pool"><code>pool(name, size)</code></a>.
@@ -2143,7 +2229,7 @@ to guarantee they will run in parallel when allowed.</p>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">4</span>
 </span></code></pre></div>
 <p>You should get the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  DIRECTOR │ Launched worker 1
@@ -2158,11 +2244,11 @@ to guarantee they will run in parallel when allowed.</p>
 </span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>─────────────────────────────── Standard output ────────────────────────────────
 </span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>A
 </span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>────────────────────────────────────────────────────────────────────────────────
-</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>   SUCCESS │ runsh sleep 0.1; echo B
-</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>─────────────────────────────── Standard output ────────────────────────────────
-</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>B
-</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>────────────────────────────────────────────────────────────────────────────────
-</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>     START │ runsh sleep 0.1; echo C
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>     START │ runsh sleep 0.1; echo C
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>   SUCCESS │ runsh sleep 0.1; echo B
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>─────────────────────────────── Standard output ────────────────────────────────
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>B
+</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>────────────────────────────────────────────────────────────────────────────────
 </span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>   SUCCESS │ runsh sleep 0.1; echo C
 </span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>─────────────────────────────── Standard output ────────────────────────────────
 </span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>C

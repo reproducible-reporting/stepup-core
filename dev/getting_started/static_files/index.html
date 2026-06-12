@@ -15,10 +15,10 @@
         <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/getting_started/static_files/">
       
       
-        <link rel="prev" href="../dependencies/">
+        <link rel="prev" href="../workdir/">
       
       
-        <link rel="next" href="../copy_mkdir/">
+        <link rel="next" href="../static_root/">
       
       
         
@@ -507,6 +507,62 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../copy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    File copy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../workdir/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Working Directory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -607,42 +663,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../copy_mkdir/" class="md-nav__link">
+      <a href="../static_root/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    copy and mkdir
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../workdir/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Working Directory
+    Static Root
   
 
     
@@ -1081,34 +1109,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/static_deferred_glob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static Deferred Glob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../advanced_topics/optional_steps/" class="md-nav__link">
         
   
@@ -1526,7 +1526,7 @@
   <span class="md-ellipsis">
     
   
-    Reference
+    Migration
   
 
     
@@ -1539,6 +1539,88 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration/from3to4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from StepUp 3.X to 4.X
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1794,10 +1876,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -1815,8 +1897,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2100,8 +2182,9 @@
 
 
 <h1 id="static-files">Static Files<a class="headerlink" href="#static-files" title="Permanent link">&para;</a></h1>
-<p>When steps use input files written by you, this must be explicitly stated in <code>plan.py</code>
-by declaring the human-written files as <em>static files</em>.
+<p>When steps use input files written by <em>you</em>, or at least you somehow provided these input files,
+this must be explicitly stated in <code>plan.py</code>.
+All files that are guaranteed to be available before StepUp starts must be declared as <em>static files</em>.
 This informs StepUp that such files are readily available,
 unlike files that are outputs of steps that still need to be executed.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
@@ -2127,7 +2210,7 @@ i.e. one that you have created.</p>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should get the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>     PHASE │ run

@@ -508,42 +508,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/static_files/" class="md-nav__link">
+      <a href="../../getting_started/copy/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Files
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/copy_mkdir/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    copy and mkdir
+    File copy
   
 
     
@@ -572,6 +544,62 @@
     
   
     Working Directory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/static_files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/static_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Root
   
 
     
@@ -992,34 +1020,6 @@
     
   
     Static Named Glob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../static_deferred_glob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static Deferred Glob
   
 
     
@@ -1526,7 +1526,7 @@
   <span class="md-ellipsis">
     
   
-    Reference
+    Migration
   
 
     
@@ -1539,6 +1539,88 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration/from3to4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from StepUp 3.X to 4.X
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1794,10 +1876,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -1815,8 +1897,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2104,19 +2186,22 @@
 or environment variables it uses, or of additional (volatile) outputs it creates.
 However, defining an amended input will fail
 when that file is not yet built nor known as a static file.
-In this case, the step wil exit early
+In this case, the step will exit early
 and will be rescheduled by the director process when the amended input becomes available.</p>
 <p>The <a class="autorefs autorefs-internal" title="stepup.core.api.amend(*, inp=(), env=(), out=(), vol=())" href="../../reference/stepup.core.api/#stepup.core.api.amend"><code>amend()</code></a> function implements this feature
 and is convenient in various scenarios:</p>
 <ul>
-<li>
-<p>This is particularly useful when a step uses input files that refer to other input files.
-  It may happen that some of these other input files still need to be generated by other steps.
-  Once built, the other inputs may again refer to more input files, etc.
-  Such dependencies cannot be discovered in advance,
-  simply because not all inputs are available before running the steps that generate them.
-  (This is a common scenario when writing LaTeX documents of which parts are generated by scripts.)</p>
-</li>
+<li>This is useful for handling nested dependencies
+  where an initial input file references secondary inputs that are not yet generated.
+  Because these secondary files might, once generated, point to a third tier of inputs,
+  the full chain of dependencies cannot be mapped out in advance.</li>
+</ul>
+<p>This creates a <em>chicken-and-egg</em> scenario where the build system cannot discover
+  what files are needed until it actually runs the steps to generate them.</p>
+<p>A classic example of this is compiling a complex LaTeX document,
+  where the main file pulls in sub-chapters that rely on figures or data plots
+  generated by external scripts.</p>
+<ul>
 <li>
 <p>Another use case is that some steps may take their default configuration
   from environment variables if some command-line options are missing.
@@ -2124,7 +2209,7 @@ and is convenient in various scenarios:</p>
 </li>
 <li>
 <p>Some steps may produce a list of volatile outputs, some of which are difficult to know upfront.
-  One may specify such volatile outputs with <code>amend()</code> after they have been created.</p>
+  Such volatile outputs can be specified using <code>amend()</code> once they have been created.</p>
 </li>
 </ul>
 <p>To use <code>amend()</code> effectively, use it as early as possible,
@@ -2139,14 +2224,14 @@ This will avoid the following problems:</p>
 <p>Unintentionally overwriting a file, e.g. a STATIC file that you have written by hand.</p>
 </li>
 <li>
-<p>Performing unnecessary work
-  (because a call to amend may mean that the step is interrupted and restarted later).
+<p>Performing unnecessary work.</p>
+</li>
+</ul>
+<p>(A call to amend may mean that the step is interrupted and restarted later.
   This is particularly important when the step is time-consuming
-  or when it uses <code>stepup.core.api</code> functions to extend the workflow.</p>
-</li>
-<li>
-<p>Rescheduling a step multiple times.</p>
-</li>
+  or when it uses <code>stepup.core.api</code> functions to extend the workflow.)</p>
+<ul>
+<li>Rescheduling a step multiple times.</li>
 </ul>
 <p>To the best of our knowledge, there is no equivalent of <code>amend()</code> in other build tools.
 Some features in Ninja cover what can be achieved with <code>amend()</code>.</p>
@@ -2190,7 +2275,7 @@ with some arbitrary contents and the following <code>step.py</code> script:</p>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should get the following terminal output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>     PHASE │ run
@@ -2201,7 +2286,7 @@ with some arbitrary contents and the following <code>step.py</code> script:</p>
 </span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>     START │ runsh ./step.py
 </span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>RESCHEDULE │ runsh ./step.py
 </span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>──────────────── Rescheduling due to unavailable amended inputs ────────────────
-</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>Missing inputs and/or required directories:
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>Missing inputs:
 </span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>input.txt
 </span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>────────────────────────────────────────────────────────────────────────────────
 </span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>     START │ runsh echo You better read this. &gt; input.txt
@@ -2218,9 +2303,9 @@ with some arbitrary contents and the following <code>step.py</code> script:</p>
 </span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>  DIRECTOR │ See you!
 </span></code></pre></div>
 <p>The output shows that <code>./step.py</code> first stops early due to the missing file <code>input.txt</code>.
-Once this required input becomes clear,
-StepUp schedules the optional step to generate the requested input.
-Later, StepUp runs <code>./step.py</code> again.</p>
+As a result, it becomes clear that <code>input.txt</code> is required,
+so StepUp schedules the optional step to generate this requested input.
+After <code>input.txt</code> has been created, StepUp runs <code>./step.py</code> again.</p>
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
 <li>

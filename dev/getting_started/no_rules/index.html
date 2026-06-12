@@ -510,42 +510,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../static_files/" class="md-nav__link">
+      <a href="../copy/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Files
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../copy_mkdir/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    copy and mkdir
+    File copy
   
 
     
@@ -574,6 +546,62 @@
     
   
     Working Directory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static_files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Root
   
 
     
@@ -1070,34 +1098,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/static_deferred_glob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static Deferred Glob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../advanced_topics/optional_steps/" class="md-nav__link">
         
   
@@ -1515,7 +1515,7 @@
   <span class="md-ellipsis">
     
   
-    Reference
+    Migration
   
 
     
@@ -1528,6 +1528,88 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration/from3to4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from StepUp 3.X to 4.X
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1783,10 +1865,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -1804,8 +1886,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2078,21 +2160,20 @@
 
 
 <h1 id="no-rules">No Rules<a class="headerlink" href="#no-rules" title="Permanent link">&para;</a></h1>
-<p>Most other built tools introduce the concept of a <em>build rule</em>,
+<p>Most other build tools introduce the concept of a <em>build rule</em>,
 to specify how a common build step can be applied to different inputs.
 StepUp does not need to introduce the concept of a build rule
 because Python functions and loops already provide similar facilities.</p>
-<p>StepUp already comes with a few built-in &ldquo;rules&rdquo; defined int this way:
+<p>StepUp already comes with a few built-in &ldquo;rules&rdquo; defined this way:
 <a class="autorefs autorefs-internal" title="stepup.core.api.plan(subdir, *, inp=(), env=(), out=(), vol=(), optional=False, pool=None, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a>,
 <a class="autorefs autorefs-internal" title="stepup.core.api.copy(src, dst, *, optional=False, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.copy"><code>copy()</code></a>,
-<a class="autorefs autorefs-internal" title="stepup.core.api.mkdir(dirname, *, optional=False, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.mkdir"><code>mkdir()</code></a>,
 <a class="autorefs autorefs-internal" title="stepup.core.api.getenv(name, default=None, *, path=False, back=False, multi=False)" href="../../reference/stepup.core.api/#stepup.core.api.getenv"><code>getenv()</code></a> and
 <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a>.
 Some of these were already discussed in the previous tutorials,
 and their source code offers some inspiration for writing your own.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/no_rules"><code>docs/getting_started/no_rules/</code></a></p>
-<p>Here, we show a simple example of a custom rule to convert a text file to upper case with the <code>tr</code> command.</p>
+<p>Here, we show a simple example of a custom rule to convert a text file to uppercase with the <code>tr</code> command.</p>
 <p>Create the following <code>plan.py</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">glob</span><span class="p">,</span> <span class="n">runsh</span>
@@ -2111,7 +2192,7 @@ Then make the plan executable and launch StepUp:</p>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>This will show the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>     PHASE │ run

@@ -510,42 +510,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../static_files/" class="md-nav__link">
+      <a href="../copy/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Files
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../copy_mkdir/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    copy and mkdir
+    File copy
   
 
     
@@ -574,6 +546,62 @@
     
   
     Working Directory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static_files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Root
   
 
     
@@ -1022,34 +1050,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/static_deferred_glob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static Deferred Glob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../advanced_topics/optional_steps/" class="md-nav__link">
         
   
@@ -1467,7 +1467,7 @@
   <span class="md-ellipsis">
     
   
-    Reference
+    Migration
   
 
     
@@ -1480,6 +1480,88 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration/from3to4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from StepUp 3.X to 4.X
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1735,10 +1817,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -1756,8 +1838,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2011,17 +2093,17 @@
 
 
 <h1 id="failing-steps">Failing Steps<a class="headerlink" href="#failing-steps" title="Permanent link">&para;</a></h1>
-<p>The development of a StepUp workflow is an interactive process,
-where it is common to have failing steps.
-These will result in screen output with a bright red <code>FAIL</code> message.
-At the end of a run, a warning message will be displayed that some steps have failed.</p>
-<p>Here, we provide some guidance on how to handle failing steps.</p>
+<p>Developing a StepUp workflow is an interactive process
+that often involves encountering failing steps.
+These failures will result in screen output containing a bright red <code>FAIL</code> message.
+Furthermore, a warning message indicating some steps failed will be displayed at the end of the run.</p>
+<p>Here, we provide guidance on how to handle these failing steps.</p>
 <ul>
 <li>
 <p><strong>Check the error message</strong>:
-  The error message will often provide a clue to what went wrong.
-  If your workflow is so large that the error message has scrolled out of view,
-  you can always find the error message in the file <code>.stepup/fail.log</code>.
+  The error message usually provides clues about what went wrong.
+  If your workflow is very large and the error message scrolls out of view,
+  you can always find the full context in the file <code>.stepup/fail.log</code>.
   When you open this file in VSCode or PyCharm,
   the file will be automatically reloaded when the workflow is rerun.
   (There is a similar file <code>.stepup/warning.log</code> for warnings.)</p>
@@ -2032,7 +2114,7 @@ At the end of a run, a warning message will be displayed that some steps have fa
   fixing the problem will not result in a file change that StepUp can detect.
   Therefore, when you restart StepUp from scratch,
   it will rerun all previously failed steps.
-  When working interactively with <code>-w</code> or <code>-W</code>,
+  However, when working interactively with <code>-w</code> or <code>-W</code>,
   failed steps will only rerun if their inputs have changed.</p>
 </li>
 </ul>

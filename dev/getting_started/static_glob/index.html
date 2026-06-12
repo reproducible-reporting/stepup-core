@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/getting_started/static_glob/">
       
       
-        <link rel="prev" href="../workdir/">
+        <link rel="prev" href="../static_root/">
       
       
         <link rel="next" href="../static_glob_conditional/">
@@ -510,42 +510,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../static_files/" class="md-nav__link">
+      <a href="../copy/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Files
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../copy_mkdir/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    copy and mkdir
+    File copy
   
 
     
@@ -574,6 +546,62 @@
     
   
     Working Directory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static_files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Root
   
 
     
@@ -1081,34 +1109,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/static_deferred_glob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static Deferred Glob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../advanced_topics/optional_steps/" class="md-nav__link">
         
   
@@ -1526,7 +1526,7 @@
   <span class="md-ellipsis">
     
   
-    Reference
+    Migration
   
 
     
@@ -1539,6 +1539,88 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration/from3to4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from StepUp 3.X to 4.X
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1794,10 +1876,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -1815,8 +1897,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2100,62 +2182,54 @@
 
 
 <h1 id="static-glob">Static Glob<a class="headerlink" href="#static-glob" title="Permanent link">&para;</a></h1>
-<p>Explicitly declaring static files with the <code>static()</code> function from the previous tutorial
-becomes tedious when dealing with many static files.
-To simplify matters, StepUp supports <a href="https://en.wikipedia.org/wiki/Glob_(programming)">&ldquo;glob&rdquo;</a>
-patterns, i.e., with wildcards such as <code>*</code> and <code>?</code>.</p>
-<p>The <a class="autorefs autorefs-internal" title="stepup.core.api.glob(*patterns, _required=False, _defer=False, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function is similar to <a class="autorefs autorefs-internal" title="stepup.core.api.static(*paths)" href="../../reference/stepup.core.api/#stepup.core.api.static"><code>static()</code></a>
+<p>In addition to the <code>static()</code> function in the previous two tutorials,
+StepUp also supports globbing for static files.</p>
+<p>The <a class="autorefs autorefs-internal" title="stepup.core.api.glob(*patterns, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function is similar to <a class="autorefs autorefs-internal" title="stepup.core.api.static(*paths)" href="../../reference/stepup.core.api/#stepup.core.api.static"><code>static()</code></a>
 and supports globbing, including some non-standard glob techniques
 discussed in the following tutorials.</p>
-<p>Here, only the basic usage of <a class="autorefs autorefs-internal" title="stepup.core.api.glob(*patterns, _required=False, _defer=False, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> is covered.
+<p>Here, only the basic usage of <a class="autorefs autorefs-internal" title="stepup.core.api.glob(*patterns, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> is covered.
 In the <a href="../static_glob_conditional/">following tutorial</a>,
 the use of <code>glob()</code> in conditionals is discussed.
-See <a href="../../advanced_topics/static_named_glob/">Static Named Glob</a> and
-<a href="../../advanced_topics/static_deferred_glob/">Static Deferred Glob</a> for more advanced use cases.</p>
+See <a href="../../advanced_topics/static_named_glob/">Static Named Glob</a> for more advanced use cases.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/static_glob"><code>docs/getting_started/static_glob/</code></a></p>
 <p>Create a subdirectory <code>src/</code> with two files: <code>sub/foo.txt</code> and <code>sub/bar.txt</code>.
 Also, create a <code>plan.py</code> file with the following contents:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span><span class="p">,</span> <span class="n">glob</span><span class="p">,</span> <span class="n">mkdir</span><span class="p">,</span> <span class="n">static</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span><span class="p">,</span> <span class="n">glob</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">static</span><span class="p">(</span><span class="s2">&quot;src/&quot;</span><span class="p">)</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">mkdir</span><span class="p">(</span><span class="s2">&quot;dst/&quot;</span><span class="p">)</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="k">for</span> <span class="n">path_src</span> <span class="ow">in</span> <span class="n">glob</span><span class="p">(</span><span class="s2">&quot;src/*.txt&quot;</span><span class="p">):</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">copy</span><span class="p">(</span><span class="n">path_src</span><span class="p">,</span> <span class="s2">&quot;dst/&quot;</span><span class="p">)</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">for</span> <span class="n">path_src</span> <span class="ow">in</span> <span class="n">glob</span><span class="p">(</span><span class="s2">&quot;src/*.txt&quot;</span><span class="p">):</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">copy</span><span class="p">(</span><span class="n">path_src</span><span class="p">,</span> <span class="s2">&quot;dst/&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Make the plan executable and run it non-interactively:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>This should produce the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>     PHASE │ run
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>     START │ runpy ./plan.py
 </span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>   SUCCESS │ runpy ./plan.py
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>     START │ mkdir dst/
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>   SUCCESS │ mkdir dst/
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>     START │ copy src/bar.txt dst/bar.txt
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>   SUCCESS │ copy src/bar.txt dst/bar.txt
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>     START │ copy src/foo.txt dst/foo.txt
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>   SUCCESS │ copy src/foo.txt dst/foo.txt
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>  DIRECTOR │ Stopping workers
-</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>  DIRECTOR │ See you!
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>     START │ copy src/bar.txt dst/bar.txt
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>   SUCCESS │ copy src/bar.txt dst/bar.txt
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>     START │ copy src/foo.txt dst/foo.txt
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>   SUCCESS │ copy src/foo.txt dst/foo.txt
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>  DIRECTOR │ Stopping workers
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>  DIRECTOR │ See you!
 </span></code></pre></div>
 <p>Note that all files found by the <code>glob()</code> function are declared static in the workflow.
 Hence, they cannot be outputs of other steps.
-(This is restriction is part of StepUp&rsquo;s design.)</p>
+(This restriction is part of StepUp&rsquo;s design.)</p>
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
 <p>Run StepUp again without making any changes.
   You will notice that the <code>./plan.py</code> step is executed again despite not having changed it.
-  When StepUp starts from scratch,
-  it has to assume that new files could have been added (since the last run)
-  that match the glob pattern.
+  When StepUp starts from scratch, it must assume that new files matching the glob pattern
+  may have been added since the last run.
   Hence, a step calling the <code>glob()</code> function can never be skipped.
   (This can be avoided when using StepUp interactively. More on that later.)</p>
 </li>
@@ -2165,6 +2239,9 @@ Hence, they cannot be outputs of other steps.
   A new step is added for <code>src/egg.txt</code>.</p>
 </li>
 </ul>
+<p>Never use glob functions from other libraries such as Python&rsquo;s built-in <code>glob</code> and <code>pathlib</code> modules.
+When you use these in your <code>plan.py</code>, StepUp will not know which patterns are used,
+and hence will not rerun a step when new files are added that match the glob pattern.</p>
 
 
 

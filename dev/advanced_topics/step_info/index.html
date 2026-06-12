@@ -18,7 +18,7 @@
         <link rel="prev" href="../stepup_root/">
       
       
-        <link rel="next" href="../../reference/stepup.core.api/">
+        <link rel="next" href="../../migration/from3to4/">
       
       
         
@@ -508,42 +508,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/static_files/" class="md-nav__link">
+      <a href="../../getting_started/copy/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Files
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/copy_mkdir/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    copy and mkdir
+    File copy
   
 
     
@@ -572,6 +544,62 @@
     
   
     Working Directory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/static_files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/static_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Root
   
 
     
@@ -992,34 +1020,6 @@
     
   
     Static Named Glob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../static_deferred_glob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static Deferred Glob
   
 
     
@@ -1515,7 +1515,7 @@
   <span class="md-ellipsis">
     
   
-    Reference
+    Migration
   
 
     
@@ -1528,6 +1528,88 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration/from3to4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from StepUp 3.X to 4.X
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1783,10 +1865,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -1804,8 +1886,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2098,7 +2180,7 @@ The main difference to the arguments passed in,
 is that environment variables are substituted in the paths.</p>
 <p>In addition, <code>StepInfo</code> has three methods: <code>filter_inp()</code>, <code>filter_out()</code> and <code>filter_vol()</code>,
 which can be used to get a subset of paths.
-These functions take the same arguments as those of the <a class="autorefs autorefs-internal" title="stepup.core.api.glob(*patterns, _required=False, _defer=False, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function
+These functions take the same arguments as those of the <a class="autorefs autorefs-internal" title="stepup.core.api.glob(*patterns, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function
 and also return an <a class="autorefs autorefs-internal" href="../../reference/stepup.core.nglob/#stepup.core.nglob"><code>NGlobMulti</code></a> instance.</p>
 <p>Note that the <code>StepInfo</code> object will only contain information known at the time the step is defined.
 Amended information (inputs, outputs, &hellip;) cannot be retrieved from <code>StepInfo</code> objects.
@@ -2113,15 +2195,12 @@ You can find the full list of inputs and the output as follows:</p>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Plan the creation of the fancy PDF</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">static</span><span class="p">(</span><span class="s2">&quot;source/&quot;</span><span class="p">)</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;source/**&quot;</span><span class="p">,</span> <span class="n">_defer</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">info</span> <span class="o">=</span> <span class="n">create_fancy_pdf</span><span class="p">(</span><span class="s2">&quot;source/&quot;</span><span class="p">)</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># Copy files related to the fancy PDF, e.g. to publish them or back up files.</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">mkdir</span><span class="p">(</span><span class="s2">&quot;../public&quot;</span><span class="p">)</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="n">copy</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">filter_out</span><span class="p">(</span><span class="s2">&quot;*.pdf&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">single</span><span class="p">,</span> <span class="s2">&quot;../public/&quot;</span><span class="p">)</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="n">mkdir</span><span class="p">(</span><span class="s2">&quot;../backup&quot;</span><span class="p">)</span>
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="k">for</span> <span class="n">path_inp</span> <span class="ow">in</span> <span class="n">info</span><span class="o">.</span><span class="n">inp</span><span class="p">:</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="n">copy</span><span class="p">(</span><span class="n">path_inp</span><span class="p">,</span> <span class="s2">&quot;../backup&quot;</span><span class="p">)</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">info</span> <span class="o">=</span> <span class="n">create_fancy_pdf</span><span class="p">(</span><span class="s2">&quot;source/&quot;</span><span class="p">)</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1"># Copy files related to the fancy PDF, e.g. to publish them or back up files.</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">copy</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">filter_out</span><span class="p">(</span><span class="s2">&quot;*.pdf&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">single</span><span class="p">,</span> <span class="s2">&quot;../public/&quot;</span><span class="p">)</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="k">for</span> <span class="n">path_inp</span> <span class="ow">in</span> <span class="n">info</span><span class="o">.</span><span class="n">inp</span><span class="p">:</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">copy</span><span class="p">(</span><span class="n">path_inp</span><span class="p">,</span> <span class="s2">&quot;../backup&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 
 

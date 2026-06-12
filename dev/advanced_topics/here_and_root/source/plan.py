@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import mkdir, plan, static
+from stepup.core.api import plan, static
 
-static("sub/", "sub/plan.py")
-mkdir("../public/")
+static("sub/plan.py")
 plan("sub/")
