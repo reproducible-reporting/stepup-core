@@ -113,7 +113,10 @@ class Workflow(Cascade):
     config_queue: asyncio.Queue = attrs.field(init=False, factory=asyncio.Queue)
     """Pools can be added to this queue to change the pool sizes."""
 
-    dir_queue: asyncio.Queue | None = attrs.field()
+    makedirs: bool = attrs.field(kw_only=True, default=True)
+    """Whether to create parent directories of output files when they are supplied or created."""
+
+    dir_queue: asyncio.Queue | None = attrs.field(kw_only=True)
     """Directories to be (un)watched can be added to this queue."""
 
     job_queue_changed: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
@@ -449,7 +452,8 @@ class Workflow(Cascade):
         """Put a directory in the dir_queue, with some consistency checks."""
         if path == "":
             path = Path(".")
-        path.makedirs_p()
+        if self.makedirs:
+            path.makedirs_p()
         if self.dir_queue is not None:
             self.dir_queue.put_nowait(path)
 

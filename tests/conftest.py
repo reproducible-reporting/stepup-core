@@ -110,7 +110,7 @@ def declare_static(workflow, creator, paths):
 def wfs() -> Iterator[Workflow]:
     """A workflow from scratch, no plan.py"""
     dir_queue = asyncio.Queue()
-    workflow = Workflow(connect(":memory:"), dir_queue)
+    workflow = Workflow(connect(":memory:"), makedirs=False, dir_queue=dir_queue)
     yield workflow
     workflow.check_consistency()
 
@@ -119,7 +119,7 @@ def wfs() -> Iterator[Workflow]:
 def wfp() -> Iterator[Workflow]:
     """A workflow with a boots step plan.py"""
     dir_queue = asyncio.Queue()
-    workflow = Workflow(connect(":memory:"), dir_queue)
+    workflow = Workflow(connect(":memory:"), makedirs=False, dir_queue=dir_queue)
     with workflow.con:
         # Prepare the basic workflow with a plan script.
         root = workflow.root
