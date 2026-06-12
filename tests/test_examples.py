@@ -218,9 +218,9 @@ async def test_example(name: str, path_tmp: Path):
     "name",
     [
         "amend",
-        "static_root_nonexisting",
         "not_cyclic",
         "optional_convert",
+        "script_single",
         "static",
     ],
 )
