@@ -4,8 +4,6 @@
         0/1 |      START │ runpy ./plan.py
         1/1 |    SUCCESS │ runpy ./plan.py
 ─────────────────────────────── Standard output ────────────────────────────────
-data/
-data/sub/
 data/sub/test3.xyz
 data/test1.txt
 data/test2.dat

@@ -114,8 +114,6 @@ def fmt_digest(digest: bytes | None) -> str:
     if len(digest) == 1:
         if digest == b"u":
             return "UNKNOWN"
-        if digest == b"d":
-            return "DIRECTORY"
         return "?"
     return digest.hex()[:8]
 
@@ -132,16 +130,16 @@ class FileHash:
     and the mode of the file is also stored as "part of the hash".
     When either contents, size or mode changes, the file is considered changed.
 
-    For directories, the digest is set to b"d".
     If the file does not exist, the digest is set to b"u".
 
     In addition to the digest and mode, some more properties are stored
     to decide if the recomputation of a file hash is necessary:
+
     - the last modification time
     - the file size
     - the inode number
-    If all three (and the mode) remained the same, the digest is not recomputed.
-    (For directories, these three properties are always 0.)
+
+    If all three (and also the mode) remained the same, the digest is not recomputed.
     """
 
     # File properties whose changes are relevant
@@ -197,34 +195,21 @@ class FileHash:
             st = path.stat()
             mode = st.st_mode
             if path.is_dir():
-                if not path.endswith(os.sep):
-                    raise ValueError(f"Path is a directory but does not end with separator: {path}")
-                if len(self.digest) > 1:
-                    raise ValueError(f"Path is a directory but old digest is from a file: {path}")
-                digest = b"d"
-                # Decide if we need to return self
-                if self._mode == mode and self.is_dir:
-                    return self
-                mtime = 0.0
-                size = 0
-                inode = 0
-            else:
-                if path.endswith(os.sep):
-                    raise ValueError(f"Path ends with separator but is no directory: {path}")
-                if self.is_dir:
-                    raise ValueError(f"Path is a file but old digest is from a directory: {path}")
-                mtime = st.st_mtime
-                size = st.st_size
-                inode = st.st_ino
-                # Decide if the digest computation can be skipped
-                if (
-                    self._mode == mode
-                    and self._mtime == mtime
-                    and self._size == size
-                    and self._inode == inode
-                ):
-                    return self
-                digest = compute_file_digest(path)
+                raise ValueError(f"File digests of directories are not supported: {path}")
+            if path.endswith(os.sep):
+                raise ValueError(f"File digests of directories are not supported: {path}")
+            mtime = st.st_mtime
+            size = st.st_size
+            inode = st.st_ino
+            # Decide if the digest computation can be skipped
+            if (
+                self._mode == mode
+                and self._mtime == mtime
+                and self._size == size
+                and self._inode == inode
+            ):
+                return self
+            digest = compute_file_digest(path)
         return self.__class__(digest, mode, mtime, size, inode)
 
     @property
@@ -250,10 +235,6 @@ class FileHash:
     @property
     def is_unknown(self):
         return self._digest == b"u"
-
-    @property
-    def is_dir(self):
-        return self._digest == b"d"
 
 
 @attrs.define

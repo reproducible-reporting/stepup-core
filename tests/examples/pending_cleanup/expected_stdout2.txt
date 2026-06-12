@@ -1,5 +1,4 @@
         0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    DELETED │ bye.txt
@@ -14,8 +13,7 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                runsh echo data > hello.txt
 Working directory     ./
-Inputs        STATIC  ./
-             AWAITED  (missing.txt)
+Inputs       AWAITED  (missing.txt)
 Outputs      AWAITED  hello.txt
 ────────────────────────────────────────────────────────────────────────────────
         2/3 |    WARNING │ Skipping file cleanup due to incomplete build

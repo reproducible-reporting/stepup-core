@@ -1,3 +1,2 @@
 rm ../sub/out.txt
 rm ../sub/inp.txt
-rmdir ../sub/  # Removal failed!

@@ -25,7 +25,7 @@ import os
 
 from path import Path
 
-from .enums import DirWatch, FileState, StepState
+from .enums import FileState, StepState
 from .hash import FileHash, fmt_env_value, fmt_file_hash_diff
 from .reporter import ReporterClient
 from .runner import Runner
@@ -73,14 +73,7 @@ async def startup_from_db(
         workflow.job_queue_changed.set()
 
     # Populate dir queue
-    if workflow.dir_queue is not None:
-        sql = "SELECT label FROM node WHERE kind = 'file' AND label LIKE '%/'"
-        async with dblock:
-            rows = con.execute(sql).fetchall()
-        if len(rows) > 0:
-            await reporter("STARTUP", f"Watching {len(rows)} director(y|ies) from initial database")
-            for (path,) in rows:
-                workflow.dir_queue.put_nowait((DirWatch.START, Path(path)))
+    populate_dir_queue(workflow, dblock, reporter)
 
     # Check for changes in environment variables used by steps.
     async with dblock:
@@ -117,6 +110,24 @@ async def startup_from_db(
     async with dblock:
         workflow.queue_pending_steps()
     runner.resume.set()
+
+
+async def populate_dir_queue(workflow: Workflow, dblock: DBLock, reporter: ReporterClient):
+    sql = (
+        "SELECT label FROM node JOIN file ON node.i = file.node WHERE kind = 'file' AND "
+        f"file.state != {FileState.VOLATILE.value}"
+    )
+    async with dblock:
+        rows = workflow.con.execute(sql).fetchall()
+    if len(rows) > 0:
+        await reporter(
+            "STARTUP", f"Watching directories for {len(rows)} files from initial database"
+        )
+        parents = set()
+        for (path,) in rows:
+            parents.add(str(Path(path).parent))
+        for path in parents:
+            workflow.put_dir_queue(path)
 
 
 async def scan_file_changes(

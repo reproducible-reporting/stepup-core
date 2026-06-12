@@ -1,30 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:plan.py
-            supplies   file:rendered-trip1.txt
-            supplies   file:rendered-trip2.txt
-            supplies   file:template.txt
-            supplies   step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
-            supplies   step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'
-            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:template.txt
              creates   step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
@@ -33,7 +19,6 @@ step:runpy ./plan.py
 file:template.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
             supplies   step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'
 
@@ -41,7 +26,6 @@ step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona",
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:template.txt
              creates   file:rendered-trip1.txt
             supplies   file:rendered-trip1.txt
@@ -49,14 +33,12 @@ step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona",
 file:rendered-trip1.txt
                state = BUILT
           created by   step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
-            consumes   file:./
             consumes   step:render-jinja template.txt rendered-trip1.txt --json='{"place": "Barcelona", "animal": "a pigeon"}'
 
 step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:template.txt
              creates   file:rendered-trip2.txt
             supplies   file:rendered-trip2.txt
@@ -64,5 +46,4 @@ step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik",
 file:rendered-trip2.txt
                state = BUILT
           created by   step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'
-            consumes   file:./
             consumes   step:render-jinja template.txt rendered-trip2.txt --json='{"place": "Reykjavik", "animal": "a puffin"}'

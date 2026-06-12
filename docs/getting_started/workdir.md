@@ -27,7 +27,7 @@ mkdir out/
 stepup boot -n 1
 ```
 
-You should get the following terminal output:
+Expected Terminal Output:
 
 ```text
 {% include 'getting_started/workdir/stdout.txt' %}

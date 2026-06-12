@@ -260,10 +260,11 @@ async def serve(
     # Create basic components
     con = connect(".stepup/graph.db")
     dblock = DBLock(con)
-    workflow = Workflow(con)
+    dir_queue = asyncio.Queue() if do_watch else None
+    workflow = Workflow(con, dir_queue=dir_queue)
     scheduler = Scheduler(workflow.job_queue, workflow.config_queue, workflow.job_queue_changed)
     scheduler.num_workers = num_workers
-    watcher = Watcher(workflow, dblock, reporter, workflow.dir_queue) if do_watch else None
+    watcher = Watcher(workflow, dblock, reporter, dir_queue) if do_watch else None
     runner = Runner(
         watcher=watcher,
         scheduler=scheduler,
@@ -339,13 +340,18 @@ class DirectorHandler:
             return self.workflow.initialize_boot()
 
     @allow_rpc
-    async def missing(self, creator_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
+    async def declare_missing(self, creator_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
         """Add a list of absolute paths to the workflow, to become static.
 
         They are stored internally as paths relative to STEPUP_ROOT, initially set to misssing.
         A list of available (cached) paths with file hashes is returned,
         which need to be updated on the client-side.
         The client then calls confirm with the updated hashes.
+
+        The motivation for this two-step process is to avoid unnecessary file hash calculations.
+        If the file size, inode number and modification time of a path match have not changed,
+        we can reasonably safely assume that the file contents have not changed.
+        In this case, the hash calculation is skipped and the old hash is reused.
         """
         async with self.dblock:
             creator = self.workflow.node(Step, creator_i)
@@ -363,8 +369,8 @@ class DirectorHandler:
             self.workflow.register_nglob(creator, ngm)
 
     @allow_rpc
-    async def defer(self, creator_i: int, patterns: list[str]) -> list[tuple[str, FileHash]]:
-        """Register a deferred glob.
+    async def static_roots(self, creator_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
+        """Register directories whose contents become static files when used.
 
         Returns
         -------
@@ -374,13 +380,13 @@ class DirectorHandler:
         to_check = []
         async with self.dblock:
             creator = self.workflow.node(Step, creator_i)
-            for pattern in patterns:
-                to_check.extend(self.workflow.defer_glob(creator, pattern))
+            for path in paths:
+                to_check.extend(self.workflow.register_static_root(creator, path))
         return to_check
 
     @allow_rpc
-    async def confirm(self, checked: list[tuple[str, FileHash]]):
-        """Mark missing files as static because they were found to be present.
+    async def confirm_hashes(self, checked: list[tuple[str, FileHash]]):
+        """Mark missing files as static with up-to-date file hashes.
 
         Parameters
         ----------
@@ -467,7 +473,7 @@ class DirectorHandler:
         to_check
             A list of `(path, file_hash)` tuples to check and make static if valid.
             This is only relevant when `keep_going` is `True`.
-            If some of the deferred matches cannot be confirmed,
+            If some of the static root matches cannot be confirmed,
             the caller has to change `keep_going` to `False`.
         """
         async with self.dblock:

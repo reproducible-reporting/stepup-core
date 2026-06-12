@@ -54,19 +54,6 @@ def test_missing():
     assert new_hash.size == 0
 
 
-def test_dir():
-    init_hash = FileHash.unknown()
-    dir_hash1 = init_hash.regen("foo/")
-    assert dir_hash1.digest == b"u"
-    with pytest.raises(ValueError):
-        init_hash.regen("stepup")
-    dir_hash2 = init_hash.regen("stepup/")
-    assert dir_hash2 is not init_hash
-    assert dir_hash2.digest == b"d"
-    dir_hash3 = dir_hash2.regen("stepup/")
-    assert dir_hash3 is dir_hash2
-
-
 def test_symbolic_link(path_tmp: Path):
     path_dest = path_tmp / "dest.txt"
     with open(path_dest, "w") as fh:
@@ -78,7 +65,7 @@ def test_symbolic_link(path_tmp: Path):
     assert compute_file_digest(path_symlink, follow_symlinks=False) == blake2b(b"dest.txt").digest()
 
 
-def test_hash_dir(path_tmp: Path):
+def test_hash_wrong_dir(path_tmp: Path):
     with pytest.raises(IOError):
         compute_file_digest(path_tmp)
 

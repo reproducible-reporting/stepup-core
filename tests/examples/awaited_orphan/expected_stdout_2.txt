@@ -1,5 +1,4 @@
         0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest 05911618 ➜ a12d7424, size 138 ➜ 98)
@@ -14,8 +13,7 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                runsh cat src2.txt
 Working directory     ./
-Inputs        STATIC  ./
-             AWAITED  (src2.txt)
+Inputs       AWAITED  (src2.txt)
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ Skipping file cleanup due to incomplete build
         1/2 |    WARNING │ Check logs: .stepup/warning.log

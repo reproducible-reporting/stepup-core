@@ -1,35 +1,21 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   (file:test1.txt)
-            supplies   (step:runsh echo Hello > test1.txt)
-            supplies   file:plan.py
-            supplies   file:test2.txt
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh echo Hello > test2.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   step:runsh echo Hello > test2.txt
 
 (step:runsh echo Hello > test1.txt)
                state = SUCCEEDED
-            consumes   file:./
              creates   (file:test1.txt)
             supplies   (file:test1.txt)
 
@@ -37,17 +23,14 @@ step:runpy ./plan.py
                state = BUILT
           created by   (step:runsh echo Hello > test1.txt)
             consumes   (step:runsh echo Hello > test1.txt)
-            consumes   file:./
 
 step:runsh echo Hello > test2.txt
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
              creates   file:test2.txt
             supplies   file:test2.txt
 
 file:test2.txt
                state = BUILT
           created by   step:runsh echo Hello > test2.txt
-            consumes   file:./
             consumes   step:runsh echo Hello > test2.txt

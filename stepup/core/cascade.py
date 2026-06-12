@@ -262,7 +262,7 @@ class Node:
             yield self.cascade.node_classes[kind](self.cascade, i, label)
 
     def products_str(self, node_type: type[NodeType] = Self) -> Iterator[str]:
-        """Iterate over (a subset of) products of this node."""
+        """Iterate over (a subset of) products of this node, formatted as strings."""
         query = "SELECT kind, label, orphan FROM node WHERE creator = ?"
         data = [self.i]
         if node_type is not Self:

@@ -55,7 +55,7 @@ Let's analyze the output:
     - Then the step `runsh echo Hello World` is defined in `plan.py`.
 - When a step produces output, it is shown after the step has completed.
 - When no more steps can be executed,
-  StepUp checks if it can clean up outdated outpus and then exits.
+  StepUp checks if it can clean up outdated outputs and then exits.
 
 Now repeat the execution of StepUp with:
 
@@ -90,7 +90,7 @@ runsh("echo Hello World")
 step("runsh echo Hello World")
 ```
 
-The second form is a more low-level way to define step, explicitly specifying the `runsh` action.
+The second form is a lower-level way to define step, explicitly specifying the `runsh` action.
 This is mainly useful when creating extensions for StepUp,
 which often require actions other than `runsh`.
 For most end users, the first form is more convenient and should be preferred.

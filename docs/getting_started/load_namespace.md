@@ -1,13 +1,14 @@
 # Load Settings From Configuration Files
 
 It is often useful to load settings from configuration files in different parts of the workflow.
-The [`loadns()`][stepup.core.api.loadns] (short for "load namespace") makes this easy:
+The [`loadns()`][stepup.core.api.loadns] function (short for "load namespace")
+simplifies this process:
 
 - It supports loading from JSON, YAML, TOML and Python files.
 - It assigns all loaded variables to a namespace, which is easier to use than a dictionary.
 - It can load from multiple files and merge them into a single namespace.
 - The step calling `loadns()` is automatically amended with the loaded files as inputs,
-  unless this is disabled.
+  unless explicitly disabled.
 
 ## Example
 

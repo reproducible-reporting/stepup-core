@@ -1,30 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:another.txt
-            supplies   file:between.txt
-            supplies   file:original.txt
-            supplies   file:plan.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh cp between.txt another.txt
-            supplies   step:runsh cp original.txt between.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:original.txt
              creates   step:runsh cp between.txt another.txt
@@ -33,19 +19,16 @@ step:runpy ./plan.py
 file:another.txt
                state = BUILT
           created by   step:runsh cp between.txt another.txt
-            consumes   file:./
             consumes   step:runsh cp between.txt another.txt
 
 file:original.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runsh cp original.txt between.txt
 
 step:runsh cp between.txt another.txt
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:between.txt
              creates   file:another.txt
             supplies   file:another.txt
@@ -53,14 +36,12 @@ step:runsh cp between.txt another.txt
 file:between.txt
                state = BUILT
           created by   step:runsh cp original.txt between.txt
-            consumes   file:./
             consumes   step:runsh cp original.txt between.txt
             supplies   step:runsh cp between.txt another.txt
 
 step:runsh cp original.txt between.txt
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:original.txt
              creates   file:between.txt
             supplies   file:between.txt

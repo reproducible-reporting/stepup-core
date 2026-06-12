@@ -1,24 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:copy2.txt
-            supplies   file:copy_both2.txt
-            supplies   file:plan.py
-            supplies   file:source2.txt
-            supplies   file:source_both.txt
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh cp source2.txt copy2.txt
-            supplies   step:runsh cp source_both.txt copy_both2.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -26,7 +12,6 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:source2.txt
              creates   file:source_both.txt
@@ -36,14 +21,12 @@ step:runpy ./plan.py
 file:source_both.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runsh cp source_both.txt copy_both2.txt
 
 step:runsh cp source_both.txt copy_both2.txt
                state = SUCCEEDED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:source_both.txt
              creates   file:copy_both2.txt
             supplies   file:copy_both2.txt
@@ -51,20 +34,17 @@ step:runsh cp source_both.txt copy_both2.txt
 file:copy_both2.txt
                state = BUILT
           created by   step:runsh cp source_both.txt copy_both2.txt
-            consumes   file:./
             consumes   step:runsh cp source_both.txt copy_both2.txt
 
 file:source2.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runsh cp source2.txt copy2.txt
 
 step:runsh cp source2.txt copy2.txt
                state = SUCCEEDED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:source2.txt
              creates   file:copy2.txt
             supplies   file:copy2.txt
@@ -72,5 +52,4 @@ step:runsh cp source2.txt copy2.txt
 file:copy2.txt
                state = BUILT
           created by   step:runsh cp source2.txt copy2.txt
-            consumes   file:./
             consumes   step:runsh cp source2.txt copy2.txt

@@ -8,9 +8,10 @@
     [Interactive Usage Reference](../reference/interactive.md).
 
 All previous tutorials have run StepUp non-interactively, for the sake of simplicity.
-In practice, this is mainly useful when building projects in batch jobs, e.g., in the cloud.
+In practice, this is mainly useful when building projects in batch jobs,
+e.g., in the cloud or on an HPC cluster.
 When working on a project, interactive usage is more efficient and convenient,
-but requires a little more explanation.
+and its usage is described below.
 
 The [Static Glob](static_glob.md) tutorial is a good example
 to demonstrate the interactive use of StepUp.
@@ -43,7 +44,7 @@ to display the supported keys with interactive commands:
 ```
 
 Now press (lower case) `r` to run steps whose (indirect) inputs have changed.
-The new file `src/foo.txt` is copied again to `dst/foo.txt`, while other steps are ignored.
+This will trigger a refresh/re-copy of files like `src/foo.txt`, while other steps are ignored.
 
 The interactive commands are described in detail
 in the [Interactive Command Reference](../reference/interactive.md).

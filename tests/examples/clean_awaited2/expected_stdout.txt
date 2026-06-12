@@ -16,8 +16,7 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                copy input.txt output.txt
 Working directory     ./
-Inputs        STATIC  ./
-             MISSING  input.txt
+Inputs       MISSING  input.txt
 Outputs      AWAITED  output.txt
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ Skipping file cleanup due to incomplete build

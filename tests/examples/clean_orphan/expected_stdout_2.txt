@@ -1,0 +1,16 @@
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making steps pending that use changed environment variables
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    UPDATED │ plan.py (digest 843e1b69 ➜ 0cec0808)
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        1/2 |      PHASE │ run
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |      START │ runsh echo hello2 > hello2.txt
+        2/2 |    SUCCESS │ runsh echo hello2 > hello2.txt
+        2/2 |    WARNING │ Skipping file cleanup at user's request (--no-clean)
+        2/2 |    WARNING │ Check logs: .stepup/warning.log
+        2/2 |      PHASE │ watch
+        2/2 |   DIRECTOR │ Stopping workers
+        2/2 |   DIRECTOR │ See you!

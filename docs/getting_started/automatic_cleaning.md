@@ -18,12 +18,12 @@ This can be done in one of three ways:
 3. [Block some steps](../advanced_topics/blocked_steps.md) by adding the `block=True` argument
    to the `step()` function in your `plan.py` script.
 
-The main advantage of automatic cleaning is that it eliminates potential bugs and confusion
-related to old output files that are no longer relevant.
+Automatic cleaning's primary advantage is preventing potential bugs and reducing confusion
+caused by outdated or irrelevant output files.
 
 ## Try the Following
 
-To illustrate the automatic cleaning, take the files from the example [`copy` and `mkdir`](copy_mkdir.md)
+To illustrate the automatic cleaning, take the files from the example [File copy](copy.md)
 and start StepUp in interactive mode.
 Make the following changes and rerun the affected steps after each point by pressing `r` in the terminal:
 

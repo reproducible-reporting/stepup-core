@@ -7,16 +7,15 @@
         2/2 |    SUCCESS │ runpy ./work.py
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
-        2/2 |    DELETED │ inp1.txt
+        2/2 |    DELETED │ data/inp1.txt
         2/2 |    UPDATED │ subs.txt
         1/2 |      PHASE │ run
         1/2 |  DROPAMEND │ runpy ./work.py
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest e0663237 ➜ dadd8b19, out_digest afcdb0f9 ➜ (unset)
-Deleted inp hash     inp1.txt
-Modified inp hash    subs.txt (digest 30d31453 ➜ c273a7ee)
+Modified step hash   explained, inp_digest 5e8657cb ➜ 4fe0c6ec, out_digest afcdb0f9 ➜ (unset)
+Deleted inp hash     data/inp1.txt
+Modified inp hash    subs.txt (digest 08a306f2 ➜ 279b1d80)
 ──────────────────────── Remained the same (or missing) ────────────────────────
-Same inp hash        ./
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |      START │ runpy ./work.py

@@ -1,7 +1,7 @@
 # Introduction
 
 The "Getting Started" section consists of a series of short tutorials.
-Each tutorial introduces a few concepts at a time to maintain a gentle learning curve.
+Each tutorial gradually introduces a few concepts to maintain a gentle learning curve.
 The following initial competencies are assumed:
 
 - Basic Python programming.
@@ -12,8 +12,8 @@ Note that the examples in the tutorials are all small and use StepUp
 in serial mode (`-n 1`) and non-interactively.
 We believe this offers the best learning experience.
 However, StepUp really shines in more complex use cases and when used interactively.
-Once you know how StepUp works, you can impress yourself by effortlessly mastering
-the daunting complexity of your projects. :)
+Once you become familiar with StepUp,
+you'll be able to make workflows that would be difficult to manage with other tools.
 
 ## Tutorial source files
 
@@ -39,41 +39,52 @@ which comprise the same nodes.
 
 #### Nodes
 
-The nodes of the graph can be instances of the following main classes:
+The nodes of the graph can be instances of the following two main classes:
 
-- A `Step` defines a program that can be executed with all the information for a specific execution:
-  working directory, command, arguments, inputs, outputs, etc.
-  A step can also be in one of the following states:
+1. A `Step` defines a program that can be executed with all the information for a specific execution:
+   working directory, command, arguments, inputs, outputs, etc.
+   A step can also be in one of the following states:
 
-    - `PENDING`: the step cannot yet be scheduled
+    - `PENDING`:
+      the step cannot yet be scheduled
       because some inputs have not been declared or built yet.
-    - `QUEUED`: all inputs are available and the step is waiting to be executed.
-    - `RUNNING`: the step is being executed by one of the workers.
-    - `SUCCEEDED`: the step has been successfully completed.
-    - `FAILED`: the subprocess exited with a non-zero exit code or
-      some output files were not created.
+    - `QUEUED`:
+      all inputs are available and the step is waiting to be executed.
+    - `RUNNING`:
+      the step is being executed by one of the workers.
+    - `SUCCEEDED`:
+      the step has been successfully completed.
+    - `FAILED`:
+      the step failed because the subprocess exited with a non-zero exit code,
+      or expected output files were not created.
 
-- A `File` defines a path and a status, which can be any of the following:
+2. A `File` defines a path and a status, which can be any of the following:
 
-    - `AWAITED`: the file is the output of a step that has never been executed so far.
+    - `AWAITED`:
+      the file is the output of a step that has never been executed so far.
       (Such files are never deleted when cleaning up outputs.)
-    - `BUILT`: the file is the output of a step that has been successfully executed.
-    - `OUTDATED`: the file is the output of a step that has been executed,
+    - `BUILT`:
+      the file is the output of a step that has been successfully executed.
+    - `OUTDATED`:
+      the file is the output of a step that has been executed,
       but inputs of the step have been modified since then.
-    - `VOLATILE`: the file is (or can be) created by a step, but it is volatile.
+    - `VOLATILE`:
+      the file is (or can be) created by a step, but it is volatile.
       It cannot be used as input, no hashes are computed for it.
       These files are only registered so that they can be removed when appropriate.
       They are typically different every time they are created,
       even with the same inputs.
-    - `STATIC`: the file is written by you and can only be an input to a step.
+    - `STATIC`:
+      the file is written by you and can only be an input to a step.
       (Note that step inputs can also be outputs of previous steps.)
-    - `MISSING`: a static file that has gone missing.
+    - `MISSING`:
+      a static file that has gone missing.
 
 There are also a few special nodes:
 
 - The `Root` node is the top-level node, of which there is only one.
-- A `DeferredGlob` node contains a [glob](https://en.wikipedia.org/wiki/Glob_(programming))
-  pattern of files that are made static when they are used as input.
+- A `StaticRoot` stores a directory name whose contents
+  (also in subdirectories) can only be static files.
 
 #### Edges
 
@@ -81,19 +92,15 @@ The StepUp workflow has two types of directed edges (arrows) connecting pairs of
 Each type of edge is used to define a graph with its own rules and logic.
 
 - The **"dependency graph"** consists of **"supplier ➜ consumer"** edges.
-  In this graph, an edge points from a node
-  that provides *something* to a node that uses that *something*.
+  This graph shows which nodes use information from other nodes when the workflow is executed.
   A few examples:
 
     - If a step uses a file as its input, it is the consumer of that file.
     - Likewise, a step is the supplier of its outputs
-    - Every file is the consumer of its parent directory.
-      (The only exceptions are `./` and `/`.)
-    - A step is the consumer of its working directory.
 
     The following diagram from the [Dependencies tutorial](dependencies.md)
     illustrates this type of edge.
-    (Directories are not included, steps are blue ellipses, files are grey rectangles.)
+    (Steps are blue ellipses, files are grey rectangles.)
 
     ![graph_dependency.svg](dependencies/graph_dependency.svg)
 

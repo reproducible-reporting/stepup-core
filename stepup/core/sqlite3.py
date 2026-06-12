@@ -25,7 +25,7 @@ import sqlite3
 from collections.abc import Iterator
 from typing import Self
 
-__all__ = ("UInt64", "connect", "copy_db_in_memory")
+__all__ = ("UInt64", "connect", "copy_db_in_memory", "escape_like_pattern")
 
 
 class UInt64(int):
@@ -81,3 +81,8 @@ def copy_db_in_memory(path_db) -> Iterator[sqlite3.Connection]:
         yield dst
     finally:
         dst.close()
+
+
+def escape_like_pattern(pattern: str) -> str:
+    """Escape a string for use in a LIKE pattern."""
+    return pattern.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")

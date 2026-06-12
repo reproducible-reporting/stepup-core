@@ -1,28 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:foo1.txt
-            supplies   file:foo2.txt
-            supplies   file:inp1.txt
-            supplies   file:inp2.txt
-            supplies   file:out1.txt
-            supplies   file:out2.txt
-            supplies   file:plan.py
-            supplies   step:copy inp1.txt out1.txt
-            supplies   step:copy inp2.txt out2.txt
-            supplies   step:copy out1.txt foo1.txt
-            supplies   step:copy out2.txt foo2.txt
-            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -30,7 +12,6 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
                  ngm = ['inp*.txt'] {}
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:inp1.txt
              creates   file:inp2.txt
@@ -42,19 +23,16 @@ step:runpy ./plan.py
 file:inp1.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:copy inp1.txt out1.txt
 
 file:inp2.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:copy inp2.txt out2.txt
 
 step:copy inp1.txt out1.txt
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:inp1.txt
              creates   file:out1.txt
             supplies   file:out1.txt
@@ -62,14 +40,12 @@ step:copy inp1.txt out1.txt
 file:out1.txt
                state = BUILT
           created by   step:copy inp1.txt out1.txt
-            consumes   file:./
             consumes   step:copy inp1.txt out1.txt
             supplies   step:copy out1.txt foo1.txt
 
 step:copy out1.txt foo1.txt
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:out1.txt
              creates   file:foo1.txt
             supplies   file:foo1.txt
@@ -77,13 +53,11 @@ step:copy out1.txt foo1.txt
 file:foo1.txt
                state = BUILT
           created by   step:copy out1.txt foo1.txt
-            consumes   file:./
             consumes   step:copy out1.txt foo1.txt
 
 step:copy inp2.txt out2.txt
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:inp2.txt
              creates   file:out2.txt
             supplies   file:out2.txt
@@ -91,14 +65,12 @@ step:copy inp2.txt out2.txt
 file:out2.txt
                state = BUILT
           created by   step:copy inp2.txt out2.txt
-            consumes   file:./
             consumes   step:copy inp2.txt out2.txt
             supplies   step:copy out2.txt foo2.txt
 
 step:copy out2.txt foo2.txt
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:out2.txt
              creates   file:foo2.txt
             supplies   file:foo2.txt
@@ -106,5 +78,4 @@ step:copy out2.txt foo2.txt
 file:foo2.txt
                state = BUILT
           created by   step:copy out2.txt foo2.txt
-            consumes   file:./
             consumes   step:copy out2.txt foo2.txt

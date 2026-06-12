@@ -31,8 +31,6 @@ may undergo larger changes and are not intended to be API stable.
 
 ### ::: stepup.core.api.copy
 
-### ::: stepup.core.api.mkdir
-
 ### ::: stepup.core.api.getenv
 
 ### ::: stepup.core.api.call

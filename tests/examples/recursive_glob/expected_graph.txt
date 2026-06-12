@@ -1,0 +1,76 @@
+root:
+             creates   file:plan.py
+             creates   step:runpy ./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            supplies   step:runpy ./plan.py
+
+step:runpy ./plan.py
+               state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
+                 ngm = ['data/**/*.inp'] {}
+                 ngm = ['data/**/*.out'] {}
+          created by   root:
+            consumes   file:plan.py
+             creates   file:data/part1/bar.inp
+             creates   file:data/part1/bar.out
+             creates   file:data/part1/foo.inp
+             creates   file:data/part1/foo.out
+             creates   file:data/part2/bar.inp
+             creates   file:data/part2/bar.out
+             creates   file:data/part2/foo.inp
+             creates   file:data/part2/foo.out
+             creates   file:data/part2/sub/other.inp
+             creates   file:data/part2/sub/other.out
+             creates   file:data/top.inp
+             creates   file:data/top.out
+
+file:data/part1/bar.inp
+               state = STATIC
+          created by   step:runpy ./plan.py
+
+file:data/part1/foo.inp
+               state = STATIC
+          created by   step:runpy ./plan.py
+
+file:data/part2/bar.inp
+               state = STATIC
+          created by   step:runpy ./plan.py
+
+file:data/part2/foo.inp
+               state = STATIC
+          created by   step:runpy ./plan.py
+
+file:data/part2/sub/other.inp
+               state = STATIC
+          created by   step:runpy ./plan.py
+
+file:data/top.inp
+               state = STATIC
+          created by   step:runpy ./plan.py
+
+file:data/part1/bar.out
+               state = STATIC
+          created by   step:runpy ./plan.py
+
+file:data/part1/foo.out
+               state = STATIC
+          created by   step:runpy ./plan.py
+
+file:data/part2/bar.out
+               state = STATIC
+          created by   step:runpy ./plan.py
+
+file:data/part2/foo.out
+               state = STATIC
+          created by   step:runpy ./plan.py
+
+file:data/part2/sub/other.out
+               state = STATIC
+          created by   step:runpy ./plan.py
+
+file:data/top.out
+               state = STATIC
+          created by   step:runpy ./plan.py

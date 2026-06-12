@@ -9,8 +9,7 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                runsh cp -v first.txt second.txt
 Working directory     ./
-Inputs        STATIC  ./
-             AWAITED  (first.txt)
+Inputs       AWAITED  (first.txt)
 Outputs      AWAITED  second.txt
             VOLATILE  third.txt
 ────────────────────────────────────────────────────────────────────────────────

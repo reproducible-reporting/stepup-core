@@ -1,29 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:bar.json
-            supplies   file:foo.pickle
-            supplies   file:plan.py
-            supplies   file:special.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./special.py --inp=foo.pickle --out=bar.json
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:foo.pickle
              creates   file:special.py
@@ -33,13 +20,11 @@ step:runpy ./plan.py
 file:special.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./special.py --inp=foo.pickle --out=bar.json
 
 file:foo.pickle
                state = BUILT
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   step:runpy ./plan.py
             supplies   step:runpy ./special.py --inp=foo.pickle --out=bar.json
 
@@ -47,7 +32,6 @@ step:runpy ./special.py --inp=foo.pickle --out=bar.json
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:foo.pickle
             consumes   file:special.py
              creates   file:bar.json
@@ -56,5 +40,4 @@ step:runpy ./special.py --inp=foo.pickle --out=bar.json
 file:bar.json
                state = BUILT
           created by   step:runpy ./special.py --inp=foo.pickle --out=bar.json
-            consumes   file:./
             consumes   step:runpy ./special.py --inp=foo.pickle --out=bar.json

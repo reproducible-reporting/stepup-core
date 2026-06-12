@@ -1,0 +1,31 @@
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making steps pending that use changed environment variables
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    UPDATED │ plan.py (digest d0dfe1c3 ➜ 9e457f83, size 141 ➜ 112)
+        0/0 |    DELETED │ static/foo.txt
+        0/0 |    UPDATED │ static/bar.txt (digest a69cc588 ➜ 8f30ea8a, size 4 ➜ 6)
+        0/0 |    DELETED │ foo.txt
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        0/3 |      PHASE │ run
+        0/3 |     NOSKIP │ runpy ./plan.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest 57659a37 ➜ 03a2c346, out_digest 786a02f7 ➜ (unset)
+Modified inp hash    plan.py (digest d0dfe1c3 ➜ 9e457f83, size 141 ➜ 112)
+────────────────────────────── Remained the same ───────────────────────────────
+Same env var         STEPUP_PATH_FILTER (unset)
+────────────────────────────────────────────────────────────────────────────────
+        0/1 |      START │ runpy ./plan.py
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |     NOSKIP │ copy static/bar.txt bar.txt
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest 9559c74f ➜ 2a27a36e, out_digest 74597035 ➜ (unset)
+Modified inp hash    static/bar.txt (digest a69cc588 ➜ 8f30ea8a, size 4 ➜ 6)
+────────────────────────────────────────────────────────────────────────────────
+        1/2 |      START │ copy static/bar.txt bar.txt
+        2/2 |    SUCCESS │ copy static/bar.txt bar.txt
+        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
+        2/2 |    WARNING │ Check logs: .stepup/warning.log
+        2/2 |      PHASE │ watch
+        2/2 |   DIRECTOR │ Stopping workers
+        2/2 |   DIRECTOR │ See you!

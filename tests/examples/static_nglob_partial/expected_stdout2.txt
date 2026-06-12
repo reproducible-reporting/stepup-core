@@ -1,5 +1,4 @@
         0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
@@ -11,8 +10,7 @@
         1/4 |    SUCCESS │ runpy ./plan.py
         1/4 |       SKIP │ runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest aa041ffc, out_digest 42fc782e
-Same inp hash        ./
+Same step hash       explained, inp_digest 1e7a7c6c, out_digest 42fc782e
 Same inp hash        head_x.txt
 Same inp hash        tail_x.txt
 Same out hash        paste_x.txt

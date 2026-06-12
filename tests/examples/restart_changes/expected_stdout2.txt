@@ -1,5 +1,4 @@
         0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest 9314583f ➜ 6e9dda14)
@@ -8,10 +7,9 @@
         2/3 |      PHASE │ run
         2/3 |     NOSKIP │ runpy ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest c6c881e6 ➜ 8670e44b, out_digest 786a02f7 ➜ (unset)
+Modified step hash   explained, inp_digest 4459053b ➜ 1017ab19, out_digest 786a02f7 ➜ (unset)
 Modified inp hash    plan.py (digest 9314583f ➜ 6e9dda14)
 ────────────────────────────── Remained the same ───────────────────────────────
-Same inp hash        ./
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
         0/1 |      START │ runpy ./plan.py

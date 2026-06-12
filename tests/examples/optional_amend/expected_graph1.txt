@@ -1,31 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:data.txt
-            supplies   file:optional.txt
-            supplies   file:plan.py
-            supplies   file:work.out
-            supplies   file:work.py
-            supplies   step:copy data.txt optional.txt
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:data.txt
              creates   file:work.py
@@ -35,20 +20,17 @@ step:runpy ./plan.py
 file:data.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:copy data.txt optional.txt
 
 file:work.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work.py
 
 step:copy data.txt optional.txt
                state = SUCCEEDED
            mandatory = REQUIRED
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:data.txt
              creates   file:optional.txt
             supplies   file:optional.txt
@@ -56,7 +38,6 @@ step:copy data.txt optional.txt
 file:optional.txt
                state = BUILT
           created by   step:copy data.txt optional.txt
-            consumes   file:./
             consumes   step:copy data.txt optional.txt
             supplies   step:runpy ./work.py
 
@@ -64,7 +45,6 @@ step:runpy ./work.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:optional.txt [amended]
             consumes   file:work.py
              creates   file:work.out
@@ -73,5 +53,4 @@ step:runpy ./work.py
 file:work.out
                state = BUILT
           created by   step:runpy ./work.py
-            consumes   file:./
             consumes   step:runpy ./work.py

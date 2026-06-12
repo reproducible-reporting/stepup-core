@@ -9,8 +9,7 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                runsh echo Hello > test1.txt
 Working directory     ./
-Inputs        STATIC  ./
-             AWAITED  (bogus.txt)
+Inputs       AWAITED  (bogus.txt)
 Outputs      AWAITED  test1.txt
              AWAITED  test2.txt
 ────────────────────────────────────────────────────────────────────────────────

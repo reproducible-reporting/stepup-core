@@ -1,30 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:hello.txt
-            supplies   file:helper.py
-            supplies   file:plan.py
-            supplies   file:work.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work.py plan
-            supplies   step:runpy ./work.py run
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:helper.py
              creates   file:work.py
@@ -33,13 +19,11 @@ step:runpy ./plan.py
 file:helper.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work.py run
 
 file:work.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work.py plan
             supplies   step:runpy ./work.py run
 
@@ -47,7 +31,6 @@ step:runpy ./work.py plan
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:work.py
              creates   step:runpy ./work.py run
 
@@ -55,7 +38,6 @@ step:runpy ./work.py run
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./work.py plan
-            consumes   file:./
             consumes   file:helper.py [amended]
             consumes   file:work.py
              creates   file:hello.txt
@@ -64,5 +46,4 @@ step:runpy ./work.py run
 file:hello.txt
                state = BUILT
           created by   step:runpy ./work.py run
-            consumes   file:./
             consumes   step:runpy ./work.py run

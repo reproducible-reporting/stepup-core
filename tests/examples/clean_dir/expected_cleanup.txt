@@ -1,4 +1,4 @@
 # rm sub/tmp.txt  # Already gone!
 rm sub/out.txt
 rm sub/inp.txt
-rmdir sub/
+rmdir sub  # Empty parent directory

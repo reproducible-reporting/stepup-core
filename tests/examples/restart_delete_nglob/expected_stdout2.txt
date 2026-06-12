@@ -1,5 +1,4 @@
         0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    DELETED │ inp1.txt
@@ -10,11 +9,11 @@
         1/3 |    SUCCESS │ runpy ./plan.py
         1/3 |       SKIP │ copy inp2.txt out2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       compact, inp_digest 18ee30a3, out_digest 572a6c30
+Same step hash       compact, inp_digest c69aeeff, out_digest 572a6c30
 ────────────────────────────────────────────────────────────────────────────────
         2/3 |       SKIP │ copy out2.txt foo2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       compact, inp_digest 28e4b167, out_digest b51be971
+Same step hash       compact, inp_digest 060224ea, out_digest b51be971
 ────────────────────────────────────────────────────────────────────────────────
         3/3 |   DIRECTOR │ Trying to delete 2 outdated output(s)
         3/3 |      CLEAN │ out1.txt

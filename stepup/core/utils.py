@@ -35,7 +35,6 @@ from path import Path
 __all__ = (
     "CaseSensitiveTemplate",
     "DBLock",
-    "check_inp_path",
     "check_plan",
     "filter_dependencies",
     "format_command",
@@ -208,17 +207,6 @@ def check_plan(path_plan: str):
         shebang = "#!/usr/bin/env python3"
         if not fh.readline().rstrip() == shebang:
             raise ValueError(f"First line of plan differs from '{shebang}': {path_plan}")
-
-
-def check_inp_path(inp_path: Path) -> str | None:
-    if inp_path.is_dir():
-        if not inp_path.endswith("/"):
-            return "Directory without trailing separator"
-    elif inp_path.exists():
-        if inp_path.endswith("/"):
-            return "Path is not a directory"
-    else:
-        return "Path does not exist"
 
 
 def format_digest(digest: bytes) -> tuple[str, str]:

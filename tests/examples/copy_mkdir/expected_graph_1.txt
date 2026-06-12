@@ -1,0 +1,40 @@
+root:
+             creates   file:plan.py
+             creates   step:runpy ./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            supplies   step:runpy ./plan.py
+
+step:runpy ./plan.py
+               state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   root:
+            consumes   file:plan.py
+             creates   step:copy hello.txt sub/hello.txt
+             creates   step:runsh echo hello > hello.txt
+
+step:runsh echo hello > hello.txt
+               state = SUCCEEDED
+          created by   step:runpy ./plan.py
+             creates   file:hello.txt
+            supplies   file:hello.txt
+
+file:hello.txt
+               state = BUILT
+          created by   step:runsh echo hello > hello.txt
+            consumes   step:runsh echo hello > hello.txt
+            supplies   step:copy hello.txt sub/hello.txt
+
+step:copy hello.txt sub/hello.txt
+               state = SUCCEEDED
+          created by   step:runpy ./plan.py
+            consumes   file:hello.txt
+             creates   file:sub/hello.txt
+            supplies   file:sub/hello.txt
+
+file:sub/hello.txt
+               state = BUILT
+          created by   step:copy hello.txt sub/hello.txt
+            consumes   step:copy hello.txt sub/hello.txt

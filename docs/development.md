@@ -2,7 +2,7 @@
 
 If you would like to contribute, please read [CONTRIBUTING.md](https://github.com/reproducible-reporting/.github/blob/main/CONTRIBUTING.md).
 
-## Development environment
+## Development Environment
 
 If you break your development environment, you can discard it
 by running `git clean -dfX` and repeating the instructions below.
@@ -57,8 +57,8 @@ mkdocs serve
 Then open the live preview in your browser at [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 and edit Markdown files in your IDE.
 
-Please, use [Semantic Line Breaks](https://sembr.org/)
-because it facilitates reviewing documentation changes.
+Please use [Semantic Line Breaks](https://sembr.org/)
+because it results in cleaner file diffs when editing documentation.
 
 ## Tutorial Example Outputs
 
@@ -73,8 +73,6 @@ stepup
 Then open the live preview in your browser: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 and edit Markdown files in your IDE.
 
-Please, use [Semantic Line Breaks](https://sembr.org/)
-because it results in cleaner file diffs when editing documentation.
 Note that some scripts use [Graphviz](https://graphviz.org/) to generate diagrams,
 so you must have it installed on your system.
 
@@ -98,7 +96,7 @@ These instructions assume you are running on Linux and have the `perf` userspace
     `perf`-based profiling requires a Linux system with the `perf` tool available,
     sufficient kernel permissions (for example, appropriate `perf_event_paranoid` settings
     or `CAP_PERFMON` capabilities), and a CPython build that supports `perf` trampolines as described
-    in the  [Python `perf` profiling documentation](https://docs.python.org/3/howto/perf_profiling.html).
+    in the [Python `perf` profiling documentation](https://docs.python.org/3/howto/perf_profiling.html).
     Support for `perf` was added in CPython 3.12.
 
     Enabling `perf` will result in a file `.stepup/perf.data` containing the profiling data.

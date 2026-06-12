@@ -21,7 +21,7 @@
 
 from enum import Enum, Flag, auto
 
-__all__ = ("Change", "DirWatch", "FileState", "Mandatory", "ReturnCode", "StepState")
+__all__ = ("Change", "FileState", "Mandatory", "ReturnCode", "StepState")
 
 
 class ReturnCode(Flag):
@@ -123,12 +123,5 @@ class Change(Enum):
     DELETED = 42
     """A file on disk has been deleted."""
 
-
-class DirWatch(Enum):
-    """Flag to change the watched directories through the Workflow.dir_queue."""
-
-    START = 51
-    """Request to start watching a directory."""
-
-    STOP = 52
-    """Request to stop watching a directory."""
+    DELETED_PARENT = 43
+    """A parent directory was deleted."""

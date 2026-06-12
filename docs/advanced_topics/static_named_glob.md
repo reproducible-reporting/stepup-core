@@ -22,8 +22,8 @@ prefix_aaa_something_bbb.txt
 prefix_bbb_something_aaa.txt
 ```
 
-Named globs are often useful when working with files distributed over multiple directories,
-each having a central file that repeats a part of the directory name.
+Named globs are especially valuable for coordinating output across multiple directories
+where a consistent naming pattern links them together.
 
 ## Example
 

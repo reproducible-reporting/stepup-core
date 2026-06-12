@@ -10,6 +10,5 @@
         2/3 |    WARNING │ Skipping file cleanup due to incomplete build
         2/3 |    WARNING │ Made 1 step(s) in the queue pending.
         2/3 |    WARNING │ Check logs: .stepup/warning.log
-        2/3 |      PHASE │ watch
         2/3 |   DIRECTOR │ Stopping workers
         2/3 |   DIRECTOR │ See you!

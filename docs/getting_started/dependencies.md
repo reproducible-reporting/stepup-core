@@ -13,7 +13,7 @@ The following `plan.py` defines two steps, with the second making use of the out
 ```
 
 The placeholders `${inp}` and `${out}` are replaced by the `inp` and `out` keyword arguments.
-(This happens early, before the steps are sent to the director process.)
+This substitution happens early, before the steps are sent to the director process.
 
 The [`graph()`][stepup.core.api.graph] function writes the graph in a few formats,
 which are used for visualization below.
@@ -30,8 +30,8 @@ You will see the following output:
 {% include 'getting_started/dependencies/stdout.txt' %}
 ```
 
-Despite the fact that StepUp has launched two workers, it carries out your `runsh` steps sequentially,
-because it knows that the output of the first step will be used by the second.
+Although StepUp launches two workers, it executes your `runsh` steps sequentially,
+since it knows that the output of the first step will be used by the second.
 
 Note, however, that the `echo` commands are already started before `./plan.py` has finished.
 This is the expected behavior: even without a complete overview of all the build steps,
@@ -58,7 +58,7 @@ dot -v graph_dependency.dot -Tsvg -o graph_dependency.svg
 ```
 
 The workflow in StepUp consists of two graphs involving (a subset of) the same set of nodes:
-the **supplier graph** and the **creator graph**.
+the **dependency graph** and the **provenance graph**.
 
 ### Dependency Graph
 
@@ -68,7 +68,6 @@ This graph shows how information is passed from one node to the next as the step
 
 This is an intuitive graph showing the execution flow.
 A similar graph is used by most other build tools.
-Not shown in this diagram are the directories, which StepUp treats in the same way as files.
 
 ### Provenance Graph
 
@@ -76,7 +75,7 @@ This one shows who created each node in the graph:
 
 ![graph_provenance.svg](dependencies/graph_provenance.svg)
 
-This diagram is a little less intuitive and requires more explanation.
+This diagram can be challenging to interpret and requires further explanation.
 Each node in StepUp's workflow is created by exactly one other node,
 except for the Root node, which is its own creator.
 In this example, there are three nodes that create other nodes:
@@ -85,7 +84,6 @@ In this example, there are three nodes that create other nodes:
   Upon startup, StepUp creates `root` and a few other nodes by default:
     - The initial `plan.py` file
     - The initial `runsh ./plan.py` step (with working directory `./`).
-    - The working directory `./` is created just like any other directory that is used.
 
 - The `runsh ./plan.py` step creates two nodes,
   see the two `runsh()` function calls in the `plan.py` script above.
@@ -97,20 +95,24 @@ In this example, there are three nodes that create other nodes:
 This provenance graph is used by StepUp to decide which steps to keep and which to clean up.
 After some files have changed and StepUp is run again, some nodes may no longer be created.
 These "old" nodes will still exist in the database as "orphaned" nodes, i.e. without a creator.
+
 After all steps have been successfully completed,
 StepUp will remove orphaned nodes that are not suppliers to other steps.
 When output file nodes are deleted, the corresponding files are also removed from disk.
-(This is done carefully: StepUp will only remove files
-if it knows they were created in a previous run and
-if the file hash still matches the one recorded immediately after the file was built.)
+StepUp ensures safe removal:
+it will only delete files if it confirms they were created in a previous run
+and if their file hash still matches the one recorded when they were originally built.
+
 If some steps use orphaned nodes as input, those steps will remain pending,
 resulting in an incomplete build and blocking the removal of the orphaned nodes.
 
 Example:
 
-- After modifying `plan.py` and rerunning this step,
-  all nodes created by the `./plan.py` step will be orphaned.
-- The new `plan.py` may recreate some of the old nodes in exactly the same way,
+- After you modify `plan.py` and rerun StepUp,
+  it will see that the file has changed and therefore orphans
+  all nodes created by the old `plan.py`.
+- When StepUp runs the new `plan.py`,
+  it may recreate some of the old nodes in exactly the same way,
   in which case the orphaned nodes will simply be restored,
   along with all of their products and related information.
 - If some nodes are not recreated, they will remain orphaned,
@@ -141,7 +143,8 @@ The web server will load the graph in memory and will only reload it when reques
 
 - Run `stepup boot -n 2` again. As expected, the steps are now skipped.
 
-- Modify the `grep` command to select the second line and run `stepup boot -n 2` again.
+- Modify the `grep` command to select the first line (matching `Monday`)
+  and run `stepup boot -n 2` again.
   The `echo` commands are skipped as they have not changed.
 
 - Change the order of the two steps in `plan.py` and run `stepup boot -n 2`.
@@ -152,4 +155,4 @@ The web server will load the graph in memory and will only reload it when reques
 
 - Rename the file `story.txt` to `lines.txt` (in both steps) and restart StepUp.
   The old `story.txt` output file will be automatically removed from disk,
-  since this is an (intermediate) output file whose node will be orphaned and cleaned up.
+  as it is an intermediate output file whose node becomes orphaned and cleaned up.

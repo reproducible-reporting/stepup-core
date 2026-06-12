@@ -1,5 +1,4 @@
         0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
@@ -12,8 +11,7 @@
         2/3 |    SUCCESS │ runsh grep -i foo data.txt > analyzed.txt
         2/3 |       SKIP │ runsh cat analyzed.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest f25e1ed7, out_digest 786a02f7
-Same inp hash        ./
+Same step hash       explained, inp_digest f2890272, out_digest 786a02f7
 Same inp hash        analyzed.txt
 ────────────────────────────────────────────────────────────────────────────────
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)

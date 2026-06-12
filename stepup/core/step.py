@@ -29,12 +29,12 @@ import attrs
 from path import Path
 
 from .cascade import Node
-from .deferred_glob import DeferredGlob
 from .enums import FileState, Mandatory, StepState
 from .file import File, FileHash
 from .hash import StepHash
 from .job import RunJob, ValidateAmendedJob
 from .nglob import NGlobMulti
+from .static_root import StaticRoot
 from .stepinfo import StepInfo
 from .utils import format_digest
 
@@ -804,7 +804,7 @@ class Step(Node):
         - nglob_multis
         - created steps
         - static file definitions
-        - deferred globs
+        - static roots
 
         The following are marked as outdated:
 
@@ -869,11 +869,11 @@ class Step(Node):
             file = File(self.workflow, i, label)
             file.orphan()
 
-        # Orphan deferred globs
-        sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'dg'"
+        # Orphan static roots
+        sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'sr'"
         for i, label in self.con.execute(sql, (self.i,)):
-            dg = DeferredGlob(self.workflow, i, label)
-            dg.orphan()
+            sr = StaticRoot(self.workflow, i, label)
+            sr.orphan()
 
         # Mark BUILT outputs OUTDATED.
         sql = (

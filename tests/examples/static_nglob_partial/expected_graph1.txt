@@ -1,23 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:head_x.txt
-            supplies   file:head_y.txt
-            supplies   file:paste_x.txt
-            supplies   file:plan.py
-            supplies   file:tail_x.txt
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -26,7 +13,6 @@ step:runpy ./plan.py
                  ngm = ['head_${*char}.txt', 'tail_${*char}.txt'] {'char': '?'}
            explained = yes
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:head_x.txt
              creates   file:head_y.txt
@@ -36,25 +22,21 @@ step:runpy ./plan.py
 file:head_x.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 file:head_y.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
 
 file:tail_x.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
                state = SUCCEEDED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:head_x.txt
             consumes   file:tail_x.txt
              creates   file:paste_x.txt
@@ -63,5 +45,4 @@ step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 file:paste_x.txt
                state = BUILT
           created by   step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
-            consumes   file:./
             consumes   step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt

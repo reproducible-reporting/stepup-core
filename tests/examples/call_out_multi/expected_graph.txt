@@ -1,65 +1,55 @@
 root:
-             creates   file:./
              creates   file:plan.py
-             creates   step:./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:data1.json
-            supplies   file:data2.json
-            supplies   file:generate.py
-            supplies   file:plan.py
-            supplies   step:./generate.py '{"size": 10}' --out=data1.json
-            supplies   step:./generate.py '{"size": 20}' --out=data2.json
-            supplies   step:./plan.py
+             creates   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
-            supplies   step:./plan.py
+            supplies   step:runpy ./plan.py
 
-step:./plan.py
+step:runpy ./plan.py
                state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
-             creates   file:generate.py
-             creates   step:./generate.py '{"size": 10}' --out=data1.json
-             creates   step:./generate.py '{"size": 20}' --out=data2.json
+             creates   file:inp1.txt
+             creates   file:inp2.txt
+             creates   file:transform.py
+             creates   step:runpy ./transform.py '{"repeat": 5, "inp": ["inp1.txt", "inp2.txt"], "out": ["out1.txt", "out2.txt"]}'
 
-file:generate.py
+file:inp1.txt
                state = STATIC
-          created by   step:./plan.py
-            consumes   file:./
-            supplies   step:./generate.py '{"size": 10}' --out=data1.json
-            supplies   step:./generate.py '{"size": 20}' --out=data2.json
+          created by   step:runpy ./plan.py
+            supplies   step:runpy ./transform.py '{"repeat": 5, "inp": ["inp1.txt", "inp2.txt"], "out": ["out1.txt", "out2.txt"]}'
 
-step:./generate.py '{"size": 10}' --out=data1.json
+file:inp2.txt
+               state = STATIC
+          created by   step:runpy ./plan.py
+            supplies   step:runpy ./transform.py '{"repeat": 5, "inp": ["inp1.txt", "inp2.txt"], "out": ["out1.txt", "out2.txt"]}'
+
+file:transform.py
+               state = STATIC
+          created by   step:runpy ./plan.py
+            supplies   step:runpy ./transform.py '{"repeat": 5, "inp": ["inp1.txt", "inp2.txt"], "out": ["out1.txt", "out2.txt"]}'
+
+step:runpy ./transform.py '{"repeat": 5, "inp": ["inp1.txt", "inp2.txt"], "out": ["out1.txt", "out2.txt"]}'
                state = SUCCEEDED
-          created by   step:./plan.py
-            consumes   file:./
-            consumes   file:generate.py
-             creates   file:data1.json
-            supplies   file:data1.json
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   step:runpy ./plan.py
+            consumes   file:inp1.txt
+            consumes   file:inp2.txt
+            consumes   file:transform.py
+             creates   file:out1.txt
+             creates   file:out2.txt
+            supplies   file:out1.txt
+            supplies   file:out2.txt
 
-file:data1.json
+file:out1.txt
                state = BUILT
-          created by   step:./generate.py '{"size": 10}' --out=data1.json
-            consumes   file:./
-            consumes   step:./generate.py '{"size": 10}' --out=data1.json
+          created by   step:runpy ./transform.py '{"repeat": 5, "inp": ["inp1.txt", "inp2.txt"], "out": ["out1.txt", "out2.txt"]}'
+            consumes   step:runpy ./transform.py '{"repeat": 5, "inp": ["inp1.txt", "inp2.txt"], "out": ["out1.txt", "out2.txt"]}'
 
-step:./generate.py '{"size": 20}' --out=data2.json
-               state = SUCCEEDED
-          created by   step:./plan.py
-            consumes   file:./
-            consumes   file:generate.py
-             creates   file:data2.json
-            supplies   file:data2.json
-
-file:data2.json
+file:out2.txt
                state = BUILT
-          created by   step:./generate.py '{"size": 20}' --out=data2.json
-            consumes   file:./
-            consumes   step:./generate.py '{"size": 20}' --out=data2.json
+          created by   step:runpy ./transform.py '{"repeat": 5, "inp": ["inp1.txt", "inp2.txt"], "out": ["out1.txt", "out2.txt"]}'
+            consumes   step:runpy ./transform.py '{"repeat": 5, "inp": ["inp1.txt", "inp2.txt"], "out": ["out1.txt", "out2.txt"]}'

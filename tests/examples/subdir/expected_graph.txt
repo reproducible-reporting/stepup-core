@@ -1,22 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:example.txt
-            supplies   file:plan.py
-            supplies   file:sub/
-            supplies   step:copy example.txt sub/example.txt
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh cat ../plan.py  # wd=sub/
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
             supplies   step:runsh cat ../plan.py  # wd=sub/
 
@@ -24,10 +12,8 @@ step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:example.txt
-             creates   file:sub/
              creates   file:sub/plan.py
              creates   step:copy example.txt sub/example.txt
              creates   step:runpy ./plan.py  # wd=sub/
@@ -35,40 +21,23 @@ step:runpy ./plan.py
 file:example.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:copy example.txt sub/example.txt
-
-file:sub/
-               state = STATIC
-          created by   step:runpy ./plan.py
-            consumes   file:./
-            supplies   file:sub/example.txt
-            supplies   file:sub/plan.py
-            supplies   file:sub/upper.txt
-            supplies   step:copy example.txt sub/example.txt
-            supplies   step:runpy ./plan.py  # wd=sub/
-            supplies   step:runsh cat ../plan.py  # wd=sub/
-            supplies   step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 
 file:sub/plan.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:sub/
             supplies   step:runpy ./plan.py  # wd=sub/
 
 step:copy example.txt sub/example.txt
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:example.txt
-            consumes   file:sub/
              creates   file:sub/example.txt
             supplies   file:sub/example.txt
 
 file:sub/example.txt
                state = BUILT
           created by   step:copy example.txt sub/example.txt
-            consumes   file:sub/
             consumes   step:copy example.txt sub/example.txt
             supplies   step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 
@@ -76,7 +45,6 @@ step:runpy ./plan.py  # wd=sub/
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:sub/
             consumes   file:sub/plan.py
              creates   step:runsh cat ../plan.py  # wd=sub/
              creates   step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
@@ -84,7 +52,6 @@ step:runpy ./plan.py  # wd=sub/
 step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
                state = SUCCEEDED
           created by   step:runpy ./plan.py  # wd=sub/
-            consumes   file:sub/
             consumes   file:sub/example.txt
              creates   file:sub/upper.txt
             supplies   file:sub/upper.txt
@@ -92,12 +59,9 @@ step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 file:sub/upper.txt
                state = BUILT
           created by   step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
-            consumes   file:sub/
             consumes   step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 
 step:runsh cat ../plan.py  # wd=sub/
                state = SUCCEEDED
           created by   step:runpy ./plan.py  # wd=sub/
-            consumes   file:./
             consumes   file:plan.py
-            consumes   file:sub/

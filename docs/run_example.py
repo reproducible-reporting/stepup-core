@@ -20,10 +20,9 @@ def main():
     subprocess.run(f"./{name_main}", cwd=workdir, check=False)
 
     root = Path(root)
-    path_stepup = root / ".stepup/"
-    path_graph = path_stepup / "graph.db"
+    path_graph = root / ".stepup/" / "graph.db"
     con = connect(f"file:{path_graph}?mode=ro", uri=True)
-    out = [path_stepup]
+    out = []
     vol = [path_graph]
     for path, state_i in con.execute(SQL):
         state = FileState(state_i)

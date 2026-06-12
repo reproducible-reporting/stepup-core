@@ -1,24 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:current_variables.txt
-            supplies   file:demovars.py
-            supplies   file:plan.py
-            supplies   file:printvars.py
-            supplies   file:variables.json
-            supplies   step:runpy ./demovars.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh ./printvars.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -26,7 +12,6 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:demovars.py
              creates   file:printvars.py
@@ -36,19 +21,16 @@ step:runpy ./plan.py
 file:demovars.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./demovars.py
 
 file:printvars.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runsh ./printvars.py
 
 file:variables.json
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./demovars.py
 
 step:runpy ./demovars.py
@@ -56,7 +38,6 @@ step:runpy ./demovars.py
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:demovars.py
             consumes   file:variables.json
              creates   step:runsh ./printvars.py
@@ -67,7 +48,6 @@ step:runsh ./printvars.py
                      = ENV_VAR_TEST_STEPUP_DFTHYH
            explained = yes
           created by   step:runpy ./demovars.py
-            consumes   file:./
             consumes   file:printvars.py
              creates   file:current_variables.txt
             supplies   file:current_variables.txt
@@ -75,5 +55,4 @@ step:runsh ./printvars.py
 file:current_variables.txt
                state = BUILT
           created by   step:runsh ./printvars.py
-            consumes   file:./
             consumes   step:runsh ./printvars.py

@@ -18,8 +18,7 @@
 Action                runpy ./plan.py
 Working directory     ./
 Declares      STATIC  original.txt
-Inputs        STATIC  ./
-             MISSING  plan.py
+Inputs       MISSING  plan.py
 ────────────────────────────────────────────────────────────────────────────────
         2/3 |    WARNING │ Skipping file cleanup due to incomplete build
         2/3 |    WARNING │ Check logs: .stepup/warning.log

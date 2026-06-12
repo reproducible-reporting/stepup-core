@@ -1,28 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:bar.txt
-            supplies   file:egg.txt
-            supplies   file:foo1.txt
-            supplies   file:foo2.txt
-            supplies   file:plan.py
-            supplies   file:spam.txt
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh cat bar.txt > egg.txt
-            supplies   step:runsh cat egg.txt > spam.txt
-            supplies   step:runsh cat foo1.txt foo2.txt > bar.txt
-            supplies   step:runsh echo inp1 > foo1.txt
-            supplies   step:runsh echo inp2 > foo2.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -30,7 +12,6 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   step:runsh cat bar.txt > egg.txt
              creates   step:runsh cat egg.txt > spam.txt
@@ -43,14 +24,12 @@ step:runsh echo inp1 > foo1.txt
            mandatory = REQUIRED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
              creates   file:foo1.txt
             supplies   file:foo1.txt
 
 file:foo1.txt
                state = BUILT
           created by   step:runsh echo inp1 > foo1.txt
-            consumes   file:./
             consumes   step:runsh echo inp1 > foo1.txt
             supplies   step:runsh cat foo1.txt foo2.txt > bar.txt
 
@@ -59,14 +38,12 @@ step:runsh echo inp2 > foo2.txt
            mandatory = REQUIRED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
              creates   file:foo2.txt
             supplies   file:foo2.txt
 
 file:foo2.txt
                state = BUILT
           created by   step:runsh echo inp2 > foo2.txt
-            consumes   file:./
             consumes   step:runsh echo inp2 > foo2.txt
             supplies   step:runsh cat foo1.txt foo2.txt > bar.txt
 
@@ -75,7 +52,6 @@ step:runsh cat foo1.txt foo2.txt > bar.txt
            mandatory = REQUIRED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:foo1.txt
             consumes   file:foo2.txt
              creates   file:bar.txt
@@ -84,7 +60,6 @@ step:runsh cat foo1.txt foo2.txt > bar.txt
 file:bar.txt
                state = BUILT
           created by   step:runsh cat foo1.txt foo2.txt > bar.txt
-            consumes   file:./
             consumes   step:runsh cat foo1.txt foo2.txt > bar.txt
             supplies   step:runsh cat bar.txt > egg.txt
 
@@ -93,7 +68,6 @@ step:runsh cat bar.txt > egg.txt
            mandatory = REQUIRED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:bar.txt
              creates   file:egg.txt
             supplies   file:egg.txt
@@ -101,7 +75,6 @@ step:runsh cat bar.txt > egg.txt
 file:egg.txt
                state = BUILT
           created by   step:runsh cat bar.txt > egg.txt
-            consumes   file:./
             consumes   step:runsh cat bar.txt > egg.txt
             supplies   step:runsh cat egg.txt > spam.txt
 
@@ -109,7 +82,6 @@ step:runsh cat egg.txt > spam.txt
                state = SUCCEEDED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:egg.txt
              creates   file:spam.txt
             supplies   file:spam.txt
@@ -117,5 +89,4 @@ step:runsh cat egg.txt > spam.txt
 file:spam.txt
                state = BUILT
           created by   step:runsh cat egg.txt > spam.txt
-            consumes   file:./
             consumes   step:runsh cat egg.txt > spam.txt

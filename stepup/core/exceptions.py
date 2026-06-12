@@ -21,7 +21,7 @@
 
 
 class GraphError(Exception):
-    """A change to the graph was not made to avoid an inconsistency."""
+    """A change to the graph could not be made as it would introduce an inconsistency."""
 
 
 class CyclicError(GraphError):

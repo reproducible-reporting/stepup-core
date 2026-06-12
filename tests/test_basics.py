@@ -42,7 +42,7 @@ async def test_missing_argument(client: AsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
-        await client("missing")
+        await client("declare_missing")
 
 
 @pytest.mark.asyncio
@@ -50,32 +50,23 @@ async def test_wrong_type(client: AsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
-        await client("missing", 5)
+        await client("declare_missing", 5)
 
 
 FROM_SCRATCH_GRAPH = """\
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:plan.py
-            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
 
 """
@@ -102,35 +93,24 @@ async def test_from_scratch(client: AsyncRPCClient, path_tmp: Path):
 
 STATIC_GRAPH = """\
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:foo
-            supplies   file:plan.py
-            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:foo
 
 file:foo
                state = MISSING
           created by   step:runpy ./plan.py
-            consumes   file:./
 
 """
 
@@ -140,7 +120,7 @@ async def test_missing(client: AsyncRPCClient, path_tmp: Path):
     try:
         with open("foo", "w") as fh:
             fh.write("bar")
-        to_check = await client("missing", 4, ["foo"])
+        to_check = await client("declare_missing", 3, ["foo"])
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
@@ -153,30 +133,18 @@ async def test_missing(client: AsyncRPCClient, path_tmp: Path):
 
 COPY_GRAPH = """\
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:copy.txt
-            supplies   file:original.txt
-            supplies   file:plan.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh cp -v original.txt copy.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:original.txt
              creates   step:runsh cp -v original.txt copy.txt
@@ -184,7 +152,6 @@ step:runpy ./plan.py
 step:runsh cp -v original.txt copy.txt
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:original.txt
              creates   file:copy.txt
             supplies   file:copy.txt
@@ -192,13 +159,11 @@ step:runsh cp -v original.txt copy.txt
 file:original.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runsh cp -v original.txt copy.txt
 
 file:copy.txt
                state = BUILT
           created by   step:runsh cp -v original.txt copy.txt
-            consumes   file:./
             consumes   step:runsh cp -v original.txt copy.txt
 
 """
@@ -211,7 +176,7 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
             fh.write("Hello world!")
         await client(
             "step",
-            4,
+            3,
             "runsh cp -v original.txt copy.txt",
             ["original.txt"],
             {},
@@ -222,10 +187,10 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
             None,
             False,
         )
-        to_check = await client("missing", 4, ["original.txt"])
+        to_check = await client("declare_missing", 3, ["original.txt"])
         assert to_check == [("original.txt", FileHash.unknown())]
         file_hash = FileHash.unknown().regen("original.txt")
-        await client("confirm", [("original.txt", file_hash)])
+        await client("confirm_hashes", [("original.txt", file_hash)])
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")

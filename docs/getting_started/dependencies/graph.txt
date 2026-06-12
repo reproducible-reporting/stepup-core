@@ -1,49 +1,35 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
 
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:plan.py
-            supplies   file:story.txt
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh echo First line. > story.txt; echo Second line. >> story.txt
-            supplies   step:runsh grep First story.txt
-
 file:plan.py
                state = STATIC
-              digest = 4c8314c9 c182a0e1 2e88a410 247dcd90 39aadbda baca3903 487461c2 76a95658
-                     = 562374b1 bad3d28b e1012b39 060b4911 43f0fa3f adb3186b 7cdc4b72 30da2e87
+              digest = 5dc596c4 86ea0e86 bcc803f2 c1da0603 3d57a03e 5c3637f4 125a23d1 594442f4
+                     = be5d5866 e9c92073 51a09791 59d2f135 4ff8722b 8d0e0e9e 15555097 9f69c7ed
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = RUNNING
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
-             creates   step:runsh echo First line. > story.txt; echo Second line. >> story.txt
-             creates   step:runsh grep First story.txt
+             creates   step:runsh echo Monday frown > story.txt; echo Coffee smile >> story.txt
+             creates   step:runsh grep Coffee story.txt
 
-step:runsh echo First line. > story.txt; echo Second line. >> story.txt
+step:runsh echo Monday frown > story.txt; echo Coffee smile >> story.txt
                state = RUNNING
           created by   step:runpy ./plan.py
-            consumes   file:./
              creates   file:story.txt
             supplies   file:story.txt
 
 file:story.txt
                state = AWAITED
-          created by   step:runsh echo First line. > story.txt; echo Second line. >> story.txt
-            consumes   file:./
-            consumes   step:runsh echo First line. > story.txt; echo Second line. >> story.txt
-            supplies   step:runsh grep First story.txt
+          created by   step:runsh echo Monday frown > story.txt; echo Coffee smile >> story.txt
+            consumes   step:runsh echo Monday frown > story.txt; echo Coffee smile >> story.txt
+            supplies   step:runsh grep Coffee story.txt
 
-step:runsh grep First story.txt
+step:runsh grep Coffee story.txt
                state = PENDING
+               dirty = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:story.txt

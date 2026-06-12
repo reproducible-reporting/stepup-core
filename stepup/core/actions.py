@@ -38,7 +38,7 @@ from importlib.metadata import entry_points
 
 from .worker import WorkThread
 
-__all__ = ("copy", "mkdir", "runpy", "runsh")
+__all__ = ("copy", "runpy", "runsh")
 
 
 def runsh(argstr: str, work_thread: WorkThread) -> int:
@@ -75,6 +75,8 @@ def runpy(argstr: str, work_thread: WorkThread) -> int:
         The exit code of the command.
     """
     args = shlex.split(argstr)
+    if len(args) == 0:
+        raise ValueError("runpy requires at least one argument")
     return work_thread.runpy(args[0], args[1:])
 
 
@@ -98,26 +100,6 @@ def copy(argstr: str) -> int:
     shutil.copy2(src, dst)
     st = os.stat(src)
     os.chown(dst, st.st_uid, st.st_gid)
-    return 0
-
-
-def mkdir(argstr: str) -> int:
-    """Create a directory.
-
-    Parameters
-    ----------
-    path
-        The path to the directory to create.
-
-    Returns
-    -------
-    exitcode
-        The exit code of the command.
-    """
-    args = shlex.split(argstr)
-    if len(args) != 1:
-        raise ValueError("mkdir requires exactly one argument")
-    os.makedirs(args[0], exist_ok=True)
     return 0
 
 

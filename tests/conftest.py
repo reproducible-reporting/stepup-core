@@ -109,8 +109,8 @@ def declare_static(workflow, creator, paths):
 @pytest.fixture
 def wfs() -> Iterator[Workflow]:
     """A workflow from scratch, no plan.py"""
-    workflow = Workflow(connect(":memory:"))
-    declare_static(workflow, workflow.root, ["./"])
+    dir_queue = asyncio.Queue()
+    workflow = Workflow(connect(":memory:"), dir_queue)
     yield workflow
     workflow.check_consistency()
 
@@ -118,26 +118,27 @@ def wfs() -> Iterator[Workflow]:
 @pytest.fixture
 def wfp() -> Iterator[Workflow]:
     """A workflow with a boots step plan.py"""
-    workflow = Workflow(connect(":memory:"))
+    dir_queue = asyncio.Queue()
+    workflow = Workflow(connect(":memory:"), dir_queue)
     with workflow.con:
         # Prepare the basic workflow with a plan script.
         root = workflow.root
-        declare_static(workflow, root, ["./", "plan.py"])
+        file_plan = declare_static(workflow, root, ["plan.py"])[0]
         workflow.define_step(root, "./plan.py", inp_paths=["plan.py"])
 
         # Check the basics of the workflow.
-        plan = workflow.find(Step, "./plan.py")
+        step_plan = workflow.find(Step, "./plan.py")
         nodes = list(workflow.nodes())
+        assert len(nodes) == 3
         assert nodes[0] == root
-        for node in nodes[1:3]:
-            assert isinstance(node, File)
-        assert nodes[-1] == plan
+        assert nodes[1] == file_plan
+        assert nodes[2] == step_plan
 
         # Simulate running the plan
         job = workflow.job_queue.get_nowait()
         assert job.name == "EXECUTE: ./plan.py"
         assert job.pool is None
-        plan.set_state(StepState.RUNNING)
+        step_plan.set_state(StepState.RUNNING)
 
     yield workflow
     with workflow.con:

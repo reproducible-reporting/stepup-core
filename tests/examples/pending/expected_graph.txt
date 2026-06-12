@@ -1,29 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   (file:first.txt)
-            supplies   file:plan.py
-            supplies   file:second.txt
-            supplies   file:third.txt
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh cp -v first.txt second.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   step:runsh cp -v first.txt second.txt
 
@@ -32,7 +19,6 @@ step:runsh cp -v first.txt second.txt
                dirty = yes
           created by   step:runpy ./plan.py
             consumes   (file:first.txt)
-            consumes   file:./
              creates   file:second.txt
              creates   file:third.txt
             supplies   file:second.txt
@@ -40,17 +26,14 @@ step:runsh cp -v first.txt second.txt
 
 (file:first.txt)
                state = AWAITED
-            consumes   file:./
             supplies   step:runsh cp -v first.txt second.txt
 
 file:second.txt
                state = AWAITED
           created by   step:runsh cp -v first.txt second.txt
-            consumes   file:./
             consumes   step:runsh cp -v first.txt second.txt
 
 file:third.txt
                state = VOLATILE
           created by   step:runsh cp -v first.txt second.txt
-            consumes   file:./
             consumes   step:runsh cp -v first.txt second.txt

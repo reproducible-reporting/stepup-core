@@ -1,23 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:inner.py
-            supplies   file:out.txt
-            supplies   file:outer.py
-            supplies   file:plan.py
-            supplies   step:runpy ./inner.py
-            supplies   step:runpy ./outer.py foo
-            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -25,7 +12,6 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:inner.py
              creates   file:outer.py
@@ -34,13 +20,11 @@ step:runpy ./plan.py
 file:inner.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./inner.py
 
 file:outer.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./outer.py foo
 
 step:runpy ./outer.py foo
@@ -48,7 +32,6 @@ step:runpy ./outer.py foo
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:outer.py
              creates   step:runpy ./inner.py
 
@@ -57,7 +40,6 @@ step:runpy ./inner.py
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   step:runpy ./outer.py foo
-            consumes   file:./
             consumes   file:inner.py
              creates   file:out.txt
             supplies   file:out.txt
@@ -65,5 +47,4 @@ step:runpy ./inner.py
 file:out.txt
                state = BUILT
           created by   step:runpy ./inner.py
-            consumes   file:./
             consumes   step:runpy ./inner.py

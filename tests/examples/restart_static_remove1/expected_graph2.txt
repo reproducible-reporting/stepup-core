@@ -1,21 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:README.txt
-            supplies   file:backup.txt
-            supplies   file:plan.py
-            supplies   step:copy README.txt backup.txt
-            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -23,7 +12,6 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:README.txt
              creates   step:copy README.txt backup.txt
@@ -31,14 +19,12 @@ step:runpy ./plan.py
 file:README.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:copy README.txt backup.txt
 
 step:copy README.txt backup.txt
                state = SUCCEEDED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:README.txt
              creates   file:backup.txt
             supplies   file:backup.txt
@@ -46,5 +32,4 @@ step:copy README.txt backup.txt
 file:backup.txt
                state = BUILT
           created by   step:copy README.txt backup.txt
-            consumes   file:./
             consumes   step:copy README.txt backup.txt

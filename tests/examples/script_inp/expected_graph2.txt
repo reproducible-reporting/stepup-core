@@ -1,32 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:config.txt
-            supplies   file:out_egg.txt
-            supplies   file:out_spam.txt
-            supplies   file:plan.py
-            supplies   file:script.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./script.py plan
-            supplies   step:runpy ./script.py run egg
-            supplies   step:runpy ./script.py run spam
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:config.txt
              creates   file:script.py
@@ -35,13 +19,11 @@ step:runpy ./plan.py
 file:config.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./script.py plan
 
 file:script.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./script.py plan
             supplies   step:runpy ./script.py run egg
             supplies   step:runpy ./script.py run spam
@@ -50,7 +32,6 @@ step:runpy ./script.py plan
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:config.txt
             consumes   file:script.py
              creates   step:runpy ./script.py run egg
@@ -60,7 +41,6 @@ step:runpy ./script.py run egg
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./script.py plan
-            consumes   file:./
             consumes   file:script.py
              creates   file:out_egg.txt
             supplies   file:out_egg.txt
@@ -68,14 +48,12 @@ step:runpy ./script.py run egg
 file:out_egg.txt
                state = BUILT
           created by   step:runpy ./script.py run egg
-            consumes   file:./
             consumes   step:runpy ./script.py run egg
 
 step:runpy ./script.py run spam
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./script.py plan
-            consumes   file:./
             consumes   file:script.py
              creates   file:out_spam.txt
             supplies   file:out_spam.txt
@@ -83,5 +61,4 @@ step:runpy ./script.py run spam
 file:out_spam.txt
                state = BUILT
           created by   step:runpy ./script.py run spam
-            consumes   file:./
             consumes   step:runpy ./script.py run spam

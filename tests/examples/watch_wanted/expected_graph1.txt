@@ -1,32 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   (file:input1.txt)
-            supplies   (file:input2.txt)
-            supplies   file:output1.txt
-            supplies   file:output2.txt
-            supplies   file:plan.py
-            supplies   file:static.txt
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh cp input1.txt output1.txt
-            supplies   step:runsh cp input2.txt output2.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:static.txt
              creates   step:runsh cp input1.txt output1.txt
@@ -35,26 +19,22 @@ step:runpy ./plan.py
 file:static.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
 
 step:runsh cp input1.txt output1.txt
                state = PENDING
                dirty = yes
           created by   step:runpy ./plan.py
             consumes   (file:input1.txt)
-            consumes   file:./
              creates   file:output1.txt
             supplies   file:output1.txt
 
 (file:input1.txt)
                state = AWAITED
-            consumes   file:./
             supplies   step:runsh cp input1.txt output1.txt
 
 file:output1.txt
                state = AWAITED
           created by   step:runsh cp input1.txt output1.txt
-            consumes   file:./
             consumes   step:runsh cp input1.txt output1.txt
 
 step:runsh cp input2.txt output2.txt
@@ -62,17 +42,14 @@ step:runsh cp input2.txt output2.txt
                dirty = yes
           created by   step:runpy ./plan.py
             consumes   (file:input2.txt)
-            consumes   file:./
              creates   file:output2.txt
             supplies   file:output2.txt
 
 (file:input2.txt)
                state = AWAITED
-            consumes   file:./
             supplies   step:runsh cp input2.txt output2.txt
 
 file:output2.txt
                state = AWAITED
           created by   step:runsh cp input2.txt output2.txt
-            consumes   file:./
             consumes   step:runsh cp input2.txt output2.txt

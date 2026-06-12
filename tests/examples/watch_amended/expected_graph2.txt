@@ -1,29 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:inp.txt
-            supplies   file:out.txt
-            supplies   file:plan.py
-            supplies   file:work.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:inp.txt
              creates   file:work.py
@@ -32,20 +19,17 @@ step:runpy ./plan.py
 file:inp.txt
                state = MISSING
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work.py
 
 file:work.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work.py
 
 step:runpy ./work.py
                state = PENDING
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:inp.txt [amended]
             consumes   file:work.py
              creates   file:out.txt
@@ -54,5 +38,4 @@ step:runpy ./work.py
 file:out.txt
                state = OUTDATED
           created by   step:runpy ./work.py
-            consumes   file:./
             consumes   step:runpy ./work.py

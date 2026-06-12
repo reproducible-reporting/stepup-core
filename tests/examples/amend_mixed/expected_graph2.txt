@@ -1,27 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:inp0.txt
-            supplies   file:inp1.txt
-            supplies   file:inp2.txt
-            supplies   file:log.txt
-            supplies   file:plan.py
-            supplies   file:tmp1.txt
-            supplies   file:work.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh ./work.py > log.txt
-            supplies   step:runsh cp inp1.txt tmp1.txt
-            supplies   step:runsh echo Contents of inp2.txt > inp2.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -29,7 +12,6 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:inp0.txt
              creates   file:inp1.txt
@@ -41,14 +23,12 @@ step:runpy ./plan.py
 file:work.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runsh ./work.py > log.txt
 
 step:runsh ./work.py > log.txt
                state = SUCCEEDED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:inp0.txt [amended]
             consumes   file:inp2.txt [amended]
             consumes   file:tmp1.txt [amended]
@@ -59,26 +39,22 @@ step:runsh ./work.py > log.txt
 file:log.txt
                state = BUILT
           created by   step:runsh ./work.py > log.txt
-            consumes   file:./
             consumes   step:runsh ./work.py > log.txt
 
 file:inp0.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runsh ./work.py > log.txt
 
 file:inp1.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runsh cp inp1.txt tmp1.txt
 
 step:runsh cp inp1.txt tmp1.txt
                state = SUCCEEDED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:inp1.txt
              creates   file:tmp1.txt
             supplies   file:tmp1.txt
@@ -86,7 +62,6 @@ step:runsh cp inp1.txt tmp1.txt
 file:tmp1.txt
                state = BUILT
           created by   step:runsh cp inp1.txt tmp1.txt
-            consumes   file:./
             consumes   step:runsh cp inp1.txt tmp1.txt
             supplies   step:runsh ./work.py > log.txt
 
@@ -94,13 +69,11 @@ step:runsh echo Contents of inp2.txt > inp2.txt
                state = SUCCEEDED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
              creates   file:inp2.txt
             supplies   file:inp2.txt
 
 file:inp2.txt
                state = BUILT
           created by   step:runsh echo Contents of inp2.txt > inp2.txt
-            consumes   file:./
             consumes   step:runsh echo Contents of inp2.txt > inp2.txt
             supplies   step:runsh ./work.py > log.txt

@@ -1,7 +1,8 @@
 # Static Files
 
-When steps use input files written by you, this must be explicitly stated in `plan.py`
-by declaring the human-written files as *static files*.
+When steps use input files written by *you*, or at least you somehow provided these input files,
+this must be explicitly stated in `plan.py`.
+All files that are guaranteed to be available before StepUp starts must be declared as *static files*.
 This informs StepUp that such files are readily available,
 unlike files that are outputs of steps that still need to be executed.
 

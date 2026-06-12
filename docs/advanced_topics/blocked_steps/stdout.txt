@@ -1,4 +1,4 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp 3.0.0)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
@@ -6,7 +6,7 @@
    SUCCESS │ runpy ./plan.py
      START │ runsh echo hello > a.txt
    SUCCESS │ runsh echo hello > a.txt
-   WARNING │ 2 step(s) remained pending due to blocked steps
+   WARNING │ 2 step(s) remained pending due to ...
 ──────────────────────────────── Blocked steps ─────────────────────────────────
 step:copy a.txt b.txt
 ────────────────────────────────────────────────────────────────────────────────

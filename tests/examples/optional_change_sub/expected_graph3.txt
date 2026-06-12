@@ -1,33 +1,18 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:hop1.txt
-            supplies   file:hop2.txt
-            supplies   file:plan.py
-            supplies   file:sub/
-            supplies   step:copy ../hop2.txt hop3.txt  # wd=sub/
-            supplies   step:copy hop1.txt hop2.txt
-            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:hop1.txt
-             creates   file:sub/
              creates   file:sub/plan.py
              creates   step:copy hop1.txt hop2.txt
              creates   step:runpy ./plan.py  # wd=sub/
@@ -35,29 +20,17 @@ step:runpy ./plan.py
 file:hop1.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:copy hop1.txt hop2.txt
-
-file:sub/
-               state = STATIC
-          created by   step:runpy ./plan.py
-            consumes   file:./
-            supplies   file:sub/hop3.txt
-            supplies   file:sub/plan.py
-            supplies   step:copy ../hop2.txt hop3.txt  # wd=sub/
-            supplies   step:runpy ./plan.py  # wd=sub/
 
 file:sub/plan.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:sub/
             supplies   step:runpy ./plan.py  # wd=sub/
 
 step:copy hop1.txt hop2.txt
                state = SUCCEEDED
            mandatory = REQUIRED
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:hop1.txt
              creates   file:hop2.txt
             supplies   file:hop2.txt
@@ -65,7 +38,6 @@ step:copy hop1.txt hop2.txt
 file:hop2.txt
                state = BUILT
           created by   step:copy hop1.txt hop2.txt
-            consumes   file:./
             consumes   step:copy hop1.txt hop2.txt
             supplies   step:copy ../hop2.txt hop3.txt  # wd=sub/
 
@@ -73,21 +45,17 @@ step:runpy ./plan.py  # wd=sub/
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:sub/
             consumes   file:sub/plan.py
              creates   step:copy ../hop2.txt hop3.txt  # wd=sub/
 
 step:copy ../hop2.txt hop3.txt  # wd=sub/
                state = SUCCEEDED
           created by   step:runpy ./plan.py  # wd=sub/
-            consumes   file:./
             consumes   file:hop2.txt
-            consumes   file:sub/
              creates   file:sub/hop3.txt
             supplies   file:sub/hop3.txt
 
 file:sub/hop3.txt
                state = BUILT
           created by   step:copy ../hop2.txt hop3.txt  # wd=sub/
-            consumes   file:sub/
             consumes   step:copy ../hop2.txt hop3.txt  # wd=sub/

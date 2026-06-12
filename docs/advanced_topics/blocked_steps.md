@@ -15,20 +15,20 @@ A valid reason for ignoring some steps is illustrated in the following schematic
 
 Imagine that `Step 2` is very expensive and you are developing a script for `Step 1`.
 In practice, it takes several iterations to get `Step 1` working properly.
-This can be verified by analyzing the file `converted.txt` or with unit tests.
+This can be verified by analyzing the file `converted.txt` or by running unit tests.
 
 To avoid executing `Step 2` at every iteration in the development of `Step 1`,
 you can **block** this step.
 All step-creating functions accept an optional `block=True` keyword argument
 to prevent them from being executed.
-Blocking steps is a temporary measure, meant to be reverted once you're done with `Step 1`.
+Blocked steps are intended to be a temporary measure,
+and to be reverted once you're done with `Step 1`.
 
-Blocking steps has some consequences:
+Blocking a step has some consequences:
 
-- Blocked steps remain in the `PENDING` state,
+- A blocked step remains in the `PENDING` state,
   meaning that outdated output files are not cleaned up automatically.
-- At the end of the *run phase*, a list of blocked steps is shown,
-  to remind the user that some steps are blocked.
+- At the end of the *run phase*, all currently blocked steps are listed as a reminder.
 - Subsequent steps, which use outputs of blocked or pending steps, also remain pending.
 
 ## Example
@@ -36,8 +36,8 @@ Blocking steps has some consequences:
 Example source files: [`docs/advanced_topics/blocked_steps/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/blocked_steps)
 
 The following `plan.py` illustrates the blocking mechanism.
-The copy commands are too simple and cheap to justify blocking,
-so this is just an example to illustrate the mechanism only.
+Note that the copy commands are too cheap to justify blocking,
+so this is just an example illustrating the mechanism.
 
 ```python
 {% include 'advanced_topics/blocked_steps/plan.py' %}

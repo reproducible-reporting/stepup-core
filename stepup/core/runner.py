@@ -33,7 +33,7 @@ from .enums import FileState, Mandatory, ReturnCode, StepState
 from .job import Job
 from .reporter import ReporterClient
 from .scheduler import Scheduler
-from .utils import DBLock, remove_path
+from .utils import DBLock, myparent, remove_path
 from .watcher import Watcher
 from .worker import WorkerClient
 from .workflow import Workflow
@@ -163,8 +163,9 @@ class Runner:
 
     async def finalize(self):
         """Final steps after the runner has executed a bunch of jobs."""
-        async with self.dblock:
-            self.returncode = await report_completion(self.workflow, self.scheduler, self.reporter)
+        self.returncode = await report_completion(
+            self.dblock, self.workflow, self.scheduler, self.reporter
+        )
         if self.returncode.value != 0:
             await self.reporter("WARNING", "Skipping file cleanup due to incomplete build")
             if await clean_queue(self.scheduler, self.dblock, self.reporter):
@@ -257,11 +258,12 @@ class Runner:
 
 
 async def report_completion(
-    workflow: Workflow, scheduler: Scheduler, reporter: ReporterClient
+    dblock: DBLock, workflow: Workflow, scheduler: Scheduler, reporter: ReporterClient
 ) -> ReturnCode:
     """Report parts of the workflow that could not be executed."""
     returncode = ReturnCode(0)
-    steps_failed = list(workflow.steps(StepState.FAILED))
+    async with dblock:
+        steps_failed = list(workflow.steps(StepState.FAILED))
     num_failed = len(steps_failed)
     if num_failed > 0:
         returncode |= ReturnCode.FAILED
@@ -272,57 +274,59 @@ async def report_completion(
         await reporter("WARNING", "Scheduler is put on hold. Not reporting pending steps.")
         return returncode
 
-    steps_pending = list(workflow.steps(StepState.PENDING))
+    async with dblock:
+        steps_pending = list(workflow.steps(StepState.PENDING))
     num_pending = len(steps_pending)
     if num_pending > 0:
         pending_pages = []
         block_lines = []
-        for step in steps_pending:
-            action, workdir = step.get_action_workdir()
-            _, _, block, mandatory, _, _ = step.properties()
-            if mandatory == Mandatory.NO:
-                num_pending -= 1
-                continue
-            if block:
-                block_lines.append(step.key())
-            if len(block_lines) > 0:
-                continue
+        async with dblock:
+            for step in steps_pending:
+                action, workdir = step.get_action_workdir()
+                _, _, block, mandatory, _, _ = step.properties()
+                if mandatory == Mandatory.NO:
+                    num_pending -= 1
+                    continue
+                if block:
+                    block_lines.append(step.key())
+                if len(block_lines) > 0:
+                    continue
 
-            lines = [f"Action                {action}"]
-            if workdir != ".":
-                lines.append(f"Working directory     {workdir}")
+                lines = [f"Action                {action}"]
+                if workdir != ".":
+                    lines.append(f"Working directory     {workdir}")
 
-            prefix = "Declares"
-            for path in step.static_paths():
-                lines.append(f"{prefix}      STATIC  {path}")
-                prefix = "        "
+                prefix = "Declares"
+                for path in step.static_paths():
+                    lines.append(f"{prefix}      STATIC  {path}")
+                    prefix = "        "
 
-            prefix = "Declares"
-            for path in step.missing_paths():
-                lines.append(f"{prefix}       MISSING  {path}")
-                prefix = "        "
+                prefix = "Declares"
+                for path in step.missing_paths():
+                    lines.append(f"{prefix}       MISSING  {path}")
+                    prefix = "        "
 
-            prefix = "Inputs"
-            for path, state, orphan, amended in step.inp_paths(
-                yield_state=True, yield_orphan=True, yield_amended=True
-            ):
-                path_fmt = f"({path})" if orphan else path
-                path_fmt = f"{path_fmt} [amended]" if amended else path_fmt
-                lines.append(f"{prefix}      {state.name:>8s}  {path_fmt}")
-                prefix = "      "
+                prefix = "Inputs"
+                for path, state, orphan, amended in step.inp_paths(
+                    yield_state=True, yield_orphan=True, yield_amended=True
+                ):
+                    path_fmt = f"({path})" if orphan else path
+                    path_fmt = f"{path_fmt} [amended]" if amended else path_fmt
+                    lines.append(f"{prefix}      {state.name:>8s}  {path_fmt}")
+                    prefix = "      "
 
-            prefix = "Outputs"
-            for path, state, amended in step.out_paths(yield_state=True, yield_amended=True):
-                path_fmt = f"{path} [amended]" if amended else path
-                lines.append(f"{prefix}     {state.name:>8s}  {path_fmt}")
-                prefix = "       "
+                prefix = "Outputs"
+                for path, state, amended in step.out_paths(yield_state=True, yield_amended=True):
+                    path_fmt = f"{path} [amended]" if amended else path
+                    lines.append(f"{prefix}     {state.name:>8s}  {path_fmt}")
+                    prefix = "       "
 
-            for path, amended in step.vol_paths(yield_amended=True):
-                path_fmt = f"{path} [amended]" if amended else path
-                lines.append(f"{prefix}     VOLATILE  {path_fmt}")
-                prefix = "       "
+                for path, amended in step.vol_paths(yield_amended=True):
+                    path_fmt = f"{path} [amended]" if amended else path
+                    lines.append(f"{prefix}     VOLATILE  {path_fmt}")
+                    prefix = "       "
 
-            pending_pages.append(("PENDING Step", "\n".join(lines)))
+                pending_pages.append(("PENDING Step", "\n".join(lines)))
 
         if num_pending > 0:
             returncode |= ReturnCode.PENDING
@@ -331,16 +335,17 @@ async def report_completion(
                 block_page = ("Blocked steps", "\n".join(block_lines))
                 await reporter("WARNING", descr, [block_page])
             else:
-                # Insert pages with orphaned and missing inputs in front.
-                orphaned_page = "\n".join(
-                    f"{file_state.name:>20s}  {path}"
-                    for path, file_state in workflow.orphaned_inp_paths()
-                )
+                async with dblock:
+                    # Insert pages with orphaned and missing inputs in front.
+                    orphaned_page = "\n".join(
+                        f"{file_state.name:>20s}  {path}"
+                        for path, file_state in workflow.orphaned_inp_paths()
+                    )
+                    missing_page = "\n".join(
+                        f"             MISSING  {path}" for path in workflow.missing_paths()
+                    )
                 if orphaned_page != "":
                     pending_pages.insert(0, ("Incomplete requirements", orphaned_page))
-                missing_page = "\n".join(
-                    f"             MISSING  {path}" for path in workflow.missing_paths()
-                )
                 if missing_page != "":
                     pending_pages.insert(0, ("Missing inputs", missing_page))
                 # Finally, report the workflow steps that are pending.
@@ -356,11 +361,24 @@ async def remove_outdated_outputs(workflow: Workflow, dblock: DBLock, reporter: 
     )
     workflow.to_be_deleted.sort(reverse=True)
     # Remove the files from the file system.
+    parents = set()
     for path, file_hash in workflow.to_be_deleted:
         if (
             path.endswith("/") or file_hash is None or file_hash.regen(path) == file_hash
         ) and remove_path(path):
             await reporter("CLEAN", path)
+            parents.add(myparent(path))
+
+    # Clean up empty parent directories.
+    parents = sorted(parents)
+    while len(parents) > 0:
+        parent = parents.pop()
+        if parent.is_dir() and not any(parent.iterdir()) and remove_path(parent):
+            await reporter("CLEAN", parent)
+            parent = parent.parent
+            if parent.name not in ("..", ".", ""):
+                parents.append(parent)
+
     # Reset the state of the deleted files in the database, if they are still present.
     async with dblock:
         workflow.con.executemany(

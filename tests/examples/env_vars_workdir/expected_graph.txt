@@ -1,19 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:plan.py
-            supplies   file:sub/
-            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -21,30 +12,18 @@ step:runpy ./plan.py
              env_var = INP_VAR_TEST_STEPUP_WORKDIR [amended]
                      = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
-             creates   file:sub/
              creates   file:sub/input.txt
              creates   step:runsh cat input.txt > output.txt  # wd=sub/
-
-file:sub/
-               state = STATIC
-          created by   step:runpy ./plan.py
-            consumes   file:./
-            supplies   file:sub/input.txt
-            supplies   file:sub/output.txt
-            supplies   step:runsh cat input.txt > output.txt  # wd=sub/
 
 file:sub/input.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:sub/
             supplies   step:runsh cat input.txt > output.txt  # wd=sub/
 
 step:runsh cat input.txt > output.txt  # wd=sub/
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:sub/
             consumes   file:sub/input.txt
              creates   file:sub/output.txt
             supplies   file:sub/output.txt
@@ -52,5 +31,4 @@ step:runsh cat input.txt > output.txt  # wd=sub/
 file:sub/output.txt
                state = BUILT
           created by   step:runsh cat input.txt > output.txt  # wd=sub/
-            consumes   file:sub/
             consumes   step:runsh cat input.txt > output.txt  # wd=sub/

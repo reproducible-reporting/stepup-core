@@ -1,24 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:inp1.txt
-            supplies   file:inp2.txt
-            supplies   file:out1.txt
-            supplies   file:out2.txt
-            supplies   file:plan.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
-            supplies   step:runsh echo word2 > inp2.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -26,7 +12,6 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:inp1.txt
              creates   step:runpy ./work.py
@@ -35,7 +20,6 @@ step:runpy ./plan.py
 file:inp1.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work.py
 
 step:runpy ./work.py
@@ -43,7 +27,6 @@ step:runpy ./work.py
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:inp1.txt
             consumes   file:inp2.txt [amended]
              creates   file:out1.txt
@@ -54,26 +37,22 @@ step:runpy ./work.py
 file:out1.txt
                state = BUILT
           created by   step:runpy ./work.py
-            consumes   file:./
             consumes   step:runpy ./work.py
 
 step:runsh echo word2 > inp2.txt
                state = SUCCEEDED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
              creates   file:inp2.txt
             supplies   file:inp2.txt
 
 file:inp2.txt
                state = BUILT
           created by   step:runsh echo word2 > inp2.txt
-            consumes   file:./
             consumes   step:runsh echo word2 > inp2.txt
             supplies   step:runpy ./work.py
 
 file:out2.txt
                state = BUILT
           created by   step:runpy ./work.py
-            consumes   file:./
             consumes   step:runpy ./work.py

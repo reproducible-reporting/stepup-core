@@ -1,31 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:case3.txt
-            supplies   file:case4.txt
-            supplies   file:cases.txt
-            supplies   file:plan.py
-            supplies   file:work.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work.py case3.txt
-            supplies   step:runpy ./work.py case4.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:cases.txt [amended]
             consumes   file:plan.py
              creates   file:cases.txt
@@ -36,7 +21,6 @@ step:runpy ./plan.py
 file:cases.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./plan.py
             supplies   step:runpy ./work.py case3.txt
             supplies   step:runpy ./work.py case4.txt
@@ -44,7 +28,6 @@ file:cases.txt
 file:work.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work.py case3.txt
             supplies   step:runpy ./work.py case4.txt
 
@@ -52,7 +35,6 @@ step:runpy ./work.py case3.txt
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:cases.txt
             consumes   file:work.py
              creates   file:case3.txt
@@ -61,14 +43,12 @@ step:runpy ./work.py case3.txt
 file:case3.txt
                state = BUILT
           created by   step:runpy ./work.py case3.txt
-            consumes   file:./
             consumes   step:runpy ./work.py case3.txt
 
 step:runpy ./work.py case4.txt
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:cases.txt
             consumes   file:work.py
              creates   file:case4.txt
@@ -77,5 +57,4 @@ step:runpy ./work.py case4.txt
 file:case4.txt
                state = BUILT
           created by   step:runpy ./work.py case4.txt
-            consumes   file:./
             consumes   step:runpy ./work.py case4.txt

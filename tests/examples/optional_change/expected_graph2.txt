@@ -1,30 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:hop1.txt
-            supplies   file:hop2.txt
-            supplies   file:hop3.txt
-            supplies   file:plan.py
-            supplies   step:copy hop1.txt hop2.txt
-            supplies   step:copy hop2.txt hop3.txt
-            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:hop1.txt
              creates   step:copy hop1.txt hop2.txt
@@ -33,13 +19,11 @@ step:runpy ./plan.py
 file:hop1.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:copy hop1.txt hop2.txt
 
 step:copy hop1.txt hop2.txt
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:hop1.txt
              creates   file:hop2.txt
             supplies   file:hop2.txt
@@ -47,14 +31,12 @@ step:copy hop1.txt hop2.txt
 file:hop2.txt
                state = BUILT
           created by   step:copy hop1.txt hop2.txt
-            consumes   file:./
             consumes   step:copy hop1.txt hop2.txt
             supplies   step:copy hop2.txt hop3.txt
 
 step:copy hop2.txt hop3.txt
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:hop2.txt
              creates   file:hop3.txt
             supplies   file:hop3.txt
@@ -62,5 +44,4 @@ step:copy hop2.txt hop3.txt
 file:hop3.txt
                state = BUILT
           created by   step:copy hop2.txt hop3.txt
-            consumes   file:./
             consumes   step:copy hop2.txt hop3.txt

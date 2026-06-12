@@ -47,7 +47,6 @@ from .step import FileHash
 from .stepinfo import StepInfo
 from .utils import (
     CaseSensitiveTemplate,
-    check_inp_path,
     format_command,
     make_path_out,
     mynormpath,
@@ -69,7 +68,6 @@ __all__ = (
     "glob",
     "graph",
     "loadns",
-    "mkdir",
     "plan",
     "pool",
     "render_jinja",
@@ -92,14 +90,18 @@ def static(*paths: str | Iterable[str]):
     Parameters
     ----------
     *paths
-        One or more static paths (files or directories),
-        relative to the current working directory.
+        One or more static paths, relative to the current working directory.
         Arguments may also be lists of strings.
+        Each string must be an existing file or directory on disk and can be one of the following:
+
+        1. A file, in which case this file as such is declared as a static path.
+        2. A directory, in which case all contained files (also in subdirectories)
+           become static paths, only when they are used as inputs.
 
     Raises
     ------
     ValueError
-        When a file does not exist or there is an error with the trailing separator.
+        When a path does not exist.
 
     Notes
     -----
@@ -123,45 +125,35 @@ def static(*paths: str | Iterable[str]):
         with subs_env_vars() as subs:
             su_paths = [subs(path) for path in paths]
         # Sanity checks
-        _check_inp_paths(su_paths)
-        # Translate paths to make them relative to the working directory of the director.
-        tr_paths = sorted(translate(su_path) for su_path in su_paths)
-        # Declare the missing and then confirm the files.
-        to_check = RPC_CLIENT.call.missing(_get_step_i(), tr_paths)
-        _confirm_missing(to_check)
+        su_file_paths, su_dir_paths = _check_inp_paths(su_paths, allow_dirs=True)
+        if len(su_file_paths) > 0:
+            # Translate paths to make them relative to the working directory of the director.
+            tr_file_paths = sorted(translate(su_file_path) for su_file_path in su_file_paths)
+            # Declare the missing and then confirm the files.
+            to_check = RPC_CLIENT.call.declare_missing(_get_step_i(), tr_file_paths)
+            _confirm_static(to_check)
+        if len(su_dir_paths) > 0:
+            # Translate paths to make them relative to the working directory of the director.
+            tr_dir_paths = sorted(translate(su_dir_path) for su_dir_path in su_dir_paths)
+            # Declare the missing and then confirm the directories.
+            to_check = RPC_CLIENT.call.static_roots(_get_step_i(), tr_dir_paths)
+            _confirm_deferred(to_check)
 
 
-def glob(
-    *patterns: str, _required: bool = False, _defer: bool = False, **subs: str
-) -> NGlobMulti | None:
+def glob(*patterns: str, **subs: str) -> NGlobMulti | None:
     """Declare static paths through pattern matching.
 
     Parameters
     ----------
     *patterns
-        One or more patterns for static files or directories,
+        One or more patterns for static files,
         relative to the current working directory.
         The patterns may contain (named) wildcards and one
         may specify the pattern for each named wildcard with
         the keyword arguments.
-    _required
-        When True, an error will be raised when there are no matches.
-    _defer
-        When True, static files are not added yet.
-        Instead, the glob is installed in the workflow as a deferred glob.
-        As soon as any file is needed as input and matches the pattern,
-        it will be made static.
-        This is not compatible with `_required=True`.
-        Named wildcards are not supported in deferred globs.
     **subs
         When using named wildcards, they will match the pattern `*` by default.
         Through the subs argument each name can be associated with another glob pattern.
-        Names starting with underscores are not allowed.
-
-    Raises
-    ------
-    FileNotFoundError
-        when no matches were found and _required is True.
 
     Returns
     -------
@@ -175,8 +167,6 @@ def glob(
         Finally, one may also use ngm in conditional expressions:
         It evaluates to True if and only if it contains some matches.
 
-        `None` is returned when `_defer=True`.
-
     Notes
     -----
     The combinatorics allow one to construct nested loops easily in one call.
@@ -188,36 +178,26 @@ def glob(
     """
     if len(patterns) == 0:
         raise ValueError("At least one path is required for glob.")
-    if any(name.startswith("_") for name in subs):
-        raise ValueError("Substitutions cannot have names starting with underscores.")
 
     # Substitute environment variables
     with subs_env_vars() as subs_path:
         su_patterns = [subs_path(pattern) for pattern in patterns]
 
+    # StepUp needs to know the patterns,
+    # so it can identify new files matching the patterns in future runs.
     tr_patterns = [translate(su_pattern) for su_pattern in su_patterns]
-    if _defer:
-        if _required:
-            raise ValueError("Combination of options not supported: _defer=True, _required=True")
-        if len(subs) > 0:
-            raise ValueError("Named wildcards are not supported in deferred globs.")
-        to_check = RPC_CLIENT.call.defer(_get_step_i(), tr_patterns)
-        _check_deferred(to_check)
-        return None
 
     # Collect all matches
     nglob_multi = NGlobMulti.from_patterns(su_patterns, subs)
     nglob_multi.glob()
-    if _required and len(nglob_multi.results) == 0:
-        raise FileNotFoundError("Could not find any matching paths on the filesystem.")
 
     # Send static paths
     static_paths = nglob_multi.files()
     if len(static_paths) > 0:
         _check_inp_paths(static_paths)
         tr_static_paths = [translate(static_path) for static_path in static_paths]
-        to_check = RPC_CLIENT.call.missing(_get_step_i(), tr_static_paths)
-        _confirm_missing(to_check)
+        to_check = RPC_CLIENT.call.declare_missing(_get_step_i(), tr_static_paths)
+        _confirm_static(to_check)
 
     # Translate all the nglob matches with matching paths and send to the director.
     tr_all_paths = [
@@ -253,7 +233,7 @@ def step(
     inp
         File(s) required by the step.
         Relative paths are assumed to be relative to `workdir`.
-        Can be files or directories (trailing slash).
+        Directory inputs are not supported.
     env
         Environment variable(s) to which the step is sensitive.
         If they change, or when they are (un)defined, the step digest will change,
@@ -261,7 +241,7 @@ def step(
     out
         File(s) created by the step.
         Relative paths are assumed to be relative to `workdir`.
-        These can be files or directories (trailing slash).
+        Directory outputs are not supported.
     vol
         Volatile file(s) created by the step
         Relative paths are assumed to be relative to `workdir`.
@@ -309,6 +289,9 @@ def step(
         su_out_paths = [subs(out_path) for out_path in out_paths]
         su_vol_paths = [subs(vol_path) for vol_path in vol_paths]
         su_workdir = subs(workdir)
+    _check_no_directories(su_inp_paths)
+    _check_no_directories(su_out_paths)
+    _check_no_directories(su_vol_paths)
     amend(env=sorted(amended_env_vars))
     tr_inp_paths = [translate(inp_path, su_workdir) for inp_path in su_inp_paths]
     tr_out_paths = [translate(out_path, su_workdir) for out_path in su_out_paths]
@@ -335,8 +318,8 @@ def step(
         block,
     )
 
-    # Check the existence of files matching deferred globs.
-    _check_deferred(to_check)
+    # Check the existence of files matching static roots.
+    _confirm_deferred(to_check)
 
     # Return a StepInfo instance to facilitate the definition of follow-up steps
     return StepInfo(action, tr_workdir, su_inp_paths, env_vars, su_out_paths, su_vol_paths)
@@ -387,7 +370,7 @@ def amend(
     ----------
     inp
         Files required by the step.
-        Can be files or directories (trailing slash).
+        Directory inputs are not supported.
     env
         Environment variables to which the step is sensitive.
         If the change, or when they are (un)defined, the step digest will change,
@@ -425,10 +408,13 @@ def amend(
         return
     env_vars = set(env_vars)
     with subs_env_vars() as subs:
-        su_inp_paths = [subs(inp_path) for inp_path in inp_paths]
+        su_inp_paths = {subs(inp_path) for inp_path in inp_paths}
         tr_inp_paths = {translate(inp_path) for inp_path in su_inp_paths}
         tr_out_paths = {translate(subs(out_path)) for out_path in out_paths}
         tr_vol_paths = {translate(subs(vol_path)) for vol_path in vol_paths}
+    _check_no_directories(tr_inp_paths)
+    _check_no_directories(tr_out_paths)
+    _check_no_directories(tr_vol_paths)
 
     # Filter out previously amended information
     tr_inp_paths.difference_update(AMEND_HISTORY["inp"])
@@ -457,7 +443,8 @@ def amend(
         keep_going, to_check = amend_result
         if keep_going is False:
             raise InputNotFoundError("Amended inputs are not available yet.")
-        _check_deferred(to_check, step_i)
+        _confirm_deferred(to_check, step_i)
+
     # Double check that all inputs are indeed present.
     _check_inp_paths(su_inp_paths)
 
@@ -632,7 +619,8 @@ def copy(src: str, dst: str, *, optional: bool = False, block: bool = False) -> 
         This must be a file. Environment variables are substituted.
     dst
         This can be a file or a directory. Environment variables are substituted.
-        If it is a directory, it must have a trailing slash.
+        If `dst` denotes a directory, it must have a trailing slash
+        and `src` will be copied inside it with its original name.
     optional
         When True, the file is only copied when needed as input for another step.
     block
@@ -657,35 +645,6 @@ def copy(src: str, dst: str, *, optional: bool = False, block: bool = False) -> 
         optional=optional,
         block=block,
     )
-
-
-def mkdir(dirname: str, *, optional: bool = False, block: bool = False) -> StepInfo:
-    """Make a directory.
-
-    Parameters
-    ----------
-    dirname
-        The director to create.
-        A trailing slash is added when not present.
-        Environment variables are substituted.
-    optional
-        When True, the directory is only created when needed by other steps.
-    block
-        When True, the step will always remain pending.
-
-    Returns
-    -------
-    step_info
-        Holds relevant information of the step, useful for defining follow-up steps.
-    """
-    amended_env_vars = set()
-    with subs_env_vars() as subs:
-        dirname = subs(dirname)
-    if not dirname.endswith("/"):
-        dirname += "/"
-    dirname = mynormpath(dirname)
-    amend(env=amended_env_vars)
-    return step(f"mkdir {dirname}", out=dirname, optional=optional, block=block)
 
 
 def getenv(
@@ -1071,7 +1030,7 @@ def loadns(
     dir_out
         This is used to translate paths defined in the variables files
         (relative to parent of the variable file)
-        to paths relative to the parent of the output of the rendering task.
+        to paths relative to `dir_out`.
         If not given, the current working directory is used.
         This is only relevant for variables loaded from Python files.
     do_amend
@@ -1266,10 +1225,10 @@ def subs_env_vars() -> Iterator[Callable[[str | None], Path | None]]:
 
 
 class DeferredNotConfirmedError(Exception):
-    """Raised deferred glob matches cannot be confirmed."""
+    """Raised when static root matches cannot be confirmed."""
 
 
-def _confirm_missing(to_check: list[tuple[str, FileHash]] | None):
+def _confirm_static(to_check: list[tuple[str, FileHash]] | None):
     """Confirm initially missing files and send the updates to the director."""
     # When the RPC_CLIENT is a dummy, to_check may be `None`.
     if to_check is not None and len(to_check) > 0:
@@ -1279,15 +1238,15 @@ def _confirm_missing(to_check: list[tuple[str, FileHash]] | None):
             if new_file_hash != old_file_hash:
                 checked.append((tr_path, new_file_hash))
         if len(checked) > 0:
-            RPC_CLIENT.call.confirm(checked)
+            RPC_CLIENT.call.confirm_hashes(checked)
 
 
-def _check_deferred(to_check: list[tuple[str, FileHash]] | None, step_i: int | None = None):
+def _confirm_deferred(to_check: list[tuple[str, FileHash]] | None, step_i: int | None = None):
     """Check file, update hashes of existing ones, and send the updates to the director."""
     if to_check is not None and len(to_check) > 0:
-        # Select matches of the deferred glob that exist and update their hashes.
+        # Select matches of the static root that exist and update their hashes.
         checked = []
-        errors = ["Invalid deferred glob matches:"]
+        errors = ["Invalid deferred static files:"]
         for tr_path, old_file_hash in to_check:
             new_file_hash = old_file_hash.regen(translate_back(tr_path))
             if new_file_hash != old_file_hash:
@@ -1295,7 +1254,7 @@ def _check_deferred(to_check: list[tuple[str, FileHash]] | None, step_i: int | N
             if new_file_hash.is_unknown:
                 errors.append(f"{tr_path} (MISSING)")
         if len(checked) > 0:
-            RPC_CLIENT.call.confirm(checked)
+            RPC_CLIENT.call.confirm_hashes(checked)
         if len(errors) > 1:
             message = "\n".join(errors)
             if step_i is not None:
@@ -1303,12 +1262,33 @@ def _check_deferred(to_check: list[tuple[str, FileHash]] | None, step_i: int | N
             raise DeferredNotConfirmedError(message)
 
 
-def _check_inp_paths(inp_paths: Iterable[Path]):
+def _check_inp_paths(
+    inp_paths: Iterable[Path], allow_dirs: bool = False
+) -> tuple[list[Path], list[Path]]:
     """Check the validity of the input paths."""
+    file_paths = []
+    dir_paths = []
     for inp_path in inp_paths:
-        message = check_inp_path(inp_path)
-        if message is not None:
-            raise ValueError(f"{message}: {inp_path}")
+        is_dir = inp_path.is_dir()
+        if is_dir:
+            dir_paths.append(inp_path)
+        else:
+            file_paths.append(inp_path)
+        if not allow_dirs:
+            if inp_path.endswith("/"):
+                raise ValueError(f"Directory inputs are not supported: {inp_path}")
+            if is_dir:
+                raise ValueError(f"Directory inputs are not supported: {inp_path}")
+        if not inp_path.exists():
+            raise ValueError(f"Path does not exist: {inp_path}")
+    return file_paths, dir_paths
+
+
+def _check_no_directories(paths: Iterable[Path]):
+    """Check that the paths are not directories."""
+    for path in paths:
+        if path.endswith(os.sep):
+            raise ValueError(f"Directories are not allowed: {path}")
 
 
 def get_rpc_client(socket: str | None = None):

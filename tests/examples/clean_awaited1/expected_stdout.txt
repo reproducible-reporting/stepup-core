@@ -9,8 +9,7 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                copy missing.txt hello.txt
 Working directory     ./
-Inputs        STATIC  ./
-             AWAITED  (missing.txt)
+Inputs       AWAITED  (missing.txt)
 Outputs      AWAITED  hello.txt
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ Skipping file cleanup due to incomplete build
@@ -23,8 +22,7 @@ Outputs      AWAITED  hello.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                copy missing.txt hello.txt
 Working directory     ./
-Inputs        STATIC  ./
-             AWAITED  (missing.txt)
+Inputs       AWAITED  (missing.txt)
 Outputs      AWAITED  hello.txt
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ Skipping file cleanup due to incomplete build

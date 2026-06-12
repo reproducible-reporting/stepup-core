@@ -1,23 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:final.txt
-            supplies   file:inp.txt
-            supplies   file:out.txt
-            supplies   file:plan.py
-            supplies   step:copy inp.txt out.txt
-            supplies   step:copy out.txt final.txt
-            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -25,7 +12,6 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:inp.txt
              creates   step:copy inp.txt out.txt
@@ -34,14 +20,12 @@ step:runpy ./plan.py
 file:inp.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:copy inp.txt out.txt
 
 step:copy inp.txt out.txt
                state = SUCCEEDED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:inp.txt
              creates   file:out.txt
             supplies   file:out.txt
@@ -49,7 +33,6 @@ step:copy inp.txt out.txt
 file:out.txt
                state = BUILT
           created by   step:copy inp.txt out.txt
-            consumes   file:./
             consumes   step:copy inp.txt out.txt
             supplies   step:copy out.txt final.txt
 
@@ -57,7 +40,6 @@ step:copy out.txt final.txt
                state = SUCCEEDED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:out.txt
              creates   file:final.txt
             supplies   file:final.txt
@@ -65,5 +47,4 @@ step:copy out.txt final.txt
 file:final.txt
                state = BUILT
           created by   step:copy out.txt final.txt
-            consumes   file:./
             consumes   step:copy out.txt final.txt

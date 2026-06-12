@@ -2,16 +2,17 @@
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
-        0/0 |       FAIL │ runpy ./plan.py
-────────────────────────────────── Step info ───────────────────────────────────
-Command               stepup act runpy ./plan.py
-Return code           1
-──────────────────────────────── Standard error ────────────────────────────────
-(stripped)
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |    WARNING │ 1 step(s) remained pending due to ...
+─────────────────────────── Incomplete requirements ────────────────────────────
+             AWAITED  subdir
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Action                runsh cat subdir
+Working directory     ./
+Inputs       AWAITED  (subdir)
 ────────────────────────────────────────────────────────────────────────────────
-        0/0 |    WARNING │ 1 step(s) failed.
-        0/0 |    WARNING │ Skipping file cleanup due to incomplete build
-        0/0 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-        0/0 |      PHASE │ watch
-        0/0 |   DIRECTOR │ Stopping workers
-        0/0 |   DIRECTOR │ See you!
+        1/2 |    WARNING │ Skipping file cleanup due to incomplete build
+        1/2 |    WARNING │ Check logs: .stepup/warning.log
+        1/2 |      PHASE │ watch
+        1/2 |   DIRECTOR │ Stopping workers
+        1/2 |   DIRECTOR │ See you!

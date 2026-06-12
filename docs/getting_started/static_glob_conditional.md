@@ -41,7 +41,7 @@ Create the following `plan.py`:
 
 For this example, the script `expensive.py` is not expensive at all.
 It just serves as an illustration of a more realistic scenario
-where this script may do some non-tritial work.
+where this script may do some non-trivial work.
 In this example, `expensive.py` just computes the average of all numbers in `dataset/bigfile.txt`
 and writes out the result to `average.txt`:
 
@@ -86,9 +86,9 @@ Since the file `average.txt` did not change, the step `cat average.txt` is skipp
 
 ## Practical Considerations
 
-- For simplity's sake, the example involves few calculations.
+- For simplicity's sake, the example involves few calculations.
   In a more realistic setting, the step `cat average.txt` is replaced by several scripts that
-  make visualizations of the information extracted from the large dataset.
+  create visualizations of the information extracted from the large dataset.
   Tweaking these visualizations for clarity usually takes some iterations,
   for which access to the large dataset is not necessary.
 

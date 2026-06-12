@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-from stepup.core.api import getenv, mkdir, plan, static
+from stepup.core.api import getenv, plan, static
 
-static("www/", "www/plan.py")
+static("www/plan.py")
 PUBLIC = getenv("PUBLIC", back=True)
-mkdir(PUBLIC)
-mkdir(PUBLIC / "www")
 plan("www/")

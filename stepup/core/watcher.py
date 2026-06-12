@@ -20,13 +20,14 @@
 """Watch for file changes and update the workflow accordingly."""
 
 import asyncio
+import logging
 import sys
 
 import attrs
 from path import Path
 
-from .asyncio import stoppable_iterator
-from .enums import Change, DirWatch
+from .asyncio import stoppable_iterator, wait_for_events
+from .enums import Change
 from .file import File, FileState
 from .reporter import ReporterClient
 from .utils import DBLock
@@ -50,6 +51,9 @@ else:
 __all__ = ("WATCHER_AVAILABLE", "Watcher")
 
 
+logger = logging.getLogger(__name__)
+
+
 @attrs.define
 class Watcher:
     workflow: Workflow = attrs.field()
@@ -65,11 +69,10 @@ class Watcher:
     """The reporter to send progress information to."""
 
     dir_queue: asyncio.Queue = attrs.field()
-    """Queue to receive directories to watch (or stop watching) for file events.
+    """Queue to receive directories to watch for file events.
 
-    It holds tuples of a `DirWatch` flag and a path.
-    If the flag is `DirWatch.START`, the path is a directory to add to the watcher.
-    In case of `DirWatch.STOP`, it will be removed from the watched directories.
+    The current implementation can only start watching new directories,
+    and does not support stopping watching directories.
     """
 
     active: asyncio.Event = attrs.field(factory=asyncio.Event)
@@ -127,11 +130,18 @@ class Watcher:
         """
         async with AsyncInotifyWrapper(self.dir_queue) as wrapper:
             while not stop_event.is_set():
-                await self.resume.wait()
-                await self.watch_changes(wrapper.change_queue)
+                await wait_for_events(
+                    self.resume,
+                    stop_event,
+                    wrapper.stop_event,
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                if stop_event.is_set() or wrapper.stop_event.is_set():
+                    break
+                await self.watch_changes(wrapper.change_queue, wrapper.stop_event)
                 self.resume.clear()
 
-    async def watch_changes(self, change_queue: asyncio.Queue):
+    async def watch_changes(self, change_queue: asyncio.Queue, stop_event: asyncio.Event):
         """Watch file events. They are sent to the workflow right before the runner is restarted."""
         # Reset the state of the watcher: changes are not processed yet.
         # Other parts of StepUp can wait for file changes.
@@ -191,22 +201,21 @@ class Watcher:
                 self.updated.discard(path)
                 for event in self.files_changed_events:
                     event.set()
-        elif change == Change.UPDATED and path not in self.updated:  # noqa: SIM102
+        elif change == Change.UPDATED and path not in self.updated:
             if self.workflow.is_relevant(path):
                 await self.reporter("UPDATED", path)
                 self.deleted.discard(path)
                 self.updated.add(path)
                 for event in self.files_changed_events:
                     event.set()
-                # When a directory is added, create a watcher early,
-                # to catch events in this directory.
-                # All files already present are also considered to be updated.
-                if path.endswith("/"):
-                    self.dir_queue.put_nowait((DirWatch.START, path))
-                    for sub_path in path.iterdir():
-                        if sub_path.is_dir():
-                            sub_path = sub_path / ""
-                        await self.record_change(Change.UPDATED, sub_path)
+        elif change == Change.DELETED_PARENT:
+            for sub_path in self.workflow.iter_relevant(path):
+                if sub_path not in self.deleted:
+                    await self.reporter("DELETED", sub_path)
+                    self.deleted.add(sub_path)
+                    self.updated.discard(sub_path)
+                    for event in self.files_changed_events:
+                        event.set()
 
 
 @attrs.define
@@ -214,11 +223,10 @@ class AsyncInotifyWrapper:
     """Interface between a `Watcher` instance and the `asyncinotify` library."""
 
     dir_queue: asyncio.Queue = attrs.field()
-    """The dir_queue provides directories to (un)watch.
+    """The dir_queue provides directories to watch.
 
-    Each item is a tuple `(dir_watch, path)`,
-    where `dir_watch` is an instance of `DirWatch`
-    to specify whether to start or stop watching a directory.
+    Only new watches can be installed. Existing watches cannot be removed,
+    but will be removed automatically when the directory is deleted.
     """
 
     inotify: Inotify | None = attrs.field(init=False, default=None)
@@ -227,7 +235,7 @@ class AsyncInotifyWrapper:
     stop_event: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
     """Internal stop event, called when context is closed."""
 
-    watches: dict[str, Watch] = attrs.field(init=False, factory=dict)
+    watches: dict[Path, Watch] = attrs.field(init=False, factory=dict)
     """Directory of watches created with asyncinotify"""
 
     change_queue: asyncio.Queue = attrs.field(init=False, factory=asyncio.Queue)
@@ -245,8 +253,14 @@ class AsyncInotifyWrapper:
         """Start using the Inotify Wrapper."""
         self.inotify = Inotify()
         self.stop_event.clear()
-        self.dir_loop_task = asyncio.create_task(self.dir_loop())
-        self.change_loop_task = asyncio.create_task(self.change_loop())
+        self.dir_loop_task = asyncio.create_task(
+            self.dir_loop(), name="AsyncInotifyWrapper.dir_loop"
+        )
+        self.change_loop_task = asyncio.create_task(
+            self.change_loop(), name="AsyncInotifyWrapper.change_loop"
+        )
+        self.dir_loop_task.add_done_callback(self._signal_stop_on_error)
+        self.change_loop_task.add_done_callback(self._signal_stop_on_error)
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
@@ -257,6 +271,16 @@ class AsyncInotifyWrapper:
         self.change_loop_task = None
         self.inotify.close()
         self.inotify = None
+
+    def _signal_stop_on_error(self, task: asyncio.Task):
+        """Wake the parent loop when a background task fails."""
+        if task.cancelled():
+            logger.info("Inotify task %s cancelled, stopping watcher", task.get_name())
+            return
+        exception = task.exception()
+        if exception is not None:
+            logger.error("Inotify task %s raised an exception: %s", task.get_name(), exception)
+            self.stop_event.set()
 
     async def dir_loop(self):
         """Add or remove directories to watch, as soon as they are created or defined static.
@@ -269,43 +293,78 @@ class AsyncInotifyWrapper:
         stop_event
             Event to interrupt processing items from the dir_queue.
         """
-        async for dir_watch, path in stoppable_iterator(self.dir_queue.get, self.stop_event):
-            if dir_watch == DirWatch.STOP:
-                watch = self.watches.pop(path, None)
-                if watch is not None:
-                    self.inotify.rm_watch(watch)
-            else:
-                if not path.is_dir():
-                    raise FileNotFoundError(f"Cannot watch non-existing directory: {path}")
-                if path not in self.watches:
-                    self.watches[path] = self.inotify.add_watch(
-                        path,
-                        (
-                            Mask.MODIFY
-                            | Mask.CREATE
-                            | Mask.DELETE
-                            | Mask.CLOSE_WRITE
-                            | Mask.MOVE
-                            | Mask.MOVE_SELF
-                            | Mask.DELETE_SELF
-                            | Mask.UNMOUNT
-                            | Mask.ATTRIB
-                            | Mask.IGNORED
-                        ),
-                    )
+        async for path in stoppable_iterator(self.dir_queue.get, self.stop_event):
+            path = path.normpath()
+            if not path.is_dir():
+                raise FileNotFoundError(f"Cannot watch non-directory: {path}")
+            while path not in self.watches:
+                if path.name == "..":
+                    break
+                if path == "":
+                    path = Path(".")
+                self._install_watch(path)
+                if path == ".":
+                    break
+                path = path.parent
 
     async def change_loop(self):
         """Collect from INotify and translate then to items for the change_queue."""
         async for event in stoppable_iterator(self.inotify.get, self.stop_event):
-            # Drop invalid watches (deleted or unmounted directories)
+            # Drop invalid watches
+            path = Path(event.path)
             if event.mask & Mask.IGNORED:
-                self.watches.pop(f"{event.watch.path}/", None)
+                self.watches[path] = None
+                continue
+            # Determine the type of change
             change = (
                 Change.DELETED
                 if event.mask & (Mask.DELETE | Mask.DELETE_SELF | Mask.MOVED_FROM | Mask.MOVE_SELF)
                 else Change.UPDATED
             )
-            path = Path(event.path)
+            logger.debug("Received inotify event: %s %s", change.name, event.path)
             if event.mask & Mask.ISDIR:
-                path = path / ""
-            self.change_queue.put_nowait((change, path))
+                # For directories, we only care about updating the inotify watches.
+                if change == Change.DELETED:
+                    # Unset the watch for the directory.
+                    # We do not remove it from the watches dict,
+                    # so we can check for it when the directory reappears.
+                    watch = self.watches.get(path)
+                    if watch is not None:
+                        self.inotify.rm_watch(watch)
+                        self.watches[path] = None
+                        self.change_queue.put_nowait((Change.DELETED_PARENT, path))
+                else:
+                    paths = [path]
+                    while len(paths) > 0:
+                        path = paths.pop(0)
+                        watch = self.watches.get(path, "default")
+                        if watch is None:
+                            # When a directory is added that was once watched,
+                            # recreate a watcher right away.
+                            self._install_watch(path)
+                        if watch != "default":
+                            # Events of files created in this directory may have been missed.
+                            for sub_path in path.iterdir():
+                                if sub_path.is_file():
+                                    self.change_queue.put_nowait((Change.UPDATED, sub_path))
+                                elif sub_path.is_dir():
+                                    paths.append(sub_path)
+            else:
+                self.change_queue.put_nowait((change, path))
+
+    def _install_watch(self, path: str | Path):
+        self.watches[Path(path)] = self.inotify.add_watch(
+            path,
+            (
+                Mask.MODIFY
+                | Mask.CREATE
+                | Mask.DELETE
+                | Mask.CLOSE_WRITE
+                | Mask.MOVE
+                | Mask.MOVE_SELF
+                | Mask.DELETE_SELF
+                | Mask.UNMOUNT
+                | Mask.ATTRIB
+                | Mask.IGNORED
+            ),
+        )

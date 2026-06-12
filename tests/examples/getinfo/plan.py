@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from stepup.core.api import runpy, static
 
-static("sub/getinfo.py", "sub/", "sub/inp0.txt", "README.txt", "inp1.txt")
+static("sub/getinfo.py", "sub/inp0.txt", "README.txt", "inp1.txt")
 runpy(
     "./getinfo.py",
     workdir="sub",

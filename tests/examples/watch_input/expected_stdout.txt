@@ -15,8 +15,7 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                runsh cp input.txt output.txt
 Working directory     ./
-Inputs        STATIC  ./
-             MISSING  input.txt
+Inputs       MISSING  input.txt
 Outputs     OUTDATED  output.txt
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ Skipping file cleanup due to incomplete build

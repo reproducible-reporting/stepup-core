@@ -1,22 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:bar.txt
-            supplies   file:foo.txt
-            supplies   file:plan.py
-            supplies   step:copy foo.txt bar.txt
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh echo hello > foo.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -24,7 +12,6 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   step:copy foo.txt bar.txt
              creates   step:runsh echo hello > foo.txt
@@ -34,14 +21,12 @@ step:runsh echo hello > foo.txt
            mandatory = REQUIRED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
              creates   file:foo.txt
             supplies   file:foo.txt
 
 file:foo.txt
                state = BUILT
           created by   step:runsh echo hello > foo.txt
-            consumes   file:./
             consumes   step:runsh echo hello > foo.txt
             supplies   step:copy foo.txt bar.txt
 
@@ -49,7 +34,6 @@ step:copy foo.txt bar.txt
                state = SUCCEEDED
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:foo.txt
              creates   file:bar.txt
             supplies   file:bar.txt
@@ -57,5 +41,4 @@ step:copy foo.txt bar.txt
 file:bar.txt
                state = BUILT
           created by   step:copy foo.txt bar.txt
-            consumes   file:./
             consumes   step:copy foo.txt bar.txt

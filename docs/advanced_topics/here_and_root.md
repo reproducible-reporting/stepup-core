@@ -1,18 +1,18 @@
 # HERE and ROOT Variables
 
 When a worker runs a step, it defines several environment variables,
-including `HERE` and `ROOT`, which can be relevant for writing advanced scripts.
+including `${HERE}` and `${ROOT}`, which can be relevant for writing advanced scripts.
 (The workers also define variables starting with `STEPUP_`,
 but these are only useful to StepUp itself, not to end users.)
 
 The two variables are defined as follows:
 
-- `HERE` contains the relative path from the directory where StepUp was started
+- `${HERE}` contains the relative path from the directory where StepUp was started
   to the current working directory of the step.
-- `ROOT` contains the opposite: the relative directory from the current working directory
+- `${ROOT}` contains the opposite: the relative directory from the current working directory
   to the directory where StepUp was started.
 
-Hence, `HERE/ROOT` and `ROOT/HERE` normalize to the current directory: `./`.
+Hence, `${HERE}/${ROOT}` and `${ROOT}/${HERE}` normalize to the current directory: `./`.
 
 These variables can be useful in the following cases:
 
@@ -58,7 +58,7 @@ You should get the following terminal output:
 The top-level `plan.py` provides some infrastructure:
 some static files and creating the public directory where the outputs will be created.
 
-The script `sub/plan.py` uses the `ROOT` and `HERE` variables in a way
+The script `sub/plan.py` uses the `${ROOT}` and `${HERE}` variables in a way
 that is independent of the location of this `sub/plan.py`.
 It may therefore be fixed in an environment variable, for example:
 

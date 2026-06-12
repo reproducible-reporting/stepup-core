@@ -1,51 +1,24 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:current_step_info.json
-            supplies   file:plan.py
-            supplies   file:work/
-            supplies   step:copy work/test.csv work/copy.csv
-            supplies   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
-            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
-             creates   file:work/
              creates   file:work/generate.py
              creates   step:copy work/test.csv work/copy.csv
              creates   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
 
-file:work/
-               state = STATIC
-          created by   step:runpy ./plan.py
-            consumes   file:./
-            supplies   file:work/config.json
-            supplies   file:work/copy.csv
-            supplies   file:work/generate.py
-            supplies   file:work/test.csv
-            supplies   step:copy work/test.csv work/copy.csv
-            supplies   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
-            supplies   step:runpy ./generate.py run  # wd=work/
-
 file:work/generate.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:work/
             supplies   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
             supplies   step:runpy ./generate.py run  # wd=work/
 
@@ -53,8 +26,6 @@ step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
-            consumes   file:work/
             consumes   file:work/generate.py
              creates   file:current_step_info.json
              creates   file:work/config.json
@@ -64,14 +35,11 @@ step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
 file:current_step_info.json
                state = BUILT
           created by   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
-            consumes   file:./
             consumes   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
 
 step:copy work/test.csv work/copy.csv
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
-            consumes   file:work/
             consumes   file:work/test.csv
              creates   file:work/copy.csv
             supplies   file:work/copy.csv
@@ -79,27 +47,23 @@ step:copy work/test.csv work/copy.csv
 file:work/test.csv
                state = BUILT
           created by   step:runpy ./generate.py run  # wd=work/
-            consumes   file:work/
             consumes   step:runpy ./generate.py run  # wd=work/
             supplies   step:copy work/test.csv work/copy.csv
 
 file:work/copy.csv
                state = BUILT
           created by   step:copy work/test.csv work/copy.csv
-            consumes   file:work/
             consumes   step:copy work/test.csv work/copy.csv
 
 file:work/config.json
                state = STATIC
           created by   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
-            consumes   file:work/
             supplies   step:runpy ./generate.py run  # wd=work/
 
 step:runpy ./generate.py run  # wd=work/
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./generate.py plan --step-info=../current_step_info.json  # wd=work/
-            consumes   file:work/
             consumes   file:work/config.json
             consumes   file:work/generate.py
              creates   file:work/test.csv

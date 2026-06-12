@@ -1,20 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:bar.txt
-            supplies   file:plan.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh echo foo > bar.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -22,7 +12,6 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
         defines pool = random=1
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   step:runsh echo foo > bar.txt
 
@@ -30,12 +19,10 @@ step:runsh echo foo > bar.txt
                state = SUCCEEDED
                 pool = random
           created by   step:runpy ./plan.py
-            consumes   file:./
              creates   file:bar.txt
             supplies   file:bar.txt
 
 file:bar.txt
                state = BUILT
           created by   step:runsh echo foo > bar.txt
-            consumes   file:./
             consumes   step:runsh echo foo > bar.txt

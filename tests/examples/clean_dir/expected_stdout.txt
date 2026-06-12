@@ -2,20 +2,17 @@
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
-        1/5 |    SUCCESS │ runpy ./plan.py
-        1/5 |      START │ mkdir sub/
-        2/5 |    SUCCESS │ mkdir sub/
-        2/5 |      START │ runsh echo hello > sub/inp.txt
-        3/5 |    SUCCESS │ runsh echo hello > sub/inp.txt
-        3/5 |      START │ copy sub/inp.txt sub/tmp.txt
-        4/5 |    SUCCESS │ copy sub/inp.txt sub/tmp.txt
-        4/5 |      START │ copy sub/tmp.txt sub/out.txt
-        5/5 |    SUCCESS │ copy sub/tmp.txt sub/out.txt
-        5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        5/5 |      PHASE │ watch
-        5/5 |    DELETED │ sub/tmp.txt
-        5/5 |    DELETED │ sub/out.txt
-        5/5 |    DELETED │ sub/inp.txt
-        5/5 |    DELETED │ sub/
-        5/5 |   DIRECTOR │ Stopping workers
-        5/5 |   DIRECTOR │ See you!
+        1/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |      START │ runsh echo hello > sub/inp.txt
+        2/4 |    SUCCESS │ runsh echo hello > sub/inp.txt
+        2/4 |      START │ copy sub/inp.txt sub/tmp.txt
+        3/4 |    SUCCESS │ copy sub/inp.txt sub/tmp.txt
+        3/4 |      START │ copy sub/tmp.txt sub/out.txt
+        4/4 |    SUCCESS │ copy sub/tmp.txt sub/out.txt
+        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
+        4/4 |      PHASE │ watch
+        4/4 |    DELETED │ sub/tmp.txt
+        4/4 |    DELETED │ sub/out.txt
+        4/4 |    DELETED │ sub/inp.txt
+        4/4 |   DIRECTOR │ Stopping workers
+        4/4 |   DIRECTOR │ See you!

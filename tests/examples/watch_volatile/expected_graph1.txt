@@ -1,39 +1,26 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:plan.py
-            supplies   file:vol.txt
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh echo blub blub > vol.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   step:runsh echo blub blub > vol.txt
 
 step:runsh echo blub blub > vol.txt
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
              creates   file:vol.txt
             supplies   file:vol.txt
 
 file:vol.txt
                state = VOLATILE
           created by   step:runsh echo blub blub > vol.txt
-            consumes   file:./
             consumes   step:runsh echo blub blub > vol.txt

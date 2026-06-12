@@ -6,7 +6,7 @@
         1/2 |      START │ runpy ./work.py
         1/2 | RESCHEDULE │ runpy ./work.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
-Missing inputs and/or required directories:
+Missing inputs:
 inp2.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 First input
@@ -17,8 +17,7 @@ First input
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                runpy ./work.py
 Working directory     ./
-Inputs        STATIC  ./
-              STATIC  inp1.txt [amended]
+Inputs        STATIC  inp1.txt [amended]
              AWAITED  (inp2.txt) [amended]
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ Skipping file cleanup due to incomplete build

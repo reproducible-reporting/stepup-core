@@ -7,7 +7,7 @@ even if input files have not changed.
 
 One can only change an environment variable by stopping StepUp,
 changing the variable, and then starting StepUp again.
-One cannot modify environment variables while StepUp is running.
+Environment variables cannot be modified while StepUp is running.
 
 ## Example
 

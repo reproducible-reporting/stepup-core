@@ -1,5 +1,4 @@
         0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ inp2.txt (digest 55af8bcf ➜ 705a962e, size 6 ➜ 16)
@@ -8,17 +7,14 @@
         2/3 |      PHASE │ run
         2/3 |     NOSKIP │ runsh echo word2 > inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest dffe40ae, out_digest e27820eb ➜ c967283e
+Modified step hash   explained, inp_digest 6cd40331, out_digest e27820eb ➜ c967283e
 Modified out hash    inp2.txt (digest 55af8bcf ➜ 705a962e, size 6 ➜ 16)
-────────────────────────────── Remained the same ───────────────────────────────
-Same inp hash        ./
 ────────────────────────────────────────────────────────────────────────────────
         2/3 |      START │ runsh echo word2 > inp2.txt
         2/3 |    SUCCESS │ runsh echo word2 > inp2.txt
         2/3 |       SKIP │ runpy ./work.py
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 5b05adbe, out_digest 50adc10b
-Same inp hash        ./
+Same step hash       explained, inp_digest 5310cf0c, out_digest 50adc10b
 Same inp hash        inp1.txt
 Same inp hash        inp2.txt
 Same env var         STEPUP_PATH_FILTER (unset)

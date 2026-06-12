@@ -4,13 +4,10 @@
         0/1 |      START │ runpy ./plan.py
        1/11 |    SUCCESS │ runpy ./plan.py
 ─────────────────────────────── Standard output ────────────────────────────────
-Planning ch 1 intro
 Planning sec 1 blabla
-Planning sec 2 some-more
-Planning ch 2 theory
+Planning sec 2-some more
 Planning sec 2 advanced
 Planning sec 1 basics
-Planning ch 3 conclusions
 Planning sec 2 outlook
 Planning sec 1 summary
 ────────────────────────────────────────────────────────────────────────────────
@@ -26,14 +23,14 @@ Planning sec 1 summary
        6/11 |    SUCCESS │ copy ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
        6/11 |      START │ copy ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
        7/11 |    SUCCESS │ copy ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
-       7/11 |      START │ runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
-       8/11 |    SUCCESS │ runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
-       8/11 |      START │ runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
-       9/11 |    SUCCESS │ runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
-       9/11 |      START │ runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
-      10/11 |    SUCCESS │ runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/ch-2-compiled.md
-      10/11 |      START │ runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
-      11/11 |    SUCCESS │ runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+       7/11 |      START │ runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/compiled.md
+       8/11 |    SUCCESS │ runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/compiled.md
+       8/11 |      START │ runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/compiled.md
+       9/11 |    SUCCESS │ runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/compiled.md
+       9/11 |      START │ runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/compiled.md
+      10/11 |    SUCCESS │ runsh cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/compiled.md
+      10/11 |      START │ runsh cat ch-1-intro/compiled.md ch-2-theory/compiled.md ch-3-conclusions/compiled.md > book.md
+      11/11 |    SUCCESS │ runsh cat ch-1-intro/compiled.md ch-2-theory/compiled.md ch-3-conclusions/compiled.md > book.md
       11/11 |   DIRECTOR │ Trying to delete 0 outdated output(s)
       11/11 |      PHASE │ watch
       11/11 |    DELETED │ ch-2-theory/sec-2-2-advanced.txt
@@ -42,13 +39,10 @@ Planning sec 1 summary
         0/1 |      START │ runpy ./plan.py
        1/11 |    SUCCESS │ runpy ./plan.py
 ─────────────────────────────── Standard output ────────────────────────────────
-Planning ch 1 intro
 Planning sec 1 blabla
-Planning sec 2 some-more
-Planning ch 2 theory
+Planning sec 2-some more
 Planning sec 1 basics
 Planning sec 2 original
-Planning ch 3 conclusions
 Planning sec 2 outlook
 Planning sec 1 summary
 ────────────────────────────────────────────────────────────────────────────────
@@ -59,12 +53,12 @@ Planning sec 1 summary
        5/11 |       SKIP │ copy ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
        6/11 |      START │ copy ch-2-theory/sec-2-2-original.txt ch-2-theory/sec-2-2-original.md
        7/11 |    SUCCESS │ copy ch-2-theory/sec-2-2-original.txt ch-2-theory/sec-2-2-original.md
-       7/11 |       SKIP │ runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/ch-3-compiled.md
-       8/11 |       SKIP │ runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/ch-1-compiled.md
-       9/11 |      START │ runsh cat ch-2-theory/sec-2-1-basics.md ch-2-theory/sec-2-2-original.md > ch-2-theory/ch-2-compiled.md
-      10/11 |    SUCCESS │ runsh cat ch-2-theory/sec-2-1-basics.md ch-2-theory/sec-2-2-original.md > ch-2-theory/ch-2-compiled.md
-      10/11 |      START │ runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
-      11/11 |    SUCCESS │ runsh cat ch-1-intro/ch-1-compiled.md ch-2-theory/ch-2-compiled.md ch-3-conclusions/ch-3-compiled.md > book.md
+       7/11 |       SKIP │ runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/compiled.md
+       8/11 |       SKIP │ runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/compiled.md
+       9/11 |      START │ runsh cat ch-2-theory/sec-2-1-basics.md ch-2-theory/sec-2-2-original.md > ch-2-theory/compiled.md
+      10/11 |    SUCCESS │ runsh cat ch-2-theory/sec-2-1-basics.md ch-2-theory/sec-2-2-original.md > ch-2-theory/compiled.md
+      10/11 |      START │ runsh cat ch-1-intro/compiled.md ch-2-theory/compiled.md ch-3-conclusions/compiled.md > book.md
+      11/11 |    SUCCESS │ runsh cat ch-1-intro/compiled.md ch-2-theory/compiled.md ch-3-conclusions/compiled.md > book.md
       11/11 |   DIRECTOR │ Trying to delete 1 outdated output(s)
       11/11 |      CLEAN │ ch-2-theory/sec-2-2-advanced.md
       11/11 |      PHASE │ watch

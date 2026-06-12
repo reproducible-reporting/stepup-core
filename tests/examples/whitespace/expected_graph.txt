@@ -1,35 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:README NOW.txt
-            supplies   file:call is cool.py
-            supplies   file:call is cool_out.json
-            supplies   file:plan.py
-            supplies   file:script is cool.py
-            supplies   file:the road to hell is paved with whitespace.txt
-            supplies   file:white space leaves a lot of room for mistakes.txt
-            supplies   step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-            supplies   step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
-            supplies   step:runpy './script is cool.py' plan
-            supplies   step:runpy './script is cool.py' run
-            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:README NOW.txt
              creates   file:call is cool.py
@@ -41,27 +22,23 @@ step:runpy ./plan.py
 file:README NOW.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
             supplies   step:runpy './script is cool.py' run
 
 file:call is cool.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
 
 file:script is cool.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy './script is cool.py' plan
             supplies   step:runpy './script is cool.py' run
 
 step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:README NOW.txt
              creates   file:white space leaves a lot of room for mistakes.txt
             supplies   file:white space leaves a lot of room for mistakes.txt
@@ -69,14 +46,12 @@ step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
 file:white space leaves a lot of room for mistakes.txt
                state = BUILT
           created by   step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-            consumes   file:./
             consumes   step:copy 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
 
 step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:call is cool.py
              creates   file:call is cool_out.json
             supplies   file:call is cool_out.json [amended]
@@ -85,21 +60,18 @@ step:runpy './script is cool.py' plan
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:script is cool.py
              creates   step:runpy './script is cool.py' run
 
 file:call is cool_out.json
                state = BUILT
           created by   step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
-            consumes   file:./
             consumes   step:runpy './call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
 
 step:runpy './script is cool.py' run
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy './script is cool.py' plan
-            consumes   file:./
             consumes   file:README NOW.txt
             consumes   file:script is cool.py
              creates   file:the road to hell is paved with whitespace.txt
@@ -108,5 +80,4 @@ step:runpy './script is cool.py' run
 file:the road to hell is paved with whitespace.txt
                state = BUILT
           created by   step:runpy './script is cool.py' run
-            consumes   file:./
             consumes   step:runpy './script is cool.py' run

@@ -1,0 +1,28 @@
+root:
+             creates   file:plan.py
+             creates   step:runpy ./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            supplies   step:runpy ./plan.py
+
+step:runpy ./plan.py
+               state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   root:
+            consumes   file:plan.py
+             creates   step:runpy ./demo.py
+
+step:runpy ./demo.py
+               state = FAILED
+               dirty = yes
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   step:runpy ./plan.py
+             creates   file:subdir/foo.out
+            supplies   file:subdir/foo.out [amended]
+
+file:subdir/foo.out
+               state = AWAITED
+          created by   step:runpy ./demo.py
+            consumes   step:runpy ./demo.py

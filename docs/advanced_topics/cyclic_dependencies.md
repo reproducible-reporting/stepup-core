@@ -5,9 +5,8 @@ Formally, such a loop is defined as a set of edges that can be followed from sup
 such that one arrives back at the starting point.
 If you construct cyclic dependencies in a `plan.py`, an error message is generated.
 
-In theory, one could also have cycles in the provenance graph,
-but it is not possible to create such loops with the functions in
-[stepup.core.api](../reference/stepup.core.api.md).
+The [stepup.core.api](../reference/stepup.core.api.md) enforces acyclic dependencies
+in the provenance graph and cannot be introduced accidentally by the user.
 
 ## Example
 

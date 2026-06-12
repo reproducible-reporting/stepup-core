@@ -1,29 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:bar.log
-            supplies   file:bar.txt
-            supplies   file:foo.txt
-            supplies   file:plan.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:foo.txt
              creates   step:runpy ./work.py
@@ -31,7 +18,6 @@ step:runpy ./plan.py
 file:foo.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work.py
 
 step:runpy ./work.py
@@ -40,7 +26,6 @@ step:runpy ./work.py
                      = INP_VAR_TEST_STEPUP_FOO [amended]
                      = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:foo.txt [amended]
              creates   file:bar.log
              creates   file:bar.txt
@@ -50,11 +35,9 @@ step:runpy ./work.py
 file:bar.txt
                state = BUILT
           created by   step:runpy ./work.py
-            consumes   file:./
             consumes   step:runpy ./work.py
 
 file:bar.log
                state = VOLATILE
           created by   step:runpy ./work.py
-            consumes   file:./
             consumes   step:runpy ./work.py

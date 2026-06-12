@@ -29,7 +29,7 @@ from rich.console import Console
 from .cascade import DROP_CONSUMERS, INITIAL_CONSUMERS, RECURSE_CONSUMERS
 from .enums import FileState
 from .hash import FileHash
-from .sqlite3 import copy_db_in_memory
+from .sqlite3 import copy_db_in_memory, escape_like_pattern
 from .utils import mynormpath, translate, translate_back
 
 
@@ -108,8 +108,11 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
     args
         The command-line arguments
     """
+    # Find all paths matching the given paths
+    tr_matching_paths = search_matching_paths(con, tr_paths)
+
     # Find all related output paths
-    tr_consuming_paths = search_consuming_paths(con, tr_paths, not args.all)
+    tr_consuming_paths = search_consuming_paths(con, tr_matching_paths, not args.all)
     tr_consuming_paths.sort(reverse=True)
 
     # Loop over paths, remove and collect info for stdout
@@ -117,6 +120,7 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
     if not args.commit:
         console.print("[yellow]# Note: No files or directories are actually removed.[/]")
         console.print("[yellow]# Use the --commit option to execute the removals.[/]")
+    parents = set()
     for tr_consuming_path, state, orphan, old_file_hash in tr_consuming_paths:
         # translate_back to local path
         lo_consuming_path = translate_back(tr_consuming_path)
@@ -137,17 +141,14 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
 
             # Remove if it is safe to do so
             if args.commit:
-                if lo_consuming_path.endswith("/"):
-                    lo_consuming_path.rmdir_p()
-                else:
-                    lo_consuming_path.remove_p()
+                lo_consuming_path.remove_p()
+                parents.add(lo_consuming_path.parent)
 
         # Check removal
         still_there = args.commit and lo_consuming_path.exists()
-        is_dir = lo_consuming_path.endswith("/")
         parts = [
             "# " if missing else "",
-            "[green]rmdir[/] " if is_dir else "[cyan]rm[/] ",
+            "[cyan]rm[/] ",
             lo_consuming_path,
         ]
         if missing or still_there or changed or orphan:
@@ -163,6 +164,23 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
             parts.append("[/]")
         console.print("".join(parts))
 
+    # Remove empty parent directories
+    for parent in sorted(parents):
+        while True:
+            if (
+                parent.is_dir()
+                and str(parent) not in (".", "./", "/")
+                and not any(parent.iterdir())
+            ):
+                console.print(f"[cyan]rmdir[/] {parent}  [grey]# Empty parent directory[/]")
+                if args.commit:
+                    parent.rmdir()
+                    parent = parent.parent
+                else:
+                    break
+            else:
+                break
+
     if not tr_consuming_paths:
         console.print("# No outputs found to be cleaned.")
 
@@ -171,6 +189,47 @@ def fmtnum(i: int):
     if i == 0:
         return "[grey]0[/]"
     return str(i)
+
+
+SQL_MATCH_DIR = """
+SELECT label FROM node JOIN file ON node.i = file.node
+WHERE label LIKE ? ESCAPE '\\'
+"""
+
+SQL_MATCH_FILE = """
+SELECT label FROM node JOIN file ON node.i = file.node
+WHERE label = ?
+"""
+
+
+def search_matching_paths(con: sqlite3.Connection, tr_paths: set[str]) -> set[str]:
+    """Find all paths that match the given paths.
+
+    Parameters
+    ----------
+    con
+        The database connection.
+    tr_paths
+        The paths to consider for the cleanup.
+
+    Returns
+    -------
+    matching_paths
+        A set of paths that match the given paths.
+        This only includes paths that are (volatile) outputs of steps.
+    """
+    tr_matching_paths = set()
+    for tr_path in tr_paths:
+        if tr_path.endswith("/"):
+            if tr_path.startswith("./"):
+                tr_path = tr_path[2:]
+            pattern = f"{escape_like_pattern(tr_path)}%"
+            sql = SQL_MATCH_DIR
+        else:
+            pattern = tr_path
+            sql = SQL_MATCH_FILE
+        tr_matching_paths.update(row[0] for row in con.execute(sql, (pattern,)))
+    return tr_matching_paths
 
 
 CREATE_INITIAL_PATHS = "CREATE TABLE temp.initial_path(path TEXT PRIMARY KEY) WITHOUT ROWID"

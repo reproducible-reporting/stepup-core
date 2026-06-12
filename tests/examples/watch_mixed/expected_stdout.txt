@@ -20,8 +20,7 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                runsh cp copy1.txt copy2.txt
 Working directory     ./
-Inputs        STATIC  ./
-            OUTDATED  (copy1.txt)
+Inputs      OUTDATED  (copy1.txt)
 Outputs     OUTDATED  copy2.txt
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ Skipping file cleanup due to incomplete build

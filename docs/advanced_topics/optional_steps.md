@@ -25,7 +25,7 @@ These are supported by StepUp as follows:
   as in the [Static Glob](../getting_started/static_glob.md) tutorial,
   of which not all steps are required for the end result.
   Use this feature wisely:
-  It is obviously inefficient to define a few thousand steps of which only a handful are needed.
+  Defining thousands of steps when only a few are actually used, is obviously inefficient.
 
 - As shown in the [next tutorial](blocked_steps.md), one may also **block steps**,
   as a temporary measure to speed up the edit-build cycle.

@@ -1,0 +1,50 @@
+root:
+             creates   file:plan.py
+             creates   step:runpy ./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            supplies   step:runpy ./plan.py
+
+step:runpy ./plan.py
+               state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   root:
+            consumes   file:plan.py
+             creates   file:sub/plan.py
+             creates   step:runpy ./plan.py  # wd=sub/
+
+file:sub/plan.py
+               state = STATIC
+          created by   step:runpy ./plan.py
+            supplies   step:runpy ./plan.py  # wd=sub/
+
+step:runpy ./plan.py  # wd=sub/
+               state = SUCCEEDED
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   step:runpy ./plan.py
+            consumes   file:sub/plan.py
+             creates   sr:sub/data/
+             creates   step:copy data/used.txt copy.txt  # wd=sub/
+
+sr:sub/data/
+          created by   step:runpy ./plan.py  # wd=sub/
+             creates   file:sub/data/used.txt
+
+step:copy data/used.txt copy.txt  # wd=sub/
+               state = SUCCEEDED
+          created by   step:runpy ./plan.py  # wd=sub/
+            consumes   file:sub/data/used.txt
+             creates   file:sub/copy.txt
+            supplies   file:sub/copy.txt
+
+file:sub/data/used.txt
+               state = STATIC
+          created by   sr:sub/data/
+            supplies   step:copy data/used.txt copy.txt  # wd=sub/
+
+file:sub/copy.txt
+               state = BUILT
+          created by   step:copy data/used.txt copy.txt  # wd=sub/
+            consumes   step:copy data/used.txt copy.txt  # wd=sub/

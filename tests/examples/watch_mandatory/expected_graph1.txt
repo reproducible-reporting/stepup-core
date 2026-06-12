@@ -1,27 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:foo.txt
-            supplies   file:plan.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh echo hello > foo.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   step:runsh echo hello > foo.txt
 
@@ -30,12 +19,10 @@ step:runsh echo hello > foo.txt
            mandatory = NO
                dirty = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
              creates   file:foo.txt
             supplies   file:foo.txt
 
 file:foo.txt
                state = AWAITED
           created by   step:runsh echo hello > foo.txt
-            consumes   file:./
             consumes   step:runsh echo hello > foo.txt

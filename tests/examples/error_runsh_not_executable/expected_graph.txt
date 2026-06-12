@@ -1,27 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:plan.py
-            supplies   file:simple.sh
-            supplies   step:runpy ./plan.py
-            supplies   step:runsh ./simple.sh
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:simple.sh
              creates   step:runsh ./simple.sh
@@ -29,12 +18,10 @@ step:runpy ./plan.py
 file:simple.sh
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runsh ./simple.sh
 
 step:runsh ./simple.sh
                state = FAILED
                dirty = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:simple.sh

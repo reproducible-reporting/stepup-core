@@ -3,7 +3,7 @@
 In principle, you can incorporate any Python script into a StepUp workflow
 using the [`runsh()`][stepup.core.api.runsh] function.
 However, it is recommended to use the [`runpy()`][stepup.core.api.runpy] function instead.
-It will automatically detect thje modules imported by the script,
+It will automatically detect the modules imported by the script,
 and if they correspond to local files in your workflow,
 the step is amended with these files as required inputs.
 This way, if the local modules have changed, StepUp will know the script needs to run again.

@@ -43,13 +43,10 @@ from stepup.fancy.api import create_fancy_pdf  # hypothetical API function
 
 # Plan the creation of the fancy PDF
 static("source/")
-glob("source/**", _defer=True)
 info = create_fancy_pdf("source/")
 
 # Copy files related to the fancy PDF, e.g. to publish them or back up files.
-mkdir("../public")
 copy(info.filter_out("*.pdf").single, "../public/")
-mkdir("../backup")
 for path_inp in info.inp:
     copy(path_inp, "../backup")
 ```

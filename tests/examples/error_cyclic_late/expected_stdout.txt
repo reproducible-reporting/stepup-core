@@ -16,8 +16,7 @@ Return code           1
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                runsh cat first > second
 Working directory     ./
-Inputs        STATIC  ./
-             AWAITED  (first)
+Inputs       AWAITED  (first)
 Outputs      AWAITED  second
 ────────────────────────────────────────────────────────────────────────────────
         0/1 |    WARNING │ Skipping file cleanup due to incomplete build

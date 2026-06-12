@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-from stepup.core.api import copy, getenv, glob, mkdir, plan, static
+from stepup.core.api import copy, getenv, plan, static
 
 PUBLIC = getenv("PUBLIC", back=True)
-glob("static/**", _defer=True)
-static("variables.py")
-mkdir(PUBLIC)
+static("static/", "variables.py")
 copy("static/preamble.inc.tex", PUBLIC)
 plan("static/")

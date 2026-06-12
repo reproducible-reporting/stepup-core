@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+from stepup.core.api import runpy, static
+
+static("work.py")
+runpy("./work.py", inp="work.py")
+static("dir_inp")

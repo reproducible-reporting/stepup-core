@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from stepup.core.api import mkdir, runpy, static
+from stepup.core.api import runpy
 
-static("../../common/", "../../common/script.py")
-mkdir("../public")
 runpy("./script.py", workdir="../../common")

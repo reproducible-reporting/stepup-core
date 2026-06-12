@@ -1,29 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:helper.py
-            supplies   file:plan.py
-            supplies   file:work.py
-            supplies   file:work_out.json
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work.py --out=work_out.json --amend-out
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:helper.py
              creates   file:work.py
@@ -32,20 +19,17 @@ step:runpy ./plan.py
 file:helper.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work.py --out=work_out.json --amend-out
 
 file:work.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work.py --out=work_out.json --amend-out
 
 step:runpy ./work.py --out=work_out.json --amend-out
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:helper.py [amended]
             consumes   file:work.py
              creates   file:work_out.json
@@ -54,5 +38,4 @@ step:runpy ./work.py --out=work_out.json --amend-out
 file:work_out.json
                state = BUILT
           created by   step:runpy ./work.py --out=work_out.json --amend-out
-            consumes   file:./
             consumes   step:runpy ./work.py --out=work_out.json --amend-out

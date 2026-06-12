@@ -10,13 +10,11 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                runsh cat src1.txt
 Working directory     ./
-Inputs        STATIC  ./
-             AWAITED  (src1.txt)
+Inputs       AWAITED  (src1.txt)
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Action                runsh cat src2.txt
 Working directory     ./
-Inputs        STATIC  ./
-             AWAITED  (src2.txt)
+Inputs       AWAITED  (src2.txt)
 ────────────────────────────────────────────────────────────────────────────────
         1/3 |    WARNING │ Skipping file cleanup due to incomplete build
         1/3 |    WARNING │ Check logs: .stepup/warning.log

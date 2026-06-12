@@ -1,30 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:inp1.txt
-            supplies   file:inp2.txt
-            supplies   file:inp3.txt
-            supplies   file:out1.txt
-            supplies   file:out2.txt
-            supplies   file:out3.txt
-            supplies   file:plan.py
-            supplies   file:work1.py
-            supplies   file:work2.py
-            supplies   file:work3.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work1.py
-            supplies   step:runpy ./work2.py
-            supplies   step:runpy ./work3.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -33,7 +13,6 @@ step:runpy ./plan.py
                  ngm = ['inp?.txt'] {}
                  ngm = ['work?.py'] {}
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:inp1.txt
              creates   file:inp2.txt
@@ -46,44 +25,37 @@ step:runpy ./plan.py
 file:inp1.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work1.py
 
 file:inp2.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work2.py
 
 file:inp3.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work3.py
 
 file:work1.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work1.py
 
 file:work2.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work2.py
 
 file:work3.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work3.py
 
 step:runpy ./work1.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:inp1.txt
             consumes   file:work1.py
              creates   file:out1.txt
@@ -93,14 +65,12 @@ step:runpy ./work1.py
 file:out1.txt
                state = BUILT
           created by   step:runpy ./work1.py
-            consumes   file:./
             consumes   step:runpy ./work1.py
 
 step:runpy ./work2.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./work1.py
-            consumes   file:./
             consumes   file:inp2.txt
             consumes   file:work2.py
              creates   file:out2.txt
@@ -110,14 +80,12 @@ step:runpy ./work2.py
 file:out2.txt
                state = BUILT
           created by   step:runpy ./work2.py
-            consumes   file:./
             consumes   step:runpy ./work2.py
 
 step:runpy ./work3.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./work2.py
-            consumes   file:./
             consumes   file:inp3.txt
             consumes   file:work3.py
              creates   file:out3.txt
@@ -126,5 +94,4 @@ step:runpy ./work3.py
 file:out3.txt
                state = BUILT
           created by   step:runpy ./work3.py
-            consumes   file:./
             consumes   step:runpy ./work3.py

@@ -10,7 +10,36 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
+### Changed
+
+- The database schema version has been incremented to 5 because:
+    - UINT64 type is used for inodes in the SQLite storage
+    - Directories are no longer stored in the database
+      (except for static roots, which are stored as special nodes in the graph.)
+    - Deferred globs have been retired and replaced by static roots.
+      (More on that below.)
+- The "deferred glob" has been replaced by a simpler "static root" concept.
+  Files in a static root directory become static only when they are used as inputs.
+  This allows for huge static data directories, of which only some are used,
+  without having to glob the entire directory recursively.
+  To declare a static root directory, just pass it as an argument to the `static()` function.
+  It will treat all directory arguments are static roots.
+- Documentation has been updated to reflect the API changes and to clarify some other points.
+
+### Removed
+
+- StepUp no longer keeps track directories.
+  They are either assumed to be present (for static files) or created transparently when needed.
+  This has some consequences:
+    - The `mkdir()` command has been removed.
+    - Input and output files can no longer be directories.
+  Some of the internal logic that relied on directories being tracked,
+  has been refactored to work without them:
+    - The internal watcher uses some simple heuristics to determine which directories to watch.
+      It also handles renaming and moving of directories.
+    - The cleanup script (`stepup clean`) and the automatic cleanup at the end of a successful run
+      will remove empty directories after having removed outdated output files they contained.
+- The `glob()` function no longer accepts `_defer` and `_required` keyword arguments.
 
 ## [3.2.3][] - 2026-04-16 {: #v3.2.3 }
 
@@ -272,7 +301,8 @@ and improved terminal user interface.
     - The database schema was incremented because steps now execute "actions",
       which can be shell commands in subprocesses, but also other things,
       such as executing a Python script without starting a new process.
-    - While the schema was incremented, a small changes was made to the step has computation.
+    - While the schema was incremented,
+      a small changes was made to the step hash computation.
     - The function [step()][stepup.core.api.step] now accepts a new argument `action`
       instead of a shell command.
       The syntax of an `action` is similar to a shell command:
@@ -543,7 +573,7 @@ This release fixes several bugs.
     - The `block` argument of the [`plan()`][stepup.core.api.plan] function
     must be given as a keyword argument.
     - All optional arguments of [`copy()`][stepup.core.api.copy]
-      and [`mkdir()`][stepup.core.api.mkdir] must be given as keyword arguments.
+      and `mkdir()` must be given as keyword arguments.
     - `plan.py` scripts must start with `#!/usr/bin/env python3` instead of `#!/usr/bin/env python`.
     - The [`amend()`][stepup.core.api.amend] function now raises an exception when the
       amended inputs are not available yet, instead of returning `False`.

@@ -71,9 +71,10 @@ nav:
     - getting_started/first_step.md
     - getting_started/first_runpy.md
     - getting_started/dependencies.md
-    - getting_started/static_files.md
-    - getting_started/copy_mkdir.md
+    - getting_started/copy.md
     - getting_started/workdir.md
+    - getting_started/static_files.md
+    - getting_started/static_root.md
     - getting_started/static_glob.md
     - getting_started/static_glob_conditional.md
     - getting_started/interactive_usage.md
@@ -88,7 +89,6 @@ nav:
   - Advanced Topics:
     - advanced_topics/introduction.md
     - advanced_topics/static_named_glob.md
-    - advanced_topics/static_deferred_glob.md
     - advanced_topics/optional_steps.md
     - advanced_topics/blocked_steps.md
     - advanced_topics/pools.md
@@ -103,6 +103,8 @@ nav:
     - advanced_topics/manual_cleaning.md
     - advanced_topics/stepup_root.md
     - advanced_topics/step_info.md
+  - Migration:
+    - migration/from3to4.md
   - Reference:
     - reference/stepup.core.api.md
     - reference/stepup.core.call.md

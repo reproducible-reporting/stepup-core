@@ -1,23 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:copy.txt
-            supplies   file:inp2.txt
-            supplies   file:plan.py
-            supplies   file:subs.txt
-            supplies   file:work.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -25,35 +12,31 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
-             creates   dg:inp*.txt
              creates   file:subs.txt
              creates   file:work.py
+             creates   sr:data/
              creates   step:runpy ./work.py
 
 file:subs.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work.py
 
 file:work.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
 
-dg:inp*.txt
+sr:data/
           created by   step:runpy ./plan.py
-             creates   file:inp2.txt
+             creates   file:data/inp2.txt
 
 step:runpy ./work.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   step:runpy ./plan.py
-            consumes   file:./
-            consumes   file:inp2.txt [amended]
+            consumes   file:data/inp2.txt [amended]
             consumes   file:subs.txt
              creates   file:copy.txt
             supplies   file:copy.txt [amended]
@@ -61,11 +44,9 @@ step:runpy ./work.py
 file:copy.txt
                state = BUILT
           created by   step:runpy ./work.py
-            consumes   file:./
             consumes   step:runpy ./work.py
 
-file:inp2.txt
+file:data/inp2.txt
                state = STATIC
-          created by   dg:inp*.txt
-            consumes   file:./
+          created by   sr:data/
             supplies   step:runpy ./work.py

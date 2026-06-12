@@ -11,7 +11,7 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
 
     This information is embedded in the comments of `main.sh` and the commands
 
-    ```
+    ```bash
     stepup boot -n 1 | sed -f ../../clean_stdout.sed > stdout.txt
     # INP: input
     # ROOT: root/ (optional)
@@ -41,7 +41,6 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
                 inp.append(workdir / line[6:].strip())
             elif line.startswith("# ROOT:"):
                 root = workdir / line[7:].strip()
-                inp.append(root)
             elif "stepup " in line and " > " in line:
                 out.append(workdir / Path(line[line.find(">") + 1 :].strip()))
             elif line.startswith("# OUT:"):
@@ -51,9 +50,7 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
 
 def main():
     """Main program."""
-    static("run_example.py", "getting_started/", "advanced_topics/")
-    glob("getting_started/*/")
-    glob("advanced_topics/*/")
+    static("run_example.py")
     paths_main = glob("*/*/main.sh")
     for path_main in paths_main:
         inp, root, out = scan_main(path_main)

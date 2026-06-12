@@ -249,7 +249,7 @@ KIND_NAMES = {
     "root": "Root",
     "file": "File",
     "step": "Step",
-    "dg": "Deferred Glob",
+    "sr": "Static Root",
 }
 
 STATE_SQL = """

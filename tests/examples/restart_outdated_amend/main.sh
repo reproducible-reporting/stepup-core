@@ -5,8 +5,9 @@ trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Run with the initial subs.txt.
-echo inp1 > inp1.txt
-echo inp1.txt > subs.txt
+mkdir -p data
+echo inp1 > data/inp1.txt
+echo data/inp1.txt > subs.txt
 stepup boot -n 1 -w -e & # > current_stdout1.txt &
 
 # Initial graph
@@ -19,14 +20,14 @@ wait
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
-[[ -f inp1.txt ]] || exit 1
+[[ -f data/inp1.txt ]] || exit 1
 [[ -f copy.txt ]] || exit 1
 grep inp1 copy.txt
 
 # Change subs.txt and restart.
-rm inp1.txt
-echo inp2 > inp2.txt
-echo inp2.txt > subs.txt
+rm data/inp1.txt
+echo inp2 > data/inp2.txt
+echo data/inp2.txt > subs.txt
 rm .stepup/*.log
 stepup boot -n 1 -w -e & # > current_stdout2.txt &
 
@@ -39,7 +40,7 @@ wait
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
-[[ ! -f inp1.txt ]] || exit 1
-[[ -f inp2.txt ]] || exit 1
+[[ ! -f data/inp1.txt ]] || exit 1
+[[ -f data/inp2.txt ]] || exit 1
 [[ -f copy.txt ]] || exit 1
 grep inp2 copy.txt

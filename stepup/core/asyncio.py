@@ -71,7 +71,7 @@ async def stoppable_iterator(get_next, stop_event: asyncio.Event, args=()):
     get_next
         An awaitable that returns the next iteration.
     stop_event
-        When set, the loop is interrupted.
+        When any of these events is set, the loop is interrupted.
     args
         A list of arguments to pass into get_next.
     """

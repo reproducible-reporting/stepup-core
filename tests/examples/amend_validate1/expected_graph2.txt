@@ -1,32 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:ping.txt
-            supplies   file:plan.py
-            supplies   file:pong.txt
-            supplies   file:work.py
-            supplies   file:work.txt
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
-            supplies   step:runsh echo ping > ping.txt
-            supplies   step:runsh echo pong > pong.txt
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:work.py
              creates   step:runpy ./work.py
@@ -36,34 +20,29 @@ step:runpy ./plan.py
 file:work.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./work.py
 
 step:runsh echo ping > ping.txt
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
              creates   file:ping.txt
             supplies   file:ping.txt
 
 file:ping.txt
                state = BUILT
           created by   step:runsh echo ping > ping.txt
-            consumes   file:./
             consumes   step:runsh echo ping > ping.txt
             supplies   step:runpy ./work.py
 
 step:runsh echo pong > pong.txt
                state = SUCCEEDED
           created by   step:runpy ./plan.py
-            consumes   file:./
              creates   file:pong.txt
             supplies   file:pong.txt
 
 file:pong.txt
                state = BUILT
           created by   step:runsh echo pong > pong.txt
-            consumes   file:./
             consumes   step:runsh echo pong > pong.txt
             supplies   step:runpy ./work.py
 
@@ -71,7 +50,6 @@ step:runpy ./work.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:ping.txt [amended]
             consumes   file:pong.txt [amended]
             consumes   file:work.py
@@ -81,5 +59,4 @@ step:runpy ./work.py
 file:work.txt
                state = BUILT
           created by   step:runpy ./work.py
-            consumes   file:./
             consumes   step:runpy ./work.py

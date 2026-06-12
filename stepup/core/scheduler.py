@@ -124,8 +124,7 @@ class Scheduler:
         )
         if self._onhold:
             return result
-        result &= self.job_queue.qsize() == 0
-        return result
+        return result and self.job_queue.qsize() == 0
 
     def has_pool(self, pool_name: str | None) -> bool:
         """Return True if the scheduler has a pool with the given name."""

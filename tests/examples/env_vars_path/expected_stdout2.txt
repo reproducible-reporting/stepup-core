@@ -1,5 +1,4 @@
         0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching 1 director(y|ies) from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    UPDATED │ ENV_VAR_TEST_STEPUP_PREFIX ='README' ➜ ='FOO'
         0/0 |    STARTUP │ Scanning initial database for changed files
@@ -8,10 +7,9 @@
         0/2 |      PHASE │ run
         0/2 |     NOSKIP │ runpy ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 747b4b89 ➜ 8d022ffe, out_digest 786a02f7 ➜ (unset)
+Modified step hash   explained, inp_digest daf3efce ➜ 455be46e, out_digest 786a02f7 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_PREFIX ='README' ➜ ='FOO'
 ────────────────────────────── Remained the same ───────────────────────────────
-Same inp hash        ./
 Same inp hash        plan.py
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────

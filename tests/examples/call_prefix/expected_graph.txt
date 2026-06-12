@@ -1,30 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:add.py
-            supplies   file:add1_out.json
-            supplies   file:add2_out.json
-            supplies   file:plan.py
-            supplies   step:runpy ./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
-            supplies   step:runpy ./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out
-            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:add.py
              creates   step:runpy ./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
@@ -33,7 +19,6 @@ step:runpy ./plan.py
 file:add.py
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:runpy ./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
             supplies   step:runpy ./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out
 
@@ -41,7 +26,6 @@ step:runpy ./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:add.py
              creates   file:add1_out.json
             supplies   file:add1_out.json [amended]
@@ -50,7 +34,6 @@ step:runpy ./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:add.py
              creates   file:add2_out.json
             supplies   file:add2_out.json [amended]
@@ -58,11 +41,9 @@ step:runpy ./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out
 file:add1_out.json
                state = BUILT
           created by   step:runpy ./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
-            consumes   file:./
             consumes   step:runpy ./add.py '{"a": 10, "b": 12}' --out=add1_out.json --amend-out
 
 file:add2_out.json
                state = BUILT
           created by   step:runpy ./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out
-            consumes   file:./
             consumes   step:runpy ./add.py '{"a": 8, "b": 90}' --out=add2_out.json --amend-out

@@ -27,7 +27,7 @@ import attrs
 from path import Path
 
 from .cascade import Node
-from .enums import DirWatch, FileState
+from .enums import FileState
 from .hash import FileHash
 from .sqlite3 import UInt64
 from .utils import format_digest
@@ -89,6 +89,8 @@ class File(Node):
         # These are not allowed but may pass "existence" checks
         if label in (".", "..", ""):
             raise ValueError(f"Invalid file name: {label}")
+        if label.endswith("/"):
+            raise ValueError(f"Invalid file name (directory): {label}")
         if label.endswith(("/.", "/..")):
             raise ValueError(f"Invalid file name: {label}")
         return str(label)
@@ -146,8 +148,6 @@ class File(Node):
 
     def clean(self):
         """Perform a cleanup right before the orphaned node is removed from the graph."""
-        if self.path.endswith("/"):
-            self.workflow.dir_queue.put_nowait((DirWatch.STOP, self.path))
         state = self.get_state()
         if state == FileState.VOLATILE:
             self.workflow.to_be_deleted.append((self.path, None))
@@ -207,11 +207,14 @@ class File(Node):
 
     def set_state(self, state: FileState):
         if state in (FileState.MISSING, FileState.AWAITED, FileState.VOLATILE):
+            # These states automatically reset the hash and other properties,
+            # as they represent a file that is not present or not trustworthy.
             sql = (
                 "UPDATE file SET state = ?, digest = X'75', mode = 0, mtime = 0, "
                 "size = 0, inode = 0 WHERE node = ?"
             )
         else:
+            # All other states can have a valid hash, so only update the state.
             sql = "UPDATE file SET state = ? WHERE node = ?"
         self.con.execute(sql, (state.value, self.i))
 
@@ -232,12 +235,11 @@ class File(Node):
         # Local import to avoid cyclic imports.
         from .step import Step  # noqa: PLC0415
 
-        if self.get_state() in [FileState.STATIC, FileState.BUILT]:
+        state = self.get_state()
+        if state in [FileState.STATIC, FileState.BUILT]:
             for step in self.consumers(Step, include_orphans=True):
                 step.mark_pending()
                 step.queue_if_appropriate()
-            if self.path.endswith("/"):
-                self.workflow.dir_queue.put_nowait((DirWatch.START, self.path))
 
     #
     # Watch phase
@@ -248,8 +250,6 @@ class File(Node):
 
         File states and hashes have already been updated before this method is called.
         """
-        if self.path.endswith("/"):
-            self.workflow.dir_queue.put_nowait((DirWatch.STOP, self.path))
         state = self.get_state()
         logger.info("Externally deleted %s file: %s", state, self.path)
 
@@ -262,7 +262,9 @@ class File(Node):
 
         if state == FileState.AWAITED:
             # Request rerun of creator
-            self.creator().mark_pending()
+            creator = self.creator()
+            if creator is not None and creator.kind() == "step":
+                creator.mark_pending()
         if state != FileState.VOLATILE:
             # Make all consumers pending.
             # Local import to avoid cyclic imports.
@@ -289,7 +291,7 @@ class File(Node):
         elif state == FileState.AWAITED:
             # Mark the creator pending, as to make sure the file is rebuilt.
             creator = self.creator()
-            if creator.kind() == "step":
+            if creator is not None and creator.kind() == "step":
                 creator.mark_pending()
 
     def mark_outdated(self):

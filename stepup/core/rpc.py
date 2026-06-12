@@ -66,6 +66,7 @@ def fmt_rpc_call(name: str, args: Collection, kwargs: dict) -> str:
 
 
 def _handle_error(body: str, name: str, args, kwargs):
+    """Format the raw traceback body into an `RPCError`."""
     fmt_call = fmt_rpc_call(name, args, kwargs)
     raise RPCError(f"An exception was raised in the server during the call {fmt_call}: \n\n{body}")
 

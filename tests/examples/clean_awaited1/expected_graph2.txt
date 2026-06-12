@@ -1,28 +1,16 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   (file:missing.txt)
-            supplies   file:hello.txt
-            supplies   file:plan.py
-            supplies   step:copy missing.txt hello.txt
-            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   step:copy missing.txt hello.txt
 
@@ -31,17 +19,14 @@ step:copy missing.txt hello.txt
                dirty = yes
           created by   step:runpy ./plan.py
             consumes   (file:missing.txt)
-            consumes   file:./
              creates   file:hello.txt
             supplies   file:hello.txt
 
 (file:missing.txt)
                state = AWAITED
-            consumes   file:./
             supplies   step:copy missing.txt hello.txt
 
 file:hello.txt
                state = AWAITED
           created by   step:copy missing.txt hello.txt
-            consumes   file:./
             consumes   step:copy missing.txt hello.txt

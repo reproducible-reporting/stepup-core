@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import call, glob, static
+from stepup.core.api import call, static
 
-static("worker.py")
-glob("../pkgs_a/**", _defer=True)
+static("worker.py", "../pkgs_a/")
 call("worker.py")

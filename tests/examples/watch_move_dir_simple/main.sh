@@ -21,14 +21,14 @@ stepup graph current_graph1
 
 # Rename the data directory and rerun
 mv data other
-stepup watch-delete data/
+stepup watch-delete data/sub/inp.txt
 stepup run
 stepup wait
 stepup graph current_graph2
 
 # Move back
 mv other data
-stepup watch-update data/
+stepup watch-update data/sub/inp.txt
 stepup run
 stepup wait
 stepup graph current_graph3

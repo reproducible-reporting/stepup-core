@@ -1,25 +1,10 @@
 root:
-             creates   file:./
              creates   file:plan.py
              creates   step:runpy ./plan.py
-
-file:./
-               state = STATIC
-          created by   root:
-            supplies   file:plan.py
-            supplies   file:rendered-trip1.txt
-            supplies   file:rendered-trip2.txt
-            supplies   file:template.txt
-            supplies   file:trip1.toml
-            supplies   file:trip2.toml
-            supplies   step:render-jinja template.txt trip1.toml rendered-trip1.txt
-            supplies   step:render-jinja template.txt trip2.toml rendered-trip2.txt
-            supplies   step:runpy ./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            consumes   file:./
             supplies   step:runpy ./plan.py
 
 step:runpy ./plan.py
@@ -27,7 +12,6 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
                  ngm = ['trip*.toml'] {}
           created by   root:
-            consumes   file:./
             consumes   file:plan.py
              creates   file:template.txt
              creates   file:trip1.toml
@@ -38,27 +22,23 @@ step:runpy ./plan.py
 file:template.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:render-jinja template.txt trip1.toml rendered-trip1.txt
             supplies   step:render-jinja template.txt trip2.toml rendered-trip2.txt
 
 file:trip1.toml
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:render-jinja template.txt trip1.toml rendered-trip1.txt
 
 file:trip2.toml
                state = STATIC
           created by   step:runpy ./plan.py
-            consumes   file:./
             supplies   step:render-jinja template.txt trip2.toml rendered-trip2.txt
 
 step:render-jinja template.txt trip1.toml rendered-trip1.txt
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:template.txt
             consumes   file:trip1.toml
              creates   file:rendered-trip1.txt
@@ -67,14 +47,12 @@ step:render-jinja template.txt trip1.toml rendered-trip1.txt
 file:rendered-trip1.txt
                state = BUILT
           created by   step:render-jinja template.txt trip1.toml rendered-trip1.txt
-            consumes   file:./
             consumes   step:render-jinja template.txt trip1.toml rendered-trip1.txt
 
 step:render-jinja template.txt trip2.toml rendered-trip2.txt
                state = SUCCEEDED
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
-            consumes   file:./
             consumes   file:template.txt
             consumes   file:trip2.toml
              creates   file:rendered-trip2.txt
@@ -83,5 +61,4 @@ step:render-jinja template.txt trip2.toml rendered-trip2.txt
 file:rendered-trip2.txt
                state = BUILT
           created by   step:render-jinja template.txt trip2.toml rendered-trip2.txt
-            consumes   file:./
             consumes   step:render-jinja template.txt trip2.toml rendered-trip2.txt
