@@ -26,13 +26,17 @@ on:
 
 jobs:
   tests:
+    permissions:
+      contents: read
     strategy:
       matrix:
         include:
           - python-version: '3.11'
-            ubuntu-version: '22.04'
-          - python-version: '3.14'
             ubuntu-version: '24.04'
+            dependency-path: .github/requirements-old.txt
+          - python-version: '3.14'
+            ubuntu-version: '26.04'
+            dependency-path: pyproject.toml
     runs-on: ubuntu-${{ matrix.ubuntu-version }}
     steps:
       - uses: actions/checkout@v6
@@ -40,12 +44,14 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: ${{ matrix.dependency-path }}
       - name: Install oldest versions of supported dependencies
         if: ${{ matrix.python-version == '3.11'}}
         run: pip install -r .github/requirements-old.txt
       - name: Install latest commit version with all development dependencies
         run: pip install -e .[dev]
       - name: Run pytest
-        # Enfore strict checks instead of trying to repair fixable issues.
+        # Enforce strict checks instead of trying to repair fixable issues.
         # RPC timeout is set shorter to speed up tests in case of failures.
         run: STEPUP_DEBUG=1 STEPUP_DURATION=0 STEPUP_SYNC_RPC_TIMEOUT=10 pytest -vv
