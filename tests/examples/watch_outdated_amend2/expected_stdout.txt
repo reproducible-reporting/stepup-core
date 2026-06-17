@@ -3,6 +3,11 @@
         0/1 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
         1/4 |    SUCCESS │ runpy ./plan.py
+        1/4 |      START │ runsh ./work.py subs1.txt > subs2.txt
+        1/4 | RESCHEDULE │ runsh ./work.py subs1.txt > subs2.txt
+──────────────── Rescheduling due to unavailable amended inputs ────────────────
+conv1.txt
+────────────────────────────────────────────────────────────────────────────────
         1/4 |      START │ copy inp1.txt conv1.txt
         2/4 |    SUCCESS │ copy inp1.txt conv1.txt
         2/4 |      START │ runsh ./work.py subs1.txt > subs2.txt
@@ -10,6 +15,7 @@
         3/4 |      START │ runsh ./work.py subs2.txt > subs3.txt
         4/4 |    SUCCESS │ runsh ./work.py subs2.txt > subs3.txt
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
+        4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch
         4/4 |    DELETED │ inp1.txt
         4/4 |    UPDATED │ inp2.txt
@@ -17,14 +23,19 @@
         0/4 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
         1/4 |    SUCCESS │ runpy ./plan.py
-        1/4 |      START │ copy inp2.txt conv2.txt
-        2/4 |    SUCCESS │ copy inp2.txt conv2.txt
-        2/4 |  DROPAMEND │ runsh ./work.py subs1.txt > subs2.txt
+        1/4 |  DROPAMEND │ runsh ./work.py subs1.txt > subs2.txt
 ────────────────────── Outdated amended step information ───────────────────────
 Modified step hash   explained, inp_digest d00dbb90 ➜ a455a1ab, out_digest 9ac3231c ➜ (unset)
 Deleted inp hash     conv1.txt
 Modified inp hash    subs1.txt (digest f927920a ➜ 2ab04a00)
 ────────────────────────────────────────────────────────────────────────────────
+        1/4 |      START │ runsh ./work.py subs1.txt > subs2.txt
+        1/4 | RESCHEDULE │ runsh ./work.py subs1.txt > subs2.txt
+──────────────── Rescheduling due to unavailable amended inputs ────────────────
+conv2.txt
+────────────────────────────────────────────────────────────────────────────────
+        1/4 |      START │ copy inp2.txt conv2.txt
+        2/4 |    SUCCESS │ copy inp2.txt conv2.txt
         2/4 |      START │ runsh ./work.py subs1.txt > subs2.txt
         3/4 |    SUCCESS │ runsh ./work.py subs1.txt > subs2.txt
         3/4 |  DROPAMEND │ runsh ./work.py subs2.txt > subs3.txt

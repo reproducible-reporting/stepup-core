@@ -13,8 +13,6 @@ may undergo larger changes and are not intended to be API stable.
 
 ### ::: stepup.core.api.step
 
-### ::: stepup.core.api.pool
-
 ### ::: stepup.core.api.amend
 
 ### ::: stepup.core.api.getinfo

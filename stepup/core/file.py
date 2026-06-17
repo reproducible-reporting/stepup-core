@@ -147,7 +147,7 @@ class File(Node):
             yield "", l2
 
     def clean(self):
-        """Perform a cleanup right before the orphaned node is removed from the graph."""
+        """Perform a cleanup right before the detached node is removed from the graph."""
         state = self.get_state()
         if state == FileState.VOLATILE:
             self.workflow.to_be_deleted.append((self.path, None))
@@ -157,41 +157,9 @@ class File(Node):
                 self.workflow.to_be_deleted.append((self.path, file_hash))
         self.con.execute("DELETE FROM file WHERE node = ?", (self.i,))
 
-    def add_supplier(self, supplier: Node) -> int:
-        """Add a supplier-consumer relation.
-
-        Parameters
-        ----------
-        supplier
-            Other node that supplies to this node.
-
-        Returns
-        -------
-        idep
-            The identifier in the dependency table.
-        """
-        idep = super().add_supplier(supplier)
-        if supplier.kind() == "step":
-            supplier.make_required()
-        return idep
-
-    def del_suppliers(self, suppliers: list[Node] | None = None):
-        """Delete given suppliers.
-
-        Without arguments, all suppliers of the current node are deleted.
-        """
-        # Get a list of suppliers to process if needed
-        _suppliers = suppliers
-        if suppliers is None:
-            _suppliers = list(self.suppliers(include_orphans=True))
-        super().del_suppliers(suppliers)
-        for supplier in _suppliers:
-            if supplier.kind() == "step":
-                supplier.undo_required()
-
-    def detach(self):
-        """Clean up an orphaned node because it loses a product node."""
-        raise AssertionError("A file node never has products, so it cannot be detaced.")
+    def give_up(self):
+        """Clean up a detached node because it loses a product node."""
+        raise AssertionError("A file node never has products, so it cannot be detached.")
 
     #
     # Getters and setters
@@ -228,18 +196,15 @@ class File(Node):
     #
 
     def completed(self):
-        """Check all steps using this file as input and queue them if possible.
-
-        In case of a directory, also notify the watcher by putting it on the dir_queue.
-        """
+        """Check and if necessary, mark all consumer steps pending."""
         # Local import to avoid cyclic imports.
         from .step import Step  # noqa: PLC0415
 
         state = self.get_state()
         if state in [FileState.STATIC, FileState.BUILT]:
-            for step in self.consumers(Step, include_orphans=True):
+            logger.info("Completed %s file: %s", state, self.path)
+            for step in self.consumers(Step, include_detached=True):
                 step.mark_pending()
-                step.queue_if_appropriate()
 
     #
     # Watch phase
@@ -302,7 +267,35 @@ class File(Node):
             # Local import to avoid cyclic imports.
             from .step import Step  # noqa: PLC0415
 
-            for step in self.consumers(Step, include_orphans=True):
+            for step in self.consumers(Step, include_detached=True):
                 step.mark_pending()
         elif state != FileState.OUTDATED:
-            raise ValueError(f"Cannot make file oudated when its state is {state}")
+            raise ValueError(f"Cannot make file outdated when its state is {state}")
+
+    #
+    # Respond to graph modifications by flagging the necessary _check_* fields.
+    #
+
+    def add_supplier(self, supplier: Node) -> int:
+        """Add a supplier-consumer relation."""
+        # Local import to avoid cyclic imports.
+        from .step import Step  # noqa: PLC0415
+
+        idep = super().add_supplier(supplier)
+        if isinstance(supplier, Step):
+            supplier._check_simple()
+        return idep
+
+    def del_suppliers(self, suppliers: list[Node] | None = None):
+        """Delete a supplier-consumer relation."""
+        # Local import to avoid cyclic imports.
+        from .step import Step  # noqa: PLC0415
+
+        if suppliers is not None:
+            for supplier in suppliers:
+                if isinstance(supplier, Step):
+                    supplier._check_simple()
+        else:
+            for supplier in self.suppliers(Step):
+                supplier._check_simple()
+        super().del_suppliers(suppliers)

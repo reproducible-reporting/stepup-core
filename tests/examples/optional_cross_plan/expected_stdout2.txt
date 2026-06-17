@@ -1,0 +1,17 @@
+        0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Making steps pending that use changed environment variables
+        0/0 |    STARTUP │ Scanning initial database for changed files
+        0/0 |    UPDATED │ sub/plan.py (digest 82016e9f ➜ 3ddbbbb2, size 171 ➜ 80)
+        0/0 |    STARTUP │ Scanning initial database for new nglob matches
+        0/0 |   DIRECTOR │ Launched worker 0
+        3/4 |      PHASE │ run
+        2/3 |      START │ runpy ./plan.py  # wd=sub/
+        3/3 |    SUCCESS │ runpy ./plan.py  # wd=sub/
+        3/3 |    WARNING │ Reverted 1 optional step(s) to PENDING and marked 1 output/volatile file(s) for deletion.
+        3/3 |   DIRECTOR │ Trying to delete 2 outdated output(s)
+        3/3 |      CLEAN │ sub/final.txt
+        3/3 |      CLEAN │ out.txt
+        2/3 |    WARNING │ Check logs: .stepup/warning.log
+        2/3 |      PHASE │ watch
+        2/3 |   DIRECTOR │ Stopping workers
+        2/3 |   DIRECTOR │ See you!

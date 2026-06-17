@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = PUBLIC [amended]
                      = STEPUP_PATH_FILTER [amended]
           created by   root:
@@ -23,6 +24,7 @@ file:www/plan.py
 
 step:runpy ./plan.py  # wd=www/
                state = SUCCEEDED
+                need = PLAN
              env_var = HERE [amended]
                      = PUBLIC [amended]
                      = ROOT [amended]
@@ -39,6 +41,7 @@ file:www/index.md
 
 step:copy index.md ../../public/www/index.md  # wd=www/
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py  # wd=www/
             consumes   file:www/index.md
              creates   file:../public/www/index.md

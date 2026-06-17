@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
                  ngm = ['head_${*char}.txt', 'tail_${*char}.txt'] {'char': '?'}
            explained = yes
@@ -36,6 +37,7 @@ file:tail_x.txt
 
 step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
                state = SUCCEEDED
+                need = DEFAULT
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:head_x.txt

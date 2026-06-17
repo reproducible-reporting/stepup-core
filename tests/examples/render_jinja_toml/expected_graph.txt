@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
                  ngm = ['trip*.toml'] {}
           created by   root:
@@ -37,6 +38,7 @@ file:trip2.toml
 
 step:render-jinja template.txt trip1.toml rendered-trip1.txt
                state = SUCCEEDED
+                need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:template.txt
@@ -51,6 +53,7 @@ file:rendered-trip1.txt
 
 step:render-jinja template.txt trip2.toml rendered-trip2.txt
                state = SUCCEEDED
+                need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:template.txt

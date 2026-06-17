@@ -11,11 +11,10 @@ Return code           0
 ──────────────────────────────── Invalid inputs ────────────────────────────────
 Input changed unexpectedly: cases.txt (digest 125bc6a0 ➜ 2863481f)
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |      ERROR │ The scheduler has been drained due to unexpected input changes.
+        1/2 |      ERROR │ The dispatcher has been put on hold due to unexpected input changes.
         1/2 |    WARNING │ 1 step(s) failed.
-        1/2 |    WARNING │ Scheduler is put on hold. Not reporting pending steps.
+        1/2 |    WARNING │ Dispatcher is put on hold. Not reporting pending steps.
         1/2 |    WARNING │ Skipping file cleanup due to incomplete build
-        1/2 |    WARNING │ Made 1 step(s) in the queue pending.
         1/2 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
         1/2 |      PHASE │ watch
         1/2 |    UPDATED │ cases.txt

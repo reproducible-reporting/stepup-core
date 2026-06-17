@@ -9,10 +9,11 @@
         2/2 |      PHASE │ watch
         2/2 |    DELETED │ input.txt
         1/2 |      PHASE │ run
-        1/2 |    WARNING │ 1 step(s) remained pending due to ...
+        1/2 |    WARNING │ 1 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  input.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
+Reason                required inputs are unavailable
 Action                runsh cp input.txt output.txt
 Working directory     ./
 Inputs       MISSING  input.txt

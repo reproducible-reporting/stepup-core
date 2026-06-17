@@ -5,9 +5,21 @@
         1/4 |    SUCCESS │ runpy ./plan.py
         1/4 |      START │ copy initial.txt input.txt
         2/4 |    SUCCESS │ copy initial.txt input.txt
-        2/4 |    WARNING │ 2 step(s) remained pending due to ...
-──────────────────────────────── Blocked steps ─────────────────────────────────
-step:runpy ./expensive.py
+        2/4 |    WARNING │ 2 step(s) remained pending ...
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Reason                required resources exceed maximum available
+Action                runpy ./expensive.py
+Working directory     ./
+Inputs        STATIC  expensive.py
+               BUILT  input.txt
+Outputs      AWAITED  output.txt
+Resource     blocked  1
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Reason                required inputs are unavailable
+Action                copy output.txt final.txt
+Working directory     ./
+Inputs       AWAITED  output.txt
+Outputs      AWAITED  final.txt
 ────────────────────────────────────────────────────────────────────────────────
         2/4 |    WARNING │ Skipping file cleanup due to incomplete build
         2/4 |    WARNING │ Check logs: .stepup/warning.log

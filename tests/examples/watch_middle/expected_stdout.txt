@@ -11,10 +11,11 @@
         3/3 |      PHASE │ watch
         3/3 |    DELETED │ plan.py
         2/3 |      PHASE │ run
-        2/3 |    WARNING │ 1 step(s) remained pending due to ...
+        2/3 |    WARNING │ 1 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  plan.py
 ───────────────────────────────── PENDING Step ─────────────────────────────────
+Reason                required inputs are unavailable
 Action                runpy ./plan.py
 Working directory     ./
 Declares      STATIC  original.txt

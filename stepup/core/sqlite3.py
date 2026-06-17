@@ -25,7 +25,7 @@ import sqlite3
 from collections.abc import Iterator
 from typing import Self
 
-__all__ = ("UInt64", "connect", "copy_db_in_memory", "escape_like_pattern")
+__all__ = ("UInt64", "connect", "copy_db_in_memory", "escape_like_pattern", "wipe_database")
 
 
 class UInt64(int):
@@ -86,3 +86,29 @@ def copy_db_in_memory(path_db) -> Iterator[sqlite3.Connection]:
 def escape_like_pattern(pattern: str) -> str:
     """Escape a string for use in a LIKE pattern."""
     return pattern.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def wipe_database(con: sqlite3.Connection):
+    """Removes all tables and indexes from an SQLite database."""
+    try:
+        # Temporarily disable foreign key constraints
+        con.execute("PRAGMA foreign_keys = OFF")
+        # Drop all tables
+        rows = list(
+            con.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )
+        )
+        for (table,) in rows:
+            con.execute(f"DROP TABLE IF EXISTS '{table}'")
+        # Drop all indexes
+        rows = list(
+            con.execute(
+                "SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'"
+            )
+        )
+        for (index,) in rows:
+            con.execute(f"DROP INDEX IF EXISTS '{index}'")
+    finally:
+        # Restore foreign key constraints
+        con.execute("PRAGMA foreign_keys = ON")

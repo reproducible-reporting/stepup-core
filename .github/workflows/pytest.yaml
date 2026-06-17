@@ -48,4 +48,4 @@ jobs:
       - name: Run pytest
         # Enfore strict checks instead of trying to repair fixable issues.
         # RPC timeout is set shorter to speed up tests in case of failures.
-        run: STEPUP_DEBUG=1 STEPUP_SYNC_RPC_TIMEOUT=10 pytest -vv
+        run: STEPUP_DEBUG=1 STEPUP_DURATION=0 STEPUP_SYNC_RPC_TIMEOUT=10 pytest -vv

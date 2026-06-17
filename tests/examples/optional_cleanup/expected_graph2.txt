@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
@@ -18,8 +19,7 @@ step:runpy ./plan.py
 
 step:runsh echo test1 > test1.txt
                state = PENDING
-           mandatory = NO
-               dirty = yes
+                need = OPTIONAL
           created by   step:runpy ./plan.py
              creates   file:test1.txt
             supplies   file:test1.txt
@@ -31,7 +31,7 @@ file:test1.txt
 
 step:runsh echo test2 > test2.txt
                state = SUCCEEDED
-           mandatory = REQUIRED
+                need = DEFAULT (implied by consumers > OPTIONAL)
           created by   step:runpy ./plan.py
              creates   file:test2.txt
             supplies   file:test2.txt
@@ -44,5 +44,6 @@ file:test2.txt
 
 step:runsh cat test2.txt
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:test2.txt

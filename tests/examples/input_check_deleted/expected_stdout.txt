@@ -13,9 +13,9 @@ Return code           0
 ──────────────────────────────── Invalid inputs ────────────────────────────────
 Input vanished unexpectedly: f1.txt
 ────────────────────────────────────────────────────────────────────────────────
-        2/3 |      ERROR │ The scheduler has been drained due to unexpected input changes.
+        2/3 |      ERROR │ The dispatcher has been put on hold due to unexpected input changes.
         2/3 |    WARNING │ 1 step(s) failed.
-        2/3 |    WARNING │ Scheduler is put on hold. Not reporting pending steps.
+        2/3 |    WARNING │ Dispatcher is put on hold. Not reporting pending steps.
         2/3 |    WARNING │ Skipping file cleanup due to incomplete build
         2/3 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
         2/3 |      PHASE │ watch

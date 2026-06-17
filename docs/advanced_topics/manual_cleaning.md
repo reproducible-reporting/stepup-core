@@ -47,7 +47,7 @@ This check can be disabled with the `--unsafe` option.
 
 The `stepup clean` tool only removes files or directories.
 It never changes StepUp's workflow database.
-Hence, removed files remain in StepUp's workflow as orphaned nodes,
+Hence, removed files remain in StepUp's workflow as detached nodes,
 until one runs `stepup boot` (with `--clean` or `STEPUP_CLEAN=1`)
 to trigger automatic cleaning.
 

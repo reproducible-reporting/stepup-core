@@ -19,13 +19,13 @@
 # --
 """Definition of jobs to be executed by a worker."""
 
+from time import perf_counter
 from typing import TYPE_CHECKING
 
 import attrs
 
 if TYPE_CHECKING:
     from .file import FileHash
-    from .scheduler import Scheduler
     from .step import Step, StepHash
     from .worker import WorkerClient
 
@@ -34,17 +34,11 @@ __all__ = ("Job", "RunJob", "ValidateAmendedJob")
 
 
 @attrs.define(frozen=True)
-class Job:  # noqa: PLW1641
-    """A job managed by the scheduler."""
+class Job:
+    """A job to be executed by a worker."""
 
     step: "Step" = attrs.field()
     """The step related to this job."""
-
-    _pool: str | None = attrs.field()
-    """The pool in which the job should be executed, or None for no restriction."""
-
-    priority: tuple[int | float, ...] = attrs.field()
-    """The priority of the job, lower values indicate higher priority."""
 
     inp_hashes: list[tuple[str, "FileHash"]] = attrs.field()
     """The input hashes of the step, as a list of tuples (name, hash)."""
@@ -55,43 +49,8 @@ class Job:  # noqa: PLW1641
     step_hash: "StepHash" = attrs.field()
     """The hash of the step if it was previously executed, or None if it was not."""
 
-    # Implement comparison in the base class,
-    # so jobs of different sub classes can be sorted by priority.
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Job):
-            return False
-        return self.priority == other.priority
-
-    def __ne__(self, other: object) -> bool:
-        if not isinstance(other, Job):
-            return True
-        return self.priority != other.priority
-
-    def __lt__(self, other: "Job") -> bool:
-        if not isinstance(other, Job):
-            return TypeError("Cannot compare Job with non-Job")
-        return self.priority < other.priority
-
-    def __le__(self, other: "Job") -> bool:
-        if not isinstance(other, Job):
-            return TypeError("Cannot compare Job with non-Job")
-        return self.priority <= other.priority
-
-    def __gt__(self, other: "Job") -> bool:
-        if not isinstance(other, Job):
-            return TypeError("Cannot compare Job with non-Job")
-        return self.priority > other.priority
-
-    def __ge__(self, other: "Job") -> bool:
-        if not isinstance(other, Job):
-            return TypeError("Cannot compare Job with non-Job")
-        return self.priority >= other.priority
-
-    @property
-    def pool(self) -> str | None:
-        """The pool in which the job should be executed, or None for no restriction."""
-        raise NotImplementedError
+    create_time: float = attrs.field(factory=perf_counter)
+    """The creation time of the job, used for scheduling optimization."""
 
     @property
     def name(self) -> str:
@@ -102,27 +61,20 @@ class Job:  # noqa: PLW1641
         """Return a coroutine, of which the runner will make an asyncio.Task."""
         raise NotImplementedError
 
-    def finalize(self, result, scheduler: "Scheduler"):
-        """Finalize the job after execution, may include scheduling another job."""
-        raise NotImplementedError
+    def duration(self) -> float | None:
+        """Return the duration of the job since the creation time."""
+        return perf_counter() - self.create_time
 
 
 @attrs.define(frozen=True)
 class ValidateAmendedJob(Job):
-    """Validate that amended inputs have not changed yet, or schedule for rerun.
+    """Validate that amended inputs have not changed yet, or enforce a full rerun.
 
     This job checks whether the inputs of a step have changed since the last run,
     in which case the amended inputs may be outdated. When that is the case:
     - The step cannot be skipped and the step hash should be discarded.
     - The amended inputs need to be recreated by running the step.
     """
-
-    @property
-    def pool(self) -> str | None:
-        # A validation of amended inputs never has pool restrictions.
-        # The pool attribute is only used to schedule a real run in the correct
-        # pool when a simple replay does not work due to changed inputs etc.
-        return None
 
     @property
     def name(self) -> str:
@@ -133,19 +85,6 @@ class ValidateAmendedJob(Job):
             self.step, self.inp_hashes, self.env_vars, self.step_hash
         )
 
-    def finalize(self, must_run: bool, scheduler: "Scheduler"):
-        """Reschedule the job if it must be executed.
-
-        If it does not need to be executed, do nothing. The job will be rescheduled later
-        when amended inputs become available.
-        """
-        if must_run:
-            run_job = RunJob(
-                self.step, self._pool, self.priority, self.inp_hashes, self.env_vars, None
-            )
-            scheduler.job_queue.put_nowait(run_job)
-            scheduler.changed.set()
-
 
 @attrs.define(frozen=True)
 class RunJob(Job):
@@ -153,16 +92,7 @@ class RunJob(Job):
 
     When `step_hash` is set, the job is skipped if that hash is still valid,
     i.e. meaning that inputs, environment variables and output have not changed.
-    The calculation of the hash is done by the worker and is not restricted to a pool,
-    even if the actual execution of the jobs would be.
-    If skipping failed, the job will reschedule itself after setting the step_hash to None.
-
-    When `step_hash` is None, the job is executed in the pool specified by `pool`.
     """
-
-    @property
-    def pool(self) -> str | None:
-        return self._pool if self.step_hash is None else None
 
     @property
     def name(self) -> str:
@@ -173,11 +103,3 @@ class RunJob(Job):
         if self.step_hash is None:
             return worker.execute_job(self.step, self.inp_hashes, self.env_vars)
         return worker.try_skip_job(self.step, self.inp_hashes, self.env_vars, self.step_hash)
-
-    def finalize(self, must_run: bool, scheduler: "Scheduler"):
-        if must_run:
-            run_job = RunJob(
-                self.step, self._pool, self.priority, self.inp_hashes, self.env_vars, None
-            )
-            scheduler.job_queue.put_nowait(run_job)
-            scheduler.changed.set()

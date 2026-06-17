@@ -29,6 +29,7 @@ from typing import Self, TypeVar
 import attrs
 
 from .exceptions import CyclicError, GraphError
+from .sqlite3 import wipe_database
 
 __all__ = ("Cascade", "Node", "Root")
 
@@ -45,10 +46,20 @@ PRAGMA synchronous=OFF;
 
 CREATE TABLE IF NOT EXISTS node (
     i INTEGER PRIMARY KEY,
+    -- Unique integer identifier of the node.
     kind TEXT NOT NULL,
+    -- Type of node, e.g. file, step, ...
     label TEXT NOT NULL,
+    -- User-provided label, unique within its kind.
     creator INTEGER,
-    orphan BOOLEAN NOT NULL DEFAULT FALSE CHECK (orphan IN (FALSE, TRUE)),
+    -- Node that creates this node.
+    detached BOOLEAN NOT NULL DEFAULT FALSE CHECK (detached IN (FALSE, TRUE)),
+    -- Flag indicating that creator is NULL of this node or its (indirect) creator.
+    -- This is kept up-to-date by the detach and recycle methods of Node.
+    -- Detached nodes are used for various purposes in StepUp:
+    -- * To determine whether a node should be cleaned up.
+    -- * To exclude detached steps from scheduling.
+    -- * To keep metadata about detached nodes in case they are recycled later.
     FOREIGN KEY (creator) REFERENCES node(i)
 );
 CREATE INDEX IF NOT EXISTS node_kind ON node (kind);
@@ -67,18 +78,18 @@ CREATE INDEX IF NOT EXISTS dependency_supplier_consumer ON dependency(supplier, 
 CREATE INDEX IF NOT EXISTS dependency_consumer_supplier ON dependency(consumer, supplier);
 """
 
-RECURSE_ORPHAN = """
-WITH RECURSIVE all_orphan(current, kind, label) AS (
+# Recursively find all products of a node and mark them as detached or non-detached.
+RECURSIVELY_SET_DETACHED = """
+WITH RECURSIVE all_products(current, kind, label) AS (
     -- Initial: Select first generation of products
     SELECT i AS current, kind, label
     FROM node WHERE creator = ?
     UNION
-    -- Recursion: Follow creator edges by selecting products of current
+    -- Recursion: Follow creator -> product edges by selecting products of current
     SELECT node.i AS current, node.kind, node.label
-    FROM node INNER JOIN all_orphan ON creator = current
+    FROM node INNER JOIN all_products ON creator = current
 )
-UPDATE node SET orphan = ? WHERE i IN (SELECT current FROM all_orphan)
-RETURNING i, kind, label
+UPDATE node SET detached = ? WHERE i IN (SELECT current FROM all_products)
 """
 
 INITIAL_CONSUMERS = "CREATE TABLE temp.initial_consumer (current INTEGER PRIMARY KEY) WITHOUT ROWID"
@@ -97,7 +108,7 @@ WITH RECURSIVE all_consumer(current) AS (
 
 SELECT_CYCLIC = """
 -- Final: Check if any of the (indirect) consumer matches the supplier in the new edge
-SELECT EXISTS (SELECT 1 FROM all_consumer WHERE current = ?) -- supplier
+SELECT EXISTS (SELECT 1 FROM all_consumer WHERE current = ?)
 """
 
 SELECT_WALK = """
@@ -134,9 +145,8 @@ class Node:
     - `initialize` to create or update rows for new nodes outside the default Cascade tables.
     - `validate` to check if the necessary rows outside the default Cascade tables are made.
     - `format_properties` to define the properties of the node.
-    - `update_orphan` to make changes when a node lost its creator node.
-    - `detach` is called when an orphaned node must be cleaned up because it loses a product node.
-    - `clean` to decide if an orphan node can be removed and to release resources.
+    - `give_up` is called when a detached node must be cleaned up because it loses a product node.
+    - `clean` to decide if a detached node can be removed and to release resources.
     """
 
     cascade: "Cascade" = attrs.field(repr=False)
@@ -162,10 +172,10 @@ class Node:
         """Lower-case prefix of the key string representing a node."""
         return cls.__name__.lower()
 
-    def key(self, orphan: bool = False) -> str:
-        """Return the key representation of the node."""
+    def key(self, detached: bool = False) -> str:
+        """Return the key representation of the node, for terminal display."""
         result = f"{self.kind()}:{self.label}"
-        if orphan:
+        if detached:
             result = f"({result})"
         return result
 
@@ -183,28 +193,22 @@ class Node:
         """Create extra information in the database about this node."""
 
     def validate(self):
-        """Validate extra information about this node is present in the database."""
+        """Validate that extra information about this node is present in the database."""
 
     def format_properties(self) -> Iterator[tuple[str, str]]:
-        """Iterate over key-value pairs that represent the properties of the node."""
+        """Iterate over key-value pairs with the properties of the node, for terminal display."""
         yield from []
 
-    def _make_orphan(self):
-        """Update the node or the graph when it becomes orphan."""
-
-    def _undo_orphan(self):
-        """Update the node or the graph when the node is recreated."""
-
-    def detach(self):
-        """Clean up an orphaned node because it loses a product node.
+    def give_up(self):
+        """Clean up a detached node because it loses a product node.
 
         Implementations in subclasses should remove all related info,
-        all edges, and make sure the node is deleted or orphaned.
+        all edges, and make sure the node is deleted.
         """
         raise NotImplementedError
 
     def clean(self):
-        """Perform a cleanup right before the orphaned node is removed from the graph."""
+        """Perform a cleanup right before the detached node is removed from the graph."""
 
     #
     # Getters and Iterators
@@ -214,9 +218,9 @@ class Node:
         """True when the node is still present in the database."""
         return self.con.execute("SELECT 1 FROM node WHERE i = ?", (self.i,)).fetchone() is not None
 
-    def is_orphan(self) -> bool:
+    def is_detached(self) -> bool:
         """True when the node or its creator (recursively) lost its creator node."""
-        row = self.con.execute("SELECT orphan FROM node WHERE i = ?", (self.i,)).fetchone()
+        row = self.con.execute("SELECT detached FROM node WHERE i = ?", (self.i,)).fetchone()
         return bool(row[0])
 
     def creator(self) -> Self | None:
@@ -231,25 +235,25 @@ class Node:
         i, kind, label = row
         return self.cascade._node_classes[kind](self.cascade, i, label)
 
-    def creator_orphan(self) -> tuple[Self, bool] | tuple[None, None]:
+    def creator_detached(self) -> tuple[Self, bool] | tuple[None, None]:
         """Return the creator of the node.
 
         Returns
         -------
         creator
             The creator node, or `None` if there is no creator.
-        is_orphan
-            Whether the creator node is orphaned.
+        detached
+            Whether the creator node is detached.
         """
         row = self.con.execute(
-            "SELECT i, kind, label, orphan "
+            "SELECT i, kind, label, detached "
             "FROM node WHERE i = (SELECT creator FROM node WHERE i = ?)",
             (self.i,),
         ).fetchone()
         if row is None:
             return None, None
-        i, kind, label, is_orphan = row
-        return self.cascade._node_classes[kind](self.cascade, i, label), is_orphan
+        i, kind, label, detached = row
+        return self.cascade._node_classes[kind](self.cascade, i, label), detached
 
     def products(self, node_type: type[NodeType] = Self) -> Iterator[NodeType]:
         """Iterate over (a subset of) products of this node."""
@@ -263,22 +267,22 @@ class Node:
 
     def products_str(self, node_type: type[NodeType] = Self) -> Iterator[str]:
         """Iterate over (a subset of) products of this node, formatted as strings."""
-        sql = "SELECT kind, label, orphan FROM node WHERE creator = ?"
+        sql = "SELECT kind, label, detached FROM node WHERE creator = ?"
         data = [self.i]
         if node_type is not Self:
             sql += " AND kind = ?"
             data.append(node_type.kind())
         sql += " ORDER BY kind, label"
-        for kind, label, is_orphan in self.con.execute(sql, data):
+        for kind, label, detached in self.con.execute(sql, data):
             node_str = f"{kind}:{label}"
-            if is_orphan:
+            if detached:
                 node_str = f"({node_str})"
             yield node_str
 
     def _dependencies(
         self,
         node_type: type[NodeType] = Self,
-        include_orphans: bool = False,
+        include_detached: bool = False,
         do_suppliers: bool = True,
     ) -> Iterator[NodeType]:
         sql = "SELECT node.i, kind, label FROM node JOIN dependency ON node.i = "
@@ -290,29 +294,29 @@ class Node:
         if node_type is not Self:
             sql += " AND kind = ?"
             data.append(node_type.kind())
-        if not include_orphans:
-            sql += " AND NOT orphan"
+        if not include_detached:
+            sql += " AND NOT detached"
         for i, kind, label in self.cascade.con.execute(sql, data):
             yield self.cascade.node_classes[kind](self.cascade, i, label)
 
     def suppliers(
-        self, node_type: type[NodeType] = Self, include_orphans: bool = False
+        self, node_type: type[NodeType] = Self, include_detached: bool = False
     ) -> Iterator[NodeType]:
         """Iterate over nodes that supply to this one."""
-        yield from self._dependencies(node_type, include_orphans, do_suppliers=True)
+        yield from self._dependencies(node_type, include_detached, do_suppliers=True)
 
     def consumers(
-        self, node_type: type[NodeType] = Self, include_orphans: bool = False
+        self, node_type: type[NodeType] = Self, include_detached: bool = False
     ) -> Iterator[NodeType]:
         """Iterate over nodes that consume from this one."""
-        yield from self._dependencies(node_type, include_orphans, do_suppliers=False)
+        yield from self._dependencies(node_type, include_detached, do_suppliers=False)
 
     def _dependencies_str(
         self,
         node_type: type[NodeType] = Self,
         do_suppliers: bool = True,
     ) -> Iterator[tuple[int, str]]:
-        sql = "SELECT kind, label, orphan, dependency.i FROM node JOIN dependency ON node.i ="
+        sql = "SELECT kind, label, detached, dependency.i FROM node JOIN dependency ON node.i ="
         if do_suppliers:
             sql += " supplier WHERE consumer = ?"
         else:
@@ -322,77 +326,80 @@ class Node:
             sql += " AND kind = ?"
             data.append(node_type.kind())
         sql += " ORDER BY kind, label"
-        for kind, label, is_orphan, idep in self.cascade.con.execute(sql, data):
+        for kind, label, detached, idep in self.cascade.con.execute(sql, data):
             node_str = f"{kind}:{label}"
-            if is_orphan:
+            if detached:
                 node_str = f"({node_str})"
             yield idep, node_str
 
     def suppliers_str(self, node_type: type[NodeType] = Self) -> Iterator[tuple[int, str]]:
-        """Iterate over nodes that supply to this one."""
+        """Iterate over nodes that supply to this one, formatted as strings."""
         yield from self._dependencies_str(node_type, do_suppliers=True)
 
     def consumers_str(self, node_type: type[NodeType] = Self) -> Iterator[tuple[int, str]]:
-        """Iterate over nodes that consume from this one."""
+        """Iterate over nodes that consume from this one, formatted as strings."""
         yield from self._dependencies_str(node_type, do_suppliers=False)
 
     #
     # Graph modifications
     #
 
-    def orphan(self):
-        """Mark node as no longer being used, disconnect from its creator node.
+    def detach(self):
+        """Mark node as no longer being created, disconnect from its creator node.
 
-        Orphaned nodes will have their creator set to NULL in the database.
+        Detached nodes will have their creator set to NULL in the database.
         Actual deletion may take place when calling the clean method.
 
-        When a node is orphaned, its `orphan` field in the node table is set to `True`,
+        When a node is detached, its `detached` field in the node table is set to `True`,
         and this property is propagated recursively to all its product nodes.
-        """
-        row = self.con.execute("SELECT creator, orphan FROM node WHERE i = ?", (self.i,)).fetchone()
-        if row is None:
-            raise ValueError(f"Node id not in database: {self.i}")
-        creator_i, is_orphan = row
-        if creator_i is not None:
-            self.con.execute("UPDATE node SET creator = NULL, orphan = TRUE WHERE i = ?", (self.i,))
-            if not is_orphan:
-                self._make_orphan()
-                # Propagate the orphan=TRUE property to all product nodes.
-                for i, kind, label in self.con.execute(RECURSE_ORPHAN, (self.i, True)):
-                    node = self.cascade.node_classes[kind](self.cascade, i, label)
-                    node._make_orphan()
-
-    def recreate(self, new_creator: Self):
-        """Reconnect the node to a new creator node.
-
-        This method is used to reattach an orphaned node to a new creator node.
 
         Raises
         ------
         ValueError
-            If the node is not orphaned or the new creator is orphaned.
+            If the node is not found in the database.
+        """
+        row = self.con.execute(
+            "SELECT creator, detached FROM node WHERE i = ?", (self.i,)
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"Node id not in database: {self.i}")
+        creator_i, detached = row
+        if creator_i is not None:
+            self.con.execute(
+                "UPDATE node SET creator = NULL, detached = TRUE WHERE i = ?", (self.i,)
+            )
+            if not detached:
+                self.con.execute(RECURSIVELY_SET_DETACHED, (self.i, True))
+
+    def recycle(self, new_creator: Self):
+        """Reconnect the node to a new creator node, preserving its properties.
+
+        This method is used to reattach a detached node to a new creator node.
+
+        Raises
+        ------
+        ValueError
+            If the node is not detached or the new creator is detached.
         TypeError
             If the new_creator is not an instance of Node.
         """
-        if not self.is_orphan():
-            raise ValueError("Node.recreate can only be called on an orphaned node.")
+        if not self.is_detached():
+            raise ValueError("Node.recycle can only be called on a detached node.")
         if not isinstance(new_creator, Node):
             raise TypeError(f"Argument new_creator must be a Node, got {type(new_creator)}")
-        if new_creator.is_orphan():
-            raise ValueError("New creator node must not be orphaned.")
-        old_creator, old_creator_is_orphan = self.creator_orphan()
+        if new_creator.is_detached():
+            raise ValueError("New creator node must not be detached.")
+        old_creator, old_creator_detached = self.creator_detached()
         self.con.execute(
-            "UPDATE node SET creator = ?, orphan = FALSE WHERE i = ?", (new_creator.i, self.i)
+            "UPDATE node SET creator = ?, detached = FALSE WHERE i = ?", (new_creator.i, self.i)
         )
+        # Clean up the old creator if it exists.
         if old_creator is not None:
-            if not old_creator_is_orphan:
-                raise GraphError("Old creator of orphaned node is not orphaned.")
-            old_creator.detach()
-        self._undo_orphan()
-        # Propagate the orphan=FALSE property to all product nodes.
-        for i, kind, label in self.con.execute(RECURSE_ORPHAN, (self.i, False)):
-            node = self.cascade.node_classes[kind](self.cascade, i, label)
-            node._undo_orphan()
+            if not old_creator_detached:
+                raise GraphError("Old creator of detached node is not detached.")
+            old_creator.give_up()
+        # Propagate the detached=FALSE property to all product nodes.
+        self.con.execute(RECURSIVELY_SET_DETACHED, (self.i, False))
 
     def add_supplier(self, supplier: Self) -> int:
         """Add a supplier-consumer relation.
@@ -445,21 +452,17 @@ class Root(Node):
     """The root node of the provenance and dependency graph.
 
     (Indirect) products of the root node are considered active nodes in the graph.
-    Nodes that are not connected (indirectly) to the root node are considered orphaned,
+    Nodes that are not connected (indirectly) to the root node are considered detached,
     and will be removed when the Cascade.clean method is called.
     """
 
-    def update_orphan(self):
-        """This method is called when the creator of a node is set NULL."""
-        raise AssertionError("Root node cannot be orphaned")
-
     def clean(self):
-        """Perform a cleanup right before the orphaned node is removed from the graph."""
+        """Perform a cleanup right before the detached node is removed from the graph."""
         raise AssertionError("Root node cannot be cleaned")
 
-    def detach(self):
-        """Clean up an orphaned node because it loses a product node."""
-        raise AssertionError("Root node cannot be detached because that would mean it is orphaned.")
+    def give_up(self):
+        """Clean up a detached node because it loses a product node."""
+        raise AssertionError("Root node cannot be detached because that would mean it is detached.")
 
 
 @attrs.define
@@ -567,6 +570,13 @@ class Cascade:
         # Schema 4 became outdated due to:
         # - the use of PARSE_DECLTYPES instead of PARSE_COLNAMES,
         #   which requires using UINT64 for file inodes.
+        # - Directory file nodes are no longer supported.
+        # - Renamed "orphan" to "detached".
+        # - Added "_safe" and "_check_safe" fields to step table.
+        # - Added "need", "_implied_need", "_tail_time" and "_check_after" fields to step table.
+        # - Removed the "dirty" field from the step table.
+        #   (The rescheduled_info is used instaed.)
+        # - The QUEUED step state has been removed.
 
         return 5
 
@@ -613,25 +623,25 @@ class Cascade:
         """Check whether the graph satisfies all constraints."""
         if self._root.creator() != self._root:
             raise GraphError("Invalid cascade: root node does not create itself")
-        if self._root.is_orphan():
-            raise GraphError("Invalid cascade: root node cannot be orphan")
+        if self._root.is_detached():
+            raise GraphError("Invalid cascade: root node cannot be detached")
         sql = (
-            "SELECT node.i, node.kind, node.label, node.creator, node.orphan, cnode.orphan FROM "
-            "node LEFT JOIN node AS cnode ON node.creator = cnode.i"
+            "SELECT node.i, node.kind, node.label, node.creator, node.detached, cnode.detached "
+            "FROM node LEFT JOIN node AS cnode ON node.creator = cnode.i"
         )
         for row in self.con.execute(sql):
-            i, kind, label, creator_i, is_orphan, corphan = row
+            i, kind, label, creator_i, detached, creator_detached = row
             if i > 1 and creator_i == i:
                 node = self._node_classes[kind](self, i, label)
                 raise GraphError(f"Non-root node is its own creator: {node.key()}")
-            creator_is_orphan = creator_i is None or corphan
-            if is_orphan:
-                if not creator_is_orphan:
+            creator_detached = creator_i is None or creator_detached
+            if detached:
+                if not creator_detached:
                     node = self._node_classes[kind](self, i, label)
-                    raise GraphError(f"Orphaned node has non-orphan creator: {node.key()}")
-            elif creator_is_orphan:
+                    raise GraphError(f"Detached node has attached creator: {node.key()}")
+            elif creator_detached:
                 node = self._node_classes[kind](self, i, label)
-                raise GraphError(f"Non-orphan created orphan node: {node.key()}")
+                raise GraphError(f"Attached node has detached creator: {node.key()}")
         for node in self.nodes():
             node.validate()
 
@@ -656,17 +666,17 @@ class Cascade:
         row = self._con.execute(sql, data).fetchone()
         return None if row is None else node_type(self, row[0], label)
 
-    def find_orphan(
+    def find_detached(
         self, node_type: type[NodeType], label: str
     ) -> tuple[NodeType, bool] | tuple[None, None]:
-        """Return the node and is_orphan for the given node class and label."""
-        sql = "SELECT i, orphan FROM node WHERE kind = ? AND label = ?"
+        """Return the node and detached flag for the given node class and label."""
+        sql = "SELECT i, detached FROM node WHERE kind = ? AND label = ?"
         data = (node_type.kind(), label)
         row = self._con.execute(sql, data).fetchone()
         if row is None:
             return None, None
-        i, is_orphan = row
-        return node_type(self, i, label), bool(is_orphan)
+        i, detached = row
+        return node_type(self, i, label), bool(detached)
 
     def node(self, node_type: type[NodeType], i: int) -> NodeType | None:
         """Return the node for the given node class and label or index."""
@@ -683,7 +693,7 @@ class Cascade:
     def nodes(
         self,
         node_type: type[NodeType] = Node,
-        include_orphans: bool = False,
+        include_detached: bool = False,
     ) -> Iterator[NodeType]:
         """Iterate over all nodes of a certain kind."""
         query = "SELECT i, kind, label FROM node"
@@ -692,8 +702,8 @@ class Cascade:
         if node_type is not Node:
             query += f" {words.pop(0)} kind = ?"
             data.append(node_type.kind())
-        if not include_orphans:
-            query += f" {words.pop(0)} NOT orphan"
+        if not include_detached:
+            query += f" {words.pop(0)} NOT detached"
         for i, kind, label in self._con.execute(query, data):
             yield self._node_classes[kind](self, i, label)
 
@@ -718,19 +728,19 @@ class Cascade:
         """Return a multi-line string representation of the graph."""
         lines = []
         cur = self._con.execute(
-            "SELECT node.i, node.kind, node.label, node.orphan, "
-            "cnode.i, cnode.kind, cnode.label, cnode.orphan "
+            "SELECT node.i, node.kind, node.label, node.detached, "
+            "cnode.i, cnode.kind, cnode.label, cnode.detached "
             "FROM node LEFT JOIN node as cnode ON node.creator = cnode.i"
         )
-        for i, kind, label, is_orphan, ci, ckind, clabel, cis_orphan in cur:
+        for i, kind, label, detached, ci, ckind, clabel, cdetached in cur:
             node = self._node_classes[kind](self, i, label)
             creator = None if ci is None else self._node_classes[ckind](self, ci, clabel)
-            lines.append(node.key(is_orphan))
+            lines.append(node.key(detached))
             for name, value in node.format_properties():
                 lines.append(f"{name:>20s} = {value!s}")
             pairs = []
             if ci is not None and (label != clabel):
-                pairs.append(("created by", creator.key(cis_orphan)))
+                pairs.append(("created by", creator.key(cdetached)))
             pairs.extend(("consumes", other_str) for _, other_str in node.suppliers_str())
             pairs.extend(
                 ("creates", other_str) for other_str in node.products_str() if other_str != "root:"
@@ -756,7 +766,7 @@ class Cascade:
             Subclass of Node.
         creator
             The node that created the new node.
-            Set to None to create an orphan node.
+            Set to None to create a detached node.
         label
             The label of the node.
         kwargs
@@ -776,48 +786,48 @@ class Cascade:
             raise TypeError(f"Argument creator must be a Node or None, got {type(creator)}")
         label = node_type.create_label(label, **kwargs)
 
-        node, is_orphan = self.find_orphan(node_type, label)
+        node, detached = self.find_detached(node_type, label)
         if node is not None:
             # Recycle old data if needed and add/update node
-            if not is_orphan:
-                raise GraphError(f"Node ({node.key()}) already exists and is not orphan.")
+            if not detached:
+                raise GraphError(f"Node ({node.key()}) already exists and is not detached.")
 
             # Get the old creator before this information is lost.
-            old_creator, old_creator_is_orphan = node.creator_orphan()
+            old_creator, old_creator_detached = node.creator_detached()
             # Replace the old creator by the new one.
             if creator is None:
                 creator_i = None
-                is_orphan = True
+                detached = True
             else:
                 creator_i = creator.i
-                is_orphan = creator.is_orphan()
+                detached = creator.is_detached()
             self._con.execute(
-                "UPDATE node SET creator = ?, orphan = ? WHERE i = ?",
-                (creator_i, is_orphan, node.i),
+                "UPDATE node SET creator = ?, detached = ? WHERE i = ?",
+                (creator_i, detached, node.i),
             )
             # Clean up the old creator (if any) that it lost a product.
             if old_creator is not None:
-                if not old_creator_is_orphan:
-                    raise GraphError("Old creator of orphaned node is not orphaned.")
-                old_creator.detach()
+                if not old_creator_detached:
+                    raise GraphError("Old creator of detached node is not detached.")
+                old_creator.give_up()
             # Cut all ties to suppliers, so this node starts from a clean slate.
             node.del_suppliers()
             # Since this node is recreated, it cannot have created other nodes (yet).
             for product in node.products():
-                product.orphan()
+                product.detach()
         else:
-            is_orphan = True if creator is None else creator.is_orphan()
+            detached = True if creator is None else creator.is_detached()
             # Add new node
             cur = self._con.execute(
-                "INSERT INTO node (kind, label, creator, orphan) VALUES (?, ?, ?, ?)",
-                (node_type.kind(), label, None if creator is None else creator.i, is_orphan),
+                "INSERT INTO node (kind, label, creator, detached) VALUES (?, ?, ?, ?)",
+                (node_type.kind(), label, None if creator is None else creator.i, detached),
             )
             node_i = cur.lastrowid
             if node_type is Root:
                 if self._con.execute("SELECT count(*) FROM node").fetchone()[0] > 1:
                     raise GraphError("Only one root node is allowed and it must be the first node.")
                 self._con.execute(
-                    "UPDATE node SET creator = ?, orphan = FALSE WHERE i = ?", (node_i, node_i)
+                    "UPDATE node SET creator = ?, detached = FALSE WHERE i = ?", (node_i, node_i)
                 )
             node = node_type(self, node_i, label)
         node.initialize(**kwargs)
@@ -825,14 +835,14 @@ class Cascade:
         return node
 
     def clean(self):
-        """Delete all orphaned nodes that can be removed safely."""
+        """Delete all detached nodes that can be removed safely."""
         cleaned_some = True
         while cleaned_some:
             cleaned_some = False
-            # Look for orphans without consumers or products.
+            # Look for detached nodes without consumers or products.
             # As long nodes have consumers or products, they cannot be removed.
             query = (
-                "SELECT i, kind, label FROM node WHERE orphan = TRUE AND "
+                "SELECT i, kind, label FROM node WHERE detached AND "
                 "NOT EXISTS (SELECT 1 FROM node AS cnode WHERE node.i = cnode.creator) AND "
                 "NOT EXISTS (SELECT 1 FROM dependency WHERE node.i = dependency.supplier)"
             )
@@ -842,29 +852,3 @@ class Cascade:
                 node.del_suppliers()
                 node.clean()
                 self._con.execute("DELETE FROM node where i = ?", (i,))
-
-
-def wipe_database(con: sqlite3.Connection):
-    """Removes all tables and indexes from an SQLite database."""
-    try:
-        # Temporarily disable foreign key constraints
-        con.execute("PRAGMA foreign_keys = OFF")
-        # Drop all tables
-        rows = list(
-            con.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-            )
-        )
-        for (table,) in rows:
-            con.execute(f"DROP TABLE IF EXISTS '{table}'")
-        # Drop all indexes
-        rows = list(
-            con.execute(
-                "SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'"
-            )
-        )
-        for (index,) in rows:
-            con.execute(f"DROP INDEX IF EXISTS '{index}'")
-    finally:
-        # Restore foreign key constraints
-        con.execute("PRAGMA foreign_keys = ON")

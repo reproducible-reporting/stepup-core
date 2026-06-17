@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
@@ -29,6 +30,7 @@ file:outer.py
 
 step:runpy ./inner.py
                state = SUCCEEDED
+                need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   step:runpy ./outer.py bar
@@ -43,6 +45,7 @@ file:out.txt
 
 step:runpy ./outer.py bar
                state = SUCCEEDED
+                need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   step:runpy ./plan.py

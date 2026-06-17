@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
@@ -17,6 +18,7 @@ step:runpy ./plan.py
 
 step:runsh echo bye > out2.txt
                state = SUCCEEDED
+                need = DEFAULT
            explained = yes
           created by   step:runpy ./plan.py
              creates   file:out2.txt

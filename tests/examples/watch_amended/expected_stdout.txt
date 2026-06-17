@@ -12,13 +12,13 @@
         1/2 |      START │ runpy ./work.py
         1/2 | RESCHEDULE │ runpy ./work.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
-Missing inputs:
 inp.txt
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |    WARNING │ 1 step(s) remained pending due to ...
+        1/2 |    WARNING │ 1 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  inp.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
+Reason                required inputs are unavailable
 Action                runpy ./work.py
 Working directory     ./
 Inputs       MISSING  inp.txt [amended]

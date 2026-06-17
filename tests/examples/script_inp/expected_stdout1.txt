@@ -5,13 +5,13 @@
         1/2 |    SUCCESS │ runpy ./plan.py
         1/2 |      START │ runpy ./script.py plan
         2/4 |    SUCCESS │ runpy ./script.py plan
-        2/4 |      START │ runpy ./script.py run foo
-        3/4 |    SUCCESS │ runpy ./script.py run foo
+        2/4 |      START │ runpy ./script.py run bar
+        3/4 |    SUCCESS │ runpy ./script.py run bar
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
-        3/4 |      START │ runpy ./script.py run bar
-        4/4 |    SUCCESS │ runpy ./script.py run bar
+        3/4 |      START │ runpy ./script.py run foo
+        4/4 |    SUCCESS │ runpy ./script.py run foo
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────

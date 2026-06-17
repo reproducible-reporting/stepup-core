@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
@@ -38,6 +39,7 @@ file:work.py
 
 step:runpy ./work.py plan
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:helper.py [amended]
@@ -48,6 +50,7 @@ step:runpy ./work.py plan
 
 step:runpy ./work.py run +0.3
                state = SUCCEEDED
+                need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./work.py plan
             consumes   file:helper.py [amended]
@@ -62,6 +65,7 @@ file:data+0.3.txt
 
 step:runpy ./work.py run -- -1.2
                state = SUCCEEDED
+                need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./work.py plan
             consumes   file:helper.py [amended]

@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = ENV_VAR_TEST_STEPUP_PREFIX [amended]
                      = STEPUP_PATH_FILTER [amended]
            explained = yes
@@ -24,6 +25,7 @@ file:FOO.txt
 
 step:runsh grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
                state = SUCCEEDED
+                need = DEFAULT
              env_var = ENV_VAR_TEST_STEPUP_PREFIX
            explained = yes
           created by   step:runpy ./plan.py

@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
                  ngm = ['inp?.txt'] {}
                  ngm = ['work?.py'] {}
@@ -54,6 +55,7 @@ file:work3.py
 
 step:runpy ./work1.py
                state = SUCCEEDED
+                need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:inp1.txt
@@ -69,6 +71,7 @@ file:out1.txt
 
 step:runpy ./work2.py
                state = SUCCEEDED
+                need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./work1.py
             consumes   file:inp2.txt
@@ -84,6 +87,7 @@ file:out2.txt
 
 step:runpy ./work3.py
                state = SUCCEEDED
+                need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./work2.py
             consumes   file:inp3.txt

@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = PUBLIC [amended]
                      = STEPUP_PATH_FILTER [amended]
           created by   root:
@@ -32,6 +33,7 @@ sr:static/
 
 step:copy static/preamble.inc.tex public/preamble.inc.tex
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:static/preamble.inc.tex
              creates   file:public/preamble.inc.tex
@@ -49,6 +51,7 @@ file:public/preamble.inc.tex
 
 step:runpy ./plan.py  # wd=static/
                state = SUCCEEDED
+                need = PLAN
              env_var = PUBLIC [amended]
                      = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
@@ -62,6 +65,7 @@ file:static/plan.py
 
 step:render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
                state = SUCCEEDED
+                need = DEFAULT
              env_var = PUBLIC [amended]
                      = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py  # wd=static/

@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
                  ngm = ['data.txt'] {}
            explained = yes
@@ -24,6 +25,7 @@ file:analyzed.txt
 
 step:runsh cat analyzed.txt
                state = SUCCEEDED
+                need = DEFAULT
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:analyzed.txt

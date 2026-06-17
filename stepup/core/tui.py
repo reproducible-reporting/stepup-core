@@ -36,7 +36,7 @@ from .asyncio import stoppable_iterator, wait_for_path
 from .director import interpret_num_workers
 from .reporter import ReporterClient, ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
-from .utils import string_to_bool
+from .utils import parse_resources, string_to_bool
 from .watcher import WATCHER_AVAILABLE
 
 __all__ = ()
@@ -92,6 +92,11 @@ async def async_boot(args: argparse.Namespace):
         )
         tasks = [task_reporter]
 
+        # Parse the available resources and report to the reporter
+        available_resources = parse_resources(os.getenv("STEPUP_RESOURCES", ""))
+        if args.resources:
+            available_resources.update(parse_resources(args.resources))
+
         # Launch director as background process
         num_workers = interpret_num_workers(args.num_workers)
         argv = []
@@ -112,17 +117,22 @@ async def async_boot(args: argparse.Namespace):
                 f"--log-level={args.log_level}",
             ]
         )
-        if args.show_perf > 1:
-            argv.append("--show-perf")
+        if not args.duration:
+            argv.append("--no-duration")
         if args.explain_rerun:
             argv.append("--explain-rerun")
+        if not args.clean:
+            argv.append("--no-clean")
+        if args.show_perf > 1:
+            argv.append("--show-perf")
+        if len(available_resources) > 0:
+            resources_str = ",".join(f"{k}:{v}" for k, v in available_resources.items())
+            argv.append(f"--resources={resources_str}")
         if WATCHER_AVAILABLE:
             if args.watch:
                 argv.append("--watch")
             if args.watch_first:
                 argv.append("--watch-first")
-        if not args.clean:
-            argv.append("--no-clean")
         if args.yappi:
             argv.append("--yappi")
         returncode = 1  # Internal error unless it is overriden later by the director subprocess
@@ -223,7 +233,7 @@ async def keyboard(
                         await reporter("KEYBOARD", "Waiting for all steps before shutdown.")
                         await client.call.join()
                     elif ch == "d":
-                        await reporter("KEYBOARD", "Draining the scheduler.")
+                        await reporter("KEYBOARD", "Putting the dispatcher on hold.")
                         await client.call.drain()
                     elif ch == "r":
                         await reporter("KEYBOARD", "Restarting the runner.")
@@ -243,6 +253,25 @@ def boot_subcommand(subparsers) -> callable:
         help="Boot the StepUp terminal user interface and director process.",
     )
     parser.add_argument(
+        "--clean",
+        default=string_to_bool(os.getenv("STEPUP_CLEAN", "1")),
+        action=argparse.BooleanOptionalAction,
+        help="Remove outdated output files.",
+    )
+    parser.add_argument(
+        "--duration",
+        default=string_to_bool(os.getenv("STEPUP_DURATION", "1")),
+        action=argparse.BooleanOptionalAction,
+        help="Use the duration of steps to optimize the execution order.",
+    )
+    parser.add_argument(
+        "--explain-rerun",
+        "-e",
+        default=string_to_bool(os.getenv("STEPUP_EXPLAIN_RERUN", "0")),
+        action=argparse.BooleanOptionalAction,
+        help="Explain for every step with recording info why it cannot be skipped.",
+    )
+    parser.add_argument(
         "--num-workers",
         "-n",
         type=Decimal,
@@ -252,6 +281,21 @@ def boot_subcommand(subparsers) -> callable:
         "it is multiplied with the number of available cores. [default=%(default)s]",
     )
     parser.add_argument(
+        "--progress",
+        default=string_to_bool(os.getenv("STEPUP_PROGRESS", "1")),
+        action=argparse.BooleanOptionalAction,
+        help="Report progress information in the terminal user interface. "
+        "(This can be useful to simplify and reduce the output.)",
+    )
+    parser.add_argument(
+        "--perf",
+        default=os.getenv("STEPUP_PERF", None),
+        nargs="?",
+        const="500",
+        help="Profile the director with perf, by default at a frequency of %(const)s Hz. "
+        "(Only supported on Linux with perf installed.)",
+    )
+    parser.add_argument(
         "--show-perf",
         "-s",
         default=int(os.getenv("STEPUP_SHOW_PERF", "0")),
@@ -259,11 +303,11 @@ def boot_subcommand(subparsers) -> callable:
         help="Show the performance info on each line. Repeat for more detailed info.",
     )
     parser.add_argument(
-        "--explain-rerun",
-        "-e",
-        default=string_to_bool(os.getenv("STEPUP_EXPLAIN_RERUN", "0")),
-        action=argparse.BooleanOptionalAction,
-        help="Explain for every step with recording info why it cannot be skipped.",
+        "--resources",
+        "-r",
+        default=None,
+        help="Available resources for steps, e.g. 'cpu:4,gpu:1,memgb:16'. "
+        "Merged with STEPUP_RESOURCES env var; CLI values take precedence.",
     )
     if WATCHER_AVAILABLE:
         parser.add_argument(
@@ -283,27 +327,6 @@ def boot_subcommand(subparsers) -> callable:
             help="Start the runner after observing the first file change in watch mode. "
             "This implies --watch. (Only supported on Linux.)",
         )
-    parser.add_argument(
-        "--clean",
-        default=string_to_bool(os.getenv("STEPUP_CLEAN", "1")),
-        action=argparse.BooleanOptionalAction,
-        help="Remove outdated output files.",
-    )
-    parser.add_argument(
-        "--progress",
-        default=string_to_bool(os.getenv("STEPUP_PROGRESS", "1")),
-        action=argparse.BooleanOptionalAction,
-        help="Report progress information in the terminal user interface. "
-        "(This can be useful to simplify and reduce the output.)",
-    )
-    parser.add_argument(
-        "--perf",
-        default=os.getenv("STEPUP_PERF", None),
-        nargs="?",
-        const="500",
-        help="Profile the director with perf, by default at a frequency of %(const)s Hz. "
-        "(Only supported on Linux with perf installed.)",
-    )
     parser.add_argument(
         "--yappi",
         default=string_to_bool(os.getenv("STEPUP_YAPPI", "0")),

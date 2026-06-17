@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
@@ -29,6 +30,7 @@ file:use_config.py
 
 step:runpy ./use_config.py
                state = SUCCEEDED
+                need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:config.json
@@ -45,6 +47,7 @@ file:output.txt
 
 step:copy report.txt copy.txt
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:report.txt
              creates   file:copy.txt
@@ -63,6 +66,7 @@ file:copy.txt
 
 step:runsh echo All is fine. > other.log
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./use_config.py
              creates   file:other.log
             supplies   file:other.log
@@ -74,6 +78,7 @@ file:other.log
 
 step:runsh echo log written to other.log. > report.txt
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./use_config.py
              creates   file:report.txt
             supplies   file:report.txt

@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
@@ -34,6 +35,7 @@ file:transform.py
 
 step:runpy ./transform.py '{"repeat": 5, "inp": ["inp1.txt", "inp2.txt"], "out": ["out1.txt", "out2.txt"]}'
                state = SUCCEEDED
+                need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:inp1.txt

@@ -10,10 +10,11 @@ Return code           1
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
         0/1 |    WARNING │ 1 step(s) failed.
-        0/1 |    WARNING │ 1 step(s) remained pending due to ...
-─────────────────────────── Incomplete requirements ────────────────────────────
+        0/1 |    WARNING │ 1 step(s) remained pending ...
+─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  first
 ───────────────────────────────── PENDING Step ─────────────────────────────────
+Reason                creator is not RUNNING or SUCCEEDED
 Action                runsh cat first > second
 Working directory     ./
 Inputs       AWAITED  (first)

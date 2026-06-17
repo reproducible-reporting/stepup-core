@@ -90,8 +90,8 @@ nav:
     - advanced_topics/introduction.md
     - advanced_topics/static_named_glob.md
     - advanced_topics/optional_steps.md
+    - advanced_topics/resources.md
     - advanced_topics/blocked_steps.md
-    - advanced_topics/pools.md
     - advanced_topics/environment_variables.md
     - advanced_topics/volatile_outputs.md
     - advanced_topics/amending_steps.md

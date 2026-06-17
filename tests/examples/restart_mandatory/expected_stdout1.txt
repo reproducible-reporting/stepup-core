@@ -2,8 +2,8 @@
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
-        1/1 |    SUCCESS │ runpy ./plan.py
-        1/1 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        1/1 |      PHASE │ watch
-        1/1 |   DIRECTOR │ Stopping workers
-        1/1 |   DIRECTOR │ See you!
+        1/2 |    SUCCESS │ runpy ./plan.py
+        1/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
+        1/2 |      PHASE │ watch
+        1/2 |   DIRECTOR │ Stopping workers
+        1/2 |   DIRECTOR │ See you!

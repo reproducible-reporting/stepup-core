@@ -5,13 +5,13 @@
         1/2 |    SUCCESS │ runpy ./plan.py
         1/2 |      START │ runpy ./work.py plan --step-info=current_step_info.json
         2/4 |    SUCCESS │ runpy ./work.py plan --step-info=current_step_info.json
-        2/4 |      START │ runpy ./work.py run -- -5.0
-        3/4 |    SUCCESS │ runpy ./work.py run -- -5.0
+        2/4 |      START │ runpy ./work.py run +7.0
+        3/4 |    SUCCESS │ runpy ./work.py run +7.0
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
-        3/4 |      START │ runpy ./work.py run +7.0
-        4/4 |    SUCCESS │ runpy ./work.py run +7.0
+        3/4 |      START │ runpy ./work.py run -- -5.0
+        4/4 |    SUCCESS │ runpy ./work.py run -- -5.0
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────

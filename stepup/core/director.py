@@ -39,19 +39,19 @@ except ImportError:
     yappi = None
 
 from .asyncio import wait_for_events
-from .enums import ReturnCode, StepState
+from .dispatcher import Dispatcher
+from .enums import Need, ReturnCode, StepState
 from .exceptions import GraphError
 from .hash import FileHash
 from .nglob import NGlobMulti
 from .reporter import ReporterClient
 from .rpc import allow_rpc, serve_socket_rpc
 from .runner import Runner
-from .scheduler import Scheduler
 from .sqlite3 import connect
 from .startup import startup_from_db
 from .step import Step
 from .stepinfo import StepInfo
-from .utils import DBLock, check_plan, mynormpath
+from .utils import DBLock, check_plan, mynormpath, parse_resources
 from .watcher import WATCHER_AVAILABLE, Watcher
 from .workflow import Workflow
 
@@ -85,20 +85,23 @@ async def async_main():
             yappi.set_clock_type("cpu")
             yappi.start(builtins=True, profile_threads=True)
     async with ReporterClient.socket(args.reporter_socket) as reporter:
-        num_workers = interpret_num_workers(args.num_workers)
-        await reporter.set_num_workers(num_workers)
+        nworker = interpret_num_workers(args.num_workers)
+        await reporter.set_num_workers(nworker)
+        available_resources = parse_resources(args.resources) if args.resources else {}
         version = get_version("stepup")
         await reporter("DIRECTOR", f"Listening on {args.director_socket} (StepUp Core {version})")
         try:
             returncode = await serve(
                 args.director_socket,
-                num_workers,
+                nworker,
                 reporter,
-                args.show_perf,
+                args.clean,
+                args.duration,
                 args.explain_rerun,
+                args.show_perf,
                 args.watch,
                 args.watch_first,
-                args.clean,
+                available_resources,
             )
         except Exception as exc:
             tbstr = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
@@ -126,16 +129,32 @@ def parse_args() -> argparse.Namespace:
         help="The socket at which StepUp will listen for instructions.",
     )
     parser.add_argument(
-        "--reporter",
-        "-r",
-        type=Path,
-        dest="reporter_socket",
-        default=os.environ.get("STEPUP_REPORTER_SOCKET"),
-        help="Socket to send reporter updates to, if any.",
+        "--clean",
+        dest="clean",
+        default=True,
+        action=argparse.BooleanOptionalAction,
+        help="Remove outdated output files.",
+    )
+    parser.add_argument(
+        "--duration",
+        default=True,
+        action=argparse.BooleanOptionalAction,
+        help="Use the duration of steps to optimize the execution order.",
+    )
+    parser.add_argument(
+        "--explain-rerun",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Explain for every step with recording info why it cannot be skipped.",
+    )
+    parser.add_argument(
+        "--log-level",
+        default="WARNING",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level. [default=%(default)s]",
     )
     parser.add_argument(
         "--num-workers",
-        "-n",
         type=Decimal,
         default=Decimal("1.2"),
         help="Number of workers running in parallel. "
@@ -143,30 +162,26 @@ def parse_args() -> argparse.Namespace:
         "it is multiplied with the number of available cores. [default=%(default)s]",
     )
     parser.add_argument(
-        "--log-level",
-        "-l",
-        default="WARNING",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level. [default=%(default)s]",
+        "--reporter",
+        type=Path,
+        dest="reporter_socket",
+        default=os.environ.get("STEPUP_REPORTER_SOCKET"),
+        help="Socket to send reporter updates to, if any.",
     )
     parser.add_argument(
         "--show-perf",
-        "-s",
         default=False,
         action=argparse.BooleanOptionalAction,
         help="Add performance details after completed step.",
     )
     parser.add_argument(
-        "--explain-rerun",
-        "-e",
-        default=False,
-        action=argparse.BooleanOptionalAction,
-        help="Explain for every step with recording info why it cannot be skipped.",
+        "--resources",
+        default=None,
+        help="Available resources for steps, e.g. 'cpu:4,gpu:1,memgb:16'.",
     )
     if WATCHER_AVAILABLE:
         parser.add_argument(
             "--watch",
-            "-w",
             default=False,
             action=argparse.BooleanOptionalAction,
             help="Watch file changes after completing the run phase. "
@@ -174,19 +189,11 @@ def parse_args() -> argparse.Namespace:
         )
         parser.add_argument(
             "--watch-first",
-            "-W",
             default=False,
             action=argparse.BooleanOptionalAction,
             help="Exit watch phase and start the runner after the first file change. "
             "This implies --watch.",
         )
-    parser.add_argument(
-        "--clean",
-        dest="clean",
-        default=True,
-        action=argparse.BooleanOptionalAction,
-        help="Do not remove outdated output files.",
-    )
     parser.add_argument(
         "--yappi",
         default=False,
@@ -214,13 +221,15 @@ def interpret_num_workers(num_workers: Decimal) -> int:
 
 async def serve(
     director_socket_path: Path,
-    num_workers: int,
+    nworker: int,
     reporter: ReporterClient,
-    show_perf: bool,
+    do_clean: bool,
+    use_duration: bool,
     explain_rerun: bool,
+    show_perf: bool,
     do_watch: bool,
     do_watch_first: bool,
-    do_clean: bool = True,
+    available_resources: dict[str, int],
 ) -> ReturnCode:
     """Server program.
 
@@ -228,31 +237,36 @@ async def serve(
     ----------
     director_socket_path
         The socket to listen to for remote calls.
-    num_workers
+    nworker
         The number of worker processes.
     reporter
         The reporter client for sending information back to
         the terminal user interface.
-    show_perf
-        Show performance details after each completed step.
+    do_clean
+        If True, the director removes outdated output files.
+    use_duration
+        If True, the dispatcher uses the duration of steps to optimize the execution order.
     explain_rerun
         Let workers explain why steps with recording info cannot be skipped.
+    show_perf
+        Show performance details after each completed step.
     do_watch
         If True, the director alternates between run and watch phases until
         it receives an RPC to shutdown.
         If False, the director exits after a single run phase.
     do_watch_first
         If True, the runner restarts after the watcher sees the first file change.
-    do_clean
-        If True, the director removes outdated output files.
+    available_resources
+        A dictionary of named resources and their available quantities,
+        e.g. `{"cpu": 4, "gpu": 1}`. Defaults to an empty dict.
 
     Returns
     -------
     returncode
         The exit code of the director process.
     """
-    if num_workers < 1:
-        raise ValueError(f"Number of workers must be strictly positive, got {num_workers}")
+    if nworker < 1:
+        raise ValueError(f"Number of workers must be strictly positive, got {nworker}")
     if do_watch_first and not do_watch:
         raise ValueError("do_watch_first cannot be set without do_watch.")
     check_plan("plan.py")
@@ -262,12 +276,17 @@ async def serve(
     dblock = DBLock(con)
     dir_queue = asyncio.Queue() if do_watch else None
     workflow = Workflow(con, dir_queue=dir_queue)
-    scheduler = Scheduler(workflow.job_queue, workflow.config_queue, workflow.job_queue_changed)
-    scheduler.num_workers = num_workers
+    dispatcher = Dispatcher(
+        workflow,
+        dblock=dblock,
+        use_duration=use_duration,
+    )
+    await dispatcher.set_available_resources(available_resources)
     watcher = Watcher(workflow, dblock, reporter, dir_queue) if do_watch else None
     runner = Runner(
+        nworker=nworker,
         watcher=watcher,
-        scheduler=scheduler,
+        dispatcher=dispatcher,
         workflow=workflow,
         dblock=dblock,
         reporter=reporter,
@@ -278,7 +297,7 @@ async def serve(
     )
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(
-        scheduler, workflow, dblock, reporter, runner, watcher, stop_event
+        dispatcher, workflow, dblock, reporter, runner, watcher, stop_event
     )
 
     # Initialize the workflow
@@ -287,7 +306,7 @@ async def serve(
         await reporter("STARTUP", "(Re)initialized boot script")
         runner.resume.set()
     else:
-        await startup_from_db(workflow, dblock, runner, reporter)
+        await startup_from_db(workflow, dblock, reporter, runner)
 
     # Start tasks and wait for them to complete
     exit_event = asyncio.Event()
@@ -315,7 +334,7 @@ async def serve(
 
 @attrs.define
 class DirectorHandler:
-    scheduler: Scheduler = attrs.field()
+    dispatcher: Dispatcher = attrs.field()
     workflow: Workflow = attrs.field()
     dblock: DBLock = attrs.field()
     reporter: ReporterClient = attrs.field()
@@ -407,9 +426,8 @@ class DirectorHandler:
         out_paths: list[str],
         vol_paths: list[str],
         workdir: str,
-        optional: bool,
-        pool: str | None,
-        block: bool,
+        need: int,
+        resources: dict[str, int],
     ) -> list[tuple[str, FileHash]]:
         """Create a step in the workflow.
 
@@ -434,22 +452,9 @@ class DirectorHandler:
                 out_paths=out_paths,
                 vol_paths=vol_paths,
                 workdir=workdir,
-                optional=optional,
-                pool=pool,
-                block=block,
+                need=Need(need),
+                resources=resources,
             )
-
-    @allow_rpc
-    async def pool(self, step_i: int, name: str, size: int):
-        """Define a pool with given name and size.
-
-        Notes
-        -----
-        This is an RPC wrapper for `Scheduler.define_pool`.
-        """
-        async with self.dblock:
-            step = self.workflow.node(Step, step_i)
-            self.workflow.define_pool(step, name, size)
 
     @allow_rpc
     async def amend(
@@ -510,7 +515,7 @@ class DirectorHandler:
     @allow_rpc
     async def shutdown(self):
         """Shut down the director and worker processes."""
-        self.scheduler.drain()
+        self.dispatcher.on_hold = True
         if self.stop_event.is_set():
             signal_name, signal_number = (
                 ("SIGINT", signal.SIGINT)
@@ -536,7 +541,7 @@ class DirectorHandler:
         -----
         This RPC blocks until all running steps have completed.
         """
-        self.scheduler.drain()
+        self.dispatcher.on_hold = True
         if self.watcher is not None:
             await wait_for_events(
                 self.watcher.active, self.stop_event, return_when=asyncio.FIRST_COMPLETED
@@ -575,6 +580,7 @@ class DirectorHandler:
                 "step_counts": self.workflow.get_step_counts(),
                 "file_counts": self.workflow.get_file_counts(),
                 "running_steps": [step.label for step in self.workflow.steps(StepState.RUNNING)],
+                "resource_counts": self.dispatcher.get_resource_counts(),
             }
 
     @allow_rpc
@@ -595,7 +601,7 @@ class DirectorHandler:
         await wait_for_events(
             self.watcher.processed, self.stop_event, return_when=asyncio.FIRST_COMPLETED
         )
-        self.scheduler.resume()
+        self.dispatcher.on_hold = False
         self.runner.resume.set()
 
     @allow_rpc

@@ -10,10 +10,11 @@
         2/2 |    DELETED │ data/sub/inp.txt
         2/2 |    DELETED │ data/sub/out.txt
         1/2 |      PHASE │ run
-        1/2 |    WARNING │ 1 step(s) remained pending due to ...
+        1/2 |    WARNING │ 1 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  data/sub/inp.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
+Reason                required inputs are unavailable
 Action                runsh cat data/sub/inp.txt > data/sub/out.txt
 Working directory     ./
 Inputs       MISSING  data/sub/inp.txt

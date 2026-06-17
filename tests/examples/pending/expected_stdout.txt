@@ -3,10 +3,11 @@
         0/1 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
         1/2 |    SUCCESS │ runpy ./plan.py
-        1/2 |    WARNING │ 1 step(s) remained pending due to ...
-─────────────────────────── Incomplete requirements ────────────────────────────
+        1/2 |    WARNING │ 1 step(s) remained pending ...
+─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  first.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
+Reason                required inputs are unavailable
 Action                runsh cp -v first.txt second.txt
 Working directory     ./
 Inputs       AWAITED  (first.txt)

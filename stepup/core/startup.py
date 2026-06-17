@@ -40,37 +40,26 @@ logger = logging.getLogger(__name__)
 
 
 async def startup_from_db(
-    workflow: Workflow, dblock: DBLock, runner: Runner, reporter: ReporterClient
+    workflow: Workflow,
+    dblock: DBLock,
+    reporter: ReporterClient,
+    runner: Runner,
 ):
     """Initialize internal datastructures by loading relevant parts from the database."""
     con = workflow.con
 
     await reporter("STARTUP", "Making failed steps pending")
-    # Make steps pending if they are QUEUED, RUNNING or FAILED.
-    # QUEUED, RUNNING are uncommon, but can happen if the director crashes.
+    # Make steps pending if they are RUNNING or FAILED.
+    # RUNNING are uncommon, but can happen if the director crashes.
     async with dblock:
         # Steps that were running are considered failed.
         con.execute(
             "UPDATE step SET state = ? WHERE state = ?",
             (StepState.FAILED.value, StepState.RUNNING.value),
         )
-        # Steps that were queued are considered pending.
-        con.execute(
-            "UPDATE step SET state = ? WHERE state = ?",
-            (StepState.PENDING.value, StepState.QUEUED.value),
-        )
         # Make all failed steps pending again, as they can be retried.
         for step in workflow.steps(StepState.FAILED):
             step.mark_pending()
-
-    # Define pools
-    async with dblock:
-        rows = con.execute("SELECT name, size FROM pool_definition GROUP BY name").fetchall()
-    if len(rows) > 0:
-        await reporter("STARTUP", f"Setting {len(rows)} pools from initial database")
-        for pool, size in rows:
-            workflow.config_queue.put_nowait((pool, size))
-        workflow.job_queue_changed.set()
 
     # Populate dir queue
     populate_dir_queue(workflow, dblock, reporter)
@@ -107,8 +96,6 @@ async def startup_from_db(
 
     # Wrap up by making necessary steps pending and starting the runner.
     logger.info("Startup sequence completed")
-    async with dblock:
-        workflow.queue_pending_steps()
     runner.resume.set()
 
 
@@ -136,7 +123,7 @@ async def scan_file_changes(
     """Check all files in the workflow for changes."""
     sql = (
         "SELECT label, state, digest, mode, mtime, size, inode "
-        "FROM node JOIN file ON node.i = file.node AND state NOT IN (?, ?) AND NOT orphan"
+        "FROM node JOIN file ON node.i = file.node AND state NOT IN (?, ?) AND NOT detached"
     )
     data = (FileState.AWAITED.value, FileState.VOLATILE.value)
     con = workflow.con
@@ -188,7 +175,7 @@ async def scan_nglob_changes(
                 if ngs.regex.fullmatch(path) and path not in paths:
                     paths.add(path)
 
-    # Select the new ones, i.e. not present in the workflow (orphan or missing)
+    # Select the new ones, i.e. not present in the workflow (detached or missing)
     con = workflow.con
     async with dblock:
         con.execute("DROP TABLE IF EXISTS temp.glob")
@@ -198,7 +185,7 @@ async def scan_nglob_changes(
             "SELECT path FROM temp.glob WHERE NOT EXISTS "
             "(SELECT 1 FROM node JOIN file ON node.i = file.node "
             "WHERE label = path AND "
-            "NOT orphan AND state != ?)",
+            "NOT detached AND state != ?)",
             (FileState.MISSING.value,),
         ).fetchall()
         con.execute("DROP TABLE IF EXISTS temp.glob")

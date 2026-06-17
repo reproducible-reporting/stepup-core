@@ -34,7 +34,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 import jinja2
 from path import Path
 
-from .enums import FileState, Mandatory, StepState
+from .enums import FileState, Need, StepState
 from .hash import fmt_digest
 from .sqlite3 import connect
 
@@ -176,12 +176,12 @@ HTML_TEMPLATE = """\
     .volatile { color: var(--purple); }
     .pending { color: var(--orange); }
     .queued { color: var(--yellow); }
-    .running { color: var(--green); }
+    .running { color: var(--blue); }
     .succeeded { color: var(--green); }
     .failed { color: var(--red); }
     .yes { color: var(--green); }
     .no { color: var(--red); }
-    .dirty { color: var(--red); }
+    .rescheduled { color: var(--orange); }
     .clean { color: var(--green); }
     .required { color: var(--blue); }
     table.list tr td {
@@ -358,60 +358,90 @@ class GraphServer(BaseHTTPRequestHandler):
         if not args["i"][0].isdigit():
             raise ValueError("Node ID 'i' must be an integer.")
         node_i = int(args["i"][0])
-        (kind, label, creator_i) = self.con.execute(
-            "SELECT kind, label, creator FROM node WHERE i = ?", (node_i,)
+        (kind, label, creator_i, detached) = self.con.execute(
+            "SELECT kind, label, creator, detached FROM node WHERE i = ?", (node_i,)
         ).fetchone()
-        yield f"<h2>Node {node_i}</h2>"
+        node_prefix = "Detached " if detached else ""
+        yield f"<h2>{node_prefix}Node {node_i}</h2>"
         yield f"<p><b>Kind:</b> {KIND_NAMES.get(kind, kind)}</p>"
         yield f"<p><b>Label:</b> {label}</p>"
 
         # Format the state (if a file or a step)
         if kind == "step":
-            sql_props = "SELECT state, pool, block, mandatory, dirty FROM step WHERE node = ?"
-            state_i, pool, block, mandatory_i, dirty = self.con.execute(
-                sql_props, (node_i,)
-            ).fetchone()
-            state = StepState(state_i)
-            mandatory = Mandatory(mandatory_i)
-            yield f'<p>State: <span class="{state.name.lower()}">{state.name}</span></p>'
-            yield (
-                f'<p>Mandatory: <span class="{mandatory.name.lower()}">{mandatory.name}</span></p>'
+            sql_props = (
+                "SELECT state, need, duration, rescheduled_info, "
+                "_safe, _check_safe, _implied_need, _tail_time, _check_after "
+                "FROM step WHERE node = ?"
             )
-            if dirty:
-                yield '<p>Dirty: <span class="dirty">YES</span></p>'
+            (
+                state_i,
+                need_id,
+                duration,
+                rescheduled_info,
+                safe,
+                check_safe,
+                implied_need_id,
+                tail_time,
+                check_after,
+            ) = self.con.execute(sql_props, (node_i,)).fetchone()
+            state = StepState(state_i)
+            yield f'<p><b>State:</b> <span class="{state.name.lower()}">{state.name}</span></p>'
+            if rescheduled_info != "":
+                yield (
+                    '<p><b>Rescheduled:</b> <span class="rescheduled">'
+                    f"{rescheduled_info}</span></p>"
+                )
+            need = Need(need_id)
+            implied_need = Need(implied_need_id)
+            if need == implied_need:
+                yield f"<p><b>Need:</b> {need.name}</p>"
             else:
-                yield '<p>Dirty: <span class="clean">NO</span></p>'
-            if pool is not None:
-                yield f"<p><b>Pool:</b> {pool}</p>"
-            if block:
-                yield "<p><b>This step is blocked.</b></p>"
+                yield (
+                    f"<p><b>Need:</b> {implied_need.name} (implied by consumers > {need.name})</p>"
+                )
+            yield f"<p><b>Duration:</b> {duration:.2f} s</p>"
+            yield f"<p><b>Tail time:</b> {tail_time:.2f} s</p>"
+            if not safe:
+                yield (
+                    "<p><b>This step is not safe to run:</b> "
+                    "a creator does not have state RUNNING or SUCCEEDED.</p>"
+                )
+            if check_safe:
+                yield (
+                    "<p><b>The state of this step has not been propagated to the <code>safe</code> "
+                    "field of its products yet.</b></p>"
+                )
+            if check_after:
+                yield (
+                    "<p><b>The need of this step has not been propagated to the "
+                    "<code>_implied_need</code> field of this step and its suppliers yet.</b></p>"
+                )
 
             sql_env = "SELECT name, amended FROM env_var WHERE node = ?"
             env_vars = list(self.con.execute(sql_env, (node_i,)))
             if len(env_vars) > 0:
-                yield "<h3>Uses Environment Variables</h3><ul>"
+                yield "<h3>Uses Environment Variables</h3>"
                 for env_var, amended in env_vars:
-                    yield (
-                        f"<li>{env_var} <i>[amended]</i></li>" if amended else f"<li>{env_var}</li>"
-                    )
-                yield "</ul>"
+                    line = f"<p>{env_var}"
+                    if amended:
+                        line += " [amended]"
+                    line += "</p>"
+                    yield line
+
+            sql_res = "SELECT name, units FROM step_resource WHERE node = ? ORDER BY name"
+            resources = list(self.con.execute(sql_res, (node_i,)))
+            if len(resources) > 0:
+                yield "<h3>Required Resources</h3>"
+                for res_name, res_units in resources:
+                    yield f"<p><b>{res_name}:</b> {res_units}</p>"
 
             sql_ngm = "SELECT data FROM nglob_multi WHERE node = ?"
             ngms = list(self.con.execute(sql_ngm, (node_i,)))
             if len(ngms) > 0:
-                yield "<h3>Defines NGlob Multis</h3><ul>"
+                yield "<h3>Defines NGlob Multis</h3>"
                 for row in ngms:
                     ngm = pickle.loads(row[0])
-                    yield f"<li>{[ngs.pattern for ngs in ngm.nglob_singles]} {ngm.subs}</li>"
-                yield "</ul>"
-
-            sql_pooldefs = "SELECT name, size FROM pool_definition WHERE node = ?"
-            pooldefs = list(self.con.execute(sql_pooldefs, (node_i,)))
-            if len(pooldefs) > 0:
-                yield "<h3>Defines Pools</h3><ul>"
-                for pool, size in pooldefs:
-                    yield f"<li>{pool} = {size}</li>"
-                yield "</ul>"
+                    yield f"<p>{[ngs.pattern for ngs in ngm.nglob_singles]} {ngm.subs}</p>"
 
         elif kind == "file":
             (state_i, digest, mode, mtime, size, inode) = self.con.execute(
@@ -432,14 +462,14 @@ class GraphServer(BaseHTTPRequestHandler):
 
         # Format the creator
         creator = self.con.execute(
-            f"SELECT kind, label, orphan, {STATE_SQL} FROM node WHERE i = ?", (creator_i,)
+            f"SELECT kind, label, detached, {STATE_SQL} FROM node WHERE i = ?", (creator_i,)
         ).fetchone()
         if creator is not None:
             yield "<h3>Creator</h3>"
             yield '<table class="list">'
-            creator_kind, creator_label, creator_orphan, creator_state_i = creator
+            creator_kind, creator_label, creator_detached, creator_state_i = creator
             yield self._format_node(
-                creator_i, creator_kind, creator_label, creator_orphan, creator_state_i
+                creator_i, creator_kind, creator_label, creator_detached, creator_state_i
             )
             yield "</table>"
 
@@ -494,21 +524,21 @@ class GraphServer(BaseHTTPRequestHandler):
         yield f"<p><b>Pattern:</b> {pattern}</p>"
         if filter_kind is None:
             cur = self.con.execute(
-                f"SELECT i, kind, label, orphan, {STATE_SQL} FROM node "
+                f"SELECT i, kind, label, detached, {STATE_SQL} FROM node "
                 "WHERE label GLOB ? ORDER BY kind, label",
                 (f"*{pattern}*",),
             )
         else:
             cur = self.con.execute(
-                f"SELECT i, kind, label, orphan, {STATE_SQL} FROM node "
+                f"SELECT i, kind, label, detached, {STATE_SQL} FROM node "
                 "WHERE kind = ? AND label GLOB ? ORDER BY kind, label",
                 (filter_kind, f"*{pattern}*"),
             )
         rows = list(cur)
         yield f"<p><b>Number of matches:</b> {len(rows)}</p>"
         yield '<table class="list">'
-        for i, kind, label, orphan, state in rows:
-            yield f"{self._format_node(i, kind, label, orphan, state)}"
+        for i, kind, label, detached, state in rows:
+            yield f"{self._format_node(i, kind, label, detached, state)}"
         yield "</table>"
 
     def _not_found(self, env, path: str) -> Iterator[str]:
@@ -527,7 +557,7 @@ class GraphServer(BaseHTTPRequestHandler):
         i: int,
         kind: str,
         label: str,
-        orphan: bool,
+        detached: bool,
         state: int | None = None,
         amended: bool = False,
     ) -> str:
@@ -537,7 +567,7 @@ class GraphServer(BaseHTTPRequestHandler):
             node_str = f'<a href="/node/?i={i}">{node_str}</a>'
         if len(label) == 0:
             node_str = f"[{kind}]"
-        if orphan:
+        if detached:
             node_str = f"({node_str})"
         if amended:
             node_str += " <i>[amended]</i>"

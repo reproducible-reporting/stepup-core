@@ -29,10 +29,9 @@ import attrs
 from path import Path
 
 from .cascade import Node
-from .enums import FileState, Mandatory, StepState
+from .enums import FileState, Need, StepState
 from .file import File, FileHash
 from .hash import StepHash
-from .job import RunJob, ValidateAmendedJob
 from .nglob import NGlobMulti
 from .static_root import StaticRoot
 from .stepinfo import StepInfo
@@ -50,23 +49,39 @@ logger = logging.getLogger(__name__)
 
 STEP_SCHEMA = """
 CREATE TABLE IF NOT EXISTS step (
+    -- Main data
     node INTEGER PRIMARY KEY,
-    state INTEGER NOT NULL CHECK(state >= 21 AND state <= 25),
-    pool TEXT,
-    block INTEGER NOT NULL CHECK(block IN (0, 1)),
-    mandatory INTEGER NOT NULL CHECK(mandatory >= 31 AND mandatory <= 33),
-    dirty INTEGER NOT NULL CHECK(dirty IN (0, 1)),
+    -- The node of the step in the node table.
+    state INTEGER NOT NULL CHECK(state >= 21 AND state <= 24),
+    -- The state of the step, as defined in the StepState enum.
+    need INTEGER NOT NULL CHECK(need >= 31 AND need <= 34),
+    -- The need of the step, as defined in the Need enum.
+    duration REAL NOT NULL CHECK(duration >= 0),
+    -- An estimate of the wall time of the step in seconds.
     rescheduled_info TEXT NOT NULL,
+    -- Information about why this step was rescheduled,
+    -- or an empty string if it was not rescheduled.
+
+    -- Metadata
+    _safe INTEGER NOT NULL CHECK(_safe IN (0, 1)),
+    -- Whether this step is safe to run, meaning that all its (recursive) creators
+    -- are in a state that allows queuing this step (RUNNING or SUCCEEDED).
+    _check_safe INTEGER NOT NULL CHECK(_check_safe IN (0, 1)),
+    -- Whether recent changes to this step imply updates of the _safe metadata field of others.
+    _implied_need INTEGER NOT NULL CHECK(_implied_need >= 31 AND _implied_need <= 34),
+    -- The need that is implied by consumers, as defined in the Need enum.
+    _tail_time REAL NOT NULL CHECK(_tail_time >= 0),
+    -- The tail_time of this step, defined as the total duration of the critical path from this step
+    -- to the exit nodes of the workflow.
+    _check_after INTEGER NOT NULL CHECK(_check_after IN (0, 1)),
+    -- Whether recent changes to this step require the recalculation of the _implied_need
+    -- metadata of this step and its suppliers.
+
+    -- Indices for efficient querying
     FOREIGN KEY (node) REFERENCES node(i)
 ) WITHOUT ROWID;
-CREATE INDEX IF NOT EXISTS step_state_mandator ON step(state, mandatory);
-
-CREATE TABLE IF NOT EXISTS pool_definition (
-    node INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    size INTEGER NOT NULL CHECK(size > 0),
-    PRIMARY KEY(node, name)
-) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS step_state ON step(state);
+CREATE INDEX IF NOT EXISTS step_implied_need ON step(_implied_need);
 
 CREATE TABLE IF NOT EXISTS nglob_multi (
     i INTEGER PRIMARY KEY,
@@ -99,59 +114,60 @@ CREATE TABLE IF NOT EXISTS step_hash (
     out_info BLOB,
     FOREIGN KEY (node) REFERENCES node(i)
 );
+
+CREATE TABLE IF NOT EXISTS step_resource (
+    node  INTEGER NOT NULL,
+    name  TEXT    NOT NULL CHECK(name <> ''),
+    units INTEGER NOT NULL CHECK(units > 0),
+    PRIMARY KEY (node, name),
+    FOREIGN KEY (node) REFERENCES node(i)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS step_resource_name ON step_resource(name);
 """
 
-EXISTS_MANDATORY_CONSUMER_STEPS = f"""
-SELECT EXISTS (SELECT 1 FROM step AS step1
-JOIN dependency AS dep1 ON step1.node = dep1.supplier
-JOIN file ON dep1.consumer = file.node
-JOIN dependency AS dep2 ON file.node = dep2.supplier
-JOIN step AS step2 ON step2.node = dep2.consumer
-JOIN node AS node2 ON node2.i = dep2.consumer
-WHERE step1.node = ?
-AND step2.mandatory != {Mandatory.NO.value}
-AND NOT node2.orphan
-)
+# When a step is detached or recycled, its creator chain changes, which alters the "safe" state
+# of the step and of every step it created (recursively): whether their (indirect) creator is in
+# a state that allows queuing them. Flag _check_safe (and _check_after) on the step and all its
+# product steps so the dispatcher recomputes their metadata.
+RECURSIVE_CHECK_WITH_PRODUCTS = """
+UPDATE step SET _check_safe = 1, _check_after = 1 FROM (
+    WITH RECURSIVE check_with_products(node) AS (
+        -- Fairly trivial initialization, will only work if the node is a step.
+        SELECT node FROM step WHERE node = ?
+        UNION ALL
+        -- Recurse over all product steps of the step.
+        -- Products that are not steps can be ignored.
+        SELECT i FROM node
+        JOIN check_with_products ON node.creator = check_with_products.node
+        WHERE node.kind = 'step'
+    )
+    SELECT node FROM check_with_products
+) AS cwp WHERE step.node = cwp.node
 """
 
-SELECT_SUPPLYING_STEPS = """
-SELECT node.i, node.label FROM node
-JOIN step ON node.i = step.node
-JOIN dependency AS dep1 ON dep1.supplier = node.i
-JOIN file ON file.node = dep1.consumer
-JOIN dependency AS dep2 ON dep2.supplier = dep1.consumer
-WHERE dep2.consumer = ?
-"""
 
-# Check if any of the (recursive) creators of a step does not allow it to be queued yet.
-HAS_UNCERTAIN_CREATORS = f"""
-WITH RECURSIVE trace(i, label, creator, certain) AS (
-    SELECT i, label, creator,
-    state in ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
-    FROM node JOIN step ON node.i = step.node
-    WHERE i = (SELECT creator FROM node WHERE i = ?)
-    UNION
-    SELECT node.i, node.label, node.creator,
-    step.state in ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
-    FROM node JOIN step ON node.i = step.node JOIN trace ON trace.creator = node.i
-    WHERE trace.certain AND node.kind = 'step'
-)
-SELECT EXISTS (SELECT 1 FROM trace WHERE NOT certain)
-"""
-
-# Find all product steps (recursively) that are pending, without recursing past pending steps.
-# Only mandatory or required steps are considered.
-RECURSE_PRODUCTS_PENDING = f"""
-WITH RECURSIVE tree(i, label, creator, state) AS (
-    SELECT i, label, creator, state FROM node
-    JOIN step ON node.i = step.node
-    WHERE creator = ? AND step.mandatory != {Mandatory.NO.value}
-    UNION
-    SELECT node.i, node.label, node.creator, step.state FROM node
-    JOIN step ON node.i = step.node JOIN tree ON node.creator = tree.i
-    WHERE tree.state != {StepState.PENDING.value} AND step.mandatory != {Mandatory.NO.value}
-)
-SELECT i, label FROM tree WHERE state = {StepState.PENDING.value}
+# When a step (sub)tree is detached, the steps supplying inputs to it lose a consumer.
+# Their _implied_need and _tail_time must therefore be recomputed, so flag _check_after on them.
+# Suppliers are reached with two dependency hops: subtree_step <- input_file <- supplier_step.
+# Only non-detached supplier steps are flagged; detached ones are excluded from the metadata anyway.
+RECURSIVE_CHECK_AFTER_SUPPLIERS = """
+UPDATE step SET _check_after = 1 FROM (
+    WITH RECURSIVE subtree(node) AS (
+        -- Start from the detached step and recurse over its product steps (the detached subtree).
+        SELECT node FROM step WHERE node = ?
+        UNION ALL
+        SELECT i FROM node
+        JOIN subtree ON node.creator = subtree.node
+        WHERE node.kind = 'step'
+    )
+    -- Two hops back along dependency edges to the supplier steps of the subtree.
+    SELECT DISTINCT dep2.supplier AS node
+    FROM subtree
+    JOIN dependency AS dep1 ON dep1.consumer = subtree.node
+    JOIN dependency AS dep2 ON dep2.consumer = dep1.supplier
+    JOIN node AS supplier_node ON supplier_node.i = dep2.supplier
+    WHERE supplier_node.kind = 'step' AND NOT supplier_node.detached
+) AS sup WHERE step.node = sup.node
 """
 
 
@@ -193,21 +209,25 @@ class Step(Node):
 
     def initialize(
         self,
-        pool: str | None = None,
-        block: bool = False,
-        mandatory: Mandatory = Mandatory.YES,
+        *,
+        safe: bool = False,
+        need: Need = Need.DEFAULT,
+        # ignore arguments for create_label
         **kwargs,
     ):
         """Create extra information in the database about this node."""
-        # Note that dirty is set to True for new steps by default.
         self.con.execute(
-            "INSERT OR REPLACE INTO step VALUES(:node, :state, :pool, :block, :mandatory, 1, '')",
+            "INSERT OR REPLACE INTO step "
+            "VALUES(:node, :state, :need, 1.0, '', "
+            ":safe, :check_safe, :implied_need, 1.0, :check_need)",
             {
                 "node": self.i,
-                "pool": pool,
-                "block": int(block),
+                "need": need.value,
                 "state": StepState.PENDING.value,
-                "mandatory": mandatory.value,
+                "safe": int(safe),
+                "check_safe": int(not safe),
+                "implied_need": need.value,
+                "check_need": int(need != Need.OPTIONAL),
             },
         )
 
@@ -219,16 +239,16 @@ class Step(Node):
 
     def format_properties(self) -> Iterator[tuple[str, str]]:
         """Iterate over key-value pairs that represent the properties of the node."""
-        state, pool, block, mandatory, dirty, _ = self.properties()
+        sql = "SELECT state, need, _implied_need FROM step WHERE node = ?"
+        state_id, need_id, implied_need_id = self.con.execute(sql, (self.i,)).fetchone()
+        state = StepState(state_id)
         yield "state", state.name
-        if mandatory != Mandatory.YES:
-            yield "mandatory", mandatory.name
-        if pool is not None:
-            yield "pool", pool
-        if dirty:
-            yield "dirty", "yes"
-        if block:
-            yield "blocked", "yes"
+        need = Need(need_id)
+        implied_need = Need(implied_need_id)
+        if need == implied_need:
+            yield "need", need.name
+        else:
+            yield "need", f"{implied_need.name} (implied by consumers > {need.name})"
 
         sql = "SELECT name, amended FROM env_var WHERE node = ?"
         label = "env_var"
@@ -240,8 +260,10 @@ class Step(Node):
             ngm = pickle.loads(row[0])
             yield "ngm", f"{[ngs.pattern for ngs in ngm.nglob_singles]} {ngm.subs}"
 
-        for pool, size in self.pool_definitions():
-            yield "defines pool", f"{pool}={size}"
+        for row in self.con.execute(
+            "SELECT name, units FROM step_resource WHERE node = ?", (self.i,)
+        ):
+            yield "resource", f"{row[0]}: {row[1]} units"
 
         step_hash = self.get_hash()
         if step_hash is not None:
@@ -254,89 +276,27 @@ class Step(Node):
             if step_hash.inp_info is not None:
                 yield "explained", "yes"
 
-    def _make_orphan(self):
-        """Update the node or the graph when it becomes orphan."""
-        # This step can no longer be required.
-        self.undo_required()
-        # Also check whether supplying steps are no longer be required.
-        for i, label in self.con.execute(SELECT_SUPPLYING_STEPS, (self.i,)):
-            step = Step(self.cascade, i, label)
-            step.undo_required()
-
-    def _undo_orphan(self):
-        """Update the node or the graph when the node is recreated."""
-        # This step may become required.
-        self.make_required()
-        # Also check if supplying steps become required.
-        for i, label in self.con.execute(SELECT_SUPPLYING_STEPS, (self.i,)):
-            step = Step(self.cascade, i, label)
-            step.make_required()
-
     def clean(self):
-        """Perform a cleanup right before the orphaned node is removed from the graph."""
+        """Perform a cleanup right before the detached node is removed from the graph."""
         self.del_suppliers()
-        for consumer in self.consumers(include_orphans=True):
+        for consumer in self.consumers(include_detached=True):
             consumer.del_suppliers([self])
         self.con.execute("DELETE FROM step WHERE node = ?", (self.i,))
         self.con.execute("DELETE FROM env_var WHERE node = ?", (self.i,))
         self.con.execute("DELETE FROM nglob_multi WHERE node = ?", (self.i,))
-        self.con.execute("DELETE FROM pool_definition WHERE node = ?", (self.i,))
         self.con.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))
+        self.con.execute("DELETE FROM step_resource WHERE node = ?", (self.i,))
 
-    def add_supplier(self, supplier: Node) -> int:
-        """Add a supplier-consumer relation.
-
-        Parameters
-        ----------
-        supplier
-            Other node that supplies to this node.
-
-        Returns
-        -------
-        idep
-            The identifier in the dependency table.
-        """
-        idep = super().add_supplier(supplier)
-        if self.get_mandatory() != Mandatory.NO:
-            # Loop over steps supplying to the supplying file,
-            # i.e. two edges up in the graph (step -> file -> step),
-            # and make them required.
-            for step in supplier.suppliers(Step):
-                step.make_required()
-        return idep
-
-    def del_suppliers(self, suppliers: list[Node] | None = None):
-        """Delete given suppliers.
-
-        Without arguments, all suppliers of the current node are deleted.
-        """
-        # Get a list of suppliers to process if needed.
-        # It is better not to pass this list to the super method,
-        # because it will just to the same in a less efficient way.
-        _suppliers = suppliers
-        if suppliers is None:
-            _suppliers = list(self.suppliers(include_orphans=True))
-        # Call the super method to remove the actual dependencies
-        super().del_suppliers(suppliers)
-        # Update the mandatory status of the step and propagate to other steps.
-        if self.get_mandatory() != Mandatory.NO:
-            steps = set()
-            for supplier in _suppliers:
-                for step in supplier.suppliers(Step):
-                    steps.add(step)
-            for step in steps:
-                step.undo_required()
-
-    def detach(self):
-        """Clean up an orphaned node because it loses a product node.
+    def give_up(self):
+        """Clean up a detached node because it loses a product node.
 
         Completely remove this step, making reuse impossible.
         """
-        for consumer in self.consumers(include_orphans=True):
+        for consumer in self.consumers(include_detached=True):
             consumer.del_suppliers([self])
         for product in self.products():
-            product.orphan()
-        self.orphan()
+            product.detach()
+        self.detach()
         self.clean()
         self.con.execute("DELETE FROM node WHERE i = ?", (self.i,))
 
@@ -355,26 +315,6 @@ class Step(Node):
             amended = self.con.execute(sql, (idep,)).fetchone() is not None
             yield idep, f"{node_str} [amended]" if amended else node_str
 
-    def properties(self) -> tuple[str, Path, StepState, str, bool, Mandatory, str]:
-        row = self.con.execute(
-            "SELECT state, pool, block, mandatory, dirty, rescheduled_info "
-            "FROM step WHERE node = ?",
-            (self.i,),
-        ).fetchone()
-        state_i, pool, block, mandatory_i, dirty, rescheduled_info = row
-        return (
-            StepState(state_i),
-            pool,
-            bool(block),
-            Mandatory(mandatory_i),
-            bool(dirty),
-            rescheduled_info,
-        )
-
-    #
-    # Getters and setters
-    #
-
     def get_action_workdir(self) -> tuple[str, str]:
         """Return the action and workdir of this step."""
         return split_step_label(self.label)
@@ -384,7 +324,9 @@ class Step(Node):
         return StepState(row[0])
 
     def set_state(self, state: StepState):
-        self.con.execute("UPDATE step SET state = ? WHERE node = ?", (state.value, self.i))
+        self.con.execute(
+            "UPDATE step SET state = ?, _check_safe = 1 WHERE node = ?", (state.value, self.i)
+        )
         if state in (StepState.SUCCEEDED, StepState.FAILED):
             self.clear_rescheduled_info()
 
@@ -403,29 +345,11 @@ class Step(Node):
     def clear_rescheduled_info(self):
         self.con.execute("UPDATE step SET rescheduled_info = '' WHERE node = ?", (self.i,))
 
-    def set_dirty(self, value: bool = True):
-        """Flag that inputs or outputs of the step have potentially changed.
-
-        Relevant changes include:
-
-        - Content changed of files used as input.
-        - Outputs changed or removed externally.
-        - Environment variables used by the step have changed.
-        - The list of files used as input has changed (e.g. due to new files matching a glob).
-
-        False positives are allowed, but not false negatives.
-        In case of False positives, it is assumed that running (or trying to run) the step once
-        will clear the dirty flag.
-        Such reruns should never reinstate a false positive dirty flag,
-        as this would cause an infinite loop of reruns.
-
-        This flag is set to False after successful completion of the step.
-        In most cases, when a step is marked pending, this flag should be set to True.
-        Without this flag being set, there is no need to queue the step again.
-        Newly created steps have this flag set by default.
-        """
-        sql = "UPDATE step SET dirty = ? WHERE node = ?"
-        self.con.execute(sql, (int(value), self.i))
+    def set_duration(self, duration: float):
+        self.con.execute(
+            "UPDATE step SET duration = ?, _check_after = 1 WHERE node = ?",
+            (duration, self.i),
+        )
 
     #
     # Get step information
@@ -448,46 +372,6 @@ class Step(Node):
         )
 
     #
-    # Mandatory / Optional
-    #
-
-    def get_mandatory(self) -> Mandatory:
-        row = self.con.execute("SELECT mandatory FROM step WHERE node = ?", (self.i,)).fetchone()
-        return Mandatory(row[0])
-
-    def set_mandatory(self, mandatory: Mandatory):
-        self.con.execute("UPDATE step SET mandatory = ? WHERE node = ?", (mandatory.value, self.i))
-
-    def make_required(self):
-        """Try to set this step to Mandatory.REQUIRED and propagate to other optional suppliers."""
-        # Scan all direct step dependencies for mandatory or required ones.
-        logger.info(
-            "Number of mandatory consumer steps: %s",
-            self.con.execute(EXISTS_MANDATORY_CONSUMER_STEPS, (self.i,)).fetchone()[0],
-        )
-        if (
-            self.get_mandatory() == Mandatory.NO
-            and not self.is_orphan()
-            and self.con.execute(EXISTS_MANDATORY_CONSUMER_STEPS, (self.i,)).fetchone()[0] > 0
-        ):
-            self.set_mandatory(Mandatory.REQUIRED)
-            for i, label in self.con.execute(SELECT_SUPPLYING_STEPS, (self.i,)):
-                step = Step(self.cascade, i, label)
-                step.make_required()
-            self.queue_if_appropriate()
-
-    def undo_required(self):
-        """Try to set this node to Mandatory.NO and propagate to other optional suppliers."""
-        if self.get_mandatory() == Mandatory.REQUIRED and (
-            self.is_orphan()
-            or self.con.execute(EXISTS_MANDATORY_CONSUMER_STEPS, (self.i,)).fetchone()[0] == 0
-        ):
-            self.set_mandatory(Mandatory.NO)
-            for i, label in self.con.execute(SELECT_SUPPLYING_STEPS, (self.i,)):
-                step = Step(self.cascade, i, label)
-                step.undo_required()
-
-    #
     # Env vars
     #
 
@@ -500,23 +384,6 @@ class Step(Node):
         self.con.executemany("INSERT OR IGNORE INTO env_var VALUES (?, ?, ?, 1)", rows)
 
     #
-    # Pool definitions
-    #
-
-    def define_pool(self, pool: str, size: int):
-        # If the pool has already been defined, it should have the same size.
-        sql = "SELECT size FROM pool_definition WHERE name = ?"
-        for (old_size,) in self.con.execute(sql, (pool,)):
-            # Checking one is in principle sufficient, but let's play it safe an check them all.
-            if old_size != size:
-                raise ValueError(
-                    f"Pool with old size {old_size} defined with different new size {size}"
-                )
-        self.con.execute(
-            "INSERT OR IGNORE INTO pool_definition VALUES (?, ?, ?)", (self.i, pool, size)
-        )
-
-    #
     # Iterators
     #
 
@@ -525,7 +392,7 @@ class Step(Node):
         relation: str,
         yield_state: bool = False,
         yield_hash: bool = False,
-        yield_orphan: bool = False,
+        yield_detached: bool = False,
         yield_amended: bool = False,
         amended: bool | None = None,
         filter_states: tuple[FileState, ...] = (),
@@ -560,8 +427,8 @@ class Step(Node):
         if yield_hash:
             fields.extend(["digest", "mode", "mtime", "size", "inode"])
             join_file = True
-        if yield_orphan:
-            fields.append("orphan")
+        if yield_detached:
+            fields.append("detached")
         if yield_amended:
             fields.append("EXISTS (SELECT 1 FROM amended_dep WHERE amended_dep.i = relevant.idep)")
         if len(filter_states) > 0:
@@ -570,9 +437,9 @@ class Step(Node):
             join += " JOIN file ON file.node = relevant.node"
         where = "WHERE kind = 'file'"
 
-        # Exclude orphaned paths if not yielding orphan
-        if not yield_orphan:
-            where += " AND NOT orphan"
+        # Exclude detached paths if not yielding detached
+        if not yield_detached:
+            where += " AND NOT detached"
 
         # Select only the initial files (not amended)
         if amended is not None:
@@ -602,7 +469,7 @@ class Step(Node):
             if yield_hash:
                 record.append(FileHash(*row[i : i + 5]))
                 i += 5
-            if yield_orphan:
+            if yield_detached:
                 record.append(bool(row[i]))
                 i += 1
             if yield_amended:
@@ -614,13 +481,13 @@ class Step(Node):
         *,
         yield_state: bool = False,
         yield_hash: bool = False,
-        yield_orphan: bool = False,
+        yield_detached: bool = False,
         yield_amended: bool = False,
         amended: bool | None = None,
     ) -> Iterator:
         """Iterate over input files of this step."""
         yield from self._paths(
-            "supplier", yield_state, yield_hash, yield_orphan, yield_amended, amended
+            "supplier", yield_state, yield_hash, yield_detached, yield_amended, amended
         )
 
     def out_paths(
@@ -628,7 +495,7 @@ class Step(Node):
         *,
         yield_state: bool = False,
         yield_hash: bool = False,
-        yield_orphan: bool = False,
+        yield_detached: bool = False,
         yield_amended: bool = False,
         amended: bool | None = None,
     ) -> Iterator:
@@ -637,7 +504,7 @@ class Step(Node):
             "consumer",
             yield_state,
             yield_hash,
-            yield_orphan,
+            yield_detached,
             yield_amended,
             amended,
             (FileState.AWAITED, FileState.BUILT, FileState.OUTDATED),
@@ -647,7 +514,7 @@ class Step(Node):
         self,
         *,
         yield_hash: bool = False,
-        yield_orphan: bool = False,
+        yield_detached: bool = False,
         yield_amended: bool = False,
         amended: bool | None = None,
     ) -> Iterator:
@@ -656,7 +523,7 @@ class Step(Node):
             "consumer",
             False,
             yield_hash,
-            yield_orphan,
+            yield_detached,
             yield_amended,
             amended,
             (FileState.VOLATILE,),
@@ -696,98 +563,12 @@ class Step(Node):
         for row in self.con.execute("SELECT data FROM nglob_multi WHERE node = ?", (self.i,)):
             yield pickle.loads(row[0])
 
-    def pool_definitions(self):
-        sql = "SELECT name, size FROM pool_definition WHERE node = ?"
-        yield from self.con.execute(sql, (self.i,))
-
     #
     # Run phase
     #
 
-    def queue_if_appropriate(self):
-        state, pool, block, mandatory, dirty, rescheduled_info = self.properties()
-
-        # Check basics that would prohibit scheduling impossible.
-        if block:
-            return
-        if mandatory == Mandatory.NO:
-            return
-        if self.is_orphan():
-            return
-        if state != StepState.PENDING:
-            return
-        if not dirty:
-            return
-
-        # Do not start a step if any of its (recursive) creators are not in a valid state.
-        # These may still produce or change files relevant for this step.
-        if self.con.execute(HAS_UNCERTAIN_CREATORS, (self.i,)).fetchone()[0]:
-            return
-
-        # Check whether initial and amended inputs are ready.
-        # Also collect the input hashes for input validation before the step is started.
-        amended_inputs_ready = True
-        inp_hashes = []
-        sql = (
-            "SELECT node.label, node.orphan, file.state, "
-            "EXISTS (SELECT 1 FROM amended_dep WHERE amended_dep.i = dep.i), "
-            "file.digest, file.mode, file.mtime, file.size, file.inode "
-            "FROM node JOIN dependency AS dep ON node.i = dep.supplier "
-            "JOIN file ON file.node = node.i "
-            "WHERE dep.consumer = ?"
-        )
-        cursor = self.con.execute(sql, (self.i,))
-        for path, is_orphan, fs_value, is_amended, digest, mode, mtime, size, inode in cursor:
-            file_state = FileState(fs_value)
-            if not is_orphan and file_state in (FileState.BUILT, FileState.STATIC):
-                # Input is ready, collect its hash and look no further.
-                inp_hashes.append((path, FileHash(digest, mode, mtime, size, inode)))
-                continue
-
-            if is_amended:
-                if not is_orphan and file_state in (FileState.AWAITED, FileState.OUTDATED):
-                    # We're still expecting an update, not queuing step yet.
-                    return
-            else:
-                # Initial input not ready, cannot queue step yet.
-                return
-
-            # If we reach this code path, the current input is amended and
-            # (1) is orphaned or (2) has state MISSING or VOLATILE.
-            # In this case, we request to validate amended inputs first.
-            # This means that amended inputs will be discarded and rederived again
-            # if any of the initial or available amended inputs have changed.
-            amended_inputs_ready = False
-
-        # Determine the appropriate job to queue.
-        step_hash = self.get_hash()
-        # Get a list of environment variables used.
-        env_vars = list(self.env_vars())
-
-        # Determine priority (lower = earlier) based on rescheduled info.
-        # If a job has been rescheduled previously, it gets lower priority,
-        # because it is likely to discover more missing dependencies again.
-        priority = rescheduled_info.count("\n")
-
-        if amended_inputs_ready or step_hash is None:
-            # All (amended) inputs are ready, or the job is not skippable.
-            job = RunJob(self, pool, priority, inp_hashes, env_vars, step_hash)
-        else:
-            # If the initial inputs are ready, but the amended inputs are not,
-            # and there is a step hash, we need to validate the amended inputs first.
-            # If they are not available, and if the existing inputs have changed,
-            # they may also no longer be needed.
-            job = ValidateAmendedJob(self, pool, priority, inp_hashes, env_vars, step_hash)
-
-        # Queue the job.
-        logger.info("Queue %s", job.name)
-        self.set_state(StepState.QUEUED)
-        self.clear_rescheduled_info()
-        self.workflow.job_queue.put_nowait(job)
-        self.workflow.job_queue_changed.set()
-
     def clean_before_run(self):
-        """Remove all inforation that is expected to be set when running a step.
+        """Remove all information that is expected to be set when running a step.
 
         This method is called right before (re)running a step and cleans up leftovers
         that may still hang around from a previous (failed or aborted) execution.
@@ -797,9 +578,8 @@ class Step(Node):
         - reschedule_info
         - amended inputs and (volatile outputs)
         - amended environment variables
-        - pool definitions
 
-        The following are orphaned:
+        The following are detached:
 
         - nglob_multis
         - created steps
@@ -810,9 +590,6 @@ class Step(Node):
 
         - output files that are in state BUILT
         """
-        # Clear rescheduled_info
-        self.clear_rescheduled_info()
-
         # Drop amended suppliers.
         rows = list(
             self.con.execute(
@@ -830,13 +607,10 @@ class Step(Node):
         # Drop amended environment variables
         self.con.execute("DELETE FROM env_var WHERE node = ? AND amended = 1", (self.i,))
 
-        # Drop pool definitions
-        self.con.execute("DELETE FROM pool_definition WHERE node = ?", (self.i,))
-
         # Drop nglob_multis
         self.con.execute("DELETE FROM nglob_multi WHERE node = ?", (self.i,))
 
-        # Drop amended consumers and orphan the corresponding consumer nodes.
+        # Drop amended consumers and detach the corresponding consumer nodes.
         records_consumer = list(
             self.con.execute(
                 "SELECT dependency.i, consumer, label, kind FROM dependency "
@@ -851,15 +625,15 @@ class Step(Node):
         for _, i, label, kind in records_consumer:
             node = self.cascade.node_classes[kind](self.cascade, i, label)
             node.del_suppliers([self])
-            node.orphan()
+            node.detach()
 
-        # Orphan steps created by this step
+        # Detach steps created by this step
         sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'step'"
         for i, label in self.con.execute(sql, (self.i,)):
             step = Step(self.workflow, i, label)
-            step.orphan()
+            step.detach()
 
-        # Orphan static file definitions
+        # Detach static file definitions
         sql = (
             "SELECT i, label FROM node JOIN file ON node.i = file.node "
             "WHERE creator = ? AND state in (?, ?)"
@@ -867,13 +641,13 @@ class Step(Node):
         data = (self.i, FileState.STATIC.value, FileState.MISSING.value)
         for i, label in self.con.execute(sql, data):
             file = File(self.workflow, i, label)
-            file.orphan()
+            file.detach()
 
-        # Orphan static roots
+        # Detach static roots
         sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'sr'"
         for i, label in self.con.execute(sql, (self.i,)):
             sr = StaticRoot(self.workflow, i, label)
-            sr.orphan()
+            sr.detach()
 
         # Mark BUILT outputs OUTDATED.
         sql = (
@@ -901,39 +675,25 @@ class Step(Node):
                     file.set_state(FileState.OUTDATED)
             if rescheduled_info != "":
                 logger.info("Rescheduled step: %s", self.label)
-                self.set_state(StepState.FAILED)
+                # We just set the state to PENDING.
+                # However, it will not be scheduled as long as `rescheduled_info` has some info.
+                # Any later file changes relevant to the step will result in a call
+                # to mark_pending(), which will clear the rescheduled_info.
+                # This makes the step eligible for scheduling again.
+                self.set_state(StepState.PENDING)
                 self.delete_hash()
-                # The missing inputs may have appeared by the time the step ended,
-                # so we need to check if we can put the step back on the queue right away.
-                # We should not mark the step dirty though, as we have no indication here
-                # that inputs or outputs have changed.
-                self.mark_pending(dirty=False)
-                self.queue_if_appropriate()
             else:
                 logger.info("Failed step: %s", self.label)
-                self.set_dirty(True)
                 self.set_state(StepState.FAILED)
                 self.delete_hash()
         else:
             logger.info("Succeeded step: %s", self.label)
-            # Step needs to be set dirty to False again, despite having done this before running it.
-            # A step may create its own inputs and amend them during its run, which will
-            # set the dirty flag to True again.
-            # If the step succeeded, we can safely reset the dirty flag.
-            self.set_dirty(False)
             self.set_state(StepState.SUCCEEDED)
             # Update states, needed for files that have not changed since previous run.
             for file in self.products(File):
                 if file.get_state() == FileState.OUTDATED:
                     file.set_state(FileState.BUILT)
                     file.completed()
-            # Pending steps that are created by this step may possibly be queued.
-            # Such steps need to be searched recursively, because they are only queued
-            # when all their (recursive) creators are in a valid state.
-            # (This is mostly relevant for skipped steps.)
-            for i, label in self.con.execute(RECURSE_PRODUCTS_PENDING, (self.i,)):
-                step = Step(self.workflow, i, label)
-                step.queue_if_appropriate()
             self.set_hash(new_hash)
 
     def get_hash(self) -> StepHash | None:
@@ -956,6 +716,13 @@ class Step(Node):
     def delete_hash(self):
         self.con.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))
 
+    def set_resources(self, resources: dict[str, int] | None):
+        self.con.execute("DELETE FROM step_resource WHERE node = ?", (self.i,))
+        if resources is None:
+            return
+        rows = [(self.i, name, units) for name, units in resources.items()]
+        self.con.executemany("INSERT INTO step_resource VALUES (?, ?, ?)", rows)
+
     def register_nglob(self, nglob_multi):
         data = (self.i, pickle.dumps(nglob_multi))
         self.con.execute("INSERT INTO nglob_multi(node, data) VALUES (?, ?)", data)
@@ -964,29 +731,67 @@ class Step(Node):
     # Watch phase
     #
 
-    def mark_pending(self, *, dirty: bool = True):
-        """Set succeeded or failed step pending (again).
+    def mark_pending(self):
+        """Set SUCCEEDED or FAILED step pending (again).
 
-        There can be many reasons for making a step pending,
-        e.g. inputs changes, outputs disappeared, environment variables changed.
-        This is also called when orphaned steps are recreated whose inputs are no longer valid.
+        There can be many reasons for marking a step pending again, after having been completed:
 
-        Parameters
-        ----------
-        dirty
-            Set to False if a step is made pending without having a direct indication that
-            inputs or outputs have changed.
-            This may be relevant when there may have been file changes and the step is rescheduled.
+        - inputs changes
+        - outputs disappeared
+        - environment variables changed
+
+        As a side effect, this method is sometimes also called on RUNNING steps,
+        in which case the call is ignored.
+
+        This method also clears the rescheduled_info,
+        which makes the step eligible for scheduling again.
         """
-        if dirty:
-            self.set_dirty()
-        state = self.get_state()
-        # Note that PENDING, QUEUED, and RUNNING can be ignored.
+        # Note that PENDING and RUNNING are ignored.
         # This method may be called on RUNNING steps that create their own amended inputs.
+        state = self.get_state()
+        if state == StepState.RUNNING:
+            return
+        self.clear_rescheduled_info()
         if state in (StepState.SUCCEEDED, StepState.FAILED):
             logger.info("Mark %s step PENDING: %s", state.name, self.label)
             self.set_state(StepState.PENDING)
-            # First make all consumers (output files) pending
-            for file in self.consumers(File, include_orphans=True):
+            # Make all consumers (output files) pending
+            for file in self.consumers(File, include_detached=True):
                 if file.get_state() == FileState.BUILT:
                     file.mark_outdated()
+
+    #
+    # Respond to graph modifications by flagging the necessary _check_* fields.
+    #
+
+    def detach(self):
+        """Detach this step from the graph, but keep it in the database."""
+        super().detach()
+        self._check_with_products()
+        # Supplier steps of the detached subtree lost a consumer, so their metadata is stale.
+        self.con.execute(RECURSIVE_CHECK_AFTER_SUPPLIERS, (self.i,))
+
+    def recycle(self, new_creator: Node):
+        """Reconnect the node to a new creator node, preserving its properties."""
+        super().recycle(new_creator)
+        self._check_with_products()
+
+    def _check_with_products(self):
+        """Flag if the _check_safe and _check_after fields of this step and its products."""
+        self.con.execute(RECURSIVE_CHECK_WITH_PRODUCTS, (self.i,))
+
+    def add_supplier(self, supplier: Node) -> int:
+        """Add a supplier-consumer relation."""
+        idep = super().add_supplier(supplier)
+        self._check_simple()
+        return idep
+
+    def del_suppliers(self, suppliers: list[Node] | None = None):
+        """Delete a supplier-consumer relation."""
+        super().del_suppliers(suppliers)
+        self._check_simple()
+
+    def _check_simple(self):
+        """Flag if the _check_after field."""
+        # Only _check_after is relevant
+        self.con.execute("UPDATE step SET _check_after = 1 WHERE node = ?", (self.i,))

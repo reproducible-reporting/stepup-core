@@ -18,6 +18,13 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
       (except for static roots, which are stored as special nodes in the graph.)
     - Deferred globs have been retired and replaced by static roots.
       (More on that below.)
+    - A new metadata update mechanism has been implemented for steps,
+      which introduced several new columns to the `step` table:
+      `_safe`, `_check_safe`, `need`, `_implied_need`, `_tail_time`, `_check_after`.
+    - The `dirty` column has been removed from the `step` table.
+      The information represented by this column is now inferred from `rescheduled_info`.
+    - The `pool` table was replaced by a `step_resource` table.
+    - The step state `QUEUED` has been removed, as it is no longer needed.
 - The "deferred glob" has been replaced by a simpler "static root" concept.
   Files in a static root directory become static only when they are used as inputs.
   This allows for huge static data directories, of which only some are used,
@@ -25,6 +32,19 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   To declare a static root directory, just pass it as an argument to the `static()` function.
   It will treat all directory arguments are static roots.
 - Documentation has been updated to reflect the API changes and to clarify some other points.
+- The scheduler has been replaced by a completely new implementation, called the "dispatcher".
+  It is far more robust and powerful than the previous scheduler, and it is easier to maintain.
+  This change also comes with several improved features:
+    - Steps are prioritized using the *tail time*, which results in the shortest overall
+      execution time of the workflow.
+      Since StepUp assumes no full knowledge of the workflow,
+      the tail time estimates are updated dynamically as the workflow progresses.
+    - The `pool` feature has been removed and is now replaced by the more powerful `resources` feature.
+    - The `optional` feature has become more robust.
+- Updates of internals:
+    - Renamed "orphan" and related names to "detached", which is more intuitive.
+      The new terminology is applied more consistently with consistent distinction between
+      "detach" (verb, state change) and "detached" (state).
 
 ### Removed
 
@@ -90,7 +110,7 @@ Improved scheduling of steps with amended inputs and safer `stepup clean` implem
     - By default, no files are removed. Use the `--commit` option to actually remove files.
     - The standard output consists of bash commands, which can be inspected, grepped
       and/or executed in a terminal to remove the files.
-    - Unless the `--all` option is used, only orphaned files are removed.
+    - Unless the `--all` option is used, only detached files are removed.
       (These are outputs of old steps that are no longer part of the workflow.
       StepUp cleans these up automatically unless you run `stepup boot --no-clean`.)
     - By default, modified output files were never removed.
@@ -510,8 +530,8 @@ This release fixes one pesky bug.
 
 ### Fixed
 
-- It was previously not possible to reattach an orphaned step to a different creator
-  when this step was not a top-level orphan.
+- It was previously not possible to reattach a detached step to a different creator
+  when this step was not a top-level detached node.
   This limitation has been lifted, because it is a fully legitimate use case.
 
 ## [2.0.2][] - 2025-01-25 {: #v2.0.2 }

@@ -20,4 +20,4 @@ wait
 [[ -f f1.txt ]] || exit 1
 [[ -f f2.txt ]] || exit 1
 [[ ! -f f3.txt ]] || exit 1
-grep "The scheduler has been drained" .stepup/fail.log
+grep "The dispatcher has been put on hold" .stepup/fail.log

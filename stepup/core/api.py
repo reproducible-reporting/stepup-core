@@ -41,6 +41,7 @@ from runpy import run_path
 import yaml
 from path import Path
 
+from .enums import Need
 from .nglob import NGlobMulti
 from .rpc import DummySyncRPCClient, SocketSyncRPCClient
 from .step import FileHash
@@ -50,8 +51,8 @@ from .utils import (
     format_command,
     make_path_out,
     mynormpath,
-    myparent,
     myrelpath,
+    parse_resources,
     string_to_list,
     translate,
     translate_back,
@@ -69,8 +70,8 @@ __all__ = (
     "graph",
     "loadns",
     "plan",
-    "pool",
     "render_jinja",
+    "runpy",
     "runsh",
     "script",
     "static",
@@ -90,24 +91,25 @@ def static(*paths: str | Iterable[str]):
     Parameters
     ----------
     *paths
-        One or more static paths, relative to the current working directory.
-        Arguments may also be lists of strings.
-        Each string must be an existing file or directory on disk and can be one of the following:
+        One or more paths to declare as static, relative to the current working directory.
+        Arguments may also be iterables of strings.
+        Each string must refer to an existing file or directory and can be one of:
 
-        1. A file, in which case this file as such is declared as a static path.
-        2. A directory, in which case all contained files (also in subdirectories)
-           become static paths, only when they are used as inputs.
+        1. A file: declared immediately as a static path.
+        2. A directory: registered as a static root; files within it are lazily
+           declared static the first time they are used as step inputs.
 
     Raises
     ------
     ValueError
-        When a path does not exist.
+        When a path does not exist, when an environment variable in a path is
+        undefined, or when a path contains an invalid variable identifier.
 
     Notes
     -----
-    Environment variables in the `paths` will be
-    substituted directly and amend the current step's env_vars list, if needed.
-    These substitutions will ignore changes to `os.environ` made in the calling script.
+    Environment variables in `paths` are substituted before use,
+    and the variables referenced are added to the current step's `env_vars` list.
+    Substitutions reflect the environment at step start, not later `os.environ` changes.
     """
     # Turn paths into one big list.
     _paths = paths
@@ -140,41 +142,40 @@ def static(*paths: str | Iterable[str]):
             _confirm_deferred(to_check)
 
 
-def glob(*patterns: str, **subs: str) -> NGlobMulti | None:
-    """Declare static paths through pattern matching.
+def glob(*patterns: str, **subs: str) -> NGlobMulti:
+    """Declare static files through glob patterns and return the matches.
+
+    All matched files are declared static with the director,
+    and the returned object can be iterated in the calling script.
 
     Parameters
     ----------
     *patterns
-        One or more patterns for static files,
-        relative to the current working directory.
-        The patterns may contain (named) wildcards and one
-        may specify the pattern for each named wildcard with
-        the keyword arguments.
+        One or more glob patterns relative to the current working directory.
+        Patterns may contain anonymous wildcards (`*`, `**`) and named wildcards (`${*name}`).
     **subs
-        When using named wildcards, they will match the pattern `*` by default.
-        Through the subs argument each name can be associated with another glob pattern.
+        Override the sub-pattern matched by each named wildcard.
+        By default every named wildcard matches `*`.
 
     Returns
     -------
     ngm
-        An `NGlobMulti` instance holding all the matched (combinations of) paths.
-        This object acts as an iterator.
-        When named wildcards are used, it iterates over `NGlobMatch` instances.
-        When using only anonymous wildcards, it iterates over unique paths.
-        It also features `ngm.matches()` and `ngm.files()` iterators,
-        with which the type of iterator can be overruled.
-        Finally, one may also use ngm in conditional expressions:
-        It evaluates to True if and only if it contains some matches.
+        An `NGlobMulti` instance with all matched paths.
+        Iteration yields `NGlobMatch` objects when named wildcards are present,
+        or `Path` objects when only anonymous wildcards are used.
+        Use `ngm.matches()` or `ngm.files()` to force either mode.
+        Use `ngm.single()` to assert and return exactly one matched path.
+        Evaluates to `True` in a boolean context when at least one match exists.
 
     Notes
     -----
-    The combinatorics allow one to construct nested loops easily in one call.
-    For unrelated patterns, it may be more efficient to use separate `glob` calls.
+    Multiple patterns are matched *jointly*: only combinations of files whose
+    named wildcard substitutions are mutually consistent are returned.
+    For independent patterns, separate `glob` calls are more efficient.
 
-    Environment variables in the `patterns` will be
-    substituted directly and amend the current step's env_vars list, if needed.
-    These substitutions will ignore changes to `os.environ` made in the calling script.
+    Environment variables in `patterns` are substituted before matching,
+    and the variables used are added to the current step's `env_vars` list.
+    Substitutions reflect the environment at step start, not later `os.environ` changes.
     """
     if len(patterns) == 0:
         raise ValueError("At least one path is required for glob.")
@@ -220,9 +221,8 @@ def step(
     out: Collection[str] | str = (),
     vol: Collection[str] | str = (),
     workdir: str = "./",
-    optional: bool = False,
-    pool: str | None = None,
-    block: bool = False,
+    need: Need = Need.DEFAULT,
+    resources: dict[str, int] | str | None = None,
 ) -> StepInfo:
     """Add a step to the build graph.
 
@@ -243,22 +243,29 @@ def step(
         Relative paths are assumed to be relative to `workdir`.
         Directory outputs are not supported.
     vol
-        Volatile file(s) created by the step
+        Volatile file(s) created by the step.
         Relative paths are assumed to be relative to `workdir`.
-        Directories are not allowed.
+        Directory outputs are not supported.
     workdir
         The directory where the action must be executed.
         A trailing slash is added when not present.
         If this is a relative path, it is relative to the work directory of the caller.
         (The default is the current directory.)
-    optional
-        When set to True, the step is only executed when required by other mandatory steps.
-    pool
-        If given, the execution of this step is restricted to the pool with the given name.
-        The maximum number of parallel steps running in this pool is determined by the pool size.
-    block
-        When set to True, the step will always remain pending.
-        This can be used to temporarily prevent part of the workflow from being executed.
+    need
+        The level of necessity for the step.
+        Three values are allowed:
+        - `Need.OPTIONAL` = only execute the step if some of its outputs are (indirectly) needed
+          by a non-optional step.
+        - `Need.DEFAULT` = execute the step unless the user specifies targets.
+        - `Need.PLAN` = always execute the step because it is part of the plan.
+    resources
+        Named resources required to run this step, e.g. `{"gpu": 1}`.
+        One may also provide the resources as a string, e.g. `"gpu:1,memgb:4"`.
+        The step will not be dispatched until the required units are available,
+        taking into account the units already held by other running steps.
+        Resources not listed in `--resources` / `STEPUP_RESOURCES` are treated as unavailable.
+        The required units must be strictly positive and default to 1 when not given,
+        e.g. `"gpu"` is equivalent to `"gpu:1"`.
 
     Returns
     -------
@@ -267,14 +274,14 @@ def step(
 
     Notes
     -----
-    Environment variables in the `workdir`, `inp`, `out` and `vol` paths and workdir will be
-    substituted directly and amend the current step's env_vars list, if needed.
-    These substitutions will ignore changes to `os.environ` made in the calling script.
+    Environment variables in the `workdir`, `inp`, `out`, and `vol` paths will be
+    substituted directly and will amend the calling step's env_vars list if needed.
+    These substitutions ignore changes to `os.environ` made in the calling script.
 
-    Before sending the step to the director the variables `${inp}`, `${out}` and `${vol}`
-    in the action are substituted by white-space concatenated list of `inp`, `out` and
+    Before sending the step to the director, the variables `${inp}`, `${out}`, and `${vol}`
+    in the action are substituted by the space-separated list of `inp`, `out`, and
     `vol`, respectively.
-    Relative paths in `inp`, `out` and `vol` are relative to the working directory of the new step.
+    Relative paths in `inp`, `out`, and `vol` are relative to the working directory of the new step.
     """
     # Pre-process the arguments for the Director process.
     inp_paths = string_to_list(inp)
@@ -283,7 +290,6 @@ def step(
     vol_paths = string_to_list(vol)
     if not workdir.endswith("/"):
         workdir = f"{workdir}/"
-    amended_env_vars = set()
     with subs_env_vars() as subs:
         su_inp_paths = [subs(inp_path) for inp_path in inp_paths]
         su_out_paths = [subs(out_path) for out_path in out_paths]
@@ -292,7 +298,6 @@ def step(
     _check_no_directories(su_inp_paths)
     _check_no_directories(su_out_paths)
     _check_no_directories(su_vol_paths)
-    amend(env=sorted(amended_env_vars))
     tr_inp_paths = [translate(inp_path, su_workdir) for inp_path in su_inp_paths]
     tr_out_paths = [translate(out_path, su_workdir) for out_path in su_out_paths]
     tr_vol_paths = [translate(vol_path, su_workdir) for vol_path in su_vol_paths]
@@ -304,6 +309,21 @@ def step(
         vol=shlex.join(su_vol_paths),
     )
 
+    # Interpret the resources string, if needed.
+    if resources is None:
+        resources = {}
+    elif isinstance(resources, str):
+        resources = parse_resources(resources)
+    elif not isinstance(resources, dict):
+        raise TypeError("The resources argument must be a dict, a string or None.")
+    # At this stage, we do not allow non-positive quantities of resources.
+    for resource, quantity in resources.items():
+        if not isinstance(quantity, int) or quantity <= 0:
+            raise ValueError(
+                f"Invalid quantity for resource '{resource}': {quantity}. "
+                "Must be a strictly positive integer."
+            )
+
     # Finally create the step.
     to_check = RPC_CLIENT.call.step(
         _get_step_i(),
@@ -313,9 +333,8 @@ def step(
         tr_out_paths,
         tr_vol_paths,
         tr_workdir,
-        optional,
-        pool,
-        block,
+        need.value,
+        resources,
     )
 
     # Check the existence of files matching static roots.
@@ -323,19 +342,6 @@ def step(
 
     # Return a StepInfo instance to facilitate the definition of follow-up steps
     return StepInfo(action, tr_workdir, su_inp_paths, env_vars, su_out_paths, su_vol_paths)
-
-
-def pool(name: str, size: int):
-    """Define a pool with given size or change an existing pool size.
-
-    Parameters
-    ----------
-    name
-        The name of the pool.
-    size
-        The pool size.
-    """
-    RPC_CLIENT.call.pool(_get_step_i(), name, size)
 
 
 class InputNotFoundError(Exception):
@@ -364,40 +370,42 @@ def amend(
     out: Collection[str] | str = (),
     vol: Collection[str] | str = (),
 ):
-    """Specify additional inputs and outputs from within a running step.
+    """Declare additional inputs, outputs, and environment dependencies from within a running step.
 
     Parameters
     ----------
     inp
         Files required by the step.
+        Relative paths are relative to the step's working directory.
         Directory inputs are not supported.
     env
         Environment variables to which the step is sensitive.
-        If the change, or when they are (un)defined, the step digest will change,
-        such that the step is not skipped when these variables change.
+        If they change, or when they are (un)defined, the step digest will change,
+        such that the step cannot be skipped.
     out
         Files created by the step.
-        Can be files or directories (trailing slash).
+        Relative paths are relative to the step's working directory.
+        Directory outputs are not supported.
     vol
         Volatile files created by the step.
-        Can be files or directories (trailing slash).
+        Relative paths are relative to the step's working directory.
+        Directory outputs are not supported.
 
     Raises
     ------
     InputNotFoundError
-        When amended inputs are not available yet.
-        There is no need to catch this exception.
-        Instead, just let it fail the calling script,
-        so that it can be rescheduled for later execution.
-        The director has been informed that some of the amended inputs were not available yet.
+        When amended inputs are not yet available.
+        Let this exception propagate — do not catch it.
+        The director reschedules the step once the missing inputs become available.
 
     Notes
     -----
-    Environment variables in the `inp`, `out` and `vol` paths are substituted in the same way
-    as in the `step()` function. The used variables are added to the env_vars argument.
+    Environment variables in the `inp`, `out`, and `vol` paths are substituted at call time.
+    The variables used are automatically recorded as additional env dependencies of the step.
 
-    Always call amend before using the input files
-    and before creating the output and volatile files.
+    Always call `amend()` before reading input files and before writing output or volatile files.
+
+    Repeated calls are safe: items already amended in prior calls are silently skipped.
     """
     # Pre-process the arguments for the Director process.
     inp_paths = string_to_list(inp)
@@ -461,7 +469,7 @@ def getinfo() -> StepInfo:
     Returns
     -------
     step_info
-        Holds relevant information of the step, useful for defining follow-up steps.
+        Holds relevant information of the current step, useful for defining follow-up steps.
         For consistency with other functions in this module, the `inp`, `out` and `vol`
         paths are relative to the working directory of the step.
     """
@@ -470,10 +478,6 @@ def getinfo() -> StepInfo:
     step_info.inp = sorted(translate_back(inp) for inp in step_info.inp)
     step_info.out = sorted(translate_back(out) for out in step_info.out)
     step_info.vol = sorted(translate_back(vol) for vol in step_info.vol)
-    # Filter required directorie out of the inputs.
-    reqdirs = {myparent(path) for path in step_info.out}
-    reqdirs.update({myparent(path) for path in step_info.vol})
-    step_info.inp = [path for path in step_info.inp if path not in reqdirs]
     return step_info
 
 
@@ -496,18 +500,21 @@ def runsh(
     vol: Collection[str] | str = (),
     workdir: str = "./",
     optional: bool = False,
-    pool: str | None = None,
-    block: bool = False,
+    resources: dict[str, int] | str | None = None,
 ) -> StepInfo:
     """Add a shell command to the build graph.
-
-    See [`step()`][stepup.core.api.step] for the documentation of all optional arguments
-    and the return value.
 
     Parameters
     ----------
     command
         The command to execute, which will be interpreted by the shell.
+    inp, env, out, vol, workdir, optional, resources
+        See [`step()`][stepup.core.api.step] for more information.
+
+    Returns
+    -------
+    step_info
+        Holds relevant information of the step, useful for defining follow-up steps.
     """
     return step(
         f"runsh {command}",
@@ -516,9 +523,8 @@ def runsh(
         out=out,
         vol=vol,
         workdir=workdir,
-        optional=optional,
-        pool=pool,
-        block=block,
+        need=Need.OPTIONAL if optional else Need.DEFAULT,
+        resources=resources,
     )
 
 
@@ -531,19 +537,22 @@ def runpy(
     vol: Collection[str] | str = (),
     workdir: str = "./",
     optional: bool = False,
-    pool: str | None = None,
-    block: bool = False,
-):
+    resources: dict[str, int] | str | None = None,
+) -> StepInfo:
     """Add a Python command to the build graph.
-
-    See [`step()`][stepup.core.api.step] for the documentation of all optional arguments
-    and the return value.
 
     Parameters
     ----------
     command
         The path of the script and its command line arguments.
         Local imports will be detected and amended as inputs to the script.
+    inp, env, out, vol, workdir, optional, resources
+        See [`step()`][stepup.core.api.step] for more information.
+
+    Returns
+    -------
+    step_info
+        Holds relevant information of the step, useful for defining follow-up steps.
     """
     return step(
         f"runpy {command}",
@@ -552,9 +561,8 @@ def runpy(
         out=out,
         vol=vol,
         workdir=workdir,
-        optional=optional,
-        pool=pool,
-        block=block,
+        need=Need.OPTIONAL if optional else Need.DEFAULT,
+        resources=resources,
     )
 
 
@@ -565,9 +573,7 @@ def plan(
     env: Collection[str] | str = (),
     out: Collection[str] | str = (),
     vol: Collection[str] | str = (),
-    optional: bool = False,
-    pool: str | None = None,
-    block: bool = False,
+    resources: dict[str, int] | str | None = None,
 ) -> StepInfo:
     """Run a `plan.py` script in a subdirectory.
 
@@ -577,19 +583,8 @@ def plan(
         The subdirectory in which another `plan.py` script can be found.
         The file must be executable and have `#!/usr/bin/env python3` as its first line.
         A trailing slash is added when not present.
-    inp, env, out, vol
-        See the [`step()`][stepup.core.api.step] function for more information.
-        (Rarely needed for planning steps.)
-    optional
-        See the [`step()`][stepup.core.api.step] function for more information.
-        (Rarely needed for planning steps.)
-        Use with care, since the nodes created by plan script will be unknown upfront
-        and cannot therefore imply the necessity of an optional plan step.
-    pool
-        See the [`step()`][stepup.core.api.step] function for more information.
-        (Rarely needed for planning steps.)
-    block
-        See the [`step()`][stepup.core.api.step] function for more information.
+    inp, env, out, vol, resources
+        See [`step()`][stepup.core.api.step] for more information.
         (Rarely needed for planning steps.)
 
     Returns
@@ -597,20 +592,21 @@ def plan(
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
     """
-    return runpy(
-        "./plan.py",
+    return step(
+        "runpy ./plan.py",
         inp=["plan.py", *string_to_list(inp)],
         env=env,
         out=out,
         vol=vol,
         workdir=subdir,
-        optional=optional,
-        pool=pool,
-        block=block,
+        need=Need.PLAN,
+        resources=resources,
     )
 
 
-def copy(src: str, dst: str, *, optional: bool = False, block: bool = False) -> StepInfo:
+def copy(
+    src: str, dst: str, *, optional: bool = False, resources: dict[str, int] | str | None = None
+) -> StepInfo:
     """Add a step that copies a file.
 
     Parameters
@@ -621,29 +617,25 @@ def copy(src: str, dst: str, *, optional: bool = False, block: bool = False) -> 
         This can be a file or a directory. Environment variables are substituted.
         If `dst` denotes a directory, it must have a trailing slash
         and `src` will be copied inside it with its original name.
-    optional
-        When True, the file is only copied when needed as input for another step.
-    block
-        When True, the step will always remain pending.
+    optional, resources
+        See [`step()`][stepup.core.api.step] for more information.
 
     Returns
     -------
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
     """
-    amended_env_vars = set()
     with subs_env_vars() as subs:
         src = subs(src)
         dst = subs(dst)
     path_src = mynormpath(src)
     path_dst = make_path_out(src, dst, None)
-    amend(env=amended_env_vars)
     return step(
         "copy ${inp} ${out}",
         inp=path_src,
         out=path_dst,
-        optional=optional,
-        block=block,
+        need=Need.OPTIONAL if optional else Need.DEFAULT,
+        resources=resources,
     )
 
 
@@ -685,10 +677,6 @@ def getenv(
         If `back` is set to `True`, this is a translated `Path` instance.
         If `multi` is set to `True`, this is a list of `Path` instances.
         Otherwise, the result is a string.
-
-    Notes
-    -----
-    The optional arguments of this function have changed in StepUp 2.0.0.
     """
     path = path or back or multi
     value = os.getenv(name, default)
@@ -725,8 +713,7 @@ def call(
     vol: Collection[str] | str = (),
     workdir: str = "./",
     optional: bool = False,
-    pool: str | None = None,
-    block: bool = False,
+    resources: dict[str, int] | str | None = None,
     pars: dict[str] | None = None,
     **kwargs,
 ) -> StepInfo:
@@ -766,8 +753,6 @@ def call(
           depending on its type.
           Remaining items are add to the `inp` argument of the `step()` function,
           and are added to `kwargs['inp']`.
-    env
-        See the [`step()`][stepup.core.api.step] function for more information.
     out
         The path of the output file:
 
@@ -788,16 +773,8 @@ def call(
           Remaining items are add to the `out` argument of the `step()` function,
           and are added to `kwargs['out']`.
 
-    vol
-        See the [`step()`][stepup.core.api.step] function for more information.
-    workdir
-        See the [`step()`][stepup.core.api.step] function for more information.
-    optional
-        See the [`step()`][stepup.core.api.step] function for more information.
-    pool
-        See the [`step()`][stepup.core.api.step] function for more information.
-    block
-        See the [`step()`][stepup.core.api.step] function for more information.
+    env, vol, workdir, optional, resources
+        See [`step()`][stepup.core.api.step] for more information.
     pars
         A dictionary with additional parameters for the script.
         They will be merged with the arguments in `kwargs`.
@@ -897,8 +874,7 @@ def call(
         "vol": vol,
         "workdir": workdir,
         "optional": optional,
-        "pool": pool,
-        "block": block,
+        "resources": resources,
     }
 
     # Input handling
@@ -948,8 +924,7 @@ def script(
     vol: Collection[str] | str = (),
     workdir: str = "./",
     optional: bool = False,
-    pool: str | None = None,
-    block: bool = False,
+    resources: dict[str, int] | str | None = None,
 ) -> StepInfo:
     """Run the executable with a single argument `plan` in a working directory.
 
@@ -966,16 +941,8 @@ def script(
         When given, the steps generated in the plan part of the executable are written
         to this `step_info` file. (See [stepup.core.stepinfo][] module for the file format.)
         This filename is relative to the work directory.
-    inp, env, out, vol
-        See the [`step()`][stepup.core.api.step] function for more information.
-    workdir
-        See the [`step()`][stepup.core.api.step] function for more information.
-    optional
-        See the [`step()`][stepup.core.api.step] function for more information.
-    pool
-        See the [`step()`][stepup.core.api.step] function for more information.
-    block
-        See the [`step()`][stepup.core.api.step] function for more information.
+    inp, env, out, vol, workdir, optional, resources
+        See [`step()`][stepup.core.api.step] for more information.
 
     Returns
     -------
@@ -984,7 +951,7 @@ def script(
 
     Notes
     -----
-    - The arguments `inp`, `env`, `out`, `vol` and `pool` are rarely needed for script steps.
+    - The arguments `inp`, `env`, `out` and `vol` are rarely needed for script steps.
       They only apply to the plan stage of the script, not the run stage.
     - The `inp` argument may be useful when the planning is configured by some input files.
     - The optional argument never applies to the plan stage,
@@ -1008,12 +975,11 @@ def script(
         "out": out,
         "vol": vol,
         "workdir": workdir,
-        "pool": pool,
-        "block": block,
+        "need": Need.PLAN,
+        "resources": resources,
     }
-    if executable.endswith(".py"):
-        return runpy(command, **step_kwargs)
-    return runsh(command, **step_kwargs)
+    action = f"runpy {command}" if executable.endswith(".py") else f"runsh {command}"
+    return step(action, **step_kwargs)
 
 
 def loadns(
@@ -1088,7 +1054,7 @@ def render_jinja(
     *args: str | dict,
     mode: str = "auto",
     optional: bool = False,
-    block: bool = False,
+    resources: dict[str, int] | str | None = None,
 ) -> StepInfo:
     """Render the template with Jinja2.
 
@@ -1113,10 +1079,8 @@ def render_jinja(
           based on the extension of the output file.
         - The `plain` format is the default Jinja style with curly brackets: `{{ }}` etc.
         - The `latex` style replaces curly brackets by angle brackets: `<< >>` etc.
-    optional
-        If `True`, the step is only executed when needed by other steps.
-    block
-        If `True`, the step will always remain pending.
+    optional, resources
+        See [`step()`][stepup.core.api.step] for more information.
 
     Returns
     -------
@@ -1166,8 +1130,8 @@ def render_jinja(
         " ".join(args),
         inp=[path_template, *paths_variables],
         out=path_out,
-        optional=optional,
-        block=block,
+        need=Need.OPTIONAL if optional else Need.DEFAULT,
+        resources=resources,
     )
 
 
@@ -1246,17 +1210,17 @@ def _confirm_deferred(to_check: list[tuple[str, FileHash]] | None, step_i: int |
     if to_check is not None and len(to_check) > 0:
         # Select matches of the static root that exist and update their hashes.
         checked = []
-        errors = ["Invalid deferred static files:"]
+        missing = []
         for tr_path, old_file_hash in to_check:
             new_file_hash = old_file_hash.regen(translate_back(tr_path))
             if new_file_hash != old_file_hash:
                 checked.append((tr_path, new_file_hash))
             if new_file_hash.is_unknown:
-                errors.append(f"{tr_path} (MISSING)")
+                missing.append(tr_path)
         if len(checked) > 0:
             RPC_CLIENT.call.confirm_hashes(checked)
-        if len(errors) > 1:
-            message = "\n".join(errors)
+        if len(missing) > 0:
+            message = "\n".join(missing)
             if step_i is not None:
                 RPC_CLIENT.call.reschedule_step(step_i, message)
             raise DeferredNotConfirmedError(message)

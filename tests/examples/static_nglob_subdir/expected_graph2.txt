@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
@@ -22,6 +23,7 @@ file:sub/plan.py
 
 step:runpy ./plan.py  # wd=sub/
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
                  ngm = ['sub/inp${*idx}.txt'] {'idx': '?'}
            explained = yes
@@ -46,6 +48,7 @@ file:sub/inp2.txt
 
 step:copy inp1.txt out1.txt  # wd=sub/
                state = SUCCEEDED
+                need = DEFAULT
            explained = yes
           created by   step:runpy ./plan.py  # wd=sub/
             consumes   file:sub/inp1.txt
@@ -59,6 +62,7 @@ file:sub/out1.txt
 
 step:copy inp2.txt out2.txt  # wd=sub/
                state = SUCCEEDED
+                need = DEFAULT
            explained = yes
           created by   step:runpy ./plan.py  # wd=sub/
             consumes   file:sub/inp2.txt
@@ -77,6 +81,7 @@ file:sub/inp3.txt
 
 step:copy inp3.txt out3.txt  # wd=sub/
                state = SUCCEEDED
+                need = DEFAULT
            explained = yes
           created by   step:runpy ./plan.py  # wd=sub/
             consumes   file:sub/inp3.txt

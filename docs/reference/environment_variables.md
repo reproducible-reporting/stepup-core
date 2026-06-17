@@ -19,6 +19,15 @@ and will require internal consistency checks to pass,
 rather than applying corrections to overcome the inconsistencies.
 (Every such inconsistency is due to a bug, which should be fixed eventually.)
 
+`STEPUP_DURATION`
+
+: Set to `0` to disable the use of step duration information for scheduling decisions.
+By default, StepUp uses the duration information of steps to prioritize the execution
+of steps that are expected to take longer, which can lead to faster overall execution.
+Overridden by the `--duration` and `--no-duration` command-line options.
+While this is generally beneficial, it can result in non-deterministic execution order of steps,
+which can be undesirable in some cases, such as testing.
+
 `STEPUP_EXPLAIN_RERUN`
 
 : Set to `1` to explain for every step with recording info
@@ -75,6 +84,16 @@ in the development documentation for more details.
 : Set to `0` to disable the progress bar in the terminal user interface.
 This can be useful to simplify and reduce the output.
 Overridden by the `--progress` and `--no-progress` command-line options.
+
+`STEPUP_RESOURCES`
+
+: Set to a comma-separated list of resource names and available quantities
+to be used for scheduling decisions.
+For example, `STEPUP_RESOURCES=gpu:2,cpu:4` indicates that there are 2 GPUs and 4 CPUs available.
+Any resource labels can be used, and the available quantity can be any positive integer.
+The `--resources` command-line option can be used to override available resources.
+(Note that both available resource specifications are merged,
+with the command-line option taking precedence over the environment variable.)
 
 `STEPUP_ROOT`
 

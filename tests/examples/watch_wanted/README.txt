@@ -1,1 +1,1 @@
-This example shows that STATIC files are not deleted when they are orphaned.
+This example shows that STATIC files are not deleted when they are detached.

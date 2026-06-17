@@ -32,6 +32,7 @@ from stepup.core.utils import (
     myparent,
     myrealpath,
     myrelpath,
+    parse_resources,
     translate,
     translate_back,
 )
@@ -234,3 +235,34 @@ def test_filter_dependencies_relative2(monkeypatch, path_tmp):
         monkeypatch.setenv("HERE", "sub/")
         rel_paths = ["foo", "../../external/bar", "../../egg", "../../other/spam"]
         assert filter_dependencies(rel_paths) == {"foo", "../../external/bar"}
+
+
+@pytest.mark.parametrize(
+    ("s", "expected"),
+    [
+        ("cpu:4,gpu:1,memgb:16", {"cpu": 4, "gpu": 1, "memgb": 16}),
+        ("cpu:2", {"cpu": 2}),
+        ("cpu:0", {"cpu": 0}),
+        ("cpu:", {"cpu": 1}),
+        ("cpu", {"cpu": 1}),
+        ("  cpu : 4 , gpu ", {"cpu": 4, "gpu": 1}),
+        ("", {}),
+        (",", {}),
+        (",,,", {}),
+    ],
+)
+def test_parse_resources(s, expected):
+    assert parse_resources(s) == expected
+
+
+@pytest.mark.parametrize(
+    "s",
+    [
+        "cpu:-1",
+        ":1",
+        "  :2",
+    ],
+)
+def test_parse_resources_invalid(s):
+    with pytest.raises(ValueError):
+        parse_resources(s)

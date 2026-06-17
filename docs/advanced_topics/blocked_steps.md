@@ -1,16 +1,16 @@
 # Blocked Steps
 
-As discussed in the [previous tutorial](optional_steps.md),
+As discussed in a previous tutorial on [Optional Steps](optional_steps.md),
 StepUp has several mechanisms to ignore certain steps.
 As a rule, StepUp will always try to execute all steps, and not doing so is the exception.
 
 A valid reason for ignoring some steps is illustrated in the following schematic:
 
 ```text
-     File           In development            File                 Costly
-|-------------|      |----------|      |-----------------|      |----------|
-|  input.txt  |  =>  |  Step 1  |  =>  |  converted.txt  |  =>  |  Step 2  |
-|-------------|      |----------|      |-----------------|      |----------|
+     File          In development           File                Costly
+╔═════════════╗     ┌──────────┐     ╔═════════════════╗     ┌──────────┐
+║  input.txt  ║ --> │  Step 1  │ --> ║  converted.txt  ║ --> │  Step 2  │
+╚═════════════╝     └──────────┘     ╚═════════════════╝     └──────────┘
 ```
 
 Imagine that `Step 2` is very expensive and you are developing a script for `Step 1`.
@@ -19,8 +19,10 @@ This can be verified by analyzing the file `converted.txt` or by running unit te
 
 To avoid executing `Step 2` at every iteration in the development of `Step 1`,
 you can **block** this step.
-All step-creating functions accept an optional `block=True` keyword argument
-to prevent them from being executed.
+Blocking is achieved by assigning an undefined resource to the step,
+e.g. `resources="blocked"`.
+Because the dispatcher does not know about a resource named `blocked`,
+the step remains permanently pending until you remove the argument.
 Blocked steps are intended to be a temporary measure,
 and to be reverted once you're done with `Step 1`.
 
@@ -58,11 +60,12 @@ You should get the following terminal output:
 
 ## Try the Following
 
-- Unblock the copy step, run StepUp, block it again, and run StepUp again.
+- Remove the `resources="blocked"` argument, run StepUp, add it back, and run StepUp again.
   Although the copy commands are no longer executed, their outputs (`b.txt` and `c.txt`)
   are not cleaned up.
   This is the expected behavior because automatic cleaning is only performed when all
   (non-optional) steps have been executed successfully.
 
-- Unblock the copy step, run StepUp, and then make the last copy command optional.
+- Remove the `resources="blocked"` argument,
+  run StepUp, and then make the last copy command optional.
   In this case, the output of the optional step (`c.txt`) will be removed.

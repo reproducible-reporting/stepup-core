@@ -10,10 +10,11 @@
         2/2 |    DELETED │ sub/message.txt
         2/2 |    DELETED │ message.txt
         1/2 |      PHASE │ run
-        1/2 |    WARNING │ 1 step(s) remained pending due to ...
+        1/2 |    WARNING │ 1 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  sub/message.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
+Reason                required inputs are unavailable
 Action                copy sub/message.txt message.txt
 Working directory     ./
 Inputs       MISSING  sub/message.txt

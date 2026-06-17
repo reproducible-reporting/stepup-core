@@ -24,6 +24,7 @@ import re
 import pytest
 from path import Path
 
+from stepup.core.enums import Need
 from stepup.core.exceptions import RPCError
 from stepup.core.hash import FileHash
 from stepup.core.rpc import AsyncRPCClient
@@ -65,6 +66,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
@@ -103,6 +105,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
@@ -143,6 +146,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
@@ -151,6 +155,7 @@ step:runpy ./plan.py
 
 step:runsh cp -v original.txt copy.txt
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:original.txt
              creates   file:copy.txt
@@ -183,9 +188,8 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
             ["copy.txt"],
             [],
             "./",
-            False,
-            None,
-            False,
+            Need.DEFAULT.value,
+            {},
         )
         to_check = await client("declare_missing", 3, ["original.txt"])
         assert to_check == [("original.txt", FileHash.unknown())]

@@ -10,6 +10,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
@@ -30,6 +31,7 @@ file:sub/plan.py
 
 step:copy example.txt sub/example.txt
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:example.txt
              creates   file:sub/example.txt
@@ -43,6 +45,7 @@ file:sub/example.txt
 
 step:runpy ./plan.py  # wd=sub/
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:sub/plan.py
@@ -51,6 +54,7 @@ step:runpy ./plan.py  # wd=sub/
 
 step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py  # wd=sub/
             consumes   file:sub/example.txt
              creates   file:sub/upper.txt
@@ -63,5 +67,6 @@ file:sub/upper.txt
 
 step:runsh cat ../plan.py  # wd=sub/
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py  # wd=sub/
             consumes   file:plan.py

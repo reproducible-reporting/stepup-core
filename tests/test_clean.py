@@ -79,13 +79,13 @@ def test_cleanup_volatile(wfp: Workflow):
     ]
 
 
-def test_cleanup_orphaned(wfp: Workflow):
+def test_cleanup_detached(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "prog1", inp_paths=["inp.txt"], out_paths=["out.txt"])
     file_hash = fake_hash("out.txt")
     wfp.update_file_hashes([("out.txt", file_hash)], "succeeded")
-    # Mark step (and indirectly its output file) as orphaned
-    wfp.find(Step, "prog1").orphan()
+    # Mark step (and indirectly its output file) as detached
+    wfp.find(Step, "prog1").detach()
     assert search_consuming_paths(wfp.con, ["inp.txt"], False) == [
         ("out.txt", FileState.BUILT, True, file_hash),
     ]

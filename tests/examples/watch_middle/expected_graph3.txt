@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
@@ -28,6 +29,7 @@ file:original.txt
 
 step:runsh cp between.txt another.txt
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:between.txt
              creates   file:another.txt
@@ -41,6 +43,7 @@ file:between.txt
 
 step:runsh cp original.txt between.txt
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:original.txt
              creates   file:between.txt

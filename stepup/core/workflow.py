@@ -32,7 +32,7 @@ import attrs
 from path import Path
 
 from .cascade import Cascade, Node
-from .enums import FileState, Mandatory, StepState
+from .enums import FileState, Need, StepState
 from .exceptions import GraphError
 from .file import File
 from .hash import FileHash, fmt_digest
@@ -93,7 +93,13 @@ class SupplyInfo:
     """A new or existing file."""
 
     available: bool = attrs.field()
-    """Whether the requested path is BUILT or STATIC, i.e. readily available for use as input."""
+    """True if possibly available, False if the certainly unavailable.
+
+    If False, the file is AWAITED, OUTDATED or VOLATILE, and thus certainly unavailable.
+    If True, the file is BUILT, MISSING or STATIC.
+    In case of a MISSING file, it still needs to be confirmed as STATIC,
+    but we cannot report it as unavailable yet, hence the True value.
+    """
 
     deferred: list[Node] = attrs.field()
     """A list of MISSING file nodes whose existence and validity must be checked.
@@ -107,20 +113,11 @@ class SupplyInfo:
 
 @attrs.define(eq=False)
 class Workflow(Cascade):
-    job_queue: asyncio.Queue = attrs.field(init=False, factory=asyncio.Queue)
-    """Steps ready for scheduling and execution can be added to this queue."""
-
-    config_queue: asyncio.Queue = attrs.field(init=False, factory=asyncio.Queue)
-    """Pools can be added to this queue to change the pool sizes."""
-
     makedirs: bool = attrs.field(kw_only=True, default=True)
     """Whether to create parent directories of output files when they are supplied or created."""
 
     dir_queue: asyncio.Queue | None = attrs.field(kw_only=True)
     """Directories to be (un)watched can be added to this queue."""
-
-    job_queue_changed: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
-    """Event set when the scheduler should check the job_queue again."""
 
     to_be_deleted: list[tuple[str, FileHash | None]] = attrs.field(init=False, factory=list)
     """A list of files and directories that can be deleted.
@@ -163,7 +160,7 @@ class Workflow(Cascade):
             "SELECT file.state, fnode.label, snode.i, snode.label FROM node AS fnode "
             "JOIN file ON fnode.i = file.node JOIN dependency ON fnode.i = consumer "
             "JOIN node AS snode ON snode.i = supplier JOIN step ON step.node = snode.i "
-            "WHERE step.state = ? AND file.state NOT IN (?, ?) AND NOT fnode.orphan"
+            "WHERE step.state = ? AND file.state NOT IN (?, ?) AND NOT fnode.detached"
         )
         data = (StepState.SUCCEEDED.value, FileState.BUILT.value, FileState.VOLATILE.value)
         to_mark_pending = set()
@@ -178,16 +175,16 @@ class Workflow(Cascade):
             )
             to_mark_pending.add(Step(self, si, slabel))
 
-        # Verify that succeeded steps are not dirty.
+        # Verify that succeeded steps have no rescheduled info.
         sql = (
             "SELECT step.node, node.label FROM step JOIN node ON step.node = node.i "
-            "WHERE step.state = ? AND step.dirty = TRUE AND NOT node.orphan"
+            "WHERE step.state = ? AND step.rescheduled_info != '' AND NOT node.detached"
         )
         data = (StepState.SUCCEEDED.value,)
         for si, slabel in self.con.execute(sql, data):
             if strict:
-                raise GraphError(f"Dirty succeeded step: step={slabel}")
-            logger.error("Dirty succeeded step: step=%s", slabel)
+                raise GraphError(f"Rescheduled succeeded step: step={slabel}")
+            logger.error("Rescheduled succeeded step: step=%s", slabel)
             to_mark_pending.add(Step(self, si, slabel))
 
         # Mark steps pending to rerun steps that seem to be out of date,
@@ -217,11 +214,11 @@ class Workflow(Cascade):
 
         # Need to (re)initialize the boot steps.
         for node in nodes.values():
-            node.orphan()
+            node.detach()
         to_check = self.declare_missing(self.root, ["plan.py"])
         checked = [(path, file_hash.regen(path)) for path, file_hash in to_check]
         self.update_file_hashes(checked, "confirmed")
-        self.define_step(self.root, action, inp_paths=["plan.py"])
+        self.define_step(self.root, action, inp_paths=["plan.py"], need=Need.PLAN, safe=True)
         return True
 
     @staticmethod
@@ -279,7 +276,7 @@ class Workflow(Cascade):
         """Return counters for FileState."""
         sql = (
             "SELECT file.state, count(*) FROM node JOIN file ON node.i = file.node "
-            "WHERE NOT node.orphan GROUP BY file.state"
+            "WHERE NOT node.detached GROUP BY file.state"
         )
         return {FileState(value): count for value, count in self.con.execute(sql)}
 
@@ -287,26 +284,25 @@ class Workflow(Cascade):
         """Return counters for StepState."""
         sql = (
             "SELECT step.state, count(*) FROM node JOIN step ON node.i = step.node "
-            "WHERE NOT node.orphan AND step.mandatory != ? GROUP BY step.state"
+            "WHERE NOT node.detached GROUP BY step.state"
         )
-        data = (Mandatory.NO.value,)
-        return {StepState(value): count for value, count in self.con.execute(sql, data)}
+        return {StepState(value): count for value, count in self.con.execute(sql)}
 
     def steps(self, state: StepState) -> Iterator[Step]:
         sql = (
             "SELECT i, label FROM node JOIN step ON node.i = step.node "
-            "WHERE state = ? AND NOT orphan"
+            "WHERE state = ? AND NOT detached"
         )
         for i, label in self.con.execute(sql, (state.value,)):
             yield Step(self, i, label)
 
-    def orphaned_inp_paths(self) -> Iterator[str, FileState]:
-        """Iterate over orphaned input paths used by non-orphaned steps."""
+    def detached_inp_paths(self) -> Iterator[str, FileState]:
+        """Iterate over detached input paths used by non-detached steps."""
         sql = (
             "SELECT node.label, file.state FROM node JOIN file ON node.i = file.node "
-            "WHERE node.orphan = TRUE "
+            "WHERE node.detached "
             "AND EXISTS (SELECT 1 FROM dependency JOIN node ON node.i = dependency.consumer "
-            "WHERE supplier = file.node AND not node.orphan)"
+            "WHERE supplier = file.node AND not node.detached)"
         )
         for row in self.con.execute(sql):
             yield row[0], FileState(row[1])
@@ -314,7 +310,8 @@ class Workflow(Cascade):
     def missing_paths(self) -> Iterator[str]:
         """Iterate over static files that have been deleted or were never confirmed."""
         sql = (
-            "SELECT label FROM node JOIN file ON node.i = file.node WHERE state = ? AND NOT orphan"
+            "SELECT label FROM node JOIN file ON node.i = file.node "
+            "WHERE state = ? AND NOT detached"
         )
         for row in self.con.execute(sql, (FileState.MISSING.value,)):
             yield row[0]
@@ -332,13 +329,13 @@ class Workflow(Cascade):
         if node.kind() not in ("step", "sr"):
             allowed = "step, sr or root" if allow_root else "step or sr"
             raise ValueError(f"{argname} is not a {allowed}: '{node.key()}'")
-        if node.is_orphan():
-            raise ValueError(f"{argname} is orphan: '{node.key()}'")
+        if node.is_detached():
+            raise ValueError(f"{argname} is detached: '{node.key()}'")
 
     def matching_static_root(self, path: str) -> StaticRoot | None:
         srs = []
         sql = (
-            "SELECT i, label FROM node WHERE kind = 'sr' AND NOT orphan AND "
+            "SELECT i, label FROM node WHERE kind = 'sr' AND NOT detached AND "
             "label = substr(?, 1, length(label))"
         )
         for i, label in self.con.execute(sql, (path,)):
@@ -350,7 +347,7 @@ class Workflow(Cascade):
         return None
 
     def supply_file(self, node: Node, path: str, new: bool = True) -> SupplyInfo:
-        """Find an existing file or create on orphan file, and make it a supplier of node.
+        """Find an existing file or create a detached file, and make it a supplier of node.
 
         Parameters
         ----------
@@ -374,25 +371,24 @@ class Workflow(Cascade):
             When the path exists while it is expected to be new.
         """
         available = False
-        file, is_orphan = self.find_orphan(File, path)
+        file, detached = self.find_detached(File, path)
         deferred = []
-        if file is None or is_orphan:
+        if file is None or detached:
             sr = self.matching_static_root(path)
             if sr is None:
                 file = self.create(File, None, path, state=FileState.AWAITED)
             else:
                 file = self.create(File, sr, path, state=FileState.MISSING)
                 deferred.append(file)
-                # If the file is under a static root, it will become static
-                # and can be considered available unless the existence cannot
-                # be confirmed later.
                 available = True
             self.put_dir_queue(Path(path).parent)
         else:
             state = file.get_state()
             if state == FileState.VOLATILE:
                 raise GraphError(f"Input is volatile: {path}")
-            available = state in (FileState.BUILT, FileState.STATIC)
+            available = state in (FileState.BUILT, FileState.STATIC, FileState.MISSING)
+            if state == FileState.MISSING:
+                deferred.append(file)
         new_relation = (
             self.con.execute(
                 "SELECT 1 FROM dependency WHERE supplier = ? AND consumer = ?", (file.i, node.i)
@@ -636,7 +632,7 @@ class Workflow(Cascade):
             for i, path, new_fh, old_state in records:
                 if old_state in (FileState.OUTDATED, FileState.AWAITED):
                     if new_fh.is_unknown:
-                        raise AssertionError(f"Unknown file hash after succeded step: {path}")
+                        raise AssertionError(f"Unknown file hash after succeeded step: {path}")
                     new_states_hashes.append((i, FileState.BUILT, new_fh))
                     completed.append((i, path))
                 else:
@@ -706,9 +702,9 @@ class Workflow(Cascade):
         out_paths: Collection[str] = (),
         vol_paths: Collection[str] = (),
         workdir: str = "./",
-        optional: bool = False,
-        pool: str | None = None,
-        block: bool = False,
+        need: Need = Need.DEFAULT,
+        resources: dict[str, int] | None = None,
+        safe: bool = False,
     ) -> list[tuple[File, FileState]]:
         """Define a new step.
 
@@ -730,13 +726,16 @@ class Workflow(Cascade):
         workdir
             The directory where the action must be executed,
             typically relative to the working directory of the director.
-        optional
-            If True, the step is only executed when required by other mandatory steps.
-        pool
-            The pool in which to execute this step, if any.
-        block
-            Block the step from being executed, convenient for temporarily reducing the workflow
-            without cleaning up results of blocked steps.
+        need
+            The need of the step, see enums.Need for details.
+        resources
+            The resources required by the step, e.g. {"cpu": 2, "gpu": 1}.
+        safe
+            The initial value for the `safe` field of the step.
+            This is an internal field, not controlled by the end user.
+            It is used to prevent steps from being queued if their creator is not
+            RUNNING or SUCCEEDED.
+            The only exception is the top-level `plan.py` step, which is always safe to queue.
 
         Returns
         -------
@@ -763,7 +762,7 @@ class Workflow(Cascade):
         if any(inp_path.endswith(os.sep) for inp_path in inp_paths):
             raise GraphError("Directory inputs are not supported.")
 
-        # If a matching orphaned step is found, reuse it, instead of creating a new one.
+        # If a matching detached step is found, reuse it, instead of creating a new one.
         old_deferred = self._recreate_step(
             action,
             workdir,
@@ -771,9 +770,8 @@ class Workflow(Cascade):
             env_vars,
             out_paths,
             vol_paths,
-            optional,
-            pool,
-            block,
+            need,
+            resources,
             creator,
         )
         if old_deferred is not None:
@@ -785,16 +783,18 @@ class Workflow(Cascade):
             creator,
             action=action,
             workdir=workdir,
-            pool=pool,
-            block=block,
-            mandatory=Mandatory.NO if optional else Mandatory.YES,
+            need=need,
+            safe=safe,
         )
+        step.set_resources(resources)
 
         # Keep track of all missing files that match a static root and need to be confirmed.
         deferred = set()
 
         # Supply inp_paths
         for inp_path in inp_paths:
+            # We do not care about the unavailable files here,
+            # because the step will only be executed when all inputs are available.
             deferred.update(self.supply_file(step, inp_path).deferred)
 
         # Process vars
@@ -812,8 +812,6 @@ class Workflow(Cascade):
 
         # Determine if the step needs executing and queue if relevant.
         logger.info("Define step: %s", step.label)
-        if not optional:
-            step.queue_if_appropriate()
         return self._build_to_check(deferred)
 
     def _recreate_step(
@@ -824,12 +822,11 @@ class Workflow(Cascade):
         env_vars: list[str],
         out_paths: list[str],
         vol_paths: list[str],
-        optional: bool,
-        pool: str | None,
-        block: bool,
+        need: Need,
+        resources: dict[str, int] | None,
         creator: Node,
     ) -> set[Node] | None:
-        """Recreate a step if it was orphaned and the step arguments are compatible.
+        """Recreate a step if it was detached and the step arguments are compatible.
 
         Returns
         -------
@@ -838,13 +835,13 @@ class Workflow(Cascade):
             MISSING file nodes that match a static root and need to be confirmed.
         """
         label = Step.create_label("", action, workdir)
-        old_step, is_orphan = self.find_orphan(Step, label)
+        old_step, detached = self.find_detached(Step, label)
 
         # Check whether the step can be reused.
-        if old_step is None or not is_orphan:
+        if old_step is None or not detached:
             return None
         old_inp_paths = sorted(
-            item[0] for item in old_step.inp_paths(amended=False, yield_orphan=True)
+            item[0] for item in old_step.inp_paths(amended=False, yield_detached=True)
         )
         if old_inp_paths != inp_paths:
             return None
@@ -852,26 +849,27 @@ class Workflow(Cascade):
         if old_env_vars != env_vars:
             return None
         old_out_paths = sorted(
-            item[0] for item in old_step.out_paths(amended=False, yield_orphan=True)
+            item[0] for item in old_step.out_paths(amended=False, yield_detached=True)
         )
         if old_out_paths != out_paths:
             return None
         old_vol_paths = sorted(
-            item[0] for item in old_step.vol_paths(amended=False, yield_orphan=True)
+            item[0] for item in old_step.vol_paths(amended=False, yield_detached=True)
         )
         if old_vol_paths != vol_paths:
             return None
 
         # We have a match!
 
-        # Update the mandatory, pool and block settings.
+        # Update the need value and _check_* flags.
         self.con.execute(
-            "UPDATE step SET mandatory = ?, pool = ?, block = ? WHERE node = ?",
-            (Mandatory.NO.value if optional else Mandatory.YES.value, pool, block, old_step.i),
+            "UPDATE step SET need = ?, _check_safe = 1, _check_after = 1 WHERE node = ?",
+            (need.value, old_step.i),
         )
 
-        # Restore the step and its products (recursively).
-        old_step.recreate(creator)
+        # Restore the step and its products (recursively), and set resources.
+        old_step.recycle(creator)
+        old_step.set_resources(resources)
 
         # If inputs of the recreated steps are AWAITED or OUTDATED, these steps must be rescheduled.
         for i, label in self.con.execute(RECURSE_OUTDATED_STEPS, (old_step.i,)):
@@ -886,16 +884,8 @@ class Workflow(Cascade):
             for i, label in self.con.execute(RECURSE_DEFERRED_INPUTS, (old_step.i,))
         }
 
-        # Try to queue the step again.
-        old_step.queue_if_appropriate()
-        logger.info("Reuse orphaned step: %s", old_step.label)
+        logger.info("Reuse detached step: %s", old_step.label)
         return deferred
-
-    def define_pool(self, step: Step, pool: str, size: int):
-        """Set the pool size and keep the information in the step to support replay."""
-        step.define_pool(pool, size)
-        self.config_queue.put_nowait((pool, size))
-        self.job_queue_changed.set()
 
     def amend_step(
         self,
@@ -943,16 +933,17 @@ class Workflow(Cascade):
             raise GraphError("Directory inputs are not supported.")
 
         # Keep track of missing files, of which there are two different types:
-        # - missing = certainly not available
-        # - deferred = not available but matching a static root, existence needs to be checked.
-        missing = set()
+        # - unavailable = certainly not available
+        # - deferred = possibly available but need to be checked.
+        #   For example, these can be MISSING files that need to be confirmed as STATIC.
+        unavailable = set()
         deferred = set()
 
         # Process inp_paths
         for inp_path in inp_paths:
             info = self.supply_file(step, inp_path, new=False)
             if not info.available:
-                missing.add(inp_path)
+                unavailable.add(inp_path)
             if info.new_idep is not None:
                 self._amend_dep(info.new_idep)
             deferred.update(info.deferred)
@@ -972,10 +963,10 @@ class Workflow(Cascade):
             new_idep = file.add_supplier(step)
             self._amend_dep(new_idep)
 
-        if len(missing) > 0:
-            step.add_rescheduled_info("Missing inputs:\n" + "\n".join(sorted(missing)))
+        if len(unavailable) > 0:
+            step.add_rescheduled_info("\n".join(sorted(unavailable)))
 
-        return len(missing) == 0, self._build_to_check(deferred)
+        return len(unavailable) == 0, self._build_to_check(deferred)
 
     def _amend_dep(self, idep):
         self.con.execute("INSERT INTO amended_dep VALUES (?)", (idep,))
@@ -1011,7 +1002,7 @@ class Workflow(Cascade):
             path = path + os.sep
         if self.matching_static_root(path) is not None:
             raise GraphError(f"Static root is a subdirectory of an existing static root: {path}")
-        sql = "SELECT 1 FROM node WHERE kind = 'sr' AND NOT orphan AND label LIKE ? ESCAPE '\\'"
+        sql = "SELECT 1 FROM node WHERE kind = 'sr' AND NOT detached AND label LIKE ? ESCAPE '\\'"
         pattern = f"{escape_like_pattern(path)}%"
         if self.con.execute(sql, (pattern,)).fetchone() is not None:
             raise GraphError(
@@ -1035,32 +1026,7 @@ class Workflow(Cascade):
             files = sorted(sr.products(), reverse=True, key=(lambda node: node.path))
             for file in files:
                 if not any(file.consumers()):
-                    file.orphan()
-        # Delete outputs of steps that are no longer mandatory.
-        cur = self.con.execute(
-            "SELECT label, digest, mode, mtime, size, inode FROM file "
-            "JOIN node ON node.i = file.node "
-            "JOIN dependency ON node.i = consumer "
-            "JOIN step ON step.node = supplier "
-            "WHERE mandatory = ? AND file.state in (?, ?, ?) AND digest != ?",
-            (
-                Mandatory.NO.value,
-                FileState.BUILT.value,
-                FileState.VOLATILE.value,
-                FileState.OUTDATED.value,
-                b"u",
-            ),
-        )
-        for path, digest, mode, mtime, size, inode in cur:
-            self.to_be_deleted.append((path, FileHash(digest, mode, mtime, size, inode)))
-        # Set optional step PENDING if they were executed and are no longer mandatory.
-        for i, label in self.con.execute(
-            "SELECT i, label FROM node JOIN step ON node.i = step.node "
-            "WHERE mandatory = ? AND state != ?",
-            (Mandatory.NO.value, StepState.PENDING.value),
-        ):
-            step = Step(self, i, label)
-            step.mark_pending()
+                    file.detach()
         super().clean()
 
     #
@@ -1068,17 +1034,17 @@ class Workflow(Cascade):
     #
 
     def is_relevant(self, path: str) -> bool:
-        file, is_orphan = self.find_orphan(File, path)
-        if not (file is None or is_orphan):
+        file, detached = self.find_detached(File, path)
+        if not (file is None or detached):
             return file.get_state() not in (FileState.AWAITED, FileState.VOLATILE)
         return any(ngm.may_change(set(), {path}) for ngm in self.nglob_multis())
 
     def iter_relevant(self, parent: str) -> Iterator[str]:
-        """Iterate over all non-orphaned files that are relevant for a given parent directory."""
+        """Iterate over all non-detached files that are relevant for a given parent directory."""
         sql = (
             "SELECT label FROM node JOIN file ON node.i = file.node "
             f"WHERE state NOT IN ({FileState.AWAITED.value}, {FileState.VOLATILE.value}) AND "
-            "node.label LIKE ? AND NOT orphan"
+            "node.label LIKE ? AND NOT detached"
         )
         pattern = f"{escape_like_pattern(parent)}%"
         for (path,) in self.con.execute(sql, (pattern,)):
@@ -1118,13 +1084,3 @@ class Workflow(Cascade):
                 data = (pickle.dumps(evolved), i)
                 self.con.execute("UPDATE nglob_multi SET data = ? WHERE i = ?", data)
                 step.mark_pending()
-
-    def queue_pending_steps(self):
-        """Queue pending steps that can be executed."""
-        sql = (
-            "SELECT i, label, orphan FROM node JOIN step ON node.i = step.node WHERE step.state = ?"
-        )
-        for i, label, is_orphan in self.con.execute(sql, (StepState.PENDING.value,)):
-            step = Step(self, i, label)
-            logger.info("queueing %s", step.key(is_orphan))
-            step.queue_if_appropriate()

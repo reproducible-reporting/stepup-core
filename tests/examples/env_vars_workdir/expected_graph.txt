@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = INP_VAR_TEST_STEPUP_WORKDIR [amended]
                      = STEPUP_PATH_FILTER [amended]
           created by   root:
@@ -23,6 +24,7 @@ file:sub/input.txt
 
 step:runsh cat input.txt > output.txt  # wd=sub/
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:sub/input.txt
              creates   file:sub/output.txt

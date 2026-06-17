@@ -21,7 +21,7 @@
 
 from enum import Enum, Flag, auto
 
-__all__ = ("Change", "FileState", "Mandatory", "ReturnCode", "StepState")
+__all__ = ("Change", "FileState", "Need", "ReturnCode", "StepState")
 
 
 class ReturnCode(Flag):
@@ -92,28 +92,34 @@ class StepState(Enum):
     PENDING = 21
     """The step still needs to be executed."""
 
-    QUEUED = 22
-    """The step is handed over to the scheduler and will be executed soon."""
-
-    RUNNING = 23
+    RUNNING = 22
     """The step is being executed by a worker."""
 
-    SUCCEEDED = 24
+    SUCCEEDED = 23
     """The step has completed successfully (exit code 0)."""
 
-    FAILED = 25
+    FAILED = 24
     """The step has failed (exit code non-zero)."""
 
 
-class Mandatory(Enum):
-    YES = 31
-    """The step must be executed (default)."""
+class Need(Enum):
+    """The degree to which a step is needed in the workflow."""
 
-    REQUIRED = 32
-    """The step is optional but (indirectly) required by a mandatory step."""
+    OPTIONAL = 31
+    """Only execute the step if its output is (indirectly) needed by a non-optional step."""
 
-    NO = 33
-    """The step is optional and not required by another mandatory or required step."""
+    DEFAULT = 32
+    """Execute the step unless the user specifies targets."""
+
+    TARGET = 33
+    """Execute the step because some of its outputs are specified as targets."""
+
+    PLAN = 34
+    """Execute the step because it is part of the plan.
+
+    Even if its outputs are not needed by any other step or among user-specified targets,
+    the step is needed to fully define the workflow.
+    """
 
 
 class Change(Enum):

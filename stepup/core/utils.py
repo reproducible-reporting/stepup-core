@@ -46,6 +46,7 @@ __all__ = (
     "myparent",
     "myrealpath",
     "myrelpath",
+    "parse_resources",
     "remove_path",
     "string_to_bool",
     "string_to_list",
@@ -222,6 +223,26 @@ def format_command(executable: str) -> str:
     if executable.startswith("/"):
         raise ValueError(f"Executable is not a relative path: {executable}")
     return shlex.quote(executable if executable.startswith(("./", "../")) else f"./{executable}")
+
+
+def parse_resources(s: str) -> dict[str, int]:
+    """Parse a resources string like 'cpu:4,gpu:1,memgb:16' into a dict."""
+    result = {}
+    for item in s.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        name, _, value = item.partition(":")
+        name = name.strip()
+        if not name:
+            raise ValueError(f"Resource name cannot be empty: {item}")
+        if value == "":
+            value = "1"
+        value = int(value.strip())
+        if value < 0:
+            raise ValueError(f"Resource value cannot be negative: {item}")
+        result[name] = value
+    return result
 
 
 def filter_dependencies(paths: Collection[str]) -> set[Path]:

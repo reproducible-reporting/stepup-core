@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
                  ngm = ['inp*.txt'] {}
            explained = yes
@@ -32,6 +33,7 @@ file:work.py
 
 step:runsh ./work.py subs1.txt > subs2.txt
                state = SUCCEEDED
+                need = DEFAULT
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:conv2.txt [amended]
@@ -47,6 +49,7 @@ file:subs2.txt
 
 step:runsh ./work.py subs2.txt > subs3.txt
                state = SUCCEEDED
+                need = DEFAULT
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:conv2.txt [amended]
@@ -66,6 +69,7 @@ file:inp2.txt
 
 step:copy inp2.txt conv2.txt
                state = SUCCEEDED
+                need = DEFAULT
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:inp2.txt

@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
@@ -22,13 +23,14 @@ file:work.py
 
 (step:runpy ./work.py)
                state = PENDING
-               dirty = yes
+                need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
             consumes   file:work.py
              creates   (sr:data/)
 
 step:copy data/inp.txt out.txt
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   (file:data/inp.txt)
              creates   file:out.txt

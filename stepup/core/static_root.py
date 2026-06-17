@@ -38,13 +38,13 @@ class StaticRoot(Node):
     def add_supplier(self, supplier: Node) -> int:
         raise NotImplementedError("A static root does not use suppliers.")
 
-    def detach(self):
-        """Clean up an orphaned node because it loses a product node.
+    def give_up(self):
+        """Clean up a detached node because it loses a product node.
 
         Completely remove this static root, making reuse impossible.
         """
         for product in self.products():
-            product.orphan()
-        self.orphan()
+            product.detach()
+        self.detach()
         self.clean()
         self.con.execute("DELETE FROM node WHERE i = ?", (self.i,))

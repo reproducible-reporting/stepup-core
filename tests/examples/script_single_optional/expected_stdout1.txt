@@ -4,8 +4,8 @@
         0/1 |      START │ runpy ./plan.py
         1/2 |    SUCCESS │ runpy ./plan.py
         1/2 |      START │ runpy ./generate.py plan --optional
-        2/2 |    SUCCESS │ runpy ./generate.py plan --optional
-        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ Stopping workers
-        2/2 |   DIRECTOR │ See you!
+        2/3 |    SUCCESS │ runpy ./generate.py plan --optional
+        2/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
+        2/3 |      PHASE │ watch
+        2/3 |   DIRECTOR │ Stopping workers
+        2/3 |   DIRECTOR │ See you!

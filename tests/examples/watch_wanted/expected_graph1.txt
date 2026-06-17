@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
@@ -22,7 +23,7 @@ file:static.txt
 
 step:runsh cp input1.txt output1.txt
                state = PENDING
-               dirty = yes
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   (file:input1.txt)
              creates   file:output1.txt
@@ -39,7 +40,7 @@ file:output1.txt
 
 step:runsh cp input2.txt output2.txt
                state = PENDING
-               dirty = yes
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   (file:input2.txt)
              creates   file:output2.txt

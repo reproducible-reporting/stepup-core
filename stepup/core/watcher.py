@@ -181,9 +181,6 @@ class Watcher:
             # Mark steps pending if they use nglob patterns that have different matches.
             self.workflow.process_nglob_changes(self.deleted, self.updated)
 
-            # Queue all pending steps.
-            self.workflow.queue_pending_steps()
-
         # Reset the watcher state.
         self.deleted.clear()
         self.updated.clear()

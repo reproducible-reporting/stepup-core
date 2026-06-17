@@ -37,28 +37,28 @@ __all__ = ()
 
 
 def shutdown_tool(args: argparse.Namespace):
-    """Drain the schedule. wait for running steps to complete and then exit StepUp."""
+    """Put the dispatcher on hold, wait for running steps to complete and then exit StepUp."""
     get_rpc_client(get_socket()).call.shutdown()
 
 
 def shutdown_subcommand(subparser: argparse.ArgumentParser) -> callable:
     subparser.add_parser(
         "shutdown",
-        help="Drain the scheduler, wait for running steps to complete and then exit StepUp. "
+        help="Put the dispatcher on hold, wait for running steps to complete and then exit StepUp. "
         "Call again to kill running steps.",
     )
     return shutdown_tool
 
 
 def drain_tool(args: argparse.Namespace):
-    """Drain the scheduler. (No new steps are started.)"""
+    """Put the dispatcher on hold. (No new steps are started.)"""
     get_rpc_client(get_socket()).call.drain()
 
 
 def drain_subcommand(subparser: argparse.ArgumentParser) -> callable:
     subparser.add_parser(
         "drain",
-        help="Drain the scheduler. (No new steps are started.)",
+        help="Put the dispatcher on hold. (No new steps are started.)",
     )
     return drain_tool
 
@@ -105,6 +105,13 @@ def status_tool(args: argparse.Namespace):
     print("[bold underline]File counts[/]")
     for value, count in status["file_counts"].items():
         print(f"  {FileState(value).name:10s} {count:6d}")
+    print()
+    resource_counts = status.get("resource_counts", {})
+    print("[bold underline]Resources[/]")
+    if resource_counts:
+        namelen = max(len(name) for name in resource_counts)
+        for name, counts in resource_counts.items():
+            print(f"  {name:{namelen}s}  used {counts['used']:6d}  / {counts['available']:6d}")
     print()
     print("[bold underline]Running steps[/]")
     for action in status["running_steps"]:

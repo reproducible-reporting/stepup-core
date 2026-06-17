@@ -13,14 +13,15 @@ Modified inp hash    plan.py (digest f556bdc3 ➜ 47ac7281, size 420 ➜ 357)
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
         0/1 |      START │ runpy ./plan.py
-        1/1 |    SUCCESS │ runpy ./plan.py
-        1/1 |   DIRECTOR │ Trying to delete 5 outdated output(s)
-        1/1 |      CLEAN │ spam.txt
-        1/1 |      CLEAN │ foo2.txt
-        1/1 |      CLEAN │ foo1.txt
-        1/1 |      CLEAN │ egg.txt
-        1/1 |      CLEAN │ bar.txt
-        1/1 |    WARNING │ Check logs: .stepup/warning.log
-        1/1 |      PHASE │ watch
-        1/1 |   DIRECTOR │ Stopping workers
-        1/1 |   DIRECTOR │ See you!
+        5/5 |    SUCCESS │ runpy ./plan.py
+        5/5 |    WARNING │ Reverted 4 optional step(s) to PENDING and marked 4 output/volatile file(s) for deletion.
+        5/5 |   DIRECTOR │ Trying to delete 5 outdated output(s)
+        5/5 |      CLEAN │ spam.txt
+        5/5 |      CLEAN │ foo2.txt
+        5/5 |      CLEAN │ foo1.txt
+        5/5 |      CLEAN │ egg.txt
+        5/5 |      CLEAN │ bar.txt
+        1/5 |    WARNING │ Check logs: .stepup/warning.log
+        1/5 |      PHASE │ watch
+        1/5 |   DIRECTOR │ Stopping workers
+        1/5 |   DIRECTOR │ See you!

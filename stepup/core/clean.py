@@ -46,7 +46,7 @@ def clean_subcommand(subparser: argparse.ArgumentParser) -> callable:
         "The file itself may also be removed. "
         "Given a directory, all containing outputs will be cleaned. "
         "The directory itself may also be removed. "
-        "Unless additional flags are given, only old orphaned outputs are removed, "
+        "Unless additional flags are given, only old detached outputs are removed, "
         "i.e. outputs for which there is no longer a corresponding step.",
     )
     parser.add_argument(
@@ -62,7 +62,7 @@ def clean_subcommand(subparser: argparse.ArgumentParser) -> callable:
         action="store_true",
         default=False,
         help="Remove outputs of any step in the workflow. "
-        "Without this option, only old orphaned outputs are removed. "
+        "Without this option, only old detached outputs are removed. "
         "Whenever a file is removed, also the outputs depending on it are removed.",
     )
     parser.add_argument(
@@ -121,7 +121,7 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
         console.print("[yellow]# Note: No files or directories are actually removed.[/]")
         console.print("[yellow]# Use the --commit option to execute the removals.[/]")
     parents = set()
-    for tr_consuming_path, state, orphan, old_file_hash in tr_consuming_paths:
+    for tr_consuming_path, state, detached, old_file_hash in tr_consuming_paths:
         # translate_back to local path
         lo_consuming_path = translate_back(tr_consuming_path)
         missing = not lo_consuming_path.exists()
@@ -151,7 +151,7 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
             "[cyan]rm[/] ",
             lo_consuming_path,
         ]
-        if missing or still_there or changed or orphan:
+        if missing or still_there or changed or detached:
             parts.append("  [bold red]#")
             if missing:
                 parts.append(" Already gone!")
@@ -159,8 +159,8 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
                 parts.append(" Removal failed!")
             if changed:
                 parts.append(" File changed after workflow!")
-            if orphan:
-                parts.append(" Orphaned output!")
+            if detached:
+                parts.append(" Detached output!")
             parts.append("[/]")
         console.print("".join(parts))
 
@@ -235,7 +235,7 @@ def search_matching_paths(con: sqlite3.Connection, tr_paths: set[str]) -> set[st
 CREATE_INITIAL_PATHS = "CREATE TABLE temp.initial_path(path TEXT PRIMARY KEY) WITHOUT ROWID"
 
 SELECT_OUTPUTS = f"""
-SELECT label, file.state, orphan, digest, mode, mtime, size, inode FROM node
+SELECT label, file.state, detached, digest, mode, mtime, size, inode FROM node
 JOIN all_consumer ON node.i = all_consumer.current
 JOIN file ON file.node = all_consumer.current
 WHERE file.state in
@@ -246,7 +246,7 @@ DROP_INITIAL_PATHS = "DROP TABLE IF EXISTS temp.initial_path"
 
 
 def search_consuming_paths(
-    con: sqlite3.Connection, initial_paths: list[Path], orphan_only: bool
+    con: sqlite3.Connection, initial_paths: list[Path], detached_only: bool
 ) -> list[tuple[Path, FileState, bool, FileHash]]:
     """Find all paths that depend on the given initial paths.
 
@@ -266,7 +266,7 @@ def search_consuming_paths(
         - The path
         - The file state
         - The step state (of the step that created the file)
-        - Whether it is orphaned
+        - Whether it is detached
         - The file hash
     """
     try:
@@ -282,8 +282,8 @@ def search_consuming_paths(
             "FROM node JOIN temp.initial_path ON node.label = temp.initial_path.path"
         )
         select_outputs = SELECT_OUTPUTS
-        if orphan_only:
-            select_outputs += " AND orphan"
+        if detached_only:
+            select_outputs += " AND detached"
         return [
             (row[0], FileState(row[1]), bool(row[2]), FileHash(*row[3:]))
             for row in con.execute(RECURSE_CONSUMERS + select_outputs)

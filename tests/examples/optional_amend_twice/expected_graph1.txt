@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
@@ -36,7 +37,7 @@ file:work.py
 
 step:copy data1.txt optional1.txt
                state = SUCCEEDED
-           mandatory = REQUIRED
+                need = DEFAULT (implied by consumers > OPTIONAL)
           created by   step:runpy ./plan.py
             consumes   file:data1.txt
              creates   file:optional1.txt
@@ -50,7 +51,7 @@ file:optional1.txt
 
 step:copy data2.txt optional2.txt
                state = SUCCEEDED
-           mandatory = REQUIRED
+                need = DEFAULT (implied by consumers > OPTIONAL)
           created by   step:runpy ./plan.py
             consumes   file:data2.txt
              creates   file:optional2.txt
@@ -64,6 +65,7 @@ file:optional2.txt
 
 step:runsh ./work.py
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:optional1.txt [amended]
             consumes   file:optional2.txt [amended]

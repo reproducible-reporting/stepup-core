@@ -94,31 +94,31 @@ In this example, there are three nodes that create other nodes:
 
 This provenance graph is used by StepUp to decide which steps to keep and which to clean up.
 After some files have changed and StepUp is run again, some nodes may no longer be created.
-These "old" nodes will still exist in the database as "orphaned" nodes, i.e. without a creator.
+These "old" nodes will still exist in the database as "detached" nodes, i.e. without a creator.
 
 After all steps have been successfully completed,
-StepUp will remove orphaned nodes that are not suppliers to other steps.
+StepUp will remove detached nodes that are not suppliers to other steps.
 When output file nodes are deleted, the corresponding files are also removed from disk.
 StepUp ensures safe removal:
 it will only delete files if it confirms they were created in a previous run
 and if their file hash still matches the one recorded when they were originally built.
 
-If some steps use orphaned nodes as input, those steps will remain pending,
-resulting in an incomplete build and blocking the removal of the orphaned nodes.
+If some steps use detached nodes as input, those steps will remain pending,
+resulting in an incomplete build and blocking the removal of the detached nodes.
 
 Example:
 
 - After you modify `plan.py` and rerun StepUp,
-  it will see that the file has changed and therefore orphans
+  it will see that the file has changed and therefore detaches
   all nodes created by the old `plan.py`.
 - When StepUp runs the new `plan.py`,
   it may recreate some of the old nodes in exactly the same way,
-  in which case the orphaned nodes will simply be restored,
+  in which case the detached nodes will simply be restored,
   along with all of their products and related information.
-- If some nodes are not recreated, they will remain orphaned,
+- If some nodes are not recreated, they will remain detached,
   and will be removed after a complete and successful build.
 - The new `plan.py` can also define new nodes, which simply extend the graph.
-- Nodes that are recreated with different properties will override any existing orphaned nodes.
+- Nodes that are recreated with different properties will override any existing detached nodes.
 
 ## Exploration of the Graph in a Web Browser
 
@@ -155,4 +155,4 @@ The web server will load the graph in memory and will only reload it when reques
 
 - Rename the file `story.txt` to `lines.txt` (in both steps) and restart StepUp.
   The old `story.txt` output file will be automatically removed from disk,
-  as it is an intermediate output file whose node becomes orphaned and cleaned up.
+  as it is an intermediate output file whose node becomes detached and cleaned up.

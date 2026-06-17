@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = ENV_VAR_TEST_STEPUP_IDX [amended]
                      = STEPUP_PATH_FILTER [amended]
                  ngm = ['raw*.txt'] {}
@@ -47,8 +48,7 @@ file:raw4.txt
 
 step:copy raw1.txt converted1.txt
                state = PENDING
-           mandatory = NO
-               dirty = yes
+                need = OPTIONAL
           created by   step:runpy ./plan.py
             consumes   file:raw1.txt
              creates   file:converted1.txt
@@ -61,8 +61,7 @@ file:converted1.txt
 
 step:copy raw2.txt converted2.txt
                state = PENDING
-           mandatory = NO
-               dirty = yes
+                need = OPTIONAL
           created by   step:runpy ./plan.py
             consumes   file:raw2.txt
              creates   file:converted2.txt
@@ -75,7 +74,7 @@ file:converted2.txt
 
 step:copy raw3.txt converted3.txt
                state = SUCCEEDED
-           mandatory = REQUIRED
+                need = DEFAULT (implied by consumers > OPTIONAL)
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:raw3.txt
@@ -90,8 +89,7 @@ file:converted3.txt
 
 step:copy raw4.txt converted4.txt
                state = PENDING
-           mandatory = NO
-               dirty = yes
+                need = OPTIONAL
           created by   step:runpy ./plan.py
             consumes   file:raw4.txt
              creates   file:converted4.txt
@@ -104,6 +102,7 @@ file:converted4.txt
 
 step:copy converted3.txt used.txt
                state = SUCCEEDED
+                need = DEFAULT
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:converted3.txt

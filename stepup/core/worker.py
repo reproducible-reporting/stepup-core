@@ -43,12 +43,12 @@ import attrs
 from path import Path
 
 from .asyncio import wait_for_path
+from .dispatcher import Dispatcher
 from .enums import FileState, StepState
 from .exceptions import RPCError
 from .hash import FileHash, StepHash, compare_step_hashes, fmt_file_hash_diff
 from .reporter import ReporterClient
 from .rpc import AsyncRPCClient, allow_rpc, serve_socket_rpc
-from .scheduler import Scheduler
 from .step import Step, split_step_label
 from .utils import DBLock, string_to_bool
 from .workflow import Workflow
@@ -68,8 +68,8 @@ logger = logging.getLogger(__name__)
 class WorkerClient:
     """Client interface to a worker, used by the director process."""
 
-    scheduler: Scheduler = attrs.field()
-    """The scheduler that sends jobs (via the runner) to this worker (and others)."""
+    dispatcher: Dispatcher = attrs.field()
+    """The dispatcher that is managing the worker."""
 
     workflow: Workflow = attrs.field()
     """The workflow that the client is interacting with."""
@@ -148,8 +148,11 @@ class WorkerClient:
         inp_hashes: list[tuple[str, FileHash]],
         env_vars: list[str],
         step_hash: StepHash,
-    ) -> bool:
+    ):
         """Test if the inputs (hashes) have changed, which would invalidate the amended step info.
+
+        If the job can be validated, it is put back in the pending state,
+        so that it can be re-queued when new inputs arrive.
 
         Parameters
         ----------
@@ -161,34 +164,31 @@ class WorkerClient:
             List of environment variable names used by the step.
         step_hash
             The hash of the step to validate.
-
-        Returns
-        -------
-        must_run
-            True if the amended inputs are invalid.
-            This can be fixed by running the step again.
         """
         async with self.new_step(step, inp_hashes, env_vars, check_hash=False) as new_step_hash:
             if not (new_step_hash is None or step_hash.inp_digest == new_step_hash.inp_digest):
                 await self.client.call.outdated_amended(step_hash, new_step_hash)
-                # Inputs have changed, so must run.
+                # Inputs have changed, so discard amended info
                 async with self.dblock:
                     step.clean_before_run()
                     step.delete_hash()
-                return True
+                    step.set_state(StepState.PENDING)
+                    return
 
-            # We may reach this code for two reasons:
-            # - No inputs have changed.
+            # If we get here:
+            # - No inputs have changed, or.
             # - Failed to create the new step due to unexpected input changes.
             #   This may happen when validating, because inputs may still be coming in.
-            # In both cases, the step is not invalidated and just sent back to the scheduler.
+            # In both cases, the step is not invalidated and just made pending again.
+            # We can just wait for new inputs to arrive.
+            #
+            # TODO: There is a risk for high CPU usage until the required inputs have arrived,
+            # because the dispatcher will keep restarting the job.
             async with self.dblock:
                 step.set_state(StepState.PENDING)
-                step.queue_if_appropriate()
                 step_counts = self.workflow.get_step_counts()
             await self.reporter.update_step_counts(step_counts)
             await self.client.call.unset_step()
-            return False
 
     async def try_skip_job(
         self,
@@ -196,7 +196,7 @@ class WorkerClient:
         inp_hashes: list[tuple[str, FileHash]],
         env_vars: list[str],
         step_hash: StepHash,
-    ) -> bool:
+    ):
         """Try skipping a step.
 
         Parameters
@@ -209,16 +209,11 @@ class WorkerClient:
             List of environment variable names used by the step.
         step_hash
             The hash of the step to skip.
-
-        Returns
-        -------
-        must_run
-            True if skipping failed and the steps needs to be rescheduled for running immediately.
         """
         async with self.new_step(step, inp_hashes, env_vars) as new_step_hash:
             if new_step_hash is None:
                 # Failed to create the new step due to unexpected input changes.
-                return False
+                return
 
             if step_hash.inp_digest != new_step_hash.inp_digest:
                 # The inputs have changed, so must run.
@@ -226,18 +221,20 @@ class WorkerClient:
                 async with self.dblock:
                     step.clean_before_run()
                     step.delete_hash()
-                return True
+                    step.set_state(StepState.PENDING)
+                return
 
             # Delegate the calculation of the output part of the step hash to the worker.
             new_step_hash, new_out_hashes = await self.compute_out_step_hash(step, new_step_hash)
 
             if step_hash.out_digest != new_step_hash.out_digest:
-                # The inputs or outputs have changed, so must run.
+                # The outputs have changed, so must run.
                 await self.client.call.noskip(step_hash, new_step_hash)
                 async with self.dblock:
                     step.clean_before_run()
                     step.delete_hash()
-                return True
+                    step.set_state(StepState.PENDING)
+                return
 
             # All checks passed.
             # No need to run the step, just simulate the creation of the products.
@@ -247,7 +244,6 @@ class WorkerClient:
                 step.completed(new_step_hash)
                 step_counts = self.workflow.get_step_counts()
             await self.reporter.update_step_counts(step_counts)
-            return False
 
     async def execute_job(
         self, step: Step, inp_hashes: list[tuple[str, FileHash]], env_vars: list[str]
@@ -270,8 +266,6 @@ class WorkerClient:
 
             # Run the step
             async with self.dblock:
-                step.set_dirty(False)
-                step.set_state(StepState.RUNNING)
                 step.clean_before_run()
                 step_counts = self.workflow.get_step_counts()
             await self.reporter.update_step_counts(step_counts)
@@ -306,10 +300,10 @@ class WorkerClient:
 
             if len(new_inp_hashes) > 0:
                 # Changes to inputs are suspect and can break everything.
-                # Therefore, the run phase is ended gracefully by draining the scheduler.
-                self.scheduler.drain()
+                # Therefore, the run phase is ended gracefully by putting the dispatcher on hold.
+                self.dispatcher.on_hold = True
                 await self.reporter(
-                    "ERROR", "The scheduler has been drained due to unexpected input changes."
+                    "ERROR", "The dispatcher has been put on hold due to unexpected input changes."
                 )
 
     #
@@ -364,10 +358,10 @@ class WorkerClient:
             await self.reporter.update_step_counts(step_counts)
             await self.client.call.report()
             # Changes to inputs are suspect and can break everything.
-            # Therefore, the run phase is ended gracefully by draining the scheduler.
-            self.scheduler.drain()
+            # Therefore, the run phase is ended gracefully by putting the dispatcher on hold.
+            self.dispatcher.on_hold = True
             await self.reporter(
-                "ERROR", "The scheduler has been drained due to unexpected input changes."
+                "ERROR", "The dispatcher has been put on hold due to unexpected input changes."
             )
             yield None
         else:
@@ -490,9 +484,7 @@ class WorkerStep:
     """The input digest, which can be useful for some actions.
 
     They may use this to decide if cached results from a previously interrupted run
-    of the same stepo are still valid.
-    This can also be useful when action submit jobs to a scheduler,
-    to decide if a running job is still valid.
+    of the same step are still valid.
     """
 
     out_missing: list = attrs.field(init=False, factory=list)

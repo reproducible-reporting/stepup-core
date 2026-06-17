@@ -1,13 +1,13 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post10)
    STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
   DIRECTOR │ Launched worker 1
+  DIRECTOR │ Launched worker 0
      PHASE │ run
      START │ runpy ./plan.py
+   SUCCESS │ runpy ./plan.py
      START │ runsh echo Monday frown > story.txt; echo Coffee smile >> story.txt
    SUCCESS │ runsh echo Monday frown > story.txt; echo Coffee smile >> story.txt
      START │ runsh grep Coffee story.txt
-   SUCCESS │ runpy ./plan.py
    SUCCESS │ runsh grep Coffee story.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 Coffee smile

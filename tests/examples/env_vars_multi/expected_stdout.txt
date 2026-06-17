@@ -5,10 +5,10 @@
         1/2 |    SUCCESS │ runpy ./plan.py
         1/2 |      START │ runpy ./plan.py  # wd=bar/
         2/4 |    SUCCESS │ runpy ./plan.py  # wd=bar/
-        2/4 |      START │ copy ../inp.txt ../out.txt  # wd=bar/
-        3/4 |    SUCCESS │ copy ../inp.txt ../out.txt  # wd=bar/
-        3/4 |      START │ copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
-        4/4 |    SUCCESS │ copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
+        2/4 |      START │ copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
+        3/4 |    SUCCESS │ copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
+        3/4 |      START │ copy ../inp.txt ../out.txt  # wd=bar/
+        4/4 |    SUCCESS │ copy ../inp.txt ../out.txt  # wd=bar/
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |      PHASE │ watch
         4/4 |   DIRECTOR │ Stopping workers

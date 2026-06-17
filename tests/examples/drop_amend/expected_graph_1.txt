@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
@@ -23,6 +24,7 @@ file:work.py
 
 step:runpy ./work.py
                state = SUCCEEDED
+                need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   step:runpy ./plan.py
@@ -30,6 +32,7 @@ step:runpy ./work.py
 
 step:runsh sleep 1; echo 'Some input for drop_amend example' > inp.txt
                state = SUCCEEDED
+                need = DEFAULT
            explained = yes
           created by   step:runpy ./plan.py
              creates   file:inp.txt

@@ -9,6 +9,7 @@ file:plan.py
 
 step:runpy ./plan.py
                state = SUCCEEDED
+                need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
                  ngm = ['ch-*/sec-${*ch}-${*sec}-${*name}.txt'] {'ch': '[0-9]'}
           created by   root:
@@ -57,6 +58,7 @@ file:ch-3-conclusions/sec-3-2-outlook.txt
 
 step:copy ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:ch-1-intro/sec-1-1-blabla.txt
              creates   file:ch-1-intro/sec-1-1-blabla.md
@@ -70,6 +72,7 @@ file:ch-1-intro/sec-1-1-blabla.md
 
 step:copy ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:ch-1-intro/sec-1-2-some-more.txt
              creates   file:ch-1-intro/sec-1-2-some-more.md
@@ -83,6 +86,7 @@ file:ch-1-intro/sec-1-2-some-more.md
 
 step:copy ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:ch-2-theory/sec-2-1-basics.txt
              creates   file:ch-2-theory/sec-2-1-basics.md
@@ -96,6 +100,7 @@ file:ch-2-theory/sec-2-1-basics.md
 
 step:copy ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:ch-3-conclusions/sec-3-2-outlook.txt
              creates   file:ch-3-conclusions/sec-3-2-outlook.md
@@ -109,6 +114,7 @@ file:ch-3-conclusions/sec-3-2-outlook.md
 
 step:copy ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:ch-3-conclusions/sec-3-1-summary.txt
              creates   file:ch-3-conclusions/sec-3-1-summary.md
@@ -122,6 +128,7 @@ file:ch-3-conclusions/sec-3-1-summary.md
 
 step:runsh cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/compiled.md
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:ch-1-intro/sec-1-1-blabla.md
             consumes   file:ch-1-intro/sec-1-2-some-more.md
@@ -142,6 +149,7 @@ file:ch-2-theory/compiled.md
 
 step:runsh cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/compiled.md
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:ch-3-conclusions/sec-3-1-summary.md
             consumes   file:ch-3-conclusions/sec-3-2-outlook.md
@@ -156,6 +164,7 @@ file:ch-3-conclusions/compiled.md
 
 step:runsh cat ch-1-intro/compiled.md ch-2-theory/compiled.md ch-3-conclusions/compiled.md > book.md
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:ch-1-intro/compiled.md
             consumes   file:ch-2-theory/compiled.md
@@ -175,6 +184,7 @@ file:ch-2-theory/sec-2-2-original.txt
 
 step:copy ch-2-theory/sec-2-2-original.txt ch-2-theory/sec-2-2-original.md
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:ch-2-theory/sec-2-2-original.txt
              creates   file:ch-2-theory/sec-2-2-original.md
@@ -188,6 +198,7 @@ file:ch-2-theory/sec-2-2-original.md
 
 step:runsh cat ch-2-theory/sec-2-1-basics.md ch-2-theory/sec-2-2-original.md > ch-2-theory/compiled.md
                state = SUCCEEDED
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:ch-2-theory/sec-2-1-basics.md
             consumes   file:ch-2-theory/sec-2-2-original.md

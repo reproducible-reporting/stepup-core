@@ -9,15 +9,15 @@ This example illustrates the following chain of events:
 
    > Here, `./use_config.py` becomes pending because it uses the config file.
 
-3. The steps created in the newly pending steps become orphaned.
+3. The steps created in the newly pending steps become detached.
   (They may or may not be created after a rerun, which cannot be determined upfront.)
 
    > Here, two steps are created in `use_config.py`, one of which uses information from `config.json`.
 
-4. The outputs of orphaned steps also become orphaned.
+4. The outputs of detached steps also become detached.
 
-   > The orphaned files in this example are the log file defined in `config.json` and `report.txt`.
+   > The detached files in this example are the log file defined in `config.json` and `report.txt`.
 
-5. Steps using orphaned files as input become pending, and their outputs become pending too.
+5. Steps using detached files as input become pending, and their outputs become pending too.
 
    > Here, the step copying `report.txt` to `copy.txt` becomes pending.

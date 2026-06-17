@@ -31,7 +31,7 @@ import pytest_asyncio
 from path import Path
 
 from stepup.core.director import serve
-from stepup.core.enums import StepState
+from stepup.core.enums import Need
 from stepup.core.file import File
 from stepup.core.hash import FileHash
 from stepup.core.reporter import ReporterClient
@@ -68,7 +68,18 @@ async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
         os.chmod("plan.py", stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
         reporter = ReporterClient()
         director = asyncio.create_task(
-            serve(director_socket_path, 1, reporter, False, False, True, False)
+            serve(
+                director_socket_path,
+                nworker=1,
+                reporter=reporter,
+                do_clean=True,
+                use_duration=False,
+                explain_rerun=False,
+                show_perf=False,
+                do_watch=True,
+                do_watch_first=False,
+                available_resources={},
+            )
         )
         while not director_socket_path.exists():
             await asyncio.sleep(0.1)
@@ -124,7 +135,7 @@ def wfp() -> Iterator[Workflow]:
         # Prepare the basic workflow with a plan script.
         root = workflow.root
         file_plan = declare_static(workflow, root, ["plan.py"])[0]
-        workflow.define_step(root, "./plan.py", inp_paths=["plan.py"])
+        workflow.define_step(root, "./plan.py", inp_paths=["plan.py"], need=Need.PLAN)
 
         # Check the basics of the workflow.
         step_plan = workflow.find(Step, "./plan.py")
@@ -133,12 +144,6 @@ def wfp() -> Iterator[Workflow]:
         assert nodes[0] == root
         assert nodes[1] == file_plan
         assert nodes[2] == step_plan
-
-        # Simulate running the plan
-        job = workflow.job_queue.get_nowait()
-        assert job.name == "EXECUTE: ./plan.py"
-        assert job.pool is None
-        step_plan.set_state(StepState.RUNNING)
 
     yield workflow
     with workflow.con:
