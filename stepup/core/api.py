@@ -27,7 +27,6 @@ This module should not be imported by other stepup.core modules, safe for some n
 - inside the driver functions in `stepup.core.call` and `stepup.core.script`
 """
 
-import argparse
 import contextlib
 import json
 import os
@@ -37,6 +36,7 @@ import sys
 import tomllib
 from collections.abc import Callable, Collection, Iterable, Iterator, Sequence
 from runpy import run_path
+from types import SimpleNamespace
 
 import yaml
 from path import Path
@@ -984,7 +984,7 @@ def script(
 
 def loadns(
     *paths_variables: str, dir_out: str | None = None, do_amend: bool = True
-) -> argparse.Namespace:
+) -> SimpleNamespace:
     """Load variable from Python, JSON, TOML or YAML files and put them in a namespace.
 
     Parameters
@@ -1005,7 +1005,7 @@ def loadns(
     Returns
     -------
     variables
-        A namespace with the variables.
+        A SimpleNamespace instance with the variables, which can be accessed as attributes.
     """
     # Process arguments
     if dir_out is None:
@@ -1047,7 +1047,7 @@ def loadns(
         amend(inp=paths_variables)
 
     # Return as a namespace
-    return argparse.Namespace(**variables)
+    return SimpleNamespace(**variables)
 
 
 def render_jinja(
