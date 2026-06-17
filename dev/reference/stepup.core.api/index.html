@@ -5662,7 +5662,7 @@ This is only relevant for variables loaded from Python files.</p>
               <code><span title="variables">variables</span></code>
           –
           <div class="doc-md-description">
-            <p>A namespace with the variables.</p>
+            <p>A SimpleNamespace instance with the variables, which can be accessed as attributes.</p>
           </div>
         </li>
     </ul>
@@ -5737,7 +5737,7 @@ This is only relevant for variables loaded from Python files.</p>
 <span class="normal"><a href="#__codelineno-0-1049">1049</a></span>
 <span class="normal"><a href="#__codelineno-0-1050">1050</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-985"><a id="__codelineno-0-985" name="__codelineno-0-985"></a><span class="k">def</span><span class="w"> </span><span class="nf">loadns</span><span class="p">(</span>
 </span><span id="__span-0-986"><a id="__codelineno-0-986" name="__codelineno-0-986"></a>    <span class="o">*</span><span class="n">paths_variables</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dir_out</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">do_amend</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-</span><span id="__span-0-987"><a id="__codelineno-0-987" name="__codelineno-0-987"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">:</span>
+</span><span id="__span-0-987"><a id="__codelineno-0-987" name="__codelineno-0-987"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SimpleNamespace</span><span class="p">:</span>
 </span><span id="__span-0-988"><a id="__codelineno-0-988" name="__codelineno-0-988"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Load variable from Python, JSON, TOML or YAML files and put them in a namespace.</span>
 </span><span id="__span-0-989"><a id="__codelineno-0-989" name="__codelineno-0-989"></a>
 </span><span id="__span-0-990"><a id="__codelineno-0-990" name="__codelineno-0-990"></a><span class="sd">    Parameters</span>
@@ -5758,7 +5758,7 @@ This is only relevant for variables loaded from Python files.</p>
 </span><span id="__span-0-1005"><a id="__codelineno-0-1005" name="__codelineno-0-1005"></a><span class="sd">    Returns</span>
 </span><span id="__span-0-1006"><a id="__codelineno-0-1006" name="__codelineno-0-1006"></a><span class="sd">    -------</span>
 </span><span id="__span-0-1007"><a id="__codelineno-0-1007" name="__codelineno-0-1007"></a><span class="sd">    variables</span>
-</span><span id="__span-0-1008"><a id="__codelineno-0-1008" name="__codelineno-0-1008"></a><span class="sd">        A namespace with the variables.</span>
+</span><span id="__span-0-1008"><a id="__codelineno-0-1008" name="__codelineno-0-1008"></a><span class="sd">        A SimpleNamespace instance with the variables, which can be accessed as attributes.</span>
 </span><span id="__span-0-1009"><a id="__codelineno-0-1009" name="__codelineno-0-1009"></a><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="__span-0-1010"><a id="__codelineno-0-1010" name="__codelineno-0-1010"></a>    <span class="c1"># Process arguments</span>
 </span><span id="__span-0-1011"><a id="__codelineno-0-1011" name="__codelineno-0-1011"></a>    <span class="k">if</span> <span class="n">dir_out</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -5800,7 +5800,7 @@ This is only relevant for variables loaded from Python files.</p>
 </span><span id="__span-0-1047"><a id="__codelineno-0-1047" name="__codelineno-0-1047"></a>        <span class="n">amend</span><span class="p">(</span><span class="n">inp</span><span class="o">=</span><span class="n">paths_variables</span><span class="p">)</span>
 </span><span id="__span-0-1048"><a id="__codelineno-0-1048" name="__codelineno-0-1048"></a>
 </span><span id="__span-0-1049"><a id="__codelineno-0-1049" name="__codelineno-0-1049"></a>    <span class="c1"># Return as a namespace</span>
-</span><span id="__span-0-1050"><a id="__codelineno-0-1050" name="__codelineno-0-1050"></a>    <span class="k">return</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">(</span><span class="o">**</span><span class="n">variables</span><span class="p">)</span>
+</span><span id="__span-0-1050"><a id="__codelineno-0-1050" name="__codelineno-0-1050"></a>    <span class="k">return</span> <span class="n">SimpleNamespace</span><span class="p">(</span><span class="o">**</span><span class="n">variables</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
