@@ -1126,14 +1126,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/blocked_steps/" class="md-nav__link">
+      <a href="../../advanced_topics/resources/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Blocked Steps
+    Resources
   
 
     
@@ -1154,14 +1154,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/pools/" class="md-nav__link">
+      <a href="../../advanced_topics/blocked_steps/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Pools
+    Blocked Steps
   
 
     
@@ -2165,10 +2165,10 @@ to specify how a common build step can be applied to different inputs.
 StepUp does not need to introduce the concept of a build rule
 because Python functions and loops already provide similar facilities.</p>
 <p>StepUp already comes with a few built-in &ldquo;rules&rdquo; defined this way:
-<a class="autorefs autorefs-internal" title="stepup.core.api.plan(subdir, *, inp=(), env=(), out=(), vol=(), optional=False, pool=None, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a>,
-<a class="autorefs autorefs-internal" title="stepup.core.api.copy(src, dst, *, optional=False, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.copy"><code>copy()</code></a>,
+<a class="autorefs autorefs-internal" title="stepup.core.api.plan(subdir, *, inp=(), env=(), out=(), vol=(), resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a>,
+<a class="autorefs autorefs-internal" title="stepup.core.api.copy(src, dst, *, optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.copy"><code>copy()</code></a>,
 <a class="autorefs autorefs-internal" title="stepup.core.api.getenv(name, default=None, *, path=False, back=False, multi=False)" href="../../reference/stepup.core.api/#stepup.core.api.getenv"><code>getenv()</code></a> and
-<a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a>.
+<a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a>.
 Some of these were already discussed in the previous tutorials,
 and their source code offers some inspiration for writing your own.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
@@ -2192,7 +2192,7 @@ Then make the plan executable and launch StepUp:</p>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>This will show the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post10)
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>     PHASE │ run

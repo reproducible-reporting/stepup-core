@@ -1066,14 +1066,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/blocked_steps/" class="md-nav__link">
+      <a href="../../advanced_topics/resources/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Blocked Steps
+    Resources
   
 
     
@@ -1094,14 +1094,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/pools/" class="md-nav__link">
+      <a href="../../advanced_topics/blocked_steps/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Pools
+    Blocked Steps
   
 
     
@@ -2100,7 +2100,7 @@ The only difference is that you can include such functions in a Python package,
 and call it a StepUp extension, which makes it easier to share and reuse these functions.</p>
 <p>A few things to keep in mind:</p>
 <ul>
-<li>API functions that (indirectly) call the <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function
+<li>API functions that (indirectly) call the <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function
   should always return the resulting <code>StepInfo</code> object.</li>
 <li>Keep the computational cost of the API function low.
   They should only be used to plan the execution of a step

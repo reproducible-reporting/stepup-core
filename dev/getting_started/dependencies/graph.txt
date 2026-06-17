@@ -11,13 +11,15 @@ file:plan.py
 
 step:runpy ./plan.py
                state = RUNNING
+                need = PLAN
           created by   root:
             consumes   file:plan.py
              creates   step:runsh echo Monday frown > story.txt; echo Coffee smile >> story.txt
              creates   step:runsh grep Coffee story.txt
 
 step:runsh echo Monday frown > story.txt; echo Coffee smile >> story.txt
-               state = RUNNING
+               state = PENDING
+                need = DEFAULT
           created by   step:runpy ./plan.py
              creates   file:story.txt
             supplies   file:story.txt
@@ -30,6 +32,6 @@ file:story.txt
 
 step:runsh grep Coffee story.txt
                state = PENDING
-               dirty = yes
+                need = DEFAULT
           created by   step:runpy ./plan.py
             consumes   file:story.txt

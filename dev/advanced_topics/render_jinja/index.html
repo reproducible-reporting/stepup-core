@@ -1068,14 +1068,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../blocked_steps/" class="md-nav__link">
+      <a href="../resources/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Blocked Steps
+    Resources
   
 
     
@@ -1096,14 +1096,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../pools/" class="md-nav__link">
+      <a href="../blocked_steps/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Pools
+    Blocked Steps
   
 
     
@@ -2207,7 +2207,7 @@
 <p><a href="https://jinja.palletsprojects.com/en/stable/">Jinja</a> is a popular templating engine for Python.
 Given a template file and a set of variables, Jinja renders the template, i.e. it inserts the variables.
 It allows you to create dynamic content by embedding Python-like expressions in your templates.</p>
-<p>This section will show you how to use <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a>.
+<p>This section will show you how to use <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a>.
 Internally, it uses StepUp&rsquo;s <a class="autorefs autorefs-internal" title="stepup.core.api.loadns(*paths_variables, dir_out=None, do_amend=True)" href="../../reference/stepup.core.api/#stepup.core.api.loadns"><code>loadns()</code></a> function to load variables,
 then uses Jinja2 to render a template, and finally writes the result to an output file.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
@@ -2237,7 +2237,7 @@ then uses Jinja2 to render a template, and finally writes the result to an outpu
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should see the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post10)
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>     PHASE │ run
@@ -2260,7 +2260,7 @@ written to <code>email.txt</code>:</p>
 </span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>Spammer
 </span></code></pre></div>
 <h2 id="supported-delimiters">Supported Delimiters<a class="headerlink" href="#supported-delimiters" title="Permanent link">&para;</a></h2>
-<p>With the <code>mode</code> option, <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a>
+<p>With the <code>mode</code> option, <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a>
 supports the following delimiters for Jinja templates:</p>
 <ul>
 <li>The default Jinja delimiters (<code>mode="plain"</code>):<ul>
@@ -2285,10 +2285,10 @@ supports the following delimiters for Jinja templates:</p>
 </li>
 <li>
 <p>You can also separate the loading of variables and the rendering of the template.
-  The <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a> also accepts a dictionary of variables
+  The <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a> also accepts a dictionary of variables
   instead of (or in addition to) filenames with variables.
   Use this to load the variables with <a class="autorefs autorefs-internal" title="stepup.core.api.loadns(*paths_variables, dir_out=None, do_amend=True)" href="../../reference/stepup.core.api/#stepup.core.api.loadns"><code>loadns()</code></a> first,
-  then pass the loaded variables to <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a>.</p>
+  then pass the loaded variables to <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a>.</p>
 </li>
 </ul>
 

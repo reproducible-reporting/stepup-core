@@ -12,13 +12,13 @@
         <meta name="author" content="Toon Verstraelen">
       
       
-        <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/pools/">
+        <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/resources/">
       
       
-        <link rel="prev" href="../blocked_steps/">
+        <link rel="prev" href="../optional_steps/">
       
       
-        <link rel="next" href="../environment_variables/">
+        <link rel="next" href="../blocked_steps/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Pools - StepUp Core</title>
+        <title>Resources - StepUp Core</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#pools" class="md-skip">
+        <a href="#resources" class="md-skip">
           Skip to content
         </a>
       
@@ -133,7 +133,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Pools
+              Resources
             
           </span>
         </div>
@@ -1065,34 +1065,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../blocked_steps/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Blocked Steps
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -1112,7 +1084,7 @@
   <span class="md-ellipsis">
     
   
-    Pools
+    Resources
   
 
     
@@ -1130,7 +1102,7 @@
   <span class="md-ellipsis">
     
   
-    Pools
+    Resources
   
 
     
@@ -1181,6 +1153,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blocked_steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blocked Steps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -2173,7 +2173,7 @@
 
 
   
-    <a href="https://github.com/reproducible-reporting/stepup-core/edit/main/docs/advanced_topics/pools.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/reproducible-reporting/stepup-core/edit/main/docs/advanced_topics/resources.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2181,10 +2181,11 @@
   
 
 
-<h1 id="pools">Pools<a class="headerlink" href="#pools" title="Permanent link">&para;</a></h1>
-<p>It is nearly always preferred to run steps in parallel when possible
+<h1 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h1>
+<p>It is nearly always preferred to run steps in parallel when possible,
 so StepUp will launch any queued step as soon as a worker becomes available.
-A &ldquo;pool&rdquo; is a simple mechanism to limit parallelization in the few cases that this would be counterproductive:</p>
+A &ldquo;resource&rdquo; is a named quantity that limits how many steps can run concurrently
+in cases where full parallelization would be counterproductive:</p>
 <ol>
 <li>
 <p>Some programs behave poorly (have bugs) when multiple instances are running in parallel.
@@ -2199,37 +2200,48 @@ A &ldquo;pool&rdquo; is a simple mechanism to limit parallelization in the few c
 </ul>
 </li>
 <li>
-<p>Some steps may consume a lot of resources, such as memory,
+<p>Some steps may consume a lot of resources, such as memory or GPU compute,
    requiring more resources than available when running in parallel.</p>
 </li>
 <li>
 <p>Some software licenses may limit the number of instances running in parallel.</p>
 </li>
 </ol>
-<p>One defines a pool with <a class="autorefs autorefs-internal" title="stepup.core.api.pool(name, size)" href="../../reference/stepup.core.api/#stepup.core.api.pool"><code>pool(name, size)</code></a>.
-The size is the maximum number of steps running concurrently within the pool.
-Steps are assigned to a pool by defining them with the <code>pool=name</code> keyword argument.</p>
+<p>Available resources are declared via the <code>STEPUP_RESOURCES</code> environment variable
+or the <code>--resources</code> CLI argument (CLI values take precedence).
+Both accept a comma-separated list of <code>name:quantity</code> pairs,
+e.g. <code>STEPUP_RESOURCES="cpu:4,gpu:1,memgb:16"</code>.</p>
+<p>Steps declare which resources they need with the <code>resources</code> keyword argument,
+which accepts either a dict (e.g. <code>{"gpu": 1}</code>) or a shorthand string (e.g. <code>"gpu:1"</code> or <code>"gpu"</code>).
+Resources not listed in <code>STEPUP_RESOURCES</code> or <code>--resources</code> are treated as unavailable,
+so any step requiring them will never run.
+Requesting non-positive quantity of a resource (e.g. <code>resources={"gpu": 0}</code>)
+is not allowed and will raise an error,
+but one can specify a resource with zero quantity in <code>STEPUP_RESOURCES</code>
+to make it unavailable (e.g. <code>STEPUP_RESOURCES="gpu:0"</code>).
+More details can be found in the <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> API documentation.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
-<p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/pools"><code>docs/advanced_topics/pools/</code></a></p>
-<p>The example here illustrates the use of a pool in a simple test case.
-The steps can run easily in parallel, so you can experiment with the pool size.</p>
+<p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/resources"><code>docs/advanced_topics/resources/</code></a></p>
+<p>The example illustrates three steps with different resource requirements.</p>
 <p>Create the following <code>plan.py</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">pool</span><span class="p">,</span> <span class="n">runsh</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">runsh</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">pool</span><span class="p">(</span><span class="s2">&quot;test&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;sleep 0.1; echo A&quot;</span><span class="p">,</span> <span class="n">pool</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">)</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;sleep 0.1; echo B&quot;</span><span class="p">,</span> <span class="n">pool</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">)</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;sleep 0.1; echo C&quot;</span><span class="p">,</span> <span class="n">pool</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">)</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;sleep 0.1; echo A&quot;</span><span class="p">,</span> <span class="n">resources</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;sleep 0.1; echo B&quot;</span><span class="p">,</span> <span class="n">resources</span><span class="o">=</span><span class="s2">&quot;gpu&quot;</span><span class="p">)</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;sleep 0.1; echo C&quot;</span><span class="p">,</span> <span class="n">resources</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;cpu&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;gpu&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">})</span>
 </span></code></pre></div>
-<p>The <code>sleep</code> command ensures that each step lasts long enough
-to guarantee they will run in parallel when allowed.</p>
-<p>Make the plan executable and run it with StepUp:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">4</span>
+<p>The <code>sleep</code> command ensures each step lasts long enough to guarantee
+they will run in parallel when allowed.</p>
+<p>Step C requires 2 CPUs and 1 GPU simultaneously, so it can only start
+once both A (which holds 1 CPU) and B (which holds 1 GPU) have finished.</p>
+<p>Set the environment variable and run StepUp with four workers:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">STEPUP_RESOURCES</span><span class="o">=</span><span class="s2">&quot;cpu:2,gpu:1&quot;</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">4</span>
 </span></code></pre></div>
 <p>You should get the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post10)
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  DIRECTOR │ Launched worker 1
@@ -2237,18 +2249,18 @@ to guarantee they will run in parallel when allowed.</p>
 </span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  DIRECTOR │ Launched worker 3
 </span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>     PHASE │ run
 </span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>     START │ runpy ./plan.py
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>     START │ runsh sleep 0.1; echo A
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>   SUCCESS │ runpy ./plan.py
 </span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>     START │ runsh sleep 0.1; echo B
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>   SUCCESS │ runpy ./plan.py
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>     START │ runsh sleep 0.1; echo A
 </span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>   SUCCESS │ runsh sleep 0.1; echo A
 </span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>─────────────────────────────── Standard output ────────────────────────────────
 </span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>A
 </span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>────────────────────────────────────────────────────────────────────────────────
-</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>     START │ runsh sleep 0.1; echo C
-</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>   SUCCESS │ runsh sleep 0.1; echo B
-</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>─────────────────────────────── Standard output ────────────────────────────────
-</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>B
-</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>────────────────────────────────────────────────────────────────────────────────
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>   SUCCESS │ runsh sleep 0.1; echo B
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>─────────────────────────────── Standard output ────────────────────────────────
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>B
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>────────────────────────────────────────────────────────────────────────────────
+</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>     START │ runsh sleep 0.1; echo C
 </span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>   SUCCESS │ runsh sleep 0.1; echo C
 </span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>─────────────────────────────── Standard output ────────────────────────────────
 </span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>C
@@ -2257,21 +2269,25 @@ to guarantee they will run in parallel when allowed.</p>
 </span><span id="__span-2-26"><a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>  DIRECTOR │ Stopping workers
 </span><span id="__span-2-27"><a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>  DIRECTOR │ See you!
 </span></code></pre></div>
-<p>Initially, the <code>./plan.py</code> step and two <code>sleep+echo</code> commands are running in parallel.
-Despite having four workers,
-the third <code>sleep+echo</code> is only started after the previous two have finished.</p>
+<p>Steps A and B start immediately in parallel.
+Despite having four workers, step C only starts after both A and B have finished,
+because it needs 2 CPUs and 1 GPU at the same time.</p>
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
 <p>Run <code>stepup boot -n 4</code> again without making changes.
-  Skipping of steps requires some computation and comparison of hashes,
-  which is done by worker processes.
-  However, these hash computations are never subject to pool size restrictions.</p>
+  Skipping steps requires hash computations, which are done by worker processes
+  and are never subject to resource restrictions.</p>
 </li>
 <li>
-<p>Change the pool size to <code>1</code> or <code>3</code> and verify that the output matches your expectations.
+<p>Change <code>STEPUP_RESOURCES</code> to <code>"cpu:4,gpu:2"</code> and verify that all three steps
+  can now run in parallel.
   When you try this, StepUp will continue skipping steps.
-  To forcibly re-execute steps, you can remove the file <code>.stepup/graph.db</code> and restart StepUp.</p>
+  To forcibly re-execute steps, remove the file <code>.stepup/graph.db</code> and restart StepUp.</p>
+</li>
+<li>
+<p>Remove a resource from <code>STEPUP_RESOURCES</code> (e.g. set it to <code>"cpu:2"</code>) and observe
+  that steps requiring the missing resource are never started and remain pending.</p>
 </li>
 </ul>
 

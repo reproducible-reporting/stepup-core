@@ -15,10 +15,10 @@
         <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/blocked_steps/">
       
       
-        <link rel="prev" href="../optional_steps/">
+        <link rel="prev" href="../resources/">
       
       
-        <link rel="next" href="../pools/">
+        <link rel="next" href="../environment_variables/">
       
       
         
@@ -1065,6 +1065,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../resources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Resources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -1153,34 +1181,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../pools/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Pools
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -2182,22 +2182,24 @@
 
 
 <h1 id="blocked-steps">Blocked Steps<a class="headerlink" href="#blocked-steps" title="Permanent link">&para;</a></h1>
-<p>As discussed in the <a href="../optional_steps/">previous tutorial</a>,
+<p>As discussed in a previous tutorial on <a href="../optional_steps/">Optional Steps</a>,
 StepUp has several mechanisms to ignore certain steps.
 As a rule, StepUp will always try to execute all steps, and not doing so is the exception.</p>
 <p>A valid reason for ignoring some steps is illustrated in the following schematic:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>     File           In development            File                 Costly
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>|-------------|      |----------|      |-----------------|      |----------|
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>|  input.txt  |  =&gt;  |  Step 1  |  =&gt;  |  converted.txt  |  =&gt;  |  Step 2  |
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>|-------------|      |----------|      |-----------------|      |----------|
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>     File          In development           File                Costly
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>╔═════════════╗     ┌──────────┐     ╔═════════════════╗     ┌──────────┐
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>║  input.txt  ║ --&gt; │  Step 1  │ --&gt; ║  converted.txt  ║ --&gt; │  Step 2  │
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>╚═════════════╝     └──────────┘     ╚═════════════════╝     └──────────┘
 </span></code></pre></div>
 <p>Imagine that <code>Step 2</code> is very expensive and you are developing a script for <code>Step 1</code>.
 In practice, it takes several iterations to get <code>Step 1</code> working properly.
 This can be verified by analyzing the file <code>converted.txt</code> or by running unit tests.</p>
 <p>To avoid executing <code>Step 2</code> at every iteration in the development of <code>Step 1</code>,
 you can <strong>block</strong> this step.
-All step-creating functions accept an optional <code>block=True</code> keyword argument
-to prevent them from being executed.
+Blocking is achieved by assigning an undefined resource to the step,
+e.g. <code>resources="blocked"</code>.
+Because the dispatcher does not know about a resource named <code>blocked</code>,
+the step remains permanently pending until you remove the argument.
 Blocked steps are intended to be a temporary measure,
 and to be reverted once you&rsquo;re done with <code>Step 1</code>.</p>
 <p>Blocking a step has some consequences:</p>
@@ -2216,7 +2218,7 @@ so this is just an example illustrating the mechanism.</p>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span><span class="p">,</span> <span class="n">runsh</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;echo hello &gt; $</span><span class="si">{out}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">&quot;a.txt&quot;</span><span class="p">)</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">copy</span><span class="p">(</span><span class="s2">&quot;a.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;b.txt&quot;</span><span class="p">,</span> <span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">copy</span><span class="p">(</span><span class="s2">&quot;a.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;b.txt&quot;</span><span class="p">,</span> <span class="n">resources</span><span class="o">=</span><span class="s2">&quot;blocked&quot;</span><span class="p">)</span>
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">copy</span><span class="p">(</span><span class="s2">&quot;b.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;c.txt&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Make this plan executable and run it with StepUp:</p>
@@ -2224,7 +2226,7 @@ so this is just an example illustrating the mechanism.</p>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should get the following terminal output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post10)
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>     PHASE │ run
@@ -2232,26 +2234,38 @@ so this is just an example illustrating the mechanism.</p>
 </span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>   SUCCESS │ runpy ./plan.py
 </span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>     START │ runsh echo hello &gt; a.txt
 </span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>   SUCCESS │ runsh echo hello &gt; a.txt
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>   WARNING │ 2 step(s) remained pending due to ...
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>──────────────────────────────── Blocked steps ─────────────────────────────────
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>step:copy a.txt b.txt
-</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>────────────────────────────────────────────────────────────────────────────────
-</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>   WARNING │ Skipping file cleanup due to incomplete build
-</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>   WARNING │ Check logs: .stepup/warning.log
-</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>  DIRECTOR │ Stopping workers
-</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>  DIRECTOR │ See you!
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>   WARNING │ 2 step(s) remained pending ...
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>───────────────────────────────── PENDING Step ─────────────────────────────────
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>Reason                required resources exceed maximum available
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>Action                copy a.txt b.txt
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>Working directory     ./
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>Inputs         BUILT  a.txt
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>Outputs      AWAITED  b.txt
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>Resource     blocked  1
+</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>───────────────────────────────── PENDING Step ─────────────────────────────────
+</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>Reason                required inputs are unavailable
+</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>Action                copy b.txt c.txt
+</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>Working directory     ./
+</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>Inputs       AWAITED  b.txt
+</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>Outputs      AWAITED  c.txt
+</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>────────────────────────────────────────────────────────────────────────────────
+</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>   WARNING │ Skipping file cleanup due to incomplete build
+</span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>   WARNING │ Check logs: .stepup/warning.log
+</span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>  DIRECTOR │ Stopping workers
+</span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>  DIRECTOR │ See you!
 </span></code></pre></div>
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
-<p>Unblock the copy step, run StepUp, block it again, and run StepUp again.
+<p>Remove the <code>resources="blocked"</code> argument, run StepUp, add it back, and run StepUp again.
   Although the copy commands are no longer executed, their outputs (<code>b.txt</code> and <code>c.txt</code>)
   are not cleaned up.
   This is the expected behavior because automatic cleaning is only performed when all
   (non-optional) steps have been executed successfully.</p>
 </li>
 <li>
-<p>Unblock the copy step, run StepUp, and then make the last copy command optional.
+<p>Remove the <code>resources="blocked"</code> argument,
+  run StepUp, and then make the last copy command optional.
   In this case, the output of the optional step (<code>c.txt</code>) will be removed.</p>
 </li>
 </ul>

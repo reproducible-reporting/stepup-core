@@ -1068,14 +1068,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../blocked_steps/" class="md-nav__link">
+      <a href="../resources/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Blocked Steps
+    Resources
   
 
     
@@ -1096,14 +1096,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../pools/" class="md-nav__link">
+      <a href="../blocked_steps/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Pools
+    Blocked Steps
   
 
     
@@ -2190,7 +2190,7 @@ Some of these files will change with every run, e.g., because they contain times
 so they can be cleaned up when appropriate.
 However, there is no point in computing file hashes for them,
 as these files are not used as inputs later and may change for no good reason.
-One may pass a list of such files to the <code>vol</code> argument of the <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function.</p>
+One may pass a list of such files to the <code>vol</code> argument of the <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/volatile_outputs"><code>docs/advanced_topics/volatile_outputs/</code></a></p>
 <p>Create the following <code>plan.py</code>, with a single step that produces a trivially volatile output:</p>
@@ -2205,7 +2205,7 @@ One may pass a list of such files to the <code>vol</code> argument of the <a cla
 </span></code></pre></div>
 <p>The file <code>date.txt</code> will contain the current time.
 You should get the following terminal output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post10)
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>     PHASE │ run

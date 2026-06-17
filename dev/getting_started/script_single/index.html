@@ -1170,14 +1170,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/blocked_steps/" class="md-nav__link">
+      <a href="../../advanced_topics/resources/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Blocked Steps
+    Resources
   
 
     
@@ -1198,14 +1198,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/pools/" class="md-nav__link">
+      <a href="../../advanced_topics/blocked_steps/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Pools
+    Blocked Steps
   
 
     
@@ -2265,11 +2265,11 @@ To help you decide which one to use, consider the following:</p>
   Such self-contained scripts can be easier to understand and maintain.</p>
 </li>
 </ul>
-<p>If both seem overkill, you can also use the <a class="autorefs autorefs-internal" title="stepup.core.api.runpy(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.runpy"><code>runpy()</code></a>
+<p>If both seem overkill, you can also use the <a class="autorefs autorefs-internal" title="stepup.core.api.runpy(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.runpy"><code>runpy()</code></a>
 function directly in <code>plan.py</code>.
 See <a href="../first_runpy/">Running Python Scripts</a> for an example.</p>
 <h2 id="script-protocol">Script Protocol<a class="headerlink" href="#script-protocol" title="Permanent link">&para;</a></h2>
-<p>The <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> protocol itself is rather simple.
+<p>The <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> protocol itself is rather simple.
 The following line in <code>plan.py</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">script</span><span class="p">(</span><span class="s2">&quot;executable&quot;</span><span class="p">,</span> <span class="n">workdir</span><span class="o">=</span><span class="s2">&quot;sub&quot;</span><span class="p">)</span>
 </span></code></pre></div>
@@ -2413,7 +2413,7 @@ serialized in a JSON file:</p>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should see the following output on screen:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post10)
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>     PHASE │ run

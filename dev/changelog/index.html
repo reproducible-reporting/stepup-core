@@ -1066,14 +1066,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../advanced_topics/blocked_steps/" class="md-nav__link">
+      <a href="../advanced_topics/resources/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Blocked Steps
+    Resources
   
 
     
@@ -1094,14 +1094,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../advanced_topics/pools/" class="md-nav__link">
+      <a href="../advanced_topics/blocked_steps/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Pools
+    Blocked Steps
   
 
     
@@ -5387,6 +5387,13 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   (except for static roots, which are stored as special nodes in the graph.)</li>
 <li>Deferred globs have been retired and replaced by static roots.
   (More on that below.)</li>
+<li>A new metadata update mechanism has been implemented for steps,
+  which introduced several new columns to the <code>step</code> table:
+  <code>_safe</code>, <code>_check_safe</code>, <code>need</code>, <code>_implied_need</code>, <code>_tail_time</code>, <code>_check_after</code>.</li>
+<li>The <code>dirty</code> column has been removed from the <code>step</code> table.
+  The information represented by this column is now inferred from <code>rescheduled_info</code>.</li>
+<li>The <code>pool</code> table was replaced by a <code>step_resource</code> table.</li>
+<li>The step state <code>QUEUED</code> has been removed, as it is no longer needed.</li>
 </ul>
 </li>
 <li>The &ldquo;deferred glob&rdquo; has been replaced by a simpler &ldquo;static root&rdquo; concept.
@@ -5396,6 +5403,23 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   To declare a static root directory, just pass it as an argument to the <code>static()</code> function.
   It will treat all directory arguments are static roots.</li>
 <li>Documentation has been updated to reflect the API changes and to clarify some other points.</li>
+<li>The scheduler has been replaced by a completely new implementation, called the &ldquo;dispatcher&rdquo;.
+  It is far more robust and powerful than the previous scheduler, and it is easier to maintain.
+  This change also comes with several improved features:<ul>
+<li>Steps are prioritized using the <em>tail time</em>, which results in the shortest overall
+  execution time of the workflow.
+  Since StepUp assumes no full knowledge of the workflow,
+  the tail time estimates are updated dynamically as the workflow progresses.</li>
+<li>The <code>pool</code> feature has been removed and is now replaced by the more powerful <code>resources</code> feature.</li>
+<li>The <code>optional</code> feature has become more robust.</li>
+</ul>
+</li>
+<li>Updates of internals:<ul>
+<li>Renamed &ldquo;orphan&rdquo; and related names to &ldquo;detached&rdquo;, which is more intuitive.
+  The new terminology is applied more consistently with consistent distinction between
+  &ldquo;detach&rdquo; (verb, state change) and &ldquo;detached&rdquo; (state).</li>
+</ul>
+</li>
 </ul>
 <h3 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h3>
 <ul>
@@ -5455,7 +5479,7 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>By default, no files are removed. Use the <code>--commit</code> option to actually remove files.</li>
 <li>The standard output consists of bash commands, which can be inspected, grepped
   and/or executed in a terminal to remove the files.</li>
-<li>Unless the <code>--all</code> option is used, only orphaned files are removed.
+<li>Unless the <code>--all</code> option is used, only detached files are removed.
   (These are outputs of old steps that are no longer part of the workflow.
   StepUp cleans these up automatically unless you run <code>stepup boot --no-clean</code>.)</li>
 <li>By default, modified output files were never removed.
@@ -5632,7 +5656,7 @@ and improved terminal user interface.</p>
 <li>A new API function <a class="autorefs autorefs-internal" title="stepup.core.api.loadns(*paths_variables, dir_out=None, do_amend=True)" href="../reference/stepup.core.api/#stepup.core.api.loadns"><code>loadns()</code></a> to load variables from file.
   Supported file formats are: JSON, Python, YAML, and TOML.
   This will automatically amend the calling step with the loaded files as inputs.</li>
-<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.runpy(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.runpy">runpy()</a> function can now be used to schedule a Python script.
+<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.runpy(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.runpy">runpy()</a> function can now be used to schedule a Python script.
   This automatically amends locall imported modules as inputs to the step.</li>
 <li>The <code>render-jinja</code> feature from StepUp RepRep 2 has been migrated to StepUp Core 3.</li>
 </ul>
@@ -5647,11 +5671,11 @@ and improved terminal user interface.</p>
   such as executing a Python script without starting a new process.</li>
 <li>While the schema was incremented,
   a small changes was made to the step hash computation.</li>
-<li>The function <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.step">step()</a> now accepts a new argument <code>action</code>
+<li>The function <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.step">step()</a> now accepts a new argument <code>action</code>
   instead of a shell command.
   The syntax of an <code>action</code> is similar to a shell command:
   It consists of <code>module.submodule.function arg1 arg2 ...</code>.</li>
-<li><a class="autorefs autorefs-internal" title="stepup.core.api.runsh(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.runsh">runsh()</a> mimics the behavior of the old <code>step()</code> function.</li>
+<li><a class="autorefs autorefs-internal" title="stepup.core.api.runsh(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.runsh">runsh()</a> mimics the behavior of the old <code>step()</code> function.</li>
 <li>The <code>stepup</code> command now uses subcommands to run different tools within StepUp.
 The following tools have been implemented:<ul>
 <li><code>stepup act</code>: Execute an action, mostly for debugging.</li>
@@ -5833,8 +5857,8 @@ for more fine-grained control over automatic dependency tracking.</p>
 <p>This release fixes one pesky bug.</p>
 <h3 id="fixed_20">Fixed<a class="headerlink" href="#fixed_20" title="Permanent link">&para;</a></h3>
 <ul>
-<li>It was previously not possible to reattach an orphaned step to a different creator
-  when this step was not a top-level orphan.
+<li>It was previously not possible to reattach a detached step to a different creator
+  when this step was not a top-level detached node.
   This limitation has been lifted, because it is a fully legitimate use case.</li>
 </ul>
 <h2 id="v2.0.2"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v2.0.2">2.0.2</a> - 2025-01-25<a class="headerlink" href="#v2.0.2" title="Permanent link">&para;</a></h2>
@@ -5878,7 +5902,7 @@ for more fine-grained control over automatic dependency tracking.</p>
   Similarly, all warnings (if any) are written to <code>.stepup/warning.log</code>.</li>
 <li><code>--perf</code> option to analyze performance bottlenecks in the director process.</li>
 <li>The &ldquo;call&rdquo; protocol is added as a light alternative to the &ldquo;script&rdquo; protocol.
-  It can be used through the new <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable, *, prefix=None, fmt='auto', inp=None, env=(), out=None, vol=(), workdir='./', optional=False, pool=None, block=False, pars=None, **kwargs)" href="../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> function.</li>
+  It can be used through the new <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable, *, prefix=None, fmt='auto', inp=None, env=(), out=None, vol=(), workdir='./', optional=False, resources=None, pars=None, **kwargs)" href="../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> function.</li>
 <li><a class="autorefs autorefs-internal" title="stepup.core.api.getinfo()" href="../reference/stepup.core.api/#stepup.core.api.getinfo"><code>getinfo()</code></a> function to retrieve the
   <a class="autorefs autorefs-internal" href="../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo"><code>StepInfo</code></a> object of the current step.</li>
 <li>Cleanly exit the director process upon several types of exceptions (instead of hanging).</li>
@@ -5891,11 +5915,11 @@ for more fine-grained control over automatic dependency tracking.</p>
 <ul>
 <li>The <a class="autorefs autorefs-internal" title="stepup.core.api.getenv(name, default=None, *, path=False, back=False, multi=False)" href="../reference/stepup.core.api/#stepup.core.api.getenv"><code>getenv()</code></a> function has been extended and now has three options
   (<code>path</code>, <code>rebase</code> and <code>multi</code>) to control how the environment variable gets processed.</li>
-<li>The optional <code>workdir</code> argument of the <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> function
+<li>The optional <code>workdir</code> argument of the <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> function
   must always be specified as a keyword argument.</li>
-<li>The <code>block</code> argument of the <a class="autorefs autorefs-internal" title="stepup.core.api.plan(subdir, *, inp=(), env=(), out=(), vol=(), optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> function
+<li>The <code>block</code> argument of the <a class="autorefs autorefs-internal" title="stepup.core.api.plan(subdir, *, inp=(), env=(), out=(), vol=(), resources=None)" href="../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> function
 must be given as a keyword argument.</li>
-<li>All optional arguments of <a class="autorefs autorefs-internal" title="stepup.core.api.copy(src, dst, *, optional=False, block=False)" href="../reference/stepup.core.api/#stepup.core.api.copy"><code>copy()</code></a>
+<li>All optional arguments of <a class="autorefs autorefs-internal" title="stepup.core.api.copy(src, dst, *, optional=False, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.copy"><code>copy()</code></a>
   and <code>mkdir()</code> must be given as keyword arguments.</li>
 <li><code>plan.py</code> scripts must start with <code>#!/usr/bin/env python3</code> instead of <code>#!/usr/bin/env python</code>.</li>
 <li>The <a class="autorefs autorefs-internal" title="stepup.core.api.amend(*, inp=(), env=(), out=(), vol=())" href="../reference/stepup.core.api/#stepup.core.api.amend"><code>amend()</code></a> function now raises an exception when the
@@ -5905,17 +5929,17 @@ must be given as a keyword argument.</li>
 <li>
 <p>Backward compatible changes to <code>stepup.core.api</code>:</p>
 <ul>
-<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> function has an extra <code>step_info</code> option
+<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> function has an extra <code>step_info</code> option
   to specify a file to which the <code>step_info</code> objects of the run part(s) is/are written.
   This comes with an extension of the script protocol: <code>./script.py plan</code> must
   accept an optional argument <code>--step-info=...</code></li>
-<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> function now accepts all arguments
-  that can be passed on to the underlying <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> call.
+<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> function now accepts all arguments
+  that can be passed on to the underlying <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> call.
   There are only relevant for the plan stage of the script protocol.</li>
 <li>The script <code>driver()</code> now detects local imports in the
   <code>run()</code> function of the script and amends them as inputs.</li>
-<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.plan(subdir, *, inp=(), env=(), out=(), vol=(), optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> function now accepts all arguments
-  that can be passed on to the underlying <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> call.</li>
+<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.plan(subdir, *, inp=(), env=(), out=(), vol=(), resources=None)" href="../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> function now accepts all arguments
+  that can be passed on to the underlying <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> call.</li>
 </ul>
 </li>
 <li>

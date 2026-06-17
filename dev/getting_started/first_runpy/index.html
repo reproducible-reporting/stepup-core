@@ -1148,14 +1148,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/blocked_steps/" class="md-nav__link">
+      <a href="../../advanced_topics/resources/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Blocked Steps
+    Resources
   
 
     
@@ -1176,14 +1176,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/pools/" class="md-nav__link">
+      <a href="../../advanced_topics/blocked_steps/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Pools
+    Blocked Steps
   
 
     
@@ -2205,8 +2205,8 @@
 
 <h1 id="running-python-scripts">Running Python Scripts<a class="headerlink" href="#running-python-scripts" title="Permanent link">&para;</a></h1>
 <p>In principle, you can incorporate any Python script into a StepUp workflow
-using the <a class="autorefs autorefs-internal" title="stepup.core.api.runsh(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.runsh"><code>runsh()</code></a> function.
-However, it is recommended to use the <a class="autorefs autorefs-internal" title="stepup.core.api.runpy(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.runpy"><code>runpy()</code></a> function instead.
+using the <a class="autorefs autorefs-internal" title="stepup.core.api.runsh(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.runsh"><code>runsh()</code></a> function.
+However, it is recommended to use the <a class="autorefs autorefs-internal" title="stepup.core.api.runpy(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.runpy"><code>runpy()</code></a> function instead.
 It will automatically detect the modules imported by the script,
 and if they correspond to local files in your workflow,
 the step is amended with these files as required inputs.
@@ -2236,7 +2236,7 @@ This way, if the local modules have changed, StepUp will know the script needs t
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should see the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post10)
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>     PHASE │ run

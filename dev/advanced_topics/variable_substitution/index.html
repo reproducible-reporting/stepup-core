@@ -1068,14 +1068,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../blocked_steps/" class="md-nav__link">
+      <a href="../resources/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Blocked Steps
+    Resources
   
 
     
@@ -1096,14 +1096,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../pools/" class="md-nav__link">
+      <a href="../blocked_steps/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Pools
+    Blocked Steps
   
 
     
@@ -2183,13 +2183,13 @@
 
 <h1 id="variable-substitution">Variable Substitution<a class="headerlink" href="#variable-substitution" title="Permanent link">&para;</a></h1>
 <p>StepUp does not substitute environment variables in the command (first argument)
-of the <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function.
+of the <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function.
 As discussed in the tutorial on <a href="../environment_variables/">environment variables</a>,
 the executing shell takes care of such substitutions.</p>
 <p>However, environment variables in all path-like arguments
 (e.g. <code>workdir</code>, <code>inp</code>, <code>out</code> and <code>vol</code>)
 of functions that take such arguments
-(<a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a>, <a class="autorefs autorefs-internal" title="stepup.core.api.amend(*, inp=(), env=(), out=(), vol=())" href="../../reference/stepup.core.api/#stepup.core.api.amend"><code>amend()</code></a> etc.)
+(<a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a>, <a class="autorefs autorefs-internal" title="stepup.core.api.amend(*, inp=(), env=(), out=(), vol=())" href="../../reference/stepup.core.api/#stepup.core.api.amend"><code>amend()</code></a> etc.)
 are automatically substituted.
 This substitution takes place before the commands are sent to the director process
 and all used variables are communicated to the director with an <code>amend()</code> call.</p>
@@ -2222,7 +2222,7 @@ to tell the director that the current step depends on this variable.</p>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nv">MYVAR</span><span class="o">=</span>foo<span class="w"> </span>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should get the following terminal output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post10)
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>        0/0 |    STARTUP │ (Re)initialized boot script
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        0/0 |   DIRECTOR │ Launched worker 0
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        0/1 |      PHASE │ run

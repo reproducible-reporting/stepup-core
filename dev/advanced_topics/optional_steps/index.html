@@ -18,7 +18,7 @@
         <link rel="prev" href="../static_named_glob/">
       
       
-        <link rel="next" href="../blocked_steps/">
+        <link rel="next" href="../resources/">
       
       
         
@@ -1137,14 +1137,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../blocked_steps/" class="md-nav__link">
+      <a href="../resources/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Blocked Steps
+    Resources
   
 
     
@@ -1165,14 +1165,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../pools/" class="md-nav__link">
+      <a href="../blocked_steps/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Pools
+    Blocked Steps
   
 
     
@@ -2220,7 +2220,7 @@ Until such steps are executed, StepUp has no idea what output these steps will g
 which it would need to decide that an optional step is required by another step.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/optional_steps"><code>docs/advanced_topics/optional_steps/</code></a></p>
-<p>The example below uses the <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, pool=None, block=False)" href="../../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> feature introduced in
+<p>The example below uses the <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> feature introduced in
 <a href="../../getting_started/script_single/">Script (Single Case)</a> and
 <a href="../../getting_started/script_multiple/">Script (Multiple Cases)</a>
 to create a somewhat entertaining example.
@@ -2301,7 +2301,7 @@ for different values of the parameter <em>r</em>:</p>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should get the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post10)
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>     PHASE │ run

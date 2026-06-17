@@ -1066,14 +1066,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/blocked_steps/" class="md-nav__link">
+      <a href="../../advanced_topics/resources/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Blocked Steps
+    Resources
   
 
     
@@ -1094,14 +1094,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/pools/" class="md-nav__link">
+      <a href="../../advanced_topics/blocked_steps/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Pools
+    Blocked Steps
   
 
     
@@ -2200,6 +2200,15 @@ and will require internal consistency checks to pass,
 rather than applying corrections to overcome the inconsistencies.
 (Every such inconsistency is due to a bug, which should be fixed eventually.)</p>
 </dd>
+<dt><code>STEPUP_DURATION</code></dt>
+<dd>
+<p>Set to <code>0</code> to disable the use of step duration information for scheduling decisions.
+By default, StepUp uses the duration information of steps to prioritize the execution
+of steps that are expected to take longer, which can lead to faster overall execution.
+Overridden by the <code>--duration</code> and <code>--no-duration</code> command-line options.
+While this is generally beneficial, it can result in non-deterministic execution order of steps,
+which can be undesirable in some cases, such as testing.</p>
+</dd>
 <dt><code>STEPUP_EXPLAIN_RERUN</code></dt>
 <dd>
 <p>Set to <code>1</code> to explain for every step with recording info
@@ -2260,6 +2269,16 @@ in the development documentation for more details.</p>
 <p>Set to <code>0</code> to disable the progress bar in the terminal user interface.
 This can be useful to simplify and reduce the output.
 Overridden by the <code>--progress</code> and <code>--no-progress</code> command-line options.</p>
+</dd>
+<dt><code>STEPUP_RESOURCES</code></dt>
+<dd>
+<p>Set to a comma-separated list of resource names and available quantities
+to be used for scheduling decisions.
+For example, <code>STEPUP_RESOURCES=gpu:2,cpu:4</code> indicates that there are 2 GPUs and 4 CPUs available.
+Any resource labels can be used, and the available quantity can be any positive integer.
+The <code>--resources</code> command-line option can be used to override available resources.
+(Note that both available resource specifications are merged,
+with the command-line option taking precedence over the environment variable.)</p>
 </dd>
 <dt><code>STEPUP_ROOT</code></dt>
 <dd>

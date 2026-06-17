@@ -1187,14 +1187,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/blocked_steps/" class="md-nav__link">
+      <a href="../../advanced_topics/resources/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Blocked Steps
+    Resources
   
 
     
@@ -1215,14 +1215,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/pools/" class="md-nav__link">
+      <a href="../../advanced_topics/blocked_steps/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Pools
+    Blocked Steps
   
 
     
@@ -2301,16 +2301,16 @@ which are used for visualization below.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">2</span>
 </span></code></pre></div>
 <p>You will see the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post11)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post10)
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>   STARTUP │ (Re)initialized boot script
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  DIRECTOR │ Launched worker 0
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  DIRECTOR │ Launched worker 1
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  DIRECTOR │ Launched worker 1
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>     PHASE │ run
 </span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>     START │ runpy ./plan.py
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>     START │ runsh echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>   SUCCESS │ runsh echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>     START │ runsh grep Coffee story.txt
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>   SUCCESS │ runpy ./plan.py
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>   SUCCESS │ runpy ./plan.py
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>     START │ runsh echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>   SUCCESS │ runsh echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>     START │ runsh grep Coffee story.txt
 </span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>   SUCCESS │ runsh grep Coffee story.txt
 </span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>─────────────────────────────── Standard output ────────────────────────────────
 </span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>Coffee smile
@@ -2340,28 +2340,30 @@ The file <code>graph.txt</code> is a detailed human-readable version of <code>.s
 </span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
 </span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>step:runpy ./plan.py
 </span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>               state = RUNNING
-</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>          created by   root:
-</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>            consumes   file:plan.py
-</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>             creates   step:runsh echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
-</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>             creates   step:runsh grep Coffee story.txt
-</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>
-</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>step:runsh echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
-</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>               state = RUNNING
-</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>          created by   step:runpy ./plan.py
-</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>             creates   file:story.txt
-</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>            supplies   file:story.txt
-</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>
-</span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>file:story.txt
-</span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>               state = AWAITED
-</span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>          created by   step:runsh echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
-</span><span id="__span-3-28"><a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>            consumes   step:runsh echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
-</span><span id="__span-3-29"><a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>            supplies   step:runsh grep Coffee story.txt
-</span><span id="__span-3-30"><a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>
-</span><span id="__span-3-31"><a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>step:runsh grep Coffee story.txt
-</span><span id="__span-3-32"><a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>               state = PENDING
-</span><span id="__span-3-33"><a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>               dirty = yes
-</span><span id="__span-3-34"><a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>          created by   step:runpy ./plan.py
-</span><span id="__span-3-35"><a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>            consumes   file:story.txt
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>                need = PLAN
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>          created by   root:
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>            consumes   file:plan.py
+</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>             creates   step:runsh echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
+</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>             creates   step:runsh grep Coffee story.txt
+</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>
+</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>step:runsh echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
+</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>               state = PENDING
+</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>                need = DEFAULT
+</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>          created by   step:runpy ./plan.py
+</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>             creates   file:story.txt
+</span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>            supplies   file:story.txt
+</span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>
+</span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>file:story.txt
+</span><span id="__span-3-28"><a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>               state = AWAITED
+</span><span id="__span-3-29"><a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>          created by   step:runsh echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
+</span><span id="__span-3-30"><a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>            consumes   step:runsh echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
+</span><span id="__span-3-31"><a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>            supplies   step:runsh grep Coffee story.txt
+</span><span id="__span-3-32"><a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>
+</span><span id="__span-3-33"><a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>step:runsh grep Coffee story.txt
+</span><span id="__span-3-34"><a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>               state = PENDING
+</span><span id="__span-3-35"><a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>                need = DEFAULT
+</span><span id="__span-3-36"><a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>          created by   step:runpy ./plan.py
+</span><span id="__span-3-37"><a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>            consumes   file:story.txt
 </span></code></pre></div>
 <p>This text format may not always be the most convenient way
 to understand how StepUp connects all the steps and files.
@@ -2408,28 +2410,28 @@ In this example, there are three nodes that create other nodes:</p>
 </ul>
 <p>This provenance graph is used by StepUp to decide which steps to keep and which to clean up.
 After some files have changed and StepUp is run again, some nodes may no longer be created.
-These &ldquo;old&rdquo; nodes will still exist in the database as &ldquo;orphaned&rdquo; nodes, i.e. without a creator.</p>
+These &ldquo;old&rdquo; nodes will still exist in the database as &ldquo;detached&rdquo; nodes, i.e. without a creator.</p>
 <p>After all steps have been successfully completed,
-StepUp will remove orphaned nodes that are not suppliers to other steps.
+StepUp will remove detached nodes that are not suppliers to other steps.
 When output file nodes are deleted, the corresponding files are also removed from disk.
 StepUp ensures safe removal:
 it will only delete files if it confirms they were created in a previous run
 and if their file hash still matches the one recorded when they were originally built.</p>
-<p>If some steps use orphaned nodes as input, those steps will remain pending,
-resulting in an incomplete build and blocking the removal of the orphaned nodes.</p>
+<p>If some steps use detached nodes as input, those steps will remain pending,
+resulting in an incomplete build and blocking the removal of the detached nodes.</p>
 <p>Example:</p>
 <ul>
 <li>After you modify <code>plan.py</code> and rerun StepUp,
-  it will see that the file has changed and therefore orphans
+  it will see that the file has changed and therefore detaches
   all nodes created by the old <code>plan.py</code>.</li>
 <li>When StepUp runs the new <code>plan.py</code>,
   it may recreate some of the old nodes in exactly the same way,
-  in which case the orphaned nodes will simply be restored,
+  in which case the detached nodes will simply be restored,
   along with all of their products and related information.</li>
-<li>If some nodes are not recreated, they will remain orphaned,
+<li>If some nodes are not recreated, they will remain detached,
   and will be removed after a complete and successful build.</li>
 <li>The new <code>plan.py</code> can also define new nodes, which simply extend the graph.</li>
-<li>Nodes that are recreated with different properties will override any existing orphaned nodes.</li>
+<li>Nodes that are recreated with different properties will override any existing detached nodes.</li>
 </ul>
 <h2 id="exploration-of-the-graph-in-a-web-browser">Exploration of the Graph in a Web Browser<a class="headerlink" href="#exploration-of-the-graph-in-a-web-browser" title="Permanent link">&para;</a></h2>
 <p>You can explore the graph interactively in a web browser using the <code>stepup browse</code> command.
@@ -2462,7 +2464,7 @@ The web server will load the graph in memory and will only reload it when reques
 <li>
 <p>Rename the file <code>story.txt</code> to <code>lines.txt</code> (in both steps) and restart StepUp.
   The old <code>story.txt</code> output file will be automatically removed from disk,
-  as it is an intermediate output file whose node becomes orphaned and cleaned up.</p>
+  as it is an intermediate output file whose node becomes detached and cleaned up.</p>
 </li>
 </ul>
 

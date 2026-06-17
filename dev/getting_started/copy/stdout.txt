@@ -1,11 +1,11 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.1.4.post6)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post10)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
   DIRECTOR │ Launched worker 1
      PHASE │ run
      START │ runpy ./plan.py
-     START │ runsh echo hello > hello.txt
    SUCCESS │ runpy ./plan.py
+     START │ runsh echo hello > hello.txt
    SUCCESS │ runsh echo hello > hello.txt
      START │ copy hello.txt sub/hello.txt
    SUCCESS │ copy hello.txt sub/hello.txt
