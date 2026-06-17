@@ -9,7 +9,7 @@
 ────────────────────────────────── Step info ───────────────────────────────────
 Command               stepup act runsh cat f1.txt f2.txt > f3.txt
 ──────────────────────────────── Invalid inputs ────────────────────────────────
-Input changed unexpectedly: f1.txt (digest 7ea59e7a ➜ a97fe9ac, size 3 ➜ 15)
+Input changed unexpectedly: f1.txt (digest 98ea6e4f ➜ 58ca930f, size 3 ➜ 15)
 ────────────────────────────────────────────────────────────────────────────────
         2/2 |      ERROR │ The dispatcher has been put on hold due to unexpected input changes.
         2/2 |    WARNING │ 1 step(s) failed.

@@ -11,7 +11,7 @@
         2/3 |    SUCCESS │ runsh grep -i foo data.txt > analyzed.txt
         2/3 |       SKIP │ runsh cat analyzed.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest f2890272, out_digest 786a02f7
+Same step hash       explained, inp_digest 5d73dae1, out_digest e3b0c442
 Same inp hash        analyzed.txt
 ────────────────────────────────────────────────────────────────────────────────
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)

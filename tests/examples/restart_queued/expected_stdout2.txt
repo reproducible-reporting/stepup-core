@@ -6,15 +6,15 @@
         1/3 |      PHASE │ run
         1/3 |     NOSKIP │ copy inp.txt out.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest d9e408b8 ➜ c928b7f1, out_digest d88d72dc ➜ (unset)
-Modified inp hash    inp.txt (digest ef13f276 ➜ 4f4f82c6)
+Modified step hash   explained, inp_digest c68475db ➜ f2755fe8, out_digest 2f680146 ➜ (unset)
+Modified inp hash    inp.txt (digest de3b107b ➜ 26725e7b)
 ────────────────────────────────────────────────────────────────────────────────
         1/3 |      START │ copy inp.txt out.txt
         2/3 |    SUCCESS │ copy inp.txt out.txt
         2/3 |     NOSKIP │ copy out.txt final.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 9a784deb ➜ ae9cd07f, out_digest a44a1173 ➜ (unset)
-Modified inp hash    out.txt (digest ef13f276 ➜ 4f4f82c6)
+Modified step hash   explained, inp_digest 0f4f031f ➜ 11aadeca, out_digest 0901a370 ➜ (unset)
+Modified inp hash    out.txt (digest de3b107b ➜ 26725e7b)
 ────────────────────────────────────────────────────────────────────────────────
         2/3 |      START │ copy out.txt final.txt
         3/3 |    SUCCESS │ copy out.txt final.txt

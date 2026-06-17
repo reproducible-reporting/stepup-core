@@ -1,7 +1,7 @@
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ inp.txt (digest UNKNOWN ➜ f60ce482, size 0 ➜ 6, mode ?--------- ➜ -rw-r--r--)
+        0/0 |    UPDATED │ inp.txt (digest UNKNOWN ➜ 5891b5b5, size 0 ➜ 6, mode ?--------- ➜ -rw-r--r--)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
@@ -9,7 +9,7 @@
 ───────────────────────────── Missing output files ─────────────────────────────
 out.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   compact ➜ explained, inp_digest ab65d7ae, out_digest d26e67b0 ➜ 870e35dd
+Modified step hash   compact ➜ explained, inp_digest fe0eb2cb, out_digest b19341b7 ➜ a23c0e47
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |      START │ copy inp.txt out.txt
         2/2 |    SUCCESS │ copy inp.txt out.txt

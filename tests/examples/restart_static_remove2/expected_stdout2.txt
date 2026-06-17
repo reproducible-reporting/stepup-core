@@ -1,14 +1,14 @@
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ plan.py (digest 14035a5d ➜ 0c3561e1, size 256 ➜ 103)
+        0/0 |    UPDATED │ plan.py (digest 4e1e658a ➜ 6f651ccb, size 256 ➜ 103)
         0/0 |    DELETED │ inp.txt
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
         1/2 |  DROPAMEND │ runpy ./plan.py
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   compact ➜ explained, inp_digest f9827754 ➜ bfe3dad3, out_digest d26e67b0 ➜ (unset)
+Modified step hash   compact ➜ explained, inp_digest 07ccd08b ➜ 43128224, out_digest b19341b7 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
         0/1 |      START │ runpy ./plan.py
         1/2 |    SUCCESS │ runpy ./plan.py

@@ -1,16 +1,16 @@
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ subs.txt (digest 08a306f2 ➜ 279b1d80)
+        0/0 |    UPDATED │ subs.txt (digest ae39a09a ➜ d642a3da)
         0/0 |    DELETED │ data/inp1.txt
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
         1/2 |  DROPAMEND │ runpy ./work.py
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest 5e8657cb ➜ 4fe0c6ec, out_digest afcdb0f9 ➜ (unset)
+Modified step hash   explained, inp_digest 6e91f221 ➜ 1c204bf2, out_digest 2aa07484 ➜ (unset)
 Deleted inp hash     data/inp1.txt
-Modified inp hash    subs.txt (digest 08a306f2 ➜ 279b1d80)
+Modified inp hash    subs.txt (digest ae39a09a ➜ d642a3da)
 ──────────────────────── Remained the same (or missing) ────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────

@@ -28,14 +28,14 @@ inp2.txt
 ───────────────────────────── Missing output files ─────────────────────────────
 inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 18c30c59, out_digest c0d853a3 ➜ a03072aa
-Modified out hash    inp2.txt (digest 42746c66 ➜ UNKNOWN, size 21 ➜ 0, mode -rw-r--r-- ➜ ?---------)
+Modified step hash   explained, inp_digest 10161719, out_digest 922bd120 ➜ a992ab96
+Modified out hash    inp2.txt (digest b24d3f94 ➜ UNKNOWN, size 21 ➜ 0, mode -rw-r--r-- ➜ ?---------)
 ────────────────────────────────────────────────────────────────────────────────
         2/4 |      START │ runsh echo Contents of inp2.txt > inp2.txt
         3/4 |    SUCCESS │ runsh echo Contents of inp2.txt > inp2.txt
         3/4 |       SKIP │ runsh ./work.py > log.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest b809d54f, out_digest 7d6b25ba
+Same step hash       explained, inp_digest 9746e4b6, out_digest d0ac0986
 Same inp hash        inp0.txt
 Same inp hash        inp2.txt
 Same inp hash        tmp1.txt
@@ -50,16 +50,16 @@ Same out hash        log.txt
         2/4 |      PHASE │ run
         2/4 |     NOSKIP │ runsh cp inp1.txt tmp1.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 5585f3a5 ➜ 440d9da5, out_digest 10bf5516 ➜ (unset)
-Modified inp hash    inp1.txt (digest 6c6e5eb3 ➜ e8869200, size 15 ➜ 16)
+Modified step hash   explained, inp_digest b2c961a8 ➜ b16da2a3, out_digest a63be687 ➜ (unset)
+Modified inp hash    inp1.txt (digest b38c4067 ➜ 805fc678, size 15 ➜ 16)
 ────────────────────────────────────────────────────────────────────────────────
         2/4 |      START │ runsh cp inp1.txt tmp1.txt
         3/4 |    SUCCESS │ runsh cp inp1.txt tmp1.txt
         3/4 |     NOSKIP │ runsh ./work.py > log.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest b809d54f ➜ dbc62a1c, out_digest 7d6b25ba ➜ (unset)
-Modified inp hash    inp0.txt (digest 681fd532 ➜ 2dab5684)
-Modified inp hash    tmp1.txt (digest 6c6e5eb3 ➜ e8869200, size 15 ➜ 16)
+Modified step hash   explained, inp_digest 9746e4b6 ➜ 697f2d97, out_digest d0ac0986 ➜ (unset)
+Modified inp hash    inp0.txt (digest 0528e490 ➜ 2ddb584b)
+Modified inp hash    tmp1.txt (digest b38c4067 ➜ 805fc678, size 15 ➜ 16)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        inp2.txt
 Same inp hash        work.py

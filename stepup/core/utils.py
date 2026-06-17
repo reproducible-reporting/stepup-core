@@ -210,12 +210,9 @@ def check_plan(path_plan: str):
             raise ValueError(f"First line of plan differs from '{shebang}': {path_plan}")
 
 
-def format_digest(digest: bytes) -> tuple[str, str]:
+def format_digest(digest: bytes) -> str:
     hexdigest = digest.hex()
-    return (
-        " ".join(hexdigest[i : i + 8] for i in range(0, 64, 8)),
-        " ".join(hexdigest[i : i + 8] for i in range(64, 128, 8)),
-    )
+    return " ".join(hexdigest[i : i + 8] for i in range(0, 64, 8))
 
 
 def format_command(executable: str) -> str:

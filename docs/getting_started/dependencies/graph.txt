@@ -4,8 +4,7 @@ root:
 
 file:plan.py
                state = STATIC
-              digest = 5dc596c4 86ea0e86 bcc803f2 c1da0603 3d57a03e 5c3637f4 125a23d1 594442f4
-                     = be5d5866 e9c92073 51a09791 59d2f135 4ff8722b 8d0e0e9e 15555097 9f69c7ed
+              digest = f70a8616 84bc48f3 3b2be578 da653c98 de0ca840 c86f1823 3de42fe8 b1367e6f
           created by   root:
             supplies   step:runpy ./plan.py
 

@@ -10,7 +10,7 @@
         1/4 |    SUCCESS │ runpy ./plan.py
         1/4 |       SKIP │ runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 1e7a7c6c, out_digest 42fc782e
+Same step hash       explained, inp_digest 53155d66, out_digest a5945567
 Same inp hash        head_x.txt
 Same inp hash        tail_x.txt
 Same out hash        paste_x.txt

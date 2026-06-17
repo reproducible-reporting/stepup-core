@@ -1,15 +1,15 @@
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ inp1.txt (digest 2600b478 ➜ 827c3d5c)
-        0/0 |    UPDATED │ inp2.txt (digest 3618355c ➜ bc82e0ae)
+        0/0 |    UPDATED │ inp1.txt (digest 0111f755 ➜ e10a1287)
+        0/0 |    UPDATED │ inp2.txt (digest 333d36c1 ➜ 65f653be)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         2/4 |      PHASE │ run
         2/4 |     NOSKIP │ runpy ./prep.py run
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest a276c5e5 ➜ ec69c307, out_digest dc5a1639 ➜ (unset)
-Modified inp hash    inp1.txt (digest 2600b478 ➜ 827c3d5c)
+Modified step hash   explained, inp_digest 7e5e50b2 ➜ 72f99489, out_digest 864068d4 ➜ (unset)
+Modified inp hash    inp1.txt (digest 0111f755 ➜ e10a1287)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        prep.py
 Same env var         STEPUP_PATH_FILTER (unset)
@@ -18,9 +18,9 @@ Same env var         STEPUP_PATH_FILTER (unset)
         3/4 |    SUCCESS │ runpy ./prep.py run
         3/4 |     NOSKIP │ runpy ./work.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 1e2b10a0 ➜ 0526f692, out_digest 59af1c47 ➜ (unset)
-Modified inp hash    inp2.txt (digest 3618355c ➜ bc82e0ae)
-Modified inp hash    out1.txt (digest 2600b478 ➜ 827c3d5c)
+Modified step hash   explained, inp_digest 66ea5372 ➜ 51fd6fa9, out_digest 23f5864d ➜ (unset)
+Modified inp hash    inp2.txt (digest 333d36c1 ➜ 65f653be)
+Modified inp hash    out1.txt (digest 0111f755 ➜ e10a1287)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        work.py
 Same env var         STEPUP_PATH_FILTER (unset)

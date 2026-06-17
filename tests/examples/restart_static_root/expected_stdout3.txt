@@ -1,14 +1,14 @@
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ static/foo.txt (digest 5d470882 ➜ 4e2397d6, size 6 ➜ 7)
+        0/0 |    UPDATED │ static/foo.txt (digest b640e840 ➜ 480c2336, size 6 ➜ 7)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
         1/2 |     NOSKIP │ copy static/foo.txt bar.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 19ede13f ➜ 2fd686cd, out_digest b3ce722f ➜ (unset)
-Modified inp hash    static/foo.txt (digest 5d470882 ➜ 4e2397d6, size 6 ➜ 7)
+Modified step hash   explained, inp_digest 7f052be8 ➜ 528d3130, out_digest 8c2927c3 ➜ (unset)
+Modified inp hash    static/foo.txt (digest b640e840 ➜ 480c2336, size 6 ➜ 7)
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |      START │ copy static/foo.txt bar.txt
         2/2 |    SUCCESS │ copy static/foo.txt bar.txt

@@ -42,8 +42,7 @@ root:
 
 file:script.sh
                state = STATIC
-              digest = 899479a0 d1143d3b d98c3ad7 7f2131e6 7980074a 68e18831 41300d67 5e06985d
-                     = fbe38c6f 8518c164 fddd51a7 efd34f8b cf1737f0 daad3bd3 c0c62048 330eab2e
+              digest = 116b4e2b ac3e35be fdfae3f3 b6eb8891 1689c30b fe6696d9 e6b0139d a8cb5e72
           created by   root:
 """
 
@@ -226,8 +225,7 @@ step:cp foo.txt bar.txt
 
 file:foo.txt
                state = STATIC
-              digest = c178fd84 a7dadcab 4bdb7d96 de15c388 148eda5b 0df7ad9e 7f8e2bf6 8f0e41a8
-                     = e40c7bab 7fa20c52 b2a3a769 dbea6989 bc5a53eb 58c946fb daa2af53 4d4b8f33
+              digest = ddab29ff 2c393ee5 2855d21a 240eb05f 775df88e 3ce347df 759f0c4b 80356c35
           created by   root:
             supplies   step:cp foo.txt bar.txt
 
@@ -245,10 +243,8 @@ root:
 step:cp foo.txt bar.txt
                state = SUCCEEDED
                 need = DEFAULT
-          inp_digest = 17c1d560 3cf7bd4f 875210d7 6f1c045e ec1786c6 771bf4c9 9828f0fc 3c5ffc68
-                     = ba2cf591 7c8fd611 1251a6a6 d282a090 3655e75e 44340b1a 4871a82d cb207b00
-          out_digest = 392846e6 3d2af07d 9faa4b77 53f1e1c8 50ed5498 1c819a0b ea142875 4811867b
-                     = 9006bd3f 67337d51 380f0d7f c06c4aec 5515067b 9161e066 c0bf7bcd 9a931d79
+          inp_digest = 4fe235e8 0004eb28 a47d47c3 0728cc7c 1d1d76d9 96d0b518 c331203b cd9e96ca
+          out_digest = 989a8ef2 4a8ea52e 844a0770 1bfae079 4a7088e1 6a2ba779 3dfacd9a f1164aa1
            explained = yes
           created by   root:
             consumes   file:foo.txt
@@ -257,15 +253,13 @@ step:cp foo.txt bar.txt
 
 file:foo.txt
                state = STATIC
-              digest = c178fd84 a7dadcab 4bdb7d96 de15c388 148eda5b 0df7ad9e 7f8e2bf6 8f0e41a8
-                     = e40c7bab 7fa20c52 b2a3a769 dbea6989 bc5a53eb 58c946fb daa2af53 4d4b8f33
+              digest = ddab29ff 2c393ee5 2855d21a 240eb05f 775df88e 3ce347df 759f0c4b 80356c35
           created by   root:
             supplies   step:cp foo.txt bar.txt
 
 file:bar.txt
                state = BUILT
-              digest = 3a189c6b 58667ce2 d87de9df 940fc80c 2f70a873 79bce15c 6f5c8beb 0bac9682
-                     = cebfa211 48fd8c69 9442301c 4b96735a bf03fa6d 4d8e0d46 9d089baa 4e67e198
+              digest = 08bd2d24 7cc7aa38 b8c4b7fd 20ee7eda d0b593c3 debce92f 595c9d01 6da40bae
           created by   step:cp foo.txt bar.txt
             consumes   step:cp foo.txt bar.txt
 """
@@ -278,10 +272,8 @@ root:
 step:cp foo.txt bar.txt
                state = PENDING
                 need = DEFAULT
-          inp_digest = 17c1d560 3cf7bd4f 875210d7 6f1c045e ec1786c6 771bf4c9 9828f0fc 3c5ffc68
-                     = ba2cf591 7c8fd611 1251a6a6 d282a090 3655e75e 44340b1a 4871a82d cb207b00
-          out_digest = 392846e6 3d2af07d 9faa4b77 53f1e1c8 50ed5498 1c819a0b ea142875 4811867b
-                     = 9006bd3f 67337d51 380f0d7f c06c4aec 5515067b 9161e066 c0bf7bcd 9a931d79
+          inp_digest = 4fe235e8 0004eb28 a47d47c3 0728cc7c 1d1d76d9 96d0b518 c331203b cd9e96ca
+          out_digest = 989a8ef2 4a8ea52e 844a0770 1bfae079 4a7088e1 6a2ba779 3dfacd9a f1164aa1
            explained = yes
           created by   root:
             consumes   file:foo.txt
@@ -290,15 +282,13 @@ step:cp foo.txt bar.txt
 
 file:foo.txt
                state = STATIC
-              digest = c178fd84 a7dadcab 4bdb7d96 de15c388 148eda5b 0df7ad9e 7f8e2bf6 8f0e41a8
-                     = e40c7bab 7fa20c52 b2a3a769 dbea6989 bc5a53eb 58c946fb daa2af53 4d4b8f33
+              digest = ddab29ff 2c393ee5 2855d21a 240eb05f 775df88e 3ce347df 759f0c4b 80356c35
           created by   root:
             supplies   step:cp foo.txt bar.txt
 
 file:bar.txt
                state = OUTDATED
-              digest = 3a189c6b 58667ce2 d87de9df 940fc80c 2f70a873 79bce15c 6f5c8beb 0bac9682
-                     = cebfa211 48fd8c69 9442301c 4b96735a bf03fa6d 4d8e0d46 9d089baa 4e67e198
+              digest = 08bd2d24 7cc7aa38 b8c4b7fd 20ee7eda d0b593c3 debce92f 595c9d01 6da40bae
           created by   step:cp foo.txt bar.txt
             consumes   step:cp foo.txt bar.txt
 """
@@ -571,8 +561,7 @@ root:
 
 file:plan.py
                state = STATIC
-              digest = 8fe904f2 160696a3 602d6d9e afff3e1f a6771dfd be57f45a 80f530e7 f0aa16c8
-                     = f9767600 18bbe38f 4825c676 9b873603 f41723f7 f31946b8 519a22cd 93210ccb
+              digest = 4e929dac d83345e7 26c42517 5f6089aa 9b9513af 07615728 a82225e3 1383ff4f
           created by   root:
             supplies   step:./plan.py
 
@@ -586,8 +575,7 @@ step:./plan.py
 
 file:inp
                state = STATIC
-              digest = a85974de 80ede150 82d8e8dd 85de5418 3d5fe2c2 ee2bb31d d4a6ec0f e04aeae5
-                     = c0bd8df1 262d0597 0858efa2 ff7722a9 a3e304ae 16526e1c 8a599310 3a6a9a3d
+              digest = 29a9e775 80ac85ad 896542d4 5ae52e21 8428bbe9 b0c752bc 2785ed22 a6eca01a
           created by   step:./plan.py
             supplies   step:cat < inp > out
 
@@ -595,9 +583,7 @@ step:cat < inp > out
                state = SUCCEEDED
                 need = DEFAULT
           inp_digest = 61616161 61616161 61616161 61616161 61616161 61616161 61616161 61616161
-                     = 61616161 61616161 61616161 61616161 61616161 61616161 61616161 61616161
           out_digest = 62626262 62626262 62626262 62626262 62626262 62626262 62626262 62626262
-                     = 62626262 62626262 62626262 62626262 62626262 62626262 62626262 62626262
           created by   step:./plan.py
             consumes   file:inp
              creates   file:out
@@ -605,8 +591,7 @@ step:cat < inp > out
 
 file:out
                state = BUILT
-              digest = 8b41f2c4 47a3b7f2 68b40473 b925f500 58ca3ff5 95c5cdd8 5de3f0c8 20c14c1f
-                     = e42a42fb 27ac8a3d cc91b9f9 143464f8 2b8aa484 9b824085 5661bca4 b4855270
+              digest = 762069bc 07a6e1b5 df123a5a e7bd91c1 0daa0469 4fbaa17f ba0cd6a8 dcce8f22
           created by   step:cat < inp > out
             consumes   step:cat < inp > out
 """
@@ -621,13 +606,13 @@ def test_define_pending_step_skip(wfp: Workflow):
 
     # Simulate run (first get the plan step and ignore it)
     wfp.update_file_hashes([("out", fake_hash("out"))], "succeeded")
-    step.completed(StepHash(b"a" * 64, None, b"b" * 64, None))
+    step.completed(StepHash(b"a" * 32, None, b"b" * 32, None))
 
     # Check run
     assert step.get_state() == StepState.SUCCEEDED
     step_hash = step.get_hash()
-    assert step_hash.inp_digest == b"a" * 64
-    assert step_hash.out_digest == b"b" * 64
+    assert step_hash.inp_digest == b"a" * 32
+    assert step_hash.out_digest == b"b" * 32
     assert wfp.format_str() == PENDING_STEP_SKIP_GRAPH
 
     # Simulate input change
@@ -638,7 +623,7 @@ def test_define_pending_step_skip(wfp: Workflow):
 
     # Simulate rerun
     assert step.get_state() == StepState.PENDING
-    step.completed(StepHash(b"a" * 64, None, b"b" * 64, None))
+    step.completed(StepHash(b"a" * 32, None, b"b" * 32, None))
     assert wfp.format_str() == PENDING_STEP_SKIP_GRAPH
     assert step.get_state() == StepState.SUCCEEDED
     step.delete_hash()
@@ -774,7 +759,7 @@ def test_skip_ngm(wfp: Workflow):
 def test_hash_completed_success(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "cp foo bar", inp_paths=["foo"], out_paths=["bar"])
-    step_hash = StepHash(b"p" * 64, None, b"p" * 64, None)
+    step_hash = StepHash(b"p" * 32, None, b"p" * 32, None)
     plan.completed(step_hash)
     assert step_hash == plan.get_hash()
 
@@ -810,8 +795,7 @@ root:
 
 file:plan.py
                state = STATIC
-              digest = 8fe904f2 160696a3 602d6d9e afff3e1f a6771dfd be57f45a 80f530e7 f0aa16c8
-                     = f9767600 18bbe38f 4825c676 9b873603 f41723f7 f31946b8 519a22cd 93210ccb
+              digest = 4e929dac d83345e7 26c42517 5f6089aa 9b9513af 07615728 a82225e3 1383ff4f
           created by   root:
             supplies   step:./plan.py
 
@@ -826,15 +810,13 @@ step:./plan.py
 
 file:ainp
                state = STATIC
-              digest = 3ea8f987 aee16bf8 d949e94b 836a3f77 591716b2 20ecd9c4 2c86835b 1016be99
-                     = 5c49eb3d 94bbd998 895f5732 72ca40f3 91defae1 91935475 645aaace cf0eb27c
+              digest = c0a3760b 3f6ad19a 940952bc 5e60a7e3 e6554d97 f19114b7 765e21e0 a14cf4d6
           created by   step:./plan.py
             supplies   step:cat < inp > out 2> vol
 
 file:inp
                state = STATIC
-              digest = a85974de 80ede150 82d8e8dd 85de5418 3d5fe2c2 ee2bb31d d4a6ec0f e04aeae5
-                     = c0bd8df1 262d0597 0858efa2 ff7722a9 a3e304ae 16526e1c 8a599310 3a6a9a3d
+              digest = 29a9e775 80ac85ad 896542d4 5ae52e21 8428bbe9 b0c752bc 2785ed22 a6eca01a
           created by   step:./plan.py
             supplies   step:cat < inp > out 2> vol
 
@@ -842,9 +824,7 @@ step:cat < inp > out 2> vol
                state = SUCCEEDED
                 need = DEFAULT
           inp_digest = 63636363 63636363 63636363 63636363 63636363 63636363 63636363 63636363
-                     = 63636363 63636363 63636363 63636363 63636363 63636363 63636363 63636363
           out_digest = 64646464 64646464 64646464 64646464 64646464 64646464 64646464 64646464
-                     = 64646464 64646464 64646464 64646464 64646464 64646464 64646464 64646464
           created by   step:./plan.py
             consumes   file:ainp [amended]
             consumes   file:inp
@@ -859,8 +839,7 @@ step:cat < inp > out 2> vol
 
 file:out
                state = BUILT
-              digest = 8b41f2c4 47a3b7f2 68b40473 b925f500 58ca3ff5 95c5cdd8 5de3f0c8 20c14c1f
-                     = e42a42fb 27ac8a3d cc91b9f9 143464f8 2b8aa484 9b824085 5661bca4 b4855270
+              digest = 762069bc 07a6e1b5 df123a5a e7bd91c1 0daa0469 4fbaa17f ba0cd6a8 dcce8f22
           created by   step:cat < inp > out 2> vol
             consumes   step:cat < inp > out 2> vol
 
@@ -871,8 +850,7 @@ file:vol
 
 file:aout
                state = BUILT
-              digest = e51e3778 cc6a670f cb015786 3a4879f9 c5dd6046 5883f2bd 40d9a4e3 95dd24b9
-                     = b57deea3 218b12fb 70b05c8f 2ecaa69c 6bcbc54a 687c49a8 ebf9c708 587397cf
+              digest = bff8fd60 206e04a5 f6052fe5 5896f8da b0fb3f74 fd92802e d68adedb 7b082496
           created by   step:cat < inp > out 2> vol
             consumes   step:cat < inp > out 2> vol
 
@@ -895,15 +873,15 @@ def test_define_pending_step_skip_amended(wfp: Workflow):
     # Simulate running the step
     wfp.amend_step(step, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"])
     wfp.update_file_hashes([("out", fake_hash("out")), ("aout", fake_hash("aout"))], "succeeded")
-    step.completed(StepHash(b"c" * 64, None, b"d" * 64, None))
+    step.completed(StepHash(b"c" * 32, None, b"d" * 32, None))
     assert wfp.format_str() == PENDING_STEP_SKIP_AMENDED_GRAPH
     assert step.get_state() == StepState.SUCCEEDED
 
     # Check run
     assert step.get_state() == StepState.SUCCEEDED
     step_hash = step.get_hash()
-    assert step_hash.inp_digest == b"c" * 64
-    assert step_hash.out_digest == b"d" * 64
+    assert step_hash.inp_digest == b"c" * 32
+    assert step_hash.out_digest == b"d" * 32
 
     # Simulate amended input change
     wfp.update_file_hashes([("ainp", fake_hash("ainp"))], "external")
@@ -913,7 +891,7 @@ def test_define_pending_step_skip_amended(wfp: Workflow):
 
     # Simulate and check rerun
     assert step.get_state() == StepState.PENDING
-    step.completed(StepHash(b"c" * 64, None, b"d" * 64, None))
+    step.completed(StepHash(b"c" * 32, None, b"d" * 32, None))
     assert {node.key() for node in step.suppliers(include_detached=True)} == {
         "file:ainp",
         "file:inp",
@@ -941,8 +919,7 @@ root:
 
 file:plan.py
                state = STATIC
-              digest = 8fe904f2 160696a3 602d6d9e afff3e1f a6771dfd be57f45a 80f530e7 f0aa16c8
-                     = f9767600 18bbe38f 4825c676 9b873603 f41723f7 f31946b8 519a22cd 93210ccb
+              digest = 4e929dac d83345e7 26c42517 5f6089aa 9b9513af 07615728 a82225e3 1383ff4f
           created by   root:
             supplies   step:./plan.py
 
@@ -1709,7 +1686,7 @@ def test_step_try_clean(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
 
     # Simulate execution of plan to get a hash
-    step_hash = StepHash(b"p" * 64, None, b"p" * 64, None)
+    step_hash = StepHash(b"p" * 32, None, b"p" * 32, None)
     plan.completed(step_hash)
 
     # Check presence of hash
@@ -1938,7 +1915,7 @@ def test_large_inode(wfp: Workflow):
     large_inode = 0x8000000000000001
     wfp.declare_missing(plan, ["foo.txt"])
     wfp.update_file_hashes(
-        [("foo.txt", FileHash(hashlib.blake2b(b"foo").digest(), 0o644, 1.0, 10, large_inode))],
+        [("foo.txt", FileHash(hashlib.sha256(b"foo").digest(), 0o644, 1.0, 10, large_inode))],
         "confirmed",
     )
     foo = wfp.find(File, "foo.txt")

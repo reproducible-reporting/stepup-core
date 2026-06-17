@@ -99,7 +99,7 @@ def path_tmp(tmpdir: str) -> Path:
 
 
 def fake_hash(path):
-    digest = b"d" if path.endswith("/") else hashlib.blake2b(path.encode("utf8")).digest()
+    digest = b"d" if path.endswith("/") else hashlib.sha256(path.encode("utf8")).digest()
     mtime = sum(bytearray(digest)) ** 0.5
     mode = 0o755 if path.endswith("/") else 0o644
     return FileHash(digest, mode, mtime, len(path) ** 2, len(path))

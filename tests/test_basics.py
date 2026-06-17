@@ -77,9 +77,7 @@ step:runpy ./plan.py
 def _check_graph(path, expected):
     with open(path) as fh:
         cur = fh.read()
-        cur = re.sub(
-            r" {10}(inp_|out_| {4})digest = ([ 0-9a-f]{71}\n {21}= [ 0-9a-f]{71}|same)\n", "", cur
-        )
+        cur = re.sub(r" {10}(inp_|out_| {4})digest = ([ 0-9a-f]{71}|same)\n", "", cur)
         assert cur == expected
 
 

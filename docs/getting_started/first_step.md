@@ -74,7 +74,7 @@ which was created in the first run.
 It looks for relevant file changes and because `plan.py` has not changed,
 it will not rerun it.
 If file time stamps have changed, it will also check if files have actually changed
-by comparing a [Blake2 hash](https://en.wikipedia.org/wiki/BLAKE_(hash_function)#BLAKE2)
+by comparing a [SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2)
 of input files, used environment variables and produced outputs.
 When you manually remove `.stepup/graph.db`,
 StepUp will not know anymore that it already executed some steps and runs all of them again.

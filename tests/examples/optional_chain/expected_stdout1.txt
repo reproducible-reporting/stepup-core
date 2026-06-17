@@ -1,14 +1,14 @@
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ plan.py (digest f556bdc3 ➜ 47ac7281, size 420 ➜ 357)
+        0/0 |    UPDATED │ plan.py (digest e9541370 ➜ 20c6f7d6, size 420 ➜ 357)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         5/6 |      PHASE │ run
         5/6 |     NOSKIP │ runpy ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 2d834ec2 ➜ f91059f0, out_digest 786a02f7 ➜ (unset)
-Modified inp hash    plan.py (digest f556bdc3 ➜ 47ac7281, size 420 ➜ 357)
+Modified step hash   explained, inp_digest 007a7a7d ➜ a047b914, out_digest e3b0c442 ➜ (unset)
+Modified inp hash    plan.py (digest e9541370 ➜ 20c6f7d6, size 420 ➜ 357)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────

@@ -12,8 +12,8 @@
 ───────────────────────────── Missing output files ─────────────────────────────
 data2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest d81c63cb, out_digest a04d333e ➜ 525a401d
-Modified out hash    data2.txt (digest 28b7cc0a ➜ UNKNOWN, size 25 ➜ 0, mode -rw-r--r-- ➜ ?---------)
+Modified step hash   explained, inp_digest 5683b49e, out_digest 9424ebe1 ➜ 8b78f1fa
+Modified out hash    data2.txt (digest 83ca09e3 ➜ UNKNOWN, size 25 ➜ 0, mode -rw-r--r-- ➜ ?---------)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        asource2.txt
 ────────────────────────────────────────────────────────────────────────────────

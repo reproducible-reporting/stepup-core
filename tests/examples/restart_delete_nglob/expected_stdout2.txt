@@ -9,11 +9,11 @@
         1/3 |    SUCCESS │ runpy ./plan.py
         1/3 |       SKIP │ copy inp2.txt out2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       compact, inp_digest c69aeeff, out_digest 572a6c30
+Same step hash       compact, inp_digest bd1aca9e, out_digest 9e7bd348
 ────────────────────────────────────────────────────────────────────────────────
         2/3 |       SKIP │ copy out2.txt foo2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       compact, inp_digest 060224ea, out_digest b51be971
+Same step hash       compact, inp_digest a62616d1, out_digest 810dcef4
 ────────────────────────────────────────────────────────────────────────────────
         3/3 |   DIRECTOR │ Trying to delete 2 outdated output(s)
         3/3 |      CLEAN │ out1.txt

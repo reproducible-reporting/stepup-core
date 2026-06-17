@@ -267,12 +267,8 @@ class Step(Node):
 
         step_hash = self.get_hash()
         if step_hash is not None:
-            l1, l2 = format_digest(step_hash.inp_digest)
-            yield "inp_digest", l1
-            yield "", l2
-            l1, l2 = format_digest(step_hash.out_digest)
-            yield "out_digest", l1
-            yield "", l2
+            yield "inp_digest", format_digest(step_hash.inp_digest)
+            yield "out_digest", format_digest(step_hash.out_digest)
             if step_hash.inp_info is not None:
                 yield "explained", "yes"
 

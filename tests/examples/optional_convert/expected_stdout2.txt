@@ -7,7 +7,7 @@
         2/6 |      PHASE │ run
         2/6 |     NOSKIP │ runpy ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest edb9e899 ➜ 38c13a08, out_digest 786a02f7 ➜ (unset)
+Modified step hash   explained, inp_digest a4c2f25f ➜ 421b96b2, out_digest e3b0c442 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_IDX ='3' ➜ ='1'
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        plan.py

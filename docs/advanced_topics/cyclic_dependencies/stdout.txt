@@ -1,4 +1,4 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post10)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post14)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
@@ -52,7 +52,7 @@ Traceback (most recent call last):
   File "stepup/core/workflow.py", line 806, in define_step
     file.add_supplier(step)
     ~~~~~~~~~~~~~~~~~^^^^^^
-  File "stepup/core/file.py", line 284, in add_supplier
+  File "stepup/core/file.py", line 282, in add_supplier
     idep = super().add_supplier(supplier)
   File "stepup/core/cascade.py", line 424, in add_supplier
     raise CyclicError("New relation introduces a cyclic dependency")

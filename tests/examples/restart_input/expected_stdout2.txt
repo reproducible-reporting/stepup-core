@@ -1,7 +1,7 @@
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ input.txt (digest 5d470882 ➜ 4e2397d6, size 6 ➜ 7)
+        0/0 |    UPDATED │ input.txt (digest b640e840 ➜ 480c2336, size 6 ➜ 7)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run

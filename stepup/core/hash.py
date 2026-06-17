@@ -44,7 +44,7 @@ __all__ = (
 
 @attrs.define
 class HashWords:
-    _hash = attrs.field(init=False, factory=hashlib.blake2b)
+    _hash = attrs.field(init=False, factory=hashlib.sha256)
 
     def update(self, word: str | bytes | None):
         if isinstance(word, bytes):
@@ -63,7 +63,7 @@ class HashWords:
 
 
 def compute_file_digest(path: str, follow_symlinks=True) -> bytes:
-    """Compute the blake2b digest of a file or a symbolic link.
+    """Compute the SHA-256 digest of a file or a symbolic link.
 
     Parameters
     ----------
@@ -77,15 +77,15 @@ def compute_file_digest(path: str, follow_symlinks=True) -> bytes:
     Returns
     -------
     digest
-        A 64 bytes blake2b hash.
+        A 32 bytes SHA-256 hash.
     """
     path = Path(path)
     if path.islink() and not follow_symlinks:
-        return hashlib.blake2b(path.readlink().encode("utf-8")).digest()
+        return hashlib.sha256(path.readlink().encode("utf-8")).digest()
     if path.is_dir():
         raise OSError("File digests of directories are not supported.")
     with open(path, "rb") as fh:
-        return hashlib.file_digest(fh, hashlib.blake2b).digest()
+        return hashlib.file_digest(fh, hashlib.sha256).digest()
 
 
 def report_file_hash_diff(
@@ -126,7 +126,7 @@ def fmt_env_value(value: str | None) -> str:
 class FileHash:
     """A hash of a file's content and file properties.
 
-    For existing (regular) files, the digest attribute is a blake2b hash of the file content,
+    For existing (regular) files, the digest attribute is a SHA-256 hash of the file content,
     and the mode of the file is also stored as "part of the hash".
     When either contents, size or mode changes, the file is considered changed.
 
@@ -144,7 +144,7 @@ class FileHash:
 
     # File properties whose changes are relevant
     _digest: bytes = attrs.field(converter=bytes, repr=fmt_digest)
-    """The blake2b hash of the file's content."""
+    """The SHA-256 hash of the file's content."""
     _mode: int = attrs.field(converter=int, repr=stat.filemode)
     """The file mode."""
 

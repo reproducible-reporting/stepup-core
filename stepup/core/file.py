@@ -142,9 +142,7 @@ class File(Node):
         yield "state", str(self.get_state().name)
         file_hash = self.get_hash()
         if len(file_hash.digest) > 1:
-            l1, l2 = format_digest(file_hash.digest)
-            yield "digest", l1
-            yield "", l2
+            yield "digest", format_digest(file_hash.digest)
 
     def clean(self):
         """Perform a cleanup right before the detached node is removed from the graph."""

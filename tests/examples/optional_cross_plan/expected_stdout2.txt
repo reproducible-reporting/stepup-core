@@ -1,7 +1,7 @@
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ sub/plan.py (digest 82016e9f ➜ 3ddbbbb2, size 171 ➜ 80)
+        0/0 |    UPDATED │ sub/plan.py (digest 0a553827 ➜ e3f536ef, size 171 ➜ 80)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         3/4 |      PHASE │ run

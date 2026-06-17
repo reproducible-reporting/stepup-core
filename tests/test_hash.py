@@ -19,7 +19,7 @@
 # --
 """Unit tests for stepup.core.hash"""
 
-from hashlib import blake2b
+from hashlib import sha256
 
 import pytest
 from path import Path
@@ -58,11 +58,11 @@ def test_symbolic_link(path_tmp: Path):
     path_dest = path_tmp / "dest.txt"
     with open(path_dest, "w") as fh:
         fh.write("Hello!")
-    assert compute_file_digest(path_dest) == blake2b(b"Hello!").digest()
+    assert compute_file_digest(path_dest) == sha256(b"Hello!").digest()
     path_symlink = path_tmp / "link.txt"
     path_symlink.symlink_to("dest.txt")
-    assert compute_file_digest(path_symlink) == blake2b(b"Hello!").digest()
-    assert compute_file_digest(path_symlink, follow_symlinks=False) == blake2b(b"dest.txt").digest()
+    assert compute_file_digest(path_symlink) == sha256(b"Hello!").digest()
+    assert compute_file_digest(path_symlink, follow_symlinks=False) == sha256(b"dest.txt").digest()
 
 
 def test_hash_wrong_dir(path_tmp: Path):
@@ -77,4 +77,4 @@ def test_hash_symbolic_link_dir(path_tmp: Path):
     path_symlink.symlink_to("sub", target_is_directory=True)
     with pytest.raises(IOError):
         compute_file_digest(path_symlink)
-    assert compute_file_digest(path_symlink, follow_symlinks=False) == blake2b(b"sub").digest()
+    assert compute_file_digest(path_symlink, follow_symlinks=False) == sha256(b"sub").digest()

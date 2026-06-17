@@ -1,14 +1,14 @@
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ plan.py (digest c7684629 ➜ 8a8cb796)
+        0/0 |    UPDATED │ plan.py (digest 0b932a7e ➜ 330289f3)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         2/3 |      PHASE │ run
         2/3 |     NOSKIP │ runpy ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 24f18ab0 ➜ bc62d0a5, out_digest 786a02f7 ➜ (unset)
-Modified inp hash    plan.py (digest c7684629 ➜ 8a8cb796)
+Modified step hash   explained, inp_digest b4b85258 ➜ 7adbf262, out_digest e3b0c442 ➜ (unset)
+Modified inp hash    plan.py (digest 0b932a7e ➜ 330289f3)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
@@ -18,8 +18,8 @@ Same env var         STEPUP_PATH_FILTER (unset)
         2/3 |    SUCCESS │ runsh echo 2 > original.txt
         2/3 |     NOSKIP │ copy original.txt copy.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 81d3fcfd ➜ 751f2019, out_digest a7acc5b8 ➜ (unset)
-Modified inp hash    original.txt (digest 0ac7a4a0 ➜ fb3bc27b)
+Modified step hash   explained, inp_digest 4719f72e ➜ c781a2fe, out_digest a1ae8bce ➜ (unset)
+Modified inp hash    original.txt (digest 4355a46b ➜ 53c234e5)
 ────────────────────────────────────────────────────────────────────────────────
         2/3 |      START │ copy original.txt copy.txt
         3/3 |    SUCCESS │ copy original.txt copy.txt

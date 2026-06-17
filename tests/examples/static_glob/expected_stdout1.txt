@@ -16,7 +16,7 @@
         1/3 |    SUCCESS │ runpy ./plan.py
         1/3 |       SKIP │ copy inp2.txt out2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 276df4d3, out_digest 5d935315
+Same step hash       explained, inp_digest 4890dd39, out_digest 4cb7ca5d
 Same inp hash        inp2.txt
 Same out hash        out2.txt
 ────────────────────────────────────────────────────────────────────────────────

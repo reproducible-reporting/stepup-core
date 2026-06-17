@@ -2,7 +2,7 @@ Changing to ${CASE}/project
         0/0 |    STARTUP │ Making failed steps pending
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ ../pkgs/helper.py (digest ec8f09d3 ➜ 2a6225a3)
+        0/0 |    UPDATED │ ../pkgs/helper.py (digest d88d2a0e ➜ 31b25e5b)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
