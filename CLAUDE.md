@@ -136,6 +136,8 @@ Used in the API for dynamic file discovery with consistency constraints across p
 - `tests/examples/*/` contains integration test cases,
   each with `plan.py`, `main.sh`, and `expected_stdout*.txt` / `expected_graph*.txt`.
   These are run by `tests/test_examples.py`.
+  See `tests/examples/README.md` for a detailed explanation of the `main.sh` conventions
+  and how the test runner compares `current_*` files against `expected_*` files.
 - `stepup/core/pytest.py`:
   Pytest helpers for integration tests that run actual StepUp workflows.
 
