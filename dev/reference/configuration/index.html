@@ -2392,6 +2392,12 @@ which can be undesirable in some cases, such as testing.</p>
 <dd>
 <p>Set to <code>true</code> to explain for every step with recording info why it cannot be skipped.</p>
 </dd>
+<dt><code>forkserver</code> / <code>STEPUP_BOOT_FORKSERVER</code> / <code>--forkserver</code>, <code>--no-forkserver</code></dt>
+<dd>
+<p>Set to <code>true</code> to launch workers with a forkserver, which reduces memory overhead
+and improves performance.
+This is enabled by default on Linux.</p>
+</dd>
 <dt><code>num_workers</code> / <code>STEPUP_BOOT_NUM_WORKERS</code> / <code>--num-workers</code>, <code>-n</code></dt>
 <dd>
 <p>The number of worker processes to use for executing steps.
