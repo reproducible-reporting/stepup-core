@@ -10,6 +10,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+### Added
+
+- In addition to environment variables and command-line arguments,
+  StepUp can now also be configured through configuration files.
+  See [Configuration files](reference/configuration.md) for details.
+
 ### Changed
 
 - The database schema version has been incremented to 5 because:
@@ -41,6 +47,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
       the tail time estimates are updated dynamically as the workflow progresses.
     - The `pool` feature has been removed and is now replaced by the more powerful `resources` feature.
     - The `optional` feature has become more robust.
+- Several environment variables have been renamed for consistency.
+  See [Configuration files](reference/configuration.md) for details.
 - Updates of internals:
     - Renamed "orphan" and related names to "detached", which is more intuitive.
       The new terminology is applied more consistently with consistent distinction between
@@ -140,7 +148,6 @@ Minor bugfix release.
 ### Changed
 
 - All command-line options of `stepup boot` now also have a corresponding environment variable.
-  See [Environment variables](reference/environment_variables.md) for details.
 - More systematic command-line options for the `stepup boot` command.
   All boolean options now have both a positive and a negative form,
   e.g. `--watch` and `--no-watch`.
@@ -318,7 +325,6 @@ and improved terminal user interface.
 - Breaking:
     - The environment variable `${STEPUP_EXTERNAL_SOURCES}` has been replaced
       by the more versatile `${STEPUP_PATH_FILTER}`.
-      See [Environment variables](reference/environment_variables.md) for more details.
     - The database schema was incremented because steps now execute "actions",
       which can be shell commands in subprocesses, but also other things,
       such as executing a Python script without starting a new process.

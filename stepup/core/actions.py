@@ -36,6 +36,8 @@ import shutil
 import sys
 from importlib.metadata import entry_points
 
+from stepup.core.config import ConfigLoader
+
 from .worker import WorkThread
 
 __all__ = ("copy", "runpy", "runsh")
@@ -108,10 +110,8 @@ def act_tool(args: argparse.Namespace):
 
     Parameters
     ----------
-    action
-        The action to execute.
-    argstr
-        The arguments to pass to the action.
+    args
+        The parsed command line arguments.
 
     Returns
     -------
@@ -124,20 +124,24 @@ def act_tool(args: argparse.Namespace):
     sys.exit(work_thread.returncode)
 
 
-def act_subcommand(subparser: argparse.ArgumentParser) -> callable:
-    """Create a subparser for the action tool.
+def act_subcommand(subparsers, loader: ConfigLoader) -> callable:
+    """Define command-line arguments for the action tool.
 
     Parameters
     ----------
-    subparser
-        The subparser to add the action tool to.
+    subparsers
+        The sub parser to add the action tool to.
+    loader
+        The configuration loader to override the default configuration with
+        config file values.
+        It is ignored by this function, included for consistency with other subcommand functions.
 
     Returns
     -------
     callable
         The action function.
     """
-    parser = subparser.add_parser("act", help="Execute an action.")
+    parser = subparsers.add_parser("act", help="Execute an action.")
     action_names = sorted(ep.name for ep in entry_points(group="stepup.actions"))
     parser.add_argument("action_name", help="The action to execute.", choices=action_names)
     parser.add_argument("action_args", help="The arguments for the action.", nargs="*")

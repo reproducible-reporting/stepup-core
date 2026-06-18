@@ -27,15 +27,25 @@ from path import Path
 from rich.console import Console
 
 from .cascade import DROP_CONSUMERS, INITIAL_CONSUMERS, RECURSE_CONSUMERS
+from .config import ConfigLoader
 from .enums import FileState
 from .hash import FileHash
 from .sqlite3 import copy_db_in_memory, escape_like_pattern
 from .utils import mynormpath, translate, translate_back
 
 
-def clean_subcommand(subparser: argparse.ArgumentParser) -> callable:
-    """Define tool CLI options."""
-    parser = subparser.add_parser("clean", help="Remove (stale) outputs in a directory. ")
+def clean_subcommand(subparsers, loader: ConfigLoader) -> callable:
+    """Define command-line arguments for the clean tool.
+
+    Parameters
+    ----------
+    subparsers
+        The sub parser to add the clean tool to.
+    loader
+        The configuration loader to override the default configuration with
+        config file values.
+    """
+    parser = subparsers.add_parser("clean", help="Remove (stale) outputs in a directory. ")
     parser.add_argument(
         "paths",
         default=[Path("./")],
@@ -74,6 +84,7 @@ def clean_subcommand(subparser: argparse.ArgumentParser) -> callable:
         help="Also remove output files that have been modified "
         "after their creation in the workflow.",
     )
+    loader.patch_parser(parser, "clean")
     return clean_tool
 
 

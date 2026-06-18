@@ -29,6 +29,7 @@ import argparse
 from rich import print  # noqa: A004
 
 from .api import get_rpc_client
+from .config import ConfigLoader
 from .director import get_socket
 from .file import FileState
 from .step import StepState
@@ -41,8 +42,8 @@ def shutdown_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.shutdown()
 
 
-def shutdown_subcommand(subparser: argparse.ArgumentParser) -> callable:
-    subparser.add_parser(
+def shutdown_subcommand(subparsers, loader: ConfigLoader) -> callable:
+    subparsers.add_parser(
         "shutdown",
         help="Put the dispatcher on hold, wait for running steps to complete and then exit StepUp. "
         "Call again to kill running steps.",
@@ -55,8 +56,8 @@ def drain_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.drain()
 
 
-def drain_subcommand(subparser: argparse.ArgumentParser) -> callable:
-    subparser.add_parser(
+def drain_subcommand(subparsers, loader: ConfigLoader) -> callable:
+    subparsers.add_parser(
         "drain",
         help="Put the dispatcher on hold. (No new steps are started.)",
     )
@@ -70,8 +71,8 @@ def join_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.join(_rpc_timeout=-1)
 
 
-def join_subcommand(subparser: argparse.ArgumentParser) -> callable:
-    subparser.add_parser(
+def join_subcommand(subparsers, loader: ConfigLoader) -> callable:
+    subparsers.add_parser(
         "join",
         help="Wait for the runner to become idle and stop the director.",
     )
@@ -83,8 +84,8 @@ def graph_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.graph(args.prefix)
 
 
-def graph_subcommand(subparser: argparse.ArgumentParser) -> callable:
-    parser = subparser.add_parser(
+def graph_subcommand(subparsers, loader: ConfigLoader) -> callable:
+    parser = subparsers.add_parser(
         "graph",
         help="Write the workflow graph files in text and dot formats.",
     )
@@ -92,6 +93,7 @@ def graph_subcommand(subparser: argparse.ArgumentParser) -> callable:
         "prefix",
         help="Prefix for the output files. The files will be named <prefix>.txt and <prefix>.dot.",
     )
+    loader.patch_parser(parser, "graph")
     return graph_tool
 
 
@@ -118,8 +120,8 @@ def status_tool(args: argparse.Namespace):
         print(f"  {action}")
 
 
-def status_subcommand(subparser: argparse.ArgumentParser) -> callable:
-    subparser.add_parser(
+def status_subcommand(subparsers, loader: ConfigLoader) -> callable:
+    subparsers.add_parser(
         "status",
         help="Print the status of the director.",
     )
@@ -131,8 +133,8 @@ def run_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.run()
 
 
-def run_subcommand(subparser: argparse.ArgumentParser) -> callable:
-    subparser.add_parser(
+def run_subcommand(subparsers, loader: ConfigLoader) -> callable:
+    subparsers.add_parser(
         "run",
         help="Exit the watch phase and start running steps whose inputs have changed.",
     )
@@ -144,8 +146,8 @@ def watch_update_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.watch_update(args.path, _rpc_timeout=-1)
 
 
-def watch_update_subcommand(subparser: argparse.ArgumentParser) -> callable:
-    parser = subparser.add_parser(
+def watch_update_subcommand(subparsers, loader: ConfigLoader) -> callable:
+    parser = subparsers.add_parser(
         "watch-update",
         help="Block until the watcher has observed an update of the file.",
     )
@@ -161,8 +163,8 @@ def watch_delete_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.watch_delete(args.path, _rpc_timeout=-1)
 
 
-def watch_delete_subcommand(subparser: argparse.ArgumentParser) -> callable:
-    parser = subparser.add_parser(
+def watch_delete_subcommand(subparsers, loader: ConfigLoader) -> callable:
+    parser = subparsers.add_parser(
         "watch-delete",
         help="Block until the watcher has observed the deletion of the file.",
     )
@@ -178,8 +180,8 @@ def wait_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.wait(_rpc_timeout=-1)
 
 
-def wait_subcommand(subparser: argparse.ArgumentParser) -> callable:
-    subparser.add_parser(
+def wait_subcommand(subparsers, loader: ConfigLoader) -> callable:
+    subparsers.add_parser(
         "wait",
         help="Block until the runner has become idle.",
     )

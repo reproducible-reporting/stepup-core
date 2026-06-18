@@ -5,7 +5,7 @@ trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Run the example
-export STEPUP_RESOURCES="transform:1"
+export STEPUP_BOOT_RESOURCES="transform:1"
 stepup boot -n 2 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.

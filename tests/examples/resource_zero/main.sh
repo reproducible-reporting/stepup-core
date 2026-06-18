@@ -5,7 +5,7 @@ trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Run the example with token resource explicitly set to zero capacity.
-export STEPUP_RESOURCES="token:0"
+export STEPUP_BOOT_RESOURCES="token:0"
 stepup boot -n 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.

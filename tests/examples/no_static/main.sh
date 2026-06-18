@@ -5,7 +5,7 @@ trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Run the example
-stepup boot -n 1 -w & # > current_stdout.txt &
+stepup boot & # > current_stdout.txt &
 PID=$!
 
 # Get the graph after completion of the pending steps.
@@ -27,7 +27,7 @@ set +e; wait -fn $PID; RETURNCODE=$?; set -e
 
 # order is not reproducible.
 rm .stepup/*.log
-stepup boot -n 1 -w &
+stepup boot &
 
 # Wait for watch phase.
 stepup wait

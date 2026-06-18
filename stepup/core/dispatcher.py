@@ -27,7 +27,7 @@ from .enums import FileState, Need, StepState
 from .hash import FileHash
 from .job import Job, RunJob, ValidateAmendedJob
 from .step import Step
-from .utils import DBLock
+from .utils import DBLock, parse_resources
 from .workflow import Workflow
 
 logger = logging.getLogger(__name__)
@@ -354,7 +354,7 @@ class Dispatcher:
     # Initialization
     #
 
-    async def set_available_resources(self, resources: dict[str, int]):
+    async def set_available_resources(self, resources: str | None):
         async with self.dblock:
             con = self.workflow.con
             con.execute(
@@ -362,10 +362,11 @@ class Dispatcher:
                 "(name TEXT PRIMARY KEY, units INTEGER NOT NULL)"
             )
             con.execute("DELETE FROM available_resource")
-            con.executemany(
-                "INSERT INTO available_resource VALUES (?, ?)",
-                resources.items(),
-            )
+            if resources is not None:
+                con.executemany(
+                    "INSERT INTO available_resource VALUES (?, ?)",
+                    parse_resources(resources).items(),
+                )
 
     #
     # Interaction with runner

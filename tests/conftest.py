@@ -78,7 +78,7 @@ async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
                 show_perf=False,
                 do_watch=True,
                 do_watch_first=False,
-                available_resources={},
+                available_resources=None,
             )
         )
         while not director_socket_path.exists():

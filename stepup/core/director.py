@@ -51,7 +51,7 @@ from .sqlite3 import connect
 from .startup import startup_from_db
 from .step import Step
 from .stepinfo import StepInfo
-from .utils import DBLock, check_plan, mynormpath, parse_resources
+from .utils import DBLock, check_plan, mynormpath
 from .watcher import WATCHER_AVAILABLE, Watcher
 from .workflow import Workflow
 
@@ -87,7 +87,6 @@ async def async_main():
     async with ReporterClient.socket(args.reporter_socket) as reporter:
         nworker = interpret_num_workers(args.num_workers)
         await reporter.set_num_workers(nworker)
-        available_resources = parse_resources(args.resources) if args.resources else {}
         version = get_version("stepup")
         await reporter("DIRECTOR", f"Listening on {args.director_socket} (StepUp Core {version})")
         try:
@@ -101,7 +100,7 @@ async def async_main():
                 args.show_perf,
                 args.watch,
                 args.watch_first,
-                available_resources,
+                args.resources,
             )
         except Exception as exc:
             tbstr = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
@@ -229,7 +228,7 @@ async def serve(
     show_perf: bool,
     do_watch: bool,
     do_watch_first: bool,
-    available_resources: dict[str, int],
+    available_resources: str | None,
 ) -> ReturnCode:
     """Server program.
 
@@ -281,6 +280,8 @@ async def serve(
         dblock=dblock,
         use_duration=use_duration,
     )
+    if available_resources is not None:
+        await reporter("DIRECTOR", f"Setting available resources: {available_resources}")
     await dispatcher.set_available_resources(available_resources)
     watcher = Watcher(workflow, dblock, reporter, dir_queue) if do_watch else None
     runner = Runner(

@@ -52,6 +52,60 @@ mkdocs serve                      # live preview at http://127.0.0.1:8000/
 
 Note that docstrings are written in Markdown, not reStructuredText!
 
+## Coding Conventions
+
+### Linting (ruff)
+
+Ruff's rule selection is configured in `pyproject.toml` under `[tool.ruff.lint]`.
+Do not add `# noqa` comments unless the violation is a genuine false positive that cannot
+be resolved by restructuring the code — the project's rule set already excludes rules
+that would fire spuriously in this codebase.
+
+Key rules to be aware of:
+
+- The default line length is 100.
+
+### Docstrings
+
+Use **NumPy-style** sections (`Parameters`, `Returns`, `Raises`, ...)
+Some conventions specific to this codebase:
+
+- Docstrings are written in Markdown, not reStructuredText! Some important gotcha's:
+    - Use `**bold**` for emphasis, not `*italics*` (which is reserved for parameter names).
+    - Use single backticks for inline code and parameter names, not double backticks.
+    - Use triple backticks for code blocks,
+      and specify the language for syntax highlighting (e.g., ```python).
+- Wrap lines using semantic breaks (e.g., after sentences or logical units),
+  not hard-wrapping at a specific character limit.
+  See <https://sembr.org/>
+- Use the imperative mood for function descriptions (e.g., "Compute the hash of a file.")
+- Do not repeat type annotations in the docstring — they are already in the function signature.
+- In `Parameters` sections, use the **parameter name** as the heading for each parameter,
+  not the type:
+
+   ```python
+    In `Returns` sections, use a **semantic name** for the return value, not the type:
+
+    ```python
+    # correct
+    Returns
+    -------
+    parent
+        The parent directory path with a trailing slash.
+
+    # wrong — the type is already in the signature
+    Returns
+    -------
+    Path
+        The parent directory path.
+    ```
+
+### Dependencies
+
+Runtime dependencies are declared in `pyproject.toml` under `[project] dependencies`.
+Before adding a lazy import or a try/except ImportError guard, check whether the package
+is already a declared dependency and import it at the top of the file instead.
+
 ## Architecture
 
 ### Process Model
@@ -140,6 +194,24 @@ Used in the API for dynamic file discovery with consistency constraints across p
   and how the test runner compares `current_*` files against `expected_*` files.
 - `stepup/core/pytest.py`:
   Pytest helpers for integration tests that run actual StepUp workflows.
+
+### Test instructions
+
+The following test commands will complete quickly as it skips the integration tests:
+
+```bash
+pytest -k "not test_example"
+```
+
+It may also be useful to run a small number of integration tests,
+to get a first quick feedback on the overall system:
+
+```bash
+pytest tests/test_examples.py -k "test_example[no_static] or test_example[restart_add_missing]"
+```
+
+These are two simple examples that run quickly and will fail when the core system is broken.
+A full run with all integration tests takes several minutes and is best run as a final check only.
 
 ### Release Process
 

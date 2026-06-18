@@ -27,6 +27,7 @@ from importlib.metadata import version as get_version
 
 from path import Path
 
+from .config import ConfigLoader
 from .utils import string_to_bool
 
 
@@ -41,6 +42,20 @@ def main():
 
 
 def build_parser() -> tuple[argparse.ArgumentParser, list[callable]]:
+    # Configuration loader
+    stepup_root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
+    loader = ConfigLoader(
+        prefix="stepup",
+        config_paths=[
+            "/etc/stepup.toml",
+            "~/.config/stepup.toml",
+            stepup_root / ".stepup.toml",
+            stepup_root / "stepup.toml",
+            stepup_root / "pyproject.toml",
+            stepup_root / "stepup-local.toml",
+        ],
+    )
+
     # Base argument parser
     parser = argparse.ArgumentParser(
         prog="stepup",
@@ -62,6 +77,7 @@ def build_parser() -> tuple[argparse.ArgumentParser, list[callable]]:
         default=Path(os.getenv("STEPUP_ROOT", os.getcwd())),
         help="Directory containing top-level plan.py [default=%(default)s]",
     )
+    loader.patch_parser(parser, skip_file_config={"root"})
 
     # Load tool entry points
     subparsers = parser.add_subparsers(dest="tool", required=False)
@@ -69,7 +85,7 @@ def build_parser() -> tuple[argparse.ArgumentParser, list[callable]]:
     tool_funcs = {}
     for tool_ep in tool_eps:
         tool = tool_ep.load()
-        tool_funcs[tool_ep.name] = tool(subparsers)
+        tool_funcs[tool_ep.name] = tool(subparsers, loader)
 
     return parser, tool_funcs
 

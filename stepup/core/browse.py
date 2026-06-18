@@ -34,19 +34,31 @@ from urllib.parse import parse_qs, urlencode, urlparse
 import jinja2
 from path import Path
 
+from .config import ConfigLoader
 from .enums import FileState, Need, StepState
 from .hash import fmt_digest
 from .sqlite3 import connect
 
 
-def browse_subcommand(subparser: argparse.ArgumentParser) -> callable:
-    parser = subparser.add_parser("browse", help="Browse the StepUp build graph.")
+def browse_subcommand(subparsers, loader: ConfigLoader) -> callable:
+    """Define command-line arguments for the browse tool.
+
+    Parameters
+    ----------
+    subparsers
+        The sub parser to add the browse tool to.
+    loader
+        The configuration loader to override the default configuration with
+        config file values.
+    """
+    parser = subparsers.add_parser("browse", help="Browse the StepUp build graph.")
     parser.add_argument(
         "--port",
         type=int,
         default=8000,
         help="Port to bind the server to (default: 8000).",
     )
+    loader.patch_parser(parser, "browse")
     return browse_tool
 
 

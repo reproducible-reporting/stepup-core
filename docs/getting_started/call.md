@@ -73,7 +73,7 @@ Changes to modules imported in your Python script will automatically trigger a r
 By default, only the modules inside `${STEPUP_ROOT}`
 (but not in `${STEPUP_ROOT}/venv*`) are treated as dependencies.
 You can control the filtering of automatically detected dependencies with the
-[`STEPUP_PATH_FILTER` environment variable](../reference/environment_variables.md).
+[`STEPUP_PATH_FILTER` environment variable](../reference/configuration.md).
 
 ## Example
 

@@ -35,6 +35,8 @@ import shlex
 import jinja2
 from path import Path
 
+from stepup.core.config import ConfigLoader
+
 from .utils import get_local_import_paths
 from .worker import WorkThread
 
@@ -67,10 +69,11 @@ def add_parser_args(parser: argparse.ArgumentParser):
     )
 
 
-def render_jinja_subcommand(subparser: argparse.ArgumentParser) -> callable:
+def render_jinja_subcommand(subparsers, loader: ConfigLoader) -> callable:
     """Define tool CLI options."""
-    parser = subparser.add_parser(name="render-jinja", help="Render a file with Jinja2.")
+    parser = subparsers.add_parser(name="render-jinja", help="Render a file with Jinja2.")
     add_parser_args(parser)
+    loader.patch_parser(parser, "render-jinja")
     return render_jinja_tool
 
 

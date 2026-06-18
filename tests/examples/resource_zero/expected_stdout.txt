@@ -1,3 +1,4 @@
+        0/0 |   DIRECTOR │ Setting available resources: token:0
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run

@@ -75,6 +75,7 @@ watch-delete = "stepup.core.interact:watch_delete_subcommand"
 wait = "stepup.core.interact:wait_subcommand"
 join = "stepup.core.interact:join_subcommand"
 render-jinja = "stepup.core.render_jinja:render_jinja_subcommand"
+show-config = "stepup.core.config:show_config_subcommand"
 shutdown = "stepup.core.interact:shutdown_subcommand"
 status = "stepup.core.interact:status_subcommand"
 

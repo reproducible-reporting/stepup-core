@@ -50,7 +50,7 @@ Only `work.py` is rerun, since `plan.py` has not changed.
 
 - You can control which imports are treated as "local" with
   the `STEPUP_PATH_FILTER` environment variable.
-  See [Environment Variables](../reference/environment_variables.md).
+  See [Environment Variables](../reference/configuration.md).
 
 - StepUp also provides more sophisticated interfaces for running (Python) scripts,
   which are described in the following sections:
