@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import copy, glob, runsh
+from stepup.core.api import copy, glob, run
 
 # Enforce consistent chapter numbers throughout the match,
 # ignoring inconsistent txt files.
@@ -12,4 +12,4 @@ for match in glob("ch${*ch}/sec${*ch}_${*sec}_${*name}.txt", ch="[0-9]", sec="[0
 
 # Concatenate all markdown files per chapter
 for ch, paths_md in md_chapter.items():
-    runsh("cat ${inp} > ${out}", inp=paths_md, out=f"public/ch{ch}.md")
+    run("cat ${inp} > ${out}", shell=True, inp=paths_md, out=f"public/ch{ch}.md")

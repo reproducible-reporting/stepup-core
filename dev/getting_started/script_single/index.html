@@ -2265,7 +2265,7 @@ To help you decide which one to use, consider the following:</p>
   Such self-contained scripts can be easier to understand and maintain.</p>
 </li>
 </ul>
-<p>If both seem overkill, you can also use the <a class="autorefs autorefs-internal" title="stepup.core.api.runpy(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.runpy"><code>runpy()</code></a>
+<p>If both seem overkill, you can also use the <a class="autorefs autorefs-internal" title="stepup.core.api.run(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, shell=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.run"><code>run()</code></a>
 function directly in <code>plan.py</code>.
 See <a href="../first_runpy/">Running Python Scripts</a> for an example.</p>
 <h2 id="script-protocol">Script Protocol<a class="headerlink" href="#script-protocol" title="Permanent link">&para;</a></h2>
@@ -2274,13 +2274,13 @@ The following line in <code>plan.py</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">script</span><span class="p">(</span><span class="s2">&quot;executable&quot;</span><span class="p">,</span> <span class="n">workdir</span><span class="o">=</span><span class="s2">&quot;sub&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>is roughly equivalent to:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;./executable plan&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;executable&quot;</span><span class="p">,</span> <span class="n">workdir</span><span class="o">=</span><span class="s2">&quot;sub&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./executable plan&quot;</span><span class="p">,</span> <span class="n">workdir</span><span class="o">=</span><span class="s2">&quot;sub&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Note that the use of a subdirectory is not required.
 The <code>./executable plan</code> step is expected to define additional steps
 to actually do something useful with the executable.
 A common scenario is to plan a single <code>./executable run</code> step with appropriate inputs and outputs.
-Note that if the script has the <code>.py</code> extension, <code>runpy()</code> is used instead of <code>runsh()</code>.</p>
+If the script has the <code>.py</code> extension, the Python-aware mode is used automatically.</p>
 <p>When the <code>optional=True</code> keyword argument is given to the <code>script()</code> function,
 it executes <code>./executable plan --optional</code>.
 The script protocol requires that all <em>run</em> steps created by this planning step
@@ -2413,7 +2413,7 @@ serialized in a JSON file:</p>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should see the following output on screen:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post14)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post19)
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>     PHASE │ run

@@ -1,5 +1,6 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post14)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post19)
    STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 4 files from initial database
    STARTUP │ Making steps pending that use changed environment variables
    STARTUP │ Scanning initial database for changed files
    DELETED │ dataset/bigfile.txt
@@ -8,7 +9,7 @@
      PHASE │ run
      START │ runpy ./plan.py
    SUCCESS │ runpy ./plan.py
-      SKIP │ runsh cat average.txt
+      SKIP │ runexec cat average.txt
   DIRECTOR │ Trying to delete 0 outdated output(s)
   DIRECTOR │ Stopping workers
   DIRECTOR │ See you!

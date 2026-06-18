@@ -5689,7 +5689,7 @@ and improved terminal user interface.</p>
 <li>A new API function <a class="autorefs autorefs-internal" title="stepup.core.api.loadns(*paths_variables, dir_out=None, do_amend=True)" href="../reference/stepup.core.api/#stepup.core.api.loadns"><code>loadns()</code></a> to load variables from file.
   Supported file formats are: JSON, Python, YAML, and TOML.
   This will automatically amend the calling step with the loaded files as inputs.</li>
-<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.runpy(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.runpy">runpy()</a> function can now be used to schedule a Python script.
+<li>The <code>runpy()</code> function can now be used to schedule a Python script.
   This automatically amends locall imported modules as inputs to the step.</li>
 <li>The <code>render-jinja</code> feature from StepUp RepRep 2 has been migrated to StepUp Core 3.</li>
 </ul>
@@ -5707,7 +5707,7 @@ and improved terminal user interface.</p>
   instead of a shell command.
   The syntax of an <code>action</code> is similar to a shell command:
   It consists of <code>module.submodule.function arg1 arg2 ...</code>.</li>
-<li><a class="autorefs autorefs-internal" title="stepup.core.api.runsh(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.runsh">runsh()</a> mimics the behavior of the old <code>step()</code> function.</li>
+<li><code>runsh()</code> mimics the behavior of the old <code>step()</code> function.</li>
 <li>The <code>stepup</code> command now uses subcommands to run different tools within StepUp.
 The following tools have been implemented:<ul>
 <li><code>stepup act</code>: Execute an action, mostly for debugging.</li>

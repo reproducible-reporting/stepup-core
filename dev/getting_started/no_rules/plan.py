@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-from stepup.core.api import glob, runsh
+from stepup.core.api import glob, run
 
 
 def upper(src, dst):
-    runsh("tr '[:lower:]' '[:upper:]' < ${inp} > ${out}", inp=src, out=dst)
+    run("tr '[:lower:]' '[:upper:]' < ${inp} > ${out}", shell=True, inp=src, out=dst)
 
 
 for path in glob("lower*.txt"):

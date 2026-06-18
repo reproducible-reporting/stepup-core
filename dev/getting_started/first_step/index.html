@@ -494,16 +494,55 @@
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#runsh-versus-step" class="md-nav__link">
+    <nav class="md-nav" aria-label="Example">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-step" class="md-nav__link">
     <span class="md-ellipsis">
       
-        runsh() versus step()
+        Creating a Step
       
     </span>
   </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-stepup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running StepUp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#re-running-stepup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Re-running StepUp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-versus-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        run() versus step()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2154,16 +2193,55 @@
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#runsh-versus-step" class="md-nav__link">
+    <nav class="md-nav" aria-label="Example">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-step" class="md-nav__link">
     <span class="md-ellipsis">
       
-        runsh() versus step()
+        Creating a Step
       
     </span>
   </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-stepup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running StepUp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#re-running-stepup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Re-running StepUp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-versus-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        run() versus step()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2208,28 +2286,32 @@
 For the sake of simplicity, a minimal workflow will be defined that does very little.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/first_step"><code>docs/getting_started/first_step/</code></a></p>
+<h3 id="creating-a-step">Creating a Step<a class="headerlink" href="#creating-a-step" title="Permanent link">&para;</a></h3>
 <p>Create a file <code>plan.py</code> with the following contents:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">runsh</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">run</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;echo Hello World&quot;</span><span class="p">)</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;echo Hello World&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Make this file executable with <code>chmod +x plan.py</code>.</p>
 <ol>
 <li>The first line is required to have the plan executed by the Python 3 interpreter.</li>
-<li>The second line imports the <a class="autorefs autorefs-internal" title="stepup.core.api.runsh(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.runsh"><code>runsh()</code></a> function from StepUp Core.
-   (It stands for &ldquo;<strong>run</strong> in a <strong>sh</strong>ell&rdquo;.)
-   This module contains functions to communicate with the director process
+<li>The second line imports the <a class="autorefs autorefs-internal" title="stepup.core.api.run(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, shell=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.run"><code>run()</code></a> function from StepUp Core.
+   The module <code>stepup.core.api</code> contains functions to communicate with the director process
    of StepUp to define steps and other parts of the workflow.</li>
 <li>The last line defines a step that writes <code>Hello World</code> to the standard output.
-   The (first) argument of <code>runsh()</code> is a single string
-   that can be interpreted by the default shell, typically <code>/usr/bin/sh</code>.
-   You may use IO redirection, pipes, and other features supported by the shell.
-   (StepUp will not provide any standard input.
-   It does capture standard output and error, as shown below.)</li>
+   The (first) argument of <code>run()</code> is a single string: the command to execute.</li>
 </ol>
+<p>If you want to use shell features in the command, such as pipes or IO redirection
+(<code>echo Hello World &gt; hello.txt</code>), you need to set the keyword argument <code>shell=True</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;echo Hello World &gt; hello.txt&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></code></pre></div>
+<p>This comes at the extra cost of running a shell process, so it is disabled by default.</p>
+<p>Note that StepUp does not provide any standard input.
+It does capture standard output and error, as shown below.</p>
+<h3 id="running-stepup">Running StepUp<a class="headerlink" href="#running-stepup" title="Permanent link">&para;</a></h3>
 <p>In the same directory, run:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <ul>
 <li>The <code>boot</code> subcommand starts the StepUp terminal user interface and
@@ -2237,20 +2319,20 @@ For the sake of simplicity, a minimal workflow will be defined that does very li
 <li>The option <code>-n 1</code> sets the maximum number of workers to 1, i.e. no parallel execution of steps.</li>
 </ul>
 <p>You should see the following output, with colors if your virtual terminal supports them:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post14)
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>   STARTUP │ (Re)initialized boot script
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  DIRECTOR │ Launched worker 0
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>     PHASE │ run
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>     START │ runpy ./plan.py
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>   SUCCESS │ runpy ./plan.py
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>     START │ runsh echo Hello World
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>   SUCCESS │ runsh echo Hello World
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>─────────────────────────────── Standard output ────────────────────────────────
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>Hello World
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>────────────────────────────────────────────────────────────────────────────────
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>  DIRECTOR │ Stopping workers
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>  DIRECTOR │ See you!
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post19)
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>   STARTUP │ (Re)initialized boot script
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  DIRECTOR │ Launched worker 0
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>     PHASE │ run
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>     START │ runpy ./plan.py
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>   SUCCESS │ runpy ./plan.py
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>     START │ runexec echo Hello World
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>   SUCCESS │ runexec echo Hello World
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>─────────────────────────────── Standard output ────────────────────────────────
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>Hello World
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>────────────────────────────────────────────────────────────────────────────────
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>  DIRECTOR │ Stopping workers
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>  DIRECTOR │ See you!
 </span></code></pre></div>
 <p>Let&rsquo;s analyze the output:</p>
 <ul>
@@ -2261,27 +2343,30 @@ For the sake of simplicity, a minimal workflow will be defined that does very li
   (The hash signs represent random characters.)</li>
 <li>The <code>START</code> and <code>SUCCESS</code> lines are shown for steps executed by StepUp:<ul>
 <li>The step <code>./plan.py</code> is created by default and runs the script that you just created.</li>
-<li>Then the step <code>runsh echo Hello World</code> is defined in <code>plan.py</code>.</li>
+<li>Then the step <code>runsh echo Hello World</code> is defined in <code>plan.py</code>.
+  (The <code>runsh</code> action name is stored internally even when using <code>run(..., shell=True)</code>.)</li>
 </ul>
 </li>
 <li>When a step produces output, it is shown after the step has completed.</li>
 <li>When no more steps can be executed,
   StepUp checks if it can clean up outdated outputs and then exits.</li>
 </ul>
+<h3 id="re-running-stepup">Re-running StepUp<a class="headerlink" href="#re-running-stepup" title="Permanent link">&para;</a></h3>
 <p>Now repeat the execution of StepUp with:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You will see a slightly different output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post14)
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>   STARTUP │ Making failed steps pending
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>   STARTUP │ Making steps pending that use changed environment variables
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>   STARTUP │ Scanning initial database for changed files
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>   STARTUP │ Scanning initial database for new nglob matches
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>  DIRECTOR │ Launched worker 0
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>     PHASE │ run
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>  DIRECTOR │ Stopping workers
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>  DIRECTOR │ See you!
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post19)
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>   STARTUP │ Making failed steps pending
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>   STARTUP │ Watching directories for 1 files from initial database
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>   STARTUP │ Making steps pending that use changed environment variables
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>   STARTUP │ Scanning initial database for changed files
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>   STARTUP │ Scanning initial database for new nglob matches
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>  DIRECTOR │ Launched worker 0
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>     PHASE │ run
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>  DIRECTOR │ Stopping workers
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>  DIRECTOR │ See you!
 </span></code></pre></div>
 <p>The startup sequence is now a bit longer because StepUp loads the workflow from <code>.stepup/graph.db</code>,
 which was created in the first run.
@@ -2292,17 +2377,15 @@ by comparing a <a href="https://en.wikipedia.org/wiki/SHA-2">SHA-256 hash</a>
 of input files, used environment variables and produced outputs.
 When you manually remove <code>.stepup/graph.db</code>,
 StepUp will not know anymore that it already executed some steps and runs all of them again.</p>
-<h2 id="runsh-versus-step"><code>runsh()</code> versus <code>step()</code><a class="headerlink" href="#runsh-versus-step" title="Permanent link">&para;</a></h2>
-<p>Before StepUp 3, the <code>runsh()</code> function was called <code>step()</code>.
-The <code>step()</code> function also exists in StepUp 3, but has a different and more general purpose.
+<h3 id="run-versus-step"><code>run()</code> versus <code>step()</code><a class="headerlink" href="#run-versus-step" title="Permanent link">&para;</a></h3>
+<p>The <code>step()</code> function is the lower-level API.
 The following two lines are equivalent:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;echo Hello World&quot;</span><span class="p">)</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">step</span><span class="p">(</span><span class="s2">&quot;runsh echo Hello World&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;echo Hello World&quot;</span><span class="p">)</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">step</span><span class="p">(</span><span class="s2">&quot;runexec echo Hello World&quot;</span><span class="p">)</span>
 </span></code></pre></div>
-<p>The second form is a lower-level way to define step, explicitly specifying the <code>runsh</code> action.
-This is mainly useful when creating extensions for StepUp,
-which often require actions other than <code>runsh</code>.
-For most end users, the first form is more convenient and should be preferred.</p>
+<p>The second form explicitly specifies the <code>runexec</code> action by name.
+This is mainly useful when creating extensions for StepUp.
+For most end users, <code>run()</code> is more convenient and should be preferred.</p>
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
@@ -2316,7 +2399,7 @@ For most end users, the first form is more convenient and should be preferred.</
   The terminal output shows the commands that would normally be sent to the StepUp director
   process when <code>plan.py</code> is executed by <code>stepup</code>.
   You should get the following screen output.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>step(-1, &#39;runsh echo Hello World&#39;, [], [], [], [], Path(&#39;./&#39;), 32, {})
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>step(-1, &#39;runexec echo Hello World&#39;, [], [], [], [], Path(&#39;./&#39;), 32, {})
 </span></code></pre></div>
 <p>This output contains internal details of StepUp,
 which can be useful for debugging purposes.</p>

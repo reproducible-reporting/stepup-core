@@ -2244,12 +2244,12 @@ to facilitate the implementation of Python scripts that adhere to the call proto
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">call</span><span class="p">(</span><span class="s2">&quot;executable&quot;</span><span class="p">,</span> <span class="n">parameter</span><span class="o">=</span><span class="s2">&quot;value&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>is roughly equivalent to</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;./executable &#39;{</span><span class="se">\&quot;</span><span class="s2">parameter</span><span class="se">\&quot;</span><span class="s2">: </span><span class="se">\&quot;</span><span class="s2">value</span><span class="se">\&quot;</span><span class="s2">}&#39;&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;executable&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./executable &#39;{</span><span class="se">\&quot;</span><span class="s2">parameter</span><span class="se">\&quot;</span><span class="s2">: </span><span class="se">\&quot;</span><span class="s2">value</span><span class="se">\&quot;</span><span class="s2">}&#39;&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>(It also works without any parameters.)
 The script <code>executable</code> is expected to decode the JSON given on the command-line,
 and then use these parameters.
-Note that if the script has the <code>.py</code> extension, <code>runpy()</code> is used instead of <code>runsh()</code>.</p>
+If the script has the <code>.py</code> extension, the Python-aware mode is used automatically.</p>
 <p>The <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable, *, prefix=None, fmt='auto', inp=None, env=(), out=None, vol=(), workdir='./', optional=False, resources=None, pars=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> function supports many optional arguments
 that control with which options the executable is called.
 In a nutshell, the parameters can also be provided through an input file.
@@ -2317,7 +2317,7 @@ You can control the filtering of automatically detected dependencies with the
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should see the following output on screen:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post14)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post19)
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>     PHASE │ run

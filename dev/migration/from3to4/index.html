@@ -1546,6 +1546,56 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#the-new-run-function-replaces-the-old-runsh-and-runpy-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The new run() function replaces the old runsh() and runpy() functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The new run() function replaces the old runsh() and runpy() functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#migrating-from-runsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating from runsh()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#migrating-from-runpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating from runpy()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-prefer-run-without-shelltrue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why prefer run() without shell=True
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#directory-handling" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1561,6 +1611,17 @@
     <span class="md-ellipsis">
       
         Resource constraints (replacement for pools and blocked steps)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changed-environment-variable-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed Environment Variable Names
       
     </span>
   </a>
@@ -2146,6 +2207,56 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#the-new-run-function-replaces-the-old-runsh-and-runpy-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The new run() function replaces the old runsh() and runpy() functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The new run() function replaces the old runsh() and runpy() functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#migrating-from-runsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating from runsh()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#migrating-from-runpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating from runpy()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-prefer-run-without-shelltrue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why prefer run() without shell=True
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#directory-handling" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2161,6 +2272,17 @@
     <span class="md-ellipsis">
       
         Resource constraints (replacement for pools and blocked steps)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changed-environment-variable-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed Environment Variable Names
       
     </span>
   </a>
@@ -2207,6 +2329,92 @@
 <p>A few things have changed in StepUp 4 that might require changes to your <code>plan.py</code> file.
 These changes reflect optimizations of StepUp&rsquo;s internals or
 get rid of poor historical API design choices.</p>
+<h2 id="the-new-run-function-replaces-the-old-runsh-and-runpy-functions">The new <code>run()</code> function replaces the old <code>runsh()</code> and <code>runpy()</code> functions<a class="headerlink" href="#the-new-run-function-replaces-the-old-runsh-and-runpy-functions" title="Permanent link">&para;</a></h2>
+<p>StepUp 4 unifies <code>runsh()</code> and <code>runpy()</code> into a single <code>run()</code> function.
+The action (shell, Python, or direct execution) is now selected automatically based on the command:</p>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Action</th>
+<th>Equivalent old function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>shell=True</code></td>
+<td><code>runsh</code> — passed to a shell</td>
+<td><code>runsh()</code></td>
+</tr>
+<tr>
+<td>First word ends in <code>.py</code></td>
+<td><code>runpy</code> — Python wrapper with local import detection</td>
+<td><code>runpy()</code></td>
+</tr>
+<tr>
+<td>Otherwise</td>
+<td><code>runexec</code> — direct execution, no shell</td>
+<td><code>runsh()</code> (previously had no <code>runexec</code> equivalent)</td>
+</tr>
+</tbody>
+</table>
+<p>Note that the <code>run()</code> function checks whether the first word of the command
+is a relative path (contains a path separator, <code>/</code>, and is not absolute).
+If it is local, StepUp will automatically add it as an input dependency to the step.
+In StepUp 3, one had to be explicitly include the script as an input, e.g.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># StepUp 3: you had to explicitly include the script as an input</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">runpy</span><span class="p">(</span><span class="s2">&quot;./analyze.py data.csv&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;analyze.py&quot;</span><span class="p">,</span> <span class="s2">&quot;data.csv&quot;</span><span class="p">])</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># or</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">runpy</span><span class="p">(</span><span class="s2">&quot;./$</span><span class="si">{inp}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;analyze.py&quot;</span><span class="p">,</span> <span class="s2">&quot;data.csv&quot;</span><span class="p">])</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># StepUp 4: the script becomes a dependency automatically</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./analyze.py data.csv&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;data.csv&quot;</span><span class="p">])</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1"># or</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./analyze.py $</span><span class="si">{inp}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;data.csv&quot;</span><span class="p">])</span>
+</span></code></pre></div>
+<h3 id="migrating-from-runsh">Migrating from <code>runsh()</code><a class="headerlink" href="#migrating-from-runsh" title="Permanent link">&para;</a></h3>
+<p>Most <code>runsh()</code> calls can be replaced with <code>run()</code> directly, without <code>shell=True</code>,
+because the command is a plain executable with arguments and does not rely on shell features:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># StepUp 3</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;./process.sh input.txt output.txt&quot;</span><span class="p">)</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># StepUp 4 — no shell=True needed for plain commands</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./process.sh input.txt output.txt&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Only add <code>shell=True</code> (to mimic the old <code>runsh()</code> behavior)
+when the command actually requires shell interpretation,
+such as pipes, redirections, globbing, or variable expansion:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># StepUp 3</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;grep -c foo input.txt &gt; count.txt&quot;</span><span class="p">)</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># StepUp 4 — shell=True required for redirection</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;grep -c foo input.txt &gt; count.txt&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="migrating-from-runpy">Migrating from <code>runpy()</code><a class="headerlink" href="#migrating-from-runpy" title="Permanent link">&para;</a></h3>
+<p>Replace <code>runpy()</code> with <code>run()</code>.
+The Python wrapper is selected automatically when the first word ends in <code>.py</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># StepUp 3</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">runpy</span><span class="p">(</span><span class="s2">&quot;./analyze.py --input data.csv&quot;</span><span class="p">)</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># StepUp 4</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./analyze.py --input data.csv&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="why-prefer-run-without-shelltrue">Why prefer <code>run()</code> without <code>shell=True</code><a class="headerlink" href="#why-prefer-run-without-shelltrue" title="Permanent link">&para;</a></h3>
+<p>Using <code>shell=True</code> (or the old <code>runsh()</code> for plain commands) has a few drawbacks
+compared to direct execution via <code>runexec</code>:</p>
+<ul>
+<li><strong>Reproducibility</strong>: shell commands depend on the shell&rsquo;s PATH, aliases,
+  and other environment state that may differ between machines or sessions.</li>
+<li><strong>Performance</strong>: spawning a shell process adds overhead for every step.</li>
+<li><strong>Correctness</strong>: arguments with spaces or special characters require careful quoting;
+  direct execution passes arguments as-is without shell interpretation.</li>
+<li><strong>Dependency tracking</strong>: StepUp automatically adds local relative executables
+  (paths containing <code>/</code> that are not absolute) as input dependencies when using <code>runexec</code>.
+  This means a step is automatically re-run when its script changes.
+  With <code>shell=True</code>, this tracking still applies to the first word,
+  but shell-expanded paths are not tracked.</li>
+</ul>
+<p>In short: use <code>run()</code> without <code>shell=True</code> unless you specifically need shell features.</p>
 <h2 id="directory-handling">Directory Handling<a class="headerlink" href="#directory-handling" title="Permanent link">&para;</a></h2>
 <p>In StepUp 3, directories were stored in the database and had to be created explicitly using <code>mkdir()</code>
 or made static with <code>static()</code> or <code>glob()</code>.
@@ -2239,24 +2447,74 @@ This has a few practical consequences for your <code>plan.py</code> file:</p>
 </ul>
 <h2 id="resource-constraints-replacement-for-pools-and-blocked-steps">Resource constraints (replacement for pools and blocked steps)<a class="headerlink" href="#resource-constraints-replacement-for-pools-and-blocked-steps" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The <code>pool()</code> function has been removed, and pools can no longer be defined in <code>plan.py</code>.
+<li>
+<p>The <code>pool()</code> function has been removed, and pools can no longer be defined in <code>plan.py</code>.
   Instead, you can declare the resources available on the host via an environment variable,
   e.g. <code>STEPUP_RESOURCES="gpu:2,cpu:16"</code> to indicate that the host has two GPUs and 16 CPU cores.
   When defining steps, you can then specify the required resources, e.g., <code>resources="gpu:1,cpu:4"</code>,
   and StepUp will ensure that the available resources are not over-committed.
   You can override the available resources with the
-  <code>--resources</code> command-line argument to <code>stepup boot</code> if needed.</li>
-</ul>
+  <code>--resources</code> command-line argument to <code>stepup boot</code> if needed.</p>
 <p>Note that the resource names are user-specified strings and StepUp does not implement
-  pre-defined resource types, such as <code>gpu</code> or <code>cpu</code>.
-  These resource definitions are only used to impose constraints when deciding which steps to run.
-  You could equally use <code>foo</code> and <code>bar</code> in this example and obtain exactly the same effect.</p>
-<ul>
-<li>The <code>block=True</code> argument to <code>step()</code> and
+pre-defined resource types, such as <code>gpu</code> or <code>cpu</code>.
+These resource definitions are only used to impose constraints when deciding which steps to run.
+You could equally use <code>foo</code> and <code>bar</code> in this example and obtain exactly the same effect.</p>
+</li>
+<li>
+<p>The <code>block=True</code> argument to <code>step()</code> and
   higher-level step-generating API functions has been removed.
   Instead, use the <code>resources</code> argument with a resource that is not available on the host,
-  which will have the same effect, e.g. <code>resources="blocked"</code>.</li>
+  which will have the same effect, e.g. <code>resources="blocked"</code>.</p>
+</li>
 </ul>
+<h2 id="changed-environment-variable-names">Changed Environment Variable Names<a class="headerlink" href="#changed-environment-variable-names" title="Permanent link">&para;</a></h2>
+<p>The following environment variables have been renamed to have a <code>STEPUP_BOOT_</code> prefix instead of <code>STEPUP_</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Old (StepUp 3)</th>
+<th>New (StepUp 4)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>STEPUP_CLEAN</code></td>
+<td><code>STEPUP_BOOT_CLEAN</code></td>
+</tr>
+<tr>
+<td><code>STEPUP_EXPLAIN_RERUN</code></td>
+<td><code>STEPUP_BOOT_EXPLAIN_RERUN</code></td>
+</tr>
+<tr>
+<td><code>STEPUP_NUM_WORKERS</code></td>
+<td><code>STEPUP_BOOT_NUM_WORKERS</code></td>
+</tr>
+<tr>
+<td><code>STEPUP_PERF</code></td>
+<td><code>STEPUP_BOOT_PERF</code></td>
+</tr>
+<tr>
+<td><code>STEPUP_PROGRESS</code></td>
+<td><code>STEPUP_BOOT_PROGRESS</code></td>
+</tr>
+<tr>
+<td><code>STEPUP_SHOW_PERF</code></td>
+<td><code>STEPUP_BOOT_SHOW_PERF</code></td>
+</tr>
+<tr>
+<td><code>STEPUP_WATCH</code></td>
+<td><code>STEPUP_BOOT_WATCH</code></td>
+</tr>
+<tr>
+<td><code>STEPUP_WATCH_FIRST</code></td>
+<td><code>STEPUP_BOOT_WATCH_FIRST</code></td>
+</tr>
+<tr>
+<td><code>STEPUP_YAPPI</code></td>
+<td><code>STEPUP_BOOT_YAPPI</code></td>
+</tr>
+</tbody>
+</table>
 <h2 id="abandoned-features">Abandoned Features<a class="headerlink" href="#abandoned-features" title="Permanent link">&para;</a></h2>
 <p>The following were practically unused and have been removed:</p>
 <ul>

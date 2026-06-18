@@ -2204,20 +2204,20 @@
 
 
 <h1 id="running-python-scripts">Running Python Scripts<a class="headerlink" href="#running-python-scripts" title="Permanent link">&para;</a></h1>
-<p>In principle, you can incorporate any Python script into a StepUp workflow
-using the <a class="autorefs autorefs-internal" title="stepup.core.api.runsh(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.runsh"><code>runsh()</code></a> function.
-However, it is recommended to use the <a class="autorefs autorefs-internal" title="stepup.core.api.runpy(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.runpy"><code>runpy()</code></a> function instead.
+<p>When the first word of the command passed to <a class="autorefs autorefs-internal" title="stepup.core.api.run(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, shell=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.run"><code>run()</code></a> ends in <code>.py</code>,
+StepUp automatically selects a Python-aware execution mode.
 It will automatically detect the modules imported by the script,
 and if they correspond to local files in your workflow,
 the step is amended with these files as required inputs.
-This way, if the local modules have changed, StepUp will know the script needs to run again.</p>
+This way, if the local modules have changed, StepUp will know the script needs to run again.
+The script file itself is also automatically added as an input dependency.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>The following example <code>plan.py</code> file shows how to run a Python script with StepUp.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">runpy</span><span class="p">,</span> <span class="n">static</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">run</span><span class="p">,</span> <span class="n">static</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">static</span><span class="p">(</span><span class="s2">&quot;work.py&quot;</span><span class="p">,</span> <span class="s2">&quot;helper.py&quot;</span><span class="p">)</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">runpy</span><span class="p">(</span><span class="s2">&quot;./work.py 3&quot;</span><span class="p">)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./work.py 3&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Create a <code>work.py</code> script that can be executed:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="ch">#!/usr/bin/env python3</span>
@@ -2236,7 +2236,7 @@ This way, if the local modules have changed, StepUp will know the script needs t
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should see the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post14)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post19)
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  DIRECTOR │ Launched worker 0
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>     PHASE │ run
@@ -2276,8 +2276,8 @@ Only <code>work.py</code> is rerun, since <code>plan.py</code> has not changed.<
 <p>Although not common, it is also possible to dynamically generate the Python file <code>helper.py</code>.
   In this case, the <code>work.py</code> script should only be executed after a previous step has created <code>helper.py</code>.
   For this to work, you must explicitly add the <code>inp</code> argument:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">runpy</span><span class="p">(</span><span class="s2">&quot;./generate.py &gt; $</span><span class="si">{out}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;helper.py&quot;</span><span class="p">])</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">runpy</span><span class="p">(</span><span class="s2">&quot;./work.py&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;helper.py&quot;</span><span class="p">])</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./generate.py&quot;</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;helper.py&quot;</span><span class="p">])</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./work.py&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;helper.py&quot;</span><span class="p">])</span>
 </span></code></pre></div>
 <p>The reason for this is that the running <code>work.py</code> will fail if <code>helper.py</code> does not exist.
 By adding the <code>inp</code> option, StepUp knows not to run <code>work.py</code> until <code>helper.py</code> is available.</p>

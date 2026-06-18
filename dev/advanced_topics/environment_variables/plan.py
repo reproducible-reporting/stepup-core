@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh
+from stepup.core.api import run
 
-runsh("echo ${MYVAR}", env="MYVAR")
+run("echo ${MYVAR}", env="MYVAR", shell=True)

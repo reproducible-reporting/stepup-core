@@ -3,7 +3,7 @@
 
 from path import Path
 
-from stepup.core.api import glob, runpy, static
+from stepup.core.api import glob, run, static
 
 
 def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
@@ -57,7 +57,7 @@ def main():
         static(inp)
         inp.append(Path("run_example.py"))
         inp.append(path_main)
-        runpy(f"./run_example.py {path_main} {root}", inp=inp, out=out)
+        run(f"./run_example.py {path_main} {root}", inp=inp, out=out)
 
 
 if __name__ == "__main__":
