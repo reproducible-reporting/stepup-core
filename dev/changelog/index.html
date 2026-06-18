@@ -5433,7 +5433,11 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   without having to glob the entire directory recursively.
   To declare a static root directory, just pass it as an argument to the <code>static()</code> function.
   It will treat all directory arguments are static roots.</li>
-<li>Documentation has been updated to reflect the API changes and to clarify some other points.</li>
+<li>The <code>runsh()</code> and <code>runpy()</code> functions have been replaced by the more flexible <code>run()</code> function.
+  The new implementation is more efficient and automatically tracks local scripts as dependencies.</li>
+<li>The <code>plan()</code> function has been made maximally similar to <code>run()</code>,
+  and now accepts arbitrary local Python scripts,
+  not just a directory that must contain a <code>plan.py</code> script.</li>
 <li>The scheduler has been replaced by a completely new implementation, called the &ldquo;dispatcher&rdquo;.
   It is far more robust and powerful than the previous scheduler, and it is easier to maintain.
   This change also comes with several improved features:<ul>
@@ -5447,6 +5451,7 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 </li>
 <li>Several environment variables have been renamed for consistency.
   See <a href="../reference/configuration/">Configuration files</a> for details.</li>
+<li>Documentation has been updated to reflect the API changes and to clarify some other points.</li>
 <li>Updates of internals:<ul>
 <li>Renamed &ldquo;orphan&rdquo; and related names to &ldquo;detached&rdquo;, which is more intuitive.
   The new terminology is applied more consistently with consistent distinction between
@@ -5949,7 +5954,7 @@ for more fine-grained control over automatic dependency tracking.</p>
   (<code>path</code>, <code>rebase</code> and <code>multi</code>) to control how the environment variable gets processed.</li>
 <li>The optional <code>workdir</code> argument of the <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> function
   must always be specified as a keyword argument.</li>
-<li>The <code>block</code> argument of the <a class="autorefs autorefs-internal" title="stepup.core.api.plan(subdir, *, inp=(), env=(), out=(), vol=(), resources=None)" href="../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> function
+<li>The <code>block</code> argument of the <a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='./', resources=None)" href="../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> function
 must be given as a keyword argument.</li>
 <li>All optional arguments of <a class="autorefs autorefs-internal" title="stepup.core.api.copy(src, dst, *, optional=False, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.copy"><code>copy()</code></a>
   and <code>mkdir()</code> must be given as keyword arguments.</li>
@@ -5970,7 +5975,7 @@ must be given as a keyword argument.</li>
   There are only relevant for the plan stage of the script protocol.</li>
 <li>The script <code>driver()</code> now detects local imports in the
   <code>run()</code> function of the script and amends them as inputs.</li>
-<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.plan(subdir, *, inp=(), env=(), out=(), vol=(), resources=None)" href="../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> function now accepts all arguments
+<li>The <a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='./', resources=None)" href="../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> function now accepts all arguments
   that can be passed on to the underlying <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> call.</li>
 </ul>
 </li>

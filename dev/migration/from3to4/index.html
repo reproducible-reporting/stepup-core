@@ -1607,6 +1607,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#distributed-plans" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Distributed Plans
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#resource-constraints-replacement-for-pools-and-blocked-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2268,6 +2279,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#distributed-plans" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Distributed Plans
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#resource-constraints-replacement-for-pools-and-blocked-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2444,6 +2466,36 @@ This has a few practical consequences for your <code>plan.py</code> file:</p>
 <li>
 <p>Directories can no longer be used as inputs or outputs of steps.</p>
 </li>
+</ul>
+<h2 id="distributed-plans">Distributed Plans<a class="headerlink" href="#distributed-plans" title="Permanent link">&para;</a></h2>
+<p>The function <a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='./', resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> now works differently,
+and works almost in the same way as the <code>run()</code> function,
+except for a few small differences:</p>
+<ul>
+<li>The first argument is now a command string, not a directory containing another <code>plan.py</code> file.</li>
+<li>Except for <code>optional</code> and <code>shell</code>, all <code>run()</code> arguments are supported.
+  (It is hardwired to use <code>optional=False, shell=False</code>.)</li>
+<li>It differs from run in that it assigns a higher priority to planning steps,
+  so the workflow is completed as early as possible.</li>
+<li>It insists that the command is a relative path to a local executable.
+  (While it would technically be possible to allow arbitrary commands,
+  this easily leads to mistakes and is otherwise not useful in practice.)</li>
+</ul>
+<p>In StepUp 3, you typically used the <code>plan()</code> function as follows:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># StepUp 3</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">plan</span><span class="p">(</span><span class="s2">&quot;subdir&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>In StepUp 4, you can achieve the same effect with:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># StepUp 4</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">plan</span><span class="p">(</span><span class="s2">&quot;./plan.py&quot;</span><span class="p">,</span> <span class="n">workdir</span><span class="o">=</span><span class="s2">&quot;subdir&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>The advantages of the new <code>plan()</code> function are:</p>
+<ul>
+<li>Increased flexibility: You are not forced to work in a subdirectory.
+  E.g., you can have <code>plan_a.py</code> and <code>plan_b.py</code> in the same directory
+  and call them both from a master <code>plan.py</code>.</li>
+<li>Simplicity of the API: works like a simplified version of <code>run()</code>,
+  so there are fewer concepts to learn.</li>
 </ul>
 <h2 id="resource-constraints-replacement-for-pools-and-blocked-steps">Resource constraints (replacement for pools and blocked steps)<a class="headerlink" href="#resource-constraints-replacement-for-pools-and-blocked-steps" title="Permanent link">&para;</a></h2>
 <ul>
