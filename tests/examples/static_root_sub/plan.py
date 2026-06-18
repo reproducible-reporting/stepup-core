@@ -2,4 +2,4 @@
 from stepup.core.api import plan, static
 
 static("sub/plan.py")
-plan("sub/")
+plan("./plan.py", workdir="sub")

@@ -3,4 +3,4 @@ from stepup.core.api import getenv, plan, static
 
 static("www/plan.py")
 PUBLIC = getenv("PUBLIC", back=True)
-plan("www/")
+plan("./plan.py", workdir="www")

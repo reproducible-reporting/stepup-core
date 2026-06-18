@@ -40,7 +40,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   without having to glob the entire directory recursively.
   To declare a static root directory, just pass it as an argument to the `static()` function.
   It will treat all directory arguments are static roots.
-- Documentation has been updated to reflect the API changes and to clarify some other points.
+- The `runsh()` and `runpy()` functions have been replaced by the more flexible `run()` function.
+  The new implementation is more efficient and automatically tracks local scripts as dependencies.
+- The `plan()` function has been made maximally similar to `run()`,
+  and now accepts arbitrary local Python scripts,
+  not just a directory that must contain a `plan.py` script.
 - The scheduler has been replaced by a completely new implementation, called the "dispatcher".
   It is far more robust and powerful than the previous scheduler, and it is easier to maintain.
   This change also comes with several improved features:
@@ -52,6 +56,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
     - The `optional` feature has become more robust.
 - Several environment variables have been renamed for consistency.
   See [Configuration files](reference/configuration.md) for details.
+- Documentation has been updated to reflect the API changes and to clarify some other points.
 - Updates of internals:
     - Renamed "orphan" and related names to "detached", which is more intuitive.
       The new terminology is applied more consistently with consistent distinction between

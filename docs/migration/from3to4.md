@@ -113,6 +113,43 @@ This has a few practical consequences for your `plan.py` file:
 
 - Directories can no longer be used as inputs or outputs of steps.
 
+## Distributed Plans
+
+The function [`plan()`][stepup.core.api.plan] now works differently,
+and works almost in the same way as the `run()` function,
+except for a few small differences:
+
+- The first argument is now a command string, not a directory containing another `plan.py` file.
+- Except for `optional` and `shell`, all `run()` arguments are supported.
+  (It is hardwired to use `optional=False, shell=False`.)
+- It differs from run in that it assigns a higher priority to planning steps,
+  so the workflow is completed as early as possible.
+- It insists that the command is a relative path to a local executable.
+  (While it would technically be possible to allow arbitrary commands,
+  this easily leads to mistakes and is otherwise not useful in practice.)
+
+In StepUp 3, you typically used the `plan()` function as follows:
+
+```python
+# StepUp 3
+plan("subdir")
+```
+
+In StepUp 4, you can achieve the same effect with:
+
+```python
+# StepUp 4
+plan("./plan.py", workdir="subdir")
+```
+
+The advantages of the new `plan()` function are:
+
+- Increased flexibility: You are not forced to work in a subdirectory.
+  E.g., you can have `plan_a.py` and `plan_b.py` in the same directory
+  and call them both from a master `plan.py`.
+- Simplicity of the API: works like a simplified version of `run()`,
+  so there are fewer concepts to learn.
+
 ## Resource constraints (replacement for pools and blocked steps)
 
 - The `pool()` function has been removed, and pools can no longer be defined in `plan.py`.

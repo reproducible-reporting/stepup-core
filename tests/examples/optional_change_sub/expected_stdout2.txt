@@ -2,7 +2,7 @@
         0/0 |    STARTUP │ Watching directories for 5 files from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ plan.py (digest a5ba04fb ➜ 0999170b, size 162 ➜ 163)
+        0/0 |    UPDATED │ plan.py (digest ceb2e927 ➜ 35ccdaf6, size 182 ➜ 183)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         3/4 |      PHASE │ run

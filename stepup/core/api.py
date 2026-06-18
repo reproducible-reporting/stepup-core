@@ -490,6 +490,66 @@ def graph(prefix: str):
 #
 
 
+def _prepare_run_command(
+    command: str, inp: Collection[str] | str, shell: bool, need_relative_exe: bool
+) -> tuple[str, str, list[str]]:
+    """Prepare command for execution, determine the action, and auto-add local executable as input.
+
+    Parameters
+    ----------
+    command
+        The command to execute, optionally followed by arguments.
+    inp
+        The user-specified input files.
+    shell
+        Whether to execute the command in a shell.
+    need_relative_exe
+        Whether to require the command to be a relative path to a local executable.
+        If True, the command must contain at least one slash and cannot be an absolute path.
+
+    Returns
+    -------
+    action
+        The action to execute: "runsh", "runpy", or "runexec".
+    command
+        The command with `${inp}` substituted by the user-specified inputs,
+        excluding the auto-added executable if applicable.
+    inp
+        The updated list of input files, including the auto-added executable if applicable.
+    """
+    # Determine the action and auto-add local executables as inputs.
+    try:
+        parts = shlex.split(command)
+    except ValueError:
+        parts = command.split()
+    if len(parts) == 0:
+        raise ValueError("The command must not be empty.")
+    if shell:
+        action = "runsh"
+    elif parts[0].endswith(".py"):
+        action = "runpy"
+    else:
+        action = "runexec"
+    # Pre-substitute ${inp} with only the user-specified inputs.
+    # This prevents the auto-added executable from appearing in the ${inp} expansion.
+    # For example, this avoids duplicating the script in commands like `./script.sh ${inp}`.
+    inp = string_to_list(inp)
+    with subs_env_vars() as subs:
+        su_inp = [subs(p) for p in inp]
+    command = CaseSensitiveTemplate(command).safe_substitute(inp=shlex.join(su_inp))
+    # Auto-add the executable to inp when it is a local relative path
+    # (contains "/" but is not absolute).
+    exe = parts[0]
+    if "/" in exe and not exe.startswith("/"):
+        inp = [exe, *inp]
+    elif need_relative_exe:
+        raise ValueError(
+            "The command must be a relative path to a local executable, "
+            f"containing at least one slash, e.g. './plan.py'. Got: {command}"
+        )
+    return action, command, inp
+
+
 def run(
     command: str,
     *,
@@ -534,31 +594,7 @@ def run(
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
     """
-    # Determine the action and auto-add local executables as inputs.
-    try:
-        parts = shlex.split(command)
-    except ValueError:
-        parts = command.split()
-    if len(parts) == 0:
-        raise ValueError("The command must not be empty.")
-    if shell:
-        action = "runsh"
-    elif parts and parts[0].endswith(".py"):
-        action = "runpy"
-    else:
-        action = "runexec"
-    # Pre-substitute ${inp} with only the user-specified inputs.
-    # This prevents the auto-added executable from appearing in the ${inp} expansion.
-    # For example, this avoids duplicating the script in commands like `./script.sh ${inp}`.
-    inp = string_to_list(inp)
-    with subs_env_vars() as subs:
-        su_inp = [subs(p) for p in inp]
-    command = CaseSensitiveTemplate(command).safe_substitute(inp=shlex.join(su_inp))
-    # Auto-add the executable to inp when it is a local relative path
-    # (contains "/" but is not absolute).
-    exe = parts[0]
-    if "/" in exe and not exe.startswith("/"):
-        inp = [exe, *string_to_list(inp)]
+    action, command, inp = _prepare_run_command(command, inp, shell, need_relative_exe=False)
     return step(
         f"{action} {command}",
         inp=inp,
@@ -572,39 +608,54 @@ def run(
 
 
 def plan(
-    subdir: str,
+    command: str,
     *,
     inp: Collection[str] | str = (),
     env: Collection[str] | str = (),
     out: Collection[str] | str = (),
     vol: Collection[str] | str = (),
+    workdir: str = "./",
     resources: dict[str, int] | str | None = None,
 ) -> StepInfo:
-    """Run a `plan.py` script in a subdirectory.
+    """Run a planning script.
+
+    The main difference with [`run()`][stepup.core.api.run] is that the step is flagged
+    as planner internally, which will give it higher priority than non-planner steps.
+    This results in earlier knowledge of the workflow, which improves scheduling efficiency.
+
+    Compared to the `run()` function, this function imposes `optional=False` and `shell=False`.
 
     Parameters
     ----------
-    subdir
-        The subdirectory in which another `plan.py` script can be found.
-        The file must be executable and have `#!/usr/bin/env python3` as its first line.
-        A trailing slash is added when not present.
-    inp, env, out, vol, resources
+    command
+        The command to execute, optionally followed by arguments.
+        The action is selected automatically:
+
+        - If the first word ends in `.py`:
+          the script is executed via a Python wrapper
+          that auto-detects local imports (`runpy` action).
+        - The command is executed directly (`runexec` action).
+          This scenario is highly unlikely but supported just for completeness.
+
+        Bare command names like `echo` or absolute paths like `/usr/bin/gcc` are not allowed.
+        The command must always be a relative path to a local executable script.
+    inp, env, out, vol, workdir, resources
         See [`step()`][stepup.core.api.step] for more information.
-        (Rarely needed for planning steps.)
 
     Returns
     -------
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
     """
+    action, command, inp = _prepare_run_command(command, inp, shell=False, need_relative_exe=True)
     # Note that we do not use `run()` here because we need to set `need=Need.PLAN`.
     return step(
-        "runpy ./plan.py",
-        inp=["plan.py", *string_to_list(inp)],
+        f"{action} {command}",
+        inp=inp,
         env=env,
         out=out,
         vol=vol,
-        workdir=subdir,
+        workdir=workdir,
         need=Need.PLAN,
         resources=resources,
     )

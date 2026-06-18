@@ -35,6 +35,11 @@ You will get the following output:
 {% include 'getting_started/distributed_plans/stdout.txt' %}
 ```
 
+The main advantage over `run()` is that `plan()` will give your additional `plan.py` steps
+higher priority than non-plan steps.
+This results in earlier knowledge of the workflow, which improves scheduling efficiency.
+It also clarifies the intent of the step, which improves the readability of your workflow.
+
 ## Practical Considerations
 
 - The main benefit of having multiple `plan.py` files
