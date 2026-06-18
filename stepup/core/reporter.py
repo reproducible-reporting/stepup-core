@@ -21,6 +21,7 @@
 
 import asyncio
 import contextlib
+import logging
 from collections.abc import AsyncGenerator, Iterable
 from time import perf_counter
 
@@ -36,6 +37,8 @@ from rich.theme import Theme
 
 from .enums import StepState
 from .rpc import AsyncRPCClient, BaseAsyncRPCClient, DummyAsyncRPCClient, allow_rpc
+
+logger = logging.getLogger(__name__)
 
 __all__ = ("ReporterClient", "ReporterHandler")
 
@@ -88,7 +91,10 @@ class ReporterClient:
 
     async def close(self):
         if self.client is not None:
-            await self.client.close()
+            try:
+                await self.client.close()
+            except ConnectionError as exc:
+                logger.warning("Ignoring exception when closing reporter client: %r", exc)
 
     async def __aenter__(self):
         return self

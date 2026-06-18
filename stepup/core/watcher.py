@@ -262,12 +262,15 @@ class AsyncInotifyWrapper:
 
     async def __aexit__(self, exc_type, exc, tb):
         """Close the InotifyWrapper."""
-        self.stop_event.set()
-        await asyncio.gather(self.dir_loop_task, self.change_loop_task)
-        self.dir_loop_task = None
-        self.change_loop_task = None
-        self.inotify.close()
-        self.inotify = None
+        try:
+            self.stop_event.set()
+            await asyncio.gather(self.dir_loop_task, self.change_loop_task)
+        finally:
+            self.dir_loop_task = None
+            self.change_loop_task = None
+            if self.inotify is not None:
+                self.inotify.close()
+            self.inotify = None
 
     def _signal_stop_on_error(self, task: asyncio.Task):
         """Wake the parent loop when a background task fails."""

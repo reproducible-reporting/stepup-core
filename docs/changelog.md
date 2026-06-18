@@ -15,6 +15,9 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - In addition to environment variables and command-line arguments,
   StepUp can now also be configured through configuration files.
   See [Configuration files](reference/configuration.md) for details.
+- StepUp can now launch workers with a forkserver, which reduces memory overhead
+  and improves performance.
+  This is enabled by default on Linux.
 
 ### Changed
 

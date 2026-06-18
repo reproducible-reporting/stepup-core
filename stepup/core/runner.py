@@ -20,10 +20,8 @@
 """The `Runner` delegates the execution of jobs to the workers."""
 
 import asyncio
-import contextlib
 import logging
 from functools import partial
-from io import TextIOBase
 
 import attrs
 from path import Path
@@ -31,6 +29,7 @@ from path import Path
 from .asyncio import wait_for_events
 from .dispatcher import Dispatcher
 from .enums import FileState, Need, ReturnCode, StepState
+from .exceptions import RPCError
 from .hash import FileHash
 from .job import Job
 from .reporter import ReporterClient
@@ -101,6 +100,9 @@ class Runner:
     do_remove_outdated: bool = attrs.field(kw_only=True, default=True)
     """Flag to enable removal of outdated outputs."""
 
+    mp_ctx: object = attrs.field(kw_only=True, default=None)
+    """Multiprocessing forkserver context, or None to use subprocesses."""
+
     async def loop(self, stop_event: asyncio.Event):
         """The main runner loop.
 
@@ -114,30 +116,25 @@ class Runner:
         One iteration in the main runner loop consists of running a bunch of jobs:
         All runnable jobs are executed unless the user interrupts the runner (drain command).
         """
-        with contextlib.ExitStack() as stack:
-            # Start workers in parallel.
-            await asyncio.gather(
-                *[
-                    self._launch_worker(
-                        idx,
-                        stack.enter_context(open(f".stepup/worker{idx}.log", "w")),
-                        stop_event,
-                    )
-                    for idx in range(self.nworker)
-                ]
-            )
-            self.idle_workers = set(range(self.nworker))
-            # Loop through run phases.
-            while True:
-                await wait_for_events(self.resume, stop_event, return_when=asyncio.FIRST_COMPLETED)
-                if stop_event.is_set():
-                    return
-                await self.job_loop()
-                await self.finalize()
-                self.resume.clear()
-                # If there is no watcher, the runner stops after one iteration.
-                if self.watcher is None:
-                    stop_event.set()
+        # Start workers in parallel.
+        await asyncio.gather(
+            *[
+                self._launch_worker(idx, f".stepup/worker{idx}.log", stop_event)
+                for idx in range(self.nworker)
+            ]
+        )
+        self.idle_workers = set(range(self.nworker))
+        # Loop through run phases.
+        while True:
+            await wait_for_events(self.resume, stop_event, return_when=asyncio.FIRST_COMPLETED)
+            if stop_event.is_set():
+                return
+            await self.job_loop()
+            await self.finalize()
+            self.resume.clear()
+            # If there is no watcher, the runner stops after one iteration.
+            if self.watcher is None:
+                stop_event.set()
 
     async def job_loop(self):
         """Run all runnable jobs until there are non left or the dispatcher is on hold."""
@@ -210,7 +207,7 @@ class Runner:
         self.running_worker_tasks[task] = job
         task.add_done_callback(partial(self._task_done, worker_idx=worker_idx))
 
-    async def _launch_worker(self, idx: int, log: TextIOBase, stop_event: asyncio.Event):
+    async def _launch_worker(self, idx: int, log_path: str, stop_event: asyncio.Event):
         worker = WorkerClient(
             self.dispatcher,
             self.workflow,
@@ -220,9 +217,10 @@ class Runner:
             self.show_perf,
             self.explain_rerun,
             idx,
+            mp_ctx=self.mp_ctx,
         )
         self.workers.append(worker)
-        await worker.boot(log, stop_event)
+        await worker.boot(log_path, stop_event)
         await self.reporter("DIRECTOR", f"Launched worker {worker.idx}")
 
     def _task_done(self, task: asyncio.Task, worker_idx: int):
@@ -249,18 +247,27 @@ class Runner:
             self.need_job.set()
 
     async def stop_workers(self):
-        waits = []
+        async def stop_worker(w):
+            try:
+                await w.shutdown()
+            except (ConnectionError, RPCError) as exc:
+                # Ignore connection/RPC errors when requesting worker shutdown
+                logger.warning(
+                    "Ignoring exception when requesting worker shutdown on worker %r: %r",
+                    w.idx,
+                    exc,
+                )
+            finally:
+                await w.close()
+
+        tasks = []
         while len(self.idle_workers) > 0:
             worker_idx = self.idle_workers.pop()
-            worker = self.workers[worker_idx]
-            await worker.shutdown()
-            waits.append(worker.close())
+            tasks.append(stop_worker(self.workers[worker_idx]))
         while len(self.active_workers) > 0:
             worker_idx = self.active_workers.pop()
-            worker = self.workers[worker_idx]
-            await worker.shutdown()
-            waits.append(worker.close())
-        await asyncio.gather(*waits)
+            tasks.append(stop_worker(self.workers[worker_idx]))
+        await asyncio.gather(*tasks)
 
     async def interrupt_workers(self, signal: int):
         await asyncio.gather(

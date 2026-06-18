@@ -22,6 +22,7 @@
 import argparse
 import asyncio
 import logging
+import multiprocessing
 import os
 import signal
 import sys
@@ -62,11 +63,15 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    asyncio.run(async_main())
-
-
-async def async_main():
     args = parse_args()
+    mp_ctx = None
+    if args.fork_workers:
+        mp_ctx = multiprocessing.get_context("forkserver")
+        mp_ctx.set_forkserver_preload(["stepup.core.worker"])
+    asyncio.run(async_main(args, mp_ctx))
+
+
+async def async_main(args: argparse.Namespace, mp_ctx=None):
     logging.basicConfig(
         format="%(asctime)s  %(levelname)8s  %(name)24s  ::  %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
@@ -101,6 +106,7 @@ async def async_main():
                 args.watch,
                 args.watch_first,
                 args.resources,
+                mp_ctx=mp_ctx,
             )
         except Exception as exc:
             tbstr = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
@@ -159,6 +165,12 @@ def parse_args() -> argparse.Namespace:
         help="Number of workers running in parallel. "
         "When given as a real number with digits after the comma, "
         "it is multiplied with the number of available cores. [default=%(default)s]",
+    )
+    parser.add_argument(
+        "--fork-workers",
+        default=True,
+        action=argparse.BooleanOptionalAction,
+        help="Use forkserver for worker startup to reduce memory overhead. [default=%(default)s]",
     )
     parser.add_argument(
         "--reporter",
@@ -229,6 +241,7 @@ async def serve(
     do_watch: bool,
     do_watch_first: bool,
     available_resources: str | None,
+    mp_ctx=None,
 ) -> ReturnCode:
     """Server program.
 
@@ -258,6 +271,8 @@ async def serve(
     available_resources
         A dictionary of named resources and their available quantities,
         e.g. `{"cpu": 4, "gpu": 1}`. Defaults to an empty dict.
+    mp_ctx
+        A `multiprocessing` forkserver context for worker startup, or `None` to use subprocesses.
 
     Returns
     -------
@@ -295,6 +310,7 @@ async def serve(
         show_perf=show_perf,
         explain_rerun=explain_rerun,
         do_remove_outdated=do_clean,
+        mp_ctx=mp_ctx,
     )
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(

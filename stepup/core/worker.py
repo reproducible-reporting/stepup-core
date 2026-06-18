@@ -27,6 +27,8 @@ import inspect
 import io
 import json
 import logging
+import multiprocessing
+import multiprocessing.process
 import os
 import queue
 import resource
@@ -95,7 +97,12 @@ class WorkerClient:
     idx: int = attrs.field(converter=int)
     """The integer index of the worker (in the list of workers kept by the Runner instance)."""
 
-    process: asyncio.subprocess.Process | None = attrs.field(init=False, default=None)
+    mp_ctx: multiprocessing.context.BaseContext | None = attrs.field(kw_only=True, default=None)
+    """Multiprocessing forkserver context, or None to use subprocess."""
+
+    process: asyncio.subprocess.Process | multiprocessing.process.BaseProcess | None = attrs.field(
+        init=False, default=None
+    )
     """The worker process that is running the steps."""
 
     client: AsyncRPCClient | None = attrs.field(init=False, default=None)
@@ -105,38 +112,72 @@ class WorkerClient:
     # Setup and teardown
     #
 
-    async def boot(self, log: io.TextIOBase, stop_event: asyncio.Event):
+    async def boot(self, log_path: str, stop_event: asyncio.Event):
         worker_socket_path = self.director_socket_path.parent / f"worker{self.idx}"
-        argv = [
-            sys.executable,
-            "-m",
-            "stepup.core.worker",
-            self.director_socket_path,
-            worker_socket_path,
-            str(self.idx),
-            f"--log-level={logging.getLevelName(logging.root.level)}",
-        ]
-        if self.show_perf:
-            argv.append("--show-perf")
-        if self.explain_rerun:
-            argv.append("--explain-rerun")
-        if self.reporter.socket_path is not None:
-            argv.append(f"--reporter={self.reporter.socket_path}")
-        # Create the worker process
-        self.process = await asyncio.create_subprocess_exec(
-            *argv,
-            stdin=asyncio.subprocess.DEVNULL,
-            stdout=log,
-            stderr=asyncio.subprocess.STDOUT,
+        log_level = logging.getLevelName(logging.root.level)
+        reporter_socket = (
+            str(self.reporter.socket_path) if self.reporter.socket_path is not None else None
         )
+        if self.mp_ctx is not None:
+            self.process = self.mp_ctx.Process(
+                target=_fork_worker_entry,
+                args=(
+                    str(self.director_socket_path),
+                    str(worker_socket_path),
+                    self.idx,
+                    log_level,
+                    log_path,
+                    self.show_perf,
+                    self.explain_rerun,
+                    reporter_socket,
+                ),
+            )
+            self.process.start()
+        else:
+            argv = [
+                sys.executable,
+                "-m",
+                "stepup.core.worker",
+                self.director_socket_path,
+                worker_socket_path,
+                str(self.idx),
+                f"--log-level={log_level}",
+            ]
+            if self.show_perf:
+                argv.append("--show-perf")
+            if self.explain_rerun:
+                argv.append("--explain-rerun")
+            if reporter_socket is not None:
+                argv.append(f"--reporter={reporter_socket}")
+            with open(log_path, "w") as log_fh:
+                self.process = await asyncio.create_subprocess_exec(
+                    *argv,
+                    stdin=asyncio.subprocess.DEVNULL,
+                    stdout=log_fh,
+                    stderr=asyncio.subprocess.STDOUT,
+                )
         # Wait for the socket to appear and connect to it
         await wait_for_path(worker_socket_path, stop_event)
         self.client = await AsyncRPCClient.socket(worker_socket_path)
 
     async def close(self):
-        await self.client.close()
-        await self.process.wait()
-        self.process = None
+        try:
+            if self.client is not None:
+                await self.client.close()
+        except ConnectionError as exc:
+            logger.warning(
+                "Ignoring exception when closing connection to worker %r: %r", self.idx, exc
+            )
+        finally:
+            self.client = None
+            if self.process is not None:
+                if isinstance(self.process, asyncio.subprocess.Process):
+                    await self.process.wait()
+                else:
+                    await asyncio.to_thread(self.process.join)
+                    with contextlib.suppress(ValueError):
+                        self.process.close()
+                self.process = None
 
     #
     # Functions called by jobs
@@ -758,13 +799,17 @@ class WorkerHandler:
             if len(pids) > 0:
                 # Kill the process IDs first
                 for pid in pids:
-                    with contextlib.suppress(ProcessLookupError):
-                        print(f"Interrupting process {pid} with singal {sig}", file=sys.stderr)
+                    try:
+                        logger.info(f"Interrupting process {pid} with signal {sig}")
                         os.kill(pid, sig)
+                    except ProcessLookupError as exc:
+                        logger.warning(
+                            "Ignoring exception when interrupting process %d: %r", pid, exc
+                        )
             else:
                 # Thread running, raise KeyboardInterrupt in the thread.
                 # See https://stackoverflow.com/a/325528
-                print("No worker subprocesses, interrupting thread", file=sys.stderr)
+                logger.info("No worker subprocesses, interrupting thread")
                 res = ctypes.pythonapi.PyThreadState_SetAsyncExc(
                     ctypes.c_ulong(self.step.thread.ident), ctypes.py_object(KeyboardInterrupt)
                 )
@@ -1168,29 +1213,95 @@ def parse_args():
         action=argparse.BooleanOptionalAction,
         help="Explain for every step why it cannot be skipped.",
     )
+    parser.add_argument(
+        "--log-path",
+        default=None,
+        help="Redirect stdout and stderr to this log file before starting asyncio.",
+    )
     return parser.parse_args()
 
 
-async def async_main():
-    args = parse_args()
-    logging.basicConfig(
-        format="%(asctime)s  %(levelname)8s  %(name)24s  ::  %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        level=args.log_level,
-    )
-    os.environ["STEPUP_DIRECTOR_SOCKET"] = args.director_socket
-    os.environ["STEPUP_ROOT"] = str(Path.cwd())
-    print(f"PID {os.getpid()}", file=sys.stderr)
-    print(f"LOG_LEVEL {args.log_level}", file=sys.stderr)
-    async with ReporterClient.socket(args.reporter_socket) as reporter:
-        # Create the worker handler for the RPC server.
-        handler = WorkerHandler(reporter, args.show_perf, args.explain_rerun)
-        await serve_socket_rpc(handler, args.worker_socket, handler.stop_event)
+async def _worker_serve(
+    director_socket: Path,
+    worker_socket: Path,
+    show_perf: bool,
+    explain_rerun: bool,
+    reporter_socket: Path | None,
+) -> None:
+    """Run the worker RPC server until the stop event is set."""
+    async with ReporterClient.socket(reporter_socket) as reporter:
+        handler = WorkerHandler(reporter, show_perf, explain_rerun)
+        await serve_socket_rpc(handler, worker_socket, handler.stop_event)
         handler.timer.report()
 
 
+def _worker_main(
+    director_socket: str,
+    worker_socket: str,
+    log_level: str,
+    show_perf: bool,
+    explain_rerun: bool,
+    reporter_socket: str | None,
+    log_path: str | None = None,
+) -> None:
+    """Common startup for both subprocess and forkserver paths."""
+    if log_path is not None:
+        with open(log_path, "w") as fh:
+            os.dup2(fh.fileno(), 1)
+            os.dup2(fh.fileno(), 2)
+    logging.basicConfig(
+        format="%(asctime)s  %(levelname)8s  %(name)24s  ::  %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        level=log_level,
+    )
+    os.environ["STEPUP_DIRECTOR_SOCKET"] = director_socket
+    os.environ["STEPUP_ROOT"] = str(Path.cwd())
+    print(f"PID {os.getpid()}", flush=True)
+    print(f"LOG_LEVEL {log_level}", flush=True)
+    asyncio.run(
+        _worker_serve(
+            Path(director_socket),
+            Path(worker_socket),
+            show_perf,
+            explain_rerun,
+            Path(reporter_socket) if reporter_socket is not None else None,
+        )
+    )
+
+
+def _fork_worker_entry(
+    director_socket: str,
+    worker_socket: str,
+    idx: int,
+    log_level: str,
+    log_path: str,
+    show_perf: bool,
+    explain_rerun: bool,
+    reporter_socket: str | None,
+) -> None:
+    """Entry point for forkserver-launched worker processes."""
+    _worker_main(
+        director_socket,
+        worker_socket,
+        log_level,
+        show_perf,
+        explain_rerun,
+        reporter_socket,
+        log_path,
+    )
+
+
 def main():
-    asyncio.run(async_main())
+    args = parse_args()
+    _worker_main(
+        str(args.director_socket),
+        str(args.worker_socket),
+        args.log_level,
+        args.show_perf,
+        args.explain_rerun,
+        str(args.reporter_socket) if args.reporter_socket is not None else None,
+        args.log_path,
+    )
 
 
 if __name__ == "__main__":

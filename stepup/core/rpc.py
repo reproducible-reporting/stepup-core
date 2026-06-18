@@ -24,6 +24,7 @@ This module also includes a synchronous RPC client to support simple client APIs
 
 import asyncio
 import inspect
+import logging
 import os
 import pickle
 import socket
@@ -38,6 +39,8 @@ import attrs
 
 from .asyncio import stdio, stoppable_iterator
 from .exceptions import RPCError
+
+logger = logging.getLogger(__name__)
 
 __all__ = (
     "AsyncRPCClient",
@@ -241,10 +244,15 @@ async def _handle_connection(
     writer: asyncio.StreamWriter,
 ):
     """Handle a single connection to the RPC server."""
-    await serve_rpc(handler, reader, writer)
-    await writer.drain()
-    writer.close()
-    await writer.wait_closed()
+    try:
+        await serve_rpc(handler, reader, writer)
+    finally:
+        try:
+            await writer.drain()
+        except ConnectionError:
+            logger.warning("Connection error while draining writer in _handle_connection")
+        writer.close()
+        await writer.wait_closed()
 
 
 async def serve_socket_rpc(handler, path: str, stop_event: asyncio.Event):
@@ -420,10 +428,14 @@ class AsyncRPCClient(BaseAsyncRPCClient):
         """
         self.counter += 1
         call_id = self.counter
-        await _send_rpc_message(self.writer, call_id, None)
-        self._recv_stop.set()
-        await self._recv_task
-        await asyncio.gather(*self._wait_on_close)
+        try:
+            await _send_rpc_message(self.writer, call_id, None)
+        except ConnectionError as exc:
+            logger.warning("Ignoring exception when closing RPC client: %r", exc)
+        finally:
+            self._recv_stop.set()
+            await self._recv_task
+            await asyncio.gather(*self._wait_on_close)
 
     async def __aenter__(self):
         return self
