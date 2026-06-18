@@ -49,6 +49,22 @@ This has a few practical consequences for your `plan.py` file:
   Instead, use the `resources` argument with a resource that is not available on the host,
   which will have the same effect, e.g. `resources="blocked"`.
 
+## Changed Environment Variable Names
+
+The following environment variables have been renamed to have a `STEPUP_BOOT_` prefix instead of `STEPUP_`:
+
+| Old (StepUp 3) | New (StepUp 4) |
+| --- | --- |
+| `STEPUP_CLEAN` | `STEPUP_BOOT_CLEAN` |
+| `STEPUP_EXPLAIN_RERUN` | `STEPUP_BOOT_EXPLAIN_RERUN` |
+| `STEPUP_NUM_WORKERS` | `STEPUP_BOOT_NUM_WORKERS` |
+| `STEPUP_PERF` | `STEPUP_BOOT_PERF` |
+| `STEPUP_PROGRESS` | `STEPUP_BOOT_PROGRESS` |
+| `STEPUP_SHOW_PERF` | `STEPUP_BOOT_SHOW_PERF` |
+| `STEPUP_WATCH` | `STEPUP_BOOT_WATCH` |
+| `STEPUP_WATCH_FIRST` | `STEPUP_BOOT_WATCH_FIRST` |
+| `STEPUP_YAPPI` | `STEPUP_BOOT_YAPPI` |
+
 ## Abandoned Features
 
 The following were practically unused and have been removed:

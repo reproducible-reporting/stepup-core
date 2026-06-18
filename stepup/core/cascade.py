@@ -577,6 +577,7 @@ class Cascade:
         # - Removed the "dirty" field from the step table.
         #   (The rescheduled_info is used instaed.)
         # - The QUEUED step state has been removed.
+        # - Switch from Blake2B to SHA-256 hashes
 
         return 5
 
