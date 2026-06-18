@@ -62,7 +62,7 @@ async def startup_from_db(
             step.mark_pending()
 
     # Populate dir queue
-    populate_dir_queue(workflow, dblock, reporter)
+    await populate_dir_queue(workflow, dblock, reporter)
 
     # Check for changes in environment variables used by steps.
     async with dblock:

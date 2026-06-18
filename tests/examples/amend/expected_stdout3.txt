@@ -1,4 +1,5 @@
         0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching directories for 5 files from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ inp2.txt (digest e44a31c3 ➜ 7f6f8bd5, size 6 ➜ 16)

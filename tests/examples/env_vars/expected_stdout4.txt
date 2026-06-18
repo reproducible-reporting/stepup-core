@@ -1,4 +1,5 @@
         0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching directories for 5 files from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    UPDATED │ ENV_VAR_TEST_STEPUP_AWDFTD ='AAAA' ➜ ='DDDD'
         0/0 |    UPDATED │ ENV_VAR_TEST_STEPUP_DFTHYH ='BBBB' ➜ ='CCCC'

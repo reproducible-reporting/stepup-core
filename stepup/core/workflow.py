@@ -444,8 +444,9 @@ class Workflow(Cascade):
             self.put_dir_queue(Path(path).parent)
         return file
 
-    def put_dir_queue(self, path: Path):
+    def put_dir_queue(self, path: Path | str):
         """Put a directory in the dir_queue, with some consistency checks."""
+        path = Path(path)
         if path == "":
             path = Path(".")
         if self.makedirs:

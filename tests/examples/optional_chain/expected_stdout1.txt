@@ -1,4 +1,5 @@
         0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching directories for 6 files from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest e9541370 ➜ 20c6f7d6, size 420 ➜ 357)

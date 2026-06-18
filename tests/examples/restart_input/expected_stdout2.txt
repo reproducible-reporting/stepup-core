@@ -1,4 +1,5 @@
         0/0 |    STARTUP │ Making failed steps pending
+        0/0 |    STARTUP │ Watching directories for 3 files from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ input.txt (digest b640e840 ➜ 480c2336, size 6 ➜ 7)

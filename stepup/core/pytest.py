@@ -140,6 +140,15 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
 
     assert stepup_proc.returncode == 0
 
+    director_log = workdir / ".stepup/director.log"
+    if director_log.is_file():
+        with open(director_log) as fh:
+            log_text = fh.read()
+        unawaited = re.findall(r"RuntimeWarning: coroutine '(\w+)' was never awaited", log_text)
+        assert not unawaited, "Unawaited coroutines detected in director.log: " + ", ".join(
+            unawaited
+        )
+
 
 async def run_plan(srcdir: Path, tmpdir: Path):
     """Copy a plan.py script to a temporary directory and run it as an ordinary Python script.
