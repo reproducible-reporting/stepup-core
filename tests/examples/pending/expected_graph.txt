@@ -13,9 +13,9 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
-             creates   step:runsh cp -v first.txt second.txt
+             creates   step:runexec cp -v first.txt second.txt
 
-step:runsh cp -v first.txt second.txt
+step:runexec cp -v first.txt second.txt
                state = PENDING
                 need = DEFAULT
           created by   step:runpy ./plan.py
@@ -27,14 +27,14 @@ step:runsh cp -v first.txt second.txt
 
 (file:first.txt)
                state = AWAITED
-            supplies   step:runsh cp -v first.txt second.txt
+            supplies   step:runexec cp -v first.txt second.txt
 
 file:second.txt
                state = AWAITED
-          created by   step:runsh cp -v first.txt second.txt
-            consumes   step:runsh cp -v first.txt second.txt
+          created by   step:runexec cp -v first.txt second.txt
+            consumes   step:runexec cp -v first.txt second.txt
 
 file:third.txt
                state = VOLATILE
-          created by   step:runsh cp -v first.txt second.txt
-            consumes   step:runsh cp -v first.txt second.txt
+          created by   step:runexec cp -v first.txt second.txt
+            consumes   step:runexec cp -v first.txt second.txt

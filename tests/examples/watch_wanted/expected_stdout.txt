@@ -9,13 +9,13 @@
              AWAITED  input2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                runsh cp input1.txt output1.txt
+Action                runexec cp input1.txt output1.txt
 Working directory     ./
 Inputs       AWAITED  (input1.txt)
 Outputs      AWAITED  output1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                runsh cp input2.txt output2.txt
+Action                runexec cp input2.txt output2.txt
 Working directory     ./
 Inputs       AWAITED  (input2.txt)
 Outputs      AWAITED  output2.txt
@@ -39,13 +39,13 @@ Declares      STATIC  static.txt
 Inputs       MISSING  plan.py
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                creator is not RUNNING or SUCCEEDED
-Action                runsh cp input1.txt output1.txt
+Action                runexec cp input1.txt output1.txt
 Working directory     ./
 Inputs       AWAITED  (input1.txt)
 Outputs      AWAITED  output1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                creator is not RUNNING or SUCCEEDED
-Action                runsh cp input2.txt output2.txt
+Action                runexec cp input2.txt output2.txt
 Working directory     ./
 Inputs       AWAITED  (input2.txt)
 Outputs      AWAITED  output2.txt

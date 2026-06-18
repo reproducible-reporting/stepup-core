@@ -9,12 +9,12 @@
              AWAITED  src2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                runsh cat src1.txt
+Action                runexec cat src1.txt
 Working directory     ./
 Inputs       AWAITED  (src1.txt)
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                runsh cat src2.txt
+Action                runexec cat src2.txt
 Working directory     ./
 Inputs       AWAITED  (src2.txt)
 ────────────────────────────────────────────────────────────────────────────────

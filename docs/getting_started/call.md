@@ -25,13 +25,13 @@ call("executable", parameter="value")
 is roughly equivalent to
 
 ```python
-runsh("./executable '{\"parameter\": \"value\"}'", inp="executable")
+run("./executable '{\"parameter\": \"value\"}'")
 ```
 
 (It also works without any parameters.)
 The script `executable` is expected to decode the JSON given on the command-line,
 and then use these parameters.
-Note that if the script has the `.py` extension, `runpy()` is used instead of `runsh()`.
+If the script has the `.py` extension, the Python-aware mode is used automatically.
 
 The [`call()`][stepup.core.api.call] function supports many optional arguments
 that control with which options the executable is called.

@@ -1,1 +1,1 @@
-step(-1, 'runsh echo Hello World', [], [], [], [], Path('./'), 32, {})
+step(-1, 'runexec echo Hello World', [], [], [], [], Path('./'), 32, {})

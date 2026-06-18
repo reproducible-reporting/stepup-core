@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-from stepup.core.api import glob, runsh, static
+from stepup.core.api import glob, run, static
 
 if glob("dataset/bigfile.txt"):
     static("expensive.py")
-    runsh(
+    run(
         "./expensive.py",
         inp=["dataset/bigfile.txt", "expensive.py"],
         out="average.txt",
@@ -11,4 +11,4 @@ if glob("dataset/bigfile.txt"):
 else:
     static("average.txt")
 
-runsh("cat average.txt", inp="average.txt")
+run("cat average.txt", inp="average.txt")

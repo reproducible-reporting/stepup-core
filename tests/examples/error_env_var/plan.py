@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh
+from stepup.core.api import run
 
-runsh("echo > foo", out=["${ENV_VAR_TEST_STEPUP_NON_EXISTING}.txt"])
+run("echo > foo", shell=True, out=["${ENV_VAR_TEST_STEPUP_NON_EXISTING}.txt"])

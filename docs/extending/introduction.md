@@ -12,8 +12,8 @@ There are three types of components you can implement in an extension package:
 
     > These are typically making use of the [Basic (and Composite) API functions](../reference/stepup.core.api.md)
     > in the `stepup.core.api` module.
-    > An example of this is the [`runsh()`][stepup.core.api.runsh] function,
-    > which is used to execute a shell command.
+    > An example of this is the [`run()`][stepup.core.api.run] function,
+    > which is used to execute commands.
 
 2. **An action**, which implements the execution of a step.
 

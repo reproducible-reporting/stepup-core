@@ -14,7 +14,7 @@
 <text xml:space="preserve" text-anchor="middle" x="78.67" y="-57.26" font-family="IBM Plex Sans" font-size="14.00">plan.py</text>
 </g>
 <!-- 3 -->
-<g id="node3" class="node">
+<g id="node4" class="node">
 <title>3</title>
 <ellipse fill="#80b1d3" stroke="black" stroke-width="0" cx="78.67" cy="-177.07" rx="78.67" ry="19.45"/>
 <text xml:space="preserve" text-anchor="middle" x="78.67" y="-173.52" font-family="IBM Plex Sans" font-size="14.00">runpy ./plan.py</text>
@@ -32,10 +32,10 @@
 <text xml:space="preserve" text-anchor="middle" x="230.67" y="-173.52" font-family="IBM Plex Sans" font-size="14.00">story.txt</text>
 </g>
 <!-- 6 -->
-<g id="node5" class="node">
+<g id="node3" class="node">
 <title>6</title>
-<ellipse fill="#80b1d3" stroke="black" stroke-width="0" cx="230.67" cy="-265.75" rx="90.33" ry="33.23"/>
-<text xml:space="preserve" text-anchor="middle" x="230.67" y="-271.95" font-family="IBM Plex Sans" font-size="14.00">runsh grep Coffee</text>
+<ellipse fill="#80b1d3" stroke="black" stroke-width="0" cx="230.67" cy="-265.75" rx="99.88" ry="33.23"/>
+<text xml:space="preserve" text-anchor="middle" x="230.67" y="-271.95" font-family="IBM Plex Sans" font-size="14.00">runexec grep Coffee</text>
 <text xml:space="preserve" text-anchor="middle" x="230.67" y="-252.45" font-family="IBM Plex Sans" font-size="14.00">story.txt</text>
 </g>
 <!-- 5&#45;&gt;6 -->
@@ -45,7 +45,7 @@
 <polygon fill="dimgray" stroke="dimgray" points="227.17,-221.13 230.67,-231.13 234.17,-221.13 227.17,-221.13"/>
 </g>
 <!-- 4 -->
-<g id="node4" class="node">
+<g id="node5" class="node">
 <title>4</title>
 <ellipse fill="#80b1d3" stroke="black" stroke-width="0" cx="230.67" cy="-60.81" rx="103.06" ry="60.81"/>
 <text xml:space="preserve" text-anchor="middle" x="230.67" y="-86.51" font-family="IBM Plex Sans" font-size="14.00">runsh echo Monday</text>

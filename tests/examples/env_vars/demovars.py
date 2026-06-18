@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import json
 
-from stepup.core.api import runsh
+from stepup.core.api import run
 
 with open("variables.json") as fh:
     env_vars = json.load(fh)
-info = runsh(
+info = run(
     "./printvars.py",
     inp=["printvars.py"],
     out=["current_variables.txt"],

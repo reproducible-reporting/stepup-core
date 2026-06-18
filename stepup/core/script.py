@@ -217,7 +217,7 @@ class ScriptWrapper:
         )
 
     def filter_info(self, info: dict) -> dict:
-        """Return a reduce info dictionary with only the arguments used by the `run` function."""
+        """Return a reduced info dictionary with only the arguments used by the `run` function."""
         run_signature = inspect.signature(self._object.run)
         return {key: value for key, value in info.items() if key in run_signature.parameters}
 
@@ -316,18 +316,15 @@ def parse_args(script_path: str) -> argparse.Namespace:
 def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapper):
     """Create the step to plan the run part of the script."""
     # Local import to delay activation synchronous connection to StepUp directory until needed.
-    from stepup.core.api import runpy, runsh, static  # noqa: PLC0415
-
-    runfunc = runpy if script_path.endswith(".py") else runsh
+    from stepup.core.api import run, static  # noqa: PLC0415
 
     # Plan the script.
     step_info = None
     if wrapper.has_single:
         static_paths, inp_paths, out_paths = wrapper.get_plan()
-        inp_paths.append(script_path)
         static(*static_paths)
         command = format_command(script_path) + " run"
-        step_info = runfunc(command, inp=inp_paths, out=out_paths, optional=args.optional)
+        step_info = run(command, inp=inp_paths, out=out_paths, optional=args.optional)
     if wrapper.has_cases:
         # First collect all cases
         cases = list(wrapper.generate_cases())
@@ -338,11 +335,10 @@ def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrap
             if argstr.startswith("-"):
                 argstr = f"-- {argstr}"
             static_paths, inp_paths, out_paths = wrapper.get_case_plan(*case_args, **case_kwargs)
-            inp_paths.append(script_path)
             static(*static_paths)
             command = format_command(script_path) + " run " + argstr
             step_info.append(
-                runfunc(
+                run(
                     command,
                     inp=inp_paths,
                     out=out_paths,

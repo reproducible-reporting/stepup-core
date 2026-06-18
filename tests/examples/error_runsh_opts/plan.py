@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh
+from stepup.core.api import run
 
-runsh("ls --this-option-does-not-exist")
+run("ls --this-option-does-not-exist")

@@ -3,8 +3,8 @@
         0/1 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
         1/2 |    SUCCESS │ runpy ./plan.py
-        1/2 |      START │ runsh cp input.txt output.txt
-        2/2 |    SUCCESS │ runsh cp input.txt output.txt
+        1/2 |      START │ runexec cp input.txt output.txt
+        2/2 |    SUCCESS │ runexec cp input.txt output.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |    DELETED │ input.txt
@@ -14,7 +14,7 @@
              MISSING  input.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                runsh cp input.txt output.txt
+Action                runexec cp input.txt output.txt
 Working directory     ./
 Inputs       MISSING  input.txt
 Outputs     OUTDATED  output.txt
@@ -24,8 +24,8 @@ Outputs     OUTDATED  output.txt
         1/2 |      PHASE │ watch
         1/2 |    UPDATED │ input.txt
         1/2 |      PHASE │ run
-        1/2 |      START │ runsh cp input.txt output.txt
-        2/2 |    SUCCESS │ runsh cp input.txt output.txt
+        1/2 |      START │ runexec cp input.txt output.txt
+        2/2 |    SUCCESS │ runexec cp input.txt output.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |   DIRECTOR │ Stopping workers

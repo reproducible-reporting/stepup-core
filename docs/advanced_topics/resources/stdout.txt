@@ -1,4 +1,5 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post14)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post19)
+  DIRECTOR │ Setting available resources: cpu:2,gpu:1
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
   DIRECTOR │ Launched worker 1
@@ -7,8 +8,8 @@
      PHASE │ run
      START │ runpy ./plan.py
    SUCCESS │ runpy ./plan.py
-     START │ runsh sleep 0.1; echo A
      START │ runsh sleep 0.1; echo B
+     START │ runsh sleep 0.1; echo A
    SUCCESS │ runsh sleep 0.1; echo A
 ─────────────────────────────── Standard output ────────────────────────────────
 A

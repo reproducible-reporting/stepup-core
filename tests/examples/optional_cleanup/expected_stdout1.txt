@@ -5,8 +5,8 @@
         1/4 |    SUCCESS │ runpy ./plan.py
         1/4 |      START │ runsh echo test2 > test2.txt
         2/4 |    SUCCESS │ runsh echo test2 > test2.txt
-        2/4 |      START │ runsh cat test2.txt
-        3/4 |    SUCCESS │ runsh cat test2.txt
+        2/4 |      START │ runexec cat test2.txt
+        3/4 |    SUCCESS │ runexec cat test2.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 test2
 ────────────────────────────────────────────────────────────────────────────────

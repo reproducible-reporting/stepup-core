@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh, static
+from stepup.core.api import run, static
 
-runsh("cp copy.txt another.txt", inp=["copy.txt"], out=["another.txt"])
-runsh("cp original.txt copy.txt", inp=["original.txt"], out=["./copy.txt"])
+run("cp copy.txt another.txt", inp=["copy.txt"], out=["another.txt"])
+run("cp original.txt copy.txt", inp=["original.txt"], out=["./copy.txt"])
 static("./original.txt")

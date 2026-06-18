@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from path import Path
 
-from stepup.core.api import copy, glob, runsh
+from stepup.core.api import copy, glob, run
 
 # Conversion of source files into markdown files
 chapters = {}
@@ -16,8 +16,8 @@ paths_ch = []
 for dir_ch, paths_sec in chapters.items():
     # Mimic concatenation of sections with cat
     path_ch = dir_ch / "compiled.md"
-    runsh("cat ${inp} > ${out}", inp=paths_sec, out=[path_ch])
+    run("cat ${inp} > ${out}", shell=True, inp=paths_sec, out=[path_ch])
     paths_ch.append(path_ch)
 
 # Mimic concatenation of chapters with cat
-runsh("cat ${inp} > ${out}", inp=paths_ch, out=["book.md"])
+run("cat ${inp} > ${out}", shell=True, inp=paths_ch, out=["book.md"])

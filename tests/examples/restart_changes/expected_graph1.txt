@@ -16,15 +16,15 @@ step:runpy ./plan.py
             consumes   file:plan.py
              creates   file:source1.txt
              creates   file:source_both.txt
-             creates   step:runsh cp source1.txt copy1.txt
-             creates   step:runsh cp source_both.txt copy_both1.txt
+             creates   step:runexec cp source1.txt copy1.txt
+             creates   step:runexec cp source_both.txt copy_both1.txt
 
 file:source_both.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            supplies   step:runsh cp source_both.txt copy_both1.txt
+            supplies   step:runexec cp source_both.txt copy_both1.txt
 
-step:runsh cp source_both.txt copy_both1.txt
+step:runexec cp source_both.txt copy_both1.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
@@ -35,10 +35,10 @@ step:runsh cp source_both.txt copy_both1.txt
 
 file:copy_both1.txt
                state = BUILT
-          created by   step:runsh cp source_both.txt copy_both1.txt
-            consumes   step:runsh cp source_both.txt copy_both1.txt
+          created by   step:runexec cp source_both.txt copy_both1.txt
+            consumes   step:runexec cp source_both.txt copy_both1.txt
 
-step:runsh cp source1.txt copy1.txt
+step:runexec cp source1.txt copy1.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
@@ -50,9 +50,9 @@ step:runsh cp source1.txt copy1.txt
 file:source1.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            supplies   step:runsh cp source1.txt copy1.txt
+            supplies   step:runexec cp source1.txt copy1.txt
 
 file:copy1.txt
                state = BUILT
-          created by   step:runsh cp source1.txt copy1.txt
-            consumes   step:runsh cp source1.txt copy1.txt
+          created by   step:runexec cp source1.txt copy1.txt
+            consumes   step:runexec cp source1.txt copy1.txt

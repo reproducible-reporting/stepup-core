@@ -5,8 +5,8 @@
         1/3 |    SUCCESS │ runpy ./plan.py
         1/3 |      START │ runsh echo "test 1" > first.txt
         2/3 |    SUCCESS │ runsh echo "test 1" > first.txt
-        2/3 |      START │ runsh cp first.txt final.txt
-        3/3 |    SUCCESS │ runsh cp first.txt final.txt
+        2/3 |      START │ runexec cp first.txt final.txt
+        3/3 |    SUCCESS │ runexec cp first.txt final.txt
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |      PHASE │ watch
         3/3 |    UPDATED │ plan.py
@@ -15,8 +15,8 @@
         1/3 |    SUCCESS │ runpy ./plan.py
         1/3 |      START │ runsh echo "test 2" > second.txt
         2/3 |    SUCCESS │ runsh echo "test 2" > second.txt
-        2/3 |      START │ runsh cp second.txt final.txt
-        3/3 |    SUCCESS │ runsh cp second.txt final.txt
+        2/3 |      START │ runexec cp second.txt final.txt
+        3/3 |    SUCCESS │ runexec cp second.txt final.txt
         3/3 |   DIRECTOR │ Trying to delete 1 outdated output(s)
         3/3 |      CLEAN │ first.txt
         3/3 |      PHASE │ watch

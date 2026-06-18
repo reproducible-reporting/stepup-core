@@ -30,7 +30,7 @@ You will see the following output:
 {% include 'getting_started/dependencies/stdout.txt' %}
 ```
 
-Although StepUp launches two workers, it executes your `runsh` steps sequentially,
+Although StepUp launches two workers, it executes your `run` steps sequentially,
 since it knows that the output of the first step will be used by the second.
 
 Note, however, that the `echo` commands are already started before `./plan.py` has finished.
@@ -83,10 +83,10 @@ In this example, there are three nodes that create other nodes:
 - The `root` node is an internal node controlled by StepUp.
   Upon startup, StepUp creates `root` and a few other nodes by default:
     - The initial `plan.py` file
-    - The initial `runsh ./plan.py` step (with working directory `./`).
+    - The initial `runpy ./plan.py` step (with working directory `./`).
 
-- The `runsh ./plan.py` step creates two nodes,
-  see the two `runsh()` function calls in the `plan.py` script above.
+- The `runpy ./plan.py` step creates two nodes,
+  see the two `run()` function calls in the `plan.py` script above.
     - The `runsh grep ...` step.
     - The `runsh echo ...` step.
 

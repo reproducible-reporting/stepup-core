@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh
+from stepup.core.api import run
 
-runsh("echo bye > out2.txt", out="out2.txt")
+run("echo bye > out2.txt", shell=True, out="out2.txt")

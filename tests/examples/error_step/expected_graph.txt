@@ -13,9 +13,9 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
-             creates   step:runsh rm .sjdksjdfkjasdfkdjsak
+             creates   step:runexec rm .sjdksjdfkjasdfkdjsak
 
-step:runsh rm .sjdksjdfkjasdfkdjsak
+step:runexec rm .sjdksjdfkjasdfkdjsak
                state = FAILED
                 need = DEFAULT
           created by   step:runpy ./plan.py
@@ -24,5 +24,5 @@ step:runsh rm .sjdksjdfkjasdfkdjsak
 
 file:oops.txt
                state = AWAITED
-          created by   step:runsh rm .sjdksjdfkjasdfkdjsak
-            consumes   step:runsh rm .sjdksjdfkjasdfkdjsak
+          created by   step:runexec rm .sjdksjdfkjasdfkdjsak
+            consumes   step:runexec rm .sjdksjdfkjasdfkdjsak

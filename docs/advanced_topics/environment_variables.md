@@ -53,7 +53,7 @@ For example:
 
 ```python
 msg = "hello"
-runsh(f"MESSAGE={msg} " + "echo ${MESSAGE}")
+run(f"MESSAGE={msg} " + "echo ${MESSAGE}", shell=True)
 ```
 
 Note that this is a different mechanism and it practically serves a different purpose.

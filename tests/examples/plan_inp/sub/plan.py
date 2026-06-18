@@ -2,7 +2,7 @@
 from stepup.core.api import getinfo
 
 # This is a somewhat poor example, because plan.py script should normally not do
-# much more than just calling runsh() function.
+# much more than just calling run functions.
 # This example is just meant to show that it is possible
 # to use input files and write output files.
 # It also demonstrates how to use the getinfo() function.

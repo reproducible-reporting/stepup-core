@@ -40,7 +40,7 @@ from stepup.core.config import ConfigLoader
 
 from .worker import WorkThread
 
-__all__ = ("copy", "runpy", "runsh")
+__all__ = ("act_subcommand", "act_tool", "copy", "runexec", "runpy", "runsh")
 
 
 def runsh(argstr: str, work_thread: WorkThread) -> int:
@@ -80,6 +80,27 @@ def runpy(argstr: str, work_thread: WorkThread) -> int:
     if len(args) == 0:
         raise ValueError("runpy requires at least one argument")
     return work_thread.runpy(args[0], args[1:])
+
+
+def runexec(argstr: str, work_thread: WorkThread) -> int:
+    """Execute a command directly (without a shell) and return the returncode.
+
+    Parameters
+    ----------
+    argstr
+        The command and its arguments as a single string, parsed with `shlex.split`.
+    work_thread
+        The work thread that is executing the command.
+
+    Returns
+    -------
+    exitcode
+        The exit code of the command.
+    """
+    args = shlex.split(argstr)
+    if not args:
+        raise ValueError("runexec requires at least one argument")
+    return work_thread.runexec_verbose(args)
 
 
 def copy(argstr: str) -> int:

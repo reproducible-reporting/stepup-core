@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from stepup.core.api import graph, runsh
+from stepup.core.api import graph, run
 
-runsh("echo Monday frown > ${out}; echo Coffee smile >> ${out}", out="story.txt")
-runsh("grep Coffee ${inp}", inp="story.txt")
+run("echo Monday frown > ${out}; echo Coffee smile >> ${out}", shell=True, out="story.txt")
+run("grep Coffee ${inp}", inp="story.txt")
 graph("graph")

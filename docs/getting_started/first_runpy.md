@@ -1,12 +1,12 @@
 # Running Python Scripts
 
-In principle, you can incorporate any Python script into a StepUp workflow
-using the [`runsh()`][stepup.core.api.runsh] function.
-However, it is recommended to use the [`runpy()`][stepup.core.api.runpy] function instead.
+When the first word of the command passed to [`run()`][stepup.core.api.run] ends in `.py`,
+StepUp automatically selects a Python-aware execution mode.
 It will automatically detect the modules imported by the script,
 and if they correspond to local files in your workflow,
 the step is amended with these files as required inputs.
 This way, if the local modules have changed, StepUp will know the script needs to run again.
+The script file itself is also automatically added as an input dependency.
 
 ## Example
 
@@ -64,8 +64,8 @@ Only `work.py` is rerun, since `plan.py` has not changed.
   For this to work, you must explicitly add the `inp` argument:
 
     ```python
-    runpy("./generate.py > ${out}", out=["helper.py"])
-    runpy("./work.py", inp=["helper.py"])
+    run("./generate.py", out=["helper.py"])
+    run("./work.py", inp=["helper.py"])
     ```
 
     The reason for this is that the running `work.py` will fail if `helper.py` does not exist.

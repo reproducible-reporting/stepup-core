@@ -25,9 +25,11 @@ conv1.txt
         1/4 |    SUCCESS │ runpy ./plan.py
         1/4 |  DROPAMEND │ runsh ./work.py subs1.txt > subs2.txt
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest 53263af7 ➜ 3e1e64d2, out_digest 23dab281 ➜ (unset)
+Modified step hash   explained, inp_digest b69b4d3d ➜ 9bdafea1, out_digest 23dab281 ➜ (unset)
 Deleted inp hash     conv1.txt
 Modified inp hash    subs1.txt (digest 5f2c85fe ➜ 2d0abe4a)
+──────────────────────── Remained the same (or missing) ────────────────────────
+Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
         1/4 |      START │ runsh ./work.py subs1.txt > subs2.txt
         1/4 | RESCHEDULE │ runsh ./work.py subs1.txt > subs2.txt
@@ -40,9 +42,11 @@ conv2.txt
         3/4 |    SUCCESS │ runsh ./work.py subs1.txt > subs2.txt
         3/4 |  DROPAMEND │ runsh ./work.py subs2.txt > subs3.txt
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest 6912aa46 ➜ 7804b735, out_digest ad79dd71 ➜ (unset)
+Modified step hash   explained, inp_digest 0e930ff6 ➜ 5fcda73a, out_digest ad79dd71 ➜ (unset)
 Deleted inp hash     conv1.txt
 Modified inp hash    subs2.txt (digest 5f2c85fe ➜ 2d0abe4a)
+──────────────────────── Remained the same (or missing) ────────────────────────
+Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
         3/4 |      START │ runsh ./work.py subs2.txt > subs3.txt
         4/4 |    SUCCESS │ runsh ./work.py subs2.txt > subs3.txt

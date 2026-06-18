@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-from stepup.core.api import runpy, runsh, static
+from stepup.core.api import run, static
 
 static("work.py")
-runsh("echo ping > ping.txt", out="ping.txt")
-runsh("echo pong > pong.txt", out="pong.txt")
-runpy("./work.py", inp="work.py", out="work.txt")
+run("echo ping > ping.txt", shell=True, out="ping.txt")
+run("echo pong > pong.txt", shell=True, out="pong.txt")
+run("./work.py", inp="work.py", out="work.txt")

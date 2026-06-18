@@ -8,7 +8,7 @@
              AWAITED  subdir
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                runsh cat subdir
+Action                runexec cat subdir
 Working directory     ./
 Inputs       AWAITED  (subdir)
 ────────────────────────────────────────────────────────────────────────────────

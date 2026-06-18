@@ -14,14 +14,14 @@ step:runpy ./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:input.txt
-             creates   step:runsh cp input.txt output.txt
+             creates   step:runexec cp input.txt output.txt
 
 file:input.txt
                state = MISSING
           created by   step:runpy ./plan.py
-            supplies   step:runsh cp input.txt output.txt
+            supplies   step:runexec cp input.txt output.txt
 
-step:runsh cp input.txt output.txt
+step:runexec cp input.txt output.txt
                state = PENDING
                 need = DEFAULT
           created by   step:runpy ./plan.py
@@ -31,5 +31,5 @@ step:runsh cp input.txt output.txt
 
 file:output.txt
                state = OUTDATED
-          created by   step:runsh cp input.txt output.txt
-            consumes   step:runsh cp input.txt output.txt
+          created by   step:runexec cp input.txt output.txt
+            consumes   step:runexec cp input.txt output.txt

@@ -16,14 +16,14 @@ step:runpy ./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:analyzed.txt
-             creates   step:runsh cat analyzed.txt
+             creates   step:runexec cat analyzed.txt
 
 file:analyzed.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            supplies   step:runsh cat analyzed.txt
+            supplies   step:runexec cat analyzed.txt
 
-step:runsh cat analyzed.txt
+step:runexec cat analyzed.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes

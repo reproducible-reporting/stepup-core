@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh
+from stepup.core.api import run
 
-runsh("cat first > second", inp="first", out="second")
-runsh("cat second > first", inp="second", out="first")
+run("cat first > second", shell=True, inp="first", out="second")
+run("cat second > first", shell=True, inp="second", out="first")

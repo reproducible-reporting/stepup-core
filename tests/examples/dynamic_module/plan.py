@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import runpy
+from stepup.core.api import run, static
 
-runpy("./bad_script.py")
+static("bad_script.py")
+run("./bad_script.py")

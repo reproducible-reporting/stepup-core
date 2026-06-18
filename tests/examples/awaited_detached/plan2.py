@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh
+from stepup.core.api import run
 
-runsh("cat src2.txt", inp=["src2.txt"])
+run("cat src2.txt", inp=["src2.txt"])

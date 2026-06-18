@@ -315,7 +315,7 @@ def get_local_import_paths(script_path: Path | None = None) -> list[str]:
     mod_paths = filter_dependencies(iter_module_paths())
     # The script path is already included in the inputs.
     if script_path is not None:
-        mod_paths.discard(script_path)
+        mod_paths.discard(mynormpath(script_path))
     return sorted(mod_paths)
 
 

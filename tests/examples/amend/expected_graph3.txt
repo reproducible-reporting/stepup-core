@@ -15,10 +15,16 @@ step:runpy ./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:inp1.txt
+             creates   file:work.py
              creates   step:runpy ./work.py
              creates   step:runsh echo word2 > inp2.txt
 
 file:inp1.txt
+               state = STATIC
+          created by   step:runpy ./plan.py
+            supplies   step:runpy ./work.py
+
+file:work.py
                state = STATIC
           created by   step:runpy ./plan.py
             supplies   step:runpy ./work.py
@@ -31,6 +37,7 @@ step:runpy ./work.py
           created by   step:runpy ./plan.py
             consumes   file:inp1.txt
             consumes   file:inp2.txt [amended]
+            consumes   file:work.py
              creates   file:out1.txt
              creates   file:out2.txt
             supplies   file:out1.txt

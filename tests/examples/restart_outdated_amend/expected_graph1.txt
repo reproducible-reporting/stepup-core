@@ -27,6 +27,7 @@ file:subs.txt
 file:work.py
                state = STATIC
           created by   step:runpy ./plan.py
+            supplies   step:runpy ./work.py
 
 sr:data/
           created by   step:runpy ./plan.py
@@ -40,6 +41,7 @@ step:runpy ./work.py
           created by   step:runpy ./plan.py
             consumes   file:data/inp1.txt [amended]
             consumes   file:subs.txt
+            consumes   file:work.py
              creates   file:copy.txt
             supplies   file:copy.txt [amended]
 

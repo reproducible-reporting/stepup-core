@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh
+from stepup.core.api import run
 
-runsh("echo data > ${out}", inp="missing.txt", out="hello.txt")
-runsh("echo soon gone > ${out}", out="bye.txt")
+run("echo data > ${out}", shell=True, inp="missing.txt", out="hello.txt")
+run("echo soon gone > ${out}", shell=True, out="bye.txt")

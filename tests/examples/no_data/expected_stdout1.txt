@@ -5,8 +5,8 @@
         1/3 |    SUCCESS │ runpy ./plan.py
         1/3 |      START │ runsh grep -i foo data.txt > analyzed.txt
         2/3 |    SUCCESS │ runsh grep -i foo data.txt > analyzed.txt
-        2/3 |      START │ runsh cat analyzed.txt
-        3/3 |    SUCCESS │ runsh cat analyzed.txt
+        2/3 |      START │ runexec cat analyzed.txt
+        3/3 |    SUCCESS │ runexec cat analyzed.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 A bunch of foos walk into a bar,
 and watch some football.
@@ -17,9 +17,9 @@ and watch some football.
         0/3 |      PHASE │ run
         0/1 |      START │ runpy ./plan.py
         1/2 |    SUCCESS │ runpy ./plan.py
-        1/2 |       SKIP │ runsh cat analyzed.txt
+        1/2 |       SKIP │ runexec cat analyzed.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 5d73dae1, out_digest e3b0c442
+Same step hash       explained, inp_digest 5e8eb453, out_digest e3b0c442
 Same inp hash        analyzed.txt
 ────────────────────────────────────────────────────────────────────────────────
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)

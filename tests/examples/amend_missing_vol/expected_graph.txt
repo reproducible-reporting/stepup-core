@@ -13,13 +13,20 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
+             creates   file:demo.py
              creates   step:runpy ./demo.py
+
+file:demo.py
+               state = STATIC
+          created by   step:runpy ./plan.py
+            supplies   step:runpy ./demo.py
 
 step:runpy ./demo.py
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
+            consumes   file:demo.py
              creates   file:subdir/foo.out
             supplies   file:subdir/foo.out [amended]
 

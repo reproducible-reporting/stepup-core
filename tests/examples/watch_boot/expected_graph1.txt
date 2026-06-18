@@ -13,7 +13,7 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
-             creates   step:runsh cp first.txt final.txt
+             creates   step:runexec cp first.txt final.txt
              creates   step:runsh echo "test 1" > first.txt
 
 step:runsh echo "test 1" > first.txt
@@ -27,9 +27,9 @@ file:first.txt
                state = BUILT
           created by   step:runsh echo "test 1" > first.txt
             consumes   step:runsh echo "test 1" > first.txt
-            supplies   step:runsh cp first.txt final.txt
+            supplies   step:runexec cp first.txt final.txt
 
-step:runsh cp first.txt final.txt
+step:runexec cp first.txt final.txt
                state = SUCCEEDED
                 need = DEFAULT
           created by   step:runpy ./plan.py
@@ -39,5 +39,5 @@ step:runsh cp first.txt final.txt
 
 file:final.txt
                state = BUILT
-          created by   step:runsh cp first.txt final.txt
-            consumes   step:runsh cp first.txt final.txt
+          created by   step:runexec cp first.txt final.txt
+            consumes   step:runexec cp first.txt final.txt

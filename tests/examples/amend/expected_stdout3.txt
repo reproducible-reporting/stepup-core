@@ -1,5 +1,5 @@
         0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 5 files from initial database
+        0/0 |    STARTUP │ Watching directories for 6 files from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ inp2.txt (digest e44a31c3 ➜ 7f6f8bd5, size 6 ➜ 16)
@@ -15,9 +15,10 @@ Modified out hash    inp2.txt (digest e44a31c3 ➜ 7f6f8bd5, size 6 ➜ 16)
         2/3 |    SUCCESS │ runsh echo word2 > inp2.txt
         2/3 |       SKIP │ runpy ./work.py
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 062c380d, out_digest 29f755b3
+Same step hash       explained, inp_digest 48522d65, out_digest 29f755b3
 Same inp hash        inp1.txt
 Same inp hash        inp2.txt
+Same inp hash        work.py
 Same env var         STEPUP_PATH_FILTER (unset)
 Same out hash        out1.txt
 Same out hash        out2.txt

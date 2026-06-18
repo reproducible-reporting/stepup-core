@@ -16,16 +16,16 @@ step:runpy ./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:data.txt
-             creates   step:runsh cat analyzed.txt
+             creates   step:runexec cat analyzed.txt
              creates   step:runsh grep -i foo data.txt > analyzed.txt
 
 file:analyzed.txt
                state = BUILT
           created by   step:runsh grep -i foo data.txt > analyzed.txt
             consumes   step:runsh grep -i foo data.txt > analyzed.txt
-            supplies   step:runsh cat analyzed.txt
+            supplies   step:runexec cat analyzed.txt
 
-step:runsh cat analyzed.txt
+step:runexec cat analyzed.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes

@@ -7,6 +7,8 @@ For the sake of simplicity, a minimal workflow will be defined that does very li
 
 Example source files: [`docs/getting_started/first_step/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/first_step)
 
+### Creating a Step
+
 Create a file `plan.py` with the following contents:
 
 ```python
@@ -16,16 +18,25 @@ Create a file `plan.py` with the following contents:
 Make this file executable with `chmod +x plan.py`.
 
 1. The first line is required to have the plan executed by the Python 3 interpreter.
-2. The second line imports the [`runsh()`][stepup.core.api.runsh] function from StepUp Core.
-   (It stands for "**run** in a **sh**ell".)
-   This module contains functions to communicate with the director process
+2. The second line imports the [`run()`][stepup.core.api.run] function from StepUp Core.
+   The module `stepup.core.api` contains functions to communicate with the director process
    of StepUp to define steps and other parts of the workflow.
 3. The last line defines a step that writes `Hello World` to the standard output.
-   The (first) argument of `runsh()` is a single string
-   that can be interpreted by the default shell, typically `/usr/bin/sh`.
-   You may use IO redirection, pipes, and other features supported by the shell.
-   (StepUp will not provide any standard input.
-   It does capture standard output and error, as shown below.)
+   The (first) argument of `run()` is a single string: the command to execute.
+
+If you want to use shell features in the command, such as pipes or IO redirection
+(`echo Hello World > hello.txt`), you need to set the keyword argument `shell=True`:
+
+```python
+run("echo Hello World > hello.txt", shell=True)
+```
+
+This comes at the extra cost of running a shell process, so it is disabled by default.
+
+Note that StepUp does not provide any standard input.
+It does capture standard output and error, as shown below.
+
+### Running StepUp
 
 In the same directory, run:
 
@@ -53,9 +64,12 @@ Let's analyze the output:
 - The `START` and `SUCCESS` lines are shown for steps executed by StepUp:
     - The step `./plan.py` is created by default and runs the script that you just created.
     - Then the step `runsh echo Hello World` is defined in `plan.py`.
+      (The `runsh` action name is stored internally even when using `run(..., shell=True)`.)
 - When a step produces output, it is shown after the step has completed.
 - When no more steps can be executed,
   StepUp checks if it can clean up outdated outputs and then exits.
+
+### Re-running StepUp
 
 Now repeat the execution of StepUp with:
 
@@ -79,21 +93,19 @@ of input files, used environment variables and produced outputs.
 When you manually remove `.stepup/graph.db`,
 StepUp will not know anymore that it already executed some steps and runs all of them again.
 
-## `runsh()` versus `step()`
+### `run()` versus `step()`
 
-Before StepUp 3, the `runsh()` function was called `step()`.
-The `step()` function also exists in StepUp 3, but has a different and more general purpose.
+The `step()` function is the lower-level API.
 The following two lines are equivalent:
 
 ```python
-runsh("echo Hello World")
-step("runsh echo Hello World")
+run("echo Hello World")
+step("runexec echo Hello World")
 ```
 
-The second form is a lower-level way to define step, explicitly specifying the `runsh` action.
-This is mainly useful when creating extensions for StepUp,
-which often require actions other than `runsh`.
-For most end users, the first form is more convenient and should be preferred.
+The second form explicitly specifies the `runexec` action by name.
+This is mainly useful when creating extensions for StepUp.
+For most end users, `run()` is more convenient and should be preferred.
 
 ## Try the Following
 

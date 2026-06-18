@@ -18,7 +18,7 @@ step:runpy ./plan.py
              creates   file:work.py
              creates   step:copy data1.txt optional1.txt
              creates   step:copy data2.txt optional2.txt
-             creates   step:runsh ./work.py
+             creates   step:runpy ./work.py
 
 file:data1.txt
                state = STATIC
@@ -33,7 +33,7 @@ file:data2.txt
 file:work.py
                state = STATIC
           created by   step:runpy ./plan.py
-            supplies   step:runsh ./work.py
+            supplies   step:runpy ./work.py
 
 step:copy data1.txt optional1.txt
                state = SUCCEEDED
@@ -47,7 +47,7 @@ file:optional1.txt
                state = BUILT
           created by   step:copy data1.txt optional1.txt
             consumes   step:copy data1.txt optional1.txt
-            supplies   step:runsh ./work.py
+            supplies   step:runpy ./work.py
 
 step:copy data2.txt optional2.txt
                state = SUCCEEDED
@@ -61,11 +61,12 @@ file:optional2.txt
                state = BUILT
           created by   step:copy data2.txt optional2.txt
             consumes   step:copy data2.txt optional2.txt
-            supplies   step:runsh ./work.py
+            supplies   step:runpy ./work.py
 
-step:runsh ./work.py
+step:runpy ./work.py
                state = SUCCEEDED
                 need = DEFAULT
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:optional1.txt [amended]
             consumes   file:optional2.txt [amended]
@@ -75,5 +76,5 @@ step:runsh ./work.py
 
 file:work.out
                state = BUILT
-          created by   step:runsh ./work.py
-            consumes   step:runsh ./work.py
+          created by   step:runpy ./work.py
+            consumes   step:runpy ./work.py

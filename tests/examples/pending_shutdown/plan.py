@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh
+from stepup.core.api import run
 
-runsh("sleep 5; echo hello > msg.txt", out="msg.txt")
-runsh("cat msg.txt", inp="msg.txt")
+run("sleep 5; echo hello > msg.txt", shell=True, out="msg.txt")
+run("cat msg.txt", inp="msg.txt")

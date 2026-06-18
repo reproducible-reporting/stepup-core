@@ -14,10 +14,10 @@ step:runpy ./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:original.txt
-             creates   step:runsh cp copy.txt another.txt
-             creates   step:runsh cp original.txt copy.txt
+             creates   step:runexec cp copy.txt another.txt
+             creates   step:runexec cp original.txt copy.txt
 
-step:runsh cp copy.txt another.txt
+step:runexec cp copy.txt another.txt
                state = SUCCEEDED
                 need = DEFAULT
           created by   step:runpy ./plan.py
@@ -27,16 +27,16 @@ step:runsh cp copy.txt another.txt
 
 file:copy.txt
                state = BUILT
-          created by   step:runsh cp original.txt copy.txt
-            consumes   step:runsh cp original.txt copy.txt
-            supplies   step:runsh cp copy.txt another.txt
+          created by   step:runexec cp original.txt copy.txt
+            consumes   step:runexec cp original.txt copy.txt
+            supplies   step:runexec cp copy.txt another.txt
 
 file:another.txt
                state = BUILT
-          created by   step:runsh cp copy.txt another.txt
-            consumes   step:runsh cp copy.txt another.txt
+          created by   step:runexec cp copy.txt another.txt
+            consumes   step:runexec cp copy.txt another.txt
 
-step:runsh cp original.txt copy.txt
+step:runexec cp original.txt copy.txt
                state = SUCCEEDED
                 need = DEFAULT
           created by   step:runpy ./plan.py
@@ -47,4 +47,4 @@ step:runsh cp original.txt copy.txt
 file:original.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            supplies   step:runsh cp original.txt copy.txt
+            supplies   step:runexec cp original.txt copy.txt

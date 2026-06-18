@@ -15,8 +15,8 @@ step:runpy ./plan.py
             consumes   file:plan.py
              creates   file:work.py
              creates   file:work_inp.json
+             creates   step:runexec cat work_out.json
              creates   step:runpy ./work.py --inp=work_inp.json --out=work_out.json --amend-out
-             creates   step:runsh cat work_out.json
             supplies   file:work_inp.json [amended]
 
 file:work.py
@@ -40,7 +40,7 @@ step:runpy ./work.py --inp=work_inp.json --out=work_out.json --amend-out
              creates   file:work_out.json
             supplies   file:work_out.json [amended]
 
-step:runsh cat work_out.json
+step:runexec cat work_out.json
                state = SUCCEEDED
                 need = DEFAULT
           created by   step:runpy ./plan.py
@@ -50,4 +50,4 @@ file:work_out.json
                state = BUILT
           created by   step:runpy ./work.py --inp=work_inp.json --out=work_out.json --amend-out
             consumes   step:runpy ./work.py --inp=work_inp.json --out=work_out.json --amend-out
-            supplies   step:runsh cat work_out.json
+            supplies   step:runexec cat work_out.json

@@ -14,7 +14,7 @@ step:runpy ./plan.py
           created by   root:
             consumes   file:plan.py
 
-(step:runsh touch output.txt)
+(step:runexec touch output.txt)
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
@@ -23,5 +23,5 @@ step:runpy ./plan.py
 
 (file:output.txt)
                state = BUILT
-          created by   (step:runsh touch output.txt)
-            consumes   (step:runsh touch output.txt)
+          created by   (step:runexec touch output.txt)
+            consumes   (step:runexec touch output.txt)

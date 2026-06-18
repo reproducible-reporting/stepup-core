@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh
+from stepup.core.api import run
 
-runsh("touch output.txt", out=["output.txt"])
+run("touch output.txt", out=["output.txt"])

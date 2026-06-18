@@ -32,6 +32,7 @@ file:inp1.txt
 file:sub/getinfo.py
                state = STATIC
           created by   step:runpy ./plan.py
+            supplies   step:runpy ./getinfo.py  # wd=sub/
 
 file:sub/inp0.txt
                state = STATIC
@@ -48,6 +49,7 @@ step:runpy ./getinfo.py  # wd=sub/
           created by   step:runpy ./plan.py
             consumes   file:README.txt
             consumes   file:inp1.txt [amended]
+            consumes   file:sub/getinfo.py
             consumes   file:sub/inp0.txt
              creates   file:out0.txt
              creates   file:out2.txt

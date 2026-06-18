@@ -14,14 +14,14 @@ step:runpy ./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:simple.sh
-             creates   step:runsh ./simple.sh
+             creates   step:runexec ./simple.sh
 
 file:simple.sh
                state = STATIC
           created by   step:runpy ./plan.py
-            supplies   step:runsh ./simple.sh
+            supplies   step:runexec ./simple.sh
 
-step:runsh ./simple.sh
+step:runexec ./simple.sh
                state = FAILED
                 need = DEFAULT
           created by   step:runpy ./plan.py

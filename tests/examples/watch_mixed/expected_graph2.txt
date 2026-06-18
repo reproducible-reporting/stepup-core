@@ -13,13 +13,13 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
-             creates   step:runsh cp copy1.txt copy2.txt
+             creates   step:runexec cp copy1.txt copy2.txt
 
 (file:orig.txt)
                state = MISSING
-            supplies   (step:runsh cp orig.txt copy1.txt)
+            supplies   (step:runexec cp orig.txt copy1.txt)
 
-(step:runsh cp orig.txt copy1.txt)
+(step:runexec cp orig.txt copy1.txt)
                state = PENDING
                 need = DEFAULT
             consumes   (file:orig.txt)
@@ -28,11 +28,11 @@ step:runpy ./plan.py
 
 (file:copy1.txt)
                state = OUTDATED
-          created by   (step:runsh cp orig.txt copy1.txt)
-            consumes   (step:runsh cp orig.txt copy1.txt)
-            supplies   step:runsh cp copy1.txt copy2.txt
+          created by   (step:runexec cp orig.txt copy1.txt)
+            consumes   (step:runexec cp orig.txt copy1.txt)
+            supplies   step:runexec cp copy1.txt copy2.txt
 
-step:runsh cp copy1.txt copy2.txt
+step:runexec cp copy1.txt copy2.txt
                state = PENDING
                 need = DEFAULT
           created by   step:runpy ./plan.py
@@ -42,5 +42,5 @@ step:runsh cp copy1.txt copy2.txt
 
 file:copy2.txt
                state = OUTDATED
-          created by   step:runsh cp copy1.txt copy2.txt
-            consumes   step:runsh cp copy1.txt copy2.txt
+          created by   step:runexec cp copy1.txt copy2.txt
+            consumes   step:runexec cp copy1.txt copy2.txt

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh
+from stepup.core.api import run
 
-info = runsh("cp -v first.txt second.txt", inp="first.txt", out="second.txt", vol="third.txt")
+info = run("cp -v first.txt second.txt", inp="first.txt", out="second.txt", vol="third.txt")
 
 # Tests for the info object, only useful for testing
 if info.inp != ["first.txt"]:

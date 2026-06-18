@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh
+from stepup.core.api import run
 
-runsh("echo foo > bar.txt", out="bar.txt")
+run("echo foo > bar.txt", shell=True, out="bar.txt")

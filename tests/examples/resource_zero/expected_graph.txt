@@ -13,16 +13,16 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
-             creates   step:runsh echo 1
-             creates   step:runsh echo 2
+             creates   step:runexec echo 1
+             creates   step:runexec echo 2
 
-step:runsh echo 1
+step:runexec echo 1
                state = PENDING
                 need = DEFAULT
             resource = token: 1 units
           created by   step:runpy ./plan.py
 
-step:runsh echo 2
+step:runexec echo 2
                state = PENDING
                 need = DEFAULT
             resource = token: 1 units

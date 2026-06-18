@@ -7,8 +7,8 @@
         2/5 |    SUCCESS │ runpy ./plan.py  # wd=sub/
         2/5 |      START │ copy example.txt sub/example.txt
         3/5 |    SUCCESS │ copy example.txt sub/example.txt
-        3/5 |      START │ runsh cat ../plan.py  # wd=sub/
-        4/5 |    SUCCESS │ runsh cat ../plan.py  # wd=sub/
+        3/5 |      START │ runexec cat ../plan.py  # wd=sub/
+        4/5 |    SUCCESS │ runexec cat ../plan.py  # wd=sub/
 ─────────────────────────────── Standard output ────────────────────────────────
 #!/usr/bin/env python3
 from stepup.core.api import copy, plan, static

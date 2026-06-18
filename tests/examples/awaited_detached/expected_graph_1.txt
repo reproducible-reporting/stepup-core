@@ -13,10 +13,10 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
-             creates   step:runsh cat src1.txt
-             creates   step:runsh cat src2.txt
+             creates   step:runexec cat src1.txt
+             creates   step:runexec cat src2.txt
 
-step:runsh cat src1.txt
+step:runexec cat src1.txt
                state = PENDING
                 need = DEFAULT
           created by   step:runpy ./plan.py
@@ -24,9 +24,9 @@ step:runsh cat src1.txt
 
 (file:src1.txt)
                state = AWAITED
-            supplies   step:runsh cat src1.txt
+            supplies   step:runexec cat src1.txt
 
-step:runsh cat src2.txt
+step:runexec cat src2.txt
                state = PENDING
                 need = DEFAULT
           created by   step:runpy ./plan.py
@@ -34,4 +34,4 @@ step:runsh cat src2.txt
 
 (file:src2.txt)
                state = AWAITED
-            supplies   step:runsh cat src2.txt
+            supplies   step:runexec cat src2.txt

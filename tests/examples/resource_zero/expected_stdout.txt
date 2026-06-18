@@ -7,12 +7,12 @@
         1/3 |    WARNING │ 2 step(s) remained pending ...
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required resources exceed maximum available
-Action                runsh echo 1
+Action                runexec echo 1
 Working directory     ./
 Resource       token  1
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required resources exceed maximum available
-Action                runsh echo 2
+Action                runexec echo 2
 Working directory     ./
 Resource       token  1
 ────────────────────────────────────────────────────────────────────────────────

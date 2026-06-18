@@ -14,14 +14,14 @@ step:runpy ./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:sub/inp.txt
-             creates   step:runsh cp inp.txt out.txt  # wd=sub/
+             creates   step:runexec cp inp.txt out.txt  # wd=sub/
 
 file:sub/inp.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            supplies   step:runsh cp inp.txt out.txt  # wd=sub/
+            supplies   step:runexec cp inp.txt out.txt  # wd=sub/
 
-step:runsh cp inp.txt out.txt  # wd=sub/
+step:runexec cp inp.txt out.txt  # wd=sub/
                state = SUCCEEDED
                 need = DEFAULT
           created by   step:runpy ./plan.py
@@ -31,5 +31,5 @@ step:runsh cp inp.txt out.txt  # wd=sub/
 
 file:sub/out.txt
                state = BUILT
-          created by   step:runsh cp inp.txt out.txt  # wd=sub/
-            consumes   step:runsh cp inp.txt out.txt  # wd=sub/
+          created by   step:runexec cp inp.txt out.txt  # wd=sub/
+            consumes   step:runexec cp inp.txt out.txt  # wd=sub/

@@ -14,12 +14,12 @@ step:runpy ./plan.py
           created by   root:
             consumes   file:plan.py
              creates   sr:subdir/
-             creates   step:runsh cat subdir
+             creates   step:runexec cat subdir
 
 sr:subdir/
           created by   step:runpy ./plan.py
 
-step:runsh cat subdir
+step:runexec cat subdir
                state = PENDING
                 need = DEFAULT
           created by   step:runpy ./plan.py
@@ -27,4 +27,4 @@ step:runsh cat subdir
 
 (file:subdir)
                state = AWAITED
-            supplies   step:runsh cat subdir
+            supplies   step:runexec cat subdir

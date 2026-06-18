@@ -27,9 +27,9 @@ step:runpy ./plan.py  # wd=sub/
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:sub/plan.py
-             creates   step:runsh touch done.txt  # wd=sub/
+             creates   step:runexec touch done.txt  # wd=sub/
 
-step:runsh touch done.txt  # wd=sub/
+step:runexec touch done.txt  # wd=sub/
                state = SUCCEEDED
                 need = DEFAULT
           created by   step:runpy ./plan.py  # wd=sub/
@@ -38,5 +38,5 @@ step:runsh touch done.txt  # wd=sub/
 
 file:sub/done.txt
                state = BUILT
-          created by   step:runsh touch done.txt  # wd=sub/
-            consumes   step:runsh touch done.txt  # wd=sub/
+          created by   step:runexec touch done.txt  # wd=sub/
+            consumes   step:runexec touch done.txt  # wd=sub/

@@ -319,7 +319,7 @@ and improved terminal user interface.
 - A new API function [`loadns()`][stepup.core.api.loadns] to load variables from file.
   Supported file formats are: JSON, Python, YAML, and TOML.
   This will automatically amend the calling step with the loaded files as inputs.
-- The [runpy()][stepup.core.api.runpy] function can now be used to schedule a Python script.
+- The `runpy()` function can now be used to schedule a Python script.
   This automatically amends locall imported modules as inputs to the step.
 - The `render-jinja` feature from StepUp RepRep 2 has been migrated to StepUp Core 3.
 
@@ -337,7 +337,7 @@ and improved terminal user interface.
       instead of a shell command.
       The syntax of an `action` is similar to a shell command:
       It consists of `module.submodule.function arg1 arg2 ...`.
-    - [runsh()][stepup.core.api.runsh] mimics the behavior of the old `step()` function.
+    - `runsh()` mimics the behavior of the old `step()` function.
     - The `stepup` command now uses subcommands to run different tools within StepUp.
     The following tools have been implemented:
         - `stepup act`: Execute an action, mostly for debugging.

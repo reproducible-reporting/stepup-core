@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh, static
+from stepup.core.api import run, static
 
 static("input.txt")
-runsh("cp input.txt output.txt", inp=["input.txt"], out=["output.txt"])
+run("cp input.txt output.txt", inp=["input.txt"], out=["output.txt"])

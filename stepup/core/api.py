@@ -71,8 +71,7 @@ __all__ = (
     "loadns",
     "plan",
     "render_jinja",
-    "runpy",
-    "runsh",
+    "run",
     "script",
     "static",
     "step",
@@ -491,7 +490,7 @@ def graph(prefix: str):
 #
 
 
-def runsh(
+def run(
     command: str,
     *,
     inp: Collection[str] | str = (),
@@ -500,14 +499,33 @@ def runsh(
     vol: Collection[str] | str = (),
     workdir: str = "./",
     optional: bool = False,
+    shell: bool = False,
     resources: dict[str, int] | str | None = None,
 ) -> StepInfo:
-    """Add a shell command to the build graph.
+    """Add a command to the build graph.
 
     Parameters
     ----------
     command
-        The command to execute, which will be interpreted by the shell.
+        The command to execute, optionally followed by arguments.
+        The action is selected automatically:
+
+        - If `shell=True`: the command is passed to a shell (`runsh` action).
+          Shell features like pipes and redirections are supported.
+        - If `shell=False` and the first word ends in `.py`:
+          the script is executed via a Python wrapper
+          that auto-detects local imports (`runpy` action).
+          Shell features are not available in this mode.
+        - Otherwise: the command is executed directly without a shell (`runexec` action).
+          This is faster and safer than the shell mode.
+
+        When the first word contains a `/` and is not an absolute path (e.g. `./script.py`,
+        `subdir/tool`), it is automatically added as an input dependency.
+        Bare command names like `echo` or absolute paths like `/usr/bin/gcc` are not added.
+
+        Python detection uses the `.py` file extension only,
+        so it works even when the script does not yet exist (e.g. it is an output of another step).
+        `shell=True` takes precedence and disables Python auto-detection.
     inp, env, out, vol, workdir, optional, resources
         See [`step()`][stepup.core.api.step] for more information.
 
@@ -516,46 +534,33 @@ def runsh(
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
     """
+    # Determine the action and auto-add local executables as inputs.
+    try:
+        parts = shlex.split(command)
+    except ValueError:
+        parts = command.split()
+    if len(parts) == 0:
+        raise ValueError("The command must not be empty.")
+    if shell:
+        action = "runsh"
+    elif parts and parts[0].endswith(".py"):
+        action = "runpy"
+    else:
+        action = "runexec"
+    # Pre-substitute ${inp} with only the user-specified inputs.
+    # This prevents the auto-added executable from appearing in the ${inp} expansion.
+    # For example, this avoids duplicating the script in commands like `./script.sh ${inp}`.
+    inp = string_to_list(inp)
+    with subs_env_vars() as subs:
+        su_inp = [subs(p) for p in inp]
+    command = CaseSensitiveTemplate(command).safe_substitute(inp=shlex.join(su_inp))
+    # Auto-add the executable to inp when it is a local relative path
+    # (contains "/" but is not absolute).
+    exe = parts[0]
+    if "/" in exe and not exe.startswith("/"):
+        inp = [exe, *string_to_list(inp)]
     return step(
-        f"runsh {command}",
-        inp=inp,
-        env=env,
-        out=out,
-        vol=vol,
-        workdir=workdir,
-        need=Need.OPTIONAL if optional else Need.DEFAULT,
-        resources=resources,
-    )
-
-
-def runpy(
-    command: str,
-    *,
-    inp: Collection[str] | str = (),
-    env: Collection[str] | str = (),
-    out: Collection[str] | str = (),
-    vol: Collection[str] | str = (),
-    workdir: str = "./",
-    optional: bool = False,
-    resources: dict[str, int] | str | None = None,
-) -> StepInfo:
-    """Add a Python command to the build graph.
-
-    Parameters
-    ----------
-    command
-        The path of the script and its command line arguments.
-        Local imports will be detected and amended as inputs to the script.
-    inp, env, out, vol, workdir, optional, resources
-        See [`step()`][stepup.core.api.step] for more information.
-
-    Returns
-    -------
-    step_info
-        Holds relevant information of the step, useful for defining follow-up steps.
-    """
-    return step(
-        f"runpy {command}",
+        f"{action} {command}",
         inp=inp,
         env=env,
         out=out,
@@ -592,6 +597,7 @@ def plan(
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
     """
+    # Note that we do not use `run()` here because we need to set `need=Need.PLAN`.
     return step(
         "runpy ./plan.py",
         inp=["plan.py", *string_to_list(inp)],
@@ -907,11 +913,7 @@ def call(
         else:
             step_kwargs["out"].insert(0, path_out)
 
-    # Finally, create a step
-    step_kwargs.setdefault("inp", []).append(executable)
-    if executable.endswith(".py"):
-        return runpy(command, **step_kwargs)
-    return runsh(command, **step_kwargs)
+    return run(command, **step_kwargs)
 
 
 def script(
@@ -978,7 +980,8 @@ def script(
         "need": Need.PLAN,
         "resources": resources,
     }
-    action = f"runpy {command}" if executable.endswith(".py") else f"runsh {command}"
+    # Note that we do not use `run()` here because we need to set `need=Need.PLAN`.
+    action = f"runpy {command}" if executable.endswith(".py") else f"runexec {command}"
     return step(action, **step_kwargs)
 
 

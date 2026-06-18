@@ -17,8 +17,8 @@ step:runpy ./plan.py
              creates   file:inp0.txt
              creates   file:inp1.txt
              creates   file:work.py
+             creates   step:runexec cp inp1.txt tmp1.txt
              creates   step:runsh ./work.py > log.txt
-             creates   step:runsh cp inp1.txt tmp1.txt
              creates   step:runsh echo Contents of inp2.txt > inp2.txt
 
 file:work.py
@@ -51,9 +51,9 @@ file:inp0.txt
 file:inp1.txt
                state = STATIC
           created by   step:runpy ./plan.py
-            supplies   step:runsh cp inp1.txt tmp1.txt
+            supplies   step:runexec cp inp1.txt tmp1.txt
 
-step:runsh cp inp1.txt tmp1.txt
+step:runexec cp inp1.txt tmp1.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
@@ -64,8 +64,8 @@ step:runsh cp inp1.txt tmp1.txt
 
 file:tmp1.txt
                state = BUILT
-          created by   step:runsh cp inp1.txt tmp1.txt
-            consumes   step:runsh cp inp1.txt tmp1.txt
+          created by   step:runexec cp inp1.txt tmp1.txt
+            consumes   step:runexec cp inp1.txt tmp1.txt
             supplies   step:runsh ./work.py > log.txt
 
 step:runsh echo Contents of inp2.txt > inp2.txt

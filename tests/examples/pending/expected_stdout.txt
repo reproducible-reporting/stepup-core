@@ -8,7 +8,7 @@
              AWAITED  first.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                runsh cp -v first.txt second.txt
+Action                runexec cp -v first.txt second.txt
 Working directory     ./
 Inputs       AWAITED  (first.txt)
 Outputs      AWAITED  second.txt

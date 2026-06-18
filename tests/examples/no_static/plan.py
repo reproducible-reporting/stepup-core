@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh
+from stepup.core.api import run
 
-runsh('echo "spam" > first.txt', out=["first.txt"])
-runsh("cp -v first.txt second.txt", inp=["first.txt"], out=["second.txt"])
+run('echo "spam" > first.txt', shell=True, out=["first.txt"])
+run("cp -v first.txt second.txt", inp=["first.txt"], out=["second.txt"])

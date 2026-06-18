@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import copy, runsh
+from stepup.core.api import copy, run
 
-runsh("echo hello > foo.txt", out="foo.txt", optional=True)
+run("echo hello > foo.txt", shell=True, out="foo.txt", optional=True)
 copy("foo.txt", "bar.txt")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh
+from stepup.core.api import run
 
-runsh('echo "test 1" > first.txt', out=["first.txt"])
-runsh("cp first.txt final.txt", inp=["first.txt"], out=["final.txt"])
+run('echo "test 1" > first.txt', shell=True, out=["first.txt"])
+run("cp first.txt final.txt", inp=["first.txt"], out=["final.txt"])

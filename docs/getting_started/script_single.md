@@ -15,7 +15,7 @@ To help you decide which one to use, consider the following:
   including the planning (inputs, outputs, ...) and execution, in a single source file.
   Such self-contained scripts can be easier to understand and maintain.
 
-If both seem overkill, you can also use the [`runpy()`][stepup.core.api.runpy]
+If both seem overkill, you can also use the [`run()`][stepup.core.api.run]
 function directly in `plan.py`.
 See [Running Python Scripts](first_runpy.md) for an example.
 
@@ -31,14 +31,14 @@ script("executable", workdir="sub")
 is roughly equivalent to:
 
 ```python
-runsh("./executable plan", inp="executable", workdir="sub")
+run("./executable plan", workdir="sub")
 ```
 
 Note that the use of a subdirectory is not required.
 The `./executable plan` step is expected to define additional steps
 to actually do something useful with the executable.
 A common scenario is to plan a single `./executable run` step with appropriate inputs and outputs.
-Note that if the script has the `.py` extension, `runpy()` is used instead of `runsh()`.
+If the script has the `.py` extension, the Python-aware mode is used automatically.
 
 When the `optional=True` keyword argument is given to the `script()` function,
 it executes `./executable plan --optional`.

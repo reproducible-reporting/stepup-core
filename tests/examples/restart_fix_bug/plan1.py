@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from stepup.core.api import runsh, static
+from stepup.core.api import run, static
 
 static("README.txt")
 assert 5 + 3 == 7
-runsh("echo 'I was here' > out.txt", out="out.txt")
+run("echo 'I was here' > out.txt", shell=True, out="out.txt")

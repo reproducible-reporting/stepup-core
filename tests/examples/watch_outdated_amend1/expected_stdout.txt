@@ -12,10 +12,11 @@
         1/2 |      PHASE │ run
         1/2 |  DROPAMEND │ runpy ./work.py
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest 6e91f221 ➜ 1c204bf2, out_digest 2aa07484 ➜ (unset)
+Modified step hash   explained, inp_digest a75e4d7d ➜ 3aaf2d42, out_digest 2aa07484 ➜ (unset)
 Deleted inp hash     data/inp1.txt
 Modified inp hash    subs.txt (digest ae39a09a ➜ d642a3da)
 ──────────────────────── Remained the same (or missing) ────────────────────────
+Same inp hash        work.py
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |      START │ runpy ./work.py

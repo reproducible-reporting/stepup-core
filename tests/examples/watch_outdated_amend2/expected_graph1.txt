@@ -30,6 +30,8 @@ file:subs1.txt
 file:work.py
                state = STATIC
           created by   step:runpy ./plan.py
+            supplies   step:runsh ./work.py subs1.txt > subs2.txt
+            supplies   step:runsh ./work.py subs2.txt > subs3.txt
 
 file:inp1.txt
                state = STATIC
@@ -59,6 +61,7 @@ step:runsh ./work.py subs1.txt > subs2.txt
           created by   step:runpy ./plan.py
             consumes   file:conv1.txt [amended]
             consumes   file:subs1.txt
+            consumes   file:work.py
              creates   file:subs2.txt
             supplies   file:subs2.txt
 
@@ -75,6 +78,7 @@ step:runsh ./work.py subs2.txt > subs3.txt
           created by   step:runpy ./plan.py
             consumes   file:conv1.txt [amended]
             consumes   file:subs2.txt
+            consumes   file:work.py
              creates   file:subs3.txt
             supplies   file:subs3.txt
 

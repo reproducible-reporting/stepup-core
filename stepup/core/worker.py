@@ -569,7 +569,7 @@ sys.argv = {argv}
 try:
     runpy.run_path({script}, run_name="__main__")
 finally:
-    amend(inp=get_local_import_paths())
+    amend(inp=get_local_import_paths(script_path=Path({script})))
 """
 
 
@@ -682,14 +682,68 @@ class WorkThread(threading.Thread):
             sys.stderr.write(stderr)
         return returncode
 
+    def runexec(
+        self, args: list[str], stdin: str | None = None
+    ) -> tuple[int, str | None, str | None]:
+        """Run a command directly (without a shell) in a subprocess of the worker process.
+
+        Parameters
+        ----------
+        args
+            The command and its arguments as a list of strings.
+        stdin
+            Standard input to the command. If `None`, stdin is closed.
+
+        Returns
+        -------
+        returncode
+            The return code of the command.
+        stdout
+            The standard output of the command.
+        stderr
+            The standard error of the command.
+        """
+        executable = Path(args[0])
+        if not check_executable(executable):
+            return 1, None, None
+        p = subprocess.Popen(
+            args,
+            stdin=subprocess.DEVNULL if stdin is None else subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=False,
+            encoding="utf-8",
+            errors="ignore",
+            env=os.environ,
+        )
+        self.pid_queue.put_nowait(p.pid)
+        stdout, stderr = p.communicate(stdin)
+        with contextlib.suppress(queue.Empty):
+            self.pid_queue.get_nowait()
+        return p.returncode, stdout, stderr
+
+    def runexec_verbose(self, args: list[str], stdin: str | None = None) -> int:
+        """Same as `runexec`, but print stuff and only return the returncode."""
+        returncode, stdout, stderr = self.runexec(args, stdin)
+        if returncode != 0:
+            print(
+                f"Command failed with return code {returncode}: {shlex.join(args)}",
+                file=sys.stderr,
+            )
+        if stdout is not None and len(stdout) > 0:
+            sys.stdout.write(stdout)
+        if stderr is not None and len(stderr) > 0:
+            sys.stderr.write(stderr)
+        return returncode
+
     def runpy(self, script: str, args: list[str]) -> int:
         """Run a Python script and amend all local imports as inputs."""
         # Sanity check of the executable (if it can be found)
         if not check_executable(Path(script), shebang="#!/usr/bin/env python3"):
             return 1
         # Run the script
-        return self.runsh_verbose(
-            f"{sys.executable} -",
+        return self.runexec_verbose(
+            [f"{sys.executable}", "-"],
             PYCODE_WRAPPER.format(
                 argv=repr([script, *args]),
                 script=repr(script),

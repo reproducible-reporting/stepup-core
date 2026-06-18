@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from stepup.core.api import glob, runpy
+from stepup.core.api import glob, run
 
 glob("work?.py")
 glob("inp?.txt")
-runpy("./work1.py", inp=["work1.py", "inp1.txt"], out=["out1.txt"])
+run("./work1.py", inp=["work1.py", "inp1.txt"], out=["out1.txt"])

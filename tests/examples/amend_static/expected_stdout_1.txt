@@ -18,6 +18,7 @@ Reason                required inputs are unavailable
 Action                runpy ./work.py
 Working directory     ./
 Inputs        STATIC  inp1.txt [amended]
+              STATIC  work.py
              AWAITED  (inp2.txt) [amended]
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ Skipping file cleanup due to incomplete build

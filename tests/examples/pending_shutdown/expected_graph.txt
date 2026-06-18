@@ -13,7 +13,7 @@ step:runpy ./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
-             creates   step:runsh cat msg.txt
+             creates   step:runexec cat msg.txt
              creates   step:runsh sleep 5; echo hello > msg.txt
 
 step:runsh sleep 5; echo hello > msg.txt
@@ -27,9 +27,9 @@ file:msg.txt
                state = AWAITED
           created by   step:runsh sleep 5; echo hello > msg.txt
             consumes   step:runsh sleep 5; echo hello > msg.txt
-            supplies   step:runsh cat msg.txt
+            supplies   step:runexec cat msg.txt
 
-step:runsh cat msg.txt
+step:runexec cat msg.txt
                state = PENDING
                 need = DEFAULT
           created by   step:runpy ./plan.py

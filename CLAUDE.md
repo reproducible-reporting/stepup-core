@@ -194,6 +194,13 @@ Used in the API for dynamic file discovery with consistency constraints across p
   and how the test runner compares `current_*` files against `expected_*` files.
 - `stepup/core/pytest.py`:
   Pytest helpers for integration tests that run actual StepUp workflows.
+- To regenerate `expected_*` files after an intentional behavior change, run:
+
+  ```bash
+  STEPUP_OVERWRITE_EXPECTED=1 pytest tests/test_examples.py
+  ```
+
+  Review the diffs with `git diff` afterwards to confirm only expected changes.
 
 ### Test instructions
 

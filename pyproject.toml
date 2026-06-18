@@ -82,6 +82,7 @@ status = "stepup.core.interact:status_subcommand"
 [project.entry-points."stepup.actions"]
 copy = "stepup.core.actions:copy"
 render-jinja = "stepup.core.render_jinja:render_jinja_action"
+runexec = "stepup.core.actions:runexec"
 runpy = "stepup.core.actions:runpy"
 runsh = "stepup.core.actions:runsh"
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import runpy, static
+from stepup.core.api import run, static
 
 static("work.py", "inp1.txt")
-runpy("./work.py")
+run("./work.py")

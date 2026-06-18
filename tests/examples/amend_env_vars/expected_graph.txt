@@ -14,9 +14,15 @@ step:runpy ./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:foo.txt
+             creates   file:work.py
              creates   step:runpy ./work.py
 
 file:foo.txt
+               state = STATIC
+          created by   step:runpy ./plan.py
+            supplies   step:runpy ./work.py
+
+file:work.py
                state = STATIC
           created by   step:runpy ./plan.py
             supplies   step:runpy ./work.py
@@ -29,6 +35,7 @@ step:runpy ./work.py
                      = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:foo.txt [amended]
+            consumes   file:work.py
              creates   file:bar.log
              creates   file:bar.txt
             supplies   file:bar.log [amended]

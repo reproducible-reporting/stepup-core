@@ -5,8 +5,8 @@ root:
 file:plan.py
                state = STATIC
           created by   root:
+            supplies   step:runexec cat ../plan.py  # wd=sub/
             supplies   step:runpy ./plan.py
-            supplies   step:runsh cat ../plan.py  # wd=sub/
 
 step:runpy ./plan.py
                state = SUCCEEDED
@@ -49,7 +49,7 @@ step:runpy ./plan.py  # wd=sub/
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:runpy ./plan.py
             consumes   file:sub/plan.py
-             creates   step:runsh cat ../plan.py  # wd=sub/
+             creates   step:runexec cat ../plan.py  # wd=sub/
              creates   step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 
 step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
@@ -65,7 +65,7 @@ file:sub/upper.txt
           created by   step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
             consumes   step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 
-step:runsh cat ../plan.py  # wd=sub/
+step:runexec cat ../plan.py  # wd=sub/
                state = SUCCEEDED
                 need = DEFAULT
           created by   step:runpy ./plan.py  # wd=sub/

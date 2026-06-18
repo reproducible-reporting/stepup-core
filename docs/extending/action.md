@@ -32,7 +32,8 @@ For these situations, you can create a custom action, which consists of two part
       For example, if the step is `runsh echo hello`,
       `argstr` will be `echo hello`.
     - The second argument is a `WorkThread` object,
-      which is only used for launching new subprocesses with the `work_thread.runsh()` method.
+      which is only used for launching new subprocesses with the
+      `work_thread.runsh()` or `work_thread.runexec()` methods.
 
 2. Create an action entry point in `pyproject.toml` pointing to this function:
 

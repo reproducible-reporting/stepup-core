@@ -21,6 +21,7 @@ step:runpy ./plan.py
 file:work.py
                state = STATIC
           created by   step:runpy ./plan.py
+            supplies   step:runpy ./work.py
 
 step:runpy ./work.py
                state = SUCCEEDED
@@ -29,6 +30,7 @@ step:runpy ./work.py
            explained = yes
           created by   step:runpy ./plan.py
             consumes   file:inp.txt [amended]
+            consumes   file:work.py
 
 step:runsh sleep 1; echo 'Some input for drop_amend example' > inp.txt
                state = SUCCEEDED
