@@ -107,6 +107,7 @@ async def async_main(args: argparse.Namespace, mp_ctx=None):
                 args.watch_first,
                 args.resources,
                 mp_ctx=mp_ctx,
+                fork_runpy=args.fork_runpy,
             )
         except Exception as exc:
             tbstr = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
@@ -167,8 +168,15 @@ def parse_args() -> argparse.Namespace:
         "it is multiplied with the number of available cores. [default=%(default)s]",
     )
     parser.add_argument(
+        "--fork-runpy",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Use forkserver for runpy script execution in workers to reduce startup overhead. "
+        "[default=%(default)s]",
+    )
+    parser.add_argument(
         "--fork-workers",
-        default=True,
+        default=False,
         action=argparse.BooleanOptionalAction,
         help="Use forkserver for worker startup to reduce memory overhead. [default=%(default)s]",
     )
@@ -242,6 +250,7 @@ async def serve(
     do_watch_first: bool,
     available_resources: str | None,
     mp_ctx=None,
+    fork_runpy: bool = False,
 ) -> ReturnCode:
     """Server program.
 
@@ -273,6 +282,8 @@ async def serve(
         e.g. `{"cpu": 4, "gpu": 1}`. Defaults to an empty dict.
     mp_ctx
         A `multiprocessing` forkserver context for worker startup, or `None` to use subprocesses.
+    fork_runpy
+        If `True`, workers use a forkserver for runpy script execution to reduce startup overhead.
 
     Returns
     -------
@@ -311,6 +322,7 @@ async def serve(
         explain_rerun=explain_rerun,
         do_remove_outdated=do_clean,
         mp_ctx=mp_ctx,
+        fork_runpy=fork_runpy,
     )
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(

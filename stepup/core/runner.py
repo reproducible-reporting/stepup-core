@@ -103,6 +103,9 @@ class Runner:
     mp_ctx: object = attrs.field(kw_only=True, default=None)
     """Multiprocessing forkserver context, or None to use subprocesses."""
 
+    fork_runpy: bool = attrs.field(kw_only=True, default=False)
+    """Whether to use a forkserver for runpy script execution."""
+
     async def loop(self, stop_event: asyncio.Event):
         """The main runner loop.
 
@@ -218,6 +221,7 @@ class Runner:
             self.explain_rerun,
             idx,
             mp_ctx=self.mp_ctx,
+            fork_runpy=self.fork_runpy,
         )
         self.workers.append(worker)
         await worker.boot(log_path, stop_event)

@@ -118,8 +118,10 @@ async def async_boot(args: argparse.Namespace, default_resources: str):
                 f"--log-level={args.log_level}",
             ]
         )
-        if not args.fork_workers:
-            argv.append("--no-fork-workers")
+        if args.fork_runpy:
+            argv.append("--fork-runpy")
+        if args.fork_workers:
+            argv.append("--fork-workers")
         if not args.duration:
             argv.append("--no-duration")
         if args.explain_rerun:
@@ -291,6 +293,13 @@ def boot_subcommand(subparsers, loader: ConfigLoader) -> callable:
         help="Number of parallel workers. "
         "When given as a real number with digits after the comma, "
         "it is multiplied with the number of available cores. [default=%(default)s]",
+    )
+    parser.add_argument(
+        "--fork-runpy",
+        default=(sys.platform == "linux"),
+        action=argparse.BooleanOptionalAction,
+        help="Use forkserver for runpy script execution in workers to reduce startup overhead. "
+        "[default: True on Linux, False elsewhere]",
     )
     parser.add_argument(
         "--fork-workers",

@@ -32,6 +32,7 @@ import multiprocessing.process
 import os
 import queue
 import resource
+import runpy
 import shlex
 import subprocess
 import sys
@@ -52,7 +53,7 @@ from .hash import FileHash, StepHash, compare_step_hashes, fmt_file_hash_diff
 from .reporter import ReporterClient
 from .rpc import AsyncRPCClient, allow_rpc, serve_socket_rpc
 from .step import Step, split_step_label
-from .utils import DBLock, string_to_bool
+from .utils import DBLock, get_local_import_paths, string_to_bool
 from .workflow import Workflow
 
 __all__ = ("WorkThread", "WorkerClient", "WorkerHandler", "WorkerStep")
@@ -100,6 +101,9 @@ class WorkerClient:
     mp_ctx: multiprocessing.context.BaseContext | None = attrs.field(kw_only=True, default=None)
     """Multiprocessing forkserver context, or None to use subprocess."""
 
+    fork_runpy: bool = attrs.field(kw_only=True, default=False)
+    """Whether to use a forkserver for runpy script execution."""
+
     process: asyncio.subprocess.Process | multiprocessing.process.BaseProcess | None = attrs.field(
         init=False, default=None
     )
@@ -130,6 +134,7 @@ class WorkerClient:
                     self.show_perf,
                     self.explain_rerun,
                     reporter_socket,
+                    self.fork_runpy,
                 ),
             )
             self.process.start()
@@ -147,6 +152,8 @@ class WorkerClient:
                 argv.append("--show-perf")
             if self.explain_rerun:
                 argv.append("--explain-rerun")
+            if self.fork_runpy:
+                argv.append("--fork-runpy")
             if reporter_socket is not None:
                 argv.append(f"--reporter={reporter_socket}")
             with open(log_path, "w") as log_fh:
@@ -573,12 +580,76 @@ finally:
 """
 
 
+def _runpy_forkserver_entry(
+    script: str,
+    args: list[str],
+    env_snapshot: dict[str, str],
+    workdir: str,
+    log_level: str,
+    result_conn,
+) -> None:
+    """Entry point for forkserver-launched runpy script executions.
+
+    This function runs in a forked child process and sends results back via `result_conn`.
+    It is equivalent to `PYCODE_WRAPPER` but uses native Python rather than a subprocess stdin pipe.
+    """
+    # These must be imported ONLY in the forked process:
+    # 1) The logger module is imported here to ensure valid logging output.
+    import logging as _logging  # noqa: PLC0415
+
+    # 2) Importing from the API module has crucial side effects:
+    # It opens a new connection to the director socket,
+    # which should happen in the forked process, not its parent.
+    from stepup.core.api import amend  # noqa: PLC0415
+
+    os.environ.clear()
+    os.environ.update(env_snapshot)
+    _logging.basicConfig(
+        format="%(asctime)s  %(levelname)8s  %(name)24s  ::  %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        level=log_level,
+    )
+    stdout_buf = io.StringIO()
+    stderr_buf = io.StringIO()
+    returncode = 0
+    try:
+        sys.argv = [script, *args]
+        with (
+            contextlib.chdir(workdir),
+            contextlib.redirect_stdout(stdout_buf),
+            contextlib.redirect_stderr(stderr_buf),
+        ):
+            # The exceptions must be caught here, to be able to send the corresponding
+            # output and return code back to the worker process.
+            # Otherwise, the parent process would just see a connection error.
+            try:
+                runpy.run_path(script, run_name="__main__")
+            except SystemExit as exc:
+                returncode = exc.code if isinstance(exc.code, int) else 1
+            except BaseException:  # noqa: BLE001
+                traceback.print_exc(file=sys.stderr)
+                returncode = 1
+            finally:
+                amend(inp=get_local_import_paths(script_path=Path(script)))
+    except BaseException:  # noqa: BLE001
+        traceback.print_exc(file=stderr_buf)
+        returncode = 1
+    result_conn.send(
+        {
+            "returncode": returncode,
+            "stdout": stdout_buf.getvalue(),
+            "stderr": stderr_buf.getvalue(),
+        }
+    )
+
+
 class WorkThread(threading.Thread):
     """Thread to run actions in the worker process."""
 
-    def __init__(self, action: str):
+    def __init__(self, action: str, runpy_mp_ctx=None):
         super().__init__()
         self.action = action
+        self.runpy_mp_ctx = runpy_mp_ctx
         self.returncode = 1
         self.done = asyncio.Event()
         try:
@@ -741,6 +812,8 @@ class WorkThread(threading.Thread):
         # Sanity check of the executable (if it can be found)
         if not check_executable(Path(script), shebang="#!/usr/bin/env python3"):
             return 1
+        if self.runpy_mp_ctx is not None:
+            return self._runpy_via_forkserver(script, args)
         # Run the script
         return self.runexec_verbose(
             [f"{sys.executable}", "-"],
@@ -750,6 +823,36 @@ class WorkThread(threading.Thread):
                 log_level=logging.getLevelName(logging.root.level),
             ),
         )
+
+    def _runpy_via_forkserver(self, script: str, args: list[str]) -> int:
+        """Run a Python script using the runpy forkserver."""
+        parent_conn, child_conn = self.runpy_mp_ctx.Pipe(duplex=False)
+        p = self.runpy_mp_ctx.Process(
+            target=_runpy_forkserver_entry,
+            args=(
+                script,
+                args,
+                dict(os.environ),
+                str(Path.cwd()),
+                logging.getLevelName(logging.root.level),
+                child_conn,
+            ),
+        )
+        p.start()
+        child_conn.close()
+        self.pid_queue.put_nowait(p.pid)
+        try:
+            result = parent_conn.recv()
+        finally:
+            p.join()
+            parent_conn.close()
+        with contextlib.suppress(queue.Empty):
+            self.pid_queue.get_nowait()
+        if result["stdout"]:
+            sys.stdout.write(result["stdout"])
+        if result["stderr"]:
+            sys.stderr.write(result["stderr"])
+        return result["returncode"]
 
 
 def check_executable(executable: Path, shebang: str | None = None) -> bool:
@@ -832,6 +935,8 @@ class WorkerHandler:
     reporter: ReporterClient = attrs.field()
     show_perf: bool = attrs.field()
     explain_rerun: bool = attrs.field()
+    runpy_mp_ctx: object = attrs.field(kw_only=True, default=None)
+    """Forkserver context for runpy script execution, or `None` to use subprocesses."""
     stop_event: asyncio.Event = attrs.field(factory=asyncio.Event)
     step: WorkerStep | None = attrs.field(init=False, default=None)
     timer: Timer = attrs.field(init=False, factory=Timer)
@@ -1107,7 +1212,7 @@ class WorkerHandler:
                 if self.show_perf:
                     ru_initial = resource.getrusage(resource.RUSAGE_CHILDREN)
                     pt_initial = perf_counter()
-                self.step.thread = WorkThread(self.step.action)
+                self.step.thread = WorkThread(self.step.action, runpy_mp_ctx=self.runpy_mp_ctx)
                 self.step.thread.start()
                 await self.step.thread.done.wait()
                 self.step.thread.join()
@@ -1268,6 +1373,12 @@ def parse_args():
         help="Explain for every step why it cannot be skipped.",
     )
     parser.add_argument(
+        "--fork-runpy",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Use forkserver for runpy script execution to reduce startup overhead.",
+    )
+    parser.add_argument(
         "--log-path",
         default=None,
         help="Redirect stdout and stderr to this log file before starting asyncio.",
@@ -1281,10 +1392,11 @@ async def _worker_serve(
     show_perf: bool,
     explain_rerun: bool,
     reporter_socket: Path | None,
+    runpy_mp_ctx=None,
 ) -> None:
     """Run the worker RPC server until the stop event is set."""
     async with ReporterClient.socket(reporter_socket) as reporter:
-        handler = WorkerHandler(reporter, show_perf, explain_rerun)
+        handler = WorkerHandler(reporter, show_perf, explain_rerun, runpy_mp_ctx=runpy_mp_ctx)
         await serve_socket_rpc(handler, worker_socket, handler.stop_event)
         handler.timer.report()
 
@@ -1297,6 +1409,7 @@ def _worker_main(
     explain_rerun: bool,
     reporter_socket: str | None,
     log_path: str | None = None,
+    fork_runpy: bool = False,
 ) -> None:
     """Common startup for both subprocess and forkserver paths."""
     if log_path is not None:
@@ -1310,6 +1423,11 @@ def _worker_main(
     )
     os.environ["STEPUP_DIRECTOR_SOCKET"] = director_socket
     os.environ["STEPUP_ROOT"] = str(Path.cwd())
+    os.environ["STEPUP_LOG_LEVEL"] = log_level
+    runpy_mp_ctx = None
+    if fork_runpy:
+        runpy_mp_ctx = multiprocessing.get_context("forkserver")
+        runpy_mp_ctx.set_forkserver_preload(["stepup.core.worker"])
     print(f"PID {os.getpid()}", flush=True)
     print(f"LOG_LEVEL {log_level}", flush=True)
     asyncio.run(
@@ -1319,6 +1437,7 @@ def _worker_main(
             show_perf,
             explain_rerun,
             Path(reporter_socket) if reporter_socket is not None else None,
+            runpy_mp_ctx=runpy_mp_ctx,
         )
     )
 
@@ -1332,6 +1451,7 @@ def _fork_worker_entry(
     show_perf: bool,
     explain_rerun: bool,
     reporter_socket: str | None,
+    fork_runpy: bool = False,
 ) -> None:
     """Entry point for forkserver-launched worker processes."""
     _worker_main(
@@ -1342,6 +1462,7 @@ def _fork_worker_entry(
         explain_rerun,
         reporter_socket,
         log_path,
+        fork_runpy=fork_runpy,
     )
 
 
@@ -1355,6 +1476,7 @@ def main():
         args.explain_rerun,
         str(args.reporter_socket) if args.reporter_socket is not None else None,
         args.log_path,
+        fork_runpy=args.fork_runpy,
     )
 
 

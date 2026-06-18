@@ -124,7 +124,12 @@ separated by slashes, where applicable.
 
 :   Set to `true` to explain for every step with recording info why it cannot be skipped.
 
-`forkserver` / `STEPUP_BOOT_FORKSERVER` / `--forkserver`, `--no-forkserver`
+`fork_runpy` / `STEPUP_BOOT_FORK_RUNPY` / `--fork-runpy`, `--no-fork-runpy`
+
+:   Set to `true` to use a forkserver for runpy script execution in workers, which reduces startup overhead.
+    This is enabled by default on Linux.
+
+`fork_workers` / `STEPUP_BOOT_FORK_WORKERS` / `--fork-workers`, `--no-fork-workers`
 
 :   Set to `true` to launch workers with a forkserver, which reduces memory overhead
     and improves performance.

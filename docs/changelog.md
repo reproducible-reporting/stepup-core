@@ -17,7 +17,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   See [Configuration files](reference/configuration.md) for details.
 - StepUp can now launch workers with a forkserver, which reduces memory overhead
   and improves performance.
-  This is enabled by default on Linux.
+  This can be controlled with the `--fork-workers` flag,
+  which is enabled by default on Linux.
+- The workers themselves can also use a forkserver for runpy script execution.
+  This can be controlled with the `--fork-runpy` flag,
+  which is enabled by default on Linux.
 
 ### Changed
 
