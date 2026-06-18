@@ -5408,7 +5408,11 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   See <a href="../reference/configuration/">Configuration files</a> for details.</li>
 <li>StepUp can now launch workers with a forkserver, which reduces memory overhead
   and improves performance.
-  This is enabled by default on Linux.</li>
+  This can be controlled with the <code>--fork-workers</code> flag,
+  which is enabled by default on Linux.</li>
+<li>The workers themselves can also use a forkserver for runpy script execution.
+  This can be controlled with the <code>--fork-runpy</code> flag,
+  which is enabled by default on Linux.</li>
 </ul>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
 <ul>

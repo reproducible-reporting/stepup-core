@@ -2392,7 +2392,12 @@ which can be undesirable in some cases, such as testing.</p>
 <dd>
 <p>Set to <code>true</code> to explain for every step with recording info why it cannot be skipped.</p>
 </dd>
-<dt><code>forkserver</code> / <code>STEPUP_BOOT_FORKSERVER</code> / <code>--forkserver</code>, <code>--no-forkserver</code></dt>
+<dt><code>fork_runpy</code> / <code>STEPUP_BOOT_FORK_RUNPY</code> / <code>--fork-runpy</code>, <code>--no-fork-runpy</code></dt>
+<dd>
+<p>Set to <code>true</code> to use a forkserver for runpy script execution in workers, which reduces startup overhead.
+This is enabled by default on Linux.</p>
+</dd>
+<dt><code>fork_workers</code> / <code>STEPUP_BOOT_FORK_WORKERS</code> / <code>--fork-workers</code>, <code>--no-fork-workers</code></dt>
 <dd>
 <p>Set to <code>true</code> to launch workers with a forkserver, which reduces memory overhead
 and improves performance.
