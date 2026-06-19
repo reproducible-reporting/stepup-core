@@ -2374,9 +2374,14 @@ The action (shell, Python, or direct execution) is now selected automatically ba
 <td><code>runpy()</code></td>
 </tr>
 <tr>
+<td>First word is a <code>console_scripts</code> entry point in the current Python environment</td>
+<td><code>runpyep</code> — entry point called in-process via forkserver</td>
+<td><em>(new in StepUp 4)</em></td>
+</tr>
+<tr>
 <td>Otherwise</td>
 <td><code>runexec</code> — direct execution, no shell</td>
-<td><code>runsh()</code> (previously had no <code>runexec</code> equivalent)</td>
+<td><em>(new in StepUp 4)</em></td>
 </tr>
 </tbody>
 </table>
@@ -2390,9 +2395,9 @@ In StepUp 3, one had to be explicitly include the script as an input, e.g.</p>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">runpy</span><span class="p">(</span><span class="s2">&quot;./$</span><span class="si">{inp}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;analyze.py&quot;</span><span class="p">,</span> <span class="s2">&quot;data.csv&quot;</span><span class="p">])</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># StepUp 4: the script becomes a dependency automatically</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./analyze.py data.csv&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;data.csv&quot;</span><span class="p">])</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./analyze.py data.csv&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;data.csv&quot;</span><span class="p">)</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1"># or</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./analyze.py $</span><span class="si">{inp}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;data.csv&quot;</span><span class="p">])</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./analyze.py $</span><span class="si">{inp}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;data.csv&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="migrating-from-runsh">Migrating from <code>runsh()</code><a class="headerlink" href="#migrating-from-runsh" title="Permanent link">&para;</a></h3>
 <p>Most <code>runsh()</code> calls can be replaced with <code>run()</code> directly, without <code>shell=True</code>,

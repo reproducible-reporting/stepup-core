@@ -5413,6 +5413,13 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>The workers themselves can also use a forkserver for runpy script execution.
   This can be controlled with the <code>--fork-runpy</code> flag,
   which is enabled by default on Linux.</li>
+<li>When the first word of a <code>run()</code> command is a bare command name matching a <code>console_scripts</code>
+  entry point from the current Python environment, StepUp now automatically selects the
+  <code>runpyep</code> action.
+  When the forkserver is enabled (<code>--fork-runpy</code>), the entry point function is called
+  in-process rather than spawning a new subprocess, reducing overhead.
+  If the entry point belongs to a different Python environment, a warning is logged and
+  the command falls back to direct subprocess execution (<code>runexec</code> action).</li>
 </ul>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
 <ul>
