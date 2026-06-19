@@ -23,6 +23,7 @@ import argparse
 import asyncio
 import contextlib
 import ctypes
+import importlib
 import inspect
 import io
 import json
@@ -580,27 +581,25 @@ finally:
 """
 
 
-def _runpy_forkserver_entry(
-    script: str,
+def _forkserver_entry(
+    cmd: str,
     args: list[str],
     env_snapshot: dict[str, str],
     workdir: str,
     log_level: str,
+    ep_value: str | None,
     result_conn,
 ) -> None:
-    """Entry point for forkserver-launched runpy script executions.
+    """Entry point for forkserver-launched Python executions.
 
     This function runs in a forked child process and sends results back via `result_conn`.
-    It is equivalent to `PYCODE_WRAPPER` but uses native Python rather than a subprocess stdin pipe.
+    When `ep_value` is `None`, `cmd` is a Python script path run via `runpy.run_path`,
+    with local imports auto-detected and amended as inputs.
+    When `ep_value` is a `module:attr` string, the corresponding console_script function
+    is imported and called directly without import tracking.
     """
-    # These must be imported ONLY in the forked process:
-    # 1) The logger module is imported here to ensure valid logging output.
+    # The logger module is imported here to ensure valid logging output.
     import logging as _logging  # noqa: PLC0415
-
-    # 2) Importing from the API module has crucial side effects:
-    # It opens a new connection to the director socket,
-    # which should happen in the forked process, not its parent.
-    from stepup.core.api import amend  # noqa: PLC0415
 
     os.environ.clear()
     os.environ.update(env_snapshot)
@@ -613,25 +612,35 @@ def _runpy_forkserver_entry(
     stderr_buf = io.StringIO()
     returncode = 0
     try:
-        sys.argv = [script, *args]
+        sys.argv = [cmd, *args]
         with (
             contextlib.chdir(workdir),
             contextlib.redirect_stdout(stdout_buf),
             contextlib.redirect_stderr(stderr_buf),
         ):
-            # The exceptions must be caught here, to be able to send the corresponding
-            # output and return code back to the worker process.
-            # Otherwise, the parent process would just see a connection error.
             try:
-                runpy.run_path(script, run_name="__main__")
+                if ep_value is None:
+                    runpy.run_path(cmd, run_name="__main__")
+                else:
+                    module_name, attr_name = ep_value.split(":", 1)
+                    func = getattr(importlib.import_module(module_name), attr_name)
+                    func()
             except SystemExit as exc:
-                returncode = exc.code if isinstance(exc.code, int) else 1
-            except BaseException:  # noqa: BLE001
-                traceback.print_exc(file=sys.stderr)
-                returncode = 1
+                returncode = (
+                    exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
+                )
             finally:
-                amend(inp=get_local_import_paths(script_path=Path(script)))
+                if ep_value is None:
+                    # Must be imported ONLY in the forked process:
+                    # it opens a new connection to the director socket,
+                    # which should happen in the forked process, not its parent.
+                    from stepup.core.api import amend  # noqa: PLC0415
+
+                    amend(inp=get_local_import_paths(script_path=Path(cmd)))
     except BaseException:  # noqa: BLE001
+        # All exceptions must be caught here, to be able to send the corresponding
+        # output and return code back to the worker process.
+        # Otherwise, the parent process would just see a connection error.
         traceback.print_exc(file=stderr_buf)
         returncode = 1
     result_conn.send(
@@ -691,7 +700,9 @@ class WorkThread(threading.Thread):
             try:
                 returncode = action_func(**kwargs)
             except SystemExit as exc:
-                returncode = exc.code if isinstance(exc.code, int) else 1
+                returncode = (
+                    exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
+                )
             if not isinstance(returncode, int):
                 raise TypeError(f"Action {action_name} does not return an int.")
             self.returncode = returncode
@@ -702,6 +713,72 @@ class WorkThread(threading.Thread):
         finally:
             if self.loop is not None:
                 self.loop.call_soon_threadsafe(self.done.set)
+
+    def _via_forkserver(self, target, args: tuple) -> int:
+        """Spawn `target` in a forkserver child, collect its result dict, and print output.
+
+        Parameters
+        ----------
+        target
+            The function to run in the forkserver child.
+        args
+            The arguments to pass to the target function.
+
+        Returns
+        -------
+        returncode
+            The return code of the target function.
+            (The function call represents a command execution,
+            so the return code is expected to be 0 for success and non-zero for failure.)
+        """
+        parent_conn, child_conn = self.runpy_mp_ctx.Pipe(duplex=False)
+        p = self.runpy_mp_ctx.Process(target=target, args=(*args, child_conn))
+        p.start()
+        child_conn.close()
+        self.pid_queue.put_nowait(p.pid)
+        try:
+            result = parent_conn.recv()
+        finally:
+            p.join()
+            parent_conn.close()
+            with contextlib.suppress(queue.Empty):
+                self.pid_queue.get_nowait()
+        if result["stdout"]:
+            sys.stdout.write(result["stdout"])
+        if result["stderr"]:
+            sys.stderr.write(result["stderr"])
+        return result["returncode"]
+
+    def _run_subprocess(
+        self, cmd, *, shell: bool, stdin: str | None = None
+    ) -> tuple[int, str | None, str | None]:
+        """Run `cmd` as a subprocess, manage the pid queue, return (returncode, stdout, stderr)."""
+        p = subprocess.Popen(
+            cmd,
+            stdin=subprocess.DEVNULL if stdin is None else subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=shell,
+            encoding="utf-8",
+            errors="ignore",
+            env=os.environ,
+        )
+        self.pid_queue.put_nowait(p.pid)
+        stdout, stderr = p.communicate(stdin)
+        with contextlib.suppress(queue.Empty):
+            self.pid_queue.get_nowait()
+        return p.returncode, stdout, stderr
+
+    @staticmethod
+    def _print_result(returncode: int, stdout: str | None, stderr: str | None, cmd_str: str) -> int:
+        """Print subprocess output and error, then return the returncode."""
+        if returncode != 0:
+            print(f"Command failed with return code {returncode}: {cmd_str}", file=sys.stderr)
+        if stdout:
+            sys.stdout.write(stdout)
+        if stderr:
+            sys.stderr.write(stderr)
+        return returncode
 
     def runsh(self, argstr: str, stdin: str | None = None) -> tuple[int, str | None, str | None]:
         """Run a shell command in a subprocess of the worker process.
@@ -722,36 +799,13 @@ class WorkThread(threading.Thread):
         stderr
             The standard error of the command.
         """
-        # Sanity check of the executable (if it can be found)
-        executable = Path(shlex.split(argstr)[0])
-        if not check_executable(executable):
+        if not check_executable(Path(shlex.split(argstr)[0])):
             return 1, None, None
-        p = subprocess.Popen(
-            argstr,
-            stdin=subprocess.DEVNULL if stdin is None else subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            shell=True,
-            encoding="utf-8",
-            errors="ignore",
-            env=os.environ,
-        )
-        self.pid_queue.put_nowait(p.pid)
-        stdout, stderr = p.communicate(stdin)
-        with contextlib.suppress(queue.Empty):
-            self.pid_queue.get_nowait()
-        return p.returncode, stdout, stderr
+        return self._run_subprocess(argstr, shell=True, stdin=stdin)
 
     def runsh_verbose(self, argstr: str, stdin: str | None = None) -> int:
         """Same as `runsh`, but print stuff and only return the returncode."""
-        returncode, stdout, stderr = self.runsh(argstr, stdin)
-        if returncode != 0:
-            print(f"Command failed with return code {returncode}: {argstr}", file=sys.stderr)
-        if stdout is not None and len(stdout) > 0:
-            sys.stdout.write(stdout)
-        if stderr is not None and len(stderr) > 0:
-            sys.stderr.write(stderr)
-        return returncode
+        return self._print_result(*self.runsh(argstr, stdin), argstr)
 
     def runexec(
         self, args: list[str], stdin: str | None = None
@@ -774,85 +828,49 @@ class WorkThread(threading.Thread):
         stderr
             The standard error of the command.
         """
-        executable = Path(args[0])
-        if not check_executable(executable):
+        if not check_executable(Path(args[0])):
             return 1, None, None
-        p = subprocess.Popen(
-            args,
-            stdin=subprocess.DEVNULL if stdin is None else subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            shell=False,
-            encoding="utf-8",
-            errors="ignore",
-            env=os.environ,
-        )
-        self.pid_queue.put_nowait(p.pid)
-        stdout, stderr = p.communicate(stdin)
-        with contextlib.suppress(queue.Empty):
-            self.pid_queue.get_nowait()
-        return p.returncode, stdout, stderr
+        return self._run_subprocess(args, shell=False, stdin=stdin)
 
     def runexec_verbose(self, args: list[str], stdin: str | None = None) -> int:
         """Same as `runexec`, but print stuff and only return the returncode."""
-        returncode, stdout, stderr = self.runexec(args, stdin)
-        if returncode != 0:
-            print(
-                f"Command failed with return code {returncode}: {shlex.join(args)}",
-                file=sys.stderr,
-            )
-        if stdout is not None and len(stdout) > 0:
-            sys.stdout.write(stdout)
-        if stderr is not None and len(stderr) > 0:
-            sys.stderr.write(stderr)
-        return returncode
+        return self._print_result(*self.runexec(args, stdin), shlex.join(args))
 
     def runpy(self, script: str, args: list[str]) -> int:
         """Run a Python script and amend all local imports as inputs."""
-        # Sanity check of the executable (if it can be found)
         if not check_executable(Path(script), shebang="#!/usr/bin/env python3"):
             return 1
+        log_level = logging.getLevelName(logging.root.level)
         if self.runpy_mp_ctx is not None:
-            return self._runpy_via_forkserver(script, args)
-        # Run the script
+            return self._via_forkserver(
+                _forkserver_entry,
+                (script, args, dict(os.environ), str(Path.cwd()), log_level, None),
+            )
         return self.runexec_verbose(
             [f"{sys.executable}", "-"],
             PYCODE_WRAPPER.format(
                 argv=repr([script, *args]),
                 script=repr(script),
-                log_level=logging.getLevelName(logging.root.level),
+                log_level=log_level,
             ),
         )
 
-    def _runpy_via_forkserver(self, script: str, args: list[str]) -> int:
-        """Run a Python script using the runpy forkserver."""
-        parent_conn, child_conn = self.runpy_mp_ctx.Pipe(duplex=False)
-        p = self.runpy_mp_ctx.Process(
-            target=_runpy_forkserver_entry,
-            args=(
-                script,
-                args,
-                dict(os.environ),
-                str(Path.cwd()),
-                logging.getLevelName(logging.root.level),
-                child_conn,
-            ),
-        )
-        p.start()
-        child_conn.close()
-        self.pid_queue.put_nowait(p.pid)
-        try:
-            result = parent_conn.recv()
-        finally:
-            p.join()
-            parent_conn.close()
-        with contextlib.suppress(queue.Empty):
-            self.pid_queue.get_nowait()
-        if result["stdout"]:
-            sys.stdout.write(result["stdout"])
-        if result["stderr"]:
-            sys.stderr.write(result["stderr"])
-        return result["returncode"]
+    def runpyep(self, cmd: str, args: list[str]) -> int:
+        """Run a Python console_script entry point, using the forkserver when available."""
+        eps = list(entry_points(group="console_scripts", name=cmd))
+        if not eps:
+            raise ValueError(
+                f"No console_script entry point found for '{cmd}'. "
+                "Package uninstalled while running the workflow?"
+            )
+        ep_value = eps[0].value
+        if self.runpy_mp_ctx is not None:
+            log_level = logging.getLevelName(logging.root.level)
+            return self._via_forkserver(
+                _forkserver_entry,
+                (cmd, args, dict(os.environ), str(Path.cwd()), log_level, ep_value),
+            )
+        return self.runexec_verbose([cmd, *args])
 
 
 def check_executable(executable: Path, shebang: str | None = None) -> bool:

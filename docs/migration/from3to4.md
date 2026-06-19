@@ -13,7 +13,8 @@ The action (shell, Python, or direct execution) is now selected automatically ba
 | --- | --- | --- |
 | `shell=True` | `runsh` — passed to a shell | `runsh()` |
 | First word ends in `.py` | `runpy` — Python wrapper with local import detection | `runpy()` |
-| Otherwise | `runexec` — direct execution, no shell | `runsh()` (previously had no `runexec` equivalent) |
+| First word is a `console_scripts` entry point in the current Python environment | `runpyep` — entry point called in-process via forkserver | *(new in StepUp 4)* |
+| Otherwise | `runexec` — direct execution, no shell | *(new in StepUp 4)* |
 
 Note that the `run()` function checks whether the first word of the command
 is a relative path (contains a path separator, `/`, and is not absolute).
@@ -27,9 +28,9 @@ runpy("./analyze.py data.csv", inp=["analyze.py", "data.csv"])
 runpy("./${inp}", inp=["analyze.py", "data.csv"])
 
 # StepUp 4: the script becomes a dependency automatically
-run("./analyze.py data.csv", inp=["data.csv"])
+run("./analyze.py data.csv", inp="data.csv")
 # or
-run("./analyze.py ${inp}", inp=["data.csv"])
+run("./analyze.py ${inp}", inp="data.csv")
 ```
 
 ### Migrating from `runsh()`

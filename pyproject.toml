@@ -84,6 +84,7 @@ copy = "stepup.core.actions:copy"
 render-jinja = "stepup.core.render_jinja:render_jinja_action"
 runexec = "stepup.core.actions:runexec"
 runpy = "stepup.core.actions:runpy"
+runpyep = "stepup.core.actions:runpyep"
 runsh = "stepup.core.actions:runsh"
 
 [tool.pytest.ini_options]

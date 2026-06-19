@@ -46,6 +46,33 @@ You should see the following output:
 Change the value of the variable `message` in `helper.py` and rerun StepUp with `stepup boot -n 1`.
 Only `work.py` is rerun, since `plan.py` has not changed.
 
+## Running Python Entry Points
+
+Many Python tools are installed as command-line programs and are invoked by bare
+name rather than by a `.py` file path.
+Some examples (in the context of document processing) include `pymupdf` and `weasyprint`.
+These are Python programs that you can just run from the terminal.
+
+When these are installed in the same Python environment as StepUp and used in a `run()` command,
+StepUp automatically detects that they are `console_scripts` entry points
+(i.e. command-line programs installed by Python packages).
+Consider the following example:
+
+```python
+run("weasyprint ${inp} ${out}", inp="document.html", out="document.pdf")
+```
+
+StepUp will create a `runpyep` action for this command,
+which is similar to `runpy` but designed to run Python entry points.
+If the `--fork-runpy` option is enabled (the default on Linux),
+StepUp will run the command with the forkserver mechanism,
+which is significantly faster than a normal subprocess.
+
+Several sanity checks are performed to ensure that the command
+is a proper Python entry point from the same Python environment as StepUp.
+If not, StepUp will fall back to running the command with the `runexec` action,
+which always executes the command as a normal subprocess.
+
 ## Notes
 
 - You can control which imports are treated as "local" with
@@ -64,8 +91,8 @@ Only `work.py` is rerun, since `plan.py` has not changed.
   For this to work, you must explicitly add the `inp` argument:
 
     ```python
-    run("./generate.py", out=["helper.py"])
-    run("./work.py", inp=["helper.py"])
+    run("./generate.py", out="helper.py")
+    run("./work.py", inp="helper.py")
     ```
 
     The reason for this is that the running `work.py` will fail if `helper.py` does not exist.

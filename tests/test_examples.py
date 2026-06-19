@@ -127,6 +127,8 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "plan_inp",
         "recreate_elsewhere",
         "recursive_glob",
+        "runpyep",
+        "runpyep_nofork",
         "render_jinja_dict",
         "render_jinja_fail",
         "render_jinja_json",

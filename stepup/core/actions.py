@@ -40,7 +40,7 @@ from stepup.core.config import ConfigLoader
 
 from .worker import WorkThread
 
-__all__ = ("act_subcommand", "act_tool", "copy", "runexec", "runpy", "runsh")
+__all__ = ("act_subcommand", "act_tool", "copy", "runexec", "runpy", "runpyep", "runsh")
 
 
 def runsh(argstr: str, work_thread: WorkThread) -> int:
@@ -80,6 +80,28 @@ def runpy(argstr: str, work_thread: WorkThread) -> int:
     if len(args) == 0:
         raise ValueError("runpy requires at least one argument")
     return work_thread.runpy(args[0], args[1:])
+
+
+def runpyep(argstr: str, work_thread: WorkThread) -> int:
+    """Execute a Python console_script entry point, using the forkserver when available.
+
+    Parameters
+    ----------
+    argstr
+        The entry point command name followed by its arguments as a single string,
+        parsed with `shlex.split`.
+    work_thread
+        The work thread that is executing the command.
+
+    Returns
+    -------
+    exitcode
+        The exit code of the command.
+    """
+    args = shlex.split(argstr)
+    if not args:
+        raise ValueError("runpyep requires at least one argument")
+    return work_thread.runpyep(args[0], args[1:])
 
 
 def runexec(argstr: str, work_thread: WorkThread) -> int:

@@ -32,9 +32,11 @@ import json
 import os
 import pickle
 import shlex
+import shutil
 import sys
 import tomllib
 from collections.abc import Callable, Collection, Iterable, Iterator, Sequence
+from importlib.metadata import entry_points
 from runpy import run_path
 from types import SimpleNamespace
 
@@ -490,6 +492,50 @@ def graph(prefix: str):
 #
 
 
+def _detect_python_entrypoint(cmd: str) -> str | None:
+    """Return the entry point value if `cmd` is a console_script in the current Python environment.
+
+    Parameters
+    ----------
+    cmd
+        The bare command name (no path separators) to look up.
+
+    Returns
+    -------
+    ep_value
+        The entry point value string (e.g. `"pytest:main"`) when `cmd` is a console_script
+        belonging to the current Python environment, or `None` otherwise.
+
+    Raises
+    ------
+    ValueError
+        When `cmd` is registered as a console_script but cannot be found on `PATH`,
+        which indicates a broken installation.
+    """
+    eps = list(entry_points(group="console_scripts", name=cmd))
+    if not eps:
+        return None
+    ep_value = eps[0].value
+    which_path = shutil.which(cmd)
+    if which_path is None:
+        raise ValueError(
+            f"Command '{cmd}' is registered as a Python console_script entry point "
+            "but was not found on PATH. The installation may be broken."
+        )
+    # Verify the executable lives inside the current Python environment.
+    resolved = Path(which_path).realpath()
+    env_bins = {(Path(sys.prefix) / "bin").realpath(), (Path(sys.exec_prefix) / "bin").realpath()}
+    if not any(resolved.startswith(d + "/") or resolved == d for d in env_bins):
+        print(
+            f"WARNING: Command '{cmd}' is a Python entry point but its executable"
+            f" ('{which_path}') is not in the current Python environment ({sys.prefix})."
+            " Falling back to runexec.",
+            file=sys.stderr,
+        )
+        return None
+    return ep_value
+
+
 def _prepare_run_command(
     command: str, inp: Collection[str] | str, shell: bool, need_relative_exe: bool
 ) -> tuple[str, str, list[str]]:
@@ -510,7 +556,7 @@ def _prepare_run_command(
     Returns
     -------
     action
-        The action to execute: "runsh", "runpy", or "runexec".
+        The action to execute: `"runsh"`, `"runpy"`, `"runpyep"`, or `"runexec"`.
     command
         The command with `${inp}` substituted by the user-specified inputs,
         excluding the auto-added executable if applicable.
@@ -528,6 +574,8 @@ def _prepare_run_command(
         action = "runsh"
     elif parts[0].endswith(".py"):
         action = "runpy"
+    elif "/" not in parts[0] and _detect_python_entrypoint(parts[0]) is not None:
+        action = "runpyep"
     else:
         action = "runexec"
     # Pre-substitute ${inp} with only the user-specified inputs.
@@ -576,6 +624,12 @@ def run(
           the script is executed via a Python wrapper
           that auto-detects local imports (`runpy` action).
           Shell features are not available in this mode.
+        - If `shell=False` and the first word is a bare command name (no slashes) that
+          matches a `console_scripts` entry point in the current Python environment:
+          the entry point is called in-process via the forkserver when available,
+          avoiding subprocess overhead (`runpyep` action).
+          If the entry point belongs to a different Python environment, a warning is
+          logged and the command falls back to direct subprocess execution.
         - Otherwise: the command is executed directly without a shell (`runexec` action).
           This is faster and safer than the shell mode.
 

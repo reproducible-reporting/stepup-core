@@ -1,0 +1,3 @@
+[boot]
+num_workers = 1
+watch = true
