@@ -1,7 +1,6 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post24)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
    STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
+     PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ echo hello > a.txt
@@ -23,5 +22,4 @@ Outputs      AWAITED  c.txt
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ Skipping file cleanup due to incomplete build
    WARNING │ Check logs: .stepup/warning.log
-  DIRECTOR │ Stopping workers
   DIRECTOR │ See you!

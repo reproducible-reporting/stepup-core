@@ -5450,8 +5450,7 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>The <code>plan()</code> function has been made maximally similar to <code>run()</code>,
   and now accepts arbitrary local Python scripts,
   not just a directory that must contain a <code>plan.py</code> script.</li>
-<li>The scheduler has been replaced by a completely new implementation, called the &ldquo;dispatcher&rdquo;.
-  It is far more robust and powerful than the previous scheduler, and it is easier to maintain.
+<li>The scheduler has been replaced by a new and more efficient implementation.
   This change also comes with several improved features:<ul>
 <li>Steps are prioritized using the <em>tail time</em>, which results in the shortest overall
   execution time of the workflow.
@@ -5461,6 +5460,10 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>The <code>optional</code> feature has become more robust.</li>
 </ul>
 </li>
+<li>The <code>--num-workers</code> / <code>-n</code> option of <code>stepup boot</code> has been renamed to <code>--jobs</code> / <code>-j</code>,
+  in line with the convention used by <code>make</code> and similar tools.
+  The config-file key changes from <code>num_workers</code> to <code>jobs</code>,
+  and the environment variable changes from <code>STEPUP_NUM_WORKERS</code> to <code>STEPUP_BOOT_JOBS</code>.</li>
 <li>Several environment variables have been renamed for consistency.
   See <a href="../reference/configuration/">Configuration files</a> for details.</li>
 <li>Documentation has been updated to reflect the API changes and to clarify some other points.</li>
@@ -5472,8 +5475,9 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>The &ldquo;action&rdquo; abstraction layer introduced in StepUp 3 has been completely removed,
   as it was no longer needed after the introduction of the forkserver.</li>
 <li>Worker subprocesses have been replaced by asyncio tasks running inside the director.
-  File hashing is offloaded to a dedicated subprocess (<code>_stepup_hasher</code> or a forkserver child).
-  The <code>--fork-workers</code> option has been removed as a consequence.</li>
+  File hashing is offloaded to a dedicated subprocess (<code>_stepup_hasher</code> or a forkserver child).</li>
+<li>The <em>run phase</em> has been renamed to <em>build phase</em> throughout the documentation and source code.</li>
+<li>The Runner has been renamed to Builder.</li>
 </ul>
 </li>
 </ul>

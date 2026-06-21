@@ -1629,6 +1629,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#changed-command-line-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed Command-Line Arguments
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#changed-environment-variable-names" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2301,6 +2312,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#changed-command-line-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed Command-Line Arguments
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#changed-environment-variable-names" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2351,6 +2373,7 @@
 <p>A few things have changed in StepUp 4 that might require changes to your <code>plan.py</code> file.
 These changes reflect optimizations of StepUp&rsquo;s internals or
 get rid of poor historical API design choices.</p>
+<p>What used to be called the <em>run phase</em> is now called the <em>build phase</em> in documentation and source code.</p>
 <h2 id="the-new-run-function-replaces-the-old-runsh-and-runpy-functions">The new <code>run()</code> function replaces the old <code>runsh()</code> and <code>runpy()</code> functions<a class="headerlink" href="#the-new-run-function-replaces-the-old-runsh-and-runpy-functions" title="Permanent link">&para;</a></h2>
 <p>StepUp 4 unifies <code>runsh()</code> and <code>runpy()</code> into a single and more powerful <code>run()</code> function,
 which takes an optional boolean <code>shell</code> argument (default <code>False</code>)
@@ -2509,6 +2532,9 @@ You could equally use <code>foo</code> and <code>bar</code> in this example and 
   which will have the same effect, e.g. <code>resources="blocked"</code>.</p>
 </li>
 </ul>
+<h2 id="changed-command-line-arguments">Changed Command-Line Arguments<a class="headerlink" href="#changed-command-line-arguments" title="Permanent link">&para;</a></h2>
+<p>The <code>stepup boot</code> command was changed to have <code>-j</code> and <code>--jobs</code> options
+instead of <code>-n</code> and <code>--num-workers</code>.</p>
 <h2 id="changed-environment-variable-names">Changed Environment Variable Names<a class="headerlink" href="#changed-environment-variable-names" title="Permanent link">&para;</a></h2>
 <p>The following environment variables have been renamed to have a <code>STEPUP_BOOT_</code> prefix instead of <code>STEPUP_</code>:</p>
 <table>
@@ -2529,7 +2555,7 @@ You could equally use <code>foo</code> and <code>bar</code> in this example and 
 </tr>
 <tr>
 <td><code>STEPUP_NUM_WORKERS</code></td>
-<td><code>STEPUP_BOOT_NUM_WORKERS</code></td>
+<td><code>STEPUP_BOOT_JOBS</code></td>
 </tr>
 <tr>
 <td><code>STEPUP_PERF</code></td>

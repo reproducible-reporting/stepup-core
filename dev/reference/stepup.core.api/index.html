@@ -3080,7 +3080,7 @@ Three values are allowed:
           <div class="doc-md-description">
             <p>Named resources required to run this step, e.g. <code>{"gpu": 1}</code>.
 One may also provide the resources as a string, e.g. <code>"gpu:1,memgb:4"</code>.
-The step will not be dispatched until the required units are available,
+The step will not be scheduled until the required units are available,
 taking into account the units already held by other running steps.
 Resources not listed in <code>--resources</code> / <code>STEPUP_RESOURCES</code> are treated as unavailable.
 The required units must be strictly positive and default to 1 when not given,
@@ -3296,7 +3296,7 @@ Relative paths in <code>inp</code>, <code>out</code>, and <code>vol</code> are r
 </span><span id="__span-0-263"><a id="__codelineno-0-263" name="__codelineno-0-263"></a><span class="sd">    resources</span>
 </span><span id="__span-0-264"><a id="__codelineno-0-264" name="__codelineno-0-264"></a><span class="sd">        Named resources required to run this step, e.g. `{&quot;gpu&quot;: 1}`.</span>
 </span><span id="__span-0-265"><a id="__codelineno-0-265" name="__codelineno-0-265"></a><span class="sd">        One may also provide the resources as a string, e.g. `&quot;gpu:1,memgb:4&quot;`.</span>
-</span><span id="__span-0-266"><a id="__codelineno-0-266" name="__codelineno-0-266"></a><span class="sd">        The step will not be dispatched until the required units are available,</span>
+</span><span id="__span-0-266"><a id="__codelineno-0-266" name="__codelineno-0-266"></a><span class="sd">        The step will not be scheduled until the required units are available,</span>
 </span><span id="__span-0-267"><a id="__codelineno-0-267" name="__codelineno-0-267"></a><span class="sd">        taking into account the units already held by other running steps.</span>
 </span><span id="__span-0-268"><a id="__codelineno-0-268" name="__codelineno-0-268"></a><span class="sd">        Resources not listed in `--resources` / `STEPUP_RESOURCES` are treated as unavailable.</span>
 </span><span id="__span-0-269"><a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="sd">        The required units must be strictly positive and default to 1 when not given,</span>

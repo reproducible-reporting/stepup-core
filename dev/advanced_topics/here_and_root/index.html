@@ -2182,9 +2182,9 @@
 
 
 <h1 id="here-and-root-variables">HERE and ROOT Variables<a class="headerlink" href="#here-and-root-variables" title="Permanent link">&para;</a></h1>
-<p>When a worker runs a step, it defines several environment variables,
+<p>When a step runs, it defines several environment variables,
 including <code>${HERE}</code> and <code>${ROOT}</code>, which can be relevant for writing advanced scripts.
-(The workers also define variables starting with <code>STEPUP_</code>,
+(Steps also have variables starting with <code>STEPUP_</code>,
 but these are only useful to StepUp itself, not to end users.)</p>
 <p>The two variables are defined as follows:</p>
 <ul>
@@ -2223,22 +2223,20 @@ and the following <code>source/sub/plan.py</code>:</p>
 </span></code></pre></div>
 <p>Make the scripts executable and run everything as follows:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py<span class="w"> </span>sub/plan.py
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should get the following terminal output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post24)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>        0/0 |    STARTUP │ (Re)initialized boot script
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        0/0 |   DIRECTOR │ Launched worker 0
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        0/1 |      PHASE │ run
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        0/1 |      START │ ./plan.py
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        1/2 |    SUCCESS │ ./plan.py
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        1/2 |      START │ ./plan.py  # wd=sub/
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        2/3 |    SUCCESS │ ./plan.py  # wd=sub/
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        2/3 |      START │ cp -p example.txt ../../public/sub/example.txt  # wd=sub/
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        3/3 |    SUCCESS │ cp -p example.txt ../../public/sub/example.txt  # wd=sub/
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        3/3 |   DIRECTOR │ Stopping workers
-</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>        3/3 |   DIRECTOR │ See you!
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        0/1 |      PHASE │ build
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        0/1 |      START │ ./plan.py
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        1/2 |    SUCCESS │ ./plan.py
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        1/2 |      START │ ./plan.py  # wd=sub/
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        2/3 |    SUCCESS │ ./plan.py  # wd=sub/
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        2/3 |      START │ cp -p example.txt ../../public/sub/example.txt  # wd=sub/
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        3/3 |    SUCCESS │ cp -p example.txt ../../public/sub/example.txt  # wd=sub/
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        3/3 |   DIRECTOR │ See you!
 </span></code></pre></div>
 <p>The top-level <code>plan.py</code> provides some infrastructure:
 some static files and creating the public directory where the outputs will be created.</p>
@@ -2261,11 +2259,11 @@ Any variables present in the environment variable will also be substituted once.
 <li>
 <p>Modify the scripts <code>plan.py</code> and <code>sub/plan.py</code> to utilize a <code>DST</code> variable as explained above.
   To achieve this, define <code>DST</code> externally, for instance,
-  by starting StepUp as <code>DST='../public/${HERE}' stepup boot -n 1</code>.</p>
+  by starting StepUp as <code>DST='../public/${HERE}' stepup boot -j 1</code>.</p>
 </li>
 <li>
 <p>As a follow-up to the previous point, run StepUp with a different <code>DST</code> value.
-  For example: <code>DST='../out/${HERE}' stepup boot -n 1</code>.
+  For example: <code>DST='../out/${HERE}' stepup boot -j 1</code>.
   You will see that all old output files get cleaned up after the new output is created.</p>
 </li>
 </ul>

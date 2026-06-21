@@ -2336,7 +2336,7 @@ which comprise the same nodes.</p>
   the step cannot yet be scheduled
   because some inputs have not been declared or built yet.</li>
 <li><code>RUNNING</code>:
-  the step is being executed by one of the workers.</li>
+  the step is currently executing.</li>
 <li><code>CHECKING</code>:
   the step has a stored hash from a previous successful run and is being compared
   against its current inputs and outputs to determine if execution can be skipped.
@@ -2433,7 +2433,7 @@ illustrates this type of edge.
 </li>
 <li>Brown arrows: standard input and standard output.</li>
 <li>Yellow arrows: startup of subprocesses</li>
-<li>Blue arrows: remote procedure calls to control the director and the workers</li>
+<li>Blue arrows: remote procedure calls to control the director</li>
 <li>Purple arrows: remote procedure calls for progress updates</li>
 <li>Green arrows: remote procedure calls to extend the workflow</li>
 </ul>

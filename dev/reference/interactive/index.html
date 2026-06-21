@@ -2268,16 +2268,16 @@ If the key is not associated with a command, the following help message appears:
 <li><code>r = run</code>:
   Runs steps that are affected by file changes registered during the <em>watch phase</em>.</li>
 <li><code>q = shutdown</code>:
-  StepUp waits for the workers to complete their current job and will not start new jobs.
-  As soon as all workers are idle, StepUp exits.
+  StepUp waits for all running steps to complete and will not start new jobs.
+  As soon as no steps are running, StepUp exits.
   If it takes to long for the steps to complete, you can press <code>q</code> again to kill them with <code>SIGINT</code>.
   Pres <code>q</code> for a third time to kill the steps with <code>SIGKILL</code>. (nuclear option)</li>
 <li><code>d = drain</code>:
-  StepUp waits for the workers to complete their current job and will not start new jobs.
-  As soon as all workers are idle, StepUp transitions into the <em>watch phase</em>.</li>
+  StepUp waits for all running steps to complete and will not start new jobs.
+  As soon as no steps are running, StepUp transitions into the <em>watch phase</em>.</li>
 <li><code>j = join</code>:
-  StepUp continues running jobs until no new jobs can be found to send to the workers.
-  As soon as all workers are idle, StepUp terminates.</li>
+  StepUp continues running jobs until no new jobs can be found.
+  As soon as no steps are running, StepUp terminates.</li>
 <li><code>g = graph</code>:
   Writes out the workflow graph in text format to a file named <code>graph.txt</code>.
   (This human-readable file contains most of the information from <code>.stepup/workflow.mp.xz</code>)</li>
@@ -2322,13 +2322,13 @@ where a <code>stepup boot</code> command is running in interactive mode.
 <h3 id="configuration-of-a-task-in-vscode">Configuration of a Task in VSCode<a class="headerlink" href="#configuration-of-a-task-in-vscode" title="Permanent link">&para;</a></h3>
 <p>You can define a
 <a href="https://code.visualstudio.com/docs/editor/tasks#_custom-tasks">Custom Task in VSCode</a>
-to start the run phase of a StepUp instance running in a terminal.</p>
+to start the build phase of a StepUp instance running in a terminal.</p>
 <p>For this example, we will assume the following:</p>
 <ul>
 <li>You have an <code>.envrc</code> file that defines the environment variable <code>STEPUP_ROOT</code>
   and you have configured and installed <a href="https://direnv.net/">direnv</a>.</li>
 <li>You have an interactive StepUp instance running in a terminal (with <code>stepup -w</code>).</li>
-<li>You want to use the <code>ctrl+'</code> keybinding to start the run phase
+<li>You want to use the <code>ctrl+'</code> keybinding to start the build phase
   while you are editing a file in the StepUp project.</li>
 </ul>
 <p>Add the following to your user <code>tasks.json</code> file:</p>

@@ -1,7 +1,6 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post24)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
    STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
+     PHASE │ build
      START │ ./plan.py
       FAIL │ ./plan.py
 ────────────────────────────────── Step info ───────────────────────────────────
@@ -9,7 +8,7 @@ Command               ./plan.py
 Return code           1
 ──────────────────────────────── Standard error ────────────────────────────────
 Traceback (most recent call last):
-  File "stepup/core/worker.py", line 628, in _forkserver_entry
+  File "stepup/core/executor.py", line 124, in _forkserver_entry
     runpy.run_path(cmd, run_name="__main__")
     ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "<frozen runpy>", line 294, in run_path
@@ -18,7 +17,7 @@ Traceback (most recent call last):
   File "./plan.py", line 5, in <module>
     copy("b.txt", "a.txt")
     ~~~~^^^^^^^^^^^^^^^^^^
-  File "stepup/core/api.py", line 703, in copy
+  File "stepup/core/api.py", line 698, in copy
     return step(
         "cp -p ${inp} ${out}",
     ...<4 lines>...
@@ -30,7 +29,7 @@ Traceback (most recent call last):
     ...<8 lines>...
         shell,
     )
-  File "stepup/core/rpc.py", line 542, in __call__
+  File "stepup/core/rpc.py", line 543, in __call__
     _handle_error(body, name, args, kwargs)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "stepup/core/rpc.py", line 74, in _handle_error
@@ -40,7 +39,7 @@ Traceback (most recent call last):
   File "stepup/core/rpc.py", line 210, in _handle_request
     result = await result
              ^^^^^^^^^^^^
-  File "stepup/core/director.py", line 477, in step
+  File "stepup/core/director.py", line 488, in step
     return self.workflow.define_step(
            ~~~~~~~~~~~~~~~~~~~~~~~~~^
         creator,
@@ -72,5 +71,4 @@ Outputs      AWAITED  b.txt
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ Skipping file cleanup due to incomplete build
    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-  DIRECTOR │ Stopping workers
   DIRECTOR │ See you!

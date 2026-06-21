@@ -2297,29 +2297,26 @@
 This substitution happens early, before the steps are sent to the director process.</p>
 <p>The <a class="autorefs autorefs-internal" title="stepup.core.api.graph(prefix)" href="../../reference/stepup.core.api/#stepup.core.api.graph"><code>graph()</code></a> function writes the graph in a few formats,
 which are used for visualization below.</p>
-<p>Now run StepUp with two workers:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-n<span class="w"> </span><span class="m">2</span>
+<p>Now run StepUp with up to 2 steps in parallel:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-j<span class="w"> </span><span class="m">2</span>
 </span></code></pre></div>
 <p>You will see the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post24)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>   STARTUP │ (Re)initialized boot script
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  DIRECTOR │ Launched worker 0
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  DIRECTOR │ Launched worker 1
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>     PHASE │ run
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>     START │ ./plan.py
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>   SUCCESS │ ./plan.py
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>     START │ echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>   SUCCESS │ echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>     START │ grep Coffee story.txt
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>   SUCCESS │ grep Coffee story.txt
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>─────────────────────────────── Standard output ────────────────────────────────
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>Coffee smile
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>────────────────────────────────────────────────────────────────────────────────
-</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
-</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>  DIRECTOR │ Stopping workers
-</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>  DIRECTOR │ See you!
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>     PHASE │ build
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>     START │ ./plan.py
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>   SUCCESS │ ./plan.py
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>     START │ echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>   SUCCESS │ echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>     START │ grep Coffee story.txt
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>   SUCCESS │ grep Coffee story.txt
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>─────────────────────────────── Standard output ────────────────────────────────
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>Coffee smile
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>────────────────────────────────────────────────────────────────────────────────
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>  DIRECTOR │ See you!
 </span></code></pre></div>
-<p>Although StepUp launches two workers, it executes your <code>run</code> steps sequentially,
+<p>Although StepUp allows 2 steps to run in parallel, it executes your <code>run</code> steps sequentially,
 since it knows that the output of the first step will be used by the second.</p>
 <p>Note, however, that the <code>echo</code> commands are already started before <code>./plan.py</code> has finished.
 This is the expected behavior: even without a complete overview of all the build steps,
@@ -2446,15 +2443,15 @@ The web server will load the graph in memory and will only reload it when reques
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
-<p>Run <code>stepup boot -n 2</code> again. As expected, the steps are now skipped.</p>
+<p>Run <code>stepup boot -j 2</code> again. As expected, the steps are now skipped.</p>
 </li>
 <li>
 <p>Modify the <code>grep</code> command to select the first line (matching <code>Monday</code>)
-  and run <code>stepup boot -n 2</code> again.
+  and run <code>stepup boot -j 2</code> again.
   The <code>echo</code> commands are skipped as they have not changed.</p>
 </li>
 <li>
-<p>Change the order of the two steps in <code>plan.py</code> and run <code>stepup boot -n 2</code>.
+<p>Change the order of the two steps in <code>plan.py</code> and run <code>stepup boot -j 2</code>.
   The step <code>./plan.py</code> is executed because the file has changed,
   but the <code>echo</code> and <code>grep</code> steps are skipped.
   This shows that <code>plan.py</code> is nothing but a plan, and it does not execute the steps itself.
