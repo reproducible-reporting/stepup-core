@@ -33,6 +33,7 @@ from stepup.core.dispatcher import (
     PRUNE_DETACHED_CHECK_AFTER,
     PRUNE_REDUNDANT_CHECK_AFTER,
     RECURSIVE_UPDATE_SAFE,
+    SELECT_CHECKABLE_STEPS,
     SELECT_INPUTS,
     SELECT_PENDING_REASONS,
     SELECT_RESOURCE_COUNTS,
@@ -1336,3 +1337,158 @@ def test_unavailable_input_multiple_none_blocking(con):
     _add_dep(con, 3, 2)
     _add_dep(con, 4, 2)
     assert not _has_unavailable_input(con, 2)
+
+
+# -----------------------------------------------------------------------
+# Tests for CHECKING state: RECURSIVE_UPDATE_SAFE
+# -----------------------------------------------------------------------
+
+
+def test_checking_creator_makes_product_safe(con):
+    """A product of a CHECKING step gets _safe=1 (CHECKING is a safe running state)."""
+    _insert_step(con, 2, 1, StepState.CHECKING, check_safe=True)
+    _insert_step(con, 3, 2, StepState.PENDING)
+    con.execute(RECURSIVE_UPDATE_SAFE)
+    assert _get_safe(con)[3] == 1
+
+
+def test_checking_in_chain_propagates_safe(con):
+    """Safety propagates through: root -> A(CHECKING) -> B(PENDING)."""
+    _insert_step(con, 2, 1, StepState.CHECKING, check_safe=True)
+    _insert_step(con, 3, 2, StepState.PENDING)
+    con.execute(RECURSIVE_UPDATE_SAFE)
+    assert _get_safe(con)[3] == 1
+
+
+# -----------------------------------------------------------------------
+# Tests for SELECT_CHECKABLE_STEPS and UNAVAILABLE_INPUT
+# -----------------------------------------------------------------------
+
+
+def _insert_step_hash(con, node_id):
+    """Insert a minimal step_hash row so the step is considered checkable."""
+    con.execute(
+        "INSERT INTO step_hash (node, inp_digest, inp_info, out_digest, out_info)"
+        " VALUES (?, X'aabbcc', NULL, X'ddeeff', NULL)",
+        (node_id,),
+    )
+
+
+def _get_checkable_ids(con):
+    """Run SELECT_CHECKABLE_STEPS and return the list of node ids in result order."""
+    return [row[0] for row in con.execute(SELECT_CHECKABLE_STEPS).fetchall()]
+
+
+def _has_unavailable_input(con, consumer_id):
+    """Return whether the given consumer has at least one unavailable input."""
+    row = con.execute(
+        f"SELECT EXISTS ({UNAVAILABLE_INPUT}) FROM node WHERE node.i = ?",
+        (consumer_id,),
+    ).fetchone()
+    return bool(row[0])
+
+
+def test_checkable_step_no_inputs_with_hash(con):
+    """A PENDING safe step with a stored hash and no inputs is checkable."""
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step_hash(con, 2)
+    assert _get_checkable_ids(con) == [2]
+
+
+def test_checkable_step_no_hash_not_checkable(con):
+    """A PENDING safe step without a stored hash is NOT checkable (must execute)."""
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    assert _get_checkable_ids(con) == []
+
+
+def test_checkable_step_blocked_by_unavailable_initial_input(con):
+    """A step with a hash but an unavailable initial (non-amended) input is NOT checkable."""
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step_hash(con, 2)
+    _insert_input_file(con, 3, 1, FileState.AWAITED)
+    _add_dep(con, 3, 2)
+    assert _get_checkable_ids(con) == []
+
+
+def test_checkable_step_with_ready_initial_and_unready_amended_input(con):
+    """A step with a hash: ready initial input + unready amended input IS checkable.
+
+    This is the ValidateAmendedJob case: amended inputs not yet ready, but we can
+    still validate that the initial inputs haven't changed (without resource slots).
+    """
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step_hash(con, 2)
+    # Ready initial input
+    _insert_input_file(con, 3, 1, FileState.STATIC)
+    _add_dep(con, 3, 2)
+    # Unready amended input (MISSING — case 1 of UNAVAILABLE_INPUT blocks but not INITIAL)
+    _insert_input_file(con, 4, 1, FileState.MISSING)
+    dep_id = _add_dep_returning_id(con, 4, 2)
+    _mark_dep_amended(con, dep_id)
+    # MISSING amended inputs are NOT blocked by UNAVAILABLE_INPUT (case 1 only blocks
+    # AWAITED/OUTDATED), so both SELECT_RUNNABLE_STEPS and SELECT_CHECKABLE_STEPS allow them.
+    assert _get_checkable_ids(con) == [2]
+
+
+def test_checkable_step_with_hash_and_missing_resource(con):
+    """A step with a hash is checkable even when its resource is NOT available.
+
+    This is the core property: SELECT_CHECKABLE_STEPS does not check resource availability,
+    so PENDING steps with hashes are dispatched to CHECKING without waiting for resources.
+    This ensures skipping is never blocked by named resource restrictions.
+    """
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step_hash(con, 2)
+    con.execute("INSERT INTO step_resource (node, name, units) VALUES (2, 'gpu', 1)")
+    # No row in available_resource → resource is undefined → SELECT_RUNNABLE_STEPS would block
+    assert _get_runnable_ids(con) == []
+    # But SELECT_CHECKABLE_STEPS ignores resources → step is still checkable
+    assert _get_checkable_ids(con) == [2]
+
+
+def test_checkable_step_with_hash_and_exhausted_resource(con):
+    """A step with a hash is checkable even when its resource pool is fully consumed."""
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step_hash(con, 2)
+    _insert_step(con, 3, 1, StepState.RUNNING, safe=True, implied_need=Need.DEFAULT)
+    con.execute("INSERT INTO available_resource (name, units) VALUES ('gpu', 1)")
+    con.execute("INSERT INTO step_resource (node, name, units) VALUES (2, 'gpu', 1)")
+    con.execute("INSERT INTO step_resource (node, name, units) VALUES (3, 'gpu', 1)")
+    # SELECT_RUNNABLE_STEPS would block: available(1) - running(1) = 0 < required(1)
+    assert _get_runnable_ids(con) == []
+    # But SELECT_CHECKABLE_STEPS ignores resources → step is checkable
+    assert _get_checkable_ids(con) == [2]
+
+
+def test_unavailable_input_blocks_on_amended_awaited(con):
+    """UNAVAILABLE_INPUT blocks on amended AWAITED inputs."""
+    _insert_step(con, 2, 1, StepState.PENDING)
+    _insert_input_file(con, 3, 1, FileState.AWAITED)
+    dep_id = _add_dep_returning_id(con, 3, 2)
+    _mark_dep_amended(con, dep_id)
+    assert _has_unavailable_input(con, 2)
+
+
+def test_unavailable_input_blocks_on_amended_outdated(con):
+    """UNAVAILABLE_INPUT blocks on amended OUTDATED inputs."""
+    _insert_step(con, 2, 1, StepState.PENDING)
+    _insert_input_file(con, 3, 1, FileState.OUTDATED)
+    dep_id = _add_dep_returning_id(con, 3, 2)
+    _mark_dep_amended(con, dep_id)
+    assert _has_unavailable_input(con, 2)
+
+
+def test_unavailable_input_blocks_on_initial_awaited(con):
+    """UNAVAILABLE_INPUT blocks on an initial (non-amended) AWAITED input."""
+    _insert_step(con, 2, 1, StepState.PENDING)
+    _insert_input_file(con, 3, 1, FileState.AWAITED)
+    _add_dep(con, 3, 2)
+    assert _has_unavailable_input(con, 2)
+
+
+def test_unavailable_input_blocks_on_volatile(con):
+    """UNAVAILABLE_INPUT blocks on VOLATILE inputs (initial or amended)."""
+    _insert_step(con, 2, 1, StepState.PENDING)
+    _insert_input_file(con, 3, 1, FileState.VOLATILE)
+    _add_dep(con, 3, 2)
+    assert _has_unavailable_input(con, 2)

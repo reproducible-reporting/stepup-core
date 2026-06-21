@@ -194,7 +194,9 @@ class ReporterHandler:
         if self.show_progress:
             # Progress bar
             nsuc = self._step_counts.get(StepState.SUCCEEDED, 0)
-            nrun = self._step_counts.get(StepState.RUNNING, 0)
+            nrun = self._step_counts.get(StepState.RUNNING, 0) + self._step_counts.get(
+                StepState.CHECKING, 0
+            )
             npen = self._step_counts.get(StepState.PENDING, 0)
             nd = max(self._num_digits, len(str(nsuc)), len(str(nrun)), len(str(npen)))
             self._num_digits = nd

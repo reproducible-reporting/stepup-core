@@ -42,7 +42,9 @@ UPDATE step SET _safe = cte.safe FROM (
         -- Start with all steps whose _check_safe is set.
         SELECT
             s.node,
-            s.state in ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
+            s.state in (
+                {StepState.RUNNING.value}, {StepState.CHECKING.value}, {StepState.SUCCEEDED.value}
+            )
         FROM step AS s
         WHERE _check_safe
 
@@ -52,7 +54,9 @@ UPDATE step SET _safe = cte.safe FROM (
         -- or its own state does not allow queuing of products.
         SELECT
             s.node,
-            trace.safe AND s.state in ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
+            trace.safe AND s.state in (
+                {StepState.RUNNING.value}, {StepState.CHECKING.value}, {StepState.SUCCEEDED.value}
+            )
         FROM trace
         JOIN node AS product ON trace.i = product.creator
         JOIN step AS s ON product.i = s.node
@@ -230,6 +234,41 @@ WHERE dep.consumer = node.i AND (
 """
 
 
+# Building blocks shared by step-selection queries.
+_PENDING_STEP_WHERE = f"""step.state = {StepState.PENDING.value} AND
+    step._safe AND
+    step.rescheduled_info = '' AND
+    step._implied_need > {Need.OPTIONAL.value} AND
+    NOT node.detached"""
+
+# Priority WHERE clause:
+# - Planning steps run first to unlock more work early
+# - Within each group, higher tail_time steps go first
+# - Label provides a deterministic tie-breaker.
+_ORDER_BY_PRIORITY = f"""ORDER BY
+    (step._implied_need = {Need.PLAN.value}) DESC,
+    step._tail_time DESC,
+    node.label ASC"""
+
+
+# Select the highest priority PENDING step that can be hash-checked for possible skipping.
+# Unlike SELECT_RUNNABLE_STEPS, this query:
+# - requires a stored hash (step_hash table entry), because a hash is needed to check for skipping
+# - does NOT check resource availability, as hash checking and skipping never needs named resources
+SELECT_CHECKABLE_STEPS = f"""
+SELECT
+    node.i AS i,
+    node.label AS label
+FROM node
+JOIN step ON node.i = step.node
+WHERE
+    {_PENDING_STEP_WHERE} AND
+    NOT EXISTS ({UNAVAILABLE_INPUT}) AND
+    EXISTS (SELECT 1 FROM step_hash WHERE step_hash.node = node.i)
+{_ORDER_BY_PRIORITY}
+"""
+
+
 # Select the highest priority PENDING step that is ready to be executed.
 SELECT_RUNNABLE_STEPS = f"""
 SELECT
@@ -238,11 +277,7 @@ SELECT
 FROM node
 JOIN step ON node.i = step.node
 WHERE
-    step.state = {StepState.PENDING.value} AND
-    step._safe AND
-    step.rescheduled_info = '' AND
-    step._implied_need > {Need.OPTIONAL.value} AND
-    NOT node.detached AND
+    {_PENDING_STEP_WHERE} AND
     NOT EXISTS ({UNAVAILABLE_INPUT}) AND
     NOT EXISTS (
         -- Exclude the step if any required resource is undefined or over-committed.
@@ -263,15 +298,7 @@ WHERE
               ) < req.units
           )
     )
-ORDER BY
-    -- Planning steps get absolute tail_time over non-planning steps.
-    -- Within each group, steps with higher tail_time are scheduled first.
-    -- By running the planning steps first, we get a better idea of the overall workflow
-    -- and can make more informed decisions about which steps to prioritize next.
-    -- Note that the last one is a tie-breaker to ensure a deterministic order of steps.
-    (step._implied_need = {Need.PLAN.value}) DESC,
-    step._tail_time DESC,
-    node.label ASC
+{_ORDER_BY_PRIORITY}
 """
 
 
@@ -327,10 +354,7 @@ JOIN step ON node.i = step.node
 WHERE step.state = {StepState.PENDING.value} AND
     step._implied_need != {Need.OPTIONAL.value} AND
     NOT node.detached
-ORDER BY
-    (step._implied_need = {Need.PLAN.value}) DESC,
-    step._tail_time DESC,
-    node.label ASC
+{_ORDER_BY_PRIORITY}
 """
 
 
@@ -391,9 +415,19 @@ class Dispatcher:
             self._update_meta_safe()
             self._update_meta_after()
 
-            # B) Identify the highest priority PENDING step that is ready to be executed,
-            #    and send a corresponding job to the runner.
-            step = self._get_runnable_step()
+            # B) Identify the highest priority PENDING step that is ready for execution.
+            #    Checkable steps (those with a stored hash) are dispatched first without a
+            #    resource check, because hash-checking never needs named resources.
+            #    Executable steps (no stored hash) are dispatched next, subject to resources.
+            step = self._get_step(SELECT_CHECKABLE_STEPS)
+            if step is not None:
+                job = self._derive_job(step)
+                logger.debug("Derived checkable job: %s", job)
+                logger.info("Pop %s", job.name)
+                step.set_state(StepState.CHECKING)
+                step.clear_rescheduled_info()
+                return job
+            step = self._get_step(SELECT_RUNNABLE_STEPS)
             if step is None:
                 logger.debug("No runnable steps found")
                 return None
@@ -444,9 +478,8 @@ class Dispatcher:
         cur = con.execute("UPDATE step SET _check_after = 0 WHERE _check_after = 1")
         logger.debug(f"Updated {cur.rowcount} _check_after metadata field(s) for steps")
 
-    def _get_runnable_step(self) -> Step | None:
-        """Iterate over all PENDING steps that satisfy all conditions for being runnable."""
-        row = self.workflow.con.execute(SELECT_RUNNABLE_STEPS).fetchone()
+    def _get_step(self, sql: str) -> Step | None:
+        row = self.workflow.con.execute(sql).fetchone()
         if row is None:
             return None
         i, label = row
@@ -459,6 +492,9 @@ class Dispatcher:
         con = self.workflow.con
         cur = con.execute(SELECT_INPUTS, (step.i,))
         for path, detached, fs_value, is_amended, digest, mode, mtime, size, inode in cur:
+            # All exception cases handled in this loop should have been filtered out
+            # by the SELECT_INPUTS query.
+            # We keep them here as sanity checks, because they indicate a serious internal error.
             file_state = FileState(fs_value)
 
             # Pre-flight sanity check

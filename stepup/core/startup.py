@@ -49,13 +49,19 @@ async def startup_from_db(
     con = workflow.con
 
     await reporter("STARTUP", "Making failed steps pending")
-    # Make steps pending if they are RUNNING or FAILED.
-    # RUNNING are uncommon, but can happen if the director crashes.
+    # Make steps pending if they are RUNNING, CHECKING, or FAILED.
+    # RUNNING/CHECKING are uncommon, but can happen if the director crashes.
     async with dblock:
         # Steps that were running are considered failed.
         con.execute(
             "UPDATE step SET state = ? WHERE state = ?",
             (StepState.FAILED.value, StepState.RUNNING.value),
+        )
+        # Steps that were being hash-checked go back to pending directly
+        # (no output was produced, so no FAILED intermediate is needed).
+        con.execute(
+            "UPDATE step SET state = ? WHERE state = ?",
+            (StepState.PENDING.value, StepState.CHECKING.value),
         )
         # Make all failed steps pending again, as they can be retried.
         for step in workflow.steps(StepState.FAILED):

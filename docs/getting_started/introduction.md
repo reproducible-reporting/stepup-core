@@ -48,10 +48,12 @@ The nodes of the graph can be instances of the following two main classes:
     - `PENDING`:
       the step cannot yet be scheduled
       because some inputs have not been declared or built yet.
-    - `QUEUED`:
-      all inputs are available and the step is waiting to be executed.
     - `RUNNING`:
       the step is being executed by one of the workers.
+    - `CHECKING`:
+      the step has a stored hash from a previous successful run and is being compared
+      against its current inputs and outputs to determine if execution can be skipped.
+      Named resource restrictions do not apply in this state.
     - `SUCCEEDED`:
       the step has been successfully completed.
     - `FAILED`:

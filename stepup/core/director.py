@@ -621,7 +621,10 @@ class DirectorHandler:
             return {
                 "step_counts": self.workflow.get_step_counts(),
                 "file_counts": self.workflow.get_file_counts(),
-                "running_steps": [step.label for step in self.workflow.steps(StepState.RUNNING)],
+                "running_steps": (
+                    [step.label for step in self.workflow.steps(StepState.RUNNING)]
+                    + [step.label for step in self.workflow.steps(StepState.CHECKING)]
+                ),
                 "resource_counts": self.dispatcher.get_resource_counts(),
             }
 

@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS step (
     -- Main data
     node INTEGER PRIMARY KEY,
     -- The node of the step in the node table.
-    state INTEGER NOT NULL CHECK(state >= 21 AND state <= 24),
+    state INTEGER NOT NULL CHECK(state >= 21 AND state <= 25),
     -- The state of the step, as defined in the StepState enum.
     need INTEGER NOT NULL CHECK(need >= 31 AND need <= 34),
     -- The need of the step, as defined in the Need enum.
@@ -747,10 +747,11 @@ class Step(Node):
         This method also clears the rescheduled_info,
         which makes the step eligible for scheduling again.
         """
-        # Note that PENDING and RUNNING are ignored.
+        # Note that PENDING, RUNNING, and CHECKING are ignored.
         # This method may be called on RUNNING steps that create their own amended inputs.
+        # CHECKING steps are mid hash-check and will settle naturally (SUCCEEDED or PENDING).
         state = self.get_state()
-        if state == StepState.RUNNING:
+        if state in (StepState.RUNNING, StepState.CHECKING):
             return
         self.clear_rescheduled_info()
         if state in (StepState.SUCCEEDED, StepState.FAILED):

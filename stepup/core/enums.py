@@ -95,6 +95,14 @@ class StepState(Enum):
     RUNNING = 22
     """The step is being executed by a worker."""
 
+    CHECKING = 25
+    """The step is being hash-checked for possible skipping.
+
+    Named resource restrictions do not apply in this state.
+    The step transitions to `SUCCEEDED` if the skip succeeds,
+    or back to `PENDING` if the step must be executed.
+    """
+
     SUCCEEDED = 23
     """The step has completed successfully (exit code 0)."""
 

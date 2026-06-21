@@ -142,6 +142,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "reqdir_missing",
         "resource_multi",
         "resource_pool",
+        "resource_skip",
         "resource_zero",
         "restart_add_missing",
         "restart_add_nglob",

@@ -581,6 +581,9 @@ class Cascade:
         # - Added "subshell" field to step table (replaces the actions concept with a shell flag).
         # - Step labels no longer carry an action-name prefix; they store the raw command line.
         #   This changes all inp_digest values in step_hash, invalidating all cached step results.
+        # - Added CHECKING step state (value 25): steps being hash-checked for possible skipping
+        #   without consuming named resource slots.
+        #   The STEP_SCHEMA CHECK constraint was updated from <= 24 to <= 25.
 
         return 5
 
