@@ -520,10 +520,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#processes" class="md-nav__link">
+  <a href="#software-components" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Processes
+        Software components
       
     </span>
   </a>
@@ -2027,14 +2027,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../extending/action/" class="md-nav__link">
+      <a href="../../extending/command/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Custom Actions
+    Command Dispatch
   
 
     
@@ -2253,10 +2253,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#processes" class="md-nav__link">
+  <a href="#software-components" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Processes
+        Software components
       
     </span>
   </a>
@@ -2335,10 +2335,12 @@ which comprise the same nodes.</p>
 <li><code>PENDING</code>:
   the step cannot yet be scheduled
   because some inputs have not been declared or built yet.</li>
-<li><code>QUEUED</code>:
-  all inputs are available and the step is waiting to be executed.</li>
 <li><code>RUNNING</code>:
   the step is being executed by one of the workers.</li>
+<li><code>CHECKING</code>:
+  the step has a stored hash from a previous successful run and is being compared
+  against its current inputs and outputs to determine if execution can be skipped.
+  Named resource restrictions do not apply in this state.</li>
 <li><code>SUCCEEDED</code>:
   the step has been successfully completed.</li>
 <li><code>FAILED</code>:
@@ -2416,8 +2418,8 @@ illustrates this type of edge.
 <p><img alt="graph_provenance.svg" src="../dependencies/graph_provenance.svg" /></p>
 </li>
 </ul>
-<h3 id="processes">Processes<a class="headerlink" href="#processes" title="Permanent link">&para;</a></h3>
-<p>The following diagram illustrates how the components of StepUp interact. Legend:</p>
+<h3 id="software-components">Software components<a class="headerlink" href="#software-components" title="Permanent link">&para;</a></h3>
+<p>The following diagram illustrates how different components of StepUp interact. Legend:</p>
 <ul>
 <li>White boxes: your fingers and eyes</li>
 <li>Grey boxes: processes<ul>
@@ -2425,10 +2427,11 @@ illustrates this type of edge.
   when you run the <code>stepup</code> command.</li>
 <li>The <strong>director</strong> holds the workflow data structure and is responsible
   for scheduling steps and watching for file changes.</li>
-<li>The <strong>worker</strong> processes execute steps and compute file and step hashes.</li>
+<li>Per step, there is a subprocess to compute <strong>file hashes</strong>.</li>
+<li>Per step, there is a subprocess to execute the <strong>step command</strong>.</li>
 </ul>
 </li>
-<li>Grey arrows: standard input and standard output.</li>
+<li>Brown arrows: standard input and standard output.</li>
 <li>Yellow arrows: startup of subprocesses</li>
 <li>Blue arrows: remote procedure calls to control the director and the workers</li>
 <li>Purple arrows: remote procedure calls for progress updates</li>

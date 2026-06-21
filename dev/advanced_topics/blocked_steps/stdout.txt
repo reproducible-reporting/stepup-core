@@ -1,22 +1,22 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post19)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post24)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
-     START │ runpy ./plan.py
-   SUCCESS │ runpy ./plan.py
-     START │ runsh echo hello > a.txt
-   SUCCESS │ runsh echo hello > a.txt
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ echo hello > a.txt
+   SUCCESS │ echo hello > a.txt
    WARNING │ 2 step(s) remained pending ...
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required resources exceed maximum available
-Action                copy a.txt b.txt
+Command               cp -p a.txt b.txt
 Working directory     ./
 Inputs         BUILT  a.txt
 Outputs      AWAITED  b.txt
 Resource     blocked  1
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                copy b.txt c.txt
+Command               cp -p b.txt c.txt
 Working directory     ./
 Inputs       AWAITED  b.txt
 Outputs      AWAITED  c.txt

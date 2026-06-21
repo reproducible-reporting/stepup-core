@@ -12,7 +12,7 @@
         <meta name="author" content="Toon Verstraelen">
       
       
-        <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/extending/action/">
+        <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/extending/command/">
       
       
         <link rel="prev" href="../api/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Custom Actions - StepUp Core</title>
+        <title>Command Dispatch - StepUp Core</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#custom-actions" class="md-skip">
+        <a href="#command-dispatch" class="md-skip">
           Skip to content
         </a>
       
@@ -133,7 +133,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Custom Actions
+              Command Dispatch
             
           </span>
         </div>
@@ -1911,6 +1911,24 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command Dispatch
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -1918,7 +1936,7 @@
   <span class="md-ellipsis">
     
   
-    Custom Actions
+    Command Dispatch
   
 
     
@@ -1927,6 +1945,36 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#leveraging-the-forkserver-in-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Leveraging the Forkserver in Extensions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -2069,6 +2117,25 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#leveraging-the-forkserver-in-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Leveraging the Forkserver in Extensions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -2084,7 +2151,7 @@
 
 
   
-    <a href="https://github.com/reproducible-reporting/stepup-core/edit/main/docs/extending/action.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/reproducible-reporting/stepup-core/edit/main/docs/extending/command.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2092,47 +2159,52 @@
   
 
 
-<h1 id="custom-actions">Custom Actions<a class="headerlink" href="#custom-actions" title="Permanent link">&para;</a></h1>
-<p>A step in StepUp consists of an action (which is a string representing something executable)
-and a set of additional arguments that control the execution:
-required inputs, outputs, working directory, &hellip;</p>
-<p>Many steps use the <code>runsh</code> action, which executes a shell command in a subprocess.
-However, there are situations where this is not the best option:</p>
+<h1 id="command-dispatch">Command Dispatch<a class="headerlink" href="#command-dispatch" title="Permanent link">&para;</a></h1>
+<p>When a step executes, StepUp&rsquo;s executor automatically selects how to run the command.
+The dispatch logic depends on the <code>shell</code> flag passed to <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None, shell=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a>
+and the form of the command string:</p>
 <ul>
-<li>When the overhead of starting a new process is too high.</li>
-<li>If the step should execute Python code
-  for which you do not want to create a new command line entry point.</li>
-</ul>
-<p>For these situations, you can create a custom action, which consists of two parts:</p>
-<ol>
 <li>
-<p>Write a Python function that implements the action:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">custom_action</span><span class="p">(</span><span class="n">argstr</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">work_thread</span><span class="p">:</span> <span class="n">WorkThread</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:)</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="o">...</span>
-</span></code></pre></div>
-<p>Of course, you should use a more descriptive name than <code>custom_action</code>.</p>
-<p>The following conventions are assumed:</p>
-<ul>
-<li>The action function takes two arguments and returns an integer,
-  which is treated as the exit code of the action.
-  (Zero means success, non-zero means failure.)</li>
-<li>The most important argument is <code>argstr</code>,
-  which contains the part of the string after the action.
-  For example, if the step is <code>runsh echo hello</code>,
-  <code>argstr</code> will be <code>echo hello</code>.</li>
-<li>The second argument is a <code>WorkThread</code> object,
-  which is only used for launching new subprocesses with the
-  <code>work_thread.runsh()</code> or <code>work_thread.runexec()</code> methods.</li>
-</ul>
+<p><strong>Shell mode</strong> (<code>shell=True</code>):
+  The full command string is passed to a shell.
+  Shell features such as pipes and redirections are available.</p>
 </li>
 <li>
-<p>Create an action entry point in <code>pyproject.toml</code> pointing to this function:</p>
-<div class="language-toml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">[project.entry-points.</span><span class="s2">&quot;stepup.actions&quot;</span><span class="k">]</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">custom-action</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your.package:custom_action&quot;</span>
-</span></code></pre></div>
-<p>where you replace <code>your.package</code> with the name of the module that contains <code>custom_action</code>.</p>
+<p><strong>Python script</strong> (<code>shell=False</code> and the first word ends in <code>.py</code>):
+  The script is executed via a Python wrapper that auto-detects local imports
+  and amends them as step inputs.</p>
 </li>
-</ol>
+<li>
+<p><strong>Python entry point</strong> (<code>shell=False</code>, no slashes in the first word,
+  and the command matches a <code>console_scripts</code> entry point in the current Python environment):
+  The entry point function is called in-process via the forkserver when available,
+  avoiding the overhead of spawning a new Python interpreter.
+  If the executable belongs to a different Python environment, a warning is printed
+  and execution falls back to a direct execution.</p>
+</li>
+<li>
+<p><strong>Direct execution</strong> (all other cases):
+  The command is executed directly without a shell.
+  This is the fastest and safest mode for non-Python commands.</p>
+</li>
+</ul>
+<h2 id="leveraging-the-forkserver-in-extensions">Leveraging the Forkserver in Extensions<a class="headerlink" href="#leveraging-the-forkserver-in-extensions" title="Permanent link">&para;</a></h2>
+<p>If your extension provides steps that run Python code and you want to avoid per-step
+interpreter startup overhead, install the relevant function as a <code>console_scripts</code> entry
+point in <code>pyproject.toml</code>:</p>
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">[project.scripts]</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">my-tool</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your.package:main_function&quot;</span>
+</span></code></pre></div>
+<p>When a plan script calls:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;my-tool arg1 arg2&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>StepUp detects <code>my-tool</code> as a Python entry point and calls <code>main_function</code> in-process
+via the forkserver, with no new Python interpreter launched.</p>
+<p>This is the same pattern used in StepUp Core itself.
+For example, <code>render_jinja()</code> in <code>stepup.core.api</code> creates a step whose command starts with
+<code>stepup render-jinja ...</code>.
+Because <code>stepup</code> is a <code>console_scripts</code> entry point, the worker runs it in-process
+via the forkserver instead of spawning a new process.</p>
 
 
 

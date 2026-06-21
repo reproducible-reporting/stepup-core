@@ -1900,14 +1900,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../extending/action/" class="md-nav__link">
+      <a href="../extending/command/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Custom Actions
+    Command Dispatch
   
 
     
@@ -5406,13 +5406,14 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>In addition to environment variables and command-line arguments,
   StepUp can now also be configured through configuration files.
   See <a href="../reference/configuration/">Configuration files</a> for details.</li>
-<li>StepUp can now launch workers with a forkserver, which reduces memory overhead
-  and improves performance.
-  This can be controlled with the <code>--fork-workers</code> flag,
-  which is enabled by default on Linux.</li>
-<li>The workers themselves can also use a forkserver for runpy script execution.
+<li>StepUp can use a forkserver for Python step execution and file hashing,
+  which reduces startup overhead.
   This can be controlled with the <code>--fork-runpy</code> flag,
   which is enabled by default on Linux.</li>
+<li>Added <code>--preload-modules</code> option to <code>stepup boot</code> to specify a comma-separated list of Python
+  modules to be pre-loaded into the forkserver.
+  This only has an effect when <code>--fork-runpy</code> is active and can speed up workflows
+  that repeatedly import large modules.</li>
 <li>When the first word of a <code>run()</code> command is a bare command name matching a <code>console_scripts</code>
   entry point from the current Python environment, StepUp now automatically selects the
   <code>runpyep</code> action.
@@ -5468,6 +5469,11 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   The new terminology is applied more consistently with consistent distinction between
   &ldquo;detach&rdquo; (verb, state change) and &ldquo;detached&rdquo; (state).</li>
 <li>Replaced the Blake2B hash by the more common SHA-256.</li>
+<li>The &ldquo;action&rdquo; abstraction layer introduced in StepUp 3 has been completely removed,
+  as it was no longer needed after the introduction of the forkserver.</li>
+<li>Worker subprocesses have been replaced by asyncio tasks running inside the director.
+  File hashing is offloaded to a dedicated subprocess (<code>_stepup_hasher</code> or a forkserver child).
+  The <code>--fork-workers</code> option has been removed as a consequence.</li>
 </ul>
 </li>
 </ul>
@@ -5719,7 +5725,7 @@ and improved terminal user interface.</p>
   such as executing a Python script without starting a new process.</li>
 <li>While the schema was incremented,
   a small changes was made to the step hash computation.</li>
-<li>The function <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.step">step()</a> now accepts a new argument <code>action</code>
+<li>The function <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None, shell=False)" href="../reference/stepup.core.api/#stepup.core.api.step">step()</a> now accepts a new argument <code>action</code>
   instead of a shell command.
   The syntax of an <code>action</code> is similar to a shell command:
   It consists of <code>module.submodule.function arg1 arg2 ...</code>.</li>
@@ -5982,12 +5988,12 @@ must be given as a keyword argument.</li>
   This comes with an extension of the script protocol: <code>./script.py plan</code> must
   accept an optional argument <code>--step-info=...</code></li>
 <li>The <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a> function now accepts all arguments
-  that can be passed on to the underlying <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> call.
+  that can be passed on to the underlying <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None, shell=False)" href="../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> call.
   There are only relevant for the plan stage of the script protocol.</li>
 <li>The script <code>driver()</code> now detects local imports in the
   <code>run()</code> function of the script and amends them as inputs.</li>
 <li>The <a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='./', resources=None)" href="../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> function now accepts all arguments
-  that can be passed on to the underlying <a class="autorefs autorefs-internal" title="stepup.core.api.step(action, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> call.</li>
+  that can be passed on to the underlying <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None, shell=False)" href="../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> call.</li>
 </ul>
 </li>
 <li>

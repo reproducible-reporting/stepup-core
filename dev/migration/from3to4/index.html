@@ -2054,14 +2054,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../extending/action/" class="md-nav__link">
+      <a href="../../extending/command/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Custom Actions
+    Command Dispatch
   
 
     
@@ -2352,39 +2352,24 @@
 These changes reflect optimizations of StepUp&rsquo;s internals or
 get rid of poor historical API design choices.</p>
 <h2 id="the-new-run-function-replaces-the-old-runsh-and-runpy-functions">The new <code>run()</code> function replaces the old <code>runsh()</code> and <code>runpy()</code> functions<a class="headerlink" href="#the-new-run-function-replaces-the-old-runsh-and-runpy-functions" title="Permanent link">&para;</a></h2>
-<p>StepUp 4 unifies <code>runsh()</code> and <code>runpy()</code> into a single <code>run()</code> function.
-The action (shell, Python, or direct execution) is now selected automatically based on the command:</p>
-<table>
-<thead>
-<tr>
-<th>Condition</th>
-<th>Action</th>
-<th>Equivalent old function</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>shell=True</code></td>
-<td><code>runsh</code> — passed to a shell</td>
-<td><code>runsh()</code></td>
-</tr>
-<tr>
-<td>First word ends in <code>.py</code></td>
-<td><code>runpy</code> — Python wrapper with local import detection</td>
-<td><code>runpy()</code></td>
-</tr>
-<tr>
-<td>First word is a <code>console_scripts</code> entry point in the current Python environment</td>
-<td><code>runpyep</code> — entry point called in-process via forkserver</td>
-<td><em>(new in StepUp 4)</em></td>
-</tr>
-<tr>
-<td>Otherwise</td>
-<td><code>runexec</code> — direct execution, no shell</td>
-<td><em>(new in StepUp 4)</em></td>
-</tr>
-</tbody>
-</table>
+<p>StepUp 4 unifies <code>runsh()</code> and <code>runpy()</code> into a single and more powerful <code>run()</code> function,
+which takes an optional boolean <code>shell</code> argument (default <code>False</code>)
+to indicate whether the command should be passed to a shell or not.</p>
+<p>Roughly, the old <code>runsh(...)</code> is equivalent to <code>run(..., shell=True)</code>.
+The new default, <code>run(..., shell=False)</code>, is much more general than the old <code>runpy(...)</code> function:</p>
+<ul>
+<li>It can run any executable, not just Python scripts,
+  skipping the shell for better performance and reproducibility.</li>
+<li>It automatically detects Python scripts (ending in <code>.py</code>)
+  and runs them in a forked Python interpreter.
+  This is comparable to the old <code>runpy()</code> function,
+  but more robust at about the same cost.</li>
+<li>It automatically detects so called console scripts (executables installed by Python packages)
+  and runs them also in a forked Python interpreter.
+  This is a new feature. In StepUp 3, such scripts were run in a shell,
+  which started another Python interpreter.
+  The new approach is much more efficient.</li>
+</ul>
 <p>Note that the <code>run()</code> function checks whether the first word of the command
 is a relative path (contains a path separator, <code>/</code>, and is not absolute).
 If it is local, StepUp will automatically add it as an input dependency to the step.
@@ -2428,7 +2413,7 @@ The Python wrapper is selected automatically when the first word ends in <code>.
 </span></code></pre></div>
 <h3 id="why-prefer-run-without-shelltrue">Why prefer <code>run()</code> without <code>shell=True</code><a class="headerlink" href="#why-prefer-run-without-shelltrue" title="Permanent link">&para;</a></h3>
 <p>Using <code>shell=True</code> (or the old <code>runsh()</code> for plain commands) has a few drawbacks
-compared to direct execution via <code>runexec</code>:</p>
+compared to execution via <code>run()</code> with <code>shell=False</code>:</p>
 <ul>
 <li><strong>Reproducibility</strong>: shell commands depend on the shell&rsquo;s PATH, aliases,
   and other environment state that may differ between machines or sessions.</li>
@@ -2436,12 +2421,12 @@ compared to direct execution via <code>runexec</code>:</p>
 <li><strong>Correctness</strong>: arguments with spaces or special characters require careful quoting;
   direct execution passes arguments as-is without shell interpretation.</li>
 <li><strong>Dependency tracking</strong>: StepUp automatically adds local relative executables
-  (paths containing <code>/</code> that are not absolute) as input dependencies when using <code>runexec</code>.
+  (paths containing <code>/</code> that are not absolute) as input dependencies when using <code>run()</code>.
   This means a step is automatically re-run when its script changes.
   With <code>shell=True</code>, this tracking still applies to the first word,
   but shell-expanded paths are not tracked.</li>
 </ul>
-<p>In short: use <code>run()</code> without <code>shell=True</code> unless you specifically need shell features.</p>
+<p>In short: use <code>run()</code> with the default <code>shell=False</code> unless you specifically need shell features.</p>
 <h2 id="directory-handling">Directory Handling<a class="headerlink" href="#directory-handling" title="Permanent link">&para;</a></h2>
 <p>In StepUp 3, directories were stored in the database and had to be created explicitly using <code>mkdir()</code>
 or made static with <code>static()</code> or <code>glob()</code>.

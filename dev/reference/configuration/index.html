@@ -2015,14 +2015,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../extending/action/" class="md-nav__link">
+      <a href="../../extending/command/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Custom Actions
+    Command Dispatch
   
 
     
@@ -2394,18 +2394,22 @@ which can be undesirable in some cases, such as testing.</p>
 </dd>
 <dt><code>fork_runpy</code> / <code>STEPUP_BOOT_FORK_RUNPY</code> / <code>--fork-runpy</code>, <code>--no-fork-runpy</code></dt>
 <dd>
-<p>Set to <code>true</code> to use a forkserver for runpy script execution in workers, which reduces startup overhead.
+<p>Set to <code>true</code> to use a forkserver for Python step execution and file hashing,
+which reduces startup overhead.
 This is enabled by default on Linux.</p>
 </dd>
-<dt><code>fork_workers</code> / <code>STEPUP_BOOT_FORK_WORKERS</code> / <code>--fork-workers</code>, <code>--no-fork-workers</code></dt>
+<dt><code>preload_modules</code> / <code>STEPUP_BOOT_PRELOAD_MODULES</code> / <code>--preload-modules</code></dt>
 <dd>
-<p>Set to <code>true</code> to launch workers with a forkserver, which reduces memory overhead
-and improves performance.
-This is enabled by default on Linux.</p>
+<p>A comma-separated list of Python modules to pre-load into the forkserver.
+Only has effect when <code>fork_runpy = true</code>.
+Use this to reduce per-step startup time when all (or most) steps import the same large modules.
+For example, <code>preload_modules = "numpy,scipy"</code> pre-loads NumPy and SciPy into the forkserver
+so that each Python step forked from it inherits them at zero import cost.
+By default, no additional modules are pre-loaded (only internal StepUp modules are pre-loaded).</p>
 </dd>
 <dt><code>num_workers</code> / <code>STEPUP_BOOT_NUM_WORKERS</code> / <code>--num-workers</code>, <code>-n</code></dt>
 <dd>
-<p>The number of worker processes to use for executing steps.
+<p>The maximum number of steps to run concurrently.
 When given as a floating point number, the value is multiplied by the number of available CPU cores.
 The default is <code>1.2</code>.</p>
 </dd>

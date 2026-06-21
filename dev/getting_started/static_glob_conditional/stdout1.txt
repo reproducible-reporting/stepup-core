@@ -1,13 +1,13 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post19)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post24)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
-     START │ runpy ./plan.py
-   SUCCESS │ runpy ./plan.py
-     START │ runpy ./expensive.py
-   SUCCESS │ runpy ./expensive.py
-     START │ runexec cat average.txt
-   SUCCESS │ runexec cat average.txt
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./expensive.py
+   SUCCESS │ ./expensive.py
+     START │ cat average.txt
+   SUCCESS │ cat average.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 2.580000
 ────────────────────────────────────────────────────────────────────────────────
