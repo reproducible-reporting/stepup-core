@@ -8,7 +8,7 @@ rm -rvf $(cat .gitignore)
 cp sec-2-2.txt ch-2-theory/sec-2-2-advanced.txt
 
 # Run the example
-stepup boot -n 1 -w & # > current_stdout.txt &
+stepup boot -j 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -63,7 +63,7 @@ wait
 
 # order is not reproducible.
 rm .stepup/*.log
-stepup boot -n 1 -w &
+stepup boot -j 1 -w &
 
 # Wait for watch phase.
 stepup wait

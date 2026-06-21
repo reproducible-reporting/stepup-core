@@ -21,7 +21,7 @@ To avoid executing `Step 2` at every iteration in the development of `Step 1`,
 you can **block** this step.
 Blocking is achieved by assigning an undefined resource to the step,
 e.g. `resources="blocked"`.
-Because the dispatcher does not know about a resource named `blocked`,
+Because the scheduler does not know about a resource named `blocked`,
 the step remains permanently pending until you remove the argument.
 Blocked steps are intended to be a temporary measure,
 and to be reverted once you're done with `Step 1`.
@@ -30,7 +30,7 @@ Blocking a step has some consequences:
 
 - A blocked step remains in the `PENDING` state,
   meaning that outdated output files are not cleaned up automatically.
-- At the end of the *run phase*, all currently blocked steps are listed as a reminder.
+- At the end of the *build phase*, all currently blocked steps are listed as a reminder.
 - Subsequent steps, which use outputs of blocked or pending steps, also remain pending.
 
 ## Example
@@ -49,7 +49,7 @@ Make this plan executable and run it with StepUp:
 
 ```bash
 chmod +x plan.py
-stepup boot -n 1
+stepup boot -j 1
 ```
 
 You should get the following terminal output:

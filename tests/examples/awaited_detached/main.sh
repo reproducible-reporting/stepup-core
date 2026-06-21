@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example
 cp plan1.py plan.py
-stepup boot -n 1 -w & # > current_stdout_1.txt &
+stepup boot -j 1 -w & # > current_stdout_1.txt &
 PID=$!
 
 # Get the graph after completion of the pending steps.
@@ -23,7 +23,7 @@ set +e; wait -fn $PID; RETURNCODE=$?; set -e
 
 # Run the example
 cp plan2.py plan.py
-stepup boot -n 1 -w > current_stdout_2.txt &
+stepup boot -j 1 -w > current_stdout_2.txt &
 PID=$!
 
 # Get the graph after completion of the pending steps.

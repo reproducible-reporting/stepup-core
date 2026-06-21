@@ -34,7 +34,7 @@ Set the thumbnail frame to 5 seconds.
 Description for Asciinema recording:
 
 ```markdown
-- First, StepUp is started with 4 workers
+- First, StepUp is started with 4 parallel jobs.
   to complete the steps in the RepRep publication template from scratch.
 - After the build has completed, the file `generate.py` is modified,
   whose output is used in a matplotlib plot created by `plot.py`,

@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |    UPDATED │ sub/inp3.txt
-        3/4 |      PHASE │ run
+        3/4 |      PHASE │ build
         1/2 |      START │ ./plan.py  # wd=sub/
         2/5 |    SUCCESS │ ./plan.py  # wd=sub/
         2/5 |       SKIP │ cp -p inp1.txt out1.txt  # wd=sub/

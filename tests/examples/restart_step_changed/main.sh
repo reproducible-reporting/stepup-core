@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the plan.
 cp plan1.py plan.py
-stepup boot -n 1 -w -e & # > current_stdout1.txt &
+stepup boot -j 1 -w -e & # > current_stdout1.txt &
 
 stepup wait
 stepup graph current_graph1
@@ -25,7 +25,7 @@ grep "1" copy.txt
 # Restart StepUp after removing the output.
 rm .stepup/*.log
 cp plan2.py plan.py
-stepup boot -n 1 -w -e & # > current_stdout2.txt &
+stepup boot -j 1 -w -e & # > current_stdout2.txt &
 
 stepup wait
 stepup graph current_graph2

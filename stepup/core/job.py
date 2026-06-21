@@ -58,7 +58,7 @@ class Job:
         raise NotImplementedError
 
     def coro(self, executor: "StepExecutor"):
-        """Return a coroutine, of which the runner will make an asyncio.Task."""
+        """Return a coroutine, of which the builder will make an asyncio.Task."""
         raise NotImplementedError
 
     def duration(self) -> float | None:

@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    DELETED │ test2.txt
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/4 |      PHASE │ run
+        1/4 |      PHASE │ build
         1/4 |      START │ echo test2 > test2.txt
         2/4 |    SUCCESS │ echo test2 > test2.txt
         2/4 |       SKIP │ cat test2.txt

@@ -263,7 +263,7 @@ def step(
     resources
         Named resources required to run this step, e.g. `{"gpu": 1}`.
         One may also provide the resources as a string, e.g. `"gpu:1,memgb:4"`.
-        The step will not be dispatched until the required units are available,
+        The step will not be scheduled until the required units are available,
         taking into account the units already held by other running steps.
         Resources not listed in `--resources` / `STEPUP_RESOURCES` are treated as unavailable.
         The required units must be strictly positive and default to 1 when not given,

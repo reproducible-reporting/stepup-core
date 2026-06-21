@@ -7,7 +7,7 @@ rm -rvf $(cat .gitignore)
 # To trigger the (by now fixed) bug, create the expected outout.
 touch rendered.tex
 # Run the example
-stepup boot -w -n 1 & # > current_stdout.txt &
+stepup boot -w -j 1 & # > current_stdout.txt &
 PID=$!
 
 # Get the graph after completion of the pending steps.

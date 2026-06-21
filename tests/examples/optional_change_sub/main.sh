@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example with plan1
 cp plan1.py plan.py
-stepup boot -n 1 -w & # > current_stdout1.txt &
+stepup boot -j 1 -w & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -25,7 +25,7 @@ wait
 
 # Run the example with plan1
 cp plan2.py plan.py
-stepup boot -n 1 -w & # > current_stdout2.txt &
+stepup boot -j 1 -w & # > current_stdout2.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -44,7 +44,7 @@ wait
 
 # Run the example with plan1
 cp plan1.py plan.py
-stepup -l INFO boot -n 1 -w & # > current_stdout3.txt &
+stepup -l INFO boot -j 1 -w & # > current_stdout3.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

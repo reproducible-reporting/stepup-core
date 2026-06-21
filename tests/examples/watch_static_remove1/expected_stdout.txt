@@ -1,5 +1,5 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/3 |    SUCCESS │ ./plan.py
         1/3 |      START │ cp -p README.txt backup.txt
@@ -10,7 +10,7 @@
         3/3 |      PHASE │ watch
         3/3 |    UPDATED │ plan.py
         3/3 |    DELETED │ foo.txt
-        1/3 |      PHASE │ run
+        1/3 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
         1/2 |       SKIP │ cp -p README.txt backup.txt

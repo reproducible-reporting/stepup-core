@@ -3,7 +3,7 @@
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/3 |      PHASE │ run
+        1/3 |      PHASE │ build
         1/3 |     NOSKIP │ cp -p inp.txt out.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 48bca084 ➜ 9757fdb8, out_digest 2f680146 ➜ (unset)

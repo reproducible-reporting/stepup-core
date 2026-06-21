@@ -22,24 +22,24 @@
 from decimal import Decimal
 from unittest.mock import patch
 
-from stepup.core.director import interpret_num_workers
+from stepup.core.director import interpret_jobs
 
 
-def test_interpret_num_workers_integer():
-    assert interpret_num_workers(Decimal("4")) == 4
+def test_interpret_jobs_integer():
+    assert interpret_jobs(Decimal("4")) == 4
 
 
-def test_interpret_num_workers_fraction_affinity():
+def test_interpret_jobs_fraction_affinity():
     with patch("os.sched_getaffinity", return_value=set(range(8)), create=True):
-        result = interpret_num_workers(Decimal("1.5"))
+        result = interpret_jobs(Decimal("1.5"))
     assert result == 12
 
 
-def test_interpret_num_workers_fraction_cpu_count():
+def test_interpret_jobs_fraction_cpu_count():
     with (
         patch("stepup.core.director.os") as mock_os,
     ):
         del mock_os.sched_getaffinity
         mock_os.cpu_count.return_value = 8
-        result = interpret_num_workers(Decimal("1.5"))
+        result = interpret_jobs(Decimal("1.5"))
     assert result == 12

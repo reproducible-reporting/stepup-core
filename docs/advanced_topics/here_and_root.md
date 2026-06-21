@@ -1,8 +1,8 @@
 # HERE and ROOT Variables
 
-When a worker runs a step, it defines several environment variables,
+When a step runs, it defines several environment variables,
 including `${HERE}` and `${ROOT}`, which can be relevant for writing advanced scripts.
-(The workers also define variables starting with `STEPUP_`,
+(Steps also have variables starting with `STEPUP_`,
 but these are only useful to StepUp itself, not to end users.)
 
 The two variables are defined as follows:
@@ -46,7 +46,7 @@ Make the scripts executable and run everything as follows:
 
 ```bash
 chmod +x plan.py sub/plan.py
-stepup boot -n 1
+stepup boot -j 1
 ```
 
 You should get the following terminal output:
@@ -83,8 +83,8 @@ Any variables present in the environment variable will also be substituted once.
 
 - Modify the scripts `plan.py` and `sub/plan.py` to utilize a `DST` variable as explained above.
   To achieve this, define `DST` externally, for instance,
-  by starting StepUp as `DST='../public/${HERE}' stepup boot -n 1`.
+  by starting StepUp as `DST='../public/${HERE}' stepup boot -j 1`.
 
 - As a follow-up to the previous point, run StepUp with a different `DST` value.
-  For example: `DST='../out/${HERE}' stepup boot -n 1`.
+  For example: `DST='../out/${HERE}' stepup boot -j 1`.
   You will see that all old output files get cleaned up after the new output is created.

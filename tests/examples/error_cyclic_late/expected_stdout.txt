@@ -1,5 +1,5 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         0/1 |       FAIL │ ./plan.py
 ────────────────────────────────── Step info ───────────────────────────────────

@@ -7,7 +7,7 @@
         0/0 |    UPDATED │ static/bar.txt (digest 7d865e95 ➜ 7e4fa2eb, size 4 ➜ 6)
         0/0 |    DELETED │ foo.txt
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/3 |      PHASE │ run
+        0/3 |      PHASE │ build
         0/3 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest c4a463a6 ➜ 7528ad20, out_digest e3b0c442 ➜ (unset)

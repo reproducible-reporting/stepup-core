@@ -95,7 +95,7 @@ Finally, make the Python scripts executable and start StepUp:
 
 ```bash
 chmod +x wavegen.py plan.py
-stepup boot -n 1
+stepup boot -j 1
 ```
 
 You should see the following output on screen:

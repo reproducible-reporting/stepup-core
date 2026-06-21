@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example
 export STEPUP_CALL_FORMAT=json
-stepup boot -n 1 -w & # > current_stdout1.txt &
+stepup boot -j 1 -w & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -25,7 +25,7 @@ grep "Hello World" check.txt
 
 # Run the example
 export STEPUP_CALL_FORMAT=pickle
-stepup boot -n 1 -w & # > current_stdout2.txt &
+stepup boot -j 1 -w & # > current_stdout2.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

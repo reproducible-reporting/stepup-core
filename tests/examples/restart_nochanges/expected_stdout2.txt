@@ -3,7 +3,7 @@
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        4/4 |      PHASE │ run
+        4/4 |      PHASE │ build
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |      PHASE │ watch
         4/4 |   DIRECTOR │ See you!

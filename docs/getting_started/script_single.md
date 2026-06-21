@@ -153,7 +153,7 @@ Finally, make the Python scripts executable and give StepUp a spin:
 
 ```bash
 chmod +x generate.py plan.py
-stepup boot -n 1
+stepup boot -j 1
 ```
 
 You should see the following output on screen:

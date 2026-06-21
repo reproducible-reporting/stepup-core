@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Phase 1: the sub-plan consumes ../out.txt, so the optional producer becomes needed.
 cp sub/plan1.py sub/plan.py
-stepup boot -n 1 -w & # > current_stdout1.txt &
+stepup boot -j 1 -w & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -25,7 +25,7 @@ wait
 # producer) is skipped. The optional producer is now needed by nobody and should
 # revert to OPTIONAL, after which out.txt is cleaned up.
 cp sub/plan2.py sub/plan.py
-stepup boot -n 1 -w & # > current_stdout2.txt &
+stepup boot -j 1 -w & # > current_stdout2.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

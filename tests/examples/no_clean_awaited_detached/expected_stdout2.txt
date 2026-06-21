@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest 9e175d97 ➜ 2311fd79, size 147 ➜ 115)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/2 |      PHASE │ run
+        0/2 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
         1/2 |      START │ echo Hello > test1.txt

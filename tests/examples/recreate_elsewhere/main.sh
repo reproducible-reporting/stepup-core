@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the first plan.
 cp plan1.py plan.py
-stepup boot -n 1 -w -e & # > current_stdout1.txt &
+stepup boot -j 1 -w -e & # > current_stdout1.txt &
 
 # Run StepUp for a first time.
 stepup wait
@@ -23,7 +23,7 @@ wait
 # second with a different plan.
 rm .stepup/*.log
 cp plan2.py plan.py
-stepup boot -n 1 -w -e & # > current_stdout2.txt &
+stepup boot -j 1 -w -e & # > current_stdout2.txt &
 PID=$!
 
 # Restart StepUp.

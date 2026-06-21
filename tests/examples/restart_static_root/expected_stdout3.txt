@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ static/foo.txt (digest b640e840 ➜ 480c2336, size 6 ➜ 7)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/2 |      PHASE │ run
+        1/2 |      PHASE │ build
         1/2 |     NOSKIP │ cp -p static/foo.txt bar.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 6f84f48c ➜ fed213d2, out_digest 8c2927c3 ➜ (unset)

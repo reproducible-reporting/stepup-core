@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    DELETED │ bye.txt
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/3 |      PHASE │ run
+        1/3 |      PHASE │ build
         1/3 |      START │ echo soon gone > bye.txt
         2/3 |    SUCCESS │ echo soon gone > bye.txt
         2/3 |    WARNING │ 1 step(s) remained pending ...

@@ -13,7 +13,7 @@ echo hello > $PATH_SRC
 rm -rf $PATH_DST
 
 # Run the example
-stepup boot -n 1 -w -e & # > current_stdout.txt &
+stepup boot -j 1 -w -e & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

@@ -5,7 +5,7 @@ trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Run the plan.
-stepup boot -n 1 -w -e & # > current_stdout1.txt &
+stepup boot -j 1 -w -e & # > current_stdout1.txt &
 
 stepup wait
 stepup graph current_graph1
@@ -22,7 +22,7 @@ wait
 # Restart StepUp after removing the output.
 rm copy.txt
 rm .stepup/*.log
-stepup boot -n 1 -w -e & # > current_stdout2.txt &
+stepup boot -j 1 -w -e & # > current_stdout2.txt &
 
 stepup wait
 stepup graph current_graph2

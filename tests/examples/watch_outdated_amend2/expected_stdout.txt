@@ -1,5 +1,5 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/4 |    SUCCESS │ ./plan.py
         1/4 |      START │ ./work.py subs1.txt > subs2.txt
@@ -19,7 +19,7 @@ conv1.txt
         4/4 |    DELETED │ inp1.txt
         4/4 |    UPDATED │ inp2.txt
         4/4 |    UPDATED │ subs1.txt
-        0/4 |      PHASE │ run
+        0/4 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/4 |    SUCCESS │ ./plan.py
         1/4 |  DROPAMEND │ ./work.py subs1.txt > subs2.txt

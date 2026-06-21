@@ -315,7 +315,7 @@ def test_simple_example(wfs: Workflow):
     with pytest.raises(GraphError), wfs.con:
         declare_static(wfs, wfs.root, ["bar.txt"])
 
-    # Simulate the runner, pretending to execute the step
+    # Simulate the builder, pretending to execute the step
     with wfs.con:
         out_hashes = [("bar.txt", fake_hash("bar.txt"))]
         wfs.update_file_hashes(out_hashes, "succeeded")

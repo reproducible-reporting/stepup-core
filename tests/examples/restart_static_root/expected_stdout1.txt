@@ -1,5 +1,5 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
         1/2 |      START │ cp -p static/foo.txt bar.txt

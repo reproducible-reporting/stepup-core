@@ -130,7 +130,7 @@ CREATE INDEX IF NOT EXISTS step_resource_name ON step_resource(name);
 # When a step is detached or recycled, its creator chain changes, which alters the "safe" state
 # of the step and of every step it created (recursively): whether their (indirect) creator is in
 # a state that allows queuing them. Flag _check_safe (and _check_after) on the step and all its
-# product steps so the dispatcher recomputes their metadata.
+# product steps so the scheduler recomputes their metadata.
 RECURSIVE_CHECK_WITH_PRODUCTS = """
 UPDATE step SET _check_safe = 1, _check_after = 1 FROM (
     WITH RECURSIVE check_with_products(node) AS (
@@ -565,7 +565,7 @@ class Step(Node):
             yield pickle.loads(row[0])
 
     #
-    # Run phase
+    # Build phase
     #
 
     def clean_before_run(self):

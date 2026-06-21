@@ -1,11 +1,11 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
         1/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         1/2 |      PHASE │ watch
         1/2 |    UPDATED │ plan.py
-        0/2 |      PHASE │ run
+        0/2 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/3 |    SUCCESS │ ./plan.py
         1/3 |      START │ echo hello > foo.txt

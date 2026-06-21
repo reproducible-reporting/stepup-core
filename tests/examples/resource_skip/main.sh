@@ -8,7 +8,7 @@ echo "content" > input.txt
 
 # First run: resource is available, step executes and its stored hash is set.
 export STEPUP_BOOT_RESOURCES="limited:1"
-stepup boot -n 1 -w & # > current_stdout1.txt &
+stepup boot -j 1 -w & # > current_stdout1.txt &
 stepup wait
 stepup graph current_graph1
 
@@ -37,7 +37,7 @@ echo "content" > input.txt
 # SKIPPED via the CHECKING state — no resource slot is needed for the hash check.
 unset STEPUP_BOOT_RESOURCES
 rm -f .stepup/director.log .stepup/success.log
-stepup boot -n 1 -w & # > current_stdout2.txt &
+stepup boot -j 1 -w & # > current_stdout2.txt &
 stepup wait
 stepup graph current_graph2
 stepup join

@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example
 export ENV_VAR_TEST_STEPUP_INP="static/sub/foo.txt"
-stepup boot -n 1 -w & # > current_stdout1.txt &
+stepup boot -j 1 -w & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -25,7 +25,7 @@ wait
 # Restart the example with a different input
 export ENV_VAR_TEST_STEPUP_INP="static/sub/bar.txt"
 rm .stepup/*.log
-stepup boot -n 1 -w & # > current_stdout2.txt &
+stepup boot -j 1 -w & # > current_stdout2.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

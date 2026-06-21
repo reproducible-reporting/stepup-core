@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ input.txt (digest 7f8b1dfc ➜ 434728a4)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/2 |      PHASE │ run
+        1/2 |      PHASE │ build
         1/2 |       SKIP │ cp -p input.txt output.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch

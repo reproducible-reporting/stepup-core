@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the initial plan.
 cp plan_blocked.py plan.py
-stepup boot -n 1 -w & # > current_stdout1.txt &
+stepup boot -j 1 -w & # > current_stdout1.txt &
 
 # First graph
 stepup wait
@@ -24,7 +24,7 @@ wait
 # Modify a few things and restart
 cp plan_unblocked.py plan.py
 rm .stepup/*.log
-stepup boot -n 1 -w & # > current_stdout2.txt &
+stepup boot -j 1 -w & # > current_stdout2.txt &
 
 stepup wait
 stepup graph current_graph2

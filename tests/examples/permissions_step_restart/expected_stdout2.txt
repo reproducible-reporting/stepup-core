@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ work.py (mode -rw-r--r-- ➜ -rwxr-xr-x)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/2 |      PHASE │ run
+        1/2 |      PHASE │ build
         1/2 |      START │ ./work.py
         2/2 |    SUCCESS │ ./work.py
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)

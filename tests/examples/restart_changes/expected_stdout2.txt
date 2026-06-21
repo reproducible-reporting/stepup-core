@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest f320c2d4 ➜ 9cb549e9)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        2/3 |      PHASE │ run
+        2/3 |      PHASE │ build
         2/3 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest ce13a0b9 ➜ c32ab10c, out_digest e3b0c442 ➜ (unset)

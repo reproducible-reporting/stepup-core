@@ -5,7 +5,7 @@
         0/0 |    UPDATED │ inp1.txt (digest 87428fc5 ➜ 02638299)
         0/0 |    UPDATED │ inp3.txt (digest 87428fc5 ➜ 02638299)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        2/4 |      PHASE │ run
+        2/4 |      PHASE │ build
         1/2 |      START │ ./work1.py
         2/2 |    SUCCESS │ ./work1.py
         2/2 |   DIRECTOR │ Trying to delete 2 outdated output(s)

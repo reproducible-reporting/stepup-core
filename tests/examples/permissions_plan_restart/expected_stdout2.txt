@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ sub/plan.py (mode -rw-r--r-- ➜ -rwxr-xr-x)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/2 |      PHASE │ run
+        1/2 |      PHASE │ build
         1/2 |      START │ ./plan.py  # wd=sub/
         2/3 |    SUCCESS │ ./plan.py  # wd=sub/
         2/3 |      START │ touch done.txt  # wd=sub/

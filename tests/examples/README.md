@@ -23,15 +23,15 @@ When writing new examples, the following conventions ensure that they are proper
 - `stepup boot` is launched in the background with a commented-out redirect:
 
   ```bash
-  stepup boot -n 1 -w & # > current_stdout.txt &
+  stepup boot -j 1 -w & # > current_stdout.txt &
   ```
 
-  The test runner strips the `& #` before executing, so the director's reporter output is
+  The test builder strips the `& #` before executing, so the director's reporter output is
   captured in `current_stdout.txt` and compared against `expected_stdout.txt`.
 
 - The following `stepup` subcommands are used to interact with the running director
   and to verify the workflow state at well-defined points in time:
-    - `stepup wait` — waits until the runner has finished all pending steps.
+    - `stepup wait` — waits until the builder has finished all pending steps.
     - `stepup run` — signals the director to start another run cycle (used after file changes).
     - `stepup graph <prefix>` — writes the current workflow graph to `<prefix>.txt`,
       which is compared against the corresponding `expected_<prefix>.txt`.
@@ -48,14 +48,14 @@ When writing new examples, the following conventions ensure that they are proper
 - Several lines starting with `[[ -f ... ]]` or `[[ ! -f ... ]]` verify that expected
   files are present or absent after a run.
 
-The test runner in `tests/test_examples.py` copies each example to a temporary directory,
+The test builder in `tests/test_examples.py` copies each example to a temporary directory,
 applies the `sed` rewrite to `main.sh`, runs it, and compares all `current_*` files against
 the corresponding `expected_*` files in the source directory.
 The environment variable `STEPUP_OVERWRITE_EXPECTED=1` can be set to update the expected
 outputs in-place instead of comparing them.
 
 In some rare cases, the `expected_stdout.txt` is not included because it is not deterministic.
-This may happen in examples that require a parallel runner.
+This may happen in examples that require a parallel builder.
 
 A smaller set of examples also has a `test_plan` test in `tests/test_examples.py`,
 which runs `plan.py` directly as an ordinary Python script (without StepUp) to verify

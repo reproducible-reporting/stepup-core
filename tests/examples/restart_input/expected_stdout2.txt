@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ input.txt (digest b640e840 ➜ 480c2336, size 6 ➜ 7)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/2 |      PHASE │ run
+        1/2 |      PHASE │ build
         1/2 |      START │ cp input.txt output.txt
         2/2 |    SUCCESS │ cp input.txt output.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)

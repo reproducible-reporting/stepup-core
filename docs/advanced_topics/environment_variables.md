@@ -23,7 +23,7 @@ Make it executable and run StepUp with a specific value of the variable:
 
 ```bash
 chmod +x plan.py
-MYVAR=foo stepup boot -n 1
+MYVAR=foo stepup boot -j 1
 ```
 
 You will see the following output:
@@ -32,17 +32,17 @@ You will see the following output:
 {% include 'advanced_topics/environment_variables/stdout.txt' %}
 ```
 
-The variable substitution is performed in the subshell of the worker.
+The variable substitution is performed in the step's execution environment.
 StepUp will not try to substitute `${MYVAR}` before starting the step.
 The special variables `${inp}` and `${out}` are exceptions to this rule,
 as discussed in the [tutorial on dependencies](../getting_started/dependencies.md).
 
 ## Try the Following
 
-- Repeat `MYVAR=foo stepup boot -n 1` without making changes.
+- Repeat `MYVAR=foo stepup boot -j 1` without making changes.
   You will see that the `echo` step is skipped as expected.
 
-- Now run `MYVAR=bar stepup boot -n 1`.
+- Now run `MYVAR=bar stepup boot -j 1`.
   This time, the variable change will cause the step to be executed.
 
 ## Injecting Environment Variables

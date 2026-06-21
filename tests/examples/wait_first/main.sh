@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example
 echo hello > inp.txt
-stepup boot -n 1 -W & # > current_stdout.txt &
+stepup boot -j 1 -W & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -18,7 +18,7 @@ stepup graph current_graph1
 [[ -f out.txt ]] || exit 1
 grep hello out.txt
 
-# Change the input, which should start the runner automatically.
+# Change the input, which should start the builder automatically.
 echo bye > inp.txt
 
 # Get the graph after completion of the pending steps.

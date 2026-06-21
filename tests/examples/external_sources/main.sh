@@ -9,7 +9,7 @@ export STEPUP_ROOT="${PWD}/project"
 export STEPUP_PATH_FILTER="+${PWD}/pkgs"
 export PYTHONPATH="${PWD}/pkgs:${PYTHONPATH}"
 cp pkgs/helper1.py pkgs/helper.py
-stepup boot -n 1 -w & # > current_stdout1.txt &
+stepup boot -j 1 -w & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -28,7 +28,7 @@ grep 'Helper version 1' project/worker_out.json
 
 # Change helper.py to helper2.py and run the example again.
 cp pkgs/helper2.py pkgs/helper.py
-stepup boot -n 1 -w & # > current_stdout2.txt &
+stepup boot -j 1 -w & # > current_stdout2.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

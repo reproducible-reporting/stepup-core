@@ -24,7 +24,7 @@ Make the scripts executable and run everything as follows:
 ```bash
 chmod +x plan.py
 mkdir out/
-stepup boot -n 1
+stepup boot -j 1
 ```
 
 Expected Terminal Output:

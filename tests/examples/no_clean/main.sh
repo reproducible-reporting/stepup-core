@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example
 cp plan1.py plan.py
-stepup boot -n 1 -w & # > current_stdout1.txt &
+stepup boot -j 1 -w & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -22,7 +22,7 @@ wait
 # Change the plan to a different one and restart with --no-clean
 cp plan2.py plan.py
 rm .stepup/*.log
-stepup boot -n 1 -w --no-clean & # > current_stdout2.txt &
+stepup boot -j 1 -w --no-clean & # > current_stdout2.txt &
 
 # Wait for watch phase.
 stepup wait

@@ -81,7 +81,7 @@ async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
         director = asyncio.create_task(
             serve(
                 director_socket_path,
-                nworker=1,
+                njob=1,
                 reporter=reporter,
                 do_clean=True,
                 use_duration=False,

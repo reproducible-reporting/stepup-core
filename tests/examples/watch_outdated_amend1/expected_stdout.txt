@@ -1,5 +1,5 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
         1/2 |      START │ ./work.py
@@ -8,7 +8,7 @@
         2/2 |      PHASE │ watch
         2/2 |    DELETED │ data/inp1.txt
         2/2 |    UPDATED │ subs.txt
-        1/2 |      PHASE │ run
+        1/2 |      PHASE │ build
         1/2 |  DROPAMEND │ ./work.py
 ────────────────────── Outdated amended step information ───────────────────────
 Modified step hash   explained, inp_digest 85ad62b4 ➜ b375115a, out_digest 2aa07484 ➜ (unset)

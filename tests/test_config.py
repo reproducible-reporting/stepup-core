@@ -41,7 +41,7 @@ def loader() -> ConfigLoader:
 @pytest.fixture
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser()
-    p.add_argument("--num-workers", dest="num_workers", type=Decimal, default=Decimal("1.2"))
+    p.add_argument("--jobs", dest="jobs", type=Decimal, default=Decimal("1.2"))
     p.add_argument("--debug", action="store_true", default=False)
     p.add_argument("--label", default=None)
     p.add_argument("--search-paths", dest="search_paths", default=None)
@@ -65,21 +65,21 @@ def plugin_parser() -> argparse.ArgumentParser:
 
 def test_load_file_toml(path_tmp: Path, loader: ConfigLoader):
     cfg = path_tmp / "stepup.toml"
-    cfg.write_bytes(b'num_workers = 8\nlabel = "prod"\n')
-    assert loader._load_file(cfg) == {"num_workers": 8, "label": "prod"}
+    cfg.write_bytes(b'jobs = 8\nlabel = "prod"\n')
+    assert loader._load_file(cfg) == {"jobs": 8, "label": "prod"}
 
 
 def test_load_file_pyproject_toml(path_tmp: Path, loader: ConfigLoader):
     cfg = path_tmp / "pyproject.toml"
-    cfg.write_bytes(b'[tool.stepup]\nnum_workers = 2\nlabel = "proj"\n')
+    cfg.write_bytes(b'[tool.stepup]\njobs = 2\nlabel = "proj"\n')
     assert loader._load_file(
         cfg,
-    ) == {"num_workers": 2, "label": "proj"}
+    ) == {"jobs": 2, "label": "proj"}
 
 
 def test_load_file_pyproject_toml_section_missing(path_tmp: Path, loader: ConfigLoader):
     cfg = path_tmp / "pyproject.toml"
-    cfg.write_bytes(b"[tool.other]\nnum_workers = 2\n")
+    cfg.write_bytes(b"[tool.other]\njobs = 2\n")
     assert loader._load_file(cfg) == {}
 
 
@@ -89,7 +89,7 @@ def test_load_file_missing(path_tmp: Path, loader: ConfigLoader):
 
 def test_load_file_unsupported_format(path_tmp: Path, loader: ConfigLoader):
     cfg = path_tmp / "stepup.ini"
-    cfg.write_text("[stepup]\nnum_workers = 4\n")
+    cfg.write_text("[stepup]\njobs = 4\n")
     with pytest.raises(ValueError, match="Unsupported config file format"):
         loader._load_file(cfg)
 
@@ -97,14 +97,14 @@ def test_load_file_unsupported_format(path_tmp: Path, loader: ConfigLoader):
 def test_load_file_tilde_expansion(path_tmp: Path, loader: ConfigLoader, monkeypatch):
     monkeypatch.setenv("HOME", str(path_tmp))
     cfg = path_tmp / "stepup.toml"
-    cfg.write_bytes(b"num_workers = 7\n")
-    assert loader._load_file("~/stepup.toml") == {"num_workers": 7}
+    cfg.write_bytes(b"jobs = 7\n")
+    assert loader._load_file("~/stepup.toml") == {"jobs": 7}
 
 
 def test_load_file_preserves_nested_sections(path_tmp: Path, loader: ConfigLoader):
     cfg = path_tmp / "stepup.toml"
-    cfg.write_bytes(b"num_workers = 4\n[boot]\nclean = false\n")
-    assert loader._load_file(cfg) == {"num_workers": 4, "boot": {"clean": False}}
+    cfg.write_bytes(b"jobs = 4\n[boot]\nclean = false\n")
+    assert loader._load_file(cfg) == {"jobs": 4, "boot": {"clean": False}}
 
 
 # ---------------------------------------------------------------------------
@@ -114,18 +114,18 @@ def test_load_file_preserves_nested_sections(path_tmp: Path, loader: ConfigLoade
 
 def test_configs_populated_from_paths(path_tmp: Path):
     cfg = path_tmp / "stepup.toml"
-    cfg.write_bytes(b"num_workers = 8\n")
+    cfg.write_bytes(b"jobs = 8\n")
     loader = ConfigLoader("stepup", config_paths=[path_tmp / "stepup.toml"], environ={})
-    assert loader._configs == [(cfg, {"num_workers": 8})]
+    assert loader._configs == [(cfg, {"jobs": 8})]
 
 
 def test_configs_one_dict_per_paths(path_tmp: Path):
     a = path_tmp / "a.toml"
-    a.write_bytes(b"num_workers = 4\n")
+    a.write_bytes(b"jobs = 4\n")
     b = path_tmp / "b.toml"
-    b.write_bytes(b"num_workers = 8\n")
+    b.write_bytes(b"jobs = 8\n")
     loader = ConfigLoader("stepup", config_paths=[a, b], environ={})
-    assert loader._configs == [(a, {"num_workers": 4}), (b, {"num_workers": 8})]
+    assert loader._configs == [(a, {"jobs": 4}), (b, {"jobs": 8})]
 
 
 def test_configs_missing_stem_gives_empty_dict():
@@ -136,14 +136,14 @@ def test_configs_missing_stem_gives_empty_dict():
 
 def test_configs_pyproject_auto_section(path_tmp: Path):
     cfg = path_tmp / "pyproject.toml"
-    cfg.write_bytes(b"[tool.stepup]\nnum_workers = 2\n[tool.stepup.boot]\nclean = false\n")
+    cfg.write_bytes(b"[tool.stepup]\njobs = 2\n[tool.stepup.boot]\nclean = false\n")
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
-    assert loader._configs == [(cfg, {"num_workers": 2, "boot": {"clean": False}})]
+    assert loader._configs == [(cfg, {"jobs": 2, "boot": {"clean": False}})]
 
 
 def test_env_preloaded_at_construction():
-    loader = ConfigLoader("stepup", environ={"STEPUP_NUM_WORKERS": "8", "OTHER": "x"})
-    assert loader._env == {"STEPUP_NUM_WORKERS": "8", "OTHER": "x"}
+    loader = ConfigLoader("stepup", environ={"STEPUP_JOBS": "8", "OTHER": "x"})
+    assert loader._env == {"STEPUP_JOBS": "8", "OTHER": "x"}
 
 
 # ---------------------------------------------------------------------------
@@ -153,28 +153,28 @@ def test_env_preloaded_at_construction():
 
 def test_patch_parser_from_file(path_tmp, parser, loader):
     cfg = path_tmp / "stepup.toml"
-    cfg.write_bytes(b"num_workers = 8\n")
+    cfg.write_bytes(b"jobs = 8\n")
     loader._configs = [(cfg, loader._load_file(cfg))]
     loader.patch_parser(parser)
-    assert parser.parse_args([]).num_workers == 8
+    assert parser.parse_args([]).jobs == 8
 
 
 def test_patch_parser_later_file_wins(path_tmp, parser):
     a = path_tmp / "a.toml"
-    a.write_bytes(b"num_workers = 4\n")
+    a.write_bytes(b"jobs = 4\n")
     b = path_tmp / "b.toml"
-    b.write_bytes(b"num_workers = 8\n")
+    b.write_bytes(b"jobs = 8\n")
     loader = ConfigLoader("stepup", config_paths=[a, b], environ={})
     loader.patch_parser(parser)
-    assert parser.parse_args([]).num_workers == 8
+    assert parser.parse_args([]).jobs == 8
 
 
 def test_patch_parser_cli_still_wins(path_tmp, parser):
     cfg = path_tmp / "stepup.toml"
-    cfg.write_bytes(b"num_workers = 8\n")
+    cfg.write_bytes(b"jobs = 8\n")
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
     loader.patch_parser(parser)
-    assert parser.parse_args(["--num-workers", "16"]).num_workers == 16
+    assert parser.parse_args(["--jobs", "16"]).jobs == 16
 
 
 def test_patch_parser_skip_file_config(path_tmp, parser):
@@ -200,7 +200,7 @@ def test_patch_parser_unsupported_config_key(path_tmp, parser):
 
 def test_patch_parser_section(path_tmp, plugin_parser):
     cfg = path_tmp / "stepup.toml"
-    cfg.write_bytes(b'num_workers = 8\n[plugin]\nquality = "high"\nnum_jobs = 4\n')
+    cfg.write_bytes(b'jobs = 8\n[plugin]\nquality = "high"\nnum_jobs = 4\n')
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
     loader.patch_parser(plugin_parser, "plugin")
     ns = plugin_parser.parse_args([])
@@ -210,11 +210,11 @@ def test_patch_parser_section(path_tmp, plugin_parser):
 
 def test_patch_parser_no_section_uses_top_level(path_tmp, parser):
     cfg = path_tmp / "stepup.toml"
-    cfg.write_bytes(b"num_workers = 8\n")
+    cfg.write_bytes(b"jobs = 8\n")
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
     loader.patch_parser(parser)
-    assert parser.parse_args([]).num_workers == Decimal("8")
-    assert isinstance(parser.parse_args([]).num_workers, Decimal)
+    assert parser.parse_args([]).jobs == Decimal("8")
+    assert isinstance(parser.parse_args([]).jobs, Decimal)
 
 
 def test_patch_parser_dotted_section(path_tmp, plugin_parser):
@@ -227,7 +227,7 @@ def test_patch_parser_dotted_section(path_tmp, plugin_parser):
 
 def test_patch_parser_missing_section_leaves_defaults(path_tmp, plugin_parser):
     cfg = path_tmp / "stepup.toml"
-    cfg.write_bytes(b"num_workers = 8\n")
+    cfg.write_bytes(b"jobs = 8\n")
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
     loader.patch_parser(plugin_parser, "nonexistent")
     ns = plugin_parser.parse_args([])
@@ -241,10 +241,10 @@ def test_patch_parser_missing_section_leaves_defaults(path_tmp, plugin_parser):
 
 
 def test_patch_parser_env_basic(parser):
-    loader = ConfigLoader("stepup", environ={"STEPUP_NUM_WORKERS": "12"})
+    loader = ConfigLoader("stepup", environ={"STEPUP_JOBS": "12"})
     loader.patch_parser(parser)
-    assert parser.parse_args([]).num_workers == 12
-    assert isinstance(parser.parse_args([]).num_workers, Decimal)
+    assert parser.parse_args([]).jobs == 12
+    assert isinstance(parser.parse_args([]).jobs, Decimal)
 
 
 def test_patch_parser_env_bool_flag_true(parser):
@@ -300,32 +300,32 @@ def test_patch_parser_nargs_optional_file_overrides_const(path_tmp):
 
 def test_patch_parser_env_overrides_file(path_tmp, parser):
     cfg = path_tmp / "stepup.toml"
-    cfg.write_bytes(b"num_workers = 2\n")
-    loader = ConfigLoader("stepup", config_paths=[cfg], environ={"STEPUP_NUM_WORKERS": "8"})
+    cfg.write_bytes(b"jobs = 2\n")
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={"STEPUP_JOBS": "8"})
     loader.patch_parser(parser)
-    assert parser.parse_args([]).num_workers == 8
-    assert isinstance(parser.parse_args([]).num_workers, Decimal)
+    assert parser.parse_args([]).jobs == 8
+    assert isinstance(parser.parse_args([]).jobs, Decimal)
 
 
 def test_patch_parser_env_unknown_vars_ignored(parser):
     loader = ConfigLoader("stepup", environ={"STEPUP_UNKNOWN": "x", "OTHER": "y"})
     loader.patch_parser(parser)
-    assert parser.parse_args([]).num_workers == Decimal("1.2")  # unchanged default
-    assert isinstance(parser.parse_args([]).num_workers, Decimal)
+    assert parser.parse_args([]).jobs == Decimal("1.2")  # unchanged default
+    assert isinstance(parser.parse_args([]).jobs, Decimal)
 
 
 def test_patch_parser_env_with_section(parser):
-    loader = ConfigLoader("stepup", environ={"STEPUP_BOOT_NUM_WORKERS": "12"})
+    loader = ConfigLoader("stepup", environ={"STEPUP_BOOT_JOBS": "12"})
     loader.patch_parser(parser, "boot")
-    assert parser.parse_args([]).num_workers == 12
-    assert isinstance(parser.parse_args([]).num_workers, Decimal)
+    assert parser.parse_args([]).jobs == 12
+    assert isinstance(parser.parse_args([]).jobs, Decimal)
 
 
 def test_patch_parser_env_section_prefix_required(parser):
     # The un-prefixed name is NOT matched when a section is given.
-    loader = ConfigLoader("stepup", environ={"STEPUP_NUM_WORKERS": "12"})
+    loader = ConfigLoader("stepup", environ={"STEPUP_JOBS": "12"})
     loader.patch_parser(parser, "boot")
-    assert parser.parse_args([]).num_workers == Decimal("1.2")  # unchanged
+    assert parser.parse_args([]).jobs == Decimal("1.2")  # unchanged
 
 
 def test_patch_parser_env_dotted_section(plugin_parser):
@@ -390,12 +390,12 @@ def test_patch_parser_merge_handler_only_file(path_tmp, parser):
 
 def test_patch_parser_section_isolates_parsers(path_tmp, parser, plugin_parser):
     cfg = path_tmp / "stepup.toml"
-    cfg.write_bytes(b'num_workers = "1.1"\n[plugin]\nquality = "high"\n')
+    cfg.write_bytes(b'jobs = "1.1"\n[plugin]\nquality = "high"\n')
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
     loader.patch_parser(parser)
     loader.patch_parser(plugin_parser, "plugin")
-    assert parser.parse_args([]).num_workers == Decimal("1.1")
-    assert isinstance(parser.parse_args([]).num_workers, Decimal)
+    assert parser.parse_args([]).jobs == Decimal("1.1")
+    assert isinstance(parser.parse_args([]).jobs, Decimal)
     assert plugin_parser.parse_args([]).quality == "high"
 
 
@@ -450,14 +450,14 @@ def test_patches_recorded_no_section(parser, loader):
     assert len(loader._patches) == 1
     section, actions = loader._patches[0]
     assert section is None
-    assert "num_workers" in actions
+    assert "jobs" in actions
 
 
 def test_patches_recorded_with_section(parser, loader):
     loader.patch_parser(parser, "boot")
     section, actions = loader._patches[0]
     assert section == "boot"
-    assert "num_workers" in actions
+    assert "jobs" in actions
 
 
 def test_patches_accumulate_across_calls(parser, plugin_parser, loader):
@@ -483,26 +483,26 @@ def test_patches_not_recorded_on_error(path_tmp, parser):
 
 
 def test_env_to_toml_map_empty_before_patch():
-    loader = ConfigLoader("stepup", environ={"STEPUP_NUM_WORKERS": "8"})
+    loader = ConfigLoader("stepup", environ={"STEPUP_JOBS": "8"})
     assert loader.env_to_toml_map() == {}
 
 
 def test_env_to_toml_map_no_section():
-    loader = ConfigLoader("stepup", environ={"STEPUP_NUM_WORKERS": "8"})
+    loader = ConfigLoader("stepup", environ={"STEPUP_JOBS": "8"})
     p = argparse.ArgumentParser()
-    p.add_argument("--num-workers", dest="num_workers", type=int)
+    p.add_argument("--jobs", dest="jobs", type=int)
     loader.patch_parser(p)
     result = loader.env_to_toml_map()
-    assert result == {"STEPUP_NUM_WORKERS": [(None, "num_workers", 8)]}
+    assert result == {"STEPUP_JOBS": [(None, "jobs", 8)]}
 
 
 def test_env_to_toml_map_with_section():
-    loader = ConfigLoader("stepup", environ={"STEPUP_BOOT_NUM_WORKERS": "8"})
+    loader = ConfigLoader("stepup", environ={"STEPUP_BOOT_JOBS": "8"})
     p = argparse.ArgumentParser()
-    p.add_argument("--num-workers", dest="num_workers", type=int)
+    p.add_argument("--jobs", dest="jobs", type=int)
     loader.patch_parser(p, "boot")
     result = loader.env_to_toml_map()
-    assert result == {"STEPUP_BOOT_NUM_WORKERS": [("boot", "num_workers", 8)]}
+    assert result == {"STEPUP_BOOT_JOBS": [("boot", "jobs", 8)]}
 
 
 def test_env_to_toml_map_unset_var_excluded(parser, loader):
@@ -513,17 +513,17 @@ def test_env_to_toml_map_unset_var_excluded(parser, loader):
 def test_env_to_toml_map_multiple_sections():
     loader = ConfigLoader(
         "stepup",
-        environ={"STEPUP_NUM_WORKERS": "4", "STEPUP_BOOT_LABEL": "prod"},
+        environ={"STEPUP_JOBS": "4", "STEPUP_BOOT_LABEL": "prod"},
     )
     p_main = argparse.ArgumentParser()
-    p_main.add_argument("--num-workers", dest="num_workers", type=int)
+    p_main.add_argument("--jobs", dest="jobs", type=int)
     p_boot = argparse.ArgumentParser()
     p_boot.add_argument("--label")
     loader.patch_parser(p_main)
     loader.patch_parser(p_boot, "boot")
     result = loader.env_to_toml_map()
     assert result == {
-        "STEPUP_NUM_WORKERS": [(None, "num_workers", 4)],
+        "STEPUP_JOBS": [(None, "jobs", 4)],
         "STEPUP_BOOT_LABEL": [("boot", "label", "prod")],
     }
 
@@ -535,10 +535,10 @@ def test_env_to_toml_map_multiple_sections():
 
 def test_full_integration(path_tmp, parser):
     etc_cfg = path_tmp / "etc.toml"
-    etc_cfg.write_bytes(b'num_workers = 8\nsearch_paths = "/usr/share"\n')
+    etc_cfg.write_bytes(b'jobs = 8\nsearch_paths = "/usr/share"\n')
 
     pyproject = path_tmp / "pyproject.toml"
-    pyproject.write_bytes(b'[tool.stepup]\nnum_workers = 2\nlabel = "proj"\n')
+    pyproject.write_bytes(b'[tool.stepup]\njobs = 2\nlabel = "proj"\n')
 
     loader = ConfigLoader(
         "stepup",
@@ -549,8 +549,8 @@ def test_full_integration(path_tmp, parser):
 
     ns = parser.parse_args(["--label", "cli"])
 
-    assert ns.num_workers == Decimal("2")  # pyproject overrides etc
-    assert isinstance(parser.parse_args([]).num_workers, Decimal)
+    assert ns.jobs == Decimal("2")  # pyproject overrides etc
+    assert isinstance(parser.parse_args([]).jobs, Decimal)
     assert ns.debug is True  # from env
     assert ns.search_paths == "/usr/share:/home/user/lib"  # merge handler
     assert ns.label == "cli"  # CLI overrides pyproject

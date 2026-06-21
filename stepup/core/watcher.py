@@ -84,7 +84,7 @@ class Watcher:
     processed: asyncio.Event = attrs.field(factory=asyncio.Event)
     """The processed event is set when the Watcher has passed all information to the workflow.
 
-    After this event the run phase can start.
+    After this event the build phase can start.
     """
 
     interrupt: asyncio.Event = attrs.field(factory=asyncio.Event)
@@ -99,13 +99,13 @@ class Watcher:
     deleted: set[Path] = attrs.field(init=False, factory=set)
     """Files deleted while the watcher is active.
 
-    These changes are sent to the workflow at the end of the watch phase.
+    These changes are sent to the workflow at the end of the watch phase, before the build phase.
     """
 
     updated: set[Path] = attrs.field(init=False, factory=set)
     """Files changed or added files while the watcher is active.
 
-    These changes are sent to the workflow at the end of the watch phase.
+    These changes are sent to the workflow at the end of the watch phase, before the build phase.
     """
 
     files_changed_events: set[asyncio.Event] = attrs.field(init=False, factory=set)
@@ -126,7 +126,7 @@ class Watcher:
         -----
         One iteration in the main watcher loop consists of observing multi file events.
         The iteration ends by informing the workflow of all the changes, after which
-        StepUp starts the runner again (or exists).
+        StepUp starts the builder again (or exists).
         """
         async with AsyncInotifyWrapper(self.dir_queue) as wrapper:
             while not stop_event.is_set():
@@ -142,14 +142,14 @@ class Watcher:
                 self.resume.clear()
 
     async def watch_changes(self, change_queue: asyncio.Queue, stop_event: asyncio.Event):
-        """Watch file events. They are sent to the workflow right before the runner is restarted."""
+        """Watch file events. They are sent to the workflow right before the next build phase."""
         # Reset the state of the watcher: changes are not processed yet.
         # Other parts of StepUp can wait for file changes.
         self.processed.clear()
         for event in self.files_changed_events:
             event.clear()
 
-        # Process changes to static files picked up during run phase.
+        # Process changes to static files picked up during the build phase.
         await self.reporter("PHASE", "watch")
         while not change_queue.empty():
             change, path = change_queue.get_nowait()

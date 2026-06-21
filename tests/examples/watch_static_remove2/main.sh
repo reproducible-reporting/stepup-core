@@ -7,7 +7,7 @@ rm -rvf $(cat .gitignore)
 # Run the example
 cp plan1.py plan.py
 echo hello > inp.txt
-stepup boot -n 1 -w & # > current_stdout.txt &
+stepup boot -j 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

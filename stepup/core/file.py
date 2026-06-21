@@ -190,7 +190,7 @@ class File(Node):
         return FileHash(*row)
 
     #
-    # Run phase
+    # Build phase
     #
 
     def completed(self):

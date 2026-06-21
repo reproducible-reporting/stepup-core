@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest 35ccdaf6 ➜ ceb2e927, size 183 ➜ 182)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        3/4 |      PHASE │ run
+        3/4 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/4 |    SUCCESS │ ./plan.py
         1/4 |       SKIP │ ./plan.py  # wd=sub/

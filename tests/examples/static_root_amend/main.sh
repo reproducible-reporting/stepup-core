@@ -9,7 +9,7 @@ mkdir -p dir_work dir_inp dir_out dir_vol
 echo blabla > dir_inp/inp.txt
 
 # Run the example
-stepup boot -n 1 -w & # > current_stdout.txt &
+stepup boot -j 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

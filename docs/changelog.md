@@ -57,8 +57,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - The `plan()` function has been made maximally similar to `run()`,
   and now accepts arbitrary local Python scripts,
   not just a directory that must contain a `plan.py` script.
-- The scheduler has been replaced by a completely new implementation, called the "dispatcher".
-  It is far more robust and powerful than the previous scheduler, and it is easier to maintain.
+- The scheduler has been replaced by a new and more efficient implementation.
   This change also comes with several improved features:
     - Steps are prioritized using the *tail time*, which results in the shortest overall
       execution time of the workflow.
@@ -66,6 +65,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
       the tail time estimates are updated dynamically as the workflow progresses.
     - The `pool` feature has been removed and is now replaced by the more powerful `resources` feature.
     - The `optional` feature has become more robust.
+- The `--num-workers` / `-n` option of `stepup boot` has been renamed to `--jobs` / `-j`,
+  in line with the convention used by `make` and similar tools.
+  The config-file key changes from `num_workers` to `jobs`,
+  and the environment variable changes from `STEPUP_NUM_WORKERS` to `STEPUP_BOOT_JOBS`.
 - Several environment variables have been renamed for consistency.
   See [Configuration files](reference/configuration.md) for details.
 - Documentation has been updated to reflect the API changes and to clarify some other points.
@@ -78,7 +81,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
       as it was no longer needed after the introduction of the forkserver.
     - Worker subprocesses have been replaced by asyncio tasks running inside the director.
       File hashing is offloaded to a dedicated subprocess (`_stepup_hasher` or a forkserver child).
-      The `--fork-workers` option has been removed as a consequence.
+    - The *run phase* has been renamed to *build phase* throughout the documentation and source code.
+    - The Runner has been renamed to Builder.
 
 ### Removed
 

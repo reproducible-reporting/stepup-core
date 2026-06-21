@@ -1,5 +1,5 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/3 |    SUCCESS │ ./plan.py
         1/3 |      START │ grep -i foo data.txt > analyzed.txt
@@ -13,7 +13,7 @@ and watch some football.
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |      PHASE │ watch
         3/3 |    DELETED │ data.txt
-        0/3 |      PHASE │ run
+        0/3 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
         1/2 |       SKIP │ cat analyzed.txt

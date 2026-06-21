@@ -93,7 +93,7 @@ class StepState(Enum):
     """The step still needs to be executed."""
 
     RUNNING = 22
-    """The step is being executed by a worker."""
+    """The step is currently executing."""
 
     CHECKING = 25
     """The step is being hash-checked for possible skipping.

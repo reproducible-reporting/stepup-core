@@ -18,10 +18,10 @@ This substitution happens early, before the steps are sent to the director proce
 The [`graph()`][stepup.core.api.graph] function writes the graph in a few formats,
 which are used for visualization below.
 
-Now run StepUp with two workers:
+Now run StepUp with up to 2 steps in parallel:
 
 ```bash
-stepup boot -n 2
+stepup boot -j 2
 ```
 
 You will see the following output:
@@ -30,7 +30,7 @@ You will see the following output:
 {% include 'getting_started/dependencies/stdout.txt' %}
 ```
 
-Although StepUp launches two workers, it executes your `run` steps sequentially,
+Although StepUp allows 2 steps to run in parallel, it executes your `run` steps sequentially,
 since it knows that the output of the first step will be used by the second.
 
 Note, however, that the `echo` commands are already started before `./plan.py` has finished.
@@ -141,13 +141,13 @@ The web server will load the graph in memory and will only reload it when reques
 
 ## Try the Following
 
-- Run `stepup boot -n 2` again. As expected, the steps are now skipped.
+- Run `stepup boot -j 2` again. As expected, the steps are now skipped.
 
 - Modify the `grep` command to select the first line (matching `Monday`)
-  and run `stepup boot -n 2` again.
+  and run `stepup boot -j 2` again.
   The `echo` commands are skipped as they have not changed.
 
-- Change the order of the two steps in `plan.py` and run `stepup boot -n 2`.
+- Change the order of the two steps in `plan.py` and run `stepup boot -j 2`.
   The step `./plan.py` is executed because the file has changed,
   but the `echo` and `grep` steps are skipped.
   This shows that `plan.py` is nothing but a plan, and it does not execute the steps itself.

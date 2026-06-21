@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the plan with the first input.
 echo first > input.txt
-stepup boot -n 1 -w & # > current_stdout1.txt &
+stepup boot -j 1 -w & # > current_stdout1.txt &
 
 # Wait for StepUp to complete
 stepup wait
@@ -24,7 +24,7 @@ grep first output.txt
 # Run the plan with the second input.
 echo second > input.txt
 rm .stepup/*.log
-stepup boot -n 1 -w & # > current_stdout2.txt &
+stepup boot -j 1 -w & # > current_stdout2.txt &
 
 # Restart StepUp.
 stepup wait

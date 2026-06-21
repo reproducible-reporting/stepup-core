@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the plan with specific permissions on the input.
 chmod +x input.txt
-stepup boot -n 1 -w & # > current_stdout.txt &
+stepup boot -j 1 -w & # > current_stdout.txt &
 
 # Wait and get graph.
 stepup wait

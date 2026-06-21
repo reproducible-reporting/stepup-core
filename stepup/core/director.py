@@ -40,14 +40,14 @@ except ImportError:
     yappi = None
 
 from .asyncio import wait_for_events
-from .dispatcher import Dispatcher
+from .builder import Builder
 from .enums import Need, ReturnCode, StepState
 from .exceptions import GraphError
 from .hash import FileHash
 from .nglob import NGlobMulti
 from .reporter import ReporterClient
 from .rpc import allow_rpc, serve_socket_rpc
-from .runner import Runner
+from .scheduler import Scheduler
 from .sqlite3 import connect
 from .startup import startup_from_db
 from .step import Step
@@ -56,7 +56,7 @@ from .utils import DBLock, check_plan, mynormpath
 from .watcher import WATCHER_AVAILABLE, Watcher
 from .workflow import Workflow
 
-__all__ = ("get_socket", "interpret_num_workers", "serve")
+__all__ = ("get_socket", "interpret_jobs", "serve")
 
 
 logger = logging.getLogger(__name__)
@@ -96,14 +96,14 @@ async def async_main(args: argparse.Namespace, mp_ctx=None):
             yappi.set_clock_type("cpu")
             yappi.start(builtins=True, profile_threads=True)
     async with ReporterClient.socket(args.reporter_socket) as reporter:
-        nworker = interpret_num_workers(args.num_workers)
-        await reporter.set_num_workers(nworker)
+        njob = interpret_jobs(args.jobs)
+        await reporter.set_njob(njob)
         version = get_version("stepup")
         await reporter("DIRECTOR", f"Listening on {args.director_socket} (StepUp Core {version})")
         try:
             returncode = await serve(
                 args.director_socket,
-                nworker,
+                njob,
                 reporter,
                 args.clean,
                 args.duration,
@@ -165,10 +165,10 @@ def parse_args() -> argparse.Namespace:
         help="Set the logging level. [default=%(default)s]",
     )
     parser.add_argument(
-        "--num-workers",
+        "--jobs",
         type=Decimal,
         default=Decimal("1.2"),
-        help="Number of workers running in parallel. "
+        help="Number of jobs running in parallel. "
         "When given as a real number with digits after the comma, "
         "it is multiplied with the number of available cores. [default=%(default)s]",
     )
@@ -208,14 +208,14 @@ def parse_args() -> argparse.Namespace:
             "--watch",
             default=False,
             action=argparse.BooleanOptionalAction,
-            help="Watch file changes after completing the run phase. "
-            "When not given, the director exists after completing the run phase.",
+            help="Watch file changes after completing the build phase. "
+            "When not given, the director exists after completing the build phase.",
         )
         parser.add_argument(
             "--watch-first",
             default=False,
             action=argparse.BooleanOptionalAction,
-            help="Exit watch phase and start the runner after the first file change. "
+            help="Exit watch phase and start the builder after the first file change. "
             "This implies --watch.",
         )
     parser.add_argument(
@@ -234,18 +234,18 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def interpret_num_workers(num_workers: Decimal) -> int:
-    """Convert the command-line argument num-workers into an integer."""
-    if num_workers.as_tuple().exponent < 0:
+def interpret_jobs(jobs: Decimal) -> int:
+    """Convert the command-line argument jobs into an integer."""
+    if jobs.as_tuple().exponent < 0:
         if hasattr(os, "sched_getaffinity"):
-            return int(len(os.sched_getaffinity(0)) * num_workers)
-        return int(os.cpu_count() * num_workers)
-    return int(num_workers)
+            return int(len(os.sched_getaffinity(0)) * jobs)
+        return int(os.cpu_count() * jobs)
+    return int(jobs)
 
 
 async def serve(
     director_socket_path: Path,
-    nworker: int,
+    njob: int,
     reporter: ReporterClient,
     do_clean: bool,
     use_duration: bool,
@@ -262,7 +262,7 @@ async def serve(
     ----------
     director_socket_path
         The socket to listen to for remote calls.
-    nworker
+    njob
         The maximum number of steps to run concurrently.
     reporter
         The reporter client for sending information back to
@@ -270,17 +270,17 @@ async def serve(
     do_clean
         If True, the director removes outdated output files.
     use_duration
-        If True, the dispatcher uses the duration of steps to optimize the execution order.
+        If True, the scheduler uses the duration of steps to optimize the execution order.
     explain_rerun
-        Let workers explain why steps with recording info cannot be skipped.
+        Report detailed diagnostics explaining why a step is rerun rather than skipped.
     show_perf
         Show performance details after each completed step.
     do_watch
-        If True, the director alternates between run and watch phases until
+        If True, the director alternates between build and watch phases until
         it receives an RPC to shutdown.
-        If False, the director exits after a single run phase.
+        If False, the director exits after a single build phase.
     do_watch_first
-        If True, the runner restarts after the watcher sees the first file change.
+        If True, the builder restarts after the watcher sees the first file change.
     available_resources
         A dictionary of named resources and their available quantities,
         e.g. `{"cpu": 4, "gpu": 1}`. Defaults to an empty dict.
@@ -293,8 +293,8 @@ async def serve(
     returncode
         The exit code of the director process.
     """
-    if nworker < 1:
-        raise ValueError(f"Number of workers must be strictly positive, got {nworker}")
+    if njob < 1:
+        raise ValueError(f"Number of parallel tasks must be strictly positive, got {njob}")
     if do_watch_first and not do_watch:
         raise ValueError("do_watch_first cannot be set without do_watch.")
     check_plan("plan.py")
@@ -314,19 +314,19 @@ async def serve(
     dblock = DBLock(con)
     dir_queue = asyncio.Queue() if do_watch else None
     workflow = Workflow(con, dir_queue=dir_queue)
-    dispatcher = Dispatcher(
+    scheduler = Scheduler(
         workflow,
         dblock=dblock,
         use_duration=use_duration,
     )
     if available_resources is not None:
         await reporter("DIRECTOR", f"Setting available resources: {available_resources}")
-    await dispatcher.set_available_resources(available_resources)
+    await scheduler.set_available_resources(available_resources)
     watcher = Watcher(workflow, dblock, reporter, dir_queue) if do_watch else None
-    runner = Runner(
-        nworker=nworker,
+    builder = Builder(
+        njob=njob,
         watcher=watcher,
-        dispatcher=dispatcher,
+        scheduler=scheduler,
         workflow=workflow,
         dblock=dblock,
         reporter=reporter,
@@ -338,23 +338,23 @@ async def serve(
     )
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(
-        dispatcher, workflow, dblock, reporter, runner, watcher, stop_event
+        scheduler, workflow, dblock, reporter, builder, watcher, stop_event
     )
 
     # Initialize the workflow
     new_boot = await director_handler.initialize_boot()
     if new_boot:
         await reporter("STARTUP", "(Re)initialized boot script")
-        runner.resume.set()
+        builder.resume.set()
     else:
-        await startup_from_db(workflow, dblock, reporter, runner)
+        await startup_from_db(workflow, dblock, reporter, builder)
 
     # Start tasks and wait for them to complete
     exit_event = asyncio.Event()
     rpc_server = asyncio.create_task(
         serve_socket_rpc(director_handler, director_socket_path, exit_event)
     )
-    coroutines = [runner.loop(stop_event)]
+    coroutines = [builder.loop(stop_event)]
     if watcher is not None:
         coroutines.append(watcher.loop(stop_event))
         if do_watch_first:
@@ -365,20 +365,20 @@ async def serve(
         # In case of an exception, set the stop event, so other parts know they can stop waiting.
         stop_event.set()
         # Regular shutdown
-        await runner.stop()
+        await builder.stop()
         exit_event.set()
         await rpc_server
         director_socket_path.remove_p()
-    return runner.returncode
+    return builder.returncode
 
 
 @attrs.define
 class DirectorHandler:
-    dispatcher: Dispatcher = attrs.field()
+    scheduler: Scheduler = attrs.field()
     workflow: Workflow = attrs.field()
     dblock: DBLock = attrs.field()
     reporter: ReporterClient = attrs.field()
-    runner: Runner = attrs.field()
+    builder: Builder = attrs.field()
     watcher: Watcher | None = attrs.field()
     stop_event: asyncio.Event = attrs.field()
     _shutdown_counter: int = attrs.field(init=False, default=0)
@@ -556,8 +556,8 @@ class DirectorHandler:
 
     @allow_rpc
     async def shutdown(self):
-        """Shut down the director and stop all workers."""
-        self.dispatcher.on_hold = True
+        """Shut down the director and stop all running tasks."""
+        self.scheduler.on_hold = True
         if self.stop_event.is_set():
             signal_name, signal_number = (
                 ("SIGINT", signal.SIGINT)
@@ -565,10 +565,10 @@ class DirectorHandler:
                 else ("SIGTERM", signal.SIGTERM)
             )
             await self.reporter("DIRECTOR", f"Interrupting running steps ({signal_name}).")
-            await self.runner.interrupt_workers(signal_number)
+            await self.builder.interrupt_tasks(signal_number)
             self._shutdown_counter += 2
         else:
-            if len(self.runner.running_worker_tasks) > 0:
+            if len(self.builder.running_tasks) > 0:
                 await self.reporter("DIRECTOR", "Waiting for steps to complete before shutdown.")
             self.stop_event.set()
             self._shutdown_counter = 1
@@ -577,13 +577,13 @@ class DirectorHandler:
 
     @allow_rpc
     async def drain(self):
-        """Do not start new steps and switch to the watch phase after the steps completed.
+        """Do not start new steps and switch to the watch phase after the build phase completes.
 
         Notes
         -----
         This RPC blocks until all running steps have completed.
         """
-        self.dispatcher.on_hold = True
+        self.scheduler.on_hold = True
         if self.watcher is not None:
             await wait_for_events(
                 self.watcher.active, self.stop_event, return_when=asyncio.FIRST_COMPLETED
@@ -591,7 +591,7 @@ class DirectorHandler:
 
     @allow_rpc
     async def join(self):
-        """Block until the runner completed all (runnable) steps and shut down."""
+        """Block until the builder completed all (runnable) steps and shut down."""
         if self.watcher is not None:
             await wait_for_events(
                 self.watcher.active, self.stop_event, return_when=asyncio.FIRST_COMPLETED
@@ -625,7 +625,7 @@ class DirectorHandler:
                     [step.label for step in self.workflow.steps(StepState.RUNNING)]
                     + [step.label for step in self.workflow.steps(StepState.CHECKING)]
                 ),
-                "resource_counts": self.dispatcher.get_resource_counts(),
+                "resource_counts": self.scheduler.get_resource_counts(),
             }
 
     @allow_rpc
@@ -634,7 +634,7 @@ class DirectorHandler:
 
         Notes
         -----
-        This has no effect during the run phase.
+        This has no effect during the build phase.
         """
         if self.watcher is None or not self.watcher.active.is_set():
             return
@@ -646,8 +646,8 @@ class DirectorHandler:
         await wait_for_events(
             self.watcher.processed, self.stop_event, return_when=asyncio.FIRST_COMPLETED
         )
-        self.dispatcher.on_hold = False
-        self.runner.resume.set()
+        self.scheduler.on_hold = False
+        self.builder.resume.set()
 
     @allow_rpc
     async def watch_update(self, path: str):
@@ -691,7 +691,7 @@ class DirectorHandler:
 
     @allow_rpc
     async def wait(self):
-        """Block until the runner completed all (runnable) steps."""
+        """Block until the builder completed all (runnable) steps."""
         if self.watcher is None:
             return
         await wait_for_events(
@@ -728,7 +728,7 @@ def get_socket() -> str:
 
 
 async def watch_first_loop(watcher: Watcher, director: DirectorHandler, stop_event: asyncio.Event):
-    """When a file of the watcher has changed, call the runner after 0.5 seconds delay."""
+    """When a file of the watcher has changed, call the builder after 0.5 seconds delay."""
     changed_event = asyncio.Event()
     watcher.files_changed_events.add(changed_event)
     while True:

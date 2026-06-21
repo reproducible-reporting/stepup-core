@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example
 export ENV_VAR_TEST_STEPUP_IDX="3"
-stepup boot -n 1 -w -e & # > current_stdout1.txt &
+stepup boot -j 1 -w -e & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -33,7 +33,7 @@ grep raw3 used.txt
 # Restart with a different environment variables
 export ENV_VAR_TEST_STEPUP_IDX="1"
 rm .stepup/*.log
-stepup boot -n 1 -w -e & # > current_stdout2.txt &
+stepup boot -j 1 -w -e & # > current_stdout2.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -56,7 +56,7 @@ grep raw1 used.txt
 # Restart with the original environment variable.
 export ENV_VAR_TEST_STEPUP_IDX="3"
 rm .stepup/*.log
-stepup boot -n 1 -w -e & # > current_stdout3.txt &
+stepup boot -j 1 -w -e & # > current_stdout3.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

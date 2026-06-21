@@ -53,12 +53,12 @@ import attrs
 from path import Path
 
 from .asyncio import await_fd_readable
-from .dispatcher import Dispatcher
 from .enums import FileState, StepState
 from .exceptions import RPCError
 from .hash import FileHash, StepHash, compare_step_hashes
 from .hasher import HashResult, HashTask, hash_fork_entry
 from .reporter import ReporterClient
+from .scheduler import Scheduler
 from .step import Step, split_step_label
 from .utils import DBLock, get_local_import_paths
 from .workflow import Workflow
@@ -554,11 +554,11 @@ class StepExecutor:
     """Run steps in the director process as asyncio tasks.
 
     One shared instance serves all concurrent steps. The methods `validate_amended_job`,
-    `try_skip_job` and `execute_job` are the coroutines created by the runner for each job.
+    `try_skip_job` and `execute_job` are the coroutines created by the builder for each job.
     """
 
-    dispatcher: Dispatcher = attrs.field()
-    """The dispatcher that is managing the jobs."""
+    scheduler: Scheduler = attrs.field()
+    """The scheduler that is managing the jobs."""
 
     workflow: Workflow = attrs.field()
     """The workflow that the executor is interacting with."""
@@ -706,10 +706,10 @@ class StepExecutor:
 
             if len(new_inp_hashes) > 0:
                 # Changes to inputs are suspect and can break everything.
-                # End the run phase gracefully by putting the dispatcher on hold.
-                self.dispatcher.on_hold = True
+                # End the build phase gracefully by putting the scheduler on hold.
+                self.scheduler.on_hold = True
                 await self.reporter(
-                    "ERROR", "The dispatcher has been put on hold due to unexpected input changes."
+                    "ERROR", "The scheduler has been put on hold due to unexpected input changes."
                 )
 
     #
@@ -746,9 +746,9 @@ class StepExecutor:
                 step_counts = self.workflow.get_step_counts()
             await self.reporter.update_step_counts(step_counts)
             await self.report(rs)
-            self.dispatcher.on_hold = True
+            self.scheduler.on_hold = True
             await self.reporter(
-                "ERROR", "The dispatcher has been put on hold due to unexpected input changes."
+                "ERROR", "The scheduler has been put on hold due to unexpected input changes."
             )
             yield rs, None
         else:

@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ inp2.txt (digest e44a31c3 ➜ 7f6f8bd5, size 6 ➜ 16)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        2/3 |      PHASE │ run
+        2/3 |      PHASE │ build
         2/3 |     NOSKIP │ echo word2 > inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 97737b8e, out_digest 91a94667 ➜ e195d556

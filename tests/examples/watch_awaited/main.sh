@@ -5,7 +5,7 @@ trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Run the initial plan.
-stepup boot -n 1 -w > current_stdout.txt &
+stepup boot -j 1 -w > current_stdout.txt &
 
 # Initial graph
 stepup wait

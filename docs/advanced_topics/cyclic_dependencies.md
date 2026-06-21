@@ -20,7 +20,7 @@ Make the plan executable and give it a try as follows:
 
 ```bash
 chmod +x plan.py
-stepup boot -n 1
+stepup boot -j 1
 ```
 
 You will get the following terminal output showing that this plan won't work.

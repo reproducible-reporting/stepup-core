@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ sub/plan.py (digest 0a553827 ➜ e3f536ef, size 171 ➜ 80)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        3/4 |      PHASE │ run
+        3/4 |      PHASE │ build
         2/3 |      START │ ./plan.py  # wd=sub/
         3/3 |    SUCCESS │ ./plan.py  # wd=sub/
         3/3 |    WARNING │ Reverted 1 optional step(s) to PENDING and marked 1 output/volatile file(s) for deletion.

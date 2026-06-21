@@ -1,7 +1,7 @@
 # Resources
 
 It is nearly always preferred to run steps in parallel when possible,
-so StepUp will launch any queued step as soon as a worker becomes available.
+so StepUp will launch any queued step as soon as an execution slot becomes available.
 A "resource" is a named quantity that limits how many steps can run concurrently
 in cases where full parallelization would be counterproductive:
 
@@ -50,12 +50,12 @@ they will run in parallel when allowed.
 Step C requires 2 CPUs and 1 GPU simultaneously, so it can only start
 once both A (which holds 1 CPU) and B (which holds 1 GPU) have finished.
 
-Set the environment variable and run StepUp with four workers:
+Set the environment variable and run StepUp with four parallel jobs:
 
 ```bash
 export STEPUP_RESOURCES="cpu:2,gpu:1"
 chmod +x plan.py
-stepup boot -n 4
+stepup boot -j 4
 ```
 
 You should get the following output:
@@ -65,12 +65,12 @@ You should get the following output:
 ```
 
 Steps A and B start immediately in parallel.
-Despite having four workers, step C only starts after both A and B have finished,
+Despite allowing 4 steps to run in parallel, step C only starts after both A and B have finished,
 because it needs 2 CPUs and 1 GPU at the same time.
 
 ## Try the Following
 
-- Run `stepup boot -n 4` again without making changes.
+- Run `stepup boot -j 4` again without making changes.
   Skipping steps requires hash computations, which are done by a dedicated hashing subprocess
   and are never subject to resource restrictions.
 

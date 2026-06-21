@@ -1,5 +1,5 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
         1/2 |      START │ ./demovars.py
@@ -9,7 +9,7 @@
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |      PHASE │ watch
         3/3 |    UPDATED │ variables.json
-        2/3 |      PHASE │ run
+        2/3 |      PHASE │ build
         2/3 |     NOSKIP │ ./demovars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest ccd0130b ➜ 021ba5a6, out_digest e3b0c442 ➜ (unset)
@@ -36,7 +36,7 @@ Same env var         STEPUP_PATH_FILTER (unset)
         3/3 |      PHASE │ watch
         3/3 |    UPDATED │ variables.json
         3/3 |  UNCHANGED │ variables.json
-        3/3 |      PHASE │ run
+        3/3 |      PHASE │ build
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |      PHASE │ watch
         3/3 |   DIRECTOR │ See you!

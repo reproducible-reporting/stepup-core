@@ -99,9 +99,9 @@ while "Step" reflects how StepUp defines operations as individual *steps*.
   before having complete knowledge of the entire build graph.
 
 - **Background Processes:**
-  StepUp always runs background processes (a director and several workers) to execute steps,
+  StepUp always runs background processes (a director and a step executor) to execute steps,
   and a terminal frontend to control or interrupt the build.
-  The director starts with a *run phase* to execute steps in parallel until the build is complete.
+  The director starts with a *build phase* to execute steps in parallel until the build is complete.
   When StepUp completes the build, it can switch to a *watch phase* to register file changes.
   When the user requests a rerun, it knows exactly which part of the DAG needs to be rebuilt.
   This allows efficient edit-build iterations to incrementally build and refine a project.

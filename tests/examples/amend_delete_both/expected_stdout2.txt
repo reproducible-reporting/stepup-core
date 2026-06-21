@@ -7,7 +7,7 @@
         0/0 |    DELETED │ log.txt
         0/0 |    DELETED │ data2.txt
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/4 |      PHASE │ run
+        1/4 |      PHASE │ build
         1/4 |     NOSKIP │ cp -p asource2.txt data2.txt
 ───────────────────────────── Missing output files ─────────────────────────────
 data2.txt

@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example
 export STEPUP_BOOT_RESOURCES="transform:1"
-stepup boot -n 2 -w & # > current_stdout.txt &
+stepup boot -j 2 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

@@ -38,34 +38,34 @@ __all__ = ()
 
 
 def shutdown_tool(args: argparse.Namespace):
-    """Put the dispatcher on hold, wait for running steps to complete and then exit StepUp."""
+    """Put the scheduler on hold, wait for running steps to complete and then exit StepUp."""
     get_rpc_client(get_socket()).call.shutdown()
 
 
 def shutdown_subcommand(subparsers, loader: ConfigLoader) -> callable:
     subparsers.add_parser(
         "shutdown",
-        help="Put the dispatcher on hold, wait for running steps to complete and then exit StepUp. "
+        help="Put the scheduler on hold, wait for running steps to complete and then exit StepUp. "
         "Call again to kill running steps.",
     )
     return shutdown_tool
 
 
 def drain_tool(args: argparse.Namespace):
-    """Put the dispatcher on hold. (No new steps are started.)"""
+    """Put the scheduler on hold. (No new steps are started.)"""
     get_rpc_client(get_socket()).call.drain()
 
 
 def drain_subcommand(subparsers, loader: ConfigLoader) -> callable:
     subparsers.add_parser(
         "drain",
-        help="Put the dispatcher on hold. (No new steps are started.)",
+        help="Put the scheduler on hold. (No new steps are started.)",
     )
     return drain_tool
 
 
 def join_tool(args: argparse.Namespace):
-    """Wait for the runner to become idle and stop the director.
+    """Wait for the builder to become idle and stop the director.
 
     This is the same as `wait()` followed by `shutdown()`."""
     get_rpc_client(get_socket()).call.join(_rpc_timeout=-1)
@@ -74,7 +74,7 @@ def join_tool(args: argparse.Namespace):
 def join_subcommand(subparsers, loader: ConfigLoader) -> callable:
     subparsers.add_parser(
         "join",
-        help="Wait for the runner to become idle and stop the director.",
+        help="Wait for the builder to become idle and stop the director.",
     )
     return join_tool
 
@@ -129,14 +129,14 @@ def status_subcommand(subparsers, loader: ConfigLoader) -> callable:
 
 
 def run_tool(args: argparse.Namespace):
-    """Exit the watch phase and start running steps whose inputs have changed."""
+    """Exit the watch phase and start the build phase."""
     get_rpc_client(get_socket()).call.run()
 
 
 def run_subcommand(subparsers, loader: ConfigLoader) -> callable:
     subparsers.add_parser(
         "run",
-        help="Exit the watch phase and start running steps whose inputs have changed.",
+        help="Exit the watch phase and start the build phase.",
     )
     return run_tool
 
@@ -176,13 +176,13 @@ def watch_delete_subcommand(subparsers, loader: ConfigLoader) -> callable:
 
 
 def wait_tool(args: argparse.Namespace):
-    """Block until the runner has become idle."""
+    """Block until the builder has become idle."""
     get_rpc_client(get_socket()).call.wait(_rpc_timeout=-1)
 
 
 def wait_subcommand(subparsers, loader: ConfigLoader) -> callable:
     subparsers.add_parser(
         "wait",
-        help="Block until the runner has become idle.",
+        help="Block until the builder has become idle.",
     )
     return wait_tool

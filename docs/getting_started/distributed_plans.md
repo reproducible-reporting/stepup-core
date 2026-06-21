@@ -50,4 +50,4 @@ It also clarifies the intent of the step, which improves the readability of your
 - When there are multiple `plan.py` files,
   keep in mind that their order of execution cannot be relied upon.
   They are executed in parallel, and their relative starting times depend
-  on factors unknown a priori, such as system load and number of workers.
+  on factors unknown a priori, such as system load and number of parallel jobs.

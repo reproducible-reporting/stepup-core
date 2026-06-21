@@ -5,7 +5,7 @@ trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Run the example
-stepup boot -n 1 -w & # > current_stdout1.txt &
+stepup boot -j 1 -w & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -28,7 +28,7 @@ wait
 # Restart with one more input
 echo three > sub/inp3.txt
 rm .stepup/*.log
-stepup boot -n 1 -w -e & # > current_stdout2.txt &
+stepup boot -j 1 -w -e & # > current_stdout2.txt &
 
 # Restart StepUp.
 stepup wait

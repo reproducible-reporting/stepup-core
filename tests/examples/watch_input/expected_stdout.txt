@@ -1,5 +1,5 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
         1/2 |      START │ cp input.txt output.txt
@@ -7,7 +7,7 @@
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |    DELETED │ input.txt
-        1/2 |      PHASE │ run
+        1/2 |      PHASE │ build
         1/2 |    WARNING │ 1 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  input.txt
@@ -22,7 +22,7 @@ Outputs     OUTDATED  output.txt
         1/2 |    WARNING │ Check logs: .stepup/warning.log
         1/2 |      PHASE │ watch
         1/2 |    UPDATED │ input.txt
-        1/2 |      PHASE │ run
+        1/2 |      PHASE │ build
         1/2 |      START │ cp input.txt output.txt
         2/2 |    SUCCESS │ cp input.txt output.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)

@@ -8,7 +8,7 @@ rm -rvf $(cat .gitignore)
 mkdir -p data
 echo hello > data/inp.txt
 cp plan1.py plan.py
-stepup boot -n 1 -w & # > current_stdout.txt &
+stepup boot -j 1 -w & # > current_stdout.txt &
 
 # Initial graph
 stepup wait

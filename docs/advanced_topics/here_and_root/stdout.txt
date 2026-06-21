@@ -1,7 +1,6 @@
-        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post24)
+        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/0 |   DIRECTOR │ Launched worker 0
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
         1/2 |      START │ ./plan.py  # wd=sub/
@@ -9,5 +8,4 @@
         2/3 |      START │ cp -p example.txt ../../public/sub/example.txt  # wd=sub/
         3/3 |    SUCCESS │ cp -p example.txt ../../public/sub/example.txt  # wd=sub/
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        3/3 |   DIRECTOR │ Stopping workers
         3/3 |   DIRECTOR │ See you!

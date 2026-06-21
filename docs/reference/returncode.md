@@ -1,6 +1,6 @@
 # StepUp Return Codes
 
-The StepUp return code indicates the status of the (last) run phase.
+The StepUp return code indicates the status of the (last) build phase.
 It can be a sum of the following codes:
 
 - `1` = internal error (Python exception)

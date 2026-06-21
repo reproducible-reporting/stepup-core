@@ -43,4 +43,4 @@ jobs:
       - name: Run a simple example
         run: |
           cd docs
-          STEPUP_DEBUG=1 STEPUP_SYNC_RPC_TIMEOUT=10 stepup boot -n 1.0
+          STEPUP_DEBUG=1 STEPUP_SYNC_RPC_TIMEOUT=10 stepup boot -j 1.0

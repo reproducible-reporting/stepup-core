@@ -8,7 +8,7 @@ rm -rvf $(cat .gitignore)
 mkdir -p data
 echo inp1 > data/inp1.txt
 echo data/inp1.txt > subs.txt
-stepup boot -n 1 -w -e & # > current_stdout.txt &
+stepup boot -j 1 -w -e & # > current_stdout.txt &
 
 # Initial graph
 stepup wait

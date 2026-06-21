@@ -1,12 +1,10 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post24)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
    STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
+     PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
 ─────────────────────────────── Standard output ────────────────────────────────
 This is a config file.
 ────────────────────────────────────────────────────────────────────────────────
   DIRECTOR │ Trying to delete 0 outdated output(s)
-  DIRECTOR │ Stopping workers
   DIRECTOR │ See you!

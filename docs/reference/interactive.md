@@ -33,16 +33,16 @@ These commands are defined as follows:
 - `r = run`:
   Runs steps that are affected by file changes registered during the *watch phase*.
 - `q = shutdown`:
-  StepUp waits for the workers to complete their current job and will not start new jobs.
-  As soon as all workers are idle, StepUp exits.
+  StepUp waits for all running steps to complete and will not start new jobs.
+  As soon as no steps are running, StepUp exits.
   If it takes to long for the steps to complete, you can press `q` again to kill them with `SIGINT`.
   Pres `q` for a third time to kill the steps with `SIGKILL`. (nuclear option)
 - `d = drain`:
-  StepUp waits for the workers to complete their current job and will not start new jobs.
-  As soon as all workers are idle, StepUp transitions into the *watch phase*.
+  StepUp waits for all running steps to complete and will not start new jobs.
+  As soon as no steps are running, StepUp transitions into the *watch phase*.
 - `j = join`:
-  StepUp continues running jobs until no new jobs can be found to send to the workers.
-  As soon as all workers are idle, StepUp terminates.
+  StepUp continues running jobs until no new jobs can be found.
+  As soon as no steps are running, StepUp terminates.
 - `g = graph`:
   Writes out the workflow graph in text format to a file named `graph.txt`.
   (This human-readable file contains most of the information from `.stepup/workflow.mp.xz`)
@@ -93,14 +93,14 @@ where a `stepup boot` command is running in interactive mode.
 
 You can define a
 [Custom Task in VSCode](https://code.visualstudio.com/docs/editor/tasks#_custom-tasks)
-to start the run phase of a StepUp instance running in a terminal.
+to start the build phase of a StepUp instance running in a terminal.
 
 For this example, we will assume the following:
 
 - You have an `.envrc` file that defines the environment variable `STEPUP_ROOT`
   and you have configured and installed [direnv](https://direnv.net/).
 - You have an interactive StepUp instance running in a terminal (with `stepup -w`).
-- You want to use the `ctrl+'` keybinding to start the run phase
+- You want to use the `ctrl+'` keybinding to start the build phase
   while you are editing a file in the StepUp project.
 
 Add the following to your user `tasks.json` file:

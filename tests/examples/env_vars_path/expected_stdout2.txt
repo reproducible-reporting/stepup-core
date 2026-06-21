@@ -4,7 +4,7 @@
         0/0 |    UPDATED │ ENV_VAR_TEST_STEPUP_PREFIX ='README' ➜ ='FOO'
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/2 |      PHASE │ run
+        0/2 |      PHASE │ build
         0/2 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest ddf9f37f ➜ 4492d93b, out_digest e3b0c442 ➜ (unset)

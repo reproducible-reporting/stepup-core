@@ -1,7 +1,6 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post24)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
    STARTUP │ (Re)initialized boot script
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
+     PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ cp -p ch1/sec1_1_introduction.txt ch1/sec1_1_introduction.md
@@ -27,5 +26,4 @@
      START │ cat ch4/sec4_1_summary.md > public/ch4.md
    SUCCESS │ cat ch4/sec4_1_summary.md > public/ch4.md
   DIRECTOR │ Trying to delete 0 outdated output(s)
-  DIRECTOR │ Stopping workers
   DIRECTOR │ See you!

@@ -7,7 +7,7 @@ rm -rvf $(cat .gitignore)
 # Run the initial plan.
 mkdir -p data/sub
 echo hi > data/sub/inp.txt
-stepup boot -n 1 -w & # > current_stdout.txt &
+stepup boot -j 1 -w & # > current_stdout.txt &
 PID=$!
 
 # Initial graph

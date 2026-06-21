@@ -34,7 +34,7 @@ from path import Path
 
 from .asyncio import stoppable_iterator, wait_for_path
 from .config import ConfigLoader
-from .director import interpret_num_workers
+from .director import interpret_jobs
 from .reporter import ReporterClient, ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
 from .utils import parse_resources
@@ -99,7 +99,7 @@ async def async_boot(args: argparse.Namespace, default_resources: str):
         tasks = [task_reporter]
 
         # Launch director as background process
-        num_workers = interpret_num_workers(args.num_workers)
+        njob = interpret_jobs(args.jobs)
         argv = []
         if args.perf is not None:
             argv.extend(
@@ -114,7 +114,7 @@ async def async_boot(args: argparse.Namespace, default_resources: str):
                 "stepup.core.director",
                 director_socket_path,
                 f"--reporter={reporter_socket_path}",
-                f"--num-workers={num_workers}",
+                f"--jobs={njob}",
                 f"--log-level={args.log_level}",
             ]
         )
@@ -238,10 +238,10 @@ async def keyboard(
                         await reporter("KEYBOARD", "Waiting for all steps before shutdown.")
                         await client.call.join()
                     elif ch == "d":
-                        await reporter("KEYBOARD", "Putting the dispatcher on hold.")
+                        await reporter("KEYBOARD", "Putting the scheduler on hold.")
                         await client.call.drain()
                     elif ch == "r":
-                        await reporter("KEYBOARD", "Restarting the runner.")
+                        await reporter("KEYBOARD", "Restarting the builder.")
                         await client.call.run()
                     elif ch == "g":
                         await client.call.graph("graph")
@@ -286,11 +286,11 @@ def boot_subcommand(subparsers, loader: ConfigLoader) -> callable:
         help="Explain for every step with recording info why it cannot be skipped.",
     )
     parser.add_argument(
-        "--num-workers",
-        "-n",
+        "--jobs",
+        "-j",
         type=Decimal,
         default=Decimal("1.2"),
-        help="Number of parallel workers. "
+        help="Number of parallel jobs. "
         "When given as a real number with digits after the comma, "
         "it is multiplied with the number of available cores. [default=%(default)s]",
     )
@@ -352,7 +352,7 @@ def boot_subcommand(subparsers, loader: ConfigLoader) -> callable:
             "-W",
             default=False,
             action=argparse.BooleanOptionalAction,
-            help="Start the runner after observing the first file change in watch mode. "
+            help="Start the builder after observing the first file change in watch mode. "
             "This implies --watch. (Only supported on Linux.)",
         )
     parser.add_argument(

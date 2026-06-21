@@ -28,7 +28,7 @@ Example `stepup.toml`:
 log_level = "INFO"
 
 [boot]
-num_workers = 4
+jobs = 4
 watch = true
 ```
 
@@ -139,7 +139,7 @@ separated by slashes, where applicable.
     so that each Python step forked from it inherits them at zero import cost.
     By default, no additional modules are pre-loaded (only internal StepUp modules are pre-loaded).
 
-`num_workers` / `STEPUP_BOOT_NUM_WORKERS` / `--num-workers`, `-n`
+`jobs` / `STEPUP_BOOT_JOBS` / `--jobs`, `-j`
 
 :   The maximum number of steps to run concurrently.
     When given as a floating point number, the value is multiplied by the number of available CPU cores.
@@ -236,12 +236,12 @@ separated by slashes, where applicable.
     The default is `8000`.
     After starting, the server is accessible at `http://localhost:<port>/`.
 
-## Environment Variables in Worker Processes
+## Environment Variables in Step Execution
 
-The following environment variables are set when a worker runs a step.
+The following environment variables are set when a step executes.
 These are mainly relevant for StepUp's internals,
 but can be useful for users implementing workflows.
-Note that anything in the worker (sub)processes is also affected by
+Note that anything in the step execution (sub)processes is also affected by
 the internal environment variables described above.
 
 `HERE` and `ROOT`

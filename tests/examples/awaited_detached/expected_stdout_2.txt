@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest 8c3a0a0c ➜ 1a3aa51e, size 132 ➜ 94)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/3 |      PHASE │ run
+        0/3 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
         1/2 |    WARNING │ 1 step(s) remained pending ...

@@ -5,7 +5,7 @@
         0/0 |    UPDATED │ ENV_VAR_TEST_STEPUP_DFTHYH ='BBBB' ➜ ='CCCC'
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        2/3 |      PHASE │ run
+        2/3 |      PHASE │ build
         2/3 |     NOSKIP │ ./printvars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest e740a9ee ➜ 9222b13e, out_digest a28c8eaa ➜ (unset)

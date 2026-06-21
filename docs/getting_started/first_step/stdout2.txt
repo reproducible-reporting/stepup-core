@@ -1,11 +1,9 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post24)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
    STARTUP │ Making failed steps pending
    STARTUP │ Watching directories for 1 files from initial database
    STARTUP │ Making steps pending that use changed environment variables
    STARTUP │ Scanning initial database for changed files
    STARTUP │ Scanning initial database for new nglob matches
-  DIRECTOR │ Launched worker 0
-     PHASE │ run
+     PHASE │ build
   DIRECTOR │ Trying to delete 0 outdated output(s)
-  DIRECTOR │ Stopping workers
   DIRECTOR │ See you!

@@ -317,7 +317,7 @@ class Workflow(Cascade):
             yield row[0]
 
     #
-    # Run phase
+    # Build phase
     #
 
     def _check_node(self, node: Node, argname: str, allow_root=False):
@@ -716,7 +716,7 @@ class Workflow(Cascade):
             The step that generated this step.
             This is None for the boot script.
         command
-            The command to be executed by a worker.
+            The command to execute.
         inp_paths
             Input paths.
         env_vars

@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ config.txt (digest f66ab398 ➜ 291423c4, size 9 ➜ 11)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        3/4 |      PHASE │ run
+        3/4 |      PHASE │ build
         1/2 |      START │ ./script.py plan
         2/4 |    SUCCESS │ ./script.py plan
         2/4 |      START │ ./script.py run egg

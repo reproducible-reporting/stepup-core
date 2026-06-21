@@ -5,7 +5,7 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |    UPDATED │ tail_y.txt
         0/0 |    UPDATED │ tail_z.txt
-        1/2 |      PHASE │ run
+        1/2 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/4 |    SUCCESS │ ./plan.py
         1/4 |       SKIP │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt

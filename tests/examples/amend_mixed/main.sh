@@ -12,7 +12,7 @@ echo "First inp1.txt" > inp1.txt
 echo "Stray output" > tmp1.txt
 
 # Run the plan.
-stepup boot -n 1 -w -e & # > current_stdout.txt &
+stepup boot -j 1 -w -e & # > current_stdout.txt &
 
 # Initial graph
 stepup wait

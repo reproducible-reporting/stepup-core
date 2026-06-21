@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example
 echo pass1 > data.txt
-stepup --log-level INFO boot -n 1 -w & # > current_stdout.txt &
+stepup --log-level INFO boot -j 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

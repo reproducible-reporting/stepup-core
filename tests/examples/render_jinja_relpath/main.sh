@@ -7,7 +7,7 @@ rm -rvf $(cat .gitignore)
 # Run the example
 export SOURCE_DATE_EPOCH="315532800"
 export PUBLIC="public/"
-stepup boot -w -n 1 & # > current_stdout.txt &
+stepup boot -w -j 1 & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

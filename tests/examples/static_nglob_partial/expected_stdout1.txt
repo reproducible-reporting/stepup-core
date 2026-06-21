@@ -1,5 +1,5 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
         1/2 |      START │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
@@ -8,7 +8,7 @@
         2/2 |      PHASE │ watch
         2/2 |    UPDATED │ tail_y.txt
         2/2 |    UPDATED │ head_z.txt
-        1/2 |      PHASE │ run
+        1/2 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/3 |    SUCCESS │ ./plan.py
         1/3 |       SKIP │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
@@ -23,7 +23,7 @@ Same out hash        paste_x.txt
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |      PHASE │ watch
         3/3 |    DELETED │ tail_y.txt
-        1/3 |      PHASE │ run
+        1/3 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
         1/2 |       SKIP │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt

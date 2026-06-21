@@ -7,7 +7,7 @@ rm -rvf $(cat .gitignore)
 # Run the example
 export INP_VAR_TEST_STEPUP_FOO="foo"
 export INP_VAR_TEST_STEPUP_BAR="bar"
-stepup boot -n 1 -w & # > current_stdout.txt &
+stepup boot -j 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

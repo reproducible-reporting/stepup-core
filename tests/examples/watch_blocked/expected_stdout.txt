@@ -1,5 +1,5 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/4 |    SUCCESS │ ./plan.py
         1/4 |      START │ cp -p initial.txt input.txt
@@ -24,7 +24,7 @@ Outputs      AWAITED  final.txt
         2/4 |    WARNING │ Check logs: .stepup/warning.log
         2/4 |      PHASE │ watch
         2/4 |    UPDATED │ plan.py
-        1/4 |      PHASE │ run
+        1/4 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/4 |    SUCCESS │ ./plan.py
         1/4 |       SKIP │ cp -p initial.txt input.txt

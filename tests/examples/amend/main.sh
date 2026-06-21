@@ -4,7 +4,7 @@ set -e
 rm -rvf $(cat .gitignore)
 
 # Run the example
-stepup boot -n 1 -w -e & # > current_stdout1.txt &
+stepup boot -j 1 -w -e & # > current_stdout1.txt &
 
 # Get graph after normal run.
 stepup wait
@@ -39,7 +39,7 @@ grep word2 out2.txt
 
 # Restart StepUp without changes
 rm .stepup/*.log
-stepup boot -n 1 -w -e & # > current_stdout2.txt &
+stepup boot -j 1 -w -e & # > current_stdout2.txt &
 
 # Get graph after restart without changes.
 stepup wait
@@ -60,7 +60,7 @@ grep word2 out2.txt
 # Restart StepUp with changes
 echo "word2 and other" > inp2.txt
 rm .stepup/*.log
-stepup boot -n 1 -w -e & # > current_stdout3.txt &
+stepup boot -j 1 -w -e & # > current_stdout3.txt &
 
 # Get graph after restart without changes.
 stepup wait

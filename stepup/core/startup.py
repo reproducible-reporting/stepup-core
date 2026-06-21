@@ -25,10 +25,10 @@ import os
 
 from path import Path
 
+from .builder import Builder
 from .enums import FileState, StepState
 from .hash import FileHash, fmt_env_value, fmt_file_hash_diff
 from .reporter import ReporterClient
-from .runner import Runner
 from .step import Step
 from .utils import DBLock
 from .workflow import Workflow
@@ -43,7 +43,7 @@ async def startup_from_db(
     workflow: Workflow,
     dblock: DBLock,
     reporter: ReporterClient,
-    runner: Runner,
+    builder: Builder,
 ):
     """Initialize internal datastructures by loading relevant parts from the database."""
     con = workflow.con
@@ -100,9 +100,9 @@ async def startup_from_db(
     async with dblock:
         workflow.process_nglob_changes(deleted, old_added | new_added)
 
-    # Wrap up by making necessary steps pending and starting the runner.
+    # Wrap up by making necessary steps pending and starting the builder.
     logger.info("Startup sequence completed")
-    runner.resume.set()
+    builder.resume.set()
 
 
 async def populate_dir_queue(workflow: Workflow, dblock: DBLock, reporter: ReporterClient):

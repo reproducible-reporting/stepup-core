@@ -1,5 +1,5 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/3 |    SUCCESS │ ./plan.py
         1/3 |      START │ ./work.py
@@ -15,7 +15,7 @@ inp2.txt
         3/3 |    WARNING │ Check logs: .stepup/warning.log
         3/3 |      PHASE │ watch
         3/3 |    UPDATED │ inp2.txt
-        2/3 |      PHASE │ run
+        2/3 |      PHASE │ build
         2/3 |     NOSKIP │ echo word2 > inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 97737b8e, out_digest 91a94667 ➜ 2066b34c

@@ -17,9 +17,9 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""The `Runner` drives the build by pulling runnable jobs and sending them to the executor.
+"""The `Builder` drives the build by pulling runnable jobs and sending them to the executor.
 
-Each *run phase* starts when the `resume` event is set,
+Each *build phase* starts when the `resume` event is set,
 executes all currently runnable jobs via `job_loop`,
 and ends with `finalize`, which reverts optional steps,
 reports pending/failed steps, removes outdated outputs,
@@ -36,35 +36,35 @@ import signal
 import attrs
 
 from .asyncio import wait_for_events
-from .dispatcher import Dispatcher
 from .enums import FileState, Need, ReturnCode, StepState
 from .executor import StepExecutor
 from .hash import FileHash
 from .job import Job
 from .reporter import ReporterClient
+from .scheduler import Scheduler
 from .utils import DBLock, myparent, remove_path
 from .watcher import Watcher
 from .workflow import Workflow
 
-__all__ = ("Runner",)
+__all__ = ("Builder",)
 
 
 logger = logging.getLogger(__name__)
 
 
 @attrs.define
-class Runner:
-    nworker: int = attrs.field(kw_only=True)
+class Builder:
+    njob: int = attrs.field(kw_only=True)
     """The maximum number of steps to run concurrently."""
 
     need_job: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
     """Event that is set when there is capacity to take another job."""
 
     watcher: Watcher | None = attrs.field(kw_only=True)
-    """The watcher instance, used to start the watcher when the runner becomes idle."""
+    """The watcher instance, used to start the watcher when the builder becomes idle."""
 
-    dispatcher: Dispatcher = attrs.field(kw_only=True)
-    """The dispatcher providing jobs to the runner."""
+    scheduler: Scheduler = attrs.field(kw_only=True)
+    """The scheduler providing jobs to the builder."""
 
     workflow: Workflow = attrs.field(kw_only=True)
     """The workflow which generated the jobs and which gets updated as a result of the jobs."""
@@ -82,16 +82,16 @@ class Runner:
     """Flag to enable more details on why steps cannot be skipped."""
 
     resume: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
-    """Other parts of StepUp can set the resume event to put the runner back to work."""
+    """Other parts of StepUp can set the resume event to put the builder back to work."""
 
-    running_worker_tasks: dict[asyncio.Task, Job] = attrs.field(init=False, factory=dict)
+    running_tasks: dict[asyncio.Task, Job] = attrs.field(init=False, factory=dict)
     """Dictionary of asyncio tasks that are currently running a job."""
 
-    done_worker_tasks: dict[asyncio.Task, Job] = attrs.field(init=False, factory=dict)
+    done_tasks: dict[asyncio.Task, Job] = attrs.field(init=False, factory=dict)
     """Dictionary of asyncio tasks that have completed a job."""
 
     returncode: ReturnCode = attrs.field(init=False, default=ReturnCode.PENDING)
-    """Exit code for the director, based on the last run phase."""
+    """Exit code for the director, based on the last build phase."""
 
     do_remove_outdated: bool = attrs.field(kw_only=True, default=True)
     """Flag to enable removal of outdated outputs."""
@@ -108,7 +108,7 @@ class Runner:
     @executor.default
     def _executor_default(self):
         return StepExecutor(
-            self.dispatcher,
+            self.scheduler,
             self.workflow,
             self.dblock,
             self.reporter,
@@ -119,19 +119,19 @@ class Runner:
         )
 
     async def loop(self, stop_event: asyncio.Event):
-        """The main runner loop.
+        """The main builder loop.
 
         Parameters
         ----------
         stop_event
-            The main runner loop is interrupted by this event.
+            The main builder loop is interrupted by this event.
 
         Notes
         -----
-        One iteration in the main runner loop consists of running a bunch of jobs:
-        All runnable jobs are executed unless the user interrupts the runner (drain command).
+        One iteration in the main builder loop consists of running a bunch of jobs:
+        All runnable jobs are executed unless the user interrupts the builder (drain command).
         """
-        # Loop through run phases.
+        # Loop through build phases.
         while True:
             await wait_for_events(self.resume, stop_event, return_when=asyncio.FIRST_COMPLETED)
             if stop_event.is_set():
@@ -139,48 +139,48 @@ class Runner:
             await self.job_loop()
             await self.finalize()
             self.resume.clear()
-            # If there is no watcher, the runner stops after one iteration.
+            # If there is no watcher, the builder stops after one iteration.
             if self.watcher is None:
                 stop_event.set()
 
     async def job_loop(self):
-        """Run all runnable jobs until there are non left or the dispatcher is on hold."""
+        """Run all runnable jobs until there are non left or the scheduler is on hold."""
         async with self.dblock:
             step_counts = self.workflow.get_step_counts()
         await self.reporter.update_step_counts(step_counts)
-        await self.reporter("PHASE", "run")
+        await self.reporter("PHASE", "build")
 
-        # Get step jobs and run them on the workers.
+        # Get step jobs and run them as asyncio tasks.
         while True:
             # Handle exceptions of done tasks,
-            # and give feedback to the dispatcher about completed jobs.
+            # and give feedback to the scheduler about completed jobs.
             await self.handle_done_tasks()
 
-            # Get the next job and send it to workers if there is such a job.
-            if len(self.running_worker_tasks) < self.nworker:
-                job = await self.dispatcher.pop_runnable_job()
+            # Get the next job and start it as a task if there is such a job.
+            if len(self.running_tasks) < self.njob:
+                job = await self.scheduler.pop_runnable_job()
                 if job is not None:
-                    await self.send_to_worker(job)
+                    await self.start_task(job)
                     continue
 
-            # When there is nothing left to do, the runner must stop.
+            # When there is nothing left to do, the builder must stop.
             logger.debug(
-                "Runner loop: %d running tasks, %d done tasks",
-                len(self.running_worker_tasks),
-                len(self.done_worker_tasks),
+                "Builder loop: %d running tasks, %d done tasks",
+                len(self.running_tasks),
+                len(self.done_tasks),
             )
-            if len(self.running_worker_tasks) == 0 and len(self.done_worker_tasks) == 0:
+            if len(self.running_tasks) == 0 and len(self.done_tasks) == 0:
                 return
 
-            # Let the runner wait until one of the workers becomes idle.
+            # Let the builder wait until a task slot becomes available.
             await self.need_job.wait()
             self.need_job.clear()
 
     async def finalize(self):
-        """Final steps after the runner has executed a bunch of jobs."""
+        """Final steps after the builder has executed a bunch of jobs."""
         await revert_optional(self.dblock, self.workflow, self.reporter)
         self.returncode = await report_completion(
-            self.dblock, self.workflow, self.dispatcher, self.reporter
+            self.dblock, self.workflow, self.scheduler, self.reporter
         )
         if self.returncode.value != 0:
             await self.reporter("WARNING", "Skipping file cleanup due to incomplete build")
@@ -198,41 +198,41 @@ class Runner:
         if self.watcher is not None:
             self.watcher.resume.set()
 
-    async def send_to_worker(self, job: Job):
+    async def start_task(self, job: Job):
         """Start an asyncio task that runs the job in the executor."""
         logger.info("Run %s", job.name)
         task = asyncio.create_task(job.coro(self.executor), name=job.name)
-        self.running_worker_tasks[task] = job
+        self.running_tasks[task] = job
         task.add_done_callback(self._task_done)
 
     def _task_done(self, task: asyncio.Task):
-        job = self.running_worker_tasks.pop(task)
-        self.done_worker_tasks[task] = job
+        job = self.running_tasks.pop(task)
+        self.done_tasks[task] = job
         self.need_job.set()
 
     async def handle_done_tasks(self):
         """Check whether done tasks raised exceptions and propagate them when found."""
-        while len(self.done_worker_tasks) > 0:
-            task, job = self.done_worker_tasks.popitem()
+        while len(self.done_tasks) > 0:
+            task, job = self.done_tasks.popitem()
             exc = task.exception()
             if exc is not None:
-                self.dispatcher.on_hold = True
+                self.scheduler.on_hold = True
 
-                msg = f"Exception in worker task {task.get_name()}"
+                msg = f"Exception in task {task.get_name()}"
                 raise RuntimeError(msg) from exc
-            await self.dispatcher.job_completed(job)
+            await self.scheduler.job_completed(job)
             self.need_job.set()
 
     async def stop(self):
         """Cancel any still-running step tasks and signal their child processes."""
         self.executor.interrupt(signal.SIGTERM)
-        tasks = list(self.running_worker_tasks)
+        tasks = list(self.running_tasks)
         for task in tasks:
             task.cancel()
         if len(tasks) > 0:
             await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def interrupt_workers(self, sig: int):
+    async def interrupt_tasks(self, sig: int):
         self.executor.interrupt(sig)
 
 
@@ -317,7 +317,7 @@ async def revert_optional(dblock: DBLock, workflow: Workflow, reporter: Reporter
 
 
 async def report_completion(
-    dblock: DBLock, workflow: Workflow, dispatcher: Dispatcher, reporter: ReporterClient
+    dblock: DBLock, workflow: Workflow, scheduler: Scheduler, reporter: ReporterClient
 ) -> ReturnCode:
     """Report parts of the workflow that could not be executed."""
     returncode = ReturnCode(0)
@@ -328,13 +328,13 @@ async def report_completion(
         returncode |= ReturnCode.FAILED
         await reporter("WARNING", f"{nfailed} step(s) failed.")
 
-    if dispatcher.on_hold:
+    if scheduler.on_hold:
         returncode |= ReturnCode.PENDING
-        await reporter("WARNING", "Dispatcher is put on hold. Not reporting pending steps.")
+        await reporter("WARNING", "Scheduler is put on hold. Not reporting pending steps.")
         return returncode
 
     async with dblock:
-        step_records = dispatcher.get_pending_step_records()
+        step_records = scheduler.get_pending_step_records()
     npending = len(step_records)
     if npending > 0:
         pending_pages = []
@@ -343,7 +343,7 @@ async def report_completion(
                 command, workdir = step.get_command_workdir()
 
                 reason_text = {
-                    "runnable": "runnable but not executed (runner was interrupted)",
+                    "runnable": "runnable but not executed (builder was interrupted)",
                     "inputs": "required inputs are unavailable",
                     "resources": "required resources exceed maximum available",
                     "unsafe": "creator is not RUNNING or SUCCEEDED",

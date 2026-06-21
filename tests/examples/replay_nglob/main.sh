@@ -7,7 +7,7 @@ rm -rvf $(cat .gitignore)
 # Run the initial plan.
 echo hello > inp.txt
 cp plan1.py plan.py
-stepup boot -n 1 -w & # > current_stdout.txt &
+stepup boot -j 1 -w & # > current_stdout.txt &
 
 # Initial graph
 stepup wait

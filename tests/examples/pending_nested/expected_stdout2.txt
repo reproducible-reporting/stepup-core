@@ -5,7 +5,7 @@
         0/0 |    DELETED │ inp1.txt
         0/0 |    UPDATED │ inp3.txt (digest 87428fc5 ➜ 02638299)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/4 |      PHASE │ run
+        1/4 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/4 |    SUCCESS │ ./plan.py
         1/4 |    WARNING │ 3 step(s) remained pending ...

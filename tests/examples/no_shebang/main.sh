@@ -9,7 +9,7 @@ echo "# This script has no shebang line, which stepup does not accept.
 
 # See https://en.wikipedia.org/wiki/Shebang_%28Unix%29" > script.py
 chmod +x script.py
-stepup boot -n 1 -w & # > current_stdout.txt &
+stepup boot -j 1 -w & # > current_stdout.txt &
 PID=$!
 
 # Get the graph after completion of the pending steps.

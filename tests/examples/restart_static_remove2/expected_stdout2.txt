@@ -5,7 +5,7 @@
         0/0 |    UPDATED │ plan.py (digest 04f162d6 ➜ 7800367b, size 264 ➜ 111)
         0/0 |    DELETED │ inp.txt
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/2 |      PHASE │ run
+        1/2 |      PHASE │ build
         1/2 |  DROPAMEND │ ./plan.py
 ────────────────────── Outdated amended step information ───────────────────────
 Modified step hash   compact ➜ explained, inp_digest ea40b2f8 ➜ 603fc93b, out_digest b19341b7 ➜ (unset)

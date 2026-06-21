@@ -17,12 +17,14 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""Unit tests for stepup.core.dispatcher."""
+"""Unit tests for stepup.core.scheduler."""
 
 import pytest
 
 from stepup.core.cascade import CASCADE_SCHEMA
-from stepup.core.dispatcher import (
+from stepup.core.enums import FileState, Need, StepState
+from stepup.core.file import FILE_SCHEMA
+from stepup.core.scheduler import (
     APPLY_UPDATE_CHECK_AFTER,
     DROP_CHECK_AFTER,
     DROP_UPDATE_CHECK_AFTER,
@@ -41,8 +43,6 @@ from stepup.core.dispatcher import (
     SELECT_UPDATE_CHECK_AFTER,
     UNAVAILABLE_INPUT,
 )
-from stepup.core.enums import FileState, Need, StepState
-from stepup.core.file import FILE_SCHEMA
 from stepup.core.sqlite3 import connect
 from stepup.core.step import STEP_SCHEMA
 
@@ -54,7 +54,7 @@ def con():
     c.executescript(CASCADE_SCHEMA.format(application_id=0, schema_version=0))
     c.executescript(STEP_SCHEMA)
     c.executescript(FILE_SCHEMA)
-    # available_resource is normally a temp table created by Dispatcher.set_available_resources.
+    # available_resource is normally a temp table created by Scheduler.set_available_resources.
     c.execute(
         "CREATE TEMPORARY TABLE IF NOT EXISTS available_resource"
         " (name TEXT PRIMARY KEY, units INTEGER NOT NULL)"
@@ -1434,7 +1434,7 @@ def test_checkable_step_with_hash_and_missing_resource(con):
     """A step with a hash is checkable even when its resource is NOT available.
 
     This is the core property: SELECT_CHECKABLE_STEPS does not check resource availability,
-    so PENDING steps with hashes are dispatched to CHECKING without waiting for resources.
+    so PENDING steps with hashes are scheduled for CHECKING without waiting for resources.
     This ensures skipping is never blocked by named resource restrictions.
     """
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)

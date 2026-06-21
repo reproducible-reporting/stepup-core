@@ -46,5 +46,5 @@ via the forkserver, with no new Python interpreter launched.
 This is the same pattern used in StepUp Core itself.
 For example, `render_jinja()` in `stepup.core.api` creates a step whose command starts with
 `stepup render-jinja ...`.
-Because `stepup` is a `console_scripts` entry point, the worker runs it in-process
+Because `stepup` is a `console_scripts` entry point, the step executor runs it in-process
 via the forkserver instead of spawning a new process.

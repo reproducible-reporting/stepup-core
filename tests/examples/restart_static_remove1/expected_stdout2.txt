@@ -5,7 +5,7 @@
         0/0 |    UPDATED │ plan.py (digest 9b42ddbc ➜ 052600b0, size 157 ➜ 119)
         0/0 |    DELETED │ foo.txt
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/3 |      PHASE │ run
+        1/3 |      PHASE │ build
         1/3 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   compact ➜ explained, inp_digest 9beae1cd ➜ 315b8e75, out_digest e3b0c442 ➜ (unset)

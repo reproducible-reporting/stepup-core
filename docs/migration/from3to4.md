@@ -4,6 +4,8 @@ A few things have changed in StepUp 4 that might require changes to your `plan.p
 These changes reflect optimizations of StepUp's internals or
 get rid of poor historical API design choices.
 
+What used to be called the *run phase* is now called the *build phase* in documentation and source code.
+
 ## The new `run()` function replaces the old `runsh()` and `runpy()` functions
 
 StepUp 4 unifies `runsh()` and `runpy()` into a single and more powerful `run()` function,
@@ -180,6 +182,11 @@ The advantages of the new `plan()` function are:
   Instead, use the `resources` argument with a resource that is not available on the host,
   which will have the same effect, e.g. `resources="blocked"`.
 
+## Changed Command-Line Arguments
+
+The `stepup boot` command was changed to have `-j` and `--jobs` options
+instead of `-n` and `--num-workers`.
+
 ## Changed Environment Variable Names
 
 The following environment variables have been renamed to have a `STEPUP_BOOT_` prefix instead of `STEPUP_`:
@@ -188,7 +195,7 @@ The following environment variables have been renamed to have a `STEPUP_BOOT_` p
 | --- | --- |
 | `STEPUP_CLEAN` | `STEPUP_BOOT_CLEAN` |
 | `STEPUP_EXPLAIN_RERUN` | `STEPUP_BOOT_EXPLAIN_RERUN` |
-| `STEPUP_NUM_WORKERS` | `STEPUP_BOOT_NUM_WORKERS` |
+| `STEPUP_NUM_WORKERS` | `STEPUP_BOOT_JOBS` |
 | `STEPUP_PERF` | `STEPUP_BOOT_PERF` |
 | `STEPUP_PROGRESS` | `STEPUP_BOOT_PROGRESS` |
 | `STEPUP_SHOW_PERF` | `STEPUP_BOOT_SHOW_PERF` |

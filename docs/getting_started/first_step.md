@@ -41,12 +41,12 @@ It does capture standard output and error, as shown below.
 In the same directory, run:
 
 ```bash
-stepup boot -n 1
+stepup boot -j 1
 ```
 
 - The `boot` subcommand starts the StepUp terminal user interface and
   the director process in the background, which will begin executing steps defined in `plan.py`.
-- The option `-n 1` sets the maximum number of workers to 1, i.e. no parallel execution of steps.
+- The option `-n 1` limits parallel execution to a single step at a time.
 
 You should see the following output, with colors if your virtual terminal supports them:
 
@@ -73,7 +73,7 @@ Let's analyze the output:
 Now repeat the execution of StepUp with:
 
 ```bash
-stepup boot -n 1
+stepup boot -j 1
 ```
 
 You will see a slightly different output:
@@ -110,7 +110,7 @@ StepUp will automatically track it as a dependency of the step and rerun it when
 
 ## Try the Following
 
-- Change the arguments of the `echo` command in `plan.py` and run `stepup boot -n 1` again.
+- Change the arguments of the `echo` command in `plan.py` and run `stepup boot -j 1` again.
   As expected, StepUp detects the change and repeats the `plan.py` and `echo` steps.
 
 - Normally, you would never run `./plan.py` directly as a normal Python script, i.e.,

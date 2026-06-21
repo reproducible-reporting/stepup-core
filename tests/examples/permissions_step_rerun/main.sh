@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the plan with non-executable work.py.
 chmod -x work.py
-stepup boot -n 1 -w & # > current_stdout.txt &
+stepup boot -j 1 -w & # > current_stdout.txt &
 
 # Wait and get graph.
 stepup wait

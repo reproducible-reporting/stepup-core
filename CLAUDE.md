@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 StepUp Core is a dynamic build tool implemented in Python.
 It runs a persistent **director** process that manages a workflow graph (stored in SQLite),
-dispatches jobs to **worker** processes,
+dispatches jobs to a **step executor**,
 and reacts to file system changes (via inotify) to re-run only outdated steps.
 
 ## Commands
@@ -118,12 +118,12 @@ StepUp runs as two process types:
 - **Director** (`director.py`):
   An asyncio process that owns the workflow graph and SQLite database.
   It exposes an RPC server over a Unix socket (`.stepup/sockets/director`).
-  Manages `Runner`, `Watcher`, and `Dispatcher`.
-  Steps run *inside* the director's event loop as asyncio tasks (no worker subprocesses).
+  Manages `Builder`, `Watcher`, and `Scheduler`.
+  Steps run *inside* the director's event loop as asyncio tasks.
 - **StepExecutor** (`executor.py`):
   Runs each step as an asyncio task. Commands run as asyncio subprocesses (shell / direct
   exec) or in a forkserver child (Python scripts and console-script entry points).
-  A single `StepExecutor` instance serves all concurrent steps; `--num-workers` is the
+  A single `StepExecutor` instance serves all concurrent steps; `--jobs` is the
   concurrency limit. Step child processes call back into the director over its RPC socket
   (e.g. `amend()`, `step()`).
 - **Hashing** (`hasher.py`):
@@ -168,9 +168,9 @@ except `interact.py`, `call.py`, and `script.py`.
 
 ### Step Execution Pipeline
 
-1. `Dispatcher` (`dispatcher.py`) picks the highest-priority runnable step
+1. `Scheduler` (`scheduler.py`) picks the highest-priority runnable step
    from the `Workflow` and creates a corresponding `Job` instance.
-2. `Runner` (`runner.py`) requests a runnable job from the dispatcher and, up to the
+2. `Builder` (`builder.py`) requests a runnable job from the scheduler and, up to the
    concurrency limit, starts it as an asyncio task on the shared `StepExecutor`.
 3. `StepExecutor` (`executor.py`) runs the step's command (subprocess or forkserver child),
    which may produce more RPC calls back to the director.
@@ -202,7 +202,7 @@ Used in the API for dynamic file discovery with consistency constraints across p
   each with `plan.py`, `main.sh`, and `expected_stdout*.txt` / `expected_graph*.txt`.
   These are run by `tests/test_examples.py`.
   See `tests/examples/README.md` for a detailed explanation of the `main.sh` conventions
-  and how the test runner compares `current_*` files against `expected_*` files.
+  and how the test builder compares `current_*` files against `expected_*` files.
 - `stepup/core/pytest.py`:
   Pytest helpers for integration tests that run actual StepUp workflows.
 - To regenerate `expected_*` files after an intentional behavior change, run:

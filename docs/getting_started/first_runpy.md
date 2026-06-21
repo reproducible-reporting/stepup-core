@@ -32,7 +32,7 @@ Make the appropriate scripts executable and run StepUp:
 
 ```bash
 chmod +x plan.py work.py
-stepup boot -n 1
+stepup boot -j 1
 ```
 
 You should see the following output:
@@ -43,7 +43,7 @@ You should see the following output:
 
 ## Try the Following
 
-Change the value of the variable `message` in `helper.py` and rerun StepUp with `stepup boot -n 1`.
+Change the value of the variable `message` in `helper.py` and rerun StepUp with `stepup boot -j 1`.
 Only `work.py` is rerun, since `plan.py` has not changed.
 
 ## Running Python Entry Points

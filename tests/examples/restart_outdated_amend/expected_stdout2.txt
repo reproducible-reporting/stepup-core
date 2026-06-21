@@ -5,7 +5,7 @@
         0/0 |    UPDATED │ subs.txt (digest ae39a09a ➜ d642a3da)
         0/0 |    DELETED │ data/inp1.txt
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/2 |      PHASE │ run
+        1/2 |      PHASE │ build
         1/2 |  DROPAMEND │ ./work.py
 ────────────────────── Outdated amended step information ───────────────────────
 Modified step hash   explained, inp_digest 85ad62b4 ➜ b375115a, out_digest 2aa07484 ➜ (unset)

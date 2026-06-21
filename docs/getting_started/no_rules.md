@@ -30,7 +30,7 @@ Then make the plan executable and launch StepUp:
 
 ```bash
 chmod +x plan.py
-stepup boot -n 1
+stepup boot -j 1
 ```
 
 This will show the following output:

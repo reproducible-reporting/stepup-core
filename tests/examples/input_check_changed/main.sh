@@ -5,7 +5,7 @@ trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
 # Run the example
-stepup boot -n 1 -w & # > current_stdout.txt &
+stepup boot -j 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -20,4 +20,4 @@ wait
 [[ -f f1.txt ]] || exit 1
 [[ -f f2.txt ]] || exit 1
 [[ ! -f f3.txt ]] || exit 1
-grep "The dispatcher has been put on hold" .stepup/fail.log
+grep "The scheduler has been put on hold" .stepup/fail.log

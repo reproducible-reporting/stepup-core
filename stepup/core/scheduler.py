@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""The `Dispatcher` Turns PENDING jobs into RUNNING jobs as the runner requests them."""
+"""The `Scheduler` Turns PENDING jobs into RUNNING jobs as the builder requests them."""
 
 import logging
 
@@ -334,9 +334,9 @@ LEFT JOIN (
 """
 
 
-# Identify the reasons why pending steps are not runnable after the runner has stopped.
+# Identify the reasons why pending steps are not runnable after the builder has stopped.
 # It is assumed that there are no RUNNING steps at this point.
-# (This is typically called after the runner has (been) stopped.)
+# (This is typically called after the builder has (been) stopped.)
 SELECT_PENDING_REASONS = f"""
 SELECT
     node.i,
@@ -359,11 +359,11 @@ WHERE step.state = {StepState.PENDING.value} AND
 
 
 @attrs.define
-class Dispatcher:
-    """Turn PENDING jobs into RUNNING jobs as the runner requests them."""
+class Scheduler:
+    """Turn PENDING jobs into RUNNING jobs as the builder requests them."""
 
     workflow: Workflow = attrs.field()
-    """The workflow that the dispatcher is responsible for."""
+    """The workflow that the scheduler is responsible for."""
 
     dblock: DBLock = attrs.field(kw_only=True)
     """Lock for workflow database access."""
@@ -372,7 +372,7 @@ class Dispatcher:
     """Whether to use the duration of steps to optimize the execution order."""
 
     on_hold: bool = attrs.field(init=False, default=False)
-    """Temporarily pause dispatching of jobs, e.g. interrupted by the user."""
+    """Temporarily pause scheduling of jobs, e.g. interrupted by the user."""
 
     #
     # Initialization
@@ -393,12 +393,12 @@ class Dispatcher:
                 )
 
     #
-    # Interaction with runner
+    # Interaction with builder
     #
 
     async def pop_runnable_job(self) -> Job | None:
         if self.on_hold:
-            logger.debug("Dispatcher is on hold, not popping any jobs")
+            logger.debug("Scheduler is on hold, not popping any jobs")
             return None
 
         # We're taking a rather long lock here,
@@ -416,9 +416,9 @@ class Dispatcher:
             self._update_meta_after()
 
             # B) Identify the highest priority PENDING step that is ready for execution.
-            #    Checkable steps (those with a stored hash) are dispatched first without a
+            #    Checkable steps (those with a stored hash) are scheduled first without a
             #    resource check, because hash-checking never needs named resources.
-            #    Executable steps (no stored hash) are dispatched next, subject to resources.
+            #    Executable steps (no stored hash) are scheduled next, subject to resources.
             step = self._get_step(SELECT_CHECKABLE_STEPS)
             if step is not None:
                 job = self._derive_job(step)
@@ -575,7 +575,7 @@ class Dispatcher:
     def get_pending_step_records(self) -> list[tuple["Step", str]]:
         """Return non-optional pending steps with reasons why each could not be executed.
 
-        Must be called after the runner has stopped (no steps in RUNNING state).
+        Must be called after the builder has stopped (no steps in RUNNING state).
 
         Returns
         -------
@@ -583,7 +583,7 @@ class Dispatcher:
             Each tuple contains a Step and a reason string, one of:
 
             - `runnable`: step seems runnable but was not executed
-              (e.g. the runner was interrupted before reaching it)
+              (e.g. the builder was interrupted before reaching it)
             - `inputs`: required inputs are unavailable
               (detached, wrong file state, or waiting for amended inputs)
             - `resources`: required resources exceed the maximum available

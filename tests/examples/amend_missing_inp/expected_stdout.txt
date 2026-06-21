@@ -1,5 +1,5 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/3 |    SUCCESS │ ./plan.py
         1/3 |      START │ ./work.py
@@ -19,9 +19,9 @@ Input vanished unexpectedly: missing.txt
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
-        2/2 |      ERROR │ The dispatcher has been put on hold due to unexpected input changes.
+        2/2 |      ERROR │ The scheduler has been put on hold due to unexpected input changes.
         2/2 |    WARNING │ 1 step(s) failed.
-        2/2 |    WARNING │ Dispatcher is put on hold. Not reporting pending steps.
+        2/2 |    WARNING │ Scheduler is put on hold. Not reporting pending steps.
         2/2 |    WARNING │ Skipping file cleanup due to incomplete build
         2/2 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
         2/2 |      PHASE │ watch

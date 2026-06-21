@@ -7,7 +7,7 @@ rm -rvf $(cat .gitignore)
 # Run the initial plan.
 cp plan_full.py plan.py
 cp backup.txt orig.txt
-stepup boot -n 1 -w & # > current_stdout.txt &
+stepup boot -j 1 -w & # > current_stdout.txt &
 
 # First graph
 stepup wait

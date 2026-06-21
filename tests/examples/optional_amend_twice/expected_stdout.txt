@@ -1,5 +1,5 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/4 |    SUCCESS │ ./plan.py
         1/4 |      START │ ./work.py
@@ -22,7 +22,7 @@ optional2.txt
         4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch
         4/4 |    UPDATED │ data2.txt
-        2/4 |      PHASE │ run
+        2/4 |      PHASE │ build
         2/4 |      START │ cp -p data2.txt optional2.txt
         3/4 |    SUCCESS │ cp -p data2.txt optional2.txt
         3/4 |      START │ ./work.py

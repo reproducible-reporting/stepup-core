@@ -1,5 +1,5 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ run
+        0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/4 |    SUCCESS │ ./plan.py
         1/4 |      START │ echo hi > f1.txt
@@ -12,9 +12,9 @@ Return code           0
 ──────────────────────────────── Invalid inputs ────────────────────────────────
 Input vanished unexpectedly: f1.txt
 ────────────────────────────────────────────────────────────────────────────────
-        2/3 |      ERROR │ The dispatcher has been put on hold due to unexpected input changes.
+        2/3 |      ERROR │ The scheduler has been put on hold due to unexpected input changes.
         2/3 |    WARNING │ 1 step(s) failed.
-        2/3 |    WARNING │ Dispatcher is put on hold. Not reporting pending steps.
+        2/3 |    WARNING │ Scheduler is put on hold. Not reporting pending steps.
         2/3 |    WARNING │ Skipping file cleanup due to incomplete build
         2/3 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
         2/3 |      PHASE │ watch

@@ -49,7 +49,7 @@ The nodes of the graph can be instances of the following two main classes:
       the step cannot yet be scheduled
       because some inputs have not been declared or built yet.
     - `RUNNING`:
-      the step is being executed by one of the workers.
+      the step is currently executing.
     - `CHECKING`:
       the step has a stored hash from a previous successful run and is being compared
       against its current inputs and outputs to determine if execution can be skipped.
@@ -142,7 +142,7 @@ The following diagram illustrates how different components of StepUp interact. L
     - Per step, there is a subprocess to execute the **step command**.
 - Brown arrows: standard input and standard output.
 - Yellow arrows: startup of subprocesses
-- Blue arrows: remote procedure calls to control the director and the workers
+- Blue arrows: remote procedure calls to control the director
 - Purple arrows: remote procedure calls for progress updates
 - Green arrows: remote procedure calls to extend the workflow
 

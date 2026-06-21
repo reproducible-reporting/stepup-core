@@ -4,7 +4,7 @@
         0/0 |    UPDATED │ ENV_VAR_TEST_STEPUP_SDASFD ='AAAA' ➜ ='BBBB'
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/2 |      PHASE │ run
+        1/2 |      PHASE │ build
         1/2 |     NOSKIP │ ./demovars.py > output.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 33c5af25 ➜ e99f650e, out_digest e358c01b ➜ (unset)

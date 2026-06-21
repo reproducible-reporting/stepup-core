@@ -7,7 +7,7 @@ rm -rvf $(cat .gitignore)
 # Run the plan for the first time.
 mkdir -p static
 echo first > static/foo.txt
-stepup boot -n 1 -w -e & # > current_stdout1.txt &
+stepup boot -j 1 -w -e & # > current_stdout1.txt &
 
 # Run StepUp for a first time.
 stepup wait
@@ -26,7 +26,7 @@ grep first bar.txt
 
 # Run the plan again without any changes.
 rm .stepup/*.log
-stepup boot -n 1 -w -e & # > current_stdout2.txt &
+stepup boot -j 1 -w -e & # > current_stdout2.txt &
 
 # Wait for StepUp to complete.
 stepup wait
@@ -46,7 +46,7 @@ grep first bar.txt
 # Run the plan again with changes.
 echo second > static/foo.txt
 rm .stepup/*.log
-stepup boot -n 1 -w -e & # > current_stdout3.txt &
+stepup boot -j 1 -w -e & # > current_stdout3.txt &
 
 # Wait for StepUp to complete.
 stepup wait

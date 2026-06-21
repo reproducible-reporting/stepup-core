@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""Terminal output of StepUp's runner progress and observed file changes."""
+"""Terminal output of StepUp's builder progress and observed file changes."""
 
 import asyncio
 import contextlib
@@ -65,9 +65,9 @@ class ReporterClient:
                 pages = {}
             await self.client.call.report(action, description, pages)
 
-    async def set_num_workers(self, num_workers: int):
+    async def set_njob(self, njob: int):
         if self.client is not None:
-            await self.client.call.set_num_workers(num_workers)
+            await self.client.call.set_njob(njob)
 
     async def start_step(self, description: str, step_i: int):
         if self.client is not None:
@@ -107,13 +107,13 @@ class StepUpProgressBar(ProgressBar):
     """Custom progress bar to handle the case where the console is not a terminal."""
 
     def __init__(self, *args, **kwargs):
-        self._num_workers = 0
+        self._njob = 0
         self._running = {}
         super().__init__(*args, **kwargs)
 
-    def set_num_workers(self, num_workers: int):
-        """Set the number of workers in the progress bar."""
-        self._num_workers = num_workers
+    def set_njob(self, njob: int):
+        """Set the number of jobs in the progress bar."""
+        self._njob = njob
 
     def start_step(self, start: float, description: str, step_i: int):
         """Start a step in the progress bar."""
@@ -126,7 +126,7 @@ class StepUpProgressBar(ProgressBar):
     def get_renderables(self) -> Iterable[RenderableType]:
         if len(self._running) > 0:
             running = sorted(self._running.values())[: self.console.height // 2 - 1]
-            rule_message = f"Active workers {len(self._running)}/{self._num_workers}"
+            rule_message = f"Running steps {len(self._running)}/{self._njob}"
             if len(running) < len(self._running):
                 rule_message += f" ({len(running)} shown)"
             yield Rule(rule_message, style="bold")
@@ -253,8 +253,8 @@ class ReporterHandler:
             self.console.rule()
 
         # File logging
-        if action == "PHASE" and description == "run":
-            # Delete the log files when rerunning the build.
+        if action == "PHASE" and description == "build":
+            # Delete the log files at the start of a new build phase.
             for path_log in [".stepup/fail.log", ".stepup/warning.log", ".stepup/success.log"]:
                 Path(path_log).remove_p()
         path_log = Path(
@@ -274,10 +274,10 @@ class ReporterHandler:
                 console.rule()
 
     @allow_rpc
-    def set_num_workers(self, num_workers: int):
-        """Set the number of workers in the progress bar."""
+    def set_njob(self, njob: int):
+        """Set the number of jobs in the progress bar."""
         if self.progress_bar is not None:
-            self.progress_bar.set_num_workers(num_workers)
+            self.progress_bar.set_njob(njob)
 
     @allow_rpc
     def start_step(self, description: str, step_i: int):

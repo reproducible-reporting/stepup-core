@@ -4,7 +4,7 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ helper.py (digest 82d6e0c0 ➜ d0a2fa51, size 36 ➜ 38)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        2/4 |      PHASE │ run
+        2/4 |      PHASE │ build
         2/4 |      START │ ./work.py run first
         3/4 |    SUCCESS │ ./work.py run first
         3/4 |      START │ ./work.py run second
