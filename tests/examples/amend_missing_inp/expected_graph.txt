@@ -1,44 +1,44 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:work.py
-             creates   step:runpy ./work.py
-             creates   step:runsh echo Will be deleted by accident > missing.txt
+             creates   step:./work.py
+             creates   step:echo Will be deleted by accident > missing.txt
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
+          created by   step:./plan.py
+            supplies   step:./work.py
 
-step:runpy ./work.py
+step:./work.py
                state = FAILED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:missing.txt [amended]
             consumes   file:work.py
 
-step:runsh echo Will be deleted by accident > missing.txt
+step:echo Will be deleted by accident > missing.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
              creates   file:missing.txt
             supplies   file:missing.txt
 
 file:missing.txt
                state = BUILT
-          created by   step:runsh echo Will be deleted by accident > missing.txt
-            consumes   step:runsh echo Will be deleted by accident > missing.txt
-            supplies   step:runpy ./work.py
+          created by   step:echo Will be deleted by accident > missing.txt
+            consumes   step:echo Will be deleted by accident > missing.txt
+            supplies   step:./work.py

@@ -1,43 +1,43 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
-             creates   step:copy hello.txt other/hello.txt
-             creates   step:runsh echo hello > hello.txt
+             creates   step:cp -p hello.txt other/hello.txt
+             creates   step:echo hello > hello.txt
 
-step:runsh echo hello > hello.txt
+step:echo hello > hello.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
              creates   file:hello.txt
             supplies   file:hello.txt
 
 file:hello.txt
                state = BUILT
-          created by   step:runsh echo hello > hello.txt
-            consumes   step:runsh echo hello > hello.txt
-            supplies   step:copy hello.txt other/hello.txt
+          created by   step:echo hello > hello.txt
+            consumes   step:echo hello > hello.txt
+            supplies   step:cp -p hello.txt other/hello.txt
 
-step:copy hello.txt other/hello.txt
+step:cp -p hello.txt other/hello.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:hello.txt
              creates   file:other/hello.txt
             supplies   file:other/hello.txt
 
 file:other/hello.txt
                state = BUILT
-          created by   step:copy hello.txt other/hello.txt
-            consumes   step:copy hello.txt other/hello.txt
+          created by   step:cp -p hello.txt other/hello.txt
+            consumes   step:cp -p hello.txt other/hello.txt

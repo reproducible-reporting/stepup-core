@@ -200,14 +200,14 @@ class Workflow(Cascade):
         initialized
             Whether the boot script was (re)initialized.
         """
-        action = "runpy ./plan.py"
+        command = "./plan.py"
         nodes = {node.key(): node for node in self.root.products()}
         del nodes["root:"]
         if (
             len(nodes) >= 2
             and "file:plan.py" in nodes
             and nodes["file:plan.py"].get_state() == FileState.STATIC
-            and f"step:{action}" in nodes
+            and f"step:{command}" in nodes
         ):
             # The boot steps are already present (from a previous invocation of stepup).
             return False
@@ -218,7 +218,7 @@ class Workflow(Cascade):
         to_check = self.declare_missing(self.root, ["plan.py"])
         checked = [(path, file_hash.regen(path)) for path, file_hash in to_check]
         self.update_file_hashes(checked, "confirmed")
-        self.define_step(self.root, action, inp_paths=["plan.py"], need=Need.PLAN, safe=True)
+        self.define_step(self.root, command, inp_paths=["plan.py"], need=Need.PLAN, safe=True)
         return True
 
     @staticmethod
@@ -696,7 +696,7 @@ class Workflow(Cascade):
     def define_step(
         self,
         creator: Node,
-        action: str,
+        command: str,
         *,
         inp_paths: Collection[str] = (),
         env_vars: Collection[str] = (),
@@ -706,6 +706,7 @@ class Workflow(Cascade):
         need: Need = Need.DEFAULT,
         resources: dict[str, int] | None = None,
         safe: bool = False,
+        subshell: bool = False,
     ) -> list[tuple[File, FileState]]:
         """Define a new step.
 
@@ -714,8 +715,8 @@ class Workflow(Cascade):
         creator
             The step that generated this step.
             This is None for the boot script.
-        action
-            An action that can be executed by a worker.
+        command
+            The command to be executed by a worker.
         inp_paths
             Input paths.
         env_vars
@@ -725,7 +726,7 @@ class Workflow(Cascade):
         vol_paths
             Volatile output (not reproducible) but will be cleaned like built files.
         workdir
-            The directory where the action must be executed,
+            The directory where the command must be executed,
             typically relative to the working directory of the director.
         need
             The need of the step, see enums.Need for details.
@@ -765,7 +766,7 @@ class Workflow(Cascade):
 
         # If a matching detached step is found, reuse it, instead of creating a new one.
         old_deferred = self._recreate_step(
-            action,
+            command,
             workdir,
             inp_paths,
             env_vars,
@@ -774,6 +775,7 @@ class Workflow(Cascade):
             need,
             resources,
             creator,
+            subshell,
         )
         if old_deferred is not None:
             return self._build_to_check(old_deferred)
@@ -782,10 +784,11 @@ class Workflow(Cascade):
         step = self.create(
             Step,
             creator,
-            action=action,
+            command,
             workdir=workdir,
             need=need,
             safe=safe,
+            subshell=subshell,
         )
         step.set_resources(resources)
 
@@ -817,7 +820,7 @@ class Workflow(Cascade):
 
     def _recreate_step(
         self,
-        action: str,
+        command: str,
         workdir: str,
         inp_paths: list[str],
         env_vars: list[str],
@@ -826,6 +829,7 @@ class Workflow(Cascade):
         need: Need,
         resources: dict[str, int] | None,
         creator: Node,
+        subshell: bool = False,
     ) -> set[Node] | None:
         """Recreate a step if it was detached and the step arguments are compatible.
 
@@ -835,7 +839,7 @@ class Workflow(Cascade):
             If the step can be reused, a possibly empty list is returned with
             MISSING file nodes that match a static root and need to be confirmed.
         """
-        label = Step.create_label("", action, workdir)
+        label = Step.create_label(command, workdir=workdir)
         old_step, detached = self.find_detached(Step, label)
 
         # Check whether the step can be reused.
@@ -862,10 +866,11 @@ class Workflow(Cascade):
 
         # We have a match!
 
-        # Update the need value and _check_* flags.
+        # Update the need, subshell values and _check_* flags.
         self.con.execute(
-            "UPDATE step SET need = ?, _check_safe = 1, _check_after = 1 WHERE node = ?",
-            (need.value, old_step.i),
+            "UPDATE step SET need = ?, subshell = ?, _check_safe = 1, _check_after = 1 "
+            "WHERE node = ?",
+            (need.value, int(subshell), old_step.i),
         )
 
         # Restore the step and its products (recursively), and set resources.

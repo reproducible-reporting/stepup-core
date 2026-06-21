@@ -383,7 +383,7 @@ async def report_completion(
         pending_pages = []
         async with dblock:
             for step, reason in step_records:
-                action, workdir = step.get_action_workdir()
+                command, workdir = step.get_command_workdir()
 
                 reason_text = {
                     "runnable": "runnable but not executed (runner was interrupted)",
@@ -393,7 +393,7 @@ async def report_completion(
                 }[reason]
                 lines = [
                     f"Reason                {reason_text}",
-                    f"Action                {action}",
+                    f"Command               {command}",
                 ]
                 if workdir != ".":
                     lines.append(f"Working directory     {workdir}")

@@ -6,13 +6,13 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
-        1/2 |     NOSKIP │ copy static/foo.txt bar.txt
+        1/2 |     NOSKIP │ cp -p static/foo.txt bar.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 7f052be8 ➜ 528d3130, out_digest 8c2927c3 ➜ (unset)
+Modified step hash   explained, inp_digest 6f84f48c ➜ fed213d2, out_digest 8c2927c3 ➜ (unset)
 Modified inp hash    static/foo.txt (digest b640e840 ➜ 480c2336, size 6 ➜ 7)
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |      START │ copy static/foo.txt bar.txt
-        2/2 |    SUCCESS │ copy static/foo.txt bar.txt
+        1/2 |      START │ cp -p static/foo.txt bar.txt
+        2/2 |    SUCCESS │ cp -p static/foo.txt bar.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |    WARNING │ Check logs: .stepup/warning.log
         2/2 |      PHASE │ watch

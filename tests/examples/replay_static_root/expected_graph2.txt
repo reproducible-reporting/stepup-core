@@ -1,37 +1,37 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:work.py
-             creates   step:copy data/inp.txt out.txt
+             creates   step:cp -p data/inp.txt out.txt
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   (step:runpy ./work.py)
+          created by   step:./plan.py
+            supplies   (step:./work.py)
 
-(step:runpy ./work.py)
+(step:./work.py)
                state = PENDING
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
             consumes   file:work.py
              creates   (sr:data/)
 
-step:copy data/inp.txt out.txt
+step:cp -p data/inp.txt out.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   (file:data/inp.txt)
              creates   file:out.txt
             supplies   file:out.txt
@@ -39,13 +39,13 @@ step:copy data/inp.txt out.txt
 (file:data/inp.txt)
                state = STATIC
           created by   (sr:data/)
-            supplies   step:copy data/inp.txt out.txt
+            supplies   step:cp -p data/inp.txt out.txt
 
 file:out.txt
                state = BUILT
-          created by   step:copy data/inp.txt out.txt
-            consumes   step:copy data/inp.txt out.txt
+          created by   step:cp -p data/inp.txt out.txt
+            consumes   step:cp -p data/inp.txt out.txt
 
 (sr:data/)
-          created by   (step:runpy ./work.py)
+          created by   (step:./work.py)
              creates   (file:data/inp.txt)

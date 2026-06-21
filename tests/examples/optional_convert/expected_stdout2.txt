@@ -6,20 +6,20 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         2/6 |      PHASE │ run
-        2/6 |     NOSKIP │ runpy ./plan.py
+        2/6 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest a4c2f25f ➜ 421b96b2, out_digest e3b0c442 ➜ (unset)
+Modified step hash   explained, inp_digest 09b28fc3 ➜ 6488354e, out_digest e3b0c442 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_IDX ='3' ➜ ='1'
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        plan.py
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-        0/1 |      START │ runpy ./plan.py
-        1/6 |    SUCCESS │ runpy ./plan.py
-        1/6 |      START │ copy raw1.txt converted1.txt
-        2/6 |    SUCCESS │ copy raw1.txt converted1.txt
-        2/6 |      START │ copy converted1.txt used.txt
-        3/6 |    SUCCESS │ copy converted1.txt used.txt
+        0/1 |      START │ ./plan.py
+        1/6 |    SUCCESS │ ./plan.py
+        1/6 |      START │ cp -p raw1.txt converted1.txt
+        2/6 |    SUCCESS │ cp -p raw1.txt converted1.txt
+        2/6 |      START │ cp -p converted1.txt used.txt
+        3/6 |    SUCCESS │ cp -p converted1.txt used.txt
         3/6 |    WARNING │ Reverted 0 optional step(s) to PENDING and marked 1 output/volatile file(s) for deletion.
         3/6 |   DIRECTOR │ Trying to delete 1 outdated output(s)
         3/6 |      CLEAN │ converted3.txt

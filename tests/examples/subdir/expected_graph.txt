@@ -1,14 +1,14 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runexec cat ../plan.py  # wd=sub/
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
+            supplies   step:cat ../plan.py  # wd=sub/
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -16,57 +16,57 @@ step:runpy ./plan.py
             consumes   file:plan.py
              creates   file:example.txt
              creates   file:sub/plan.py
-             creates   step:copy example.txt sub/example.txt
-             creates   step:runpy ./plan.py  # wd=sub/
+             creates   step:./plan.py  # wd=sub/
+             creates   step:cp -p example.txt sub/example.txt
 
 file:example.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:copy example.txt sub/example.txt
+          created by   step:./plan.py
+            supplies   step:cp -p example.txt sub/example.txt
 
 file:sub/plan.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./plan.py  # wd=sub/
+          created by   step:./plan.py
+            supplies   step:./plan.py  # wd=sub/
 
-step:copy example.txt sub/example.txt
+step:cp -p example.txt sub/example.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:example.txt
              creates   file:sub/example.txt
             supplies   file:sub/example.txt
 
 file:sub/example.txt
                state = BUILT
-          created by   step:copy example.txt sub/example.txt
-            consumes   step:copy example.txt sub/example.txt
-            supplies   step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+          created by   step:cp -p example.txt sub/example.txt
+            consumes   step:cp -p example.txt sub/example.txt
+            supplies   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 
-step:runpy ./plan.py  # wd=sub/
+step:./plan.py  # wd=sub/
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:sub/plan.py
-             creates   step:runexec cat ../plan.py  # wd=sub/
-             creates   step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+             creates   step:cat ../plan.py  # wd=sub/
+             creates   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 
-step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py  # wd=sub/
+          created by   step:./plan.py  # wd=sub/
             consumes   file:sub/example.txt
              creates   file:sub/upper.txt
             supplies   file:sub/upper.txt
 
 file:sub/upper.txt
                state = BUILT
-          created by   step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
-            consumes   step:runsh tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+          created by   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
+            consumes   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub/
 
-step:runexec cat ../plan.py  # wd=sub/
+step:cat ../plan.py  # wd=sub/
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py  # wd=sub/
+          created by   step:./plan.py  # wd=sub/
             consumes   file:plan.py

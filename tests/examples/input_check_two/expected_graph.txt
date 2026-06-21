@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -15,38 +15,38 @@ step:runpy ./plan.py
             consumes   file:plan.py
              creates   file:f1.txt
              creates   file:work.py
-             creates   step:runpy ./work.py
-             creates   step:runsh cat f1.txt f2.txt > f3.txt
+             creates   step:./work.py
+             creates   step:cat f1.txt f2.txt > f3.txt
 
 file:f1.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runsh cat f1.txt f2.txt > f3.txt
+          created by   step:./plan.py
+            supplies   step:cat f1.txt f2.txt > f3.txt
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
+          created by   step:./plan.py
+            supplies   step:./work.py
 
-step:runpy ./work.py
+step:./work.py
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:work.py
              creates   file:f2.txt
             supplies   file:f2.txt
 
 file:f2.txt
                state = BUILT
-          created by   step:runpy ./work.py
-            consumes   step:runpy ./work.py
-            supplies   step:runsh cat f1.txt f2.txt > f3.txt
+          created by   step:./work.py
+            consumes   step:./work.py
+            supplies   step:cat f1.txt f2.txt > f3.txt
 
-step:runsh cat f1.txt f2.txt > f3.txt
+step:cat f1.txt f2.txt > f3.txt
                state = FAILED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:f1.txt
             consumes   file:f2.txt
              creates   file:f3.txt
@@ -54,5 +54,5 @@ step:runsh cat f1.txt f2.txt > f3.txt
 
 file:f3.txt
                state = AWAITED
-          created by   step:runsh cat f1.txt f2.txt > f3.txt
-            consumes   step:runsh cat f1.txt f2.txt > f3.txt
+          created by   step:cat f1.txt f2.txt > f3.txt
+            consumes   step:cat f1.txt f2.txt > f3.txt

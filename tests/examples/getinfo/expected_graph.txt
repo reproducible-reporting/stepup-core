@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -17,36 +17,36 @@ step:runpy ./plan.py
              creates   file:inp1.txt
              creates   file:sub/getinfo.py
              creates   file:sub/inp0.txt
-             creates   step:runpy ./getinfo.py  # wd=sub/
+             creates   step:./getinfo.py  # wd=sub/
 
 file:README.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./getinfo.py  # wd=sub/
+          created by   step:./plan.py
+            supplies   step:./getinfo.py  # wd=sub/
 
 file:inp1.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./getinfo.py  # wd=sub/
+          created by   step:./plan.py
+            supplies   step:./getinfo.py  # wd=sub/
 
 file:sub/getinfo.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./getinfo.py  # wd=sub/
+          created by   step:./plan.py
+            supplies   step:./getinfo.py  # wd=sub/
 
 file:sub/inp0.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./getinfo.py  # wd=sub/
+          created by   step:./plan.py
+            supplies   step:./getinfo.py  # wd=sub/
 
-step:runpy ./getinfo.py  # wd=sub/
+step:./getinfo.py  # wd=sub/
                state = SUCCEEDED
                 need = DEFAULT
              env_var = BAR
                      = EGG [amended]
                      = FOO
                      = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:README.txt
             consumes   file:inp1.txt [amended]
             consumes   file:sub/getinfo.py
@@ -66,30 +66,30 @@ step:runpy ./getinfo.py  # wd=sub/
 
 file:out0.txt
                state = BUILT
-          created by   step:runpy ./getinfo.py  # wd=sub/
-            consumes   step:runpy ./getinfo.py  # wd=sub/
+          created by   step:./getinfo.py  # wd=sub/
+            consumes   step:./getinfo.py  # wd=sub/
 
 file:sub/out1.txt
                state = BUILT
-          created by   step:runpy ./getinfo.py  # wd=sub/
-            consumes   step:runpy ./getinfo.py  # wd=sub/
+          created by   step:./getinfo.py  # wd=sub/
+            consumes   step:./getinfo.py  # wd=sub/
 
 file:sub/vol0.txt
                state = VOLATILE
-          created by   step:runpy ./getinfo.py  # wd=sub/
-            consumes   step:runpy ./getinfo.py  # wd=sub/
+          created by   step:./getinfo.py  # wd=sub/
+            consumes   step:./getinfo.py  # wd=sub/
 
 file:vol1.txt
                state = VOLATILE
-          created by   step:runpy ./getinfo.py  # wd=sub/
-            consumes   step:runpy ./getinfo.py  # wd=sub/
+          created by   step:./getinfo.py  # wd=sub/
+            consumes   step:./getinfo.py  # wd=sub/
 
 file:out2.txt
                state = BUILT
-          created by   step:runpy ./getinfo.py  # wd=sub/
-            consumes   step:runpy ./getinfo.py  # wd=sub/
+          created by   step:./getinfo.py  # wd=sub/
+            consumes   step:./getinfo.py  # wd=sub/
 
 file:vol2.txt
                state = VOLATILE
-          created by   step:runpy ./getinfo.py  # wd=sub/
-            consumes   step:runpy ./getinfo.py  # wd=sub/
+          created by   step:./getinfo.py  # wd=sub/
+            consumes   step:./getinfo.py  # wd=sub/

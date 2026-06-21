@@ -116,8 +116,8 @@ def status_tool(args: argparse.Namespace):
             print(f"  {name:{namelen}s}  used {counts['used']:6d}  / {counts['available']:6d}")
     print()
     print("[bold underline]Running steps[/]")
-    for action in status["running_steps"]:
-        print(f"  {action}")
+    for command in status["running_steps"]:
+        print(f"  {command}")
 
 
 def status_subcommand(subparsers, loader: ConfigLoader) -> callable:

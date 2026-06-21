@@ -2,17 +2,17 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/3 |    SUCCESS │ runpy ./plan.py
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
         1/3 |    WARNING │ 2 step(s) remained pending ...
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required resources exceed maximum available
-Action                runexec echo 1
+Command               echo 1
 Working directory     ./
 Resource       token  1
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required resources exceed maximum available
-Action                runexec echo 2
+Command               echo 2
 Working directory     ./
 Resource       token  1
 ────────────────────────────────────────────────────────────────────────────────

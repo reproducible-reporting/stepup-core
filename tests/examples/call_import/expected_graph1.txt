@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -15,23 +15,23 @@ step:runpy ./plan.py
             consumes   file:plan.py
              creates   file:helper.py
              creates   file:work.py
-             creates   step:runpy ./work.py --out=work_out.json --amend-out
+             creates   step:./work.py --out=work_out.json --amend-out
 
 file:helper.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work.py --out=work_out.json --amend-out
+          created by   step:./plan.py
+            supplies   step:./work.py --out=work_out.json --amend-out
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work.py --out=work_out.json --amend-out
+          created by   step:./plan.py
+            supplies   step:./work.py --out=work_out.json --amend-out
 
-step:runpy ./work.py --out=work_out.json --amend-out
+step:./work.py --out=work_out.json --amend-out
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:helper.py [amended]
             consumes   file:work.py
              creates   file:work_out.json
@@ -39,5 +39,5 @@ step:runpy ./work.py --out=work_out.json --amend-out
 
 file:work_out.json
                state = BUILT
-          created by   step:runpy ./work.py --out=work_out.json --amend-out
-            consumes   step:runpy ./work.py --out=work_out.json --amend-out
+          created by   step:./work.py --out=work_out.json --amend-out
+            consumes   step:./work.py --out=work_out.json --amend-out

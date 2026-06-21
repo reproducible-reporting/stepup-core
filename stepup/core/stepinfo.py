@@ -48,8 +48,8 @@ class StepInfo:
     All paths and environment variables are stored in sorted order to ensure consistency.
     """
 
-    action: str = attrs.field(converter=str)
-    """The action of the step."""
+    command: str = attrs.field(converter=str)
+    """The command to be executed of the step."""
 
     workdir: Path = attrs.field(converter=Path)
     """The work directory of the step.
@@ -103,7 +103,9 @@ def load_step_info(filename: str) -> StepInfo | list[StepInfo]:
     """
     with open(filename) as fh:
         data = json.load(fh)
-        return StepInfo(**data) if isinstance(data, dict) else [StepInfo(**item) for item in data]
+    if isinstance(data, dict):
+        return StepInfo(**data)
+    return [StepInfo(**item) for item in data]
 
 
 def dump_step_info(filename: str, step_info: StepInfo | list[StepInfo]):

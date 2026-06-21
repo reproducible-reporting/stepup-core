@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -16,58 +16,58 @@ step:runpy ./plan.py
              creates   file:data1.txt
              creates   file:data2.txt
              creates   file:work.py
-             creates   step:copy data1.txt optional1.txt
-             creates   step:copy data2.txt optional2.txt
-             creates   step:runpy ./work.py
+             creates   step:./work.py
+             creates   step:cp -p data1.txt optional1.txt
+             creates   step:cp -p data2.txt optional2.txt
 
 file:data1.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:copy data1.txt optional1.txt
+          created by   step:./plan.py
+            supplies   step:cp -p data1.txt optional1.txt
 
 file:data2.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:copy data2.txt optional2.txt
+          created by   step:./plan.py
+            supplies   step:cp -p data2.txt optional2.txt
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
+          created by   step:./plan.py
+            supplies   step:./work.py
 
-step:copy data1.txt optional1.txt
+step:cp -p data1.txt optional1.txt
                state = SUCCEEDED
                 need = DEFAULT (implied by consumers > OPTIONAL)
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:data1.txt
              creates   file:optional1.txt
             supplies   file:optional1.txt
 
 file:optional1.txt
                state = BUILT
-          created by   step:copy data1.txt optional1.txt
-            consumes   step:copy data1.txt optional1.txt
-            supplies   step:runpy ./work.py
+          created by   step:cp -p data1.txt optional1.txt
+            consumes   step:cp -p data1.txt optional1.txt
+            supplies   step:./work.py
 
-step:copy data2.txt optional2.txt
+step:cp -p data2.txt optional2.txt
                state = SUCCEEDED
                 need = DEFAULT (implied by consumers > OPTIONAL)
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:data2.txt
              creates   file:optional2.txt
             supplies   file:optional2.txt
 
 file:optional2.txt
                state = BUILT
-          created by   step:copy data2.txt optional2.txt
-            consumes   step:copy data2.txt optional2.txt
-            supplies   step:runpy ./work.py
+          created by   step:cp -p data2.txt optional2.txt
+            consumes   step:cp -p data2.txt optional2.txt
+            supplies   step:./work.py
 
-step:runpy ./work.py
+step:./work.py
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:optional1.txt [amended]
             consumes   file:optional2.txt [amended]
             consumes   file:work.py
@@ -76,5 +76,5 @@ step:runpy ./work.py
 
 file:work.out
                state = BUILT
-          created by   step:runpy ./work.py
-            consumes   step:runpy ./work.py
+          created by   step:./work.py
+            consumes   step:./work.py

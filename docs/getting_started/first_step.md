@@ -63,8 +63,7 @@ Let's analyze the output:
   (The hash signs represent random characters.)
 - The `START` and `SUCCESS` lines are shown for steps executed by StepUp:
     - The step `./plan.py` is created by default and runs the script that you just created.
-    - Then the step `runsh echo Hello World` is defined in `plan.py`.
-      (The `runsh` action name is stored internally even when using `run(..., shell=True)`.)
+    - Then the step `echo Hello World` is defined in `plan.py`.
 - When a step produces output, it is shown after the step has completed.
 - When no more steps can be executed,
   StepUp checks if it can clean up outdated outputs and then exits.
@@ -95,17 +94,19 @@ StepUp will not know anymore that it already executed some steps and runs all of
 
 ### `run()` versus `step()`
 
-The `step()` function is the lower-level API.
-The following two lines are equivalent:
+In this first example, either of the following two lines would result in the same output:
 
 ```python
 run("echo Hello World")
-step("runexec echo Hello World")
+step("echo Hello World")
 ```
 
-The second form explicitly specifies the `runexec` action by name.
-This is mainly useful when creating extensions for StepUp.
+The second form is a more low-level function with more detailed control and fewer sanity checks.
+It is primarily intended for developers of StepUp extensions.
 For most end users, `run()` is more convenient and should be preferred.
+
+For example, with `run()`, if the program is a local script in your workflow, e.g. `./script.py`,
+StepUp will automatically track it as a dependency of the step and rerun it when it changes.
 
 ## Try the Following
 

@@ -1,36 +1,41 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/4 |    SUCCESS │ runpy ./plan.py
-        1/4 |      START │ runexec cp inp1.txt tmp1.txt
-        2/4 |    SUCCESS │ runexec cp inp1.txt tmp1.txt
-        2/4 |      START │ runsh ./work.py > log.txt
-        2/4 | RESCHEDULE │ runsh ./work.py > log.txt
+        0/1 |      START │ ./plan.py
+        1/4 |    SUCCESS │ ./plan.py
+        1/4 |      START │ ./work.py > log.txt
+        1/4 | RESCHEDULE │ ./work.py > log.txt
+──────────────── Rescheduling due to unavailable amended inputs ────────────────
+tmp1.txt
+────────────────────────────────────────────────────────────────────────────────
+        1/4 |      START │ cp inp1.txt tmp1.txt
+        2/4 |    SUCCESS │ cp inp1.txt tmp1.txt
+        2/4 |      START │ ./work.py > log.txt
+        2/4 | RESCHEDULE │ ./work.py > log.txt
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 inp2.txt
 ────────────────────────────────────────────────────────────────────────────────
-        2/4 |      START │ runsh echo Contents of inp2.txt > inp2.txt
-        3/4 |    SUCCESS │ runsh echo Contents of inp2.txt > inp2.txt
-        3/4 |      START │ runsh ./work.py > log.txt
-        4/4 |    SUCCESS │ runsh ./work.py > log.txt
+        2/4 |      START │ echo Contents of inp2.txt > inp2.txt
+        3/4 |    SUCCESS │ echo Contents of inp2.txt > inp2.txt
+        3/4 |      START │ ./work.py > log.txt
+        4/4 |    SUCCESS │ ./work.py > log.txt
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch
         4/4 |    DELETED │ inp2.txt
         2/4 |      PHASE │ run
-        2/4 |     NOSKIP │ runsh echo Contents of inp2.txt > inp2.txt
+        2/4 |     NOSKIP │ echo Contents of inp2.txt > inp2.txt
 ───────────────────────────── Missing output files ─────────────────────────────
 inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 10161719, out_digest 922bd120 ➜ a992ab96
+Modified step hash   explained, inp_digest 3bacd324, out_digest 922bd120 ➜ a992ab96
 Modified out hash    inp2.txt (digest b24d3f94 ➜ UNKNOWN, size 21 ➜ 0, mode -rw-r--r-- ➜ ?---------)
 ────────────────────────────────────────────────────────────────────────────────
-        2/4 |      START │ runsh echo Contents of inp2.txt > inp2.txt
-        3/4 |    SUCCESS │ runsh echo Contents of inp2.txt > inp2.txt
-        3/4 |       SKIP │ runsh ./work.py > log.txt
+        2/4 |      START │ echo Contents of inp2.txt > inp2.txt
+        3/4 |    SUCCESS │ echo Contents of inp2.txt > inp2.txt
+        3/4 |       SKIP │ ./work.py > log.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 9746e4b6, out_digest d0ac0986
+Same step hash       explained, inp_digest 37c4f09e, out_digest d0ac0986
 Same inp hash        inp0.txt
 Same inp hash        inp2.txt
 Same inp hash        tmp1.txt
@@ -43,24 +48,24 @@ Same out hash        log.txt
         4/4 |    UPDATED │ inp0.txt
         4/4 |    UPDATED │ inp1.txt
         2/4 |      PHASE │ run
-        2/4 |     NOSKIP │ runexec cp inp1.txt tmp1.txt
+        2/4 |     NOSKIP │ cp inp1.txt tmp1.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest abb6a836 ➜ 23a1e939, out_digest a63be687 ➜ (unset)
+Modified step hash   explained, inp_digest 8f40155a ➜ beba626c, out_digest a63be687 ➜ (unset)
 Modified inp hash    inp1.txt (digest b38c4067 ➜ 805fc678, size 15 ➜ 16)
 ────────────────────────────────────────────────────────────────────────────────
-        2/4 |      START │ runexec cp inp1.txt tmp1.txt
-        3/4 |    SUCCESS │ runexec cp inp1.txt tmp1.txt
-        3/4 |     NOSKIP │ runsh ./work.py > log.txt
+        2/4 |      START │ cp inp1.txt tmp1.txt
+        3/4 |    SUCCESS │ cp inp1.txt tmp1.txt
+        3/4 |     NOSKIP │ ./work.py > log.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 9746e4b6 ➜ 697f2d97, out_digest d0ac0986 ➜ (unset)
+Modified step hash   explained, inp_digest 37c4f09e ➜ 95081ef3, out_digest d0ac0986 ➜ (unset)
 Modified inp hash    inp0.txt (digest 0528e490 ➜ 2ddb584b)
 Modified inp hash    tmp1.txt (digest b38c4067 ➜ 805fc678, size 15 ➜ 16)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        inp2.txt
 Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
-        3/4 |      START │ runsh ./work.py > log.txt
-        4/4 |    SUCCESS │ runsh ./work.py > log.txt
+        3/4 |      START │ ./work.py > log.txt
+        4/4 |    SUCCESS │ ./work.py > log.txt
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch

@@ -1,33 +1,33 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = FAILED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
-             creates   step:runsh cat first > second
+             creates   step:cat first > second
 
-step:runsh cat first > second
+step:cat first > second
                state = PENDING
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   (file:first)
              creates   file:second
             supplies   file:second
 
 (file:first)
                state = AWAITED
-            supplies   step:runsh cat first > second
+            supplies   step:cat first > second
 
 file:second
                state = AWAITED
-          created by   step:runsh cat first > second
-            consumes   step:runsh cat first > second
+          created by   step:cat first > second
+            consumes   step:cat first > second

@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -16,27 +16,27 @@ step:runpy ./plan.py
             consumes   file:plan.py
              creates   file:cases.txt
              creates   file:work.py
-             creates   step:runpy ./work.py case1.txt
-             creates   step:runpy ./work.py case2.txt
+             creates   step:./work.py case1.txt
+             creates   step:./work.py case2.txt
 
 file:cases.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./plan.py
-            supplies   step:runpy ./work.py case1.txt
-            supplies   step:runpy ./work.py case2.txt
+          created by   step:./plan.py
+            supplies   step:./plan.py
+            supplies   step:./work.py case1.txt
+            supplies   step:./work.py case2.txt
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work.py case1.txt
-            supplies   step:runpy ./work.py case2.txt
+          created by   step:./plan.py
+            supplies   step:./work.py case1.txt
+            supplies   step:./work.py case2.txt
 
-step:runpy ./work.py case1.txt
+step:./work.py case1.txt
                state = FAILED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:cases.txt
             consumes   file:work.py
              creates   file:case1.txt
@@ -44,13 +44,13 @@ step:runpy ./work.py case1.txt
 
 file:case1.txt
                state = OUTDATED
-          created by   step:runpy ./work.py case1.txt
-            consumes   step:runpy ./work.py case1.txt
+          created by   step:./work.py case1.txt
+            consumes   step:./work.py case1.txt
 
-step:runpy ./work.py case2.txt
+step:./work.py case2.txt
                state = PENDING
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:cases.txt
             consumes   file:work.py
              creates   file:case2.txt
@@ -58,5 +58,5 @@ step:runpy ./work.py case2.txt
 
 file:case2.txt
                state = AWAITED
-          created by   step:runpy ./work.py case2.txt
-            consumes   step:runpy ./work.py case2.txt
+          created by   step:./work.py case2.txt
+            consumes   step:./work.py case2.txt

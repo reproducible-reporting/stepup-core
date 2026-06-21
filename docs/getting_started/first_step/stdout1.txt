@@ -1,11 +1,11 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post19)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post24)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
-     START │ runpy ./plan.py
-   SUCCESS │ runpy ./plan.py
-     START │ runexec echo Hello World
-   SUCCESS │ runexec echo Hello World
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ echo Hello World
+   SUCCESS │ echo Hello World
 ─────────────────────────────── Standard output ────────────────────────────────
 Hello World
 ────────────────────────────────────────────────────────────────────────────────

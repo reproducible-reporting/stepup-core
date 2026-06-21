@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -20,74 +20,74 @@ step:runpy ./plan.py
              creates   file:work1.py
              creates   file:work2.py
              creates   file:work3.py
-             creates   step:runpy ./work1.py
+             creates   step:./work1.py
 
 file:work1.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work1.py
+          created by   step:./plan.py
+            supplies   step:./work1.py
 
 file:work2.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work2.py
+          created by   step:./plan.py
+            supplies   step:./work2.py
 
 file:work3.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work3.py
+          created by   step:./plan.py
+            supplies   step:./work3.py
 
 (file:inp1.txt)
                state = MISSING
-            supplies   step:runpy ./work1.py
+            supplies   step:./work1.py
 
 file:inp2.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work2.py
+          created by   step:./plan.py
+            supplies   step:./work2.py
 
 file:inp3.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work3.py
+          created by   step:./plan.py
+            supplies   step:./work3.py
 
-step:runpy ./work1.py
+step:./work1.py
                state = PENDING
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   (file:inp1.txt)
             consumes   file:work1.py
              creates   file:out1.txt
-             creates   step:runpy ./work2.py
+             creates   step:./work2.py
             supplies   file:out1.txt
 
 file:out1.txt
                state = OUTDATED
-          created by   step:runpy ./work1.py
-            consumes   step:runpy ./work1.py
+          created by   step:./work1.py
+            consumes   step:./work1.py
 
-step:runpy ./work2.py
+step:./work2.py
                state = PENDING
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./work1.py
+          created by   step:./work1.py
             consumes   file:inp2.txt
             consumes   file:work2.py
              creates   file:out2.txt
-             creates   step:runpy ./work3.py
+             creates   step:./work3.py
             supplies   file:out2.txt
 
 file:out2.txt
                state = OUTDATED
-          created by   step:runpy ./work2.py
-            consumes   step:runpy ./work2.py
+          created by   step:./work2.py
+            consumes   step:./work2.py
 
-step:runpy ./work3.py
+step:./work3.py
                state = PENDING
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./work2.py
+          created by   step:./work2.py
             consumes   file:inp3.txt
             consumes   file:work3.py
              creates   file:out3.txt
@@ -95,5 +95,5 @@ step:runpy ./work3.py
 
 file:out3.txt
                state = OUTDATED
-          created by   step:runpy ./work3.py
-            consumes   step:runpy ./work3.py
+          created by   step:./work3.py
+            consumes   step:./work3.py

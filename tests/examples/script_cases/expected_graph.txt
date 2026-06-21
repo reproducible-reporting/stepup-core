@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -15,44 +15,44 @@ step:runpy ./plan.py
             consumes   file:plan.py
              creates   file:helper.py
              creates   file:work.py
-             creates   step:runpy ./work.py plan --step-info=current_step_info.json
+             creates   step:./work.py plan --step-info=current_step_info.json
 
 file:helper.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work.py plan --step-info=current_step_info.json
-            supplies   step:runpy ./work.py run +7.0
-            supplies   step:runpy ./work.py run -- -5.0
+          created by   step:./plan.py
+            supplies   step:./work.py plan --step-info=current_step_info.json
+            supplies   step:./work.py run +7.0
+            supplies   step:./work.py run -- -5.0
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work.py plan --step-info=current_step_info.json
-            supplies   step:runpy ./work.py run +7.0
-            supplies   step:runpy ./work.py run -- -5.0
+          created by   step:./plan.py
+            supplies   step:./work.py plan --step-info=current_step_info.json
+            supplies   step:./work.py run +7.0
+            supplies   step:./work.py run -- -5.0
 
-step:runpy ./work.py plan --step-info=current_step_info.json
+step:./work.py plan --step-info=current_step_info.json
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:helper.py [amended]
             consumes   file:work.py
              creates   file:current_step_info.json
-             creates   step:runpy ./work.py run +7.0
-             creates   step:runpy ./work.py run -- -5.0
+             creates   step:./work.py run +7.0
+             creates   step:./work.py run -- -5.0
             supplies   file:current_step_info.json
 
 file:current_step_info.json
                state = BUILT
-          created by   step:runpy ./work.py plan --step-info=current_step_info.json
-            consumes   step:runpy ./work.py plan --step-info=current_step_info.json
+          created by   step:./work.py plan --step-info=current_step_info.json
+            consumes   step:./work.py plan --step-info=current_step_info.json
 
-step:runpy ./work.py run -- -5.0
+step:./work.py run -- -5.0
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./work.py plan --step-info=current_step_info.json
+          created by   step:./work.py plan --step-info=current_step_info.json
             consumes   file:helper.py [amended]
             consumes   file:work.py
              creates   file:data-5.0.txt
@@ -60,14 +60,14 @@ step:runpy ./work.py run -- -5.0
 
 file:data-5.0.txt
                state = BUILT
-          created by   step:runpy ./work.py run -- -5.0
-            consumes   step:runpy ./work.py run -- -5.0
+          created by   step:./work.py run -- -5.0
+            consumes   step:./work.py run -- -5.0
 
-step:runpy ./work.py run +7.0
+step:./work.py run +7.0
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./work.py plan --step-info=current_step_info.json
+          created by   step:./work.py plan --step-info=current_step_info.json
             consumes   file:helper.py [amended]
             consumes   file:work.py
              creates   file:data+7.0.txt
@@ -75,5 +75,5 @@ step:runpy ./work.py run +7.0
 
 file:data+7.0.txt
                state = BUILT
-          created by   step:runpy ./work.py run +7.0
-            consumes   step:runpy ./work.py run +7.0
+          created by   step:./work.py run +7.0
+            consumes   step:./work.py run +7.0

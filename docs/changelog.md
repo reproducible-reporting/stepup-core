@@ -73,6 +73,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
       The new terminology is applied more consistently with consistent distinction between
       "detach" (verb, state change) and "detached" (state).
     - Replaced the Blake2B hash by the more common SHA-256.
+    - The "action" abstraction layer introduced in StepUp 3 has been completely removed,
+      as it was no longer needed after the introduction of the forkserver.
 
 ### Removed
 

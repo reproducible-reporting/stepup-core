@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -16,43 +16,43 @@ step:runpy ./plan.py
              creates   file:helper.py
              creates   file:settings.py
              creates   file:work.py
-             creates   step:runpy ./work.py plan
+             creates   step:./work.py plan
 
 file:helper.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work.py plan
-            supplies   step:runpy ./work.py run +0.3
-            supplies   step:runpy ./work.py run -- -1.2
+          created by   step:./plan.py
+            supplies   step:./work.py plan
+            supplies   step:./work.py run +0.3
+            supplies   step:./work.py run -- -1.2
 
 file:settings.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work.py plan
+          created by   step:./plan.py
+            supplies   step:./work.py plan
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work.py plan
-            supplies   step:runpy ./work.py run +0.3
-            supplies   step:runpy ./work.py run -- -1.2
+          created by   step:./plan.py
+            supplies   step:./work.py plan
+            supplies   step:./work.py run +0.3
+            supplies   step:./work.py run -- -1.2
 
-step:runpy ./work.py plan
+step:./work.py plan
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:helper.py [amended]
             consumes   file:settings.py [amended]
             consumes   file:work.py
-             creates   step:runpy ./work.py run +0.3
-             creates   step:runpy ./work.py run -- -1.2
+             creates   step:./work.py run +0.3
+             creates   step:./work.py run -- -1.2
 
-step:runpy ./work.py run +0.3
+step:./work.py run +0.3
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./work.py plan
+          created by   step:./work.py plan
             consumes   file:helper.py [amended]
             consumes   file:work.py
              creates   file:data+0.3.txt
@@ -60,14 +60,14 @@ step:runpy ./work.py run +0.3
 
 file:data+0.3.txt
                state = BUILT
-          created by   step:runpy ./work.py run +0.3
-            consumes   step:runpy ./work.py run +0.3
+          created by   step:./work.py run +0.3
+            consumes   step:./work.py run +0.3
 
-step:runpy ./work.py run -- -1.2
+step:./work.py run -- -1.2
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./work.py plan
+          created by   step:./work.py plan
             consumes   file:helper.py [amended]
             consumes   file:work.py
              creates   file:data-1.2.txt
@@ -75,5 +75,5 @@ step:runpy ./work.py run -- -1.2
 
 file:data-1.2.txt
                state = BUILT
-          created by   step:runpy ./work.py run -- -1.2
-            consumes   step:runpy ./work.py run -- -1.2
+          created by   step:./work.py run -- -1.2
+            consumes   step:./work.py run -- -1.2

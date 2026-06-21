@@ -117,7 +117,7 @@ nav:
   - Extending StepUp:
     - extending/introduction.md
     - extending/api.md
-    - extending/action.md
+    - extending/command.md
     - extending/tool.md
   - changelog.md
   - development.md

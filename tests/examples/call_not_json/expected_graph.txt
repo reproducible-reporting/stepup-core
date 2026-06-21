@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = FAILED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -17,4 +17,4 @@ step:runpy ./plan.py
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py

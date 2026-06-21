@@ -578,6 +578,9 @@ class Cascade:
         #   (The rescheduled_info is used instaed.)
         # - The QUEUED step state has been removed.
         # - Switch from Blake2B to SHA-256 hashes
+        # - Added "subshell" field to step table (replaces the actions concept with a shell flag).
+        # - Step labels no longer carry an action-name prefix; they store the raw command line.
+        #   This changes all inp_digest values in step_hash, invalidating all cached step results.
 
         return 5
 

@@ -87,9 +87,9 @@ def _insert_step(
     )
     con.execute(
         "INSERT INTO step"
-        " (node, state, need, duration, rescheduled_info,"
+        " (node, state, need, duration, rescheduled_info, subshell,"
         " _safe, _check_safe, _implied_need, _tail_time, _check_after)"
-        " VALUES (?, ?, ?, ?, '', ?, ?, ?, ?, ?)",
+        " VALUES (?, ?, ?, ?, '', 0, ?, ?, ?, ?, ?)",
         (
             node_id,
             state.value,

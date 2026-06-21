@@ -1,36 +1,36 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:example.py
-             creates   step:runpy ./example.py --out=example_out.json --amend-out
+             creates   step:./example.py --out=example_out.json --amend-out
 
 file:example.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./example.py --out=example_out.json --amend-out
+          created by   step:./plan.py
+            supplies   step:./example.py --out=example_out.json --amend-out
 
-step:runpy ./example.py --out=example_out.json --amend-out
+step:./example.py --out=example_out.json --amend-out
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:example.py
              creates   file:example_out.json
             supplies   file:example_out.json [amended]
 
 file:example_out.json
                state = BUILT
-          created by   step:runpy ./example.py --out=example_out.json --amend-out
-            consumes   step:runpy ./example.py --out=example_out.json --amend-out
+          created by   step:./example.py --out=example_out.json --amend-out
+            consumes   step:./example.py --out=example_out.json --amend-out

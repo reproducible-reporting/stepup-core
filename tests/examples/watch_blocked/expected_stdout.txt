@@ -1,14 +1,14 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/4 |    SUCCESS │ runpy ./plan.py
-        1/4 |      START │ copy initial.txt input.txt
-        2/4 |    SUCCESS │ copy initial.txt input.txt
+        0/1 |      START │ ./plan.py
+        1/4 |    SUCCESS │ ./plan.py
+        1/4 |      START │ cp -p initial.txt input.txt
+        2/4 |    SUCCESS │ cp -p initial.txt input.txt
         2/4 |    WARNING │ 2 step(s) remained pending ...
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required resources exceed maximum available
-Action                runpy ./expensive.py
+Command               ./expensive.py
 Working directory     ./
 Inputs        STATIC  expensive.py
                BUILT  input.txt
@@ -16,7 +16,7 @@ Outputs      AWAITED  output.txt
 Resource     blocked  1
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                copy output.txt final.txt
+Command               cp -p output.txt final.txt
 Working directory     ./
 Inputs       AWAITED  output.txt
 Outputs      AWAITED  final.txt
@@ -26,16 +26,16 @@ Outputs      AWAITED  final.txt
         2/4 |      PHASE │ watch
         2/4 |    UPDATED │ plan.py
         1/4 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/4 |    SUCCESS │ runpy ./plan.py
-        1/4 |       SKIP │ copy initial.txt input.txt
-        2/4 |      START │ runpy ./expensive.py
-        3/4 |    SUCCESS │ runpy ./expensive.py
+        0/1 |      START │ ./plan.py
+        1/4 |    SUCCESS │ ./plan.py
+        1/4 |       SKIP │ cp -p initial.txt input.txt
+        2/4 |      START │ ./expensive.py
+        3/4 |    SUCCESS │ ./expensive.py
 ─────────────────────────────── Standard output ────────────────────────────────
 The initial file.
 ────────────────────────────────────────────────────────────────────────────────
-        3/4 |      START │ copy output.txt final.txt
-        4/4 |    SUCCESS │ copy output.txt final.txt
+        3/4 |      START │ cp -p output.txt final.txt
+        4/4 |    SUCCESS │ cp -p output.txt final.txt
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |      PHASE │ watch
         4/4 |   DIRECTOR │ Stopping workers

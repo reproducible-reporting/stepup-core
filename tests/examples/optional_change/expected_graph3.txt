@@ -1,50 +1,50 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:hop1.txt
-             creates   step:copy hop1.txt hop2.txt
-             creates   step:copy hop2.txt hop3.txt
+             creates   step:cp -p hop1.txt hop2.txt
+             creates   step:cp -p hop2.txt hop3.txt
 
 file:hop1.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:copy hop1.txt hop2.txt
+          created by   step:./plan.py
+            supplies   step:cp -p hop1.txt hop2.txt
 
-step:copy hop1.txt hop2.txt
+step:cp -p hop1.txt hop2.txt
                state = SUCCEEDED
                 need = DEFAULT (implied by consumers > OPTIONAL)
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:hop1.txt
              creates   file:hop2.txt
             supplies   file:hop2.txt
 
 file:hop2.txt
                state = BUILT
-          created by   step:copy hop1.txt hop2.txt
-            consumes   step:copy hop1.txt hop2.txt
-            supplies   step:copy hop2.txt hop3.txt
+          created by   step:cp -p hop1.txt hop2.txt
+            consumes   step:cp -p hop1.txt hop2.txt
+            supplies   step:cp -p hop2.txt hop3.txt
 
-step:copy hop2.txt hop3.txt
+step:cp -p hop2.txt hop3.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:hop2.txt
              creates   file:hop3.txt
             supplies   file:hop3.txt
 
 file:hop3.txt
                state = BUILT
-          created by   step:copy hop2.txt hop3.txt
-            consumes   step:copy hop2.txt hop3.txt
+          created by   step:cp -p hop2.txt hop3.txt
+            consumes   step:cp -p hop2.txt hop3.txt

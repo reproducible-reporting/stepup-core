@@ -1,57 +1,57 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
             consumes   file:plan.py
-             creates   step:runsh cat bar.txt > egg.txt
-             creates   step:runsh cat foo1.txt foo2.txt > bar.txt
-             creates   step:runsh echo inp1 > foo1.txt
-             creates   step:runsh echo inp2 > foo2.txt
+             creates   step:cat bar.txt > egg.txt
+             creates   step:cat foo1.txt foo2.txt > bar.txt
+             creates   step:echo inp1 > foo1.txt
+             creates   step:echo inp2 > foo2.txt
 
-step:runsh echo inp1 > foo1.txt
+step:echo inp1 > foo1.txt
                state = PENDING
                 need = OPTIONAL
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
              creates   file:foo1.txt
             supplies   file:foo1.txt
 
 file:foo1.txt
                state = AWAITED
-          created by   step:runsh echo inp1 > foo1.txt
-            consumes   step:runsh echo inp1 > foo1.txt
-            supplies   step:runsh cat foo1.txt foo2.txt > bar.txt
+          created by   step:echo inp1 > foo1.txt
+            consumes   step:echo inp1 > foo1.txt
+            supplies   step:cat foo1.txt foo2.txt > bar.txt
 
-step:runsh echo inp2 > foo2.txt
+step:echo inp2 > foo2.txt
                state = PENDING
                 need = OPTIONAL
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
              creates   file:foo2.txt
             supplies   file:foo2.txt
 
 file:foo2.txt
                state = AWAITED
-          created by   step:runsh echo inp2 > foo2.txt
-            consumes   step:runsh echo inp2 > foo2.txt
-            supplies   step:runsh cat foo1.txt foo2.txt > bar.txt
+          created by   step:echo inp2 > foo2.txt
+            consumes   step:echo inp2 > foo2.txt
+            supplies   step:cat foo1.txt foo2.txt > bar.txt
 
-step:runsh cat foo1.txt foo2.txt > bar.txt
+step:cat foo1.txt foo2.txt > bar.txt
                state = PENDING
                 need = OPTIONAL
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:foo1.txt
             consumes   file:foo2.txt
              creates   file:bar.txt
@@ -59,20 +59,20 @@ step:runsh cat foo1.txt foo2.txt > bar.txt
 
 file:bar.txt
                state = AWAITED
-          created by   step:runsh cat foo1.txt foo2.txt > bar.txt
-            consumes   step:runsh cat foo1.txt foo2.txt > bar.txt
-            supplies   step:runsh cat bar.txt > egg.txt
+          created by   step:cat foo1.txt foo2.txt > bar.txt
+            consumes   step:cat foo1.txt foo2.txt > bar.txt
+            supplies   step:cat bar.txt > egg.txt
 
-step:runsh cat bar.txt > egg.txt
+step:cat bar.txt > egg.txt
                state = PENDING
                 need = OPTIONAL
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:bar.txt
              creates   file:egg.txt
             supplies   file:egg.txt
 
 file:egg.txt
                state = AWAITED
-          created by   step:runsh cat bar.txt > egg.txt
-            consumes   step:runsh cat bar.txt > egg.txt
+          created by   step:cat bar.txt > egg.txt
+            consumes   step:cat bar.txt > egg.txt

@@ -1,30 +1,30 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
             consumes   file:plan.py
-             creates   step:runexec touch output.txt
+             creates   step:touch output.txt
 
-step:runexec touch output.txt
+step:touch output.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
              creates   file:output.txt
             supplies   file:output.txt
 
 file:output.txt
                state = BUILT
-          created by   step:runexec touch output.txt
-            consumes   step:runexec touch output.txt
+          created by   step:touch output.txt
+            consumes   step:touch output.txt

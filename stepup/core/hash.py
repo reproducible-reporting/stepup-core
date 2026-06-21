@@ -268,10 +268,13 @@ class StepHash:
         extended: bool,
         inp_hashes: list[tuple[str, FileHash]],
         env_var_values: list[tuple[str, str | None]],
+        subshell: bool = False,
     ):
         """Create a new step hash with input information only."""
         hw = HashWords()
         hw.update(step_key)
+        hw.update("__subshell__")
+        hw.update(bytes([int(subshell)]))
         hw.update("__inp_paths__")
         for path, file_hash in sorted(inp_hashes):
             hw.update(path)

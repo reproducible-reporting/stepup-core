@@ -157,6 +157,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "restart_mode_change",
         "restart_nested",
         "restart_nochanges",
+        "restart_shell_change",
         "restart_outdated_amend",
         "restart_output",
         "restart_queued",

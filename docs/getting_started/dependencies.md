@@ -83,14 +83,14 @@ In this example, there are three nodes that create other nodes:
 - The `root` node is an internal node controlled by StepUp.
   Upon startup, StepUp creates `root` and a few other nodes by default:
     - The initial `plan.py` file
-    - The initial `runpy ./plan.py` step (with working directory `./`).
+    - The initial `./plan.py` step (with working directory `./`).
 
-- The `runpy ./plan.py` step creates two nodes,
+- The `./plan.py` step creates two nodes,
   see the two `run()` function calls in the `plan.py` script above.
-    - The `runsh grep ...` step.
-    - The `runsh echo ...` step.
+    - The `grep ...` step.
+    - The `echo ...` step.
 
-- The `runsh echo ...` step creates one output file: `story.txt`.
+- The `echo ...` step creates one output file: `story.txt`.
 
 This provenance graph is used by StepUp to decide which steps to keep and which to clean up.
 After some files have changed and StepUp is run again, some nodes may no longer be created.

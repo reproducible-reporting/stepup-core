@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = PUBLIC [amended]
@@ -15,39 +15,39 @@ step:runpy ./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:www/plan.py
-             creates   step:runpy ./plan.py  # wd=www/
+             creates   step:./plan.py  # wd=www/
 
 file:www/plan.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./plan.py  # wd=www/
+          created by   step:./plan.py
+            supplies   step:./plan.py  # wd=www/
 
-step:runpy ./plan.py  # wd=www/
+step:./plan.py  # wd=www/
                state = SUCCEEDED
                 need = PLAN
              env_var = HERE [amended]
                      = PUBLIC [amended]
                      = ROOT [amended]
                      = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:www/plan.py
              creates   file:www/index.md
-             creates   step:copy index.md ../../public/www/index.md  # wd=www/
+             creates   step:cp -p index.md ../../public/www/index.md  # wd=www/
 
 file:www/index.md
                state = STATIC
-          created by   step:runpy ./plan.py  # wd=www/
-            supplies   step:copy index.md ../../public/www/index.md  # wd=www/
+          created by   step:./plan.py  # wd=www/
+            supplies   step:cp -p index.md ../../public/www/index.md  # wd=www/
 
-step:copy index.md ../../public/www/index.md  # wd=www/
+step:cp -p index.md ../../public/www/index.md  # wd=www/
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py  # wd=www/
+          created by   step:./plan.py  # wd=www/
             consumes   file:www/index.md
              creates   file:../public/www/index.md
             supplies   file:../public/www/index.md
 
 file:../public/www/index.md
                state = BUILT
-          created by   step:copy index.md ../../public/www/index.md  # wd=www/
-            consumes   step:copy index.md ../../public/www/index.md  # wd=www/
+          created by   step:cp -p index.md ../../public/www/index.md  # wd=www/
+            consumes   step:cp -p index.md ../../public/www/index.md  # wd=www/

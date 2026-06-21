@@ -1,36 +1,36 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:../../common/script.py
-             creates   step:runpy ./script.py  # wd=../../common/
+             creates   step:./script.py  # wd=../../common/
 
 file:../../common/script.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./script.py  # wd=../../common/
+          created by   step:./plan.py
+            supplies   step:./script.py  # wd=../../common/
 
-step:runpy ./script.py  # wd=../../common/
+step:./script.py  # wd=../../common/
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:../../common/script.py
              creates   file:../public/foo.txt
             supplies   file:../public/foo.txt [amended]
 
 file:../public/foo.txt
                state = BUILT
-          created by   step:runpy ./script.py  # wd=../../common/
-            consumes   step:runpy ./script.py  # wd=../../common/
+          created by   step:./script.py  # wd=../../common/
+            consumes   step:./script.py  # wd=../../common/

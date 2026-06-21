@@ -6,16 +6,16 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         2/3 |      PHASE │ run
-        2/3 |     NOSKIP │ runsh echo word2 > inp2.txt
+        2/3 |     NOSKIP │ echo word2 > inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest f1617293, out_digest 91a94667 ➜ e195d556
+Modified step hash   explained, inp_digest 97737b8e, out_digest 91a94667 ➜ e195d556
 Modified out hash    inp2.txt (digest e44a31c3 ➜ 7f6f8bd5, size 6 ➜ 16)
 ────────────────────────────────────────────────────────────────────────────────
-        2/3 |      START │ runsh echo word2 > inp2.txt
-        2/3 |    SUCCESS │ runsh echo word2 > inp2.txt
-        2/3 |       SKIP │ runpy ./work.py
+        2/3 |      START │ echo word2 > inp2.txt
+        2/3 |    SUCCESS │ echo word2 > inp2.txt
+        2/3 |       SKIP │ ./work.py
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 48522d65, out_digest 29f755b3
+Same step hash       explained, inp_digest 20b7d39c, out_digest 29f755b3
 Same inp hash        inp1.txt
 Same inp hash        inp2.txt
 Same inp hash        work.py

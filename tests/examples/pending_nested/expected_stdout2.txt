@@ -7,28 +7,28 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/4 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/4 |    SUCCESS │ runpy ./plan.py
+        0/1 |      START │ ./plan.py
+        1/4 |    SUCCESS │ ./plan.py
         1/4 |    WARNING │ 3 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              MISSING  inp1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                runpy ./work1.py
+Command               ./work1.py
 Working directory     ./
 Inputs        STATIC  work1.py
              MISSING  (inp1.txt)
 Outputs     OUTDATED  out1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                creator is not RUNNING or SUCCEEDED
-Action                runpy ./work2.py
+Command               ./work2.py
 Working directory     ./
 Inputs        STATIC  work2.py
               STATIC  inp2.txt
 Outputs     OUTDATED  out2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                creator is not RUNNING or SUCCEEDED
-Action                runpy ./work3.py
+Command               ./work3.py
 Working directory     ./
 Inputs        STATIC  work3.py
               STATIC  inp3.txt

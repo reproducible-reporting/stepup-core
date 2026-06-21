@@ -30,7 +30,6 @@ Parameters for the template can be defined in multiple ways:
 
 import argparse
 import json
-import shlex
 
 import jinja2
 from path import Path
@@ -38,19 +37,19 @@ from path import Path
 from stepup.core.config import ConfigLoader
 
 from .utils import get_local_import_paths
-from .worker import WorkThread
 
 __all__ = ("render_jinja",)
 
 
-def add_parser_args(parser: argparse.ArgumentParser):
-    """Add the command line arguments to the parser."""
+def render_jinja_subcommand(subparsers, loader: ConfigLoader) -> callable:
+    """Define command-line arguments for the render-jinja tool."""
+    parser = subparsers.add_parser(name="render-jinja", help="Render a file with Jinja2.")
     parser.add_argument("path_in", type=Path, help="The input file")
     parser.add_argument(
         "paths_variables",
         nargs="*",
         type=Path,
-        help="Python, JSON, TOML or YAML files defining variables."
+        help="Python, JSON, TOML or YAML files defining variables. "
         "They are loaded in the given order, "
         "so later variable definitions may overrule earlier ones. "
         "Python files have the advantage of supporting more types and logic. "
@@ -67,26 +66,8 @@ def add_parser_args(parser: argparse.ArgumentParser):
         "--json",
         help="Variables are given as a JSON string (overrules the variables files)",
     )
-
-
-def render_jinja_subcommand(subparsers, loader: ConfigLoader) -> callable:
-    """Define tool CLI options."""
-    parser = subparsers.add_parser(name="render-jinja", help="Render a file with Jinja2.")
-    add_parser_args(parser)
     loader.patch_parser(parser, "render-jinja")
     return render_jinja_tool
-
-
-def render_jinja_action(argstr: str, work_thread: WorkThread) -> int:
-    """Render a file with Jinja2."""
-    parser = argparse.ArgumentParser(prog="render-jinja")
-    add_parser_args(parser)
-    args = parser.parse_args(shlex.split(argstr))
-    if work_thread.is_alive() and any(path.endswith(".py") for path in args.paths_variables):
-        # Run the rendering in a subprocess to accurately deduce local imports.
-        return work_thread.runsh_verbose(f"stepup act render-jinja {argstr}")
-    render_jinja_tool(args)
-    return 0
 
 
 def render_jinja_tool(args: argparse.Namespace):

@@ -78,7 +78,10 @@ Some conventions specific to this codebase:
 - Wrap lines using semantic breaks (e.g., after sentences or logical units),
   not hard-wrapping at a specific character limit.
   See <https://sembr.org/>
-- Use the imperative mood for function descriptions (e.g., "Compute the hash of a file.")
+- Use the imperative mood for function descriptions
+  (e.g., "Compute the hash of a file."),
+  except for `@property` getters where the description should be a noun phrase
+  (e.g., "The parent directory path.").
 - Do not repeat type annotations in the docstring — they are already in the function signature.
 - In `Parameters` sections, use the **parameter name** as the heading for each parameter,
   not the type:

@@ -32,11 +32,9 @@ import json
 import os
 import pickle
 import shlex
-import shutil
 import sys
 import tomllib
 from collections.abc import Callable, Collection, Iterable, Iterator, Sequence
-from importlib.metadata import entry_points
 from runpy import run_path
 from types import SimpleNamespace
 
@@ -217,7 +215,7 @@ def glob(*patterns: str, **subs: str) -> NGlobMulti:
 
 
 def step(
-    action: str,
+    command: str,
     *,
     inp: Collection[str] | str = (),
     env: Collection[str] | str = (),
@@ -226,13 +224,14 @@ def step(
     workdir: str = "./",
     need: Need = Need.DEFAULT,
     resources: dict[str, int] | str | None = None,
+    shell: bool = False,
 ) -> StepInfo:
     """Add a step to the build graph.
 
     Parameters
     ----------
-    action
-        Action to execute (in the given working directory).
+    command
+        Command to execute (in the given working directory).
     inp
         File(s) required by the step.
         Relative paths are assumed to be relative to `workdir`.
@@ -283,7 +282,7 @@ def step(
     at the time this function is called, not when the step is executed.
 
     Before sending the step to the director, the variables `${inp}`, `${out}`, and `${vol}`
-    in the action are substituted by the space-separated list of `inp`, `out`, and
+    in the command are substituted by the space-separated list of `inp`, `out`, and
     `vol`, respectively.
     Relative paths in `inp`, `out`, and `vol` are relative to the working directory of the new step.
     """
@@ -307,7 +306,7 @@ def step(
     tr_vol_paths = [translate(vol_path, su_workdir) for vol_path in su_vol_paths]
     tr_workdir = translate(su_workdir)
     # Substitute paths that are translated back to the current directory.
-    action = CaseSensitiveTemplate(action).safe_substitute(
+    command = CaseSensitiveTemplate(command).safe_substitute(
         inp=shlex.join(su_inp_paths),
         out=shlex.join(su_out_paths),
         vol=shlex.join(su_vol_paths),
@@ -331,7 +330,7 @@ def step(
     # Finally create the step.
     to_check = RPC_CLIENT.call.step(
         _get_step_i(),
-        action,
+        command,
         tr_inp_paths,
         env_vars,
         tr_out_paths,
@@ -339,13 +338,14 @@ def step(
         tr_workdir,
         need.value,
         resources,
+        shell,
     )
 
     # Check the existence of files matching static roots.
     _confirm_deferred(to_check)
 
     # Return a StepInfo instance to facilitate the definition of follow-up steps
-    return StepInfo(action, tr_workdir, su_inp_paths, env_vars, su_out_paths, su_vol_paths)
+    return StepInfo(command, tr_workdir, su_inp_paths, env_vars, su_out_paths, su_vol_paths)
 
 
 class InputNotFoundError(Exception):
@@ -497,54 +497,10 @@ def graph(prefix: str):
 #
 
 
-def _detect_python_entrypoint(cmd: str) -> str | None:
-    """Return the entry point value if `cmd` is a console_script in the current Python environment.
-
-    Parameters
-    ----------
-    cmd
-        The bare command name (no path separators) to look up.
-
-    Returns
-    -------
-    ep_value
-        The entry point value string (e.g. `"pytest:main"`) when `cmd` is a console_script
-        belonging to the current Python environment, or `None` otherwise.
-
-    Raises
-    ------
-    ValueError
-        When `cmd` is registered as a console_script but cannot be found on `PATH`,
-        which indicates a broken installation.
-    """
-    eps = list(entry_points(group="console_scripts", name=cmd))
-    if not eps:
-        return None
-    ep_value = eps[0].value
-    which_path = shutil.which(cmd)
-    if which_path is None:
-        raise ValueError(
-            f"Command '{cmd}' is registered as a Python console_script entry point "
-            "but was not found on PATH. The installation may be broken."
-        )
-    # Verify the executable lives inside the current Python environment.
-    resolved = Path(which_path).realpath()
-    env_bins = {(Path(sys.prefix) / "bin").realpath(), (Path(sys.exec_prefix) / "bin").realpath()}
-    if not any(resolved.startswith(d + "/") or resolved == d for d in env_bins):
-        print(
-            f"WARNING: Command '{cmd}' is a Python entry point but its executable"
-            f" ('{which_path}') is not in the current Python environment ({sys.prefix})."
-            " Falling back to runexec.",
-            file=sys.stderr,
-        )
-        return None
-    return ep_value
-
-
 def _prepare_run_command(
     command: str, inp: Collection[str] | str, shell: bool, need_relative_exe: bool
-) -> tuple[str, str, list[str]]:
-    """Prepare command for execution, determine the action, and auto-add local executable as input.
+) -> tuple[str, list[str]]:
+    """Prepare command for execution and auto-add local executable as input.
 
     Parameters
     ----------
@@ -553,36 +509,25 @@ def _prepare_run_command(
     inp
         The user-specified input files.
     shell
-        Whether to execute the command in a shell.
+        Whether to execute the command in a shell (passed through unchanged).
     need_relative_exe
         Whether to require the command to be a relative path to a local executable.
         If True, the command must contain at least one slash and cannot be an absolute path.
 
     Returns
     -------
-    action
-        The action to execute: `"runsh"`, `"runpy"`, `"runpyep"`, or `"runexec"`.
     command
         The command with `${inp}` substituted by the user-specified inputs,
         excluding the auto-added executable if applicable.
     inp
         The updated list of input files, including the auto-added executable if applicable.
     """
-    # Determine the action and auto-add local executables as inputs.
     try:
         parts = shlex.split(command)
     except ValueError:
         parts = command.split()
     if len(parts) == 0:
         raise ValueError("The command must not be empty.")
-    if shell:
-        action = "runsh"
-    elif parts[0].endswith(".py"):
-        action = "runpy"
-    elif "/" not in parts[0] and _detect_python_entrypoint(parts[0]) is not None:
-        action = "runpyep"
-    else:
-        action = "runexec"
     # Pre-substitute ${inp} with only the user-specified inputs.
     # This prevents the auto-added executable from appearing in the ${inp} expansion.
     # For example, this avoids duplicating the script in commands like `./script.sh ${inp}`.
@@ -600,7 +545,7 @@ def _prepare_run_command(
             "The command must be a relative path to a local executable, "
             f"containing at least one slash, e.g. './plan.py'. Got: {command}"
         )
-    return action, command, inp
+    return command, inp
 
 
 def run(
@@ -621,21 +566,21 @@ def run(
     ----------
     command
         The command to execute, optionally followed by arguments.
-        The action is selected automatically:
+        The execution method is selected automatically at run time:
 
-        - If `shell=True`: the command is passed to a shell (`runsh` action).
+        - If `shell=True`: the command is passed to a shell.
           Shell features like pipes and redirections are supported.
         - If `shell=False` and the first word ends in `.py`:
           the script is executed via a Python wrapper
-          that auto-detects local imports (`runpy` action).
+          that auto-detects local imports.
           Shell features are not available in this mode.
         - If `shell=False` and the first word is a bare command name (no slashes) that
           matches a `console_scripts` entry point in the current Python environment:
           the entry point is called in-process via the forkserver when available,
-          avoiding subprocess overhead (`runpyep` action).
+          avoiding subprocess overhead.
           If the entry point belongs to a different Python environment, a warning is
           logged and the command falls back to direct subprocess execution.
-        - Otherwise: the command is executed directly without a shell (`runexec` action).
+        - Otherwise: the command is executed directly without a shell.
           This is faster and safer than the shell mode.
 
         When the first word contains a `/` and is not an absolute path (e.g. `./script.py`,
@@ -653,9 +598,9 @@ def run(
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
     """
-    action, command, inp = _prepare_run_command(command, inp, shell, need_relative_exe=False)
+    command, inp = _prepare_run_command(command, inp, shell, need_relative_exe=False)
     return step(
-        f"{action} {command}",
+        command,
         inp=inp,
         env=env,
         out=out,
@@ -663,6 +608,7 @@ def run(
         workdir=workdir,
         need=Need.OPTIONAL if optional else Need.DEFAULT,
         resources=resources,
+        shell=shell,
     )
 
 
@@ -688,12 +634,12 @@ def plan(
     ----------
     command
         The command to execute, optionally followed by arguments.
-        The action is selected automatically:
+        The execution method is selected automatically at run time:
 
         - If the first word ends in `.py`:
           the script is executed via a Python wrapper
-          that auto-detects local imports (`runpy` action).
-        - The command is executed directly (`runexec` action).
+          that auto-detects local imports.
+        - Otherwise the command is executed directly without a shell.
           This scenario is highly unlikely but supported just for completeness.
 
         Bare command names like `echo` or absolute paths like `/usr/bin/gcc` are not allowed.
@@ -706,10 +652,10 @@ def plan(
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
     """
-    action, command, inp = _prepare_run_command(command, inp, shell=False, need_relative_exe=True)
+    command, inp = _prepare_run_command(command, inp, shell=False, need_relative_exe=True)
     # Note that we do not use `run()` here because we need to set `need=Need.PLAN`.
     return step(
-        f"{action} {command}",
+        command,
         inp=inp,
         env=env,
         out=out,
@@ -717,6 +663,7 @@ def plan(
         workdir=workdir,
         need=Need.PLAN,
         resources=resources,
+        shell=False,
     )
 
 
@@ -754,11 +701,12 @@ def copy(
     path_src = mynormpath(src)
     path_dst = make_path_out(src, dst, None)
     return step(
-        "copy ${inp} ${out}",
+        "cp -p ${inp} ${out}",
         inp=path_src,
         out=path_dst,
         need=Need.OPTIONAL if optional else Need.DEFAULT,
         resources=resources,
+        shell=False,
     )
 
 
@@ -1098,8 +1046,7 @@ def script(
         "resources": resources,
     }
     # Note that we do not use `run()` here because we need to set `need=Need.PLAN`.
-    action = f"runpy {command}" if executable.endswith(".py") else f"runexec {command}"
-    return step(action, **step_kwargs)
+    return step(command, **step_kwargs)
 
 
 def loadns(
@@ -1241,7 +1188,7 @@ def render_jinja(
     path_out = make_path_out(path_template, dest, None)
 
     # Create the command
-    args = ["render-jinja", "${inp}", "${out}"]
+    args = ["stepup", "render-jinja", "${inp}", "${out}"]
     if mode != "auto":
         args.append(f"--mode={mode}")
     if len(variables) > 0:

@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -15,25 +15,25 @@ step:runpy ./plan.py
             consumes   file:plan.py
              creates   file:foo.pickle
              creates   file:special.py
-             creates   step:runpy ./special.py --inp=foo.pickle --out=bar.json
+             creates   step:./special.py --inp=foo.pickle --out=bar.json
             supplies   file:foo.pickle [amended]
 
 file:special.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./special.py --inp=foo.pickle --out=bar.json
+          created by   step:./plan.py
+            supplies   step:./special.py --inp=foo.pickle --out=bar.json
 
 file:foo.pickle
                state = BUILT
-          created by   step:runpy ./plan.py
-            consumes   step:runpy ./plan.py
-            supplies   step:runpy ./special.py --inp=foo.pickle --out=bar.json
+          created by   step:./plan.py
+            consumes   step:./plan.py
+            supplies   step:./special.py --inp=foo.pickle --out=bar.json
 
-step:runpy ./special.py --inp=foo.pickle --out=bar.json
+step:./special.py --inp=foo.pickle --out=bar.json
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:foo.pickle
             consumes   file:special.py
              creates   file:bar.json
@@ -41,5 +41,5 @@ step:runpy ./special.py --inp=foo.pickle --out=bar.json
 
 file:bar.json
                state = BUILT
-          created by   step:runpy ./special.py --inp=foo.pickle --out=bar.json
-            consumes   step:runpy ./special.py --inp=foo.pickle --out=bar.json
+          created by   step:./special.py --inp=foo.pickle --out=bar.json
+            consumes   step:./special.py --inp=foo.pickle --out=bar.json

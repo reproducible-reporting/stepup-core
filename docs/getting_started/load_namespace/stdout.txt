@@ -1,11 +1,11 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post19)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post24)
    STARTUP │ (Re)initialized boot script
   DIRECTOR │ Launched worker 0
      PHASE │ run
-     START │ runpy ./plan.py
-   SUCCESS │ runpy ./plan.py
-     START │ runpy ./print_sentence.py
-   SUCCESS │ runpy ./print_sentence.py
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./print_sentence.py
+   SUCCESS │ ./print_sentence.py
 ─────────────────────────────── Standard output ────────────────────────────────
 I love apple an carrot salad.
 ────────────────────────────────────────────────────────────────────────────────

@@ -1,62 +1,62 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
             consumes   file:plan.py
-             creates   step:runsh cat double.txt double.txt > quadruple.txt
-             creates   step:runsh cat single.txt single.txt > double.txt
-             creates   step:runsh echo something > single.txt
+             creates   step:cat double.txt double.txt > quadruple.txt
+             creates   step:cat single.txt single.txt > double.txt
+             creates   step:echo something > single.txt
 
-step:runsh echo something > single.txt
+step:echo something > single.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
              creates   file:single.txt
             supplies   file:single.txt
 
 file:single.txt
                state = BUILT
-          created by   step:runsh echo something > single.txt
-            consumes   step:runsh echo something > single.txt
-            supplies   step:runsh cat single.txt single.txt > double.txt
+          created by   step:echo something > single.txt
+            consumes   step:echo something > single.txt
+            supplies   step:cat single.txt single.txt > double.txt
 
-step:runsh cat single.txt single.txt > double.txt
+step:cat single.txt single.txt > double.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:single.txt
              creates   file:double.txt
             supplies   file:double.txt
 
 file:double.txt
                state = BUILT
-          created by   step:runsh cat single.txt single.txt > double.txt
-            consumes   step:runsh cat single.txt single.txt > double.txt
-            supplies   step:runsh cat double.txt double.txt > quadruple.txt
+          created by   step:cat single.txt single.txt > double.txt
+            consumes   step:cat single.txt single.txt > double.txt
+            supplies   step:cat double.txt double.txt > quadruple.txt
 
-step:runsh cat double.txt double.txt > quadruple.txt
+step:cat double.txt double.txt > quadruple.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:double.txt
              creates   file:quadruple.txt
             supplies   file:quadruple.txt
 
 file:quadruple.txt
                state = BUILT
-          created by   step:runsh cat double.txt double.txt > quadruple.txt
-            consumes   step:runsh cat double.txt double.txt > quadruple.txt
+          created by   step:cat double.txt double.txt > quadruple.txt
+            consumes   step:cat double.txt double.txt > quadruple.txt

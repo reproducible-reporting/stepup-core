@@ -1,50 +1,50 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:original.txt
-             creates   step:runexec cp between.txt another.txt
-             creates   step:runexec cp original.txt between.txt
+             creates   step:cp between.txt another.txt
+             creates   step:cp original.txt between.txt
 
 file:another.txt
                state = BUILT
-          created by   step:runexec cp between.txt another.txt
-            consumes   step:runexec cp between.txt another.txt
+          created by   step:cp between.txt another.txt
+            consumes   step:cp between.txt another.txt
 
 file:original.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runexec cp original.txt between.txt
+          created by   step:./plan.py
+            supplies   step:cp original.txt between.txt
 
-step:runexec cp between.txt another.txt
+step:cp between.txt another.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:between.txt
              creates   file:another.txt
             supplies   file:another.txt
 
 file:between.txt
                state = BUILT
-          created by   step:runexec cp original.txt between.txt
-            consumes   step:runexec cp original.txt between.txt
-            supplies   step:runexec cp between.txt another.txt
+          created by   step:cp original.txt between.txt
+            consumes   step:cp original.txt between.txt
+            supplies   step:cp between.txt another.txt
 
-step:runexec cp original.txt between.txt
+step:cp original.txt between.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:original.txt
              creates   file:between.txt
             supplies   file:between.txt

@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -17,43 +17,43 @@ step:runpy ./plan.py
             consumes   file:plan.py
              creates   file:inp2.txt
              creates   file:inp3.txt
-             creates   step:copy inp2.txt out2.txt
-             creates   step:copy inp3.txt out3.txt
+             creates   step:cp -p inp2.txt out2.txt
+             creates   step:cp -p inp3.txt out3.txt
 
 file:inp2.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:copy inp2.txt out2.txt
+          created by   step:./plan.py
+            supplies   step:cp -p inp2.txt out2.txt
 
-step:copy inp2.txt out2.txt
+step:cp -p inp2.txt out2.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:inp2.txt
              creates   file:out2.txt
             supplies   file:out2.txt
 
 file:out2.txt
                state = BUILT
-          created by   step:copy inp2.txt out2.txt
-            consumes   step:copy inp2.txt out2.txt
+          created by   step:cp -p inp2.txt out2.txt
+            consumes   step:cp -p inp2.txt out2.txt
 
 file:inp3.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:copy inp3.txt out3.txt
+          created by   step:./plan.py
+            supplies   step:cp -p inp3.txt out3.txt
 
-step:copy inp3.txt out3.txt
+step:cp -p inp3.txt out3.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:inp3.txt
              creates   file:out3.txt
             supplies   file:out3.txt
 
 file:out3.txt
                state = BUILT
-          created by   step:copy inp3.txt out3.txt
-            consumes   step:copy inp3.txt out3.txt
+          created by   step:cp -p inp3.txt out3.txt
+            consumes   step:cp -p inp3.txt out3.txt

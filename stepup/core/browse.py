@@ -38,6 +38,7 @@ from .config import ConfigLoader
 from .enums import FileState, Need, StepState
 from .hash import fmt_digest
 from .sqlite3 import connect
+from .step import Step
 
 
 def browse_subcommand(subparsers, loader: ConfigLoader) -> callable:
@@ -353,7 +354,7 @@ class GraphServer(BaseHTTPRequestHandler):
         (n_steps,) = self.con.execute("SELECT COUNT(*) FROM step").fetchone()
 
         # Get the top-level step plan.py
-        label_entry = "runpy ./plan.py"
+        label_entry = Step.create_label("./plan.py")
         (i_entry,) = self.con.execute(
             "SELECT i FROM node WHERE kind='step' AND label = ?", (label_entry,)
         ).fetchone()

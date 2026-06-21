@@ -6,10 +6,10 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         2/3 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        2/3 |    SUCCESS │ runpy ./plan.py
-        2/3 |      START │ copy hello.txt other/hello.txt
-        3/3 |    SUCCESS │ copy hello.txt other/hello.txt
+        0/1 |      START │ ./plan.py
+        2/3 |    SUCCESS │ ./plan.py
+        2/3 |      START │ cp -p hello.txt other/hello.txt
+        3/3 |    SUCCESS │ cp -p hello.txt other/hello.txt
         3/3 |   DIRECTOR │ Trying to delete 1 outdated output(s)
         3/3 |      CLEAN │ sub/hello.txt
         3/3 |      CLEAN │ sub/

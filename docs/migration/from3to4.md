@@ -6,15 +6,24 @@ get rid of poor historical API design choices.
 
 ## The new `run()` function replaces the old `runsh()` and `runpy()` functions
 
-StepUp 4 unifies `runsh()` and `runpy()` into a single `run()` function.
-The action (shell, Python, or direct execution) is now selected automatically based on the command:
+StepUp 4 unifies `runsh()` and `runpy()` into a single and more powerful `run()` function,
+which takes an optional boolean `shell` argument (default `False`)
+to indicate whether the command should be passed to a shell or not.
 
-| Condition | Action | Equivalent old function |
-| --- | --- | --- |
-| `shell=True` | `runsh` — passed to a shell | `runsh()` |
-| First word ends in `.py` | `runpy` — Python wrapper with local import detection | `runpy()` |
-| First word is a `console_scripts` entry point in the current Python environment | `runpyep` — entry point called in-process via forkserver | *(new in StepUp 4)* |
-| Otherwise | `runexec` — direct execution, no shell | *(new in StepUp 4)* |
+Roughly, the old `runsh(...)` is equivalent to `run(..., shell=True)`.
+The new default, `run(..., shell=False)`, is much more general than the old `runpy(...)` function:
+
+- It can run any executable, not just Python scripts,
+  skipping the shell for better performance and reproducibility.
+- It automatically detects Python scripts (ending in `.py`)
+  and runs them in a forked Python interpreter.
+  This is comparable to the old `runpy()` function,
+  but more robust at about the same cost.
+- It automatically detects so called console scripts (executables installed by Python packages)
+  and runs them also in a forked Python interpreter.
+  This is a new feature. In StepUp 3, such scripts were run in a shell,
+  which started another Python interpreter.
+  The new approach is much more efficient.
 
 Note that the `run()` function checks whether the first word of the command
 is a relative path (contains a path separator, `/`, and is not absolute).
@@ -74,7 +83,7 @@ run("./analyze.py --input data.csv")
 ### Why prefer `run()` without `shell=True`
 
 Using `shell=True` (or the old `runsh()` for plain commands) has a few drawbacks
-compared to direct execution via `runexec`:
+compared to execution via `run()` with `shell=False`:
 
 - **Reproducibility**: shell commands depend on the shell's PATH, aliases,
   and other environment state that may differ between machines or sessions.
@@ -82,12 +91,12 @@ compared to direct execution via `runexec`:
 - **Correctness**: arguments with spaces or special characters require careful quoting;
   direct execution passes arguments as-is without shell interpretation.
 - **Dependency tracking**: StepUp automatically adds local relative executables
-  (paths containing `/` that are not absolute) as input dependencies when using `runexec`.
+  (paths containing `/` that are not absolute) as input dependencies when using `run()`.
   This means a step is automatically re-run when its script changes.
   With `shell=True`, this tracking still applies to the first word,
   but shell-expanded paths are not tracked.
 
-In short: use `run()` without `shell=True` unless you specifically need shell features.
+In short: use `run()` with the default `shell=False` unless you specifically need shell features.
 
 ## Directory Handling
 

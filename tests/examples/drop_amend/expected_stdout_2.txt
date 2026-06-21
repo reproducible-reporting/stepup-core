@@ -6,20 +6,20 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         2/3 |      PHASE │ run
-        2/3 |     NOSKIP │ runpy ./plan.py
+        2/3 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 9f934999 ➜ cd44795b, out_digest e3b0c442 ➜ (unset)
+Modified step hash   explained, inp_digest 5d63f4bd ➜ 3cb59df6, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest 21627e80 ➜ d8065134, size 218 ➜ 266)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-        0/1 |      START │ runpy ./plan.py
-        1/3 |    SUCCESS │ runpy ./plan.py
-        1/3 |      START │ runsh sleep 0.5; echo 'Some input for drop_amend example' > inp.txt
-        2/3 |    SUCCESS │ runsh sleep 0.5; echo 'Some input for drop_amend example' > inp.txt
-        2/3 |       SKIP │ runpy ./work.py
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ sleep 0.5; echo 'Some input for drop_amend example' > inp.txt
+        2/3 |    SUCCESS │ sleep 0.5; echo 'Some input for drop_amend example' > inp.txt
+        2/3 |       SKIP │ ./work.py
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 06471b2d, out_digest e3b0c442
+Same step hash       explained, inp_digest 0a677229, out_digest e3b0c442
 Same inp hash        inp.txt
 Same inp hash        work.py
 Same env var         STEPUP_PATH_FILTER (unset)

@@ -24,7 +24,6 @@ import asyncio
 import contextlib
 import ctypes
 import importlib
-import inspect
 import io
 import json
 import logging
@@ -35,6 +34,7 @@ import queue
 import resource
 import runpy
 import shlex
+import shutil
 import subprocess
 import sys
 import threading
@@ -385,12 +385,12 @@ class WorkerClient:
         ------
         new_step_hash
             The new hash of the step, with the input part already computed, if available.
-            `None` is yielded if, unexpectedly, some inputs are missing or have changed.
+            `None` if, unexpectedly, some inputs are missing or have changed.
         """
         error_pages = []
         try:
             new_step_hash = await self.client.call.new_step(
-                step.i, step.label, inp_hashes, env_vars, check_hash
+                step.i, step.label, inp_hashes, env_vars, check_hash, step.get_subshell()
             )
         except RPCError as exc:
             error_pages.append(("RPC Error", str(exc)))
@@ -511,26 +511,29 @@ class WorkerStep:
     i: int = attrs.field()
     """The index from the node table for the step, used to set the STEPUP_STEP_I."""
 
-    action: str = attrs.field()
-    """The action to be executed for the step."""
+    command: str = attrs.field()
+    """The raw command to be executed for the step."""
+
+    subshell: bool = attrs.field()
+    """Whether the command is executed via a subshell."""
 
     workdir: Path = attrs.field()
-    """The working directory where the action will be executed."""
+    """The working directory where the command will be executed."""
 
     stdout: str = attrs.field(init=False, default="")
-    """The standard output captured from the action execution."""
+    """The standard output captured from the command execution."""
 
     stderr: str = attrs.field(init=False, default="")
-    """The standard error captured from the action execution."""
+    """The standard error captured from the command execution."""
 
     perf_info: str = attrs.field(init=False, default="")
-    """Performance information collected during the action execution."""
+    """Performance information collected during the command execution."""
 
     inp_messages: list = attrs.field(init=False, factory=list)
     """Messages related to input validation issues: unexpected changes and deleted inputs."""
 
     inp_digest: bytes = attrs.field(init=False, default=b"")
-    """The input digest, which can be useful for some actions.
+    """The input digest, which can be useful for some steps.
 
     They may use this to decide if cached results from a previously interrupted run
     of the same step are still valid.
@@ -543,10 +546,10 @@ class WorkerStep:
     """Information about why the step was rescheduled."""
 
     thread: threading.Thread | None = attrs.field(init=False, default=None)
-    """Thread that is running the action."""
+    """Thread that is running the command."""
 
     returncode: int | None = attrs.field(init=False, default=None)
-    """The return code from the action."""
+    """The return code from the command."""
 
     success: bool = attrs.field(init=False, default=True)
     """Flag indicating whether the step was handled successfully.
@@ -556,8 +559,10 @@ class WorkerStep:
 
     @property
     def description(self):
-        """A shorter form of the full action, without module name."""
-        return self.action if self.workdir == "./" else f"{self.action}  # wd={self.workdir}"
+        """The command, optionally annotated with the working directory."""
+        return (
+            self.command if self.workdir == Path("./") else f"{self.command}  # wd={self.workdir}"
+        )
 
 
 PYCODE_WRAPPER = """\
@@ -652,12 +657,57 @@ def _forkserver_entry(
     )
 
 
-class WorkThread(threading.Thread):
-    """Thread to run actions in the worker process."""
+def _detect_python_entrypoint(cmd: str) -> str | None:
+    """Return the ep_value if `cmd` is a console_script in the current Python environment.
 
-    def __init__(self, action: str, runpy_mp_ctx=None):
+    Parameters
+    ----------
+    cmd
+        The bare command name (no path separators) to look up.
+
+    Returns
+    -------
+    ep_value
+        The entry point value string (e.g. `"pytest:main"`) when `cmd` is a console_script
+        belonging to the current Python environment, or `None` otherwise.
+
+    Raises
+    ------
+    ValueError
+        When `cmd` is registered as a console_script but cannot be found on `PATH`,
+        which indicates a broken installation.
+    """
+    eps = list(entry_points(group="console_scripts", name=cmd))
+    if not eps:
+        return None
+    ep_value = eps[0].value
+    which_path = shutil.which(cmd)
+    if which_path is None:
+        raise ValueError(
+            f"Command '{cmd}' is registered as a Python console_script entry point "
+            "but was not found on PATH. The installation may be broken."
+        )
+    # Verify the executable lives inside the current Python environment.
+    resolved = Path(which_path).realpath()
+    env_bins = {(Path(sys.prefix) / "bin").realpath(), (Path(sys.exec_prefix) / "bin").realpath()}
+    if not any(resolved.startswith(d + "/") or resolved == d for d in env_bins):
+        print(
+            f"WARNING: Command '{cmd}' is a Python entry point but its executable"
+            f" ('{which_path}') is not in the current Python environment ({sys.prefix})."
+            " Falling back to direct subprocess execution.",
+            file=sys.stderr,
+        )
+        return None
+    return ep_value
+
+
+class WorkThread(threading.Thread):
+    """Thread to run a command in the worker process."""
+
+    def __init__(self, command: str, subshell: bool = False, runpy_mp_ctx=None):
         super().__init__()
-        self.action = action
+        self.command = command
+        self.subshell = subshell
         self.runpy_mp_ctx = runpy_mp_ctx
         self.returncode = 1
         self.done = asyncio.Event()
@@ -669,42 +719,26 @@ class WorkThread(threading.Thread):
 
     def run(self):
         try:
-            action_parts = self.action.split(" ", 1)
-            if len(action_parts) == 1:
-                action_name = action_parts[0]
-                argstr = ""
-            else:
-                action_name, argstr = self.action.split(" ", 1)
-            # Load the action entry point.
-            action_funcs = entry_points(group="stepup.actions", name=action_name)
-            if len(action_funcs) == 0:
-                raise ValueError(f"Action '{action_name}' not found")
-            if len(action_funcs) > 1:
-                raise AssertionError(f"Multiple actions found for '{action_name}'")
-            action_func = next(iter(action_funcs)).load()
-            # Run some sanity checks
-            if not callable(action_func):
-                raise TypeError(f"Action {action_name} is not callable.")
-            # Check if the function has the right signature
-            sgn = inspect.signature(action_func)
-            if sgn.return_annotation is not int:
-                raise TypeError(f"Action {action_name} does not return an int.")
-            kwargs = {"argstr": argstr}
-            if "work_thread" in sgn.parameters:
-                kwargs["work_thread"] = self
-            # Clean the amend cache
+            # Clean the amend cache before executing the command.
             from .api import _drop_amend_history  # noqa: PLC0415
 
             _drop_amend_history()
-            # Finally run the action
-            try:
-                returncode = action_func(**kwargs)
-            except SystemExit as exc:
-                returncode = (
-                    exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
-                )
-            if not isinstance(returncode, int):
-                raise TypeError(f"Action {action_name} does not return an int.")
+
+            parts = shlex.split(self.command)
+            if not parts:
+                raise ValueError(f"Empty command: {self.command!r}")
+
+            if self.subshell:
+                returncode = self.runsh(self.command)
+            elif parts[0].endswith(".py"):
+                returncode = self.runpy(parts[0], parts[1:])
+            else:
+                ep_value = _detect_python_entrypoint(parts[0])
+                if ep_value is not None:
+                    returncode = self.runpyep(parts[0], parts[1:], ep_value)
+                else:
+                    returncode = self.runexec(parts)
+
             self.returncode = returncode
         except BaseException as exc:  # noqa: BLE001
             # Catch all exceptions and print them to stderr.
@@ -726,10 +760,8 @@ class WorkThread(threading.Thread):
 
         Returns
         -------
-        returncode
-            The return code of the target function.
-            (The function call represents a command execution,
-            so the return code is expected to be 0 for success and non-zero for failure.)
+        result
+            The return code.
         """
         parent_conn, child_conn = self.runpy_mp_ctx.Pipe(duplex=False)
         p = self.runpy_mp_ctx.Process(target=target, args=(*args, child_conn))
@@ -770,17 +802,18 @@ class WorkThread(threading.Thread):
         return p.returncode, stdout, stderr
 
     @staticmethod
-    def _print_result(returncode: int, stdout: str | None, stderr: str | None, cmd_str: str) -> int:
-        """Print subprocess output and error, then return the returncode."""
+    def _print_result(
+        returncode: int, stdout: str | None, stderr: str | None, cmd_str: str
+    ) -> None:
+        """Print subprocess output and error."""
         if returncode != 0:
             print(f"Command failed with return code {returncode}: {cmd_str}", file=sys.stderr)
         if stdout:
             sys.stdout.write(stdout)
         if stderr:
             sys.stderr.write(stderr)
-        return returncode
 
-    def runsh(self, argstr: str, stdin: str | None = None) -> tuple[int, str | None, str | None]:
+    def runsh(self, argstr: str, stdin: str | None = None) -> int:
         """Run a shell command in a subprocess of the worker process.
 
         Parameters
@@ -793,23 +826,15 @@ class WorkThread(threading.Thread):
         Returns
         -------
         returncode
-            The return code of the command.
-        stdout
-            The standard output of the command.
-        stderr
-            The standard error of the command.
+            The return code of the shell command.
         """
         if not check_executable(Path(shlex.split(argstr)[0])):
-            return 1, None, None
-        return self._run_subprocess(argstr, shell=True, stdin=stdin)
+            return 1
+        returncode, stdout, stderr = self._run_subprocess(argstr, shell=True, stdin=stdin)
+        self._print_result(returncode, stdout, stderr, argstr)
+        return returncode
 
-    def runsh_verbose(self, argstr: str, stdin: str | None = None) -> int:
-        """Same as `runsh`, but print stuff and only return the returncode."""
-        return self._print_result(*self.runsh(argstr, stdin), argstr)
-
-    def runexec(
-        self, args: list[str], stdin: str | None = None
-    ) -> tuple[int, str | None, str | None]:
+    def runexec(self, args: list[str], stdin: str | None = None) -> int:
         """Run a command directly (without a shell) in a subprocess of the worker process.
 
         Parameters
@@ -823,21 +848,28 @@ class WorkThread(threading.Thread):
         -------
         returncode
             The return code of the command.
-        stdout
-            The standard output of the command.
-        stderr
-            The standard error of the command.
         """
         if not check_executable(Path(args[0])):
-            return 1, None, None
-        return self._run_subprocess(args, shell=False, stdin=stdin)
-
-    def runexec_verbose(self, args: list[str], stdin: str | None = None) -> int:
-        """Same as `runexec`, but print stuff and only return the returncode."""
-        return self._print_result(*self.runexec(args, stdin), shlex.join(args))
+            return 1
+        returncode, stdout, stderr = self._run_subprocess(args, shell=False, stdin=stdin)
+        self._print_result(returncode, stdout, stderr, shlex.join(args))
+        return returncode
 
     def runpy(self, script: str, args: list[str]) -> int:
-        """Run a Python script and amend all local imports as inputs."""
+        """Run a Python script and amend all local imports as inputs.
+
+        Parameters
+        ----------
+        script
+            Path to the Python script to execute.
+        args
+            Command-line arguments to pass to the script.
+
+        Returns
+        -------
+        returncode
+            The return code of the Python script.
+        """
         if not check_executable(Path(script), shebang="#!/usr/bin/env python3"):
             return 1
         log_level = logging.getLevelName(logging.root.level)
@@ -846,7 +878,7 @@ class WorkThread(threading.Thread):
                 _forkserver_entry,
                 (script, args, dict(os.environ), str(Path.cwd()), log_level, None),
             )
-        return self.runexec_verbose(
+        return self.runexec(
             [f"{sys.executable}", "-"],
             PYCODE_WRAPPER.format(
                 argv=repr([script, *args]),
@@ -855,22 +887,30 @@ class WorkThread(threading.Thread):
             ),
         )
 
-    def runpyep(self, cmd: str, args: list[str]) -> int:
-        """Run a Python console_script entry point, using the forkserver when available."""
-        eps = list(entry_points(group="console_scripts", name=cmd))
-        if not eps:
-            raise ValueError(
-                f"No console_script entry point found for '{cmd}'. "
-                "Package uninstalled while running the workflow?"
-            )
-        ep_value = eps[0].value
+    def runpyep(self, cmd: str, args: list[str], ep_value: str) -> int:
+        """Run a Python console_script entry point, using the forkserver when available.
+
+        Parameters
+        ----------
+        cmd
+            The command name of the entry point.
+        args
+            Command-line arguments to pass to the entry point.
+        ep_value
+            The entry point value string (e.g. `"module:attr"`).
+
+        Returns
+        -------
+        returncode
+            The return code of the entry point.
+        """
         if self.runpy_mp_ctx is not None:
             log_level = logging.getLevelName(logging.root.level)
             return self._via_forkserver(
                 _forkserver_entry,
                 (cmd, args, dict(os.environ), str(Path.cwd()), log_level, ep_value),
             )
-        return self.runexec_verbose([cmd, *args])
+        return self.runexec([cmd, *args])
 
 
 def check_executable(executable: Path, shebang: str | None = None) -> bool:
@@ -1001,6 +1041,7 @@ class WorkerHandler:
         inp_hashes: list[tuple[str, FileHash]],
         env_vars: list[str],
         check_hash: bool = True,
+        subshell: bool = False,
     ) -> StepHash | None:
         """Prepare the worker for a new step.
 
@@ -1016,23 +1057,25 @@ class WorkerHandler:
             List of environment variable names used by the step.
         check_hash
             If `True`, unexpected changes in input files will cause an error.
+        subshell
+            If `True`, the command is executed via a subshell.
 
         Returns
         -------
         step_hash
             The new hash of the step, with the input part already computed, if available.
-            `None` is yielded if, unexpectedly, some inputs are missing or have changed.
+            `None` if, unexpectedly, some inputs are missing or have changed.
         """
         with self.timer.section("new_step"):
             if self.step is not None:
                 raise RPCError(
                     "Worker cannot initiate two steps at the same time. "
-                    f"Still working on {self.step.action}"
+                    f"Still working on {self.step.command}"
                 )
 
             # Create the step
-            action, workdir = split_step_label(label)
-            self.step = WorkerStep(i, action, workdir)
+            command, workdir = split_step_label(label)
+            self.step = WorkerStep(i, command, subshell, workdir)
 
             # Create initial StepHash
             return self.compute_inp_step_hash(inp_hashes, env_vars, check_hash)[0]
@@ -1059,7 +1102,7 @@ class WorkerHandler:
         -------
         step_hash
             The new hash of the step, with the input part already computed, if available.
-            `None` is yielded if, unexpectedly, some inputs are missing or have changed.
+            `None` if, unexpectedly, some inputs are missing or have changed.
         new_inp_hashes
             List of tuples of input paths and their file hashes.
             These only include the new hashes of changed input files,
@@ -1094,14 +1137,15 @@ class WorkerHandler:
             env_var_values = [(env_var, os.environ.get(env_var)) for env_var in env_vars]
 
             # Create the StepHash
-            label = self.step.action
-            if self.step.workdir != "./":
-                label += f"  # wd={self.step.workdir}"
             result = StepHash.from_inp(
-                f"{label}", self.explain_rerun, all_inp_hashes, env_var_values
+                self.step.description,
+                self.explain_rerun,
+                all_inp_hashes,
+                env_var_values,
+                self.step.subshell,
             )
 
-            # Copy the inp_digest, because it can be useful for some actions.
+            # Copy the inp_digest, because it can be useful for some command.
             self.step.inp_digest = result.inp_digest
             return result, []
 
@@ -1160,10 +1204,10 @@ class WorkerHandler:
 
         Parameters
         ----------
-        old_inp_hashes
+        inp_hashes
             List of tuples of input paths and their file hashes.
             These should be up to date. If any changes are observed, something went wrong.
-        old_out_hashes
+        out_hashes
             List of tuples of output paths and their file hashes.
             These hashes may change because the outputs may have been updated or removed.
         env_vars
@@ -1211,7 +1255,7 @@ class WorkerHandler:
             await self.reporter("START", self.step.description)
             await self.reporter.start_step(self.step.description, self.step.i)
 
-            # For internal use in actions:
+            # For internal use in command:
             os.environ["STEPUP_STEP_I"] = str(self.step.i)
             # Client code may use the following:
             os.environ["STEPUP_STEP_INP_DIGEST"] = self.step.inp_digest.hex()
@@ -1230,7 +1274,11 @@ class WorkerHandler:
                 if self.show_perf:
                     ru_initial = resource.getrusage(resource.RUSAGE_CHILDREN)
                     pt_initial = perf_counter()
-                self.step.thread = WorkThread(self.step.action, runpy_mp_ctx=self.runpy_mp_ctx)
+                self.step.thread = WorkThread(
+                    self.step.command,
+                    subshell=self.step.subshell,
+                    runpy_mp_ctx=self.runpy_mp_ctx,
+                )
                 self.step.thread.start()
                 await self.step.thread.done.wait()
                 self.step.thread.join()
@@ -1276,14 +1324,11 @@ class WorkerHandler:
         with self.timer.section("report"):
             pages = []
             if not self.step.success:
-                # Format command such that it can be copied and pasted into a shell.
-                command = "stepup act "
-                if any(word.startswith("-") for word in shlex.split(self.step.action)):
-                    command += "-- "
-                command += self.step.action
-                if self.step.workdir != "./":
-                    command = f"(cd {self.step.workdir} && {command})"
-                lines = [f"Command               {command}"]
+                # Format command for display (can be copied and pasted into a shell).
+                display_cmd = self.step.command
+                if self.step.workdir != Path("./"):
+                    display_cmd = f"(cd {self.step.workdir} && ({display_cmd}))"
+                lines = [f"Command               {display_cmd}"]
                 # Other info on the execution of the step
                 if self.step.returncode is not None:
                     lines.append(f"Return code           {self.step.returncode}")

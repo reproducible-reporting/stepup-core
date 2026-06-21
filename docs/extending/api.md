@@ -12,7 +12,8 @@ A few things to keep in mind:
   should always return the resulting `StepInfo` object.
 - Keep the computational cost of the API function low.
   They should only be used to plan the execution of a step
-  and perform do any of the actual work.
-- If the execution consists of calling a Python script,
-  you can create a new action instead to improve the performance.
-  The action can run the same script without creating a new process.
+  and not perform any of the actual work.
+- If the step runs a Python script or program, make sure you set `shell=False` in the `step()` call.
+  StepUp will then run it in-process via the forkserver when available,
+  without spawning a new Python interpreter.
+  See [Command Dispatch](command.md) for details.

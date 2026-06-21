@@ -6,20 +6,20 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         2/3 |      PHASE │ run
-        2/3 |     NOSKIP │ runpy ./plan.py
+        2/3 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 5a9423f4 ➜ a8eb79c7, out_digest e3b0c442 ➜ (unset)
+Modified step hash   explained, inp_digest 4962ab27 ➜ 8b9a9444, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest bbe406db ➜ 856761f8)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-        0/1 |      START │ runpy ./plan.py
-        1/2 |    SUCCESS │ runpy ./plan.py
-        1/2 |      START │ runpy ./outer.py bar
-        2/3 |    SUCCESS │ runpy ./outer.py bar
-        2/3 |       SKIP │ runpy ./inner.py
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ ./outer.py bar
+        2/3 |    SUCCESS │ ./outer.py bar
+        2/3 |       SKIP │ ./inner.py
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 94954e5d, out_digest 93fe80f7
+Same step hash       explained, inp_digest fb9c75f8, out_digest 93fe80f7
 Same inp hash        inner.py
 Same env var         STEPUP_PATH_FILTER (unset)
 Same out hash        out.txt

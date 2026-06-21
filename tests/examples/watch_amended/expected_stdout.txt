@@ -1,16 +1,16 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/2 |    SUCCESS │ runpy ./plan.py
-        1/2 |      START │ runpy ./work.py
-        2/2 |    SUCCESS │ runpy ./work.py
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ ./work.py
+        2/2 |    SUCCESS │ ./work.py
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |    DELETED │ inp.txt
         1/2 |      PHASE │ run
-        1/2 |      START │ runpy ./work.py
-        1/2 | RESCHEDULE │ runpy ./work.py
+        1/2 |      START │ ./work.py
+        1/2 | RESCHEDULE │ ./work.py
 ──────────────── Rescheduling due to unavailable amended inputs ────────────────
 inp.txt
 ────────────────────────────────────────────────────────────────────────────────
@@ -19,7 +19,7 @@ inp.txt
              MISSING  inp.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                runpy ./work.py
+Command               ./work.py
 Working directory     ./
 Inputs       MISSING  inp.txt [amended]
               STATIC  work.py
@@ -30,14 +30,14 @@ Outputs     OUTDATED  out.txt [amended]
         1/2 |      PHASE │ watch
         1/2 |    UPDATED │ inp.txt
         1/2 |      PHASE │ run
-        1/2 |      START │ runpy ./work.py
-        2/2 |    SUCCESS │ runpy ./work.py
+        1/2 |      START │ ./work.py
+        2/2 |    SUCCESS │ ./work.py
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |    UPDATED │ inp.txt
         1/2 |      PHASE │ run
-        1/2 |      START │ runpy ./work.py
-        2/2 |    SUCCESS │ runpy ./work.py
+        1/2 |      START │ ./work.py
+        2/2 |    SUCCESS │ ./work.py
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |   DIRECTOR │ Stopping workers

@@ -1,50 +1,50 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:work.py
-             creates   step:runpy ./work.py
+             creates   step:./work.py
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
+          created by   step:./plan.py
+            supplies   step:./work.py
 
-step:runpy ./work.py
+step:./work.py
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
                  ngm = ['inp.*'] {}
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:work.py
              creates   file:inp.txt
-             creates   step:copy inp.txt out.txt
+             creates   step:cp -p inp.txt out.txt
 
 file:inp.txt
                state = STATIC
-          created by   step:runpy ./work.py
-            supplies   step:copy inp.txt out.txt
+          created by   step:./work.py
+            supplies   step:cp -p inp.txt out.txt
 
-step:copy inp.txt out.txt
+step:cp -p inp.txt out.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./work.py
+          created by   step:./work.py
             consumes   file:inp.txt
              creates   file:out.txt
             supplies   file:out.txt
 
 file:out.txt
                state = BUILT
-          created by   step:copy inp.txt out.txt
-            consumes   step:copy inp.txt out.txt
+          created by   step:cp -p inp.txt out.txt
+            consumes   step:cp -p inp.txt out.txt

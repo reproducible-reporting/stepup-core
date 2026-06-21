@@ -6,16 +6,16 @@
         0/0 |    UPDATED │ inp3.txt
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/3 |    SUCCESS │ runpy ./plan.py
-        1/3 |       SKIP │ copy inp2.txt out2.txt
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |       SKIP │ cp -p inp2.txt out2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest bd1aca9e, out_digest 9e7bd348
+Same step hash       explained, inp_digest ce2b09cd, out_digest 9e7bd348
 Same inp hash        inp2.txt
 Same out hash        out2.txt
 ────────────────────────────────────────────────────────────────────────────────
-        2/3 |      START │ copy inp3.txt out3.txt
-        3/3 |    SUCCESS │ copy inp3.txt out3.txt
+        2/3 |      START │ cp -p inp3.txt out3.txt
+        3/3 |    SUCCESS │ cp -p inp3.txt out3.txt
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |      PHASE │ watch
         3/3 |   DIRECTOR │ Stopping workers

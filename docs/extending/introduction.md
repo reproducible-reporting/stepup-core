@@ -6,7 +6,7 @@ Currently, there is one major extension, [StepUp RepRep](https://reproducible-re
 
 This section discusses how to create a new extension package for StepUp Core.
 In short, you can create a new Python package, optionally using the same `stepup` namespace.
-There are three types of components you can implement in an extension package:
+There are two types of components you can implement in an extension package:
 
 1. **API functions** to send new steps (and other information) to the StepUp director process.
 
@@ -15,14 +15,6 @@ There are three types of components you can implement in an extension package:
     > An example of this is the [`run()`][stepup.core.api.run] function,
     > which is used to execute commands.
 
-2. **An action**, which implements the execution of a step.
+2. **A tool**, which appears as a new subcommand in the StepUp CLI.
 
-    > For example, the `runsh` action in StepUp Core implements the execution of a shell command.
-
-3. **A tool**, which appears as a new subcommand in the StepUp CLI.
-
-    > An example tool in StepUp Core is `stepup clean`
-
-Note that actions and API functions can have the same name, but they are different things.
-The action is executed when the step is executed,
-while the API function is used to define the step and send it to the director process.
+    > An example tool in StepUp Core is `stepup clean`.

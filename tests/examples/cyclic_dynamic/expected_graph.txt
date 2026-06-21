@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -15,73 +15,73 @@ step:runpy ./plan.py
             consumes   file:plan.py
              creates   file:work1.py
              creates   file:work2.py
-             creates   step:runpy ./work1.py
-             creates   step:runpy ./work2.py
+             creates   step:./work1.py
+             creates   step:./work2.py
 
 file:work1.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work1.py
+          created by   step:./plan.py
+            supplies   step:./work1.py
 
 file:work2.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work2.py
+          created by   step:./plan.py
+            supplies   step:./work2.py
 
-step:runpy ./work1.py
+step:./work1.py
                state = PENDING
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:inp2.txt [amended]
             consumes   file:work1.py
              creates   file:out2.txt
-             creates   step:runsh echo first > inp1.txt
+             creates   step:echo first > inp1.txt
             supplies   file:out2.txt [amended]
 
-step:runpy ./work2.py
+step:./work2.py
                state = PENDING
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:inp1.txt [amended]
             consumes   file:work2.py
              creates   file:out1.txt
-             creates   step:runsh echo second > inp2.txt
+             creates   step:echo second > inp2.txt
             supplies   file:out1.txt [amended]
 
-step:runsh echo first > inp1.txt
+step:echo first > inp1.txt
                state = PENDING
                 need = DEFAULT
-          created by   step:runpy ./work1.py
+          created by   step:./work1.py
              creates   file:inp1.txt
             supplies   file:inp1.txt
 
 file:inp1.txt
                state = AWAITED
-          created by   step:runsh echo first > inp1.txt
-            consumes   step:runsh echo first > inp1.txt
-            supplies   step:runpy ./work2.py
+          created by   step:echo first > inp1.txt
+            consumes   step:echo first > inp1.txt
+            supplies   step:./work2.py
 
 file:inp2.txt
                state = AWAITED
-          created by   step:runsh echo second > inp2.txt
-            consumes   step:runsh echo second > inp2.txt
-            supplies   step:runpy ./work1.py
+          created by   step:echo second > inp2.txt
+            consumes   step:echo second > inp2.txt
+            supplies   step:./work1.py
 
 file:out2.txt
                state = AWAITED
-          created by   step:runpy ./work1.py
-            consumes   step:runpy ./work1.py
+          created by   step:./work1.py
+            consumes   step:./work1.py
 
-step:runsh echo second > inp2.txt
+step:echo second > inp2.txt
                state = PENDING
                 need = DEFAULT
-          created by   step:runpy ./work2.py
+          created by   step:./work2.py
              creates   file:inp2.txt
             supplies   file:inp2.txt
 
 file:out1.txt
                state = AWAITED
-          created by   step:runpy ./work2.py
-            consumes   step:runpy ./work2.py
+          created by   step:./work2.py
+            consumes   step:./work2.py

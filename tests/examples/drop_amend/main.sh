@@ -34,7 +34,7 @@ stepup join
 wait
 
 # Verify that work.py has been skipped.
-grep 'SKIP │ runpy ./work.py' current_stdout_2.txt
+grep 'SKIP │ ./work.py' current_stdout_2.txt
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1

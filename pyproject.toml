@@ -63,7 +63,6 @@ Changelog = "https://reproducible-reporting.github.io/stepup-core/changelog/"
 stepup = "stepup.core.__main__:main"
 
 [project.entry-points."stepup.tools"]
-act = "stepup.core.actions:act_subcommand"
 browse = "stepup.core.browse:browse_subcommand"
 boot = "stepup.core.tui:boot_subcommand"
 clean = "stepup.core.clean:clean_subcommand"
@@ -79,13 +78,6 @@ show-config = "stepup.core.config:show_config_subcommand"
 shutdown = "stepup.core.interact:shutdown_subcommand"
 status = "stepup.core.interact:status_subcommand"
 
-[project.entry-points."stepup.actions"]
-copy = "stepup.core.actions:copy"
-render-jinja = "stepup.core.render_jinja:render_jinja_action"
-runexec = "stepup.core.actions:runexec"
-runpy = "stepup.core.actions:runpy"
-runpyep = "stepup.core.actions:runpyep"
-runsh = "stepup.core.actions:runsh"
 
 [tool.pytest.ini_options]
 addopts = "-n auto --dist worksteal -W error -W ignore::ResourceWarning"

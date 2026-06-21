@@ -6,14 +6,14 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         0/3 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/2 |    SUCCESS │ runpy ./plan.py
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
         1/2 |    WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  src2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                runexec cat src2.txt
+Command               cat src2.txt
 Working directory     ./
 Inputs       AWAITED  (src2.txt)
 ────────────────────────────────────────────────────────────────────────────────

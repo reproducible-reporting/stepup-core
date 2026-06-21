@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -15,24 +15,24 @@ step:runpy ./plan.py
             consumes   file:plan.py
              creates   file:template.md
              creates   file:variables.py
-             creates   step:render-jinja template.md variables.py rendered.md
+             creates   step:stepup render-jinja template.md variables.py rendered.md
 
 file:template.md
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:render-jinja template.md variables.py rendered.md
+          created by   step:./plan.py
+            supplies   step:stepup render-jinja template.md variables.py rendered.md
 
 file:variables.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:render-jinja template.md variables.py rendered.md
+          created by   step:./plan.py
+            supplies   step:stepup render-jinja template.md variables.py rendered.md
 
-step:render-jinja template.md variables.py rendered.md
+step:stepup render-jinja template.md variables.py rendered.md
                state = SUCCEEDED
                 need = DEFAULT
              env_var = ENV_VAR_TEST_STEPUP_RENDER [amended]
                      = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:template.md
             consumes   file:variables.py
              creates   file:rendered.md
@@ -40,5 +40,5 @@ step:render-jinja template.md variables.py rendered.md
 
 file:rendered.md
                state = BUILT
-          created by   step:render-jinja template.md variables.py rendered.md
-            consumes   step:render-jinja template.md variables.py rendered.md
+          created by   step:stepup render-jinja template.md variables.py rendered.md
+            consumes   step:stepup render-jinja template.md variables.py rendered.md

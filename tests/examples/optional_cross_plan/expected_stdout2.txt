@@ -6,8 +6,8 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         3/4 |      PHASE │ run
-        2/3 |      START │ runpy ./plan.py  # wd=sub/
-        3/3 |    SUCCESS │ runpy ./plan.py  # wd=sub/
+        2/3 |      START │ ./plan.py  # wd=sub/
+        3/3 |    SUCCESS │ ./plan.py  # wd=sub/
         3/3 |    WARNING │ Reverted 1 optional step(s) to PENDING and marked 1 output/volatile file(s) for deletion.
         3/3 |   DIRECTOR │ Trying to delete 2 outdated output(s)
         3/3 |      CLEAN │ sub/final.txt

@@ -5,20 +5,20 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/3 |      PHASE │ run
-        1/3 |     NOSKIP │ copy inp.txt out.txt
+        1/3 |     NOSKIP │ cp -p inp.txt out.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest c68475db ➜ f2755fe8, out_digest 2f680146 ➜ (unset)
+Modified step hash   explained, inp_digest 48bca084 ➜ 9757fdb8, out_digest 2f680146 ➜ (unset)
 Modified inp hash    inp.txt (digest de3b107b ➜ 26725e7b)
 ────────────────────────────────────────────────────────────────────────────────
-        1/3 |      START │ copy inp.txt out.txt
-        2/3 |    SUCCESS │ copy inp.txt out.txt
-        2/3 |     NOSKIP │ copy out.txt final.txt
+        1/3 |      START │ cp -p inp.txt out.txt
+        2/3 |    SUCCESS │ cp -p inp.txt out.txt
+        2/3 |     NOSKIP │ cp -p out.txt final.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 0f4f031f ➜ 11aadeca, out_digest 0901a370 ➜ (unset)
+Modified step hash   explained, inp_digest 599899c2 ➜ 4c8dbe2a, out_digest 0901a370 ➜ (unset)
 Modified inp hash    out.txt (digest de3b107b ➜ 26725e7b)
 ────────────────────────────────────────────────────────────────────────────────
-        2/3 |      START │ copy out.txt final.txt
-        3/3 |    SUCCESS │ copy out.txt final.txt
+        2/3 |      START │ cp -p out.txt final.txt
+        3/3 |    SUCCESS │ cp -p out.txt final.txt
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |    WARNING │ Check logs: .stepup/warning.log
         3/3 |      PHASE │ watch

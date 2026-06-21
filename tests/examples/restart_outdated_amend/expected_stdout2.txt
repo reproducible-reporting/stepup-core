@@ -7,17 +7,17 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
-        1/2 |  DROPAMEND │ runpy ./work.py
+        1/2 |  DROPAMEND │ ./work.py
 ────────────────────── Outdated amended step information ───────────────────────
-Modified step hash   explained, inp_digest a75e4d7d ➜ 3aaf2d42, out_digest 2aa07484 ➜ (unset)
+Modified step hash   explained, inp_digest 85ad62b4 ➜ b375115a, out_digest 2aa07484 ➜ (unset)
 Deleted inp hash     data/inp1.txt
 Modified inp hash    subs.txt (digest ae39a09a ➜ d642a3da)
 ──────────────────────── Remained the same (or missing) ────────────────────────
 Same inp hash        work.py
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |      START │ runpy ./work.py
-        2/2 |    SUCCESS │ runpy ./work.py
+        1/2 |      START │ ./work.py
+        2/2 |    SUCCESS │ ./work.py
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |    WARNING │ Check logs: .stepup/warning.log
         2/2 |      PHASE │ watch

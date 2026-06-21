@@ -6,15 +6,15 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         5/6 |      PHASE │ run
-        5/6 |     NOSKIP │ runpy ./plan.py
+        5/6 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 300bd140 ➜ 8fe4b80a, out_digest e3b0c442 ➜ (unset)
+Modified step hash   explained, inp_digest 2257df62 ➜ 449141be, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest 9db5ea86 ➜ 1553f340, size 491 ➜ 418)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-        0/1 |      START │ runpy ./plan.py
-        5/5 |    SUCCESS │ runpy ./plan.py
+        0/1 |      START │ ./plan.py
+        5/5 |    SUCCESS │ ./plan.py
         5/5 |    WARNING │ Reverted 4 optional step(s) to PENDING and marked 4 output/volatile file(s) for deletion.
         5/5 |   DIRECTOR │ Trying to delete 5 outdated output(s)
         5/5 |      CLEAN │ spam.txt

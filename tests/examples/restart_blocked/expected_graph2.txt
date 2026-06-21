@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -15,39 +15,39 @@ step:runpy ./plan.py
             consumes   file:plan.py
              creates   file:expensive.py
              creates   file:initial.txt
-             creates   step:copy initial.txt input.txt
-             creates   step:copy output.txt final.txt
-             creates   step:runpy ./expensive.py
+             creates   step:./expensive.py
+             creates   step:cp -p initial.txt input.txt
+             creates   step:cp -p output.txt final.txt
 
 file:expensive.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./expensive.py
+          created by   step:./plan.py
+            supplies   step:./expensive.py
 
 file:initial.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:copy initial.txt input.txt
+          created by   step:./plan.py
+            supplies   step:cp -p initial.txt input.txt
 
-step:copy initial.txt input.txt
+step:cp -p initial.txt input.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:initial.txt
              creates   file:input.txt
             supplies   file:input.txt
 
 file:input.txt
                state = BUILT
-          created by   step:copy initial.txt input.txt
-            consumes   step:copy initial.txt input.txt
-            supplies   step:runpy ./expensive.py
+          created by   step:cp -p initial.txt input.txt
+            consumes   step:cp -p initial.txt input.txt
+            supplies   step:./expensive.py
 
-step:runpy ./expensive.py
+step:./expensive.py
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:expensive.py
             consumes   file:input.txt
              creates   file:output.txt
@@ -55,19 +55,19 @@ step:runpy ./expensive.py
 
 file:output.txt
                state = BUILT
-          created by   step:runpy ./expensive.py
-            consumes   step:runpy ./expensive.py
-            supplies   step:copy output.txt final.txt
+          created by   step:./expensive.py
+            consumes   step:./expensive.py
+            supplies   step:cp -p output.txt final.txt
 
-step:copy output.txt final.txt
+step:cp -p output.txt final.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:output.txt
              creates   file:final.txt
             supplies   file:final.txt
 
 file:final.txt
                state = BUILT
-          created by   step:copy output.txt final.txt
-            consumes   step:copy output.txt final.txt
+          created by   step:cp -p output.txt final.txt
+            consumes   step:cp -p output.txt final.txt

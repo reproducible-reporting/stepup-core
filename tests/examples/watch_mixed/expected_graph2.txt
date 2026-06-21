@@ -1,25 +1,25 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
-             creates   step:runexec cp copy1.txt copy2.txt
+             creates   step:cp copy1.txt copy2.txt
 
 (file:orig.txt)
                state = MISSING
-            supplies   (step:runexec cp orig.txt copy1.txt)
+            supplies   (step:cp orig.txt copy1.txt)
 
-(step:runexec cp orig.txt copy1.txt)
+(step:cp orig.txt copy1.txt)
                state = PENDING
                 need = DEFAULT
             consumes   (file:orig.txt)
@@ -28,19 +28,19 @@ step:runpy ./plan.py
 
 (file:copy1.txt)
                state = OUTDATED
-          created by   (step:runexec cp orig.txt copy1.txt)
-            consumes   (step:runexec cp orig.txt copy1.txt)
-            supplies   step:runexec cp copy1.txt copy2.txt
+          created by   (step:cp orig.txt copy1.txt)
+            consumes   (step:cp orig.txt copy1.txt)
+            supplies   step:cp copy1.txt copy2.txt
 
-step:runexec cp copy1.txt copy2.txt
+step:cp copy1.txt copy2.txt
                state = PENDING
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   (file:copy1.txt)
              creates   file:copy2.txt
             supplies   file:copy2.txt
 
 file:copy2.txt
                state = OUTDATED
-          created by   step:runexec cp copy1.txt copy2.txt
-            consumes   step:runexec cp copy1.txt copy2.txt
+          created by   step:cp copy1.txt copy2.txt
+            consumes   step:cp copy1.txt copy2.txt

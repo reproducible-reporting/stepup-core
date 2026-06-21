@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -20,29 +20,29 @@ step:runpy ./plan.py
              creates   file:head_z.txt
              creates   file:tail_x.txt
              creates   file:tail_y.txt
-             creates   step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
-             creates   step:runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+             creates   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+             creates   step:paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
 
 file:head_x.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+          created by   step:./plan.py
+            supplies   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 file:head_y.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+          created by   step:./plan.py
+            supplies   step:paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
 
 file:tail_x.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+          created by   step:./plan.py
+            supplies   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
-step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:head_x.txt
             consumes   file:tail_x.txt
              creates   file:paste_x.txt
@@ -50,23 +50,23 @@ step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 file:paste_x.txt
                state = BUILT
-          created by   step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
-            consumes   step:runsh paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+          created by   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+            consumes   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 file:head_z.txt
                state = STATIC
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
 
 file:tail_y.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+          created by   step:./plan.py
+            supplies   step:paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
 
-step:runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+step:paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:head_y.txt
             consumes   file:tail_y.txt
              creates   file:paste_y.txt
@@ -74,5 +74,5 @@ step:runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
 
 file:paste_y.txt
                state = BUILT
-          created by   step:runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
-            consumes   step:runsh paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+          created by   step:paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+            consumes   step:paste -d ' ' head_y.txt tail_y.txt > paste_y.txt

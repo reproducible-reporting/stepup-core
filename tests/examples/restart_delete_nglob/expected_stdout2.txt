@@ -6,15 +6,15 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         2/5 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/3 |    SUCCESS │ runpy ./plan.py
-        1/3 |       SKIP │ copy inp2.txt out2.txt
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |       SKIP │ cp -p inp2.txt out2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       compact, inp_digest bd1aca9e, out_digest 9e7bd348
+Same step hash       compact, inp_digest ce2b09cd, out_digest 9e7bd348
 ────────────────────────────────────────────────────────────────────────────────
-        2/3 |       SKIP │ copy out2.txt foo2.txt
+        2/3 |       SKIP │ cp -p out2.txt foo2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       compact, inp_digest a62616d1, out_digest 810dcef4
+Same step hash       compact, inp_digest 3139b420, out_digest 810dcef4
 ────────────────────────────────────────────────────────────────────────────────
         3/3 |   DIRECTOR │ Trying to delete 2 outdated output(s)
         3/3 |      CLEAN │ out1.txt

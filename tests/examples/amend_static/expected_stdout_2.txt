@@ -6,10 +6,10 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         0/2 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/2 |    SUCCESS │ runpy ./plan.py
-        1/2 |      START │ runpy ./work.py
-        2/2 |    SUCCESS │ runpy ./work.py
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ ./work.py
+        2/2 |    SUCCESS │ ./work.py
 ─────────────────────────────── Standard output ────────────────────────────────
 First input
 

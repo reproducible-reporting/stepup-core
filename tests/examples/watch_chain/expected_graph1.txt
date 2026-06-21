@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -15,70 +15,70 @@ step:runpy ./plan.py
             consumes   file:plan.py
              creates   file:config.json
              creates   file:use_config.py
-             creates   step:copy report.txt copy.txt
-             creates   step:runpy ./use_config.py
+             creates   step:./use_config.py
+             creates   step:cp -p report.txt copy.txt
 
 file:config.json
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./use_config.py
+          created by   step:./plan.py
+            supplies   step:./use_config.py
 
 file:use_config.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./use_config.py
+          created by   step:./plan.py
+            supplies   step:./use_config.py
 
-step:runpy ./use_config.py
+step:./use_config.py
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:config.json
             consumes   file:use_config.py
              creates   file:output.txt
-             creates   step:runsh echo All is fine. > script.log
-             creates   step:runsh echo log written to script.log. > report.txt
+             creates   step:echo All is fine. > script.log
+             creates   step:echo log written to script.log. > report.txt
             supplies   file:output.txt
 
 file:output.txt
                state = BUILT
-          created by   step:runpy ./use_config.py
-            consumes   step:runpy ./use_config.py
+          created by   step:./use_config.py
+            consumes   step:./use_config.py
 
-step:copy report.txt copy.txt
+step:cp -p report.txt copy.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:report.txt
              creates   file:copy.txt
             supplies   file:copy.txt
 
 file:report.txt
                state = BUILT
-          created by   step:runsh echo log written to script.log. > report.txt
-            consumes   step:runsh echo log written to script.log. > report.txt
-            supplies   step:copy report.txt copy.txt
+          created by   step:echo log written to script.log. > report.txt
+            consumes   step:echo log written to script.log. > report.txt
+            supplies   step:cp -p report.txt copy.txt
 
 file:copy.txt
                state = BUILT
-          created by   step:copy report.txt copy.txt
-            consumes   step:copy report.txt copy.txt
+          created by   step:cp -p report.txt copy.txt
+            consumes   step:cp -p report.txt copy.txt
 
-step:runsh echo All is fine. > script.log
+step:echo All is fine. > script.log
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./use_config.py
+          created by   step:./use_config.py
              creates   file:script.log
             supplies   file:script.log
 
 file:script.log
                state = BUILT
-          created by   step:runsh echo All is fine. > script.log
-            consumes   step:runsh echo All is fine. > script.log
+          created by   step:echo All is fine. > script.log
+            consumes   step:echo All is fine. > script.log
 
-step:runsh echo log written to script.log. > report.txt
+step:echo log written to script.log. > report.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./use_config.py
+          created by   step:./use_config.py
              creates   file:report.txt
             supplies   file:report.txt

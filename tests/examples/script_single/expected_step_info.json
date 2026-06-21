@@ -1,5 +1,5 @@
 {
-  "action": "runpy ./generate.py run",
+  "command": "./generate.py run",
   "workdir": "work/",
   "inp": [
     "config.json",

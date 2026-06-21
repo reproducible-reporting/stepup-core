@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -16,55 +16,55 @@ step:runpy ./plan.py
              creates   file:bar/plan.py
              creates   file:foo/inp.txt
              creates   file:inp.txt
-             creates   step:runpy ./plan.py  # wd=bar/
+             creates   step:./plan.py  # wd=bar/
 
 file:bar/plan.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./plan.py  # wd=bar/
+          created by   step:./plan.py
+            supplies   step:./plan.py  # wd=bar/
 
 file:foo/inp.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
+          created by   step:./plan.py
+            supplies   step:cp -p ../foo/inp.txt ../foo/out.txt  # wd=bar/
 
 file:inp.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:copy ../inp.txt ../out.txt  # wd=bar/
+          created by   step:./plan.py
+            supplies   step:cp -p ../inp.txt ../out.txt  # wd=bar/
 
-step:runpy ./plan.py  # wd=bar/
+step:./plan.py  # wd=bar/
                state = SUCCEEDED
                 need = PLAN
              env_var = INPS [amended]
                      = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:bar/plan.py
-             creates   step:copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
-             creates   step:copy ../inp.txt ../out.txt  # wd=bar/
+             creates   step:cp -p ../foo/inp.txt ../foo/out.txt  # wd=bar/
+             creates   step:cp -p ../inp.txt ../out.txt  # wd=bar/
 
-step:copy ../inp.txt ../out.txt  # wd=bar/
+step:cp -p ../inp.txt ../out.txt  # wd=bar/
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py  # wd=bar/
+          created by   step:./plan.py  # wd=bar/
             consumes   file:inp.txt
              creates   file:out.txt
             supplies   file:out.txt
 
 file:out.txt
                state = BUILT
-          created by   step:copy ../inp.txt ../out.txt  # wd=bar/
-            consumes   step:copy ../inp.txt ../out.txt  # wd=bar/
+          created by   step:cp -p ../inp.txt ../out.txt  # wd=bar/
+            consumes   step:cp -p ../inp.txt ../out.txt  # wd=bar/
 
-step:copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
+step:cp -p ../foo/inp.txt ../foo/out.txt  # wd=bar/
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py  # wd=bar/
+          created by   step:./plan.py  # wd=bar/
             consumes   file:foo/inp.txt
              creates   file:foo/out.txt
             supplies   file:foo/out.txt
 
 file:foo/out.txt
                state = BUILT
-          created by   step:copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
-            consumes   step:copy ../foo/inp.txt ../foo/out.txt  # wd=bar/
+          created by   step:cp -p ../foo/inp.txt ../foo/out.txt  # wd=bar/
+            consumes   step:cp -p ../foo/inp.txt ../foo/out.txt  # wd=bar/

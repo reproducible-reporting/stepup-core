@@ -9,29 +9,29 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/4 |      PHASE │ run
-        1/4 |     NOSKIP │ copy asource2.txt data2.txt
+        1/4 |     NOSKIP │ cp -p asource2.txt data2.txt
 ───────────────────────────── Missing output files ─────────────────────────────
 data2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 5683b49e, out_digest 9424ebe1 ➜ 8b78f1fa
+Modified step hash   explained, inp_digest d3dcb75a, out_digest 9424ebe1 ➜ 8b78f1fa
 Modified out hash    data2.txt (digest 83ca09e3 ➜ UNKNOWN, size 25 ➜ 0, mode -rw-r--r-- ➜ ?---------)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        asource2.txt
 ────────────────────────────────────────────────────────────────────────────────
-        1/4 |      START │ copy asource2.txt data2.txt
-        2/4 |    SUCCESS │ copy asource2.txt data2.txt
+        1/4 |      START │ cp -p asource2.txt data2.txt
+        2/4 |    SUCCESS │ cp -p asource2.txt data2.txt
         2/4 |    WARNING │ 2 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  asource1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                copy asource1.txt data1.txt
+Command               cp -p asource1.txt data1.txt
 Working directory     ./
 Inputs       MISSING  asource1.txt
 Outputs      AWAITED  data1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                runsh ./work.py > log.txt
+Command               ./work.py > log.txt
 Working directory     ./
 Inputs       AWAITED  data1.txt
               STATIC  work.py

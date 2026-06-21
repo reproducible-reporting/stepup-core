@@ -138,8 +138,8 @@ def test_step(wfs: Workflow):
         assert to_check == []
         step = wfs.find(Step, "cp foo.txt sub/bar.txt")
         assert step.key() == "step:cp foo.txt sub/bar.txt"
-        action, workdir = step.get_action_workdir()
-        assert action == "cp foo.txt sub/bar.txt"
+        command, workdir = step.get_command_workdir()
+        assert command == "cp foo.txt sub/bar.txt"
         assert workdir == Path("./")
         assert isinstance(workdir, Path)
         assert wfs.format_str() == TEST_STEP_GRAPH
@@ -243,7 +243,7 @@ root:
 step:cp foo.txt bar.txt
                state = SUCCEEDED
                 need = DEFAULT
-          inp_digest = 4fe235e8 0004eb28 a47d47c3 0728cc7c 1d1d76d9 96d0b518 c331203b cd9e96ca
+          inp_digest = 7c9d6cf6 ff15a9db f94295ad 7661e93e 22c7ce39 2c25303e f8553235 87b8a198
           out_digest = 989a8ef2 4a8ea52e 844a0770 1bfae079 4a7088e1 6a2ba779 3dfacd9a f1164aa1
            explained = yes
           created by   root:
@@ -272,7 +272,7 @@ root:
 step:cp foo.txt bar.txt
                state = PENDING
                 need = DEFAULT
-          inp_digest = 4fe235e8 0004eb28 a47d47c3 0728cc7c 1d1d76d9 96d0b518 c331203b cd9e96ca
+          inp_digest = 7c9d6cf6 ff15a9db f94295ad 7661e93e 22c7ce39 2c25303e f8553235 87b8a198
           out_digest = 989a8ef2 4a8ea52e 844a0770 1bfae079 4a7088e1 6a2ba779 3dfacd9a f1164aa1
            explained = yes
           created by   root:
@@ -1460,8 +1460,8 @@ def test_define_step_reqdir_workdir(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "echo", workdir="sub/dir/")
     echo = wfp.find(Step, "echo  # wd=sub/dir/")
-    action, workdir = echo.get_action_workdir()
-    assert action == "echo"
+    command, workdir = echo.get_command_workdir()
+    assert command == "echo"
     assert workdir == Path("sub/dir/")
     assert isinstance(workdir, Path)
     reqdir, detached = wfp.find_detached(File, "sub/dir/")

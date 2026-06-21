@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -15,25 +15,25 @@ step:runpy ./plan.py
             consumes   file:plan.py
              creates   file:foo.txt
              creates   file:work.py
-             creates   step:runpy ./work.py
+             creates   step:./work.py
 
 file:foo.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
+          created by   step:./plan.py
+            supplies   step:./work.py
 
 file:work.py
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runpy ./work.py
+          created by   step:./plan.py
+            supplies   step:./work.py
 
-step:runpy ./work.py
+step:./work.py
                state = SUCCEEDED
                 need = DEFAULT
              env_var = INP_VAR_TEST_STEPUP_BAR [amended]
                      = INP_VAR_TEST_STEPUP_FOO [amended]
                      = STEPUP_PATH_FILTER [amended]
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:foo.txt [amended]
             consumes   file:work.py
              creates   file:bar.log
@@ -43,10 +43,10 @@ step:runpy ./work.py
 
 file:bar.txt
                state = BUILT
-          created by   step:runpy ./work.py
-            consumes   step:runpy ./work.py
+          created by   step:./work.py
+            consumes   step:./work.py
 
 file:bar.log
                state = VOLATILE
-          created by   step:runpy ./work.py
-            consumes   step:runpy ./work.py
+          created by   step:./work.py
+            consumes   step:./work.py

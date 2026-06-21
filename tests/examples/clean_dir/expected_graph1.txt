@@ -1,58 +1,58 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
-             creates   step:copy sub/inp.txt sub/tmp.txt
-             creates   step:copy sub/tmp.txt sub/out.txt
-             creates   step:runsh echo hello > sub/inp.txt
+             creates   step:cp -p sub/inp.txt sub/tmp.txt
+             creates   step:cp -p sub/tmp.txt sub/out.txt
+             creates   step:echo hello > sub/inp.txt
 
-step:runsh echo hello > sub/inp.txt
+step:echo hello > sub/inp.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
              creates   file:sub/inp.txt
             supplies   file:sub/inp.txt
 
 file:sub/inp.txt
                state = BUILT
-          created by   step:runsh echo hello > sub/inp.txt
-            consumes   step:runsh echo hello > sub/inp.txt
-            supplies   step:copy sub/inp.txt sub/tmp.txt
+          created by   step:echo hello > sub/inp.txt
+            consumes   step:echo hello > sub/inp.txt
+            supplies   step:cp -p sub/inp.txt sub/tmp.txt
 
-step:copy sub/inp.txt sub/tmp.txt
+step:cp -p sub/inp.txt sub/tmp.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:sub/inp.txt
              creates   file:sub/tmp.txt
             supplies   file:sub/tmp.txt
 
 file:sub/tmp.txt
                state = BUILT
-          created by   step:copy sub/inp.txt sub/tmp.txt
-            consumes   step:copy sub/inp.txt sub/tmp.txt
-            supplies   step:copy sub/tmp.txt sub/out.txt
+          created by   step:cp -p sub/inp.txt sub/tmp.txt
+            consumes   step:cp -p sub/inp.txt sub/tmp.txt
+            supplies   step:cp -p sub/tmp.txt sub/out.txt
 
-step:copy sub/tmp.txt sub/out.txt
+step:cp -p sub/tmp.txt sub/out.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:sub/tmp.txt
              creates   file:sub/out.txt
             supplies   file:sub/out.txt
 
 file:sub/out.txt
                state = BUILT
-          created by   step:copy sub/tmp.txt sub/out.txt
-            consumes   step:copy sub/tmp.txt sub/out.txt
+          created by   step:cp -p sub/tmp.txt sub/out.txt
+            consumes   step:cp -p sub/tmp.txt sub/out.txt

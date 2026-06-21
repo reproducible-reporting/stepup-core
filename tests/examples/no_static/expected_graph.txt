@@ -1,43 +1,43 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
-             creates   step:runexec cp -v first.txt second.txt
-             creates   step:runsh echo "spam" > first.txt
+             creates   step:cp -v first.txt second.txt
+             creates   step:echo "spam" > first.txt
 
-step:runsh echo "spam" > first.txt
+step:echo "spam" > first.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
              creates   file:first.txt
             supplies   file:first.txt
 
 file:first.txt
                state = BUILT
-          created by   step:runsh echo "spam" > first.txt
-            consumes   step:runsh echo "spam" > first.txt
-            supplies   step:runexec cp -v first.txt second.txt
+          created by   step:echo "spam" > first.txt
+            consumes   step:echo "spam" > first.txt
+            supplies   step:cp -v first.txt second.txt
 
-step:runexec cp -v first.txt second.txt
+step:cp -v first.txt second.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:first.txt
              creates   file:second.txt
             supplies   file:second.txt
 
 file:second.txt
                state = BUILT
-          created by   step:runexec cp -v first.txt second.txt
-            consumes   step:runexec cp -v first.txt second.txt
+          created by   step:cp -v first.txt second.txt
+            consumes   step:cp -v first.txt second.txt

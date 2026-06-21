@@ -7,16 +7,16 @@
         0/0 |    UPDATED │ inp4.txt
         0/0 |   DIRECTOR │ Launched worker 0
         1/3 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/3 |    SUCCESS │ runpy ./plan.py
-        1/3 |       SKIP │ copy inp3.txt out3.txt
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |       SKIP │ cp -p inp3.txt out3.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 5d78114d, out_digest bf3a2db2
+Same step hash       explained, inp_digest b0978595, out_digest bf3a2db2
 Same inp hash        inp3.txt
 Same out hash        out3.txt
 ────────────────────────────────────────────────────────────────────────────────
-        2/3 |      START │ copy inp4.txt out4.txt
-        3/3 |    SUCCESS │ copy inp4.txt out4.txt
+        2/3 |      START │ cp -p inp4.txt out4.txt
+        3/3 |    SUCCESS │ cp -p inp4.txt out4.txt
         3/3 |   DIRECTOR │ Trying to delete 1 outdated output(s)
         3/3 |      CLEAN │ out2.txt
         3/3 |      PHASE │ watch

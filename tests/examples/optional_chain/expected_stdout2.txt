@@ -6,25 +6,25 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         0/5 |      PHASE │ run
-        0/5 |     NOSKIP │ runpy ./plan.py
+        0/5 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 8fe4b80a ➜ 300bd140, out_digest e3b0c442 ➜ (unset)
+Modified step hash   explained, inp_digest 449141be ➜ 2257df62, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest 1553f340 ➜ 9db5ea86, size 418 ➜ 491)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-        0/1 |      START │ runpy ./plan.py
-        1/6 |    SUCCESS │ runpy ./plan.py
-        1/6 |      START │ runsh echo inp1 > foo1.txt
-        2/6 |    SUCCESS │ runsh echo inp1 > foo1.txt
-        2/6 |      START │ runsh echo inp2 > foo2.txt
-        3/6 |    SUCCESS │ runsh echo inp2 > foo2.txt
-        3/6 |      START │ runsh cat foo1.txt foo2.txt > bar.txt
-        4/6 |    SUCCESS │ runsh cat foo1.txt foo2.txt > bar.txt
-        4/6 |      START │ runsh cat bar.txt > egg.txt
-        5/6 |    SUCCESS │ runsh cat bar.txt > egg.txt
-        5/6 |      START │ runsh cat egg.txt > spam.txt
-        6/6 |    SUCCESS │ runsh cat egg.txt > spam.txt
+        0/1 |      START │ ./plan.py
+        1/6 |    SUCCESS │ ./plan.py
+        1/6 |      START │ echo inp1 > foo1.txt
+        2/6 |    SUCCESS │ echo inp1 > foo1.txt
+        2/6 |      START │ echo inp2 > foo2.txt
+        3/6 |    SUCCESS │ echo inp2 > foo2.txt
+        3/6 |      START │ cat foo1.txt foo2.txt > bar.txt
+        4/6 |    SUCCESS │ cat foo1.txt foo2.txt > bar.txt
+        4/6 |      START │ cat bar.txt > egg.txt
+        5/6 |    SUCCESS │ cat bar.txt > egg.txt
+        5/6 |      START │ cat egg.txt > spam.txt
+        6/6 |    SUCCESS │ cat egg.txt > spam.txt
         6/6 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         6/6 |    WARNING │ Check logs: .stepup/warning.log
         6/6 |      PHASE │ watch

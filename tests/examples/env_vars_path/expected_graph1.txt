@@ -1,13 +1,13 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = ENV_VAR_TEST_STEPUP_PREFIX [amended]
@@ -16,19 +16,19 @@ step:runpy ./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:README.txt
-             creates   step:runsh grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+             creates   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
 
 file:README.txt
                state = STATIC
-          created by   step:runpy ./plan.py
-            supplies   step:runsh grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+          created by   step:./plan.py
+            supplies   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
 
-step:runsh grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
                state = SUCCEEDED
                 need = DEFAULT
              env_var = ENV_VAR_TEST_STEPUP_PREFIX
            explained = yes
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:README.txt
              creates   file:README-stderr.txt
              creates   file:README-stdout.txt
@@ -37,10 +37,10 @@ step:runsh grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-s
 
 file:README-stdout.txt
                state = BUILT
-          created by   step:runsh grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
-            consumes   step:runsh grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+          created by   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+            consumes   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
 
 file:README-stderr.txt
                state = VOLATILE
-          created by   step:runsh grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
-            consumes   step:runsh grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+          created by   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+            consumes   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt

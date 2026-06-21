@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""A `Step` an action that can be executed and that has inputs and/or outputs."""
+"""A `Step` is a command that can be executed and that has inputs and/or outputs."""
 
 import logging
 import os
@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS step (
     rescheduled_info TEXT NOT NULL,
     -- Information about why this step was rescheduled,
     -- or an empty string if it was not rescheduled.
+    subshell INTEGER NOT NULL CHECK(subshell IN (0, 1)),
+    -- Whether the step command is executed via a subshell (shell=True).
 
     -- Metadata
     _safe INTEGER NOT NULL CHECK(_safe IN (0, 1)),
@@ -171,8 +173,8 @@ UPDATE step SET _check_after = 1 FROM (
 """
 
 
-def split_step_label(label: str) -> tuple[str, str]:
-    """Split a step label into action and workdir."""
+def split_step_label(label: str) -> tuple[str, Path]:
+    """Split a step label into command and workdir."""
     parts = label.split("  # wd=", maxsplit=1)
     return parts[0], Path(parts[1]) if len(parts) == 2 else Path("./")
 
@@ -193,16 +195,13 @@ class Step(Node):
         return STEP_SCHEMA
 
     @classmethod
-    def create_label(cls, label: str, action: str, workdir: str, **kwargs):
-        """Optionally override the user-provided label when creating a node."""
-        if label != "":
+    def create_label(cls, label: str, workdir: str = "./", **kwargs):
+        """Derive the step label from the command and optional working directory."""
+        if "  # wd=" in label:
             raise ValueError(
-                "Do not provide a label when creating a step. "
-                "It will be derived from other arguments."
+                "Do not include a workdir comment in the command string. "
+                "Pass the workdir separately."
             )
-        if "  # wd=" in action:
-            raise ValueError("Do not provide a workdir comment in the action string.")
-        label = action
         if workdir != "./":
             label += f"  # wd={workdir}"
         return label
@@ -212,18 +211,19 @@ class Step(Node):
         *,
         safe: bool = False,
         need: Need = Need.DEFAULT,
-        # ignore arguments for create_label
-        **kwargs,
+        subshell: bool = False,
+        **kwargs,  # workdir is consumed by create_label, not used here
     ):
         """Create extra information in the database about this node."""
         self.con.execute(
             "INSERT OR REPLACE INTO step "
-            "VALUES(:node, :state, :need, 1.0, '', "
+            "VALUES(:node, :state, :need, 1.0, '', :subshell, "
             ":safe, :check_safe, :implied_need, 1.0, :check_need)",
             {
                 "node": self.i,
                 "need": need.value,
                 "state": StepState.PENDING.value,
+                "subshell": int(subshell),
                 "safe": int(safe),
                 "check_safe": int(not safe),
                 "implied_need": need.value,
@@ -311,9 +311,14 @@ class Step(Node):
             amended = self.con.execute(sql, (idep,)).fetchone() is not None
             yield idep, f"{node_str} [amended]" if amended else node_str
 
-    def get_action_workdir(self) -> tuple[str, str]:
-        """Return the action and workdir of this step."""
+    def get_command_workdir(self) -> tuple[str, Path]:
+        """Return the command and workdir of this step."""
         return split_step_label(self.label)
+
+    def get_subshell(self) -> bool:
+        """Return whether this step runs the command via a subshell."""
+        row = self.con.execute("SELECT subshell FROM step WHERE node = ?", (self.i,)).fetchone()
+        return bool(row[0])
 
     def get_state(self) -> StepState:
         row = self.con.execute("SELECT state FROM step WHERE node = ?", (self.i,)).fetchone()
@@ -357,9 +362,9 @@ class Step(Node):
         Amended information is not included for consistency with
         the information that is available when defining a step.
         """
-        action, workdir = self.get_action_workdir()
+        command, workdir = self.get_command_workdir()
         return StepInfo(
-            action,
+            command,
             workdir,
             self.inp_paths(amended=False),
             self.env_vars(amended=False),

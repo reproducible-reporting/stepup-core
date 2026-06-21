@@ -6,14 +6,14 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |   DIRECTOR │ Launched worker 0
         1/3 |      PHASE │ run
-        1/3 |      START │ runsh echo soon gone > bye.txt
-        2/3 |    SUCCESS │ runsh echo soon gone > bye.txt
+        1/3 |      START │ echo soon gone > bye.txt
+        2/3 |    SUCCESS │ echo soon gone > bye.txt
         2/3 |    WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  missing.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                runsh echo data > hello.txt
+Command               echo data > hello.txt
 Working directory     ./
 Inputs       AWAITED  (missing.txt)
 Outputs      AWAITED  hello.txt

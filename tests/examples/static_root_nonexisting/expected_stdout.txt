@@ -1,10 +1,10 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
-        0/1 |      START │ runpy ./plan.py
-        1/2 |    SUCCESS │ runpy ./plan.py
-        1/2 |      START │ copy sub/message.txt message.txt
-        2/2 |    SUCCESS │ copy sub/message.txt message.txt
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ cp -p sub/message.txt message.txt
+        2/2 |    SUCCESS │ cp -p sub/message.txt message.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |    DELETED │ sub/message.txt
@@ -15,7 +15,7 @@
              MISSING  sub/message.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Action                copy sub/message.txt message.txt
+Command               cp -p sub/message.txt message.txt
 Working directory     ./
 Inputs       MISSING  sub/message.txt
 Outputs      AWAITED  message.txt
@@ -25,8 +25,8 @@ Outputs      AWAITED  message.txt
         1/2 |      PHASE │ watch
         1/2 |    UPDATED │ sub/message.txt
         1/2 |      PHASE │ run
-        1/2 |      START │ copy sub/message.txt message.txt
-        2/2 |    SUCCESS │ copy sub/message.txt message.txt
+        1/2 |      START │ cp -p sub/message.txt message.txt
+        2/2 |    SUCCESS │ cp -p sub/message.txt message.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |   DIRECTOR │ Stopping workers

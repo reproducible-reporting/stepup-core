@@ -1,49 +1,49 @@
 root:
              creates   file:plan.py
-             creates   step:runpy ./plan.py
+             creates   step:./plan.py
 
 file:plan.py
                state = STATIC
           created by   root:
-            supplies   step:runpy ./plan.py
+            supplies   step:./plan.py
 
-step:runpy ./plan.py
+step:./plan.py
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
-             creates   step:runexec cat test2.txt
-             creates   step:runsh echo test1 > test1.txt
-             creates   step:runsh echo test2 > test2.txt
+             creates   step:cat test2.txt
+             creates   step:echo test1 > test1.txt
+             creates   step:echo test2 > test2.txt
 
-step:runsh echo test1 > test1.txt
+step:echo test1 > test1.txt
                state = PENDING
                 need = OPTIONAL
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
              creates   file:test1.txt
             supplies   file:test1.txt
 
 file:test1.txt
                state = AWAITED
-          created by   step:runsh echo test1 > test1.txt
-            consumes   step:runsh echo test1 > test1.txt
+          created by   step:echo test1 > test1.txt
+            consumes   step:echo test1 > test1.txt
 
-step:runsh echo test2 > test2.txt
+step:echo test2 > test2.txt
                state = SUCCEEDED
                 need = DEFAULT (implied by consumers > OPTIONAL)
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
              creates   file:test2.txt
             supplies   file:test2.txt
 
 file:test2.txt
                state = BUILT
-          created by   step:runsh echo test2 > test2.txt
-            consumes   step:runsh echo test2 > test2.txt
-            supplies   step:runexec cat test2.txt
+          created by   step:echo test2 > test2.txt
+            consumes   step:echo test2 > test2.txt
+            supplies   step:cat test2.txt
 
-step:runexec cat test2.txt
+step:cat test2.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:runpy ./plan.py
+          created by   step:./plan.py
             consumes   file:test2.txt
