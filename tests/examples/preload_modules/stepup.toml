@@ -1,0 +1,5 @@
+[boot]
+num_workers = 1
+watch = true
+fork_runpy = true
+preload_modules = "numpy,matplotlib"

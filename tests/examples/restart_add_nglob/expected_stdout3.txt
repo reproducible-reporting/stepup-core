@@ -4,7 +4,6 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |    UPDATED │ inp3.txt
-        0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
         0/1 |      START │ ./plan.py
         1/3 |    SUCCESS │ ./plan.py
@@ -18,5 +17,4 @@ Same out hash        out2.txt
         3/3 |    SUCCESS │ cp -p inp3.txt out3.txt
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |      PHASE │ watch
-        3/3 |   DIRECTOR │ Stopping workers
         3/3 |   DIRECTOR │ See you!

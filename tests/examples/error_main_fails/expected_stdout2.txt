@@ -4,7 +4,6 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest 9753a824 ➜ 02f52b71, size 100 ➜ 45)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
         1/2 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
@@ -25,5 +24,4 @@ Return code           1
         0/0 |    WARNING │ Skipping file cleanup due to incomplete build
         0/0 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
         0/0 |      PHASE │ watch
-        0/0 |   DIRECTOR │ Stopping workers
         0/0 |   DIRECTOR │ See you!

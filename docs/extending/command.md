@@ -1,6 +1,6 @@
 # Command Dispatch
 
-When a step executes, StepUp's worker process automatically selects how to run the command.
+When a step executes, StepUp's executor automatically selects how to run the command.
 The dispatch logic depends on the `shell` flag passed to [`step()`][stepup.core.api.step]
 and the form of the command string:
 

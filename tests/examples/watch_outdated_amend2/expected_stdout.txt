@@ -1,5 +1,4 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
         0/1 |      START │ ./plan.py
         1/4 |    SUCCESS │ ./plan.py
@@ -54,5 +53,4 @@ Same inp hash        work.py
         4/4 |      CLEAN │ conv1.txt
         4/4 |    WARNING │ Check logs: .stepup/warning.log
         4/4 |      PHASE │ watch
-        4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

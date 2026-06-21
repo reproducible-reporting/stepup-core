@@ -126,9 +126,9 @@ Each type of edge is used to define a graph with its own rules and logic.
 
     ![graph_provenance.svg](dependencies/graph_provenance.svg)
 
-### Processes
+### Software components
 
-The following diagram illustrates how the components of StepUp interact. Legend:
+The following diagram illustrates how different components of StepUp interact. Legend:
 
 - White boxes: your fingers and eyes
 - Grey boxes: processes
@@ -136,8 +136,9 @@ The following diagram illustrates how the components of StepUp interact. Legend:
       when you run the `stepup` command.
     - The **director** holds the workflow data structure and is responsible
       for scheduling steps and watching for file changes.
-    - The **worker** processes execute steps and compute file and step hashes.
-- Grey arrows: standard input and standard output.
+    - Per step, there is a subprocess to compute **file hashes**.
+    - Per step, there is a subprocess to execute the **step command**.
+- Brown arrows: standard input and standard output.
 - Yellow arrows: startup of subprocesses
 - Blue arrows: remote procedure calls to control the director and the workers
 - Purple arrows: remote procedure calls for progress updates

@@ -4,7 +4,6 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest 2311fd79 ➜ 972209ed)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
@@ -13,5 +12,4 @@
         2/2 |    WARNING │ Skipping file cleanup at user's request (--no-clean)
         2/2 |    WARNING │ Check logs: .stepup/warning.log
         2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ Stopping workers
         2/2 |   DIRECTOR │ See you!

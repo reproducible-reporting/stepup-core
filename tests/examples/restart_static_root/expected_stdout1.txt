@@ -1,5 +1,4 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
@@ -7,5 +6,4 @@
         2/2 |    SUCCESS │ cp -p static/foo.txt bar.txt
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ Stopping workers
         2/2 |   DIRECTOR │ See you!

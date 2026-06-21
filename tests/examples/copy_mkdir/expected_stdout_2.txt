@@ -4,7 +4,6 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest c8ad4e34 ➜ 4cf16c0e, size 144 ➜ 146)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |   DIRECTOR │ Launched worker 0
         2/3 |      PHASE │ run
         0/1 |      START │ ./plan.py
         2/3 |    SUCCESS │ ./plan.py
@@ -14,5 +13,4 @@
         3/3 |      CLEAN │ sub/hello.txt
         3/3 |      CLEAN │ sub/
         3/3 |      PHASE │ watch
-        3/3 |   DIRECTOR │ Stopping workers
         3/3 |   DIRECTOR │ See you!

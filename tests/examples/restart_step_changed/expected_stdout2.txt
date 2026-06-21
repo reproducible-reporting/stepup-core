@@ -4,7 +4,6 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest b104d3a9 ➜ d80d3927)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |   DIRECTOR │ Launched worker 0
         2/3 |      PHASE │ run
         2/3 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
@@ -27,5 +26,4 @@ Modified inp hash    original.txt (digest 4355a46b ➜ 53c234e5)
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |    WARNING │ Check logs: .stepup/warning.log
         3/3 |      PHASE │ watch
-        3/3 |   DIRECTOR │ Stopping workers
         3/3 |   DIRECTOR │ See you!

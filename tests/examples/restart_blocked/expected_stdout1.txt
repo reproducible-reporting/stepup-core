@@ -1,5 +1,4 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
         0/1 |      START │ ./plan.py
         1/4 |    SUCCESS │ ./plan.py
@@ -24,5 +23,4 @@ Outputs      AWAITED  final.txt
         2/4 |    WARNING │ Skipping file cleanup due to incomplete build
         2/4 |    WARNING │ Check logs: .stepup/warning.log
         2/4 |      PHASE │ watch
-        2/4 |   DIRECTOR │ Stopping workers
         2/4 |   DIRECTOR │ See you!

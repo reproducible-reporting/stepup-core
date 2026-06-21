@@ -1,5 +1,4 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
         0/1 |      START │ ./plan.py
         0/0 |       FAIL │ ./plan.py
@@ -13,5 +12,4 @@ Return code           1
         0/0 |    WARNING │ Skipping file cleanup due to incomplete build
         0/0 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
         0/0 |      PHASE │ watch
-        0/0 |   DIRECTOR │ Stopping workers
         0/0 |   DIRECTOR │ See you!

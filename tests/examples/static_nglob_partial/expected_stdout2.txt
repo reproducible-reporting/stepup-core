@@ -5,7 +5,6 @@
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |    UPDATED │ tail_y.txt
         0/0 |    UPDATED │ tail_z.txt
-        0/0 |   DIRECTOR │ Launched worker 0
         1/2 |      PHASE │ run
         0/1 |      START │ ./plan.py
         1/4 |    SUCCESS │ ./plan.py
@@ -22,5 +21,4 @@ Same out hash        paste_x.txt
         4/4 |    SUCCESS │ paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |      PHASE │ watch
-        4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

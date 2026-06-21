@@ -4,12 +4,10 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    DELETED │ test2.txt
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |   DIRECTOR │ Launched worker 0
         1/4 |      PHASE │ run
         1/4 |      START │ echo test2 > test2.txt
         2/4 |    SUCCESS │ echo test2 > test2.txt
         2/4 |       SKIP │ cat test2.txt
         3/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/4 |      PHASE │ watch
-        3/4 |   DIRECTOR │ Stopping workers
         3/4 |   DIRECTOR │ See you!

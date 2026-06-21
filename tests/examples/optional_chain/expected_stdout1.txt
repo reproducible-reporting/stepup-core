@@ -4,7 +4,6 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest 9db5ea86 ➜ 1553f340, size 491 ➜ 418)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |   DIRECTOR │ Launched worker 0
         5/6 |      PHASE │ run
         5/6 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
@@ -24,5 +23,4 @@ Same env var         STEPUP_PATH_FILTER (unset)
         5/5 |      CLEAN │ bar.txt
         1/5 |    WARNING │ Check logs: .stepup/warning.log
         1/5 |      PHASE │ watch
-        1/5 |   DIRECTOR │ Stopping workers
         1/5 |   DIRECTOR │ See you!

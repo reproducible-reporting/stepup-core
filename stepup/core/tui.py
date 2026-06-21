@@ -120,8 +120,8 @@ async def async_boot(args: argparse.Namespace, default_resources: str):
         )
         if args.fork_runpy:
             argv.append("--fork-runpy")
-        if args.fork_workers:
-            argv.append("--fork-workers")
+        if args.preload_modules:
+            argv.append(f"--preload-modules={args.preload_modules}")
         if not args.duration:
             argv.append("--no-duration")
         if args.explain_rerun:
@@ -298,15 +298,14 @@ def boot_subcommand(subparsers, loader: ConfigLoader) -> callable:
         "--fork-runpy",
         default=(sys.platform == "linux"),
         action=argparse.BooleanOptionalAction,
-        help="Use forkserver for runpy script execution in workers to reduce startup overhead. "
-        "[default: True on Linux, False elsewhere]",
+        help="Use a forkserver for Python step execution and file hashing "
+        "to reduce startup overhead. [default: True on Linux, False elsewhere]",
     )
     parser.add_argument(
-        "--fork-workers",
-        default=(sys.platform == "linux"),
-        action=argparse.BooleanOptionalAction,
-        help="Use forkserver for worker startup to reduce memory overhead. "
-        "[default: True on Linux, False elsewhere]",
+        "--preload-modules",
+        default=None,
+        help="Comma-separated list of Python modules to pre-load into the forkserver. "
+        "Only has effect when --fork-runpy is active. [default: none]",
     )
     parser.add_argument(
         "--progress",

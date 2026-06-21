@@ -5,7 +5,6 @@
         0/0 |    DELETED │ inp1.txt
         0/0 |    UPDATED │ inp3.txt (digest 87428fc5 ➜ 02638299)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |   DIRECTOR │ Launched worker 0
         1/4 |      PHASE │ run
         0/1 |      START │ ./plan.py
         1/4 |    SUCCESS │ ./plan.py
@@ -37,5 +36,4 @@ Outputs     OUTDATED  out3.txt
         1/4 |    WARNING │ Skipping file cleanup due to incomplete build
         1/4 |    WARNING │ Check logs: .stepup/warning.log
         1/4 |      PHASE │ watch
-        1/4 |   DIRECTOR │ Stopping workers
         1/4 |   DIRECTOR │ See you!

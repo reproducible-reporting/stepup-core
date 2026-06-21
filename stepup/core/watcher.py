@@ -162,7 +162,7 @@ class Watcher:
         async for change, path in stoppable_iterator(change_queue.get, self.interrupt):
             await self.record_change(change, path)
 
-        # Feed all updates to the worker and clean up.
+        # Feed all updates to the workflow and clean up.
         self.active.clear()
         async with self.dblock:
             # Update the hashes of all files known to the workflow.

@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""The director process manages the workflow and sends jobs to the worker processes."""
+"""The director process manages the workflow and runs the steps as asyncio tasks."""
 
 import argparse
 import asyncio
@@ -65,9 +65,12 @@ logger = logging.getLogger(__name__)
 def main():
     args = parse_args()
     mp_ctx = None
-    if args.fork_workers:
+    if args.fork_runpy:
         mp_ctx = multiprocessing.get_context("forkserver")
-        mp_ctx.set_forkserver_preload(["stepup.core.worker"])
+        preload = ["stepup.core.executor", "stepup.core.hasher"]
+        if args.preload_modules:
+            preload.extend(m.strip() for m in args.preload_modules.split(",") if m.strip())
+        mp_ctx.set_forkserver_preload(preload)
     asyncio.run(async_main(args, mp_ctx))
 
 
@@ -80,6 +83,9 @@ async def async_main(args: argparse.Namespace, mp_ctx=None):
     print(f"SOCKET {args.director_socket}", file=sys.stderr)
     print(f"PID {os.getpid()}", file=sys.stderr)
     print(f"LOG_LEVEL {args.log_level}", file=sys.stderr)
+    # To detect invalid usage of the RPCCLIENT in stepup.core.api  within the director process,
+    # we set the STEPUP_DIRECTOR_SOCKET to an invalid value.
+    os.environ["STEPUP_DIRECTOR_SOCKET"] = "_invalid_socket_for_director_process_"
     if args.yappi:
         if yappi is None:
             print(
@@ -107,7 +113,6 @@ async def async_main(args: argparse.Namespace, mp_ctx=None):
                 args.watch_first,
                 args.resources,
                 mp_ctx=mp_ctx,
-                fork_runpy=args.fork_runpy,
             )
         except Exception as exc:
             tbstr = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
@@ -171,14 +176,14 @@ def parse_args() -> argparse.Namespace:
         "--fork-runpy",
         default=False,
         action=argparse.BooleanOptionalAction,
-        help="Use forkserver for runpy script execution in workers to reduce startup overhead. "
-        "[default=%(default)s]",
+        help="Use a forkserver for Python step execution and file hashing "
+        "to reduce startup overhead. [default=%(default)s]",
     )
     parser.add_argument(
-        "--fork-workers",
-        default=False,
-        action=argparse.BooleanOptionalAction,
-        help="Use forkserver for worker startup to reduce memory overhead. [default=%(default)s]",
+        "--preload-modules",
+        default=None,
+        help="Comma-separated list of Python modules to pre-load into the forkserver. "
+        "Only has effect when --fork-runpy is active.",
     )
     parser.add_argument(
         "--reporter",
@@ -250,7 +255,6 @@ async def serve(
     do_watch_first: bool,
     available_resources: str | None,
     mp_ctx=None,
-    fork_runpy: bool = False,
 ) -> ReturnCode:
     """Server program.
 
@@ -259,7 +263,7 @@ async def serve(
     director_socket_path
         The socket to listen to for remote calls.
     nworker
-        The number of worker processes.
+        The maximum number of steps to run concurrently.
     reporter
         The reporter client for sending information back to
         the terminal user interface.
@@ -281,9 +285,8 @@ async def serve(
         A dictionary of named resources and their available quantities,
         e.g. `{"cpu": 4, "gpu": 1}`. Defaults to an empty dict.
     mp_ctx
-        A `multiprocessing` forkserver context for worker startup, or `None` to use subprocesses.
-    fork_runpy
-        If `True`, workers use a forkserver for runpy script execution to reduce startup overhead.
+        A `multiprocessing` forkserver context for Python step execution and file hashing,
+        or `None` to use plain subprocesses.
 
     Returns
     -------
@@ -295,6 +298,16 @@ async def serve(
     if do_watch_first and not do_watch:
         raise ValueError("do_watch_first cannot be set without do_watch.")
     check_plan("plan.py")
+
+    # Environment variables exported to step child processes (and forkserver children).
+    # These are passed explicitly to the executor rather than set in `os.environ`,
+    # so that running the director in-process (e.g. in the test suite) does not
+    # pollute the calling process's environment.
+    step_env = {
+        "STEPUP_DIRECTOR_SOCKET": str(director_socket_path),
+        "STEPUP_ROOT": str(Path.cwd()),
+        "STEPUP_LOG_LEVEL": logging.getLevelName(logging.root.level),
+    }
 
     # Create basic components
     con = connect(".stepup/graph.db")
@@ -317,12 +330,11 @@ async def serve(
         workflow=workflow,
         dblock=dblock,
         reporter=reporter,
-        director_socket_path=director_socket_path,
         show_perf=show_perf,
         explain_rerun=explain_rerun,
         do_remove_outdated=do_clean,
         mp_ctx=mp_ctx,
-        fork_runpy=fork_runpy,
+        step_env=step_env,
     )
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(
@@ -353,8 +365,7 @@ async def serve(
         # In case of an exception, set the stop event, so other parts know they can stop waiting.
         stop_event.set()
         # Regular shutdown
-        await reporter("DIRECTOR", "Stopping workers")
-        await runner.stop_workers()
+        await runner.stop()
         exit_event.set()
         await rpc_server
         director_socket_path.remove_p()
@@ -545,7 +556,7 @@ class DirectorHandler:
 
     @allow_rpc
     async def shutdown(self):
-        """Shut down the director and worker processes."""
+        """Shut down the director and stop all workers."""
         self.dispatcher.on_hold = True
         if self.stop_event.is_set():
             signal_name, signal_number = (
@@ -553,11 +564,11 @@ class DirectorHandler:
                 if self._shutdown_counter == 1
                 else ("SIGTERM", signal.SIGTERM)
             )
-            await self.reporter("DIRECTOR", f"Interrupting worker subprocesses ({signal_name}).")
+            await self.reporter("DIRECTOR", f"Interrupting running steps ({signal_name}).")
             await self.runner.interrupt_workers(signal_number)
             self._shutdown_counter += 2
         else:
-            if len(self.runner.active_workers) > 0:
+            if len(self.runner.running_worker_tasks) > 0:
                 await self.reporter("DIRECTOR", "Waiting for steps to complete before shutdown.")
             self.stop_event.set()
             self._shutdown_counter = 1

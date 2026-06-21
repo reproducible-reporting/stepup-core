@@ -354,17 +354,12 @@ class InputNotFoundError(Exception):
 
 # A history used to avoid amending the same information twice.
 # This effectively reduces the amount of amend API calls.
-AMEND_HISTORY = {}
-
-
-def _drop_amend_history():
-    AMEND_HISTORY["inp"] = set()
-    AMEND_HISTORY["env"] = set()
-    AMEND_HISTORY["out"] = set()
-    AMEND_HISTORY["vol"] = set()
-
-
-_drop_amend_history()
+AMEND_HISTORY = {
+    "inp": set(),
+    "env": set(),
+    "out": set(),
+    "vol": set(),
+}
 
 
 def amend(
@@ -751,8 +746,8 @@ def getenv(
     """
     path = path or back or multi
     value = os.getenv(name, default)
-    # Do not amend environment variables set by the worker.
-    # See stepup.core.worker.WorkerHandler.run
+    # Do not amend environment variables set for the step by the executor.
+    # See stepup.core.executor.StepExecutor.run
     if name not in ["HERE", "ROOT", "STEPUP_STEP_I", "STEPUP_STEP_INP_DIGEST"]:
         amend(env=name)
     if multi:
@@ -1325,6 +1320,8 @@ def _check_no_directories(paths: Iterable[Path]):
 def get_rpc_client(socket: str | None = None):
     """Try setting up a Synchronous RPC client or fall back to the dummy client if that fails."""
     stepup_director_socket = os.getenv("STEPUP_DIRECTOR_SOCKET", socket)
+    if stepup_director_socket == "_invalid_socket_for_director_process_":
+        raise RuntimeError("The RPC client is being used within the director process.")
     if stepup_director_socket is None:
         return DummySyncRPCClient()
     return SocketSyncRPCClient(stepup_director_socket)

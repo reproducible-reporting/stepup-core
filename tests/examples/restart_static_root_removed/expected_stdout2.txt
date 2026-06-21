@@ -7,7 +7,6 @@
         0/0 |    UPDATED │ static/bar.txt (digest 7d865e95 ➜ 7e4fa2eb, size 4 ➜ 6)
         0/0 |    DELETED │ foo.txt
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |   DIRECTOR │ Launched worker 0
         0/3 |      PHASE │ run
         0/3 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
@@ -28,5 +27,4 @@ Modified inp hash    static/bar.txt (digest 7d865e95 ➜ 7e4fa2eb, size 4 ➜ 6)
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |    WARNING │ Check logs: .stepup/warning.log
         2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ Stopping workers
         2/2 |   DIRECTOR │ See you!

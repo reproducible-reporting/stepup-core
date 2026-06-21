@@ -4,7 +4,6 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ sub/plan.py (digest 0a553827 ➜ e3f536ef, size 171 ➜ 80)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |   DIRECTOR │ Launched worker 0
         3/4 |      PHASE │ run
         2/3 |      START │ ./plan.py  # wd=sub/
         3/3 |    SUCCESS │ ./plan.py  # wd=sub/
@@ -14,5 +13,4 @@
         3/3 |      CLEAN │ out.txt
         2/3 |    WARNING │ Check logs: .stepup/warning.log
         2/3 |      PHASE │ watch
-        2/3 |   DIRECTOR │ Stopping workers
         2/3 |   DIRECTOR │ See you!

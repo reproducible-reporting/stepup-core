@@ -1,5 +1,4 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
         0/1 |      START │ ./plan.py
         1/3 |    SUCCESS │ ./plan.py
@@ -11,5 +10,4 @@
         4/4 |    SUCCESS │ cp -p ../out.txt final.txt  # wd=sub/
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |      PHASE │ watch
-        4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

@@ -28,6 +28,13 @@ jobs:
   tests:
     permissions:
       contents: read
+    env:
+      # Enforce strict checks instead of trying to repair fixable issues.
+      STEPUP_DEBUG: 1
+      # Duration measurements are disabled to make tests deterministic.
+      STEPUP_BOOT_DURATION: 0
+      # RPC timeout is set shorter to speed up tests in case of failures.
+      STEPUP_SYNC_RPC_TIMEOUT: 10
     strategy:
       matrix:
         include:
@@ -51,7 +58,9 @@ jobs:
         run: pip install -r .github/requirements-old.txt
       - name: Install latest commit version with all development dependencies
         run: pip install -e .[dev]
-      - name: Run pytest
-        # Enforce strict checks instead of trying to repair fixable issues.
-        # RPC timeout is set shorter to speed up tests in case of failures.
-        run: STEPUP_DEBUG=1 STEPUP_BOOT_DURATION=0 STEPUP_SYNC_RPC_TIMEOUT=10 pytest -vv
+      - name: Run fast unit tests
+        run: pytest -vv -k "not test_example"
+      - name: Run integration tests with forked subprocesses
+        run: STEPUP_BOOT_FORK_RUNPY=1 pytest -vv tests/test_examples.py
+      - name: Run integration tests with plain subprocesses
+        run: STEPUP_BOOT_FORK_RUNPY=0 pytest -vv tests/test_examples.py

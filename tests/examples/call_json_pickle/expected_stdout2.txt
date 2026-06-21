@@ -4,7 +4,6 @@
         0/0 |    UPDATED │ STEPUP_CALL_FORMAT ='json' ➜ ='pickle'
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |   DIRECTOR │ Launched worker 0
         0/3 |      PHASE │ run
         0/1 |      START │ ./plan.py
         1/3 |    SUCCESS │ ./plan.py
@@ -16,5 +15,4 @@
         3/3 |      CLEAN │ join_out.json
         3/3 |      CLEAN │ join_inp.json
         3/3 |      PHASE │ watch
-        3/3 |   DIRECTOR │ Stopping workers
         3/3 |   DIRECTOR │ See you!

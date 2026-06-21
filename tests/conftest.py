@@ -42,6 +42,17 @@ from stepup.core.workflow import Workflow
 
 pytest.register_assert_rewrite("stepup.core.pytest")
 
+
+def pytest_collection_modifyitems(items):
+    if os.environ.get("STEPUP_BOOT_FORK_RUNPY") == "0":
+        skip = pytest.mark.skip(
+            reason="requires fork-based process execution (STEPUP_BOOT_FORK_RUNPY != 0)"
+        )
+        for item in items:
+            if item.get_closest_marker("requires_fork_runpy"):
+                item.add_marker(skip)
+
+
 BOOT_UNTIL_DONE = """\
 #!/usr/bin/env python3
 from path import Path

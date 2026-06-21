@@ -4,7 +4,6 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ config.txt (digest f66ab398 ➜ 291423c4, size 9 ➜ 11)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |   DIRECTOR │ Launched worker 0
         3/4 |      PHASE │ run
         1/2 |      START │ ./script.py plan
         2/4 |    SUCCESS │ ./script.py plan
@@ -16,5 +15,4 @@
         4/4 |      CLEAN │ out_foo.txt
         4/4 |      CLEAN │ out_bar.txt
         4/4 |      PHASE │ watch
-        4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

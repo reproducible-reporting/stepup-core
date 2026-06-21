@@ -126,18 +126,22 @@ separated by slashes, where applicable.
 
 `fork_runpy` / `STEPUP_BOOT_FORK_RUNPY` / `--fork-runpy`, `--no-fork-runpy`
 
-:   Set to `true` to use a forkserver for runpy script execution in workers, which reduces startup overhead.
+:   Set to `true` to use a forkserver for Python step execution and file hashing,
+    which reduces startup overhead.
     This is enabled by default on Linux.
 
-`fork_workers` / `STEPUP_BOOT_FORK_WORKERS` / `--fork-workers`, `--no-fork-workers`
+`preload_modules` / `STEPUP_BOOT_PRELOAD_MODULES` / `--preload-modules`
 
-:   Set to `true` to launch workers with a forkserver, which reduces memory overhead
-    and improves performance.
-    This is enabled by default on Linux.
+:   A comma-separated list of Python modules to pre-load into the forkserver.
+    Only has effect when `fork_runpy = true`.
+    Use this to reduce per-step startup time when all (or most) steps import the same large modules.
+    For example, `preload_modules = "numpy,scipy"` pre-loads NumPy and SciPy into the forkserver
+    so that each Python step forked from it inherits them at zero import cost.
+    By default, no additional modules are pre-loaded (only internal StepUp modules are pre-loaded).
 
 `num_workers` / `STEPUP_BOOT_NUM_WORKERS` / `--num-workers`, `-n`
 
-:   The number of worker processes to use for executing steps.
+:   The maximum number of steps to run concurrently.
     When given as a floating point number, the value is multiplied by the number of available CPU cores.
     The default is `1.2`.
 

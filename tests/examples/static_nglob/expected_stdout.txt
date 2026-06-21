@@ -1,5 +1,4 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
         0/1 |      START │ ./plan.py
        1/11 |    SUCCESS │ ./plan.py
@@ -62,5 +61,4 @@ Planning sec 1 summary
       11/11 |   DIRECTOR │ Trying to delete 1 outdated output(s)
       11/11 |      CLEAN │ ch-2-theory/sec-2-2-advanced.md
       11/11 |      PHASE │ watch
-      11/11 |   DIRECTOR │ Stopping workers
       11/11 |   DIRECTOR │ See you!

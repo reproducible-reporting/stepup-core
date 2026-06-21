@@ -4,7 +4,6 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         0/0 |    UPDATED │ sub/inp3.txt
-        0/0 |   DIRECTOR │ Launched worker 0
         3/4 |      PHASE │ run
         1/2 |      START │ ./plan.py  # wd=sub/
         2/5 |    SUCCESS │ ./plan.py  # wd=sub/
@@ -20,5 +19,4 @@ Same step hash       compact, inp_digest 7c62e657, out_digest c2c4c1bb
         5/5 |    SUCCESS │ cp -p inp3.txt out3.txt  # wd=sub/
         5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         5/5 |      PHASE │ watch
-        5/5 |   DIRECTOR │ Stopping workers
         5/5 |   DIRECTOR │ See you!

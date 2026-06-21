@@ -17,25 +17,33 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""The `Runner` delegates the execution of jobs to the workers."""
+"""The `Runner` drives the build by pulling runnable jobs and sending them to the executor.
+
+Each *run phase* starts when the `resume` event is set,
+executes all currently runnable jobs via `job_loop`,
+and ends with `finalize`, which reverts optional steps,
+reports pending/failed steps, removes outdated outputs,
+and notifies the `Watcher` to resume file-system monitoring.
+
+The module also contains the standalone helpers `revert_optional`, `report_completion`,
+and `remove_outdated_outputs` that are called during finalization.
+"""
 
 import asyncio
 import logging
-from functools import partial
+import signal
 
 import attrs
-from path import Path
 
 from .asyncio import wait_for_events
 from .dispatcher import Dispatcher
 from .enums import FileState, Need, ReturnCode, StepState
-from .exceptions import RPCError
+from .executor import StepExecutor
 from .hash import FileHash
 from .job import Job
 from .reporter import ReporterClient
 from .utils import DBLock, myparent, remove_path
 from .watcher import Watcher
-from .worker import WorkerClient
 from .workflow import Workflow
 
 __all__ = ("Runner",)
@@ -47,10 +55,10 @@ logger = logging.getLogger(__name__)
 @attrs.define
 class Runner:
     nworker: int = attrs.field(kw_only=True)
-    """The number of worker processes to launch."""
+    """The maximum number of steps to run concurrently."""
 
     need_job: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
-    """Event that is set when there is a worker ready to take another job."""
+    """Event that is set when there is capacity to take another job."""
 
     watcher: Watcher | None = attrs.field(kw_only=True)
     """The watcher instance, used to start the watcher when the runner becomes idle."""
@@ -67,26 +75,14 @@ class Runner:
     reporter: ReporterClient = attrs.field(kw_only=True)
     """A reporter client for sending progress info to."""
 
-    director_socket_path: Path = attrs.field(kw_only=True)
-    """The path of the director socket, passed on to worker processes."""
-
     show_perf: bool = attrs.field(kw_only=True)
-    """Flag to enable performance output after a worker executed a step."""
+    """Flag to enable performance output after a step executed."""
 
     explain_rerun: bool = attrs.field(kw_only=True)
     """Flag to enable more details on why steps cannot be skipped."""
 
     resume: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
     """Other parts of StepUp can set the resume event to put the runner back to work."""
-
-    workers: list[WorkerClient] = attrs.field(init=False, factory=list)
-    """A list of worker client objects, one for each worker process."""
-
-    active_workers: set[int] = attrs.field(init=False, factory=set)
-    """The list of active workers (just integer indexes of the workers list)."""
-
-    idle_workers: set[int] = attrs.field(init=False, factory=set)
-    """The list of idle workers (just integer indexes of the workers list)."""
 
     running_worker_tasks: dict[asyncio.Task, Job] = attrs.field(init=False, factory=dict)
     """Dictionary of asyncio tasks that are currently running a job."""
@@ -101,10 +97,26 @@ class Runner:
     """Flag to enable removal of outdated outputs."""
 
     mp_ctx: object = attrs.field(kw_only=True, default=None)
-    """Multiprocessing forkserver context, or None to use subprocesses."""
+    """Multiprocessing forkserver context, or None to use plain subprocesses."""
 
-    fork_runpy: bool = attrs.field(kw_only=True, default=False)
-    """Whether to use a forkserver for runpy script execution."""
+    step_env: dict = attrs.field(kw_only=True, factory=dict)
+    """Environment variables exported to step child processes, overriding `os.environ`."""
+
+    executor: StepExecutor = attrs.field(init=False)
+    """The executor that runs the steps as asyncio tasks in this process."""
+
+    @executor.default
+    def _executor_default(self):
+        return StepExecutor(
+            self.dispatcher,
+            self.workflow,
+            self.dblock,
+            self.reporter,
+            self.show_perf,
+            self.explain_rerun,
+            mp_ctx=self.mp_ctx,
+            step_env=self.step_env,
+        )
 
     async def loop(self, stop_event: asyncio.Event):
         """The main runner loop.
@@ -119,14 +131,6 @@ class Runner:
         One iteration in the main runner loop consists of running a bunch of jobs:
         All runnable jobs are executed unless the user interrupts the runner (drain command).
         """
-        # Start workers in parallel.
-        await asyncio.gather(
-            *[
-                self._launch_worker(idx, f".stepup/worker{idx}.log", stop_event)
-                for idx in range(self.nworker)
-            ]
-        )
-        self.idle_workers = set(range(self.nworker))
         # Loop through run phases.
         while True:
             await wait_for_events(self.resume, stop_event, return_when=asyncio.FIRST_COMPLETED)
@@ -195,46 +199,15 @@ class Runner:
             self.watcher.resume.set()
 
     async def send_to_worker(self, job: Job):
-        """Select an idle worker and send the job to it."""
-        # Select an idle worker.
-        if len(self.idle_workers) > 0:
-            worker_idx = self.idle_workers.pop()
-        else:
-            raise RuntimeError("No idle workers available.")
-        # Move it to the set of active workers.
-        worker = self.workers[worker_idx]
-        self.active_workers.add(worker_idx)
-        # Send the job to the worker.
+        """Start an asyncio task that runs the job in the executor."""
         logger.info("Run %s", job.name)
-        task = asyncio.create_task(job.coro(worker), name=job.name)
+        task = asyncio.create_task(job.coro(self.executor), name=job.name)
         self.running_worker_tasks[task] = job
-        task.add_done_callback(partial(self._task_done, worker_idx=worker_idx))
+        task.add_done_callback(self._task_done)
 
-    async def _launch_worker(self, idx: int, log_path: str, stop_event: asyncio.Event):
-        worker = WorkerClient(
-            self.dispatcher,
-            self.workflow,
-            self.dblock,
-            self.reporter,
-            self.director_socket_path,
-            self.show_perf,
-            self.explain_rerun,
-            idx,
-            mp_ctx=self.mp_ctx,
-            fork_runpy=self.fork_runpy,
-        )
-        self.workers.append(worker)
-        await worker.boot(log_path, stop_event)
-        await self.reporter("DIRECTOR", f"Launched worker {worker.idx}")
-
-    def _task_done(self, task: asyncio.Task, worker_idx: int):
+    def _task_done(self, task: asyncio.Task):
         job = self.running_worker_tasks.pop(task)
         self.done_worker_tasks[task] = job
-        if worker_idx in self.active_workers:
-            self.active_workers.discard(worker_idx)
-            self.idle_workers.add(worker_idx)
-        else:
-            raise RuntimeError(f"Worker {worker_idx} not in active workers.")
         self.need_job.set()
 
     async def handle_done_tasks(self):
@@ -250,33 +223,17 @@ class Runner:
             await self.dispatcher.job_completed(job)
             self.need_job.set()
 
-    async def stop_workers(self):
-        async def stop_worker(w):
-            try:
-                await w.shutdown()
-            except (ConnectionError, RPCError) as exc:
-                # Ignore connection/RPC errors when requesting worker shutdown
-                logger.warning(
-                    "Ignoring exception when requesting worker shutdown on worker %r: %r",
-                    w.idx,
-                    exc,
-                )
-            finally:
-                await w.close()
+    async def stop(self):
+        """Cancel any still-running step tasks and signal their child processes."""
+        self.executor.interrupt(signal.SIGTERM)
+        tasks = list(self.running_worker_tasks)
+        for task in tasks:
+            task.cancel()
+        if len(tasks) > 0:
+            await asyncio.gather(*tasks, return_exceptions=True)
 
-        tasks = []
-        while len(self.idle_workers) > 0:
-            worker_idx = self.idle_workers.pop()
-            tasks.append(stop_worker(self.workers[worker_idx]))
-        while len(self.active_workers) > 0:
-            worker_idx = self.active_workers.pop()
-            tasks.append(stop_worker(self.workers[worker_idx]))
-        await asyncio.gather(*tasks)
-
-    async def interrupt_workers(self, signal: int):
-        await asyncio.gather(
-            *[self.workers[worker_idx].interrupt(signal) for worker_idx in self.active_workers]
-        )
+    async def interrupt_workers(self, sig: int):
+        self.executor.interrupt(sig)
 
 
 CREATE_TEMP_TABLE_STEP = f"""

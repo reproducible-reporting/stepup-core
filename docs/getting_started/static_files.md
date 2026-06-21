@@ -47,7 +47,7 @@ The file `numbered.txt` will contain a copy of the limerick with line numbers.
   The line numbering is repeated, but the step `./plan.py` is skipped as it did not change.
 
 - Change the order of `static()` and `run()` in `plan.py` and run `stepup boot -n 1` again.
-  This has no apparent effect, but the step is only sent to the worker process after the director
+  This has no apparent effect, but the step is only started after the director
   is informed that the file `limerick.txt` is static.
 
 - Comment out the `static()` function call and run `stepup boot -n 1` again.

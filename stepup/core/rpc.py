@@ -487,18 +487,19 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
     counter: int = attrs.field(init=False, default=0)
     """A counter to keep track of the call ids, needed to pair requests and responses."""
 
-    _socket: socket.socket = attrs.field(init=False)
+    _socket: socket.socket | None = attrs.field(init=False, default=None)
     """The socket to communicate with the server."""
 
     _partial_recv: bytes = attrs.field(init=False, default=b"")
     """The bytes received from the socket that are not yet used."""
 
-    @_socket.default
-    def _default_socket(self):
+    @property
+    def socket(self):
         """Create a socket and connect to the server."""
-        result = socket.socket(socket.AF_UNIX)
-        result.connect(self.path)
-        return result
+        if self._socket is None:
+            self._socket = socket.socket(socket.AF_UNIX)
+            self._socket.connect(self.path)
+        return self._socket
 
     def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs) -> Any:
         """Call a function of the RPC server (always blocking).
@@ -534,7 +535,7 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
         request = pickle.dumps([name, args, kwargs], protocol=pickle.HIGHEST_PROTOCOL)
         self.counter += 1
         call_id = self.counter
-        self._socket.settimeout(None if _rpc_timeout <= 0 else _rpc_timeout)
+        self.socket.settimeout(None if _rpc_timeout <= 0 else _rpc_timeout)
         self._send_rpc_message(call_id, request)
         response = self._recv_rpc_message(call_id)
         body, is_error = pickle.loads(response)
@@ -559,12 +560,12 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
 
     def _send_rpc_message(self, call_id: int, message: bytes | None):
         """Send a single RPC request."""
-        self._socket.sendall(call_id.to_bytes(8))
+        self.socket.sendall(call_id.to_bytes(8))
         if message is None:
-            self._socket.sendall((0).to_bytes(8))
+            self.socket.sendall((0).to_bytes(8))
         else:
-            self._socket.sendall(len(message).to_bytes(8))
-            self._socket.sendall(message)
+            self.socket.sendall(len(message).to_bytes(8))
+            self.socket.sendall(message)
 
     def _recv_rpc_message(self, expected_call_id: int) -> bytes:
         """Receive a single RPC response."""
@@ -586,7 +587,7 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
 
         Raises
         ------
-        ConectionResetError
+        ConnectionResetError
             When the socket returns zero bytes, the connection is lost and this error is raised.
 
         Returns
@@ -597,7 +598,7 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
             following call to `_readexactly`.
         """
         while len(self._partial_recv) < size:
-            fragment = self._socket.recv(4096)
+            fragment = self.socket.recv(4096)
             if len(fragment) == 0:
                 raise ConnectionResetError
             self._partial_recv += fragment

@@ -15,13 +15,14 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - In addition to environment variables and command-line arguments,
   StepUp can now also be configured through configuration files.
   See [Configuration files](reference/configuration.md) for details.
-- StepUp can now launch workers with a forkserver, which reduces memory overhead
-  and improves performance.
-  This can be controlled with the `--fork-workers` flag,
-  which is enabled by default on Linux.
-- The workers themselves can also use a forkserver for runpy script execution.
+- StepUp can use a forkserver for Python step execution and file hashing,
+  which reduces startup overhead.
   This can be controlled with the `--fork-runpy` flag,
   which is enabled by default on Linux.
+- Added `--preload-modules` option to `stepup boot` to specify a comma-separated list of Python
+  modules to be pre-loaded into the forkserver.
+  This only has an effect when `--fork-runpy` is active and can speed up workflows
+  that repeatedly import large modules.
 - When the first word of a `run()` command is a bare command name matching a `console_scripts`
   entry point from the current Python environment, StepUp now automatically selects the
   `runpyep` action.
@@ -75,6 +76,9 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
     - Replaced the Blake2B hash by the more common SHA-256.
     - The "action" abstraction layer introduced in StepUp 3 has been completely removed,
       as it was no longer needed after the introduction of the forkserver.
+    - Worker subprocesses have been replaced by asyncio tasks running inside the director.
+      File hashing is offloaded to a dedicated subprocess (`_stepup_hasher` or a forkserver child).
+      The `--fork-workers` option has been removed as a consequence.
 
 ### Removed
 

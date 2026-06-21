@@ -27,12 +27,34 @@ import sys
 from path import Path
 
 __all__ = (
+    "await_fd_readable",
     "pipe",
     "stdio",
     "stoppable_iterator",
     "wait_for_events",
     "wait_for_path",
 )
+
+
+#
+# Await a file descriptor becoming readable
+#
+
+
+async def await_fd_readable(fd: int) -> None:
+    """Wait until file descriptor `fd` becomes readable."""
+    loop = asyncio.get_running_loop()
+    fut = loop.create_future()
+
+    def _on_readable():
+        if not fut.done():
+            fut.set_result(None)
+
+    loop.add_reader(fd, _on_readable)
+    try:
+        await fut
+    finally:
+        loop.remove_reader(fd)
 
 
 #

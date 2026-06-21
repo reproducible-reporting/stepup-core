@@ -71,7 +71,7 @@ because it needs 2 CPUs and 1 GPU at the same time.
 ## Try the Following
 
 - Run `stepup boot -n 4` again without making changes.
-  Skipping steps requires hash computations, which are done by worker processes
+  Skipping steps requires hash computations, which are done by a dedicated hashing subprocess
   and are never subject to resource restrictions.
 
 - Change `STEPUP_RESOURCES` to `"cpu:4,gpu:2"` and verify that all three steps

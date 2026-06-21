@@ -4,7 +4,6 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest ceb2e927 ➜ 35ccdaf6, size 182 ➜ 183)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |   DIRECTOR │ Launched worker 0
         3/4 |      PHASE │ run
         0/1 |      START │ ./plan.py
         1/4 |    SUCCESS │ ./plan.py
@@ -13,5 +12,4 @@
         3/4 |       SKIP │ cp -p ../hop2.txt hop3.txt  # wd=sub/
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |      PHASE │ watch
-        4/4 |   DIRECTOR │ Stopping workers
         4/4 |   DIRECTOR │ See you!

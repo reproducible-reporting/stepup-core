@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""Definition of jobs to be executed by a worker."""
+"""Definition of jobs to be executed by the executor."""
 
 from time import perf_counter
 from typing import TYPE_CHECKING
@@ -25,9 +25,9 @@ from typing import TYPE_CHECKING
 import attrs
 
 if TYPE_CHECKING:
+    from .executor import StepExecutor
     from .file import FileHash
     from .step import Step, StepHash
-    from .worker import WorkerClient
 
 
 __all__ = ("Job", "RunJob", "ValidateAmendedJob")
@@ -35,7 +35,7 @@ __all__ = ("Job", "RunJob", "ValidateAmendedJob")
 
 @attrs.define(frozen=True)
 class Job:
-    """A job to be executed by a worker."""
+    """A job to be executed by the executor."""
 
     step: "Step" = attrs.field()
     """The step related to this job."""
@@ -57,7 +57,7 @@ class Job:
         """A human-readable name for the job."""
         raise NotImplementedError
 
-    def coro(self, worker: "WorkerClient"):
+    def coro(self, executor: "StepExecutor"):
         """Return a coroutine, of which the runner will make an asyncio.Task."""
         raise NotImplementedError
 
@@ -80,8 +80,8 @@ class ValidateAmendedJob(Job):
     def name(self) -> str:
         return f"VALIDATE: {self.step.label}"
 
-    def coro(self, worker: "WorkerClient"):
-        return worker.validate_amended_job(
+    def coro(self, executor: "StepExecutor"):
+        return executor.validate_amended_job(
             self.step, self.inp_hashes, self.env_vars, self.step_hash
         )
 
@@ -99,7 +99,7 @@ class RunJob(Job):
         prefix = "EXECUTE" if self.step_hash is None else "SKIP"
         return f"{prefix}: {self.step.label}"
 
-    def coro(self, worker: "WorkerClient"):
+    def coro(self, executor: "StepExecutor"):
         if self.step_hash is None:
-            return worker.execute_job(self.step, self.inp_hashes, self.env_vars)
-        return worker.try_skip_job(self.step, self.inp_hashes, self.env_vars, self.step_hash)
+            return executor.execute_job(self.step, self.inp_hashes, self.env_vars)
+        return executor.try_skip_job(self.step, self.inp_hashes, self.env_vars, self.step_hash)

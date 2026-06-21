@@ -4,7 +4,6 @@
         0/0 |    UPDATED │ ENV_VAR_TEST_STEPUP_IDX ='3' ➜ ='1'
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |   DIRECTOR │ Launched worker 0
         2/6 |      PHASE │ run
         2/6 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
@@ -25,5 +24,4 @@ Same env var         STEPUP_PATH_FILTER (unset)
         3/6 |      CLEAN │ converted3.txt
         3/6 |    WARNING │ Check logs: .stepup/warning.log
         3/6 |      PHASE │ watch
-        3/6 |   DIRECTOR │ Stopping workers
         3/6 |   DIRECTOR │ See you!

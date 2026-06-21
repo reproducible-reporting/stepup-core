@@ -119,10 +119,16 @@ StepUp runs as two process types:
   An asyncio process that owns the workflow graph and SQLite database.
   It exposes an RPC server over a Unix socket (`.stepup/sockets/director`).
   Manages `Runner`, `Watcher`, and `Dispatcher`.
-- **Worker** (`worker.py`):
-  Subprocess(es) that execute individual steps.
-  Each worker connects back to the director via its own RPC socket.
-  Workers report file hashes, step outcomes, and newly declared steps.
+  Steps run *inside* the director's event loop as asyncio tasks (no worker subprocesses).
+- **StepExecutor** (`executor.py`):
+  Runs each step as an asyncio task. Commands run as asyncio subprocesses (shell / direct
+  exec) or in a forkserver child (Python scripts and console-script entry points).
+  A single `StepExecutor` instance serves all concurrent steps; `--num-workers` is the
+  concurrency limit. Step child processes call back into the director over its RPC socket
+  (e.g. `amend()`, `step()`).
+- **Hashing** (`hasher.py`):
+  File/step hashing — the only blocking work — is offloaded to a separate process: a
+  forkserver child when `--fork-runpy` is on, otherwise a `_stepup_hasher` subprocess.
 - **TUI** (`tui.py`):
   Boots the director as a subprocess and connects to it via the reporter RPC socket.
   Renders progress to the terminal.
@@ -151,7 +157,7 @@ The `DBLock` in `utils.py` serializes writes.
 Lightweight pickle-based RPC over asyncio streams or Unix sockets.
 Methods decorated with `@allow_rpc` are exposed remotely.
 Both sync (`SocketSyncRPCClient`) and async (`AsyncRPCClient`) clients exist.
-Workers use stdio RPC; the director uses socket RPC.
+The director runs a socket RPC server; step child processes and the TUI are the clients.
 
 ### User-Facing API (`api.py`)
 
@@ -164,10 +170,12 @@ except `interact.py`, `call.py`, and `script.py`.
 
 1. `Dispatcher` (`dispatcher.py`) picks the highest-priority runnable step
    from the `Workflow` and creates a corresponding `Job` instance.
-2. `Runner` (`runner.py`) requests a runnable job from the dispatcher.
-3. `Worker` processes execute steps, which may produce more RPC calls to the director.
-4. On completion, the worker reports file hashes back to the director.
-   The director updates `FileState` and `StepState` in the workflow.
+2. `Runner` (`runner.py`) requests a runnable job from the dispatcher and, up to the
+   concurrency limit, starts it as an asyncio task on the shared `StepExecutor`.
+3. `StepExecutor` (`executor.py`) runs the step's command (subprocess or forkserver child),
+   which may produce more RPC calls back to the director.
+4. The executor computes file hashes in a separate process and updates
+   `FileState` and `StepState` in the workflow.
 
 ### Named Globs (`nglob.py`)
 
@@ -212,6 +220,17 @@ The following test commands will complete quickly as it skips the integration te
 ```bash
 pytest -k "not test_example"
 ```
+
+Always wrap the quick test run in a short timeout, e.g.:
+
+```bash
+timeout 15 pytest -k "not test_example"
+```
+
+15 seconds is very generous for this selection.
+If a step crashes, the `client` test fixture can otherwise block indefinitely
+(it waits for the workflow to reach a state that never arrives),
+so a timeout prevents a runaway, hanging test process.
 
 It may also be useful to run a small number of integration tests,
 to get a first quick feedback on the overall system:

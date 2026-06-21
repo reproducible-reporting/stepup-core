@@ -1,5 +1,4 @@
         0/0 |    STARTUP │ (Re)initialized boot script
-        0/0 |   DIRECTOR │ Launched worker 0
         0/1 |      PHASE │ run
         0/1 |      START │ ./plan.py
         1/3 |    SUCCESS │ ./plan.py
@@ -28,5 +27,4 @@ Input changed unexpectedly: cases.txt (digest ba246937 ➜ b7bf4c7e)
         3/3 |   DIRECTOR │ Trying to delete 1 outdated output(s)
         3/3 |      CLEAN │ case1.txt
         3/3 |      PHASE │ watch
-        3/3 |   DIRECTOR │ Stopping workers
         3/3 |   DIRECTOR │ See you!

@@ -6,7 +6,7 @@ rm -rvf $(cat .gitignore)
 
 # Run the example
 echo hi > f1.txt
-stepup boot -n 2 -w & # > current_stdout.txt &
+stepup boot -n 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -20,5 +20,6 @@ wait
 [[ -f plan.py ]] || exit 1
 [[ -f f1.txt ]] || exit 1
 [[ -f f2.txt ]] || exit 1
-[[ ! -f f3.txt ]] || exit 1
+[[ -f f3.txt ]] || exit 1
+[[ ! -f f4.txt ]] || exit 1
 grep "The dispatcher has been put on hold" .stepup/fail.log

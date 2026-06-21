@@ -3,7 +3,6 @@
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |   DIRECTOR │ Launched worker 0
         1/3 |      PHASE │ run
         1/3 |     NOSKIP │ cp -p inp.txt out.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
@@ -22,5 +21,4 @@ Modified inp hash    out.txt (digest de3b107b ➜ 26725e7b)
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |    WARNING │ Check logs: .stepup/warning.log
         3/3 |      PHASE │ watch
-        3/3 |   DIRECTOR │ Stopping workers
         3/3 |   DIRECTOR │ See you!

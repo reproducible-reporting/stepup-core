@@ -86,6 +86,12 @@ which always executes the command as a normal subprocess.
     - [Script (Multiple Cases)](./script_multiple.md)
     - [Function Calls](./call.md)
 
+- When `--fork-runpy` is active (the default on Linux), you can pre-load additional modules
+  into the forkserver with `--preload-modules` (or `preload_modules` in the config file).
+  This further reduces per-step startup time for workflows that repeatedly import the same
+  large packages such as NumPy or Matplotlib.
+  See [Configuration](../reference/configuration.md) for details.
+
 - Although not common, it is also possible to dynamically generate the Python file `helper.py`.
   In this case, the `work.py` script should only be executed after a previous step has created `helper.py`.
   For this to work, you must explicitly add the `inp` argument:

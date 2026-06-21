@@ -4,7 +4,6 @@
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ plan.py (digest ea4ddb31 ➜ 3d44ed3f, size 126 ➜ 159)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |   DIRECTOR │ Launched worker 0
         0/2 |      PHASE │ run
         0/2 |     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
@@ -19,5 +18,4 @@ Modified step hash   compact ➜ explained, inp_digest e1ecada0 ➜ e45e1817, ou
         3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         3/3 |    WARNING │ Check logs: .stepup/warning.log
         3/3 |      PHASE │ watch
-        3/3 |   DIRECTOR │ Stopping workers
         3/3 |   DIRECTOR │ See you!
