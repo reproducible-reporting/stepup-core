@@ -108,9 +108,10 @@ def static(*paths: str | Iterable[str]):
 
     Notes
     -----
-    Environment variables in `paths` are substituted before use,
-    and the variables referenced are added to the current step's `env_vars` list.
-    Substitutions reflect the environment at step start, not later `os.environ` changes.
+    Environment variables in `paths` are substituted immediately,
+    and the variables referenced are added to the calling step's `env_vars` list.
+    These substitutions are based on the state of `os.environ` in the calling script,
+    at the time this function is called, not when the step is executed.
     """
     # Turn paths into one big list.
     _paths = paths
@@ -175,8 +176,9 @@ def glob(*patterns: str, **subs: str) -> NGlobMulti:
     For independent patterns, separate `glob` calls are more efficient.
 
     Environment variables in `patterns` are substituted before matching,
-    and the variables used are added to the current step's `env_vars` list.
-    Substitutions reflect the environment at step start, not later `os.environ` changes.
+    and the variables referenced are added to the calling step's `env_vars` list.
+    These substitutions are based on the state of `os.environ` in the calling script,
+    at the time this function is called, not when the step is executed.
     """
     if len(patterns) == 0:
         raise ValueError("At least one path is required for glob.")
@@ -275,9 +277,10 @@ def step(
 
     Notes
     -----
-    Environment variables in the `workdir`, `inp`, `out`, and `vol` paths will be
-    substituted directly and will amend the calling step's env_vars list if needed.
-    These substitutions ignore changes to `os.environ` made in the calling script.
+    Environment variables in `inp`, `out`, `vol`, and `workdir` are substituted immediately,
+    and the variables referenced are added to the calling step's `env_vars` list.
+    These substitutions are based on the state of `os.environ` in the calling script,
+    at the time this function is called, not when the step is executed.
 
     Before sending the step to the director, the variables `${inp}`, `${out}`, and `${vol}`
     in the action are substituted by the space-separated list of `inp`, `out`, and
@@ -401,8 +404,10 @@ def amend(
 
     Notes
     -----
-    Environment variables in the `inp`, `out`, and `vol` paths are substituted at call time.
-    The variables used are automatically recorded as additional env dependencies of the step.
+    Environment variables in `inp`, `out`, and `vol` are substituted immediately,
+    and the variables referenced are added to the calling step's `env_vars` list.
+    These substitutions are based on the state of `os.environ` in the calling script,
+    at the time this function is called, not when the step is executed.
 
     Always call `amend()` before reading input files and before writing output or volatile files.
 
@@ -735,6 +740,13 @@ def copy(
     -------
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
+
+    Notes
+    -----
+    Environment variables in `src` and `dst` are substituted immediately,
+    and the variables referenced are added to the calling step's `env_vars` list with `amend()`.
+    These substitutions are based on the state of `os.environ` in the calling script,
+    at the time this function is called, not when the copy is actually made.
     """
     with subs_env_vars() as subs:
         src = subs(src)
