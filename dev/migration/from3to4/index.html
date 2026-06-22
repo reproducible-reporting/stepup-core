@@ -760,62 +760,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/script_single/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Script (Single Case)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/script_multiple/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Script (Multiple Cases)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../getting_started/no_rules/" class="md-nav__link">
         
   
@@ -1651,6 +1595,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#deprecated-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deprecated Features
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#abandoned-features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1759,34 +1714,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.call/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    stepup.core.call
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../reference/stepup.core.nglob/" class="md-nav__link">
         
   
@@ -1815,14 +1742,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.script/" class="md-nav__link">
+      <a href="../../reference/stepup.core.call/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.script
+    stepup.core.call
   
 
     
@@ -2202,6 +2129,172 @@
   
 
     
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deprecated
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deprecated
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deprecated/introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deprecated/script_single/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Script (Single Case)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deprecated/script_multiple/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Script (Multiple Cases)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deprecated/stepup.core.script/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stepup.core.script
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -2327,6 +2420,17 @@
     <span class="md-ellipsis">
       
         Changed Environment Variable Names
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deprecated-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deprecated Features
       
     </span>
   </a>
@@ -2583,11 +2687,22 @@ instead of <code>-n</code> and <code>--num-workers</code>.</p>
 </tr>
 </tbody>
 </table>
+<h2 id="deprecated-features">Deprecated Features<a class="headerlink" href="#deprecated-features" title="Permanent link">&para;</a></h2>
+<p>The following features are still supported but will be removed from StepUp 5.0
+or a future StepUp 4.X release after June 2027, whichever comes first.
+You are encouraged to migrate your <code>plan.py</code> files to the new API.</p>
+<ul>
+<li>The script interface for calling user Python scripts from <code>plan.py</code> has been deprecated
+  in favor of the new <a href="../../getting_started/call/">Call</a> interface.</li>
+</ul>
 <h2 id="abandoned-features">Abandoned Features<a class="headerlink" href="#abandoned-features" title="Permanent link">&para;</a></h2>
 <p>The following were practically unused and have been removed:</p>
 <ul>
 <li>The <code>_required=True</code> argument to <code>glob()</code>.
   In the rare cases that it is useful, it can be implemented with a simple check in the <code>plan.py</code> file.</li>
+<li>The previously experimental <code>call()</code> API has been replaced by an incompatible new design.
+  No migration path is needed given its experimental status and limited adoption;
+  see <a href="../../getting_started/call/">Function Calls</a> for the new interface.</li>
 </ul>
 
 

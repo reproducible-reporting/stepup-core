@@ -3,25 +3,17 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from stepup.core.script import driver
+from stepup.core.call import driver
 
 
-def info():
-    r = 3.2
-    return {
-        "inp": ["matplotlibrc", f"logmap_{r:5.3f}.txt"],
-        "out": "plot_logmap.png",
-    }
-
-
-def run(inp, out):
+def run(inp: list[str], out: list[str]):
     mpl.rc_file(inp[0])
     seq = np.loadtxt(inp[1])
     fig, ax = plt.subplots()
     ax.plot(seq)
     ax.set_xlabel("n")
     ax.set_ylabel("x_n")
-    fig.savefig(out)
+    fig.savefig(out[0])
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/getting_started/no_rules/">
       
       
-        <link rel="prev" href="../script_multiple/">
+        <link rel="prev" href="../call/">
       
       
         <link rel="next" href="../distributed_plans/">
@@ -742,62 +742,6 @@
     
   
     Function Calls
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../script_single/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Script (Single Case)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../script_multiple/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Script (Multiple Cases)
   
 
     
@@ -1654,34 +1598,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.call/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    stepup.core.call
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../reference/stepup.core.nglob/" class="md-nav__link">
         
   
@@ -1710,14 +1626,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.script/" class="md-nav__link">
+      <a href="../../reference/stepup.core.call/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.script
+    stepup.core.call
   
 
     
@@ -2097,6 +2013,172 @@
   
 
     
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deprecated
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deprecated
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deprecated/introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deprecated/script_single/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Script (Single Case)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deprecated/script_multiple/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Script (Multiple Cases)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deprecated/stepup.core.script/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stepup.core.script
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -2164,11 +2246,11 @@
 to specify how a common build step can be applied to different inputs.
 StepUp does not need to introduce the concept of a build rule
 because Python functions and loops already provide similar facilities.</p>
-<p>StepUp already comes with a few built-in &ldquo;rules&rdquo; defined this way:
+<p>StepUp already comes with a few built-in &ldquo;rules&rdquo; defined this way, e.g.,
 <a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='./', resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a>,
 <a class="autorefs autorefs-internal" title="stepup.core.api.copy(src, dst, *, optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.copy"><code>copy()</code></a>,
 <a class="autorefs autorefs-internal" title="stepup.core.api.getenv(name, default=None, *, path=False, back=False, multi=False)" href="../../reference/stepup.core.api/#stepup.core.api.getenv"><code>getenv()</code></a> and
-<a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a>.
+<a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, planning=False, resources=None, args_file=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a>.
 Some of these were already discussed in the previous tutorials,
 and their source code offers some inspiration for writing your own.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>

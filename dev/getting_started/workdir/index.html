@@ -831,62 +831,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../script_single/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Script (Single Case)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../script_multiple/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Script (Multiple Cases)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../no_rules/" class="md-nav__link">
         
   
@@ -1665,34 +1609,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.call/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    stepup.core.call
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../reference/stepup.core.nglob/" class="md-nav__link">
         
   
@@ -1721,14 +1637,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.script/" class="md-nav__link">
+      <a href="../../reference/stepup.core.call/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.script
+    stepup.core.call
   
 
     
@@ -2108,6 +2024,172 @@
   
 
     
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deprecated
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deprecated
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deprecated/introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deprecated/script_single/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Script (Single Case)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deprecated/script_multiple/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Script (Multiple Cases)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deprecated/stepup.core.script/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stepup.core.script
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -2221,7 +2303,7 @@ between importing any <code>stepup</code> module and calling functions from <cod
 <p>The <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None, shell=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function
   and related functions that use <code>step()</code> internally
   (<a class="autorefs autorefs-internal" title="stepup.core.api.run(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, shell=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.run"><code>run()</code></a>, <a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='./', resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a>,
-  <a class="autorefs autorefs-internal" title="stepup.core.api.script(executable, *, step_info=None, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.script"><code>script()</code></a>, <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable, *, prefix=None, fmt='auto', inp=None, env=(), out=None, vol=(), workdir='./', optional=False, resources=None, pars=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a>, &hellip;)
+  <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, planning=False, resources=None, args_file=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a>, &hellip;)
   all return a <a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo"><code>StepInfo</code></a> object,
   which may be used for defining follow-up steps.
   The <code>StepInfo</code> objects follow the same convention:

@@ -6,4 +6,7 @@ unset STEPUP_DEBUG
 stepup boot --no-progress -j 1 | sed -f ../../clean_stdout.sed > stdout.txt
 
 # INP: plan.py
-# INP: wavegen.py
+# INP: plot.py
+# INP: ebbr.csv
+# INP: ebos.csv
+# INP: matplotlibrc
