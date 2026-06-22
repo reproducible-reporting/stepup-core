@@ -149,6 +149,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "replay_nglob",
         "replay_static",
         "replay_static_root",
+        "replay_static_root_plan",
         "reqdir_missing",
         "resource_multi",
         "resource_pool",
