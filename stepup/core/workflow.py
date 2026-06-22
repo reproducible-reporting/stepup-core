@@ -31,7 +31,7 @@ from collections.abc import Collection, Iterator
 import attrs
 from path import Path
 
-from .cascade import Cascade, Node
+from .cascade import Cascade, Node, Root
 from .enums import FileState, Need, StepState
 from .exceptions import GraphError
 from .file import File
@@ -320,17 +320,31 @@ class Workflow(Cascade):
     # Build phase
     #
 
-    def _check_node(self, node: Node, argname: str, allow_root=False):
-        """Check the creator or step key in the methods below."""
-        if not isinstance(node, Node):
-            raise TypeError(f"{argname} must be a Node instance, got: {type(node)}")
-        if allow_root and node.i == self.root.i:
+    def _check_creator(self, node_type: type[Node], creator: Node | None) -> None:
+        super()._check_creator(node_type, creator)
+        if creator is None or node_type is Root:
             return
-        if node.kind() not in ("step", "sr"):
-            allowed = "step, sr or root" if allow_root else "step or sr"
-            raise ValueError(f"{argname} is not a {allowed}: '{node.key()}'")
-        if node.is_detached():
-            raise ValueError(f"{argname} is detached: '{node.key()}'")
+        if (
+            (node_type == File and not isinstance(creator, (Step, StaticRoot, Root)))
+            or (node_type == Step and not isinstance(creator, (Step, Root)))
+            or (node_type == StaticRoot and not isinstance(creator, Step))
+        ):
+            raise GraphError(
+                f"Cannot create {node_type.__name__} with creator {creator.key()!r}: "
+                "creator must be a step or static root"
+            )
+
+    def _check_supplier(self, supplier: Node, consumer: Node) -> None:
+        super()._check_supplier(supplier, consumer)
+        if (
+            (isinstance(supplier, File) and not isinstance(consumer, Step))
+            or (isinstance(supplier, Step) and not isinstance(consumer, File))
+            or (isinstance(supplier, StaticRoot) and not isinstance(consumer, File))
+        ):
+            raise GraphError(
+                f"Node {consumer.key()!r} (kind={consumer.kind()!r}) "
+                "cannot be a dependency consumer"
+            )
 
     def matching_static_root(self, path: str) -> StaticRoot | None:
         srs = []
@@ -473,7 +487,6 @@ class Workflow(Cascade):
         """
         if isinstance(paths, str):
             raise TypeError("The paths argument cannot be a string.")
-        self._check_node(creator, "creator", allow_root=True)
         # Sort paths to make the operation deterministic.
         paths = sorted(set(paths))
         # Define the files and create a list of (path, file_hash) tuples.
@@ -746,8 +759,6 @@ class Workflow(Cascade):
             These must be sent back to the client where the hashes can be checked
             and which then calls `confirm_hashes` with the updated hashes.
         """
-        self._check_node(creator, "creator", allow_root=True)
-
         # Sanity check
         if not workdir.endswith(os.sep):
             raise GraphError("The working directory must end with a trailing separator")
@@ -929,7 +940,10 @@ class Workflow(Cascade):
             (This is only relevant when keep_going is True.
             If some to_check files turn out to be missing, keep_going should be changed to False.)
         """
-        self._check_node(step, "step")
+        if not isinstance(step, Step):
+            raise TypeError(f"step must be a Step instance, got: {step!r}")
+        if step.is_detached():
+            raise GraphError(f"step is detached: '{step.key()}'")
 
         # Normalize arguments
         inp_paths = sorted(set(inp_paths))
@@ -978,7 +992,10 @@ class Workflow(Cascade):
         self.con.execute("INSERT INTO amended_dep VALUES (?)", (idep,))
 
     def register_nglob(self, step: Step, nglob_multi: NGlobMulti):
-        self._check_node(step, "step")
+        if not isinstance(step, Step):
+            raise TypeError(f"step must be a Step instance, got: {step!r}")
+        if step.is_detached():
+            raise GraphError(f"step is detached: '{step.key()}'")
         step.register_nglob(nglob_multi)
 
     def register_static_root(self, creator: Node, path: str) -> list[tuple[str, FileHash]]:
@@ -997,7 +1014,6 @@ class Workflow(Cascade):
             A list of matching (path, file_hash) whose existence and validity must be checked.
             The client must call `confirm_hashes` after checking files with resulting hashes.
         """
-        self._check_node(creator, "creator")
         if not isinstance(path, str):
             raise TypeError("The argument path must be a string.")
         if path.startswith("/"):

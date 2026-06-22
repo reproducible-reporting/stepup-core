@@ -389,6 +389,7 @@ class Node:
             raise TypeError(f"Argument new_creator must be a Node, got {type(new_creator)}")
         if new_creator.is_detached():
             raise ValueError("New creator node must not be detached.")
+        self.cascade._check_creator(type(self), new_creator)
         old_creator, old_creator_detached = self.creator_detached()
         self.con.execute(
             "UPDATE node SET creator = ?, detached = FALSE WHERE i = ?", (new_creator.i, self.i)
@@ -414,6 +415,7 @@ class Node:
         idep
             The identifier in the dependency table.
         """
+        self.cascade._check_supplier(supplier, self)
         # Check whether the new edge would introduce a cyclic dependency.
         self.con.execute(DROP_CONSUMERS)
         self.con.execute(INITIAL_CONSUMERS)
@@ -762,6 +764,14 @@ class Cascade:
     # Graph modifications
     #
 
+    def _check_creator(self, node_type: type[Node], creator: Node | None) -> None:
+        """Validate the creator before a node is created. Override in subclasses."""
+        if node_type is Root and self._con.execute("SELECT count(*) FROM node").fetchone()[0] > 0:
+            raise GraphError("Only one root node is allowed and it must be the first node.")
+
+    def _check_supplier(self, supplier: Node, consumer: Node) -> None:
+        """Validate a supplier-consumer edge before it is inserted. Override in subclasses."""
+
     def create(
         self, node_type: type[NodeType], creator: Node | None, label: str = "", **kwargs
     ) -> NodeType:
@@ -791,6 +801,7 @@ class Cascade:
             raise TypeError(f"Argument node_type must be a subclass of Node, got {node_type}")
         if not (isinstance(creator, Node) or creator is None):
             raise TypeError(f"Argument creator must be a Node or None, got {type(creator)}")
+        self._check_creator(node_type, creator)
         label = node_type.create_label(label, **kwargs)
 
         node, detached = self.find_detached(node_type, label)
@@ -831,8 +842,6 @@ class Cascade:
             )
             node_i = cur.lastrowid
             if node_type is Root:
-                if self._con.execute("SELECT count(*) FROM node").fetchone()[0] > 1:
-                    raise GraphError("Only one root node is allowed and it must be the first node.")
                 self._con.execute(
                     "UPDATE node SET creator = ?, detached = FALSE WHERE i = ?", (node_i, node_i)
                 )
