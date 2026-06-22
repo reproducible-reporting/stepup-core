@@ -263,3 +263,10 @@ the internal environment variables described above.
     from a previously interrupted run of the step are still valid.
     It can also be useful when actions submit jobs to a scheduler,
     to decide if a running job is still valid.
+
+`STEPUP_STEP_NEED`
+
+:   The declared need level of the currently executing step,
+    as one of the strings `OPTIONAL`, `DEFAULT`, `TARGET`, or `PLAN`.
+    This is used internally by StepUp to detect workflow authoring errors,
+    such as registering a planning step (`need=Need.PLAN`) from inside a non-planning step.

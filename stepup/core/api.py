@@ -328,6 +328,16 @@ def step(
                 "Must be a strictly positive integer."
             )
 
+    # Warn when a planning step is registered from a non-planning creator.
+    if need == Need.PLAN:
+        creator_need_name = os.environ.get("STEPUP_STEP_NEED")
+        if creator_need_name is not None and creator_need_name != Need.PLAN.name:
+            print(
+                f"WARNING: planning step '{command}' is registered from a non-planning step"
+                f" (creator need={creator_need_name}). This is likely a workflow authoring error.",
+                file=sys.stderr,
+            )
+
     # Finally create the step.
     to_check = RPC_CLIENT.call.step(
         _get_step_i(),
@@ -889,7 +899,7 @@ def getenv(
     value = os.getenv(name, default)
     # Do not amend environment variables set for the step by the executor.
     # See stepup.core.executor.StepExecutor.run
-    if name not in ["HERE", "ROOT", "STEPUP_STEP_I", "STEPUP_STEP_INP_DIGEST"]:
+    if name not in ["HERE", "ROOT", "STEPUP_STEP_I", "STEPUP_STEP_INP_DIGEST", "STEPUP_STEP_NEED"]:
         amend(env=name)
     if multi:
         if value is None:

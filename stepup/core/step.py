@@ -320,6 +320,11 @@ class Step(Node):
         row = self.con.execute("SELECT subshell FROM step WHERE node = ?", (self.i,)).fetchone()
         return bool(row[0])
 
+    def get_need(self) -> Need:
+        """Return the declared need of this step."""
+        row = self.con.execute("SELECT need FROM step WHERE node = ?", (self.i,)).fetchone()
+        return Need(row[0])
+
     def get_state(self) -> StepState:
         row = self.con.execute("SELECT state FROM step WHERE node = ?", (self.i,)).fetchone()
         return StepState(row[0])

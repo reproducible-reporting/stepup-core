@@ -1,0 +1,14 @@
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/1 |      PHASE │ build
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ ./creator.py
+        2/3 |    SUCCESS │ ./creator.py
+──────────────────────────────── Standard error ────────────────────────────────
+(stripped)
+────────────────────────────────────────────────────────────────────────────────
+        2/3 |      START │ ./subplan.py
+        3/3 |    SUCCESS │ ./subplan.py
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ See you!

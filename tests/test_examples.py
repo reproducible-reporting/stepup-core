@@ -223,6 +223,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "watch_static_remove2",
         "watch_volatile",
         "watch_wanted",
+        "warn_plan_non_plan",
         "whitespace",
         "workdir",
     ],

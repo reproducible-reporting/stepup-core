@@ -54,7 +54,7 @@ import attrs
 from path import Path
 
 from .asyncio import await_fd_readable
-from .enums import FileState, HashUpdateCause, StepState
+from .enums import FileState, HashUpdateCause, Need, StepState
 from .exceptions import RPCError
 from .extapi import get_local_import_paths
 from .hash import FileHash, StepHash, compare_step_hashes
@@ -497,6 +497,9 @@ class RunningStep:
     workdir: Path = attrs.field()
     """The working directory where the command will be executed."""
 
+    need: Need = attrs.field()
+    """The declared need of this step, used to set `STEPUP_STEP_NEED`."""
+
     stdout: str = attrs.field(init=False, default="")
     """The standard output captured from the command execution."""
 
@@ -743,7 +746,7 @@ class StepExecutor:
             `None` if, unexpectedly, some inputs are missing or have changed.
         """
         command, workdir = split_step_label(step.label)
-        rs = RunningStep(step.i, command, step.get_subshell(), workdir)
+        rs = RunningStep(step.i, command, step.get_subshell(), workdir, step.get_need())
         new_step_hash = await self.compute_inp_step_hash(rs, inp_hashes, env_vars, check_hash)
         if new_step_hash is None and check_hash:
             # The hashes of the input files on disk differ from those in the database,
@@ -850,6 +853,7 @@ class StepExecutor:
         env["STEPUP_STEP_I"] = str(rs.i)
         # Client code may use the following:
         env["STEPUP_STEP_INP_DIGEST"] = rs.inp_digest.hex()
+        env["STEPUP_STEP_NEED"] = rs.need.name
         env["ROOT"] = str(Path.cwd().relpath(rs.workdir))
         env["HERE"] = str(rs.workdir.relpath())
         # Note: the variables defined here should be listed in stepup.core.api.getenv
