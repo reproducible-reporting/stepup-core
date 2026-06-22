@@ -1538,34 +1538,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/stepup.core.nglob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    stepup.core.nglob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../reference/stepup.core.call/" class="md-nav__link">
         
   
@@ -1594,6 +1566,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../reference/stepup.core.extapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stepup.core.extapi
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/stepup.core.nglob/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stepup.core.nglob
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
@@ -1602,6 +1630,34 @@
     
   
     stepup.core.stepinfo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/stepup.core.utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stepup.core.nglob
   
 
     
@@ -5507,6 +5563,12 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <h2 id="unreleased"><a href="https://github.com/reproducible-reporting/stepup-core">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
 <ul>
+<li>New <code>stepup.core.extapi</code> module for StepUp extension developers,
+  collecting utilities previously scattered across <code>stepup.core.api</code>
+  (<code>subs_env_vars</code>, <code>get_rpc_client</code>) and <code>stepup.core.utils</code>
+  (<code>filter_dependencies</code>, <code>get_local_import_paths</code>).
+  See <a href="../reference/stepup.core.extapi/">stepup.core.extapi</a> for the full reference
+  and <a href="../extending/api/">Custom API Functions</a> for usage guidance.</li>
 <li>In addition to environment variables and command-line arguments,
   StepUp can now also be configured through configuration files.
   See <a href="../reference/configuration/">Configuration files</a> for details.</li>

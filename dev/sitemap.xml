@@ -209,11 +209,19 @@
          <lastmod>2026-06-22</lastmod>
     </url>
     <url>
+         <loc>https://reproducible-reporting.github.io/stepup-core/dev/reference/stepup.core.extapi/</loc>
+         <lastmod>2026-06-22</lastmod>
+    </url>
+    <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/reference/stepup.core.nglob/</loc>
          <lastmod>2026-06-22</lastmod>
     </url>
     <url>
          <loc>https://reproducible-reporting.github.io/stepup-core/dev/reference/stepup.core.stepinfo/</loc>
+         <lastmod>2026-06-22</lastmod>
+    </url>
+    <url>
+         <loc>https://reproducible-reporting.github.io/stepup-core/dev/reference/stepup.core.utils/</loc>
          <lastmod>2026-06-22</lastmod>
     </url>
 </urlset>

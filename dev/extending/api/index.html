@@ -1538,34 +1538,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.nglob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    stepup.core.nglob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../reference/stepup.core.call/" class="md-nav__link">
         
   
@@ -1594,6 +1566,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../reference/stepup.core.extapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stepup.core.extapi
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/stepup.core.nglob/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stepup.core.nglob
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
@@ -1602,6 +1630,34 @@
     
   
     stepup.core.stepinfo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/stepup.core.utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stepup.core.nglob
   
 
     
@@ -1799,6 +1855,24 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Custom API Functions
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -1815,6 +1889,64 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#extension-utilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extension utilities
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extension utilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-variable-substitution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment variable substitution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dependency-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependency filtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -2151,6 +2283,53 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#extension-utilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extension utilities
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extension utilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-variable-substitution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment variable substitution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dependency-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependency filtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -2192,6 +2371,30 @@ and call it a StepUp extension, which makes it easier to share and reuse these f
   without spawning a new Python interpreter.
   See <a href="../command/">Command Dispatch</a> for details.</li>
 </ul>
+<h2 id="extension-utilities">Extension utilities<a class="headerlink" href="#extension-utilities" title="Permanent link">&para;</a></h2>
+<p>The <a href="../../reference/stepup.core.extapi/"><code>stepup.core.extapi</code></a> module provides utilities
+specifically for extension developers.</p>
+<h3 id="environment-variable-substitution">Environment variable substitution<a class="headerlink" href="#environment-variable-substitution" title="Permanent link">&para;</a></h3>
+<p>Use <a class="autorefs autorefs-internal" title="stepup.core.extapi.subs_env_vars()" href="../../reference/stepup.core.extapi/#stepup.core.extapi.subs_env_vars"><code>subs_env_vars()</code></a> in any custom API function that
+accepts path arguments that may contain shell variable references (e.g. <code>${MYDIR}/file.txt</code>).
+It yields a <code>subs</code> function that performs the substitution and automatically tracks which
+variables were used, amending the current step&rsquo;s environment dependencies accordingly:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.extapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">subs_env_vars</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_api_function</span><span class="p">(</span><span class="n">path_inp</span><span class="p">,</span> <span class="n">path_out</span><span class="p">):</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="k">with</span> <span class="n">subs_env_vars</span><span class="p">()</span> <span class="k">as</span> <span class="n">subs</span><span class="p">:</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="n">path_inp</span> <span class="o">=</span> <span class="n">subs</span><span class="p">(</span><span class="n">path_inp</span><span class="p">)</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="n">path_out</span> <span class="o">=</span> <span class="n">subs</span><span class="p">(</span><span class="n">path_out</span><span class="p">)</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="c1"># path_inp and path_out are now resolved Path objects</span>
+</span></code></pre></div>
+<h3 id="dependency-filtering">Dependency filtering<a class="headerlink" href="#dependency-filtering" title="Permanent link">&para;</a></h3>
+<p><a class="autorefs autorefs-internal" title="stepup.core.extapi.filter_dependencies(paths)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.filter_dependencies"><code>filter_dependencies()</code></a> filters a collection of
+file paths according to the <code>${STEPUP_PATH_FILTER}</code> environment variable.
+It is useful when a step dynamically discovers which local files it depends on at runtime,
+and needs to report only the relevant subset back to the director.
+<a class="autorefs autorefs-internal" title="stepup.core.extapi.get_local_import_paths(script_path=None)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.get_local_import_paths"><code>get_local_import_paths()</code></a> builds on this to
+return all Python modules currently loaded in <code>sys.modules</code> that pass the filter —
+useful for scripts that need to amend their Python-import dependencies.</p>
 
 
 

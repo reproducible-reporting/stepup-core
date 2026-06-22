@@ -1538,34 +1538,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.nglob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    stepup.core.nglob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../reference/stepup.core.call/" class="md-nav__link">
         
   
@@ -1594,6 +1566,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../reference/stepup.core.extapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stepup.core.extapi
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/stepup.core.nglob/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stepup.core.nglob
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
@@ -1602,6 +1630,34 @@
     
   
     stepup.core.stepinfo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/stepup.core.utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stepup.core.nglob
   
 
     
@@ -2175,20 +2231,35 @@
 
 
 <h1 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h1>
-<p>StepUp Core is a build tool without domain-specific features.
-It can be easily extended to support domain-specific build features.
-Currently, there is one major extension, <a href="https://reproducible-reporting.github.io/stepup-reprep/">StepUp RepRep</a>.</p>
+<p>StepUp Core can be easily extended to support domain-specific build features,
+which are not part of the core functionality.
+This is done by creating a new Python package that implements the desired features
+and registers them with StepUp Core.
+Currently, there are two such extensions:</p>
+<ul>
+<li><a href="https://reproducible-reporting.github.io/stepup-reprep/">StepUp RepRep</a></li>
+<li><a href="https://reproducible-reporting.github.io/stepup-queue/">StepUp Queue</a></li>
+</ul>
 <p>This section discusses how to create a new extension package for StepUp Core.
 In short, you can create a new Python package, optionally using the same <code>stepup</code> namespace.
-There are two types of components you can implement in an extension package:</p>
+There are two types of components you can implement in such an extension package:</p>
 <ol>
 <li>
 <p><strong>API functions</strong> to send new steps (and other information) to the StepUp director process.</p>
 <blockquote>
-<p>These are typically making use of the <a href="../../reference/stepup.core.api/">Basic (and Composite) API functions</a>
+<p>These are typically making use of the
+<a href="../../reference/stepup.core.api/">Basic (and Composite) API functions</a>
 in the <code>stepup.core.api</code> module.
 An example of this is the <a class="autorefs autorefs-internal" title="stepup.core.api.run(command, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, shell=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.run"><code>run()</code></a> function,
 which is used to execute commands.</p>
+<p>Extension developers should also consult the
+<a href="../../reference/stepup.core.extapi/"><code>stepup.core.extapi</code></a> module,
+which provides utilities for building custom API functions,
+such as <a class="autorefs autorefs-internal" title="stepup.core.extapi.subs_env_vars()" href="../../reference/stepup.core.extapi/#stepup.core.extapi.subs_env_vars"><code>subs_env_vars()</code></a> for environment variable
+substitution and <a class="autorefs autorefs-internal" title="stepup.core.extapi.filter_dependencies(paths)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.filter_dependencies"><code>filter_dependencies()</code></a>
+for step dependency filtering.</p>
+<p>The module <a href="../../reference/stepup.core.utils/"><code>stepup.core.utils</code></a> also provides
+some convenience functions for extension developers.</p>
 </blockquote>
 </li>
 <li>

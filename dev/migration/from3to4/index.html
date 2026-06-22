@@ -1616,6 +1616,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#changes-for-extension-package-developers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changes for Extension Package Developers
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1714,34 +1725,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.nglob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    stepup.core.nglob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../reference/stepup.core.call/" class="md-nav__link">
         
   
@@ -1770,6 +1753,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../reference/stepup.core.extapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stepup.core.extapi
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/stepup.core.nglob/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stepup.core.nglob
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
@@ -1778,6 +1817,34 @@
     
   
     stepup.core.stepinfo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/stepup.core.utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    stepup.core.nglob
   
 
     
@@ -2448,6 +2515,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#changes-for-extension-package-developers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changes for Extension Package Developers
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2704,6 +2782,50 @@ You are encouraged to migrate your <code>plan.py</code> files to the new API.</p
   No migration path is needed given its experimental status and limited adoption;
   see <a href="../../getting_started/call/">Function Calls</a> for the new interface.</li>
 </ul>
+<h2 id="changes-for-extension-package-developers">Changes for Extension Package Developers<a class="headerlink" href="#changes-for-extension-package-developers" title="Permanent link">&para;</a></h2>
+<p>If you are developing a StepUp extension package (i.e., you import from <code>stepup.core</code>
+to build custom API functions or tools),
+the following utilities have moved to the new
+<a href="../../reference/stepup.core.extapi/"><code>stepup.core.extapi</code></a> module:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Old location</th>
+<th>New location</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>subs_env_vars</code></td>
+<td><code>stepup.core.api</code></td>
+<td><code>stepup.core.extapi</code></td>
+</tr>
+<tr>
+<td><code>get_rpc_client</code></td>
+<td><code>stepup.core.api</code></td>
+<td><code>stepup.core.extapi</code></td>
+</tr>
+<tr>
+<td><code>filter_dependencies</code></td>
+<td><code>stepup.core.utils</code></td>
+<td><code>stepup.core.extapi</code></td>
+</tr>
+<tr>
+<td><code>get_local_import_paths</code></td>
+<td><code>stepup.core.utils</code></td>
+<td><code>stepup.core.extapi</code></td>
+</tr>
+</tbody>
+</table>
+<p>Update your imports accordingly:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># StepUp 3 / early StepUp 4</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_rpc_client</span><span class="p">,</span> <span class="n">subs_env_vars</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_dependencies</span><span class="p">,</span> <span class="n">get_local_import_paths</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1"># StepUp 4 (current)</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.extapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_dependencies</span><span class="p">,</span> <span class="n">get_local_import_paths</span><span class="p">,</span> <span class="n">get_rpc_client</span><span class="p">,</span> <span class="n">subs_env_vars</span>
+</span></code></pre></div>
 
 
 
