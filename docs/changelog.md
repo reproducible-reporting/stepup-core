@@ -12,6 +12,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ### Added
 
+- New `stepup.core.extapi` module for StepUp extension developers,
+  collecting utilities previously scattered across `stepup.core.api`
+  (`subs_env_vars`, `get_rpc_client`) and `stepup.core.utils`
+  (`filter_dependencies`, `get_local_import_paths`).
+  See [stepup.core.extapi](reference/stepup.core.extapi.md) for the full reference
+  and [Custom API Functions](extending/api.md) for usage guidance.
 - In addition to environment variables and command-line arguments,
   StepUp can now also be configured through configuration files.
   See [Configuration files](reference/configuration.md) for details.

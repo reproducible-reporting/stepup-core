@@ -221,3 +221,28 @@ The following were practically unused and have been removed:
 - The previously experimental `call()` API has been replaced by an incompatible new design.
   No migration path is needed given its experimental status and limited adoption;
   see [Function Calls](../getting_started/call.md) for the new interface.
+
+## Changes for Extension Package Developers
+
+If you are developing a StepUp extension package (i.e., you import from `stepup.core`
+to build custom API functions or tools),
+the following utilities have moved to the new
+[`stepup.core.extapi`](../reference/stepup.core.extapi.md) module:
+
+| Function | Old location | New location |
+| --- | --- | --- |
+| `subs_env_vars` | `stepup.core.api` | `stepup.core.extapi` |
+| `get_rpc_client` | `stepup.core.api` | `stepup.core.extapi` |
+| `filter_dependencies` | `stepup.core.utils` | `stepup.core.extapi` |
+| `get_local_import_paths` | `stepup.core.utils` | `stepup.core.extapi` |
+
+Update your imports accordingly:
+
+```python
+# StepUp 3 / early StepUp 4
+from stepup.core.api import get_rpc_client, subs_env_vars
+from stepup.core.utils import filter_dependencies, get_local_import_paths
+
+# StepUp 4 (current)
+from stepup.core.extapi import filter_dependencies, get_local_import_paths, get_rpc_client, subs_env_vars
+```

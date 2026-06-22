@@ -200,7 +200,15 @@ The director runs a socket RPC server; step child processes and the TUI are the 
 `plan.py` scripts call functions in `api.py` (e.g., `static()`, `step()`, `glob()`)
 which send RPC calls to the director.
 The module must not be imported by other `stepup.core` modules
-except `interact.py`, `call.py`, and `script.py`.
+except `interact.py`, `call.py`, `script.py`, and `extapi.py` (local imports only).
+
+### Extension Developer API (`extapi.py`)
+
+`extapi.py` collects utilities for authors of StepUp extension packages:
+`subs_env_vars`, `get_rpc_client`, `filter_dependencies`, and `get_local_import_paths`.
+These are re-exported from `api.py` and `utils.py` for backward compatibility.
+`extapi.py` imports from `api.py` only via local (inside-function) imports to avoid
+circular dependencies at module load time.
 
 ### Step Execution Pipeline
 

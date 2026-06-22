@@ -36,7 +36,7 @@ from path import Path
 
 from stepup.core.config import ConfigLoader
 
-from .utils import get_local_import_paths
+from .extapi import get_local_import_paths
 
 __all__ = ("render_jinja",)
 

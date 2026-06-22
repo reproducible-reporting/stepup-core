@@ -41,4 +41,5 @@ may undergo larger changes and are not intended to be API stable.
 
 ## Utilities for API extensions
 
-### ::: stepup.core.api.subs_env_vars
+See [stepup.core.extapi](stepup.core.extapi.md) for utilities intended for extension developers,
+including `subs_env_vars`, `get_rpc_client`, `filter_dependencies`, and `get_local_import_paths`.

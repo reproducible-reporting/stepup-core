@@ -56,12 +56,13 @@ from path import Path
 from .asyncio import await_fd_readable
 from .enums import FileState, StepState
 from .exceptions import RPCError
+from .extapi import get_local_import_paths
 from .hash import FileHash, StepHash, compare_step_hashes
 from .hasher import HashResult, HashTask, hash_fork_entry
 from .reporter import ReporterClient
 from .scheduler import Scheduler
 from .step import Step, split_step_label
-from .utils import DBLock, get_local_import_paths
+from .utils import DBLock
 from .workflow import Workflow
 
 __all__ = ("RunningStep", "StepExecutor")
@@ -81,7 +82,7 @@ import sys
 import runpy
 from path import Path
 from stepup.core.api import amend
-from stepup.core.utils import get_local_import_paths
+from stepup.core.extapi import get_local_import_paths
 sys.argv = {argv}
 try:
     runpy.run_path({script}, run_name="__main__")

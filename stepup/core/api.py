@@ -33,7 +33,7 @@ import os
 import shlex
 import sys
 import tomllib
-from collections.abc import Callable, Collection, Iterable, Iterator
+from collections.abc import Collection, Iterable
 from runpy import run_path
 from types import SimpleNamespace
 
@@ -42,6 +42,7 @@ from path import Path
 
 from .cattrs import json_converter, yaml_converter
 from .enums import Need
+from .extapi import subs_env_vars
 from .nglob import NGlobMulti
 from .rpc import DummySyncRPCClient, SocketSyncRPCClient
 from .step import FileHash
@@ -64,7 +65,6 @@ __all__ = (
     "call",
     "copy",
     "dumpns",
-    "get_rpc_client",
     "getenv",
     "getinfo",
     "glob",
@@ -76,7 +76,6 @@ __all__ = (
     "script",
     "static",
     "step",
-    "subs_env_vars",
 )
 
 
@@ -1171,54 +1170,6 @@ def render_jinja(
         need=Need.OPTIONAL if optional else Need.DEFAULT,
         resources=resources,
     )
-
-
-#
-# API development utilities
-#
-
-
-@contextlib.contextmanager
-def subs_env_vars() -> Iterator[Callable[[str | None], Path | None]]:
-    """A context manager for substituting environment variables and tracking the used variables.
-
-    The context manager yields a function, `subs`, which takes a string with variables and
-    returns the substituted form.
-    All used variables are recorded and sent to the director with `amend(env=...)`.
-    For example:
-
-    ```python
-    with subs_env_vars() as subs:
-        path_inp = subs(path_inp)
-        path_out = subs(path_out)
-    ```
-
-    This function may be used in other API functions to substitute environment variables in
-    all relevant paths.
-    """
-    env_vars = set()
-
-    def subs(path: str | None) -> Path | None:
-        if path is None:
-            return None
-        template = CaseSensitiveTemplate(path)
-        if not template.is_valid():
-            raise ValueError("The path contains invalid shell variable identifiers.")
-        mapping = {}
-        for name in template.get_identifiers():
-            if name.startswith("*"):
-                mapping[name] = f"${{{name}}}"
-            else:
-                value = os.getenv(name)
-                if value is None:
-                    raise ValueError(f"Undefined shell variable: {name}")
-                mapping[name] = value
-                env_vars.add(name)
-        result = path if len(mapping) == 0 else template.substitute(mapping)
-        return mynormpath(result)
-
-    yield subs
-    amend(env=env_vars)
 
 
 #

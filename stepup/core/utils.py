@@ -26,7 +26,6 @@ import re
 import shlex
 import sqlite3
 import string
-import sys
 from collections.abc import Collection
 
 import attrs
@@ -36,10 +35,8 @@ __all__ = (
     "CaseSensitiveTemplate",
     "DBLock",
     "check_plan",
-    "filter_dependencies",
     "format_command",
     "format_digest",
-    "get_local_import_paths",
     "make_path_out",
     "myabsolute",
     "mynormpath",
@@ -245,83 +242,6 @@ def parse_resources(s: str) -> dict[str, int]:
             raise ValueError(f"Resource value cannot be negative: {item}")
         result[name] = value
     return result
-
-
-def filter_dependencies(paths: Collection[str]) -> set[Path]:
-    """Select path retained by the `${STEPUP_PATH_FILTER}`.
-
-    Parameters
-    ----------
-    paths
-        A collection of paths to filter.
-        Relative paths are assumed to be relative to the current working directory.
-
-    Returns
-    -------
-    filtered_paths
-        A collection of paths relative to `${STEPUP_ROOT}` that were retained by the filter.
-    """
-    # The getenv function from StepUp amends the current step to depend on the variable,
-    # to make sure that all steps using it get re-executed properly.
-    from stepup.core.api import getenv  # noqa: PLC0415
-
-    # Parse the ${STEPUP_PATH_FILTER} environment variable.
-    filter_str = getenv("STEPUP_PATH_FILTER", "-venv")
-    filter_str += ":+.:-/"
-    rules = []
-    stepup_root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
-    for filter_item in filter_str.split(":"):
-        if filter_item == "":
-            continue
-        if filter_item.startswith("+"):
-            keep = True
-        elif filter_item.startswith("-"):
-            keep = False
-        else:
-            raise ValueError(f"Invalid filter item: {filter_item}")
-        prefix = filter_item[1:]
-        if not prefix.startswith("/"):
-            prefix = myrealpath(stepup_root / prefix)
-        rules.append((prefix, keep))
-
-    # Filter paths according to the rules.
-    result = set()
-    realpwd = myrealpath(os.getcwd())
-    for path in paths:
-        abspath = myrealpath(path)
-        for prefix, keep in rules:
-            if abspath.startswith(prefix):
-                if keep:
-                    result.add(myrelpath(abspath, realpwd))
-                break
-        else:
-            raise AssertionError(f"No matching rule found for path: {path}")
-    return result
-
-
-def get_local_import_paths(script_path: Path | None = None) -> list[str]:
-    """Get all local files from `sys.modules`.
-
-    Files are only included if they match the `${STEPUP_PATH_FILTER}` environment variable.
-    Non-existing files will be ignored, as they can only be the result of a dynamically created
-    module, as in issue https://github.com/reproducible-reporting/stepup-core/issues/21
-    There is no risk of missing files that still need to be created,
-    as all imports have already been successfully resolved already at this point.
-    """
-
-    def iter_module_paths():
-        for module in sys.modules.values():
-            mod_path = getattr(module, "__file__", None)
-            if not (mod_path is None or mod_path.startswith("<")):
-                mod_path = mynormpath(mod_path)
-                if mod_path.exists():
-                    yield mod_path
-
-    mod_paths = filter_dependencies(iter_module_paths())
-    # The script path is already included in the inputs.
-    if script_path is not None:
-        mod_paths.discard(mynormpath(script_path))
-    return sorted(mod_paths)
 
 
 @attrs.define

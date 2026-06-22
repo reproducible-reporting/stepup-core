@@ -22,7 +22,8 @@
 import pytest
 from path import Path
 
-from stepup.core.api import getenv, loadns
+from stepup.core.api import get_rpc_client, getenv, loadns
+from stepup.core.rpc import DummySyncRPCClient
 
 
 def noop_amend(*_args, **_kwargs):
@@ -142,3 +143,20 @@ def test_loadns_json(path_tmp, monkeypatch):
     monkeypatch.setenv("STEPUP_LOADNS_JSON_FOO", "foo")
     ns = loadns(path_tmp / "${STEPUP_LOADNS_JSON_FOO}.json")
     assert ns.a == 10
+
+
+def test_get_rpc_client_no_socket(monkeypatch):
+    monkeypatch.delenv("STEPUP_DIRECTOR_SOCKET", raising=False)
+    client = get_rpc_client()
+    assert isinstance(client, DummySyncRPCClient)
+
+
+def test_get_rpc_client_explicit_none(monkeypatch):
+    monkeypatch.delenv("STEPUP_DIRECTOR_SOCKET", raising=False)
+    client = get_rpc_client(socket=None)
+    assert isinstance(client, DummySyncRPCClient)
+
+
+def test_get_rpc_client_invalid_socket():
+    with pytest.raises(RuntimeError, match="director process"):
+        get_rpc_client(socket="_invalid_socket_for_director_process_")
