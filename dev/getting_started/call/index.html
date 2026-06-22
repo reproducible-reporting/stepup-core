@@ -816,17 +816,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-callme-decorator" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The @callme Decorator
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#passing-kwargs" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2350,17 +2339,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-callme-decorator" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The @callme Decorator
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#passing-kwargs" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2482,31 +2460,10 @@ per callable function defined in the script, which may aid discovery:</p>
 <p>The function only declares the parameters it actually uses.
 <code>inp</code> and <code>out</code> are always forwarded as lists,
 even if they were passed as a single string to <code>call()</code>.</p>
-<h2 id="the-callme-decorator">The <code>@callme</code> Decorator<a class="headerlink" href="#the-callme-decorator" title="Permanent link">&para;</a></h2>
-<p>The <a class="autorefs autorefs-internal" title="callme(fn)" href="../../reference/stepup.core.call/#stepup.core.call.callme"><code>@callme</code></a> decorator is optional.
-When used, it restricts which functions <code>driver()</code> will dispatch to:
-only decorated functions are callable, and the no-argument listing shows only them.
-This is useful when a script contains helper functions that should not be invocable directly.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="ch">#!/usr/bin/env python3</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.call</span><span class="w"> </span><span class="kn">import</span> <span class="n">callme</span><span class="p">,</span> <span class="n">driver</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="nd">@callme</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">inp</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]):</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="o">...</span>  <span class="c1"># only this function is callable via call()</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="k">def</span><span class="w"> </span><span class="nf">helper</span><span class="p">():</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    <span class="o">...</span>  <span class="c1"># not accessible via driver()</span>
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
-</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>
-</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    <span class="n">driver</span><span class="p">()</span>
-</span></code></pre></div>
-<p>Alternatively, you can prefix private functions with an underscore (<code>_</code>),
+<p>You can prefix private functions with an underscore (<code>_</code>),
 e.g. <code>_helper()</code>, to hide them from <code>driver()</code>.
 Imported names are also excluded automatically.
-To expose an imported callable, list it explicitly in <code>__all__</code>.</p>
+To override the default selection of callable functions, list them explicitly in <code>__all__</code>.</p>
 <h2 id="passing-kwargs">Passing kwargs<a class="headerlink" href="#passing-kwargs" title="Permanent link">&para;</a></h2>
 <p>Any JSON-serializable keyword argument passed to <code>call()</code> is forwarded to the function.
 The function&rsquo;s signature determines which parameters it receives.
@@ -2514,19 +2471,19 @@ Passing a keyword argument that the function does not declare raises a <code>Typ
 so typos in argument names are caught at execution time rather than silently ignored.
 The only exceptions are <code>inp</code> and <code>out</code>, which are silently dropped when absent
 from the function&rsquo;s signature, since many functions do not need both.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># plan.py — pass a threshold to the run function</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">call</span><span class="p">(</span><span class="s2">&quot;./work.py&quot;</span><span class="p">,</span> <span class="s2">&quot;run&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;data.txt&quot;</span><span class="p">],</span> <span class="n">out</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;result.txt&quot;</span><span class="p">],</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># plan.py — pass a threshold to the run function</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">call</span><span class="p">(</span><span class="s2">&quot;./work.py&quot;</span><span class="p">,</span> <span class="s2">&quot;run&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;data.txt&quot;</span><span class="p">],</span> <span class="n">out</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;result.txt&quot;</span><span class="p">],</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
 </span></code></pre></div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># work.py</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.call</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">inp</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="o">...</span>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
-</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    <span class="n">driver</span><span class="p">()</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># work.py</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.call</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">inp</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="o">...</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="n">driver</span><span class="p">()</span>
 </span></code></pre></div>
 <p>Type annotations on the function parameters are respected:
 <code>driver()</code> uses <a href="https://github.com/python-attrs/cattrs">cattrs</a>
@@ -2535,9 +2492,9 @@ to coerce and validate each argument before calling the function.</p>
 <p>When the JSON-serialized arguments are large,
 they may become impractical to include inline on the command line.
 You can also use an <code>args_file</code> to keep the commands short and readable:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">call</span><span class="p">(</span><span class="s2">&quot;./work.py&quot;</span><span class="p">,</span> <span class="s2">&quot;run&quot;</span><span class="p">,</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>     <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;data.txt&quot;</span><span class="p">],</span> <span class="n">out</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;result.txt&quot;</span><span class="p">],</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>     <span class="n">args_file</span><span class="o">=</span><span class="s2">&quot;run_args.json&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">call</span><span class="p">(</span><span class="s2">&quot;./work.py&quot;</span><span class="p">,</span> <span class="s2">&quot;run&quot;</span><span class="p">,</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>     <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;data.txt&quot;</span><span class="p">],</span> <span class="n">out</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;result.txt&quot;</span><span class="p">],</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>     <span class="n">args_file</span><span class="o">=</span><span class="s2">&quot;run_args.json&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>This writes the arguments to <code>run_args.json</code>
 (using <a class="autorefs autorefs-internal" title="stepup.core.api.dumpns(path, data, *, do_amend=True)" href="../../reference/stepup.core.api/#stepup.core.api.dumpns"><code>dumpns()</code></a>)
@@ -2558,74 +2515,74 @@ The same plotting function is applied to two datasets of hourly temperatures rec
 the airports of Brussels and Ostend in February 2024, downloaded from the
 <a href="https://mesonet.agron.iastate.edu/request/download.phtml">ASOS network hosted by Iowa State University</a>.</p>
 <p>Add the following <code>plan.py</code>:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="ch">#!/usr/bin/env python3</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">call</span><span class="p">,</span> <span class="n">static</span>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">static</span><span class="p">(</span><span class="s2">&quot;plot.py&quot;</span><span class="p">,</span> <span class="s2">&quot;ebbr.csv&quot;</span><span class="p">,</span> <span class="s2">&quot;ebos.csv&quot;</span><span class="p">,</span> <span class="s2">&quot;matplotlibrc&quot;</span><span class="p">)</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="k">for</span> <span class="n">airport</span> <span class="ow">in</span> <span class="s2">&quot;ebbr&quot;</span><span class="p">,</span> <span class="s2">&quot;ebos&quot;</span><span class="p">:</span>
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">call</span><span class="p">(</span><span class="s2">&quot;./plot.py&quot;</span><span class="p">,</span> <span class="s2">&quot;plan&quot;</span><span class="p">,</span> <span class="n">planning</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">airport</span><span class="o">=</span><span class="n">airport</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="ch">#!/usr/bin/env python3</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">call</span><span class="p">,</span> <span class="n">static</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">static</span><span class="p">(</span><span class="s2">&quot;plot.py&quot;</span><span class="p">,</span> <span class="s2">&quot;ebbr.csv&quot;</span><span class="p">,</span> <span class="s2">&quot;ebos.csv&quot;</span><span class="p">,</span> <span class="s2">&quot;matplotlibrc&quot;</span><span class="p">)</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="k">for</span> <span class="n">airport</span> <span class="ow">in</span> <span class="s2">&quot;ebbr&quot;</span><span class="p">,</span> <span class="s2">&quot;ebos&quot;</span><span class="p">:</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">call</span><span class="p">(</span><span class="s2">&quot;./plot.py&quot;</span><span class="p">,</span> <span class="s2">&quot;plan&quot;</span><span class="p">,</span> <span class="n">planning</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">airport</span><span class="o">=</span><span class="n">airport</span><span class="p">)</span>
 </span></code></pre></div>
 <p>And <code>plot.py</code> with both a <code>plan()</code> and a <code>run()</code> function,
 and a <code>driver()</code> entry point:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="ch">#!/usr/bin/env python3</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mpl</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">DateFormatter</span>
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
-</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">call</span>
-</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.call</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
-</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>
-</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>
-</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="k">def</span><span class="w"> </span><span class="nf">plan</span><span class="p">(</span><span class="n">airport</span><span class="p">):</span>
-</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    <span class="n">call</span><span class="p">(</span>
-</span><span id="__span-9-13"><a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>        <span class="s2">&quot;./plot.py&quot;</span><span class="p">,</span>
-</span><span id="__span-9-14"><a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>        <span class="s2">&quot;run&quot;</span><span class="p">,</span>
-</span><span id="__span-9-15"><a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>        <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;matplotlibrc&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">airport</span><span class="si">}</span><span class="s2">.csv&quot;</span><span class="p">],</span>
-</span><span id="__span-9-16"><a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>        <span class="n">out</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;plot_</span><span class="si">{</span><span class="n">airport</span><span class="si">}</span><span class="s2">.png&quot;</span><span class="p">,</span>
-</span><span id="__span-9-17"><a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>        <span class="n">airport</span><span class="o">=</span><span class="n">airport</span><span class="p">,</span>
-</span><span id="__span-9-18"><a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>    <span class="p">)</span>
-</span><span id="__span-9-19"><a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>
-</span><span id="__span-9-20"><a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>
-</span><span id="__span-9-21"><a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">airport</span><span class="p">):</span>
-</span><span id="__span-9-22"><a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>    <span class="n">mpl</span><span class="o">.</span><span class="n">rc_file</span><span class="p">(</span><span class="n">inp</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-</span><span id="__span-9-23"><a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>    <span class="n">dtype</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;dt&quot;</span><span class="p">,</span> <span class="s2">&quot;datetime64[s]&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;tmpc&quot;</span><span class="p">,</span> <span class="s2">&quot;f8&quot;</span><span class="p">)]</span>
-</span><span id="__span-9-24"><a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">inp</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
-</span><span id="__span-9-25"><a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
-</span><span id="__span-9-26"><a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;dt&quot;</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;tmpc&quot;</span><span class="p">])</span>
-</span><span id="__span-9-27"><a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">DateFormatter</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">))</span>
-</span><span id="__span-9-28"><a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Day of the month February 2024&quot;</span><span class="p">)</span>
-</span><span id="__span-9-29"><a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;dt&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;dt&quot;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-</span><span id="__span-9-30"><a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Temperature [°C]&quot;</span><span class="p">)</span>
-</span><span id="__span-9-31"><a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Airport </span><span class="si">{</span><span class="n">airport</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="__span-9-32"><a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>    <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-</span><span id="__span-9-33"><a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a>
-</span><span id="__span-9-34"><a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>
-</span><span id="__span-9-35"><a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-</span><span id="__span-9-36"><a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a>    <span class="n">driver</span><span class="p">()</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="ch">#!/usr/bin/env python3</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mpl</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">DateFormatter</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">call</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.call</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="k">def</span><span class="w"> </span><span class="nf">plan</span><span class="p">(</span><span class="n">airport</span><span class="p">):</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    <span class="n">call</span><span class="p">(</span>
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>        <span class="s2">&quot;./plot.py&quot;</span><span class="p">,</span>
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>        <span class="s2">&quot;run&quot;</span><span class="p">,</span>
+</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>        <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;matplotlibrc&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">airport</span><span class="si">}</span><span class="s2">.csv&quot;</span><span class="p">],</span>
+</span><span id="__span-8-16"><a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>        <span class="n">out</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;plot_</span><span class="si">{</span><span class="n">airport</span><span class="si">}</span><span class="s2">.png&quot;</span><span class="p">,</span>
+</span><span id="__span-8-17"><a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        <span class="n">airport</span><span class="o">=</span><span class="n">airport</span><span class="p">,</span>
+</span><span id="__span-8-18"><a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>    <span class="p">)</span>
+</span><span id="__span-8-19"><a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>
+</span><span id="__span-8-20"><a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>
+</span><span id="__span-8-21"><a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">airport</span><span class="p">):</span>
+</span><span id="__span-8-22"><a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>    <span class="n">mpl</span><span class="o">.</span><span class="n">rc_file</span><span class="p">(</span><span class="n">inp</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span><span id="__span-8-23"><a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>    <span class="n">dtype</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;dt&quot;</span><span class="p">,</span> <span class="s2">&quot;datetime64[s]&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;tmpc&quot;</span><span class="p">,</span> <span class="s2">&quot;f8&quot;</span><span class="p">)]</span>
+</span><span id="__span-8-24"><a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">inp</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+</span><span id="__span-8-25"><a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+</span><span id="__span-8-26"><a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;dt&quot;</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;tmpc&quot;</span><span class="p">])</span>
+</span><span id="__span-8-27"><a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">DateFormatter</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">))</span>
+</span><span id="__span-8-28"><a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Day of the month February 2024&quot;</span><span class="p">)</span>
+</span><span id="__span-8-29"><a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;dt&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;dt&quot;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+</span><span id="__span-8-30"><a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Temperature [°C]&quot;</span><span class="p">)</span>
+</span><span id="__span-8-31"><a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Airport </span><span class="si">{</span><span class="n">airport</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="__span-8-32"><a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>    <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span><span id="__span-8-33"><a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>
+</span><span id="__span-8-34"><a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>
+</span><span id="__span-8-35"><a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+</span><span id="__span-8-36"><a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a>    <span class="n">driver</span><span class="p">()</span>
 </span></code></pre></div>
 <p>It is assumed that the input files <code>ebbr.csv</code>, <code>ebos.csv</code>, and <code>matplotlibrc</code>
 are present in the same directory as <code>plan.py</code> and <code>plot.py</code>.
 Make the Python scripts executable and run StepUp:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py<span class="w"> </span>plot.py
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py<span class="w"> </span>plot.py
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should see output like:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>   STARTUP │ (Re)initialized boot script
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>     PHASE │ build
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>     START │ ./plan.py
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>   SUCCESS │ ./plan.py
-</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>     START │ ./plot.py plan &#39;{&quot;airport&quot;: &quot;ebbr&quot;}&#39;
-</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>   SUCCESS │ ./plot.py plan &#39;{&quot;airport&quot;: &quot;ebbr&quot;}&#39;
-</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>     START │ ./plot.py plan &#39;{&quot;airport&quot;: &quot;ebos&quot;}&#39;
-</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>   SUCCESS │ ./plot.py plan &#39;{&quot;airport&quot;: &quot;ebos&quot;}&#39;
-</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>     START │ ./plot.py run &#39;{&quot;airport&quot;: &quot;ebbr&quot;, &quot;inp&quot;: [&quot;matplotlibrc&quot;, &quot;ebbr.csv&quot;], &quot;out&quot;: [&quot;plot_ebbr.png&quot;]}&#39;
-</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>   SUCCESS │ ./plot.py run &#39;{&quot;airport&quot;: &quot;ebbr&quot;, &quot;inp&quot;: [&quot;matplotlibrc&quot;, &quot;ebbr.csv&quot;], &quot;out&quot;: [&quot;plot_ebbr.png&quot;]}&#39;
-</span><span id="__span-11-12"><a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>     START │ ./plot.py run &#39;{&quot;airport&quot;: &quot;ebos&quot;, &quot;inp&quot;: [&quot;matplotlibrc&quot;, &quot;ebos.csv&quot;], &quot;out&quot;: [&quot;plot_ebos.png&quot;]}&#39;
-</span><span id="__span-11-13"><a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>   SUCCESS │ ./plot.py run &#39;{&quot;airport&quot;: &quot;ebos&quot;, &quot;inp&quot;: [&quot;matplotlibrc&quot;, &quot;ebos.csv&quot;], &quot;out&quot;: [&quot;plot_ebos.png&quot;]}&#39;
-</span><span id="__span-11-14"><a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
-</span><span id="__span-11-15"><a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>  DIRECTOR │ See you!
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>   STARTUP │ (Re)initialized boot script
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>     PHASE │ build
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>     START │ ./plan.py
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>   SUCCESS │ ./plan.py
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>     START │ ./plot.py plan &#39;{&quot;airport&quot;: &quot;ebbr&quot;}&#39;
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>   SUCCESS │ ./plot.py plan &#39;{&quot;airport&quot;: &quot;ebbr&quot;}&#39;
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>     START │ ./plot.py plan &#39;{&quot;airport&quot;: &quot;ebos&quot;}&#39;
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>   SUCCESS │ ./plot.py plan &#39;{&quot;airport&quot;: &quot;ebos&quot;}&#39;
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>     START │ ./plot.py run &#39;{&quot;airport&quot;: &quot;ebbr&quot;, &quot;inp&quot;: [&quot;matplotlibrc&quot;, &quot;ebbr.csv&quot;], &quot;out&quot;: [&quot;plot_ebbr.png&quot;]}&#39;
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>   SUCCESS │ ./plot.py run &#39;{&quot;airport&quot;: &quot;ebbr&quot;, &quot;inp&quot;: [&quot;matplotlibrc&quot;, &quot;ebbr.csv&quot;], &quot;out&quot;: [&quot;plot_ebbr.png&quot;]}&#39;
+</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>     START │ ./plot.py run &#39;{&quot;airport&quot;: &quot;ebos&quot;, &quot;inp&quot;: [&quot;matplotlibrc&quot;, &quot;ebos.csv&quot;], &quot;out&quot;: [&quot;plot_ebos.png&quot;]}&#39;
+</span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>   SUCCESS │ ./plot.py run &#39;{&quot;airport&quot;: &quot;ebos&quot;, &quot;inp&quot;: [&quot;matplotlibrc&quot;, &quot;ebos.csv&quot;], &quot;out&quot;: [&quot;plot_ebos.png&quot;]}&#39;
+</span><span id="__span-10-14"><a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
+</span><span id="__span-10-15"><a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>  DIRECTOR │ See you!
 </span></code></pre></div>
 <p>This produces the following figures:</p>
 <p><img alt="EBBR" src="plot_ebbr.png" />

@@ -2669,6 +2669,13 @@ from a previously interrupted run of the step are still valid.
 It can also be useful when actions submit jobs to a scheduler,
 to decide if a running job is still valid.</p>
 </dd>
+<dt><code>STEPUP_STEP_NEED</code></dt>
+<dd>
+<p>The declared need level of the currently executing step,
+as one of the strings <code>OPTIONAL</code>, <code>DEFAULT</code>, <code>TARGET</code>, or <code>PLAN</code>.
+This is used internally by StepUp to detect workflow authoring errors,
+such as registering a planning step (<code>need=Need.PLAN</code>) from inside a non-planning step.</p>
+</dd>
 </dl>
 
 
