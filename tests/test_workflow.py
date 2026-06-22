@@ -27,7 +27,7 @@ import pytest
 from conftest import declare_static, fake_hash
 from path import Path
 
-from stepup.core.enums import FileState, StepState
+from stepup.core.enums import FileState, HashUpdateCause, StepState
 from stepup.core.exceptions import GraphError
 from stepup.core.file import File
 from stepup.core.hash import FileHash, StepHash
@@ -318,7 +318,7 @@ def test_simple_example(wfs: Workflow):
     # Simulate the builder, pretending to execute the step
     with wfs.con:
         out_hashes = [("bar.txt", fake_hash("bar.txt"))]
-        wfs.update_file_hashes(out_hashes, "succeeded")
+        wfs.update_file_hashes(out_hashes, HashUpdateCause.SUCCEEDED)
         inp_hashes = [("foo.txt", foo.get_hash())]
         env_vars_values = [("A", "B")]
         step_hash = StepHash.from_inp(step.key(), True, inp_hashes, env_vars_values)
@@ -341,7 +341,7 @@ def test_simple_example(wfs: Workflow):
         declare_static(wfs, wfs.root, ["bar.txt"])
 
     # simulate a change in the input file
-    wfs.update_file_hashes([("foo.txt", fake_hash("foo.txt"))], cause="external")
+    wfs.update_file_hashes([("foo.txt", fake_hash("foo.txt"))], cause=HashUpdateCause.EXTERNAL)
     assert wfs.format_str() == TEST_SIMPLE_EXAMPLE_GRAPH4
     assert step.get_state() == StepState.PENDING
 
@@ -605,7 +605,7 @@ def test_define_pending_step_skip(wfp: Workflow):
     step = wfp.find(Step, "cat < inp > out")
 
     # Simulate run (first get the plan step and ignore it)
-    wfp.update_file_hashes([("out", fake_hash("out"))], "succeeded")
+    wfp.update_file_hashes([("out", fake_hash("out"))], HashUpdateCause.SUCCEEDED)
     step.completed(StepHash(b"a" * 32, None, b"b" * 32, None))
 
     # Check run
@@ -616,7 +616,7 @@ def test_define_pending_step_skip(wfp: Workflow):
     assert wfp.format_str() == PENDING_STEP_SKIP_GRAPH
 
     # Simulate input change
-    wfp.update_file_hashes([("inp", fake_hash("inp"))], "external")
+    wfp.update_file_hashes([("inp", fake_hash("inp"))], HashUpdateCause.EXTERNAL)
     assert step.get_state() == StepState.PENDING
     out = wfp.find(File, "out")
     assert out.get_state() == FileState.OUTDATED
@@ -649,7 +649,9 @@ def test_define_pending_step_skip_extra(wfp: Workflow):
     )
     assert keep_going
     assert to_check == []
-    wfp.update_file_hashes([("log", fake_hash("log")), ("aout", fake_hash("aout"))], "succeeded")
+    wfp.update_file_hashes(
+        [("log", fake_hash("log")), ("aout", fake_hash("aout"))], HashUpdateCause.SUCCEEDED
+    )
     foo.completed(StepHash(b"foo_ok", None, b"zzz", None))
     assert foo.get_state() == StepState.SUCCEEDED
     assert bar.get_state() == StepState.PENDING
@@ -658,7 +660,7 @@ def test_define_pending_step_skip_extra(wfp: Workflow):
     assert bar.get_state() == StepState.PENDING
     wfp.amend_step(bar, inp_paths=["ainp2"], out_paths=["aout2"], vol_paths=["avol2"])
     assert wfp.find(File, "ainp2") in set(bar.suppliers())
-    wfp.update_file_hashes([("aout2", fake_hash("aout2"))], "succeeded")
+    wfp.update_file_hashes([("aout2", fake_hash("aout2"))], HashUpdateCause.SUCCEEDED)
     bar.completed(StepHash(b"bar_ok", None, b"zzz", None))
     assert bar.get_state() == StepState.SUCCEEDED
     txt = wfp.format_str()
@@ -702,7 +704,9 @@ def test_skip_step_amended_detached_input(wfp: Workflow):
 
     # Simulate run
     wfp.amend_step(foo, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"])
-    wfp.update_file_hashes([("log", fake_hash("log")), ("aout", fake_hash("aout"))], "succeeded")
+    wfp.update_file_hashes(
+        [("log", fake_hash("log")), ("aout", fake_hash("aout"))], HashUpdateCause.SUCCEEDED
+    )
     foo.completed(StepHash(b"foo_ok", None, b"zzz", None))
     assert foo.get_state() == StepState.SUCCEEDED
 
@@ -872,7 +876,9 @@ def test_define_pending_step_skip_amended(wfp: Workflow):
 
     # Simulate running the step
     wfp.amend_step(step, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"])
-    wfp.update_file_hashes([("out", fake_hash("out")), ("aout", fake_hash("aout"))], "succeeded")
+    wfp.update_file_hashes(
+        [("out", fake_hash("out")), ("aout", fake_hash("aout"))], HashUpdateCause.SUCCEEDED
+    )
     step.completed(StepHash(b"c" * 32, None, b"d" * 32, None))
     assert wfp.format_str() == PENDING_STEP_SKIP_AMENDED_GRAPH
     assert step.get_state() == StepState.SUCCEEDED
@@ -884,7 +890,7 @@ def test_define_pending_step_skip_amended(wfp: Workflow):
     assert step_hash.out_digest == b"d" * 32
 
     # Simulate amended input change
-    wfp.update_file_hashes([("ainp", fake_hash("ainp"))], "external")
+    wfp.update_file_hashes([("ainp", fake_hash("ainp"))], HashUpdateCause.EXTERNAL)
     assert step.get_state() == StepState.PENDING
     out = wfp.find(File, "out")
     assert out.get_state() == FileState.OUTDATED
@@ -992,7 +998,7 @@ def test_externally_updated1(wfp: Workflow):
         assert aa1_bar.creator() == work
         assert aa1_bar.get_state() == FileState.AWAITED
         assert work.get_state() == StepState.PENDING
-        wfp.update_file_hashes([("aa1_bar.txt", fake_hash("ok"))], "succeeded")
+        wfp.update_file_hashes([("aa1_bar.txt", fake_hash("ok"))], HashUpdateCause.SUCCEEDED)
         work.completed(None)
         assert work.get_state() == StepState.FAILED
         assert aa1_bar.get_state() == FileState.OUTDATED
@@ -1014,7 +1020,7 @@ def test_externally_updated1(wfp: Workflow):
                 ("cc5_foo.txt", FileHash.unknown()),
                 ("aa1_bar.txt", fake_hash("change1")),
             ],
-            "external",
+            HashUpdateCause.EXTERNAL,
         )
         wfp.process_nglob_changes({"cc5_foo.txt"}, {"bb7_bar.txt"})
 
@@ -1038,7 +1044,7 @@ def test_externally_updated_static_detached(wfp: Workflow):
     foo = wfp.find(File, "foo.txt")
     foo.detach()
     foo.set_state(FileState.MISSING)
-    wfp.update_file_hashes([("foo.txt", fake_hash("foo.txt"))], "external")
+    wfp.update_file_hashes([("foo.txt", fake_hash("foo.txt"))], HashUpdateCause.EXTERNAL)
     assert foo.is_detached()
     assert foo.get_state() == FileState.STATIC
 
@@ -1048,7 +1054,7 @@ def test_externally_updated_static_missing(wfp: Workflow):
     declare_static(wfp, plan, ["foo.txt"])
     foo = wfp.find(File, "foo.txt")
     foo.set_state(FileState.MISSING)
-    wfp.update_file_hashes([("foo.txt", fake_hash("foo.txt"))], "external")
+    wfp.update_file_hashes([("foo.txt", fake_hash("foo.txt"))], HashUpdateCause.EXTERNAL)
     assert foo.creator().i == plan.i
     assert foo.get_state() == FileState.STATIC
 
@@ -1058,7 +1064,7 @@ def test_externally_deleted_static_detached(wfp: Workflow):
     declare_static(wfp, plan, ["foo.txt"])
     foo = wfp.find(File, "foo.txt")
     foo.detach()
-    wfp.update_file_hashes([("foo.txt", FileHash.unknown())], "external")
+    wfp.update_file_hashes([("foo.txt", FileHash.unknown())], HashUpdateCause.EXTERNAL)
     assert foo.is_detached()
     assert foo.get_state() == FileState.MISSING
     assert foo.get_hash() == FileHash.unknown()
@@ -1071,7 +1077,7 @@ def test_externally_updated_built_detached(wfp: Workflow):
     step.detach()
     assert step.get_state() == StepState.PENDING
     with pytest.raises(AssertionError):
-        wfp.update_file_hashes([("foo.txt", fake_hash("foo.txt"))], "external")
+        wfp.update_file_hashes([("foo.txt", fake_hash("foo.txt"))], HashUpdateCause.EXTERNAL)
     assert step.get_state() == StepState.PENDING
 
 
@@ -1082,7 +1088,7 @@ def test_externally_deleted_built_detached(wfp: Workflow):
     step.detach()
     assert step.get_state() == StepState.PENDING
     with pytest.raises(AssertionError):
-        wfp.update_file_hashes([("foo.txt", FileHash.unknown())], "external")
+        wfp.update_file_hashes([("foo.txt", FileHash.unknown())], HashUpdateCause.EXTERNAL)
     assert step.get_state() == StepState.PENDING
 
 
@@ -1118,7 +1124,7 @@ def test_to_be_deleted(wfp: Workflow):
     foo_file_hash = fake_hash("sub/foo")
     wfp.update_file_hashes(
         [("built", built_file_hash), ("gone", gone_file_hash), ("sub/foo", foo_file_hash)],
-        "succeeded",
+        HashUpdateCause.SUCCEEDED,
     )
     blub1.completed(StepHash(b"aaa", None, b"zzz", None))
     plan.detach()
@@ -1143,22 +1149,22 @@ def test_externally_deleted(wfp: Workflow):
     step2 = wfp.find(Step, "bla2")
 
     # Static
-    wfp.update_file_hashes([("tst", FileHash.unknown())], "external")
+    wfp.update_file_hashes([("tst", FileHash.unknown())], HashUpdateCause.EXTERNAL)
     assert tst.get_state() == FileState.MISSING
     with pytest.raises(AssertionError):
-        wfp.update_file_hashes([("tst", FileHash.unknown())], "external")
+        wfp.update_file_hashes([("tst", FileHash.unknown())], HashUpdateCause.EXTERNAL)
 
     # Built
     prr = wfp.find(File, "prr")
     assert prr.get_state() == FileState.AWAITED
     with pytest.raises(AssertionError):
-        wfp.update_file_hashes([("prr", FileHash.unknown())], "external")
+        wfp.update_file_hashes([("prr", FileHash.unknown())], HashUpdateCause.EXTERNAL)
     assert prr.get_state() == FileState.AWAITED
-    wfp.update_file_hashes([("prr", fake_hash("prr"))], "succeeded")
+    wfp.update_file_hashes([("prr", fake_hash("prr"))], HashUpdateCause.SUCCEEDED)
     step1.completed(StepHash(b"11", None, b"zzz", None))
     step2.completed(None)
     assert prr.get_state() == FileState.BUILT
-    wfp.update_file_hashes([("prr", FileHash.unknown())], "external")
+    wfp.update_file_hashes([("prr", FileHash.unknown())], HashUpdateCause.EXTERNAL)
     assert prr.get_state() == FileState.AWAITED
     assert step1.get_state() == StepState.PENDING
     assert step2.get_state() == StepState.PENDING
@@ -1176,22 +1182,22 @@ def test_externally_updated2(wfp: Workflow):
 
     # Static
     cat.completed(StepHash(b"sfdsafds", None, b"zzz", None))
-    wfp.update_file_hashes([("tst", FileHash.unknown())], "external")
+    wfp.update_file_hashes([("tst", FileHash.unknown())], HashUpdateCause.EXTERNAL)
     assert tst.get_state() == FileState.MISSING
     assert cat.get_state() == StepState.PENDING
-    wfp.update_file_hashes([("tst", fake_hash("tst"))], "external")
+    wfp.update_file_hashes([("tst", fake_hash("tst"))], HashUpdateCause.EXTERNAL)
     assert tst.get_state() == FileState.STATIC
     assert cat.get_state() == StepState.PENDING
 
     # Built
     prr = wfp.find(File, "prr")
     assert prr.get_state() == FileState.AWAITED
-    wfp.update_file_hashes([("prr", fake_hash("prr"))], "succeeded")
+    wfp.update_file_hashes([("prr", fake_hash("prr"))], HashUpdateCause.SUCCEEDED)
     step1.completed(StepHash(b"11", None, b"zzz", None))
     step2.completed(None)
     assert prr.get_state() == FileState.BUILT
     assert step2.get_state() == StepState.FAILED
-    wfp.update_file_hashes([("prr", FileHash.unknown())], "external")
+    wfp.update_file_hashes([("prr", FileHash.unknown())], HashUpdateCause.EXTERNAL)
     assert prr.get_state() == FileState.AWAITED
     assert step1.get_state() == StepState.PENDING
     assert step2.get_state() == StepState.PENDING
@@ -1202,7 +1208,7 @@ def test_step_recycle(wfp: Workflow):
     wfp.define_step(plan, "echo foo > bar", out_paths=["bar"])
     echo = wfp.find(Step, "echo foo > bar")
     step_hash = StepHash(b"bsfssfdsdfsdfasdfasa", None, b"zzz", None)
-    wfp.update_file_hashes([("bar", fake_hash("bar"))], "succeeded")
+    wfp.update_file_hashes([("bar", fake_hash("bar"))], HashUpdateCause.SUCCEEDED)
     echo.completed(step_hash)
     hash1 = echo.get_hash()
     assert hash1 is not None
@@ -1309,7 +1315,7 @@ def test_static_root_basic(wfp: Workflow):
     assert head1.get_state() == FileState.MISSING
 
     # Check if head_1.txt is static after confirming
-    wfp.update_file_hashes([("head/one.txt", fake_hash("head/one.txt"))], "confirmed")
+    wfp.update_file_hashes([("head/one.txt", fake_hash("head/one.txt"))], HashUpdateCause.CONFIRMED)
     assert head1.get_state() == FileState.STATIC
 
     # Use static root after it is added
@@ -1318,8 +1324,8 @@ def test_static_root_basic(wfp: Workflow):
     tail1 = wfp.find(File, "tail/one.txt")
     assert tail1.get_state() == FileState.MISSING
     with pytest.raises(AssertionError):
-        wfp.update_file_hashes(to_check, "confirmed")
-    wfp.update_file_hashes([("tail/one.txt", fake_hash("tail/one.txt"))], "confirmed")
+        wfp.update_file_hashes(to_check, HashUpdateCause.CONFIRMED)
+    wfp.update_file_hashes([("tail/one.txt", fake_hash("tail/one.txt"))], HashUpdateCause.CONFIRMED)
     assert tail1.get_state() == FileState.STATIC
 
 
@@ -1334,7 +1340,7 @@ def test_static_root_clean(wfp: Workflow):
         [
             ("static/foo/bar.txt", fake_hash("static/foo/bar.txt")),
         ],
-        "confirmed",
+        HashUpdateCause.CONFIRMED,
     )
     step = wfp.find(Step, "cat static/foo/bar.txt")
 
@@ -1512,7 +1518,7 @@ def test_out_paths(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "script", out_paths=["foo", "bar"])
     step = wfp.find(Step, "script")
-    wfp.update_file_hashes([("bar", fake_hash("bar"))], "succeeded")
+    wfp.update_file_hashes([("bar", fake_hash("bar"))], HashUpdateCause.SUCCEEDED)
     assert set(step.out_paths()) == {"bar", "foo"}
     assert set(step.out_paths(yield_state=True)) == {
         ("bar", FileState.BUILT),
@@ -1571,7 +1577,7 @@ def test_skip_amend_detached_inputs(wfp: Workflow):
     assert set(step.vol_paths(yield_detached=True, yield_amended=True)) == {
         ("bbb", False, True),
     }
-    wfp.update_file_hashes([("bar", fake_hash("bar"))], "succeeded")
+    wfp.update_file_hashes([("bar", fake_hash("bar"))], HashUpdateCause.SUCCEEDED)
     step.completed(StepHash(b"step_ok", None, b"zzz", None))
     assert step.get_state() == StepState.SUCCEEDED
     assert step.get_hash() is not None
@@ -1674,11 +1680,11 @@ def test_confirm_missing(wfp: Workflow):
     assert to_check == [("other.txt", FileHash.unknown()), ("test.txt", FileHash.unknown())]
     # static other.txt
     assert wfp.find(File, "other.txt").get_state() == FileState.MISSING
-    wfp.update_file_hashes([("other.txt", fake_hash("other.txt"))], "confirmed")
+    wfp.update_file_hashes([("other.txt", fake_hash("other.txt"))], HashUpdateCause.CONFIRMED)
     assert wfp.find(File, "other.txt").get_state() == FileState.STATIC
     # static test.txt
     assert wfp.find(File, "test.txt").get_state() == FileState.MISSING
-    wfp.update_file_hashes([("test.txt", fake_hash("test.txt"))], "confirmed")
+    wfp.update_file_hashes([("test.txt", fake_hash("test.txt"))], HashUpdateCause.CONFIRMED)
     assert wfp.find(File, "test.txt").get_state() == FileState.STATIC
 
 
@@ -1725,7 +1731,7 @@ def test_static_root_lost_child(wfp: Workflow):
     # Simulate the creation of a static data/foo.txt through the static root.
     to_check = wfp.define_step(prog, "work", inp_paths=["data/foo.txt"])
     assert to_check == [("data/foo.txt", FileHash.unknown())]
-    wfp.update_file_hashes([("data/foo.txt", fake_hash("data/foo.txt"))], "confirmed")
+    wfp.update_file_hashes([("data/foo.txt", fake_hash("data/foo.txt"))], HashUpdateCause.CONFIRMED)
 
     prog.detach()
     assert prog.is_detached()
@@ -1733,7 +1739,7 @@ def test_static_root_lost_child(wfp: Workflow):
     # Simulate creation of new data/foo.txt
     to_check = wfp.declare_missing(wfp.root, ["data/foo.txt"])
     assert to_check == [("data/foo.txt", FileHash.unknown())]
-    wfp.update_file_hashes([("data/foo.txt", fake_hash("data/foo.txt"))], "confirmed")
+    wfp.update_file_hashes([("data/foo.txt", fake_hash("data/foo.txt"))], HashUpdateCause.CONFIRMED)
     data = wfp.find(File, "data/foo.txt")
     assert data.creator() == wfp.root
 
@@ -1754,7 +1760,7 @@ def test_consistency_succeeded_step(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "prog", out_paths=["out.txt"])
     step = wfp.find(Step, "prog")
-    wfp.update_file_hashes([("out.txt", fake_hash("out.txt"))], "succeeded")
+    wfp.update_file_hashes([("out.txt", fake_hash("out.txt"))], HashUpdateCause.SUCCEEDED)
     step.completed(StepHash(b"prog", None, b"zzz", None))
     assert step.get_state() == StepState.SUCCEEDED
     out = wfp.find(File, "out.txt")
@@ -1856,7 +1862,9 @@ def test_recreate_step_to_check_amend(wfp: Workflow):
         vol_paths=["vol1.txt"],
     )
     assert to_check == [("static/inp1.txt", FileHash.unknown())]
-    wfp.update_file_hashes([("static/inp1.txt", fake_hash("static/inp1.txt"))], "confirmed")
+    wfp.update_file_hashes(
+        [("static/inp1.txt", fake_hash("static/inp1.txt"))], HashUpdateCause.CONFIRMED
+    )
     prog = wfp.find(Step, "prog")
     prog.detach()
     to_check = wfp.define_step(
@@ -1882,7 +1890,7 @@ def test_get_file_hashes(wfp: Workflow):
         ("data.txt", FileHash.unknown()),
         ("other.txt", FileHash.unknown()),
     ]
-    wfp.update_file_hashes([("data.txt", fake_hash("data.txt"))], "confirmed")
+    wfp.update_file_hashes([("data.txt", fake_hash("data.txt"))], HashUpdateCause.CONFIRMED)
     assert wfp.get_file_hashes(paths) == [
         ("data.txt", fake_hash("data.txt")),
         ("other.txt", FileHash.unknown()),
@@ -1916,7 +1924,7 @@ def test_large_inode(wfp: Workflow):
     wfp.declare_missing(plan, ["foo.txt"])
     wfp.update_file_hashes(
         [("foo.txt", FileHash(hashlib.sha256(b"foo").digest(), 0o644, 1.0, 10, large_inode))],
-        "confirmed",
+        HashUpdateCause.CONFIRMED,
     )
     foo = wfp.find(File, "foo.txt")
     hash_info = foo.get_hash()

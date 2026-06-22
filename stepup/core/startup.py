@@ -26,7 +26,7 @@ import os
 from path import Path
 
 from .builder import Builder
-from .enums import FileState, StepState
+from .enums import FileState, HashUpdateCause, StepState
 from .hash import FileHash, fmt_env_value, fmt_file_hash_diff
 from .reporter import ReporterClient
 from .step import Step
@@ -159,7 +159,7 @@ async def scan_file_changes(
 
     logger.info("Updating file hashes %s", changed_hashes)
     async with dblock:
-        workflow.update_file_hashes(changed_hashes, "external")
+        workflow.update_file_hashes(changed_hashes, HashUpdateCause.EXTERNAL)
     return deleted, added
 
 

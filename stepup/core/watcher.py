@@ -27,7 +27,7 @@ import attrs
 from path import Path
 
 from .asyncio import stoppable_iterator, wait_for_events
-from .enums import Change
+from .enums import Change, HashUpdateCause
 from .file import File, FileState
 from .reporter import ReporterClient
 from .utils import DBLock
@@ -176,7 +176,7 @@ class Watcher:
                 else:
                     new_hashes.append((path, new_file_hash))
             if len(new_hashes) > 0:
-                self.workflow.update_file_hashes(new_hashes, "external")
+                self.workflow.update_file_hashes(new_hashes, HashUpdateCause.EXTERNAL)
 
             # Mark steps pending if they use nglob patterns that have different matches.
             self.workflow.process_nglob_changes(self.deleted, self.updated)

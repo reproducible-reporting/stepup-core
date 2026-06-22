@@ -41,7 +41,7 @@ except ImportError:
 
 from .asyncio import wait_for_events
 from .builder import Builder
-from .enums import Need, ReturnCode, StepState
+from .enums import HashUpdateCause, Need, ReturnCode, StepState
 from .exceptions import GraphError
 from .hash import FileHash
 from .nglob import NGlobMulti
@@ -454,7 +454,7 @@ class DirectorHandler:
             on the client side.
         """
         async with self.dblock:
-            self.workflow.update_file_hashes(checked, "confirmed")
+            self.workflow.update_file_hashes(checked, HashUpdateCause.CONFIRMED)
 
     @allow_rpc
     async def step(

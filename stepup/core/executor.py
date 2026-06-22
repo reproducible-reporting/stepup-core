@@ -54,7 +54,7 @@ import attrs
 from path import Path
 
 from .asyncio import await_fd_readable
-from .enums import FileState, StepState
+from .enums import FileState, HashUpdateCause, StepState
 from .exceptions import RPCError
 from .extapi import get_local_import_paths
 from .hash import FileHash, StepHash, compare_step_hashes
@@ -665,7 +665,7 @@ class StepExecutor:
             # All checks passed: no need to run the step, just simulate the products.
             await self.skip(rs, step_hash)
             async with self.dblock:
-                self.workflow.update_file_hashes(new_out_hashes, "succeeded")
+                self.workflow.update_file_hashes(new_out_hashes, HashUpdateCause.SUCCEEDED)
                 step.completed(new_hash)
                 step_counts = self.workflow.get_step_counts()
             await self.reporter.update_step_counts(step_counts)
@@ -699,7 +699,8 @@ class StepExecutor:
                     self.rescheduled(rs, rescheduled_info)
                     success = False
                 self.workflow.update_file_hashes(
-                    new_out_hashes, "succeeded" if success else "failed"
+                    new_out_hashes,
+                    HashUpdateCause.SUCCEEDED if success else HashUpdateCause.FAILED,
                 )
                 if not success:
                     new_hash = None

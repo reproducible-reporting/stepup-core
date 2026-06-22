@@ -32,7 +32,7 @@ import attrs
 from path import Path
 
 from .cascade import Cascade, Node, Root
-from .enums import FileState, Need, StepState
+from .enums import FileState, HashUpdateCause, Need, StepState
 from .exceptions import GraphError
 from .file import File
 from .hash import FileHash, fmt_digest
@@ -151,7 +151,7 @@ class Workflow(Cascade):
             file_hashes.append((path, FileHash.unknown().regen(path)))
         if len(file_hashes) > 0:
             logger.error("Fixing %s file hashes", len(file_hashes))
-            self.update_file_hashes(file_hashes, "external")
+            self.update_file_hashes(file_hashes, HashUpdateCause.EXTERNAL)
             for file in self.files:
                 file.mark_outdated()
 
@@ -217,7 +217,7 @@ class Workflow(Cascade):
             node.detach()
         to_check = self.declare_missing(self.root, ["plan.py"])
         checked = [(path, file_hash.regen(path)) for path, file_hash in to_check]
-        self.update_file_hashes(checked, "confirmed")
+        self.update_file_hashes(checked, HashUpdateCause.CONFIRMED)
         self.define_step(self.root, command, inp_paths=["plan.py"], need=Need.PLAN, safe=True)
         return True
 
@@ -558,7 +558,9 @@ class Workflow(Cascade):
         finally:
             self.con.execute("DROP TABLE IF EXISTS temp.paths")
 
-    def update_file_hashes(self, file_hashes: Collection[tuple[str, FileHash]], cause: str):
+    def update_file_hashes(
+        self, file_hashes: Collection[tuple[str, FileHash]], cause: HashUpdateCause
+    ):
         """Update the hashes of existing files.
 
         Parameters
@@ -566,12 +568,10 @@ class Workflow(Cascade):
         file_hashes
             A list of `(path, file_hash)` tuples.
         cause
-            The cause of the hash updates.
-            Can be one of the following:
-            `"external"`, `"succeeded"`, `"failed"` or `"confirmed"`.
+            The reason for the hash updates.
         """
-        if cause not in ("external", "succeeded", "failed", "confirmed"):
-            raise ValueError("Invalid cause for updating file hashes.")
+        if not isinstance(cause, HashUpdateCause):
+            raise TypeError(f"cause must be a HashUpdateCause, got: {cause!r}")
         if len(file_hashes) == 0:
             return
 
@@ -617,7 +617,7 @@ class Workflow(Cascade):
 
         # Decide how the file state must change and which other actions to take on the files
         # based on the cause of the hash updates.
-        if cause == "external":
+        if cause == HashUpdateCause.EXTERNAL:
             # This is branch is relevant for the end of the watch phase or the startup of StepUp
             for i, path, new_fh, old_state in records:
                 if old_state == FileState.MISSING:
@@ -640,7 +640,7 @@ class Workflow(Cascade):
                         updated.append((i, path))
                 else:
                     raise_unexpected(path, old_state, new_fh)
-        elif cause == "succeeded":
+        elif cause == HashUpdateCause.SUCCEEDED:
             # This branch is relevant for when a step has succeeded
             # and its outputs should be marked as BUILT.
             for i, path, new_fh, old_state in records:
@@ -651,7 +651,7 @@ class Workflow(Cascade):
                     completed.append((i, path))
                 else:
                     raise_unexpected(path, old_state, new_fh)
-        elif cause == "failed":
+        elif cause == HashUpdateCause.FAILED:
             # This branch is relevant for when a step has failed or rescheduled
             # and its outputs should be marked as OUTDATED.
             for i, path, new_fh, old_state in records:
@@ -661,7 +661,7 @@ class Workflow(Cascade):
                     )
                 else:
                     raise_unexpected(path, old_state, new_fh)
-        elif cause == "confirmed":
+        elif cause == HashUpdateCause.CONFIRMED:
             # This branch is relevant for when the client has confirmed the hashes
             # of missing files and they should be marked as STATIC.
             for i, path, new_fh, old_state in records:
@@ -672,8 +672,6 @@ class Workflow(Cascade):
                     completed.append((i, path))
                 else:
                     raise_unexpected(path, old_state, new_fh)
-        else:
-            raise ValueError(f"Invalid cause for updating file hashes: {cause}")
 
         # Actual update of the file hashes.
         logger.info("Update file hashes: cause=%s new=%s", cause, new_states_hashes)

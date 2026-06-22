@@ -22,7 +22,7 @@
 from conftest import declare_static, fake_hash
 
 from stepup.core.clean import search_consuming_paths
-from stepup.core.enums import FileState
+from stepup.core.enums import FileState, HashUpdateCause
 from stepup.core.file import File
 from stepup.core.hash import FileHash
 from stepup.core.step import Step
@@ -40,7 +40,7 @@ def test_cleanup_simple2(wfp: Workflow):
     declare_static(wfp, plan, ["bar.txt"])
     wfp.define_step(plan, "cp bar.txt foo.txt", inp_paths=["bar.txt"], out_paths=["foo.txt"])
     file_hash = fake_hash("foo.txt")
-    wfp.update_file_hashes([("foo.txt", file_hash)], "succeeded")
+    wfp.update_file_hashes([("foo.txt", file_hash)], HashUpdateCause.SUCCEEDED)
     assert search_consuming_paths(wfp.con, ["bar.txt"], False) == [
         ("foo.txt", FileState.BUILT, False, file_hash)
     ]
@@ -51,7 +51,7 @@ def test_cleanup_simple3(wfp: Workflow):
     declare_static(wfp, plan, ["bar.txt"])
     wfp.define_step(plan, "cp bar.txt foo.txt", inp_paths=["bar.txt"], out_paths=["foo.txt"])
     file_hash = fake_hash("foo.txt")
-    wfp.update_file_hashes([("foo.txt", file_hash)], "succeeded")
+    wfp.update_file_hashes([("foo.txt", file_hash)], HashUpdateCause.SUCCEEDED)
     wfp.find(File, "foo.txt").set_state(FileState.OUTDATED)
     assert search_consuming_paths(wfp.con, ["bar.txt"], False) == [
         ("foo.txt", FileState.OUTDATED, False, file_hash),
@@ -62,7 +62,7 @@ def test_cleanup_simple4(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "prog1", inp_paths=["bar.txt"], out_paths=["foo.txt"])
     file_hash = fake_hash("foo.txt")
-    wfp.update_file_hashes([("foo.txt", file_hash)], "succeeded")
+    wfp.update_file_hashes([("foo.txt", file_hash)], HashUpdateCause.SUCCEEDED)
     wfp.define_step(plan, "prog2", inp_paths=["foo.txt"], vol_paths=["egg.txt"])
     assert search_consuming_paths(wfp.con, ["bar.txt"], False) == [
         ("foo.txt", FileState.BUILT, False, file_hash),
@@ -83,7 +83,7 @@ def test_cleanup_detached(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "prog1", inp_paths=["inp.txt"], out_paths=["out.txt"])
     file_hash = fake_hash("out.txt")
-    wfp.update_file_hashes([("out.txt", file_hash)], "succeeded")
+    wfp.update_file_hashes([("out.txt", file_hash)], HashUpdateCause.SUCCEEDED)
     # Mark step (and indirectly its output file) as detached
     wfp.find(Step, "prog1").detach()
     assert search_consuming_paths(wfp.con, ["inp.txt"], False) == [

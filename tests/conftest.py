@@ -31,7 +31,7 @@ import pytest_asyncio
 from path import Path
 
 from stepup.core.director import serve
-from stepup.core.enums import Need
+from stepup.core.enums import HashUpdateCause, Need
 from stepup.core.file import File
 from stepup.core.hash import FileHash
 from stepup.core.reporter import ReporterClient
@@ -124,7 +124,7 @@ def declare_static(workflow, creator, paths):
     """
     missing = workflow.declare_missing(creator, paths)
     checked = [(path, fake_hash(path)) for path, _ in missing]
-    workflow.update_file_hashes(checked, "confirmed")
+    workflow.update_file_hashes(checked, HashUpdateCause.CONFIRMED)
     return [workflow.find(File, path) for path in paths]
 
 

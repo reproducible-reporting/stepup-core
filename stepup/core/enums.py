@@ -21,7 +21,7 @@
 
 from enum import Enum, Flag, auto
 
-__all__ = ("Change", "FileState", "Need", "ReturnCode", "StepState")
+__all__ = ("Change", "FileState", "HashUpdateCause", "Need", "ReturnCode", "StepState")
 
 
 class ReturnCode(Flag):
@@ -139,3 +139,19 @@ class Change(Enum):
 
     DELETED_PARENT = 43
     """A parent directory was deleted."""
+
+
+class HashUpdateCause(Enum):
+    """The reason why file hashes are being updated in `Workflow.update_file_hashes`."""
+
+    EXTERNAL = 51
+    """File hashes changed externally (startup or watch phase)."""
+
+    SUCCEEDED = 52
+    """A step succeeded; its outputs should be marked BUILT."""
+
+    FAILED = 53
+    """A step failed or rescheduled; outputs remain OUTDATED or AWAITED."""
+
+    CONFIRMED = 54
+    """Client confirmed missing files exist; mark them STATIC."""
