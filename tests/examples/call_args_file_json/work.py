@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-from stepup.core.call import callme, driver
+from stepup.core.call import driver
 
 
-@callme
 def run(inp, out):
     with open(out[0], "w") as f, open(inp[0]) as g:
         f.write(g.read())

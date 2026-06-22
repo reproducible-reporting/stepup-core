@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-from stepup.core.call import callme, driver
+from stepup.core.call import driver
 
 
-@callme
 def finalize(inp, out):
     with open(inp[0]) as g, open(out[0], "w") as f:
         f.write(g.read().strip() + " done\n")

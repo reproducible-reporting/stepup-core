@@ -19,8 +19,7 @@
 # --
 """Dispatch decorator and driver for scripts invoked by `call()`.
 
-`callme` optionally registers functions for restricted dispatch and list mode.
-`driver` is the explicit entry point: add it to every worker script called via `call()`:
+The `driver` is the explicit entry point: add it to every worker script called via `call()`:
 
 ```python
 if __name__ == "__main__":
@@ -34,44 +33,13 @@ import json
 import os
 import shlex
 import sys
-import typing
-from collections.abc import Callable
+from typing import Any, get_type_hints
 
 from rich.console import Console
 
 from .cattrs import json_converter
 
-__all__ = ("callme", "driver")
-
-_registry: dict[str, dict[str, Callable]] = {}
-
-
-def callme(fn: Callable) -> Callable:
-    """Register a function for restricted dispatch and list mode.
-
-    When `@callme` is used, only decorated functions are callable via `driver()`.
-    When `@callme` is omitted entirely, `driver()` falls back to dispatching any
-    public function in the module by name.
-
-    Parameters
-    ----------
-    fn
-        The function to register.
-        It is returned unchanged, so `@callme` is transparent to callers.
-
-    Returns
-    -------
-    fn
-        The original function, unmodified.
-    """
-    frame = inspect.currentframe().f_back
-    module_name = frame.f_globals["__name__"]
-
-    if module_name not in _registry:
-        _registry[module_name] = {}
-
-    _registry[module_name][fn.__name__] = fn
-    return fn
+__all__ = ("driver",)
 
 
 def driver() -> None:
@@ -84,82 +52,16 @@ def driver() -> None:
         driver()
     ```
 
-    When `@callme` decorators are present, only decorated functions are callable.
-    When no `@callme` decorators are used, any public (non-underscore) function
-    in the module is callable by name.
-
     When invoked with no function argument, `driver()` prints one suggested command
     per callable function and exits, which is useful for discovery.
     """
-    # Use the caller's frame globals to find functions in the no-@callme case.
-    # sys.modules["__main__"] is NOT updated by runpy.run_path (used by the forkserver),
-    # so it would point to the forkserver process instead of the user script.
-    # The caller's frame globals are the script's execution namespace in both cases.
-    caller_globals = inspect.currentframe().f_back.f_globals
-    module_file = caller_globals.get("__file__", sys.argv[0])
-    registry = _registry.get("__main__")
-    if registry is not None:
-        _dispatch(module_file, registry)
-    else:
-        _dispatch_plain(module_file, caller_globals)
-
-
-def _dispatch(script_path: str, registry: dict[str, Callable]) -> None:
-    """Dispatch to a function in *registry* by name, using the current sys.argv."""
+    ns = inspect.currentframe().f_back.f_globals
+    script_path = ns.get("__file__", sys.argv[0])
     args = _parse_args(script_path)
-
     if args.function is None:
-        _print_list(script_path, registry)
-        return
-
-    fn = registry.get(args.function)
-    if fn is None:
-        raise AttributeError(
-            f"{script_path} does not define a '@callme' function '{args.function}'"
-        )
-
-    _call_fn(fn, args, script_path)
-
-
-def _dispatch_plain(script_path: str, ns: dict) -> None:
-    """Dispatch to any public function in the *ns* namespace by name."""
-    args = _parse_args(script_path)
-
-    if args.function is None:
-        _print_list(script_path, None, ns)
-        return
-
-    fn = ns.get(args.function)
-    if fn is None or not callable(fn):
-        raise AttributeError(f"{script_path} does not define a function '{args.function}'")
-
-    _call_fn(fn, args, script_path)
-
-
-def _call_fn(fn: Callable, args: argparse.Namespace, script_path: str) -> None:
-    """Load kwargs from args and invoke *fn*."""
-    if args.json_inp is not None:
-        all_kwargs = json.loads(args.json_inp)
-    elif args.path_inp is not None:
-        from stepup.core.api import loadns  # noqa: PLC0415
-
-        all_kwargs = vars(loadns(args.path_inp))
+        _print_list(script_path, ns)
     else:
-        all_kwargs = {}
-
-    sig = inspect.signature(fn)
-    hints = typing.get_type_hints(fn)
-    if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
-        fn(**_structure_kwargs(all_kwargs, hints, script_path))
-    else:
-        extra = {k for k in all_kwargs if k not in sig.parameters and k not in ("inp", "out")}
-        if extra:
-            raise TypeError(
-                f"{script_path}: function '{fn.__name__}' received unexpected arguments: "
-                + ", ".join(sorted(extra))
-            )
-        filtered = {k: v for k, v in all_kwargs.items() if k in sig.parameters}
-        fn(**_structure_kwargs(filtered, hints, script_path))
+        _dispatch(script_path, ns, args)
 
 
 def _parse_args(script_path: str) -> argparse.Namespace:
@@ -192,42 +94,33 @@ def _parse_args(script_path: str) -> argparse.Namespace:
     return args
 
 
-def _short_path(script_path: str) -> str:
-    rel = os.path.relpath(os.path.abspath(script_path))
-    return rel if "/" in rel else f"./{rel}"
+def _dispatch(script_path: str, obj: Any, args: argparse.Namespace) -> None:
+    fn = obj.get(args.function)
+    if fn is None or not callable(fn):
+        raise AttributeError(f"{script_path} does not define a function '{args.function}'")
 
+    if args.json_inp is not None:
+        all_kwargs = json.loads(args.json_inp)
+    elif args.path_inp is not None:
+        from stepup.core.api import loadns  # noqa: PLC0415
 
-def _print_list(
-    script_path: str, registry: dict[str, Callable] | None, ns: dict | None = None
-) -> None:
-    if registry is None and ns is not None:
-        if "__all__" in ns:
-            registry = {
-                name: fn for name, fn in ns.items() if name in ns["__all__"] and callable(fn)
-            }
-        else:
-            module_name = ns.get("__name__")
-            registry = {
-                name: fn
-                for name, fn in ns.items()
-                if not name.startswith("_")
-                and callable(fn)
-                and (module_name is None or getattr(fn, "__module__", None) == module_name)
-            }
-    if not registry:
-        return
-    console = Console(highlight=False)
-    display = _short_path(script_path)
-    for fn_name, fn in registry.items():
-        sig = inspect.signature(fn)
-        params = {
-            name: (None if param.default is inspect.Parameter.empty else param.default)
-            for name, param in sig.parameters.items()
-            if param.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
-        }
-        console.print(
-            f"[cyan]{display}[/] [yellow]{fn_name}[/] [grey50]{shlex.quote(json.dumps(params))}[/]"
-        )
+        all_kwargs = vars(loadns(args.path_inp))
+    else:
+        all_kwargs = {}
+
+    sig = inspect.signature(fn)
+    hints = get_type_hints(fn)
+    if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
+        fn(**_structure_kwargs(all_kwargs, hints, script_path))
+    else:
+        extra = {k for k in all_kwargs if k not in sig.parameters and k not in ("inp", "out")}
+        if extra:
+            raise TypeError(
+                f"{script_path}: function '{fn.__name__}' received unexpected arguments: "
+                + ", ".join(sorted(extra))
+            )
+        filtered = {k: v for k, v in all_kwargs.items() if k in sig.parameters}
+        fn(**_structure_kwargs(filtered, hints, script_path))
 
 
 def _structure_kwargs(kwargs: dict, hints: dict, script_path: str) -> dict:
@@ -244,3 +137,34 @@ def _structure_kwargs(kwargs: dict, hints: dict, script_path: str) -> dict:
                     f"{script_path}: argument '{k}' expected {ann}, got {type(v).__name__}: {v!r}"
                 ) from exc
     return result
+
+
+def _print_list(script_path: str, ns: dict) -> None:
+    if "__all__" in ns:
+        registry = {name: fn for name, fn in ns.items() if name in ns["__all__"] and callable(fn)}
+    else:
+        module_name = ns.get("__name__")
+        registry = {
+            name: fn
+            for name, fn in ns.items()
+            if not name.startswith("_")
+            and callable(fn)
+            and (module_name is None or getattr(fn, "__module__", None) == module_name)
+        }
+    console = Console(highlight=False)
+    display = _short_path(script_path)
+    for fn_name, fn in registry.items():
+        sig = inspect.signature(fn)
+        params = {
+            name: (None if param.default is inspect.Parameter.empty else param.default)
+            for name, param in sig.parameters.items()
+            if param.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+        }
+        console.print(
+            f"[cyan]{display}[/] [yellow]{fn_name}[/] [grey50]{shlex.quote(json.dumps(params))}[/]"
+        )
+
+
+def _short_path(script_path: str) -> str:
+    rel = os.path.relpath(os.path.abspath(script_path))
+    return rel if "/" in rel else f"./{rel}"

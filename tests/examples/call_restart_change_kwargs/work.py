@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-from stepup.core.call import callme, driver
+from stepup.core.call import driver
 
 
-@callme
 def run(inp, out, factor: int):
     with open(inp[0]) as g:
         content = g.read()

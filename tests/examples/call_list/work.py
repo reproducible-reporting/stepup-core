@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-from stepup.core.call import callme, driver
+from stepup.core.call import driver
 
 
-@callme
 def plan(inp: list[str], config: str = "default"):
     pass
 
 
-@callme
 def run(inp: list[str], out: list[str]):
     pass
 

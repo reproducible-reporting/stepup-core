@@ -2,17 +2,15 @@
 import glob
 
 from stepup.core.api import amend, call
-from stepup.core.call import callme, driver
+from stepup.core.call import driver
 
 
-@callme
 def plan():
     files = sorted(glob.glob("dir/*.txt"))
     amend(inp=files)
     call("./work.py", "run", inp=files, out=["result.txt"])
 
 
-@callme
 def run(inp, out):
     with open(out[0], "w") as f:
         for p in inp:

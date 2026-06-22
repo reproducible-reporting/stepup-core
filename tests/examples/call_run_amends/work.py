@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 from stepup.core.api import amend
-from stepup.core.call import callme, driver
+from stepup.core.call import driver
 
 
-@callme
 def run(inp):
     with open(inp[0]) as g:
         lines = g.read().splitlines()

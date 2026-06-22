@@ -70,35 +70,10 @@ The function only declares the parameters it actually uses.
 `inp` and `out` are always forwarded as lists,
 even if they were passed as a single string to `call()`.
 
-## The `@callme` Decorator
-
-The [`@callme`][stepup.core.call.callme] decorator is optional.
-When used, it restricts which functions `driver()` will dispatch to:
-only decorated functions are callable, and the no-argument listing shows only them.
-This is useful when a script contains helper functions that should not be invocable directly.
-
-```python
-#!/usr/bin/env python3
-from stepup.core.call import callme, driver
-
-
-@callme
-def run(inp: list[str], out: list[str]):
-    ...  # only this function is callable via call()
-
-
-def helper():
-    ...  # not accessible via driver()
-
-
-if __name__ == "__main__":
-    driver()
-```
-
-Alternatively, you can prefix private functions with an underscore (`_`),
+You can prefix private functions with an underscore (`_`),
 e.g. `_helper()`, to hide them from `driver()`.
 Imported names are also excluded automatically.
-To expose an imported callable, list it explicitly in `__all__`.
+To override the default selection of callable functions, list them explicitly in `__all__`.
 
 ## Passing kwargs
 

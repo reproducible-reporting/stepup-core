@@ -403,10 +403,10 @@ class Workflow(Cascade):
             new_idep = None
         return SupplyInfo(file, available, deferred, new_idep)
 
-    def create_file(
+    def declare_file(
         self, creator: Node, path: str, file_state: FileState
     ) -> tuple[Node, list[Node]]:
-        """Create (or recycle) a file with a STATIC, PENDING or VOLATILE file state.
+        """Create (or recycle) a file with a MISSING, AWAITED or VOLATILE file state.
 
         Parameters
         ----------
@@ -477,7 +477,7 @@ class Workflow(Cascade):
         # Sort paths to make the operation deterministic.
         paths = sorted(set(paths))
         # Define the files and create a list of (path, file_hash) tuples.
-        missing = [self.create_file(creator, path, FileState.MISSING) for path in paths]
+        missing = [self.declare_file(creator, path, FileState.MISSING) for path in paths]
         # Collect a list of paths and file hashes to be checked.
         return self._build_to_check(missing)
 
@@ -806,12 +806,12 @@ class Workflow(Cascade):
 
         # Create out_paths
         for out_path in out_paths:
-            file = self.create_file(step, out_path, FileState.AWAITED)
+            file = self.declare_file(step, out_path, FileState.AWAITED)
             file.add_supplier(step)
 
         # Create vol_paths
         for vol_path in vol_paths:
-            file = self.create_file(step, vol_path, FileState.VOLATILE)
+            file = self.declare_file(step, vol_path, FileState.VOLATILE)
             file.add_supplier(step)
 
         # Determine if the step needs executing and queue if relevant.
@@ -959,13 +959,13 @@ class Workflow(Cascade):
 
         # Create out_paths
         for out_path in out_paths:
-            file = self.create_file(step, out_path, FileState.AWAITED)
+            file = self.declare_file(step, out_path, FileState.AWAITED)
             new_idep = file.add_supplier(step)
             self._amend_dep(new_idep)
 
         # Create vol_paths
         for vol_path in vol_paths:
-            file = self.create_file(step, vol_path, FileState.VOLATILE)
+            file = self.declare_file(step, vol_path, FileState.VOLATILE)
             new_idep = file.add_supplier(step)
             self._amend_dep(new_idep)
 

@@ -24,7 +24,8 @@ To keep things simple, it is assumed that one Python process only communicates w
 This module should not be imported by other stepup.core modules, safe for some notable exceptions:
 
 - `stepup.core.interact`
-- inside `@callme`-decorated functions in `stepup.core.call` and `stepup.core.script`
+- `stepup.core.extapi`
+- Inside some functions, e.g. `driver()` in `stepup.core.call`.
 """
 
 import contextlib

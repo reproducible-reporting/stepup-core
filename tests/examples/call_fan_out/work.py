@@ -2,10 +2,9 @@
 import glob
 
 from stepup.core.api import amend, call
-from stepup.core.call import callme, driver
+from stepup.core.call import driver
 
 
-@callme
 def plan():
     files = sorted(glob.glob("input_*.txt"))
     amend(inp=files)
@@ -14,7 +13,6 @@ def plan():
         call("./work.py", "run", inp=[path], out=[f"output_{stem}.txt"])
 
 
-@callme
 def run(inp, out):
     with open(inp[0]) as g, open(out[0], "w") as f:
         f.write(g.read().upper())

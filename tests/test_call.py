@@ -19,6 +19,7 @@
 # --
 """Unit tests for stepup.core.call and the call() API function in stepup.core.api."""
 
+import argparse
 import json
 import shlex
 from dataclasses import dataclass
@@ -27,7 +28,7 @@ import pytest
 import yaml
 
 from stepup.core.api import call
-from stepup.core.call import _dispatch, _dispatch_plain, _print_list, _registry, callme, driver
+from stepup.core.call import _dispatch, _print_list, driver
 from stepup.core.enums import Need
 from stepup.core.stepinfo import StepInfo
 
@@ -39,20 +40,6 @@ from stepup.core.stepinfo import StepInfo
 @dataclass
 class _SampleDC:
     a: int
-
-
-# ---------------------------------------------------------------------------
-# Registry cleanup: prevents state leakage from callme decorator tests
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture(autouse=True)
-def clean_registry():
-    keys_before = set(_registry.keys())
-    yield
-    for k in list(_registry.keys()):
-        if k not in keys_before:
-            del _registry[k]
 
 
 # ---------------------------------------------------------------------------
@@ -100,24 +87,24 @@ def captured(monkeypatch):
 
 
 # ===========================================================================
-# Section 1: _dispatch / callme unit tests  (no director needed)
+# Section 1: _dispatch / _print_list unit tests  (no director needed)
 # ===========================================================================
 
 # --- Basic dispatch ---
 
 
-def test_function_called_with_kwargs(monkeypatch):
+def test_function_called_with_kwargs():
     received = []
 
     def fn(x, y):
         received.append((x, y))
 
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x": 1, "y": "hello"}'])
-    _dispatch("s.py", {"fn": fn})
+    args = argparse.Namespace(function="fn", json_inp='{"x": 1, "y": "hello"}', path_inp=None)
+    _dispatch("s.py", {"fn": fn}, args)
     assert received == [(1, "hello")]
 
 
-def test_no_arguments(monkeypatch):
+def test_no_arguments():
     # _dispatch always injects inp/out into the forwarded dict;
     # a function with no matching params receives neither.
     called = []
@@ -125,28 +112,19 @@ def test_no_arguments(monkeypatch):
     def fn():
         called.append(True)
 
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"inp": [], "out": []}'])
-    _dispatch("s.py", {"fn": fn})
+    args = argparse.Namespace(function="fn", json_inp='{"inp": [], "out": []}', path_inp=None)
+    _dispatch("s.py", {"fn": fn}, args)
     assert called == [True]
 
 
-def test_no_args_shows_list(monkeypatch, capsys):
-    def fn():
-        pass
-
-    monkeypatch.setattr("sys.argv", ["s.py"])
-    _dispatch("s.py", {"fn": fn})
-    assert "fn" in capsys.readouterr().out
-
-
-def test_function_via_commandline_json(monkeypatch):
+def test_function_via_commandline_json():
     received = []
 
     def fn(x):
         received.append(x)
 
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x": 42}'])
-    _dispatch("s.py", {"fn": fn})
+    args = argparse.Namespace(function="fn", json_inp='{"x": 42}', path_inp=None)
+    _dispatch("s.py", {"fn": fn}, args)
     assert received == [42]
 
 
@@ -160,8 +138,8 @@ def test_function_via_inp_json_file(monkeypatch, path_tmp):
         received.append(x)
 
     monkeypatch.setattr("stepup.core.api.amend", lambda **kw: None)
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", f"--inp={args_file}"])
-    _dispatch("s.py", {"fn": fn})
+    args = argparse.Namespace(function="fn", json_inp=None, path_inp=str(args_file))
+    _dispatch("s.py", {"fn": fn}, args)
     assert received == [7]
 
 
@@ -175,8 +153,8 @@ def test_function_via_inp_yaml_file(monkeypatch, path_tmp):
         received.append(x)
 
     monkeypatch.setattr("stepup.core.api.amend", lambda **kw: None)
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", f"--inp={args_file}"])
-    _dispatch("s.py", {"fn": fn})
+    args = argparse.Namespace(function="fn", json_inp=None, path_inp=str(args_file))
+    _dispatch("s.py", {"fn": fn}, args)
     assert received == [7]
 
 
@@ -187,57 +165,57 @@ def test_inp_file_unknown_extension(monkeypatch, path_tmp):
     with open(args_file, "w") as fh:
         fh.write("x=1")
     monkeypatch.setattr("stepup.core.api.amend", lambda **kw: None)
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", f"--inp={args_file}"])
+    args = argparse.Namespace(function="fn", json_inp=None, path_inp=str(args_file))
     with pytest.raises(ValueError, match="unsupported"):
-        _dispatch("s.py", {"fn": lambda: None})
+        _dispatch("s.py", {"fn": lambda: None}, args)
 
 
-def test_missing_function(monkeypatch):
-    monkeypatch.setattr("sys.argv", ["s.py", "missing"])
+def test_missing_function():
+    args = argparse.Namespace(function="missing", json_inp=None, path_inp=None)
     with pytest.raises(AttributeError, match=r"s\.py"):
-        _dispatch("s.py", {})
+        _dispatch("s.py", {}, args)
 
 
-def test_return_value_ignored(monkeypatch):
+def test_return_value_ignored():
     def fn():
         return 42
 
-    monkeypatch.setattr("sys.argv", ["s.py", "fn"])
-    _dispatch("s.py", {"fn": fn})  # must not raise
+    args = argparse.Namespace(function="fn", json_inp=None, path_inp=None)
+    _dispatch("s.py", {"fn": fn}, args)  # must not raise
 
 
 # --- Signature filtering ---
 
 
-def test_unexpected_kwargs_raises_error(monkeypatch):
+def test_unexpected_kwargs_raises_error():
     # Custom kwargs not in the function signature must raise TypeError, not be silently dropped.
     def fn(x):
         pass
 
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x": 1, "z": 99}'])
+    args = argparse.Namespace(function="fn", json_inp='{"x": 1, "z": 99}', path_inp=None)
     with pytest.raises(TypeError, match=r"unexpected arguments.*z"):
-        _dispatch("s.py", {"fn": fn})
+        _dispatch("s.py", {"fn": fn}, args)
 
 
-def test_inspection_passes_all_for_var_keyword(monkeypatch):
+def test_inspection_passes_all_for_var_keyword():
     received = {}
 
     def fn(**kwargs):
         received.update(kwargs)
 
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x": 1, "z": 99}'])
-    _dispatch("s.py", {"fn": fn})
+    args = argparse.Namespace(function="fn", json_inp='{"x": 1, "z": 99}', path_inp=None)
+    _dispatch("s.py", {"fn": fn}, args)
     assert received == {"x": 1, "z": 99}
 
 
-def test_inp_filtered_when_not_in_sig(monkeypatch):
+def test_inp_filtered_when_not_in_sig():
     received = {}
 
     def fn(x):
         received["x"] = x
 
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x": 1, "inp": ["a.txt"]}'])
-    _dispatch("s.py", {"fn": fn})
+    args = argparse.Namespace(function="fn", json_inp='{"x": 1, "inp": ["a.txt"]}', path_inp=None)
+    _dispatch("s.py", {"fn": fn}, args)
     assert received == {"x": 1}
     assert "inp" not in received
 
@@ -248,54 +226,25 @@ def test_json_and_inp_mutually_exclusive(monkeypatch, path_tmp):
         json.dump({}, fh)
     monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x":1}', f"--inp={args_file}"])
     with pytest.raises(SystemExit):
-        _dispatch("s.py", {"fn": lambda: None})
+        driver()
 
 
-# --- callme decorator ---
+# --- _print_list output ---
 
 
-def test_callme_registers_function():
-    def my_fn():
+def test_no_args_shows_list(capsys):
+    def fn():
         pass
 
-    callme(my_fn)
-    assert __name__ in _registry
-    assert "my_fn" in _registry[__name__]
-    assert _registry[__name__]["my_fn"] is my_fn
+    _print_list("s.py", {"fn": fn})
+    assert "fn" in capsys.readouterr().out
 
 
-def test_callme_transparent():
-    def my_fn():
-        pass
-
-    result = callme(my_fn)
-    assert result is my_fn
-
-
-def test_callme_multiple_functions():
-    def fn_a():
-        pass
-
-    def fn_b():
-        pass
-
-    callme(fn_a)
-    callme(fn_b)
-    assert "fn_a" in _registry[__name__]
-    assert "fn_b" in _registry[__name__]
-    assert _registry[__name__]["fn_a"] is fn_a
-    assert _registry[__name__]["fn_b"] is fn_b
-
-
-# --- --list output ---
-
-
-def test_list_prints_callme_functions(monkeypatch, capsys):
+def test_list_prints_functions(capsys):
     def fn_alpha():
         pass
 
-    monkeypatch.setattr("sys.argv", ["s.py"])
-    _dispatch("s.py", {"fn_alpha": fn_alpha})
+    _print_list("s.py", {"fn_alpha": fn_alpha})
     out = capsys.readouterr().out
     assert "fn_alpha" in out
 
@@ -329,193 +278,7 @@ def test_list_shows_defaults(capsys):
     assert data["b"] == 5
 
 
-# --- Type validation and coercion ---
-
-
-def test_type_validation_passes(monkeypatch):
-    def fn(x: int):
-        pass
-
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x": 3}'])
-    _dispatch("s.py", {"fn": fn})  # must not raise
-
-
-def test_type_validation_wrong_type(monkeypatch):
-    # The cattrs JSON preset coerces strings to int, but not lists to int.
-    def fn(x: int):
-        pass
-
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x": [1, 2]}'])
-    with pytest.raises(TypeError, match="x"):
-        _dispatch("s.py", {"fn": fn})
-
-
-def test_type_validation_optional_allows_none(monkeypatch):
-    def fn(x: str | None):
-        pass
-
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x": null}'])
-    _dispatch("s.py", {"fn": fn})  # must not raise
-
-
-def test_type_validation_optional_accepts_value(monkeypatch):
-    def fn(x: str | None):
-        pass
-
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x": "hi"}'])
-    _dispatch("s.py", {"fn": fn})  # must not raise
-
-
-def test_type_validation_list_elements(monkeypatch):
-    # The cattrs JSON preset coerces int elements to str, but not a bare int to list[str].
-    def fn(x: list[str]):
-        pass
-
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x": 42}'])
-    with pytest.raises(TypeError, match="x"):
-        _dispatch("s.py", {"fn": fn})
-
-
-def test_type_validation_deep_nesting(monkeypatch):
-    # Inner int element cannot be iterated as list[str]; the nested error is re-raised as TypeError.
-    def fn(x: list[list[str]]):
-        pass
-
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x": [42]}'])
-    with pytest.raises(TypeError, match="x"):
-        _dispatch("s.py", {"fn": fn})
-
-
-def test_type_validation_coerces_dataclass(monkeypatch):
-    received = []
-
-    def fn(x: _SampleDC):
-        received.append(x)
-
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x": {"a": 1}}'])
-    _dispatch("s.py", {"fn": fn})
-    assert len(received) == 1
-    assert isinstance(received[0], _SampleDC)
-    assert received[0].a == 1
-
-
-def test_type_validation_float_accepts_int(monkeypatch):
-    def fn(x: float):
-        pass
-
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x": 3}'])
-    _dispatch("s.py", {"fn": fn})  # int is accepted for float annotation
-
-
-def test_type_validation_unannotated_skipped(monkeypatch):
-    received = []
-
-    def fn(x):
-        received.append(x)
-
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x": [1, 2]}'])
-    _dispatch("s.py", {"fn": fn})
-    assert received == [[1, 2]]
-
-
-def test_type_validation_var_keyword(monkeypatch):
-    # When **kwargs is present, structuring still applies to annotated params.
-    received = []
-
-    def fn(x: int, **kwargs):
-        received.append((x, kwargs))
-
-    monkeypatch.setattr("sys.argv", ["s.py", "fn", '{"x": 3, "y": "hello"}'])
-    _dispatch("s.py", {"fn": fn})
-    assert len(received) == 1
-    x, rest = received[0]
-    assert x == 3
-    assert rest == {"y": "hello"}
-
-
-# --- driver() ---
-
-
-def test_driver_dispatches_callme_function(monkeypatch):
-    """driver() with @callme dispatches via the registry (not caller globals)."""
-    received = []
-
-    def my_run(x):
-        received.append(x)
-
-    # Populate the __main__ registry directly (simulates @callme in the script).
-    _registry["__main__"] = {"my_run": my_run}
-    try:
-        monkeypatch.setattr("sys.argv", ["work.py", "my_run", '{"x": 7}'])
-        driver()
-    finally:
-        _registry.pop("__main__", None)
-    assert received == [7]
-
-
-def test_driver_dispatches_plain_function(monkeypatch):
-    """_dispatch_plain dispatches any callable from a namespace dict."""
-    received = []
-
-    def plain_run(x):
-        received.append(x)
-
-    monkeypatch.setattr("sys.argv", ["work.py", "plain_run", '{"x": 42}'])
-    _dispatch_plain("work.py", {"plain_run": plain_run})
-    assert received == [42]
-
-
-def test_driver_function_not_found_with_callme(monkeypatch):
-    """With @callme, wrong name raises AttributeError naming '@callme' function."""
-
-    def existing():
-        pass
-
-    _registry["__main__"] = {"existing": existing}
-    try:
-        monkeypatch.setattr("sys.argv", ["work.py", "missing"])
-        with pytest.raises(AttributeError, match="'@callme' function 'missing'"):
-            driver()
-    finally:
-        _registry.pop("__main__", None)
-
-
-def test_driver_function_not_found_no_callme(monkeypatch):
-    """_dispatch_plain raises AttributeError when the name is absent from the namespace."""
-    monkeypatch.setattr("sys.argv", ["work.py", "missing"])
-    with pytest.raises(AttributeError, match="function 'missing'"):
-        _dispatch_plain("work.py", {})
-
-
-def test_driver_list_mode_with_callme(monkeypatch, capsys):
-    """No-arg invocation with @callme prints list of decorated functions."""
-
-    def alpha():
-        pass
-
-    _registry["__main__"] = {"alpha": alpha}
-    try:
-        monkeypatch.setattr("sys.argv", ["work.py"])
-        driver()
-    finally:
-        _registry.pop("__main__", None)
-    assert "alpha" in capsys.readouterr().out
-
-
-def test_driver_list_mode_without_callme(monkeypatch, capsys):
-    """No-arg invocation with _dispatch_plain prints public callables from the namespace."""
-
-    def beta():
-        pass
-
-    monkeypatch.setattr("sys.argv", ["work.py"])
-    _dispatch_plain("work.py", {"beta": beta})
-    assert "beta" in capsys.readouterr().out
-
-
-def test_driver_list_mode_excludes_imports(monkeypatch, capsys):
-    """_dispatch_plain omits functions whose __module__ differs from __name__ in the namespace."""
-
+def test_list_excludes_imports(capsys):
     def local_fn():
         pass
 
@@ -526,8 +289,7 @@ def test_driver_list_mode_excludes_imports(monkeypatch, capsys):
 
     imported_fn.__module__ = "some.other.module"
 
-    monkeypatch.setattr("sys.argv", ["work.py"])
-    _dispatch_plain(
+    _print_list(
         "work.py", {"__name__": "__main__", "local_fn": local_fn, "imported_fn": imported_fn}
     )
     out = capsys.readouterr().out
@@ -535,9 +297,7 @@ def test_driver_list_mode_excludes_imports(monkeypatch, capsys):
     assert "imported_fn" not in out
 
 
-def test_driver_list_mode_respects_all(monkeypatch, capsys):
-    """__all__ overrides module-origin filtering and can expose imported callables."""
-
+def test_list_respects_all(capsys):
     def local_fn():
         pass
 
@@ -548,8 +308,7 @@ def test_driver_list_mode_respects_all(monkeypatch, capsys):
 
     imported_fn.__module__ = "some.other.module"
 
-    monkeypatch.setattr("sys.argv", ["work.py"])
-    _dispatch_plain(
+    _print_list(
         "work.py",
         {
             "__name__": "__main__",
@@ -563,11 +322,108 @@ def test_driver_list_mode_respects_all(monkeypatch, capsys):
     assert "imported_fn" in out
 
 
-def test_dispatch_plain_missing(monkeypatch):
-    """_dispatch_plain raises AttributeError when the name is not in the namespace."""
-    monkeypatch.setattr("sys.argv", ["s.py", "nope"])
-    with pytest.raises(AttributeError, match="function 'nope'"):
-        _dispatch_plain("s.py", {})
+# --- Type validation and coercion ---
+
+
+def test_type_validation_passes():
+    def fn(x: int):
+        pass
+
+    args = argparse.Namespace(function="fn", json_inp='{"x": 3}', path_inp=None)
+    _dispatch("s.py", {"fn": fn}, args)  # must not raise
+
+
+def test_type_validation_wrong_type():
+    # The cattrs JSON preset coerces strings to int, but not lists to int.
+    def fn(x: int):
+        pass
+
+    args = argparse.Namespace(function="fn", json_inp='{"x": [1, 2]}', path_inp=None)
+    with pytest.raises(TypeError, match="x"):
+        _dispatch("s.py", {"fn": fn}, args)
+
+
+def test_type_validation_optional_allows_none():
+    def fn(x: str | None):
+        pass
+
+    args = argparse.Namespace(function="fn", json_inp='{"x": null}', path_inp=None)
+    _dispatch("s.py", {"fn": fn}, args)  # must not raise
+
+
+def test_type_validation_optional_accepts_value():
+    def fn(x: str | None):
+        pass
+
+    args = argparse.Namespace(function="fn", json_inp='{"x": "hi"}', path_inp=None)
+    _dispatch("s.py", {"fn": fn}, args)  # must not raise
+
+
+def test_type_validation_list_elements():
+    # The cattrs JSON preset coerces int elements to str, but not a bare int to list[str].
+    def fn(x: list[str]):
+        pass
+
+    args = argparse.Namespace(function="fn", json_inp='{"x": 42}', path_inp=None)
+    with pytest.raises(TypeError, match="x"):
+        _dispatch("s.py", {"fn": fn}, args)
+
+
+def test_type_validation_deep_nesting():
+    # Inner int element cannot be iterated as list[str]; the nested error is re-raised as TypeError.
+    def fn(x: list[list[str]]):
+        pass
+
+    args = argparse.Namespace(function="fn", json_inp='{"x": [42]}', path_inp=None)
+    with pytest.raises(TypeError, match="x"):
+        _dispatch("s.py", {"fn": fn}, args)
+
+
+def test_type_validation_coerces_dataclass():
+    received = []
+
+    def fn(x: _SampleDC):
+        received.append(x)
+
+    args = argparse.Namespace(function="fn", json_inp='{"x": {"a": 1}}', path_inp=None)
+    _dispatch("s.py", {"fn": fn}, args)
+    assert len(received) == 1
+    assert isinstance(received[0], _SampleDC)
+    assert received[0].a == 1
+
+
+def test_type_validation_float_accepts_int():
+    def fn(x: float):
+        pass
+
+    args = argparse.Namespace(function="fn", json_inp='{"x": 3}', path_inp=None)
+    _dispatch("s.py", {"fn": fn}, args)  # int is accepted for float annotation
+
+
+def test_type_validation_unannotated_skipped():
+    received = []
+
+    def fn(x):
+        received.append(x)
+
+    args = argparse.Namespace(function="fn", json_inp='{"x": [1, 2]}', path_inp=None)
+    _dispatch("s.py", {"fn": fn}, args)
+    assert received == [[1, 2]]
+
+
+def test_type_validation_var_keyword():
+    # When **kwargs is present, structuring still applies to annotated params.
+    received = []
+
+    def fn(x: int, **kwargs):
+        received.append((x, kwargs))
+
+    args = argparse.Namespace(function="fn", json_inp='{"x": 3, "y": "hello"}', path_inp=None)
+    _dispatch("s.py", {"fn": fn}, args)
+    assert len(received) == 1
+    x, rest = received[0]
+    assert x == 3
+    assert rest == {"y": "hello"}
 
 
 # ===========================================================================
