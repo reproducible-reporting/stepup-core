@@ -1,0 +1,52 @@
+root:
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   root:
+            consumes   file:plan.py
+             creates   file:args.yaml
+             creates   file:data.txt
+             creates   file:work.py
+             creates   step:./work.py run --inp=args.yaml
+            supplies   file:args.yaml [amended]
+
+file:data.txt
+               state = STATIC
+          created by   step:./plan.py
+            supplies   step:./work.py run --inp=args.yaml
+
+file:work.py
+               state = STATIC
+          created by   step:./plan.py
+            supplies   step:./work.py run --inp=args.yaml
+
+file:args.yaml
+               state = BUILT
+          created by   step:./plan.py
+            consumes   step:./plan.py
+            supplies   step:./work.py run --inp=args.yaml
+
+step:./work.py run --inp=args.yaml
+               state = SUCCEEDED
+                need = DEFAULT
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   step:./plan.py
+            consumes   file:args.yaml
+            consumes   file:data.txt
+            consumes   file:work.py
+             creates   file:result.txt
+            supplies   file:result.txt
+
+file:result.txt
+               state = BUILT
+          created by   step:./work.py run --inp=args.yaml
+            consumes   step:./work.py run --inp=args.yaml

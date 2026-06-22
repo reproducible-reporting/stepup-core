@@ -14,9 +14,9 @@ step:./plan.py
           created by   root:
             consumes   file:plan.py
              creates   step:cat msg.txt
-             creates   step:sleep 5; echo hello > msg.txt
+             creates   step:stepup shutdown; sleep 3; echo hello > msg.txt
 
-step:sleep 5; echo hello > msg.txt
+step:stepup shutdown; sleep 3; echo hello > msg.txt
                state = RUNNING
                 need = DEFAULT
           created by   step:./plan.py
@@ -25,8 +25,8 @@ step:sleep 5; echo hello > msg.txt
 
 file:msg.txt
                state = AWAITED
-          created by   step:sleep 5; echo hello > msg.txt
-            consumes   step:sleep 5; echo hello > msg.txt
+          created by   step:stepup shutdown; sleep 3; echo hello > msg.txt
+            consumes   step:stepup shutdown; sleep 3; echo hello > msg.txt
             supplies   step:cat msg.txt
 
 step:cat msg.txt

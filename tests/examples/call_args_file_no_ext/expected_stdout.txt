@@ -1,0 +1,17 @@
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/1 |      PHASE │ build
+        0/1 |      START │ ./plan.py
+        0/0 |       FAIL │ ./plan.py
+────────────────────────────────── Step info ───────────────────────────────────
+Command               ./plan.py
+Return code           1
+───────────────────────── Expected outputs not created ─────────────────────────
+args.dat
+──────────────────────────────── Standard error ────────────────────────────────
+(stripped)
+────────────────────────────────────────────────────────────────────────────────
+        0/0 |    WARNING │ 1 step(s) failed.
+        0/0 |    WARNING │ Skipping file cleanup due to incomplete build
+        0/0 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+        0/0 |      PHASE │ watch
+        0/0 |   DIRECTOR │ See you!

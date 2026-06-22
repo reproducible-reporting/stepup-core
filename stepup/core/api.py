@@ -24,23 +24,23 @@ To keep things simple, it is assumed that one Python process only communicates w
 This module should not be imported by other stepup.core modules, safe for some notable exceptions:
 
 - `stepup.core.interact`
-- inside the driver functions in `stepup.core.call` and `stepup.core.script`
+- inside `@callme`-decorated functions in `stepup.core.call` and `stepup.core.script`
 """
 
 import contextlib
 import json
 import os
-import pickle
 import shlex
 import sys
 import tomllib
-from collections.abc import Callable, Collection, Iterable, Iterator, Sequence
+from collections.abc import Callable, Collection, Iterable, Iterator
 from runpy import run_path
 from types import SimpleNamespace
 
 import yaml
 from path import Path
 
+from .cattrs import json_converter, yaml_converter
 from .enums import Need
 from .nglob import NGlobMulti
 from .rpc import DummySyncRPCClient, SocketSyncRPCClient
@@ -63,6 +63,7 @@ __all__ = (
     "amend",
     "call",
     "copy",
+    "dumpns",
     "get_rpc_client",
     "getenv",
     "getinfo",
@@ -346,6 +347,146 @@ def step(
 
     # Return a StepInfo instance to facilitate the definition of follow-up steps
     return StepInfo(command, tr_workdir, su_inp_paths, env_vars, su_out_paths, su_vol_paths)
+
+
+def call(
+    executable_: str,
+    function_: str,
+    *,
+    inp: Collection[str] | str = (),
+    env: Collection[str] | str = (),
+    out: Collection[str] | str = (),
+    vol: Collection[str] | str = (),
+    workdir: str = "./",
+    optional: bool = False,
+    planning: bool = False,
+    resources: dict[str, int] | str | None = None,
+    args_file: str | None = None,
+    **kwargs,
+) -> StepInfo:
+    """Register a step that calls a named function in an executable.
+
+    Parameters
+    ----------
+    executable_
+        Path to the script or binary to invoke.
+        Must contain a path separator (e.g. `./script.py` or `sub/script.py`)
+        and must not be an absolute path.
+        Environment variables are substituted before sending the step to the StepUp director.
+    function_
+        Name of the function to invoke (first positional CLI argument).
+    inp
+        Files declared as inputs to this step. Normalized to `list[str]`.
+        Also forwarded to the function as `inp`.
+    env
+        Environment variables tracked by this step.
+    out
+        Files declared as outputs of this step. Normalized to `list[str]`.
+        Also forwarded to the function as `out`.
+    vol
+        Volatile outputs of this step.
+    workdir
+        Working directory for the step. Defaults to `"./"`.
+    optional
+        When `True`, the step only runs if its outputs are (indirectly) needed
+        by a non-optional step (`Need.OPTIONAL`).
+        Mutually exclusive with `planning`.
+    planning
+        When `True`, the step is scheduled as a planner (`Need.PLAN`).
+        Use this when the called function registers further steps.
+        Mutually exclusive with `optional`.
+    resources
+        Resource constraints for this step.
+    args_file
+        Full filename for the serialized arguments.
+        When given, arguments are written to this file (format inferred from extension)
+        and passed via `--inp=<args_file>`; when absent, a JSON string is embedded
+        directly in the command.
+    **kwargs
+        Additional keyword arguments forwarded to the function.
+        Must be serializable to JSON by the `cattrs` JSON converter.
+
+    Returns
+    -------
+    step_info
+        Holds relevant information of the registered step.
+
+    Raises
+    ------
+    ValueError
+        When `optional` and `planning` are both `True`.
+    ValueError
+        When `executable_` does not contain a path separator or is absolute.
+    ValueError
+        When the inline JSON string exceeds 128 KiB (use `args_file` instead).
+    ValueError
+        When `args_file` has an unrecognized extension.
+    """
+    # Validate mutually exclusive flags.
+    if optional and planning:
+        raise ValueError("optional and planning are mutually exclusive")
+
+    # Normalize inp and out.
+    inp = string_to_list(inp)
+    out = string_to_list(out)
+
+    # Substitute environment variables in executable_.
+    with subs_env_vars() as subs:
+        su_executable = subs(executable_)
+
+    # Validate executable path format.
+    if "/" not in su_executable:
+        raise ValueError(
+            "executable_ must contain a path separator (e.g. './script.py'),"
+            f" got: {su_executable!r}"
+        )
+
+    # Validate the resolved executable is not absolute.
+    if os.path.isabs(su_executable):
+        raise ValueError(f"executable_ must not be an absolute path, got: {su_executable!r}")
+
+    # Build the forwarded kwargs dict (inp and out are included when not empty).
+    forwarded = kwargs.copy()
+    if len(inp) > 0:
+        forwarded["inp"] = inp
+    if len(out) > 0:
+        forwarded["out"] = out
+
+    # Build command and step inputs depending on args_file mode.
+    if args_file is None:
+        unstructured = json_converter.unstructure(forwarded)
+        json_str = json.dumps(unstructured)
+        if len(json_str.encode()) > 128 * 1024:
+            raise ValueError(
+                "serialized call arguments exceed 128 KiB; pass args_file= to use a file instead"
+            )
+        command = f"{shlex.quote(su_executable)} {function_} {shlex.quote(json_str)}"
+        step_inp = [su_executable, *inp]
+    else:
+        # dumpns(do_amend=True) calls amend(out=args_file) before writing.
+        dumpns(args_file, forwarded)
+        command = f"{shlex.quote(su_executable)} {function_} --inp={shlex.quote(args_file)}"
+        step_inp = [su_executable, *inp, args_file]
+
+    # Map optional/planning flags to Need enum.
+    if optional:
+        need = Need.OPTIONAL
+    elif planning:
+        need = Need.PLAN
+    else:
+        need = Need.DEFAULT
+
+    # Register and return the step.
+    return step(
+        command,
+        inp=step_inp,
+        out=out,
+        vol=vol,
+        env=env,
+        workdir=workdir,
+        need=need,
+        resources=resources,
+    )
 
 
 class InputNotFoundError(Exception):
@@ -768,214 +909,6 @@ def getenv(
     return value
 
 
-def call(
-    executable: str,
-    *,
-    prefix: str | None = None,
-    fmt: str = "auto",
-    inp: Sequence | str | bool | None = None,
-    env: Collection[str] | str = (),
-    out: Sequence | str | bool | None = None,
-    vol: Collection[str] | str = (),
-    workdir: str = "./",
-    optional: bool = False,
-    resources: dict[str, int] | str | None = None,
-    pars: dict[str] | None = None,
-    **kwargs,
-) -> StepInfo:
-    """Call an executable with a set of serialized arguments.
-
-    This function assumes that the executable implements StepUp's
-    [call protocol](../getting_started/call.md).
-
-    Parameters
-    ----------
-    executable
-        The path of a local executable script to call.
-        Environment variables are substituted.
-        The path of the executable is assumed to be relative to this directory.
-    prefix
-        The prefix used to construct filenames of the input (serialized arguments)
-        and optionally output file (serialized return value).
-        If absent, the prefix is the stem of the executable.
-    fmt
-        The format used for serialization of arguments (and optionally return values).
-        Can be `"auto"`, `"json"` or `"pickle"`.
-        In case `"auto"`, the `"json"` format is used,
-        unless that fails, then `"pickle"` is used as the fallback option.
-        If input or output files are given, the format is deduced from their extension.
-    inp
-        The path of the input file:
-
-        - If `None`: The arguments are JSON serialized and passed to the script on the command line.
-          If the types of the keyword arguments are incompatible with JSON,
-          a pickle file is created whose filename is derived from `prefix`.
-        - If `True`: an input file is always written to a path derived from `prefix` and `fmt`,
-          even if no keyword arguments are given.
-        - If `str`: an input file is written if some extra `**kwargs` are given,
-          and `fmt` is deduced from the extension.
-          Without keyword arguments, the input file is assumed to be the output of another step.
-        - If `Sequence`, the first item is used according to one of the previous points,
-          depending on its type.
-          Remaining items are add to the `inp` argument of the `step()` function,
-          and are added to `kwargs['inp']`.
-    out
-        The path of the output file:
-
-        - If `None`: the script may write an output file. (This is the most flexible option.)
-          The output path is derived from `prefix` and `fmt`.
-          The script is called with arguments `--out={path_out}` and `--amend-out`,
-          so the script can decide whether to write the output file.
-        - If `str`: the script is called with the argument `--out={path_out}`
-          and is expected to create this output file unconditionally.
-          (No `amend(out=path_out)` is needed.)
-        - If `True`, similar to the previous, except that
-          the output path is derived from `prefix` and `fmt`.
-        - If `False`, the script is not called with `--out`
-          and is not expected to write an output file.
-          (This is useful to keep things minimal.)
-        - If `Sequence`, the first item is used according one of the previous points,
-          depending on its type.
-          Remaining items are add to the `out` argument of the `step()` function,
-          and are added to `kwargs['out']`.
-
-    env, vol, workdir, optional, resources
-        See [`step()`][stepup.core.api.step] for more information.
-    pars
-        A dictionary with additional parameters for the script.
-        They will be merged with the arguments in `kwargs`.
-        (This can be useful to pass arguments whose name coincide with the arguments above.)
-    kwargs
-        If given, these are serialized to the input file.
-        If absent, no input file is written unless `inp` is `True`.
-
-    Returns
-    -------
-    step_info
-        Holds relevant information of the step, useful for defining follow-up steps.
-
-    Notes
-    -----
-    This is an experimental feature introduced in StepUp 2.0.0.
-    It may undergo significant revisions in future 2.x releases.
-
-    When the `inp`, `env`, `out` and `vol` arguments contain items,
-    they are also included in the keyword arguments passed to the script.
-    However, they do not count as extra keyword arguments to determine if an input file
-    must be written when `inp` is a string or a sequence of strings.
-
-    When using the call protocol, it is recommended to add the following lines to `.gitignore`:
-
-    ```
-    *_inp.json
-    *_inp.pickle
-    *_out.json
-    *_out.pickle
-    ```
-    """
-    # Preprocess inp and out in case they are lists.
-    if not isinstance(inp, str) and isinstance(inp, Sequence):
-        other_inp = inp[1:]
-        inp = inp[0]
-    else:
-        other_inp = []
-    if not isinstance(out, str) and isinstance(out, Sequence):
-        other_out = out[1:]
-        out = out[0]
-    else:
-        other_out = []
-
-    if fmt not in ["auto", "json", "pickle"]:
-        raise ValueError(f"Invalid format for serialization of arguments: {fmt}.")
-    if inp not in [None, True] and not isinstance(inp, str):
-        raise ValueError("Invalid value for _inp. Must be None, True, str or Sequence[str].")
-    if not (out in [None, True, False] or isinstance(out, str)):
-        raise ValueError("Invalid value for _out. Must be None, True, False, str or Sequence[str].")
-    if prefix is None:
-        prefix = Path(executable).stem
-    with subs_env_vars() as subs:
-        executable = subs(executable)
-        workdir = subs(workdir)
-
-    # Determine the format from given filenames
-    if (isinstance(inp, str) or isinstance(out, str)) and fmt != "auto":
-        raise ValueError("When specifying input or output files, the format cannot be set.")
-    if fmt == "auto":
-        if isinstance(inp, str):
-            fmt = Path(inp).suffix[1:]
-        elif isinstance(out, str):
-            fmt = Path(out).suffix[1:]
-
-    # Write the input file
-    serial = None
-    if pars is not None:
-        kwargs.update(pars)
-    if len(other_inp) > 0:
-        kwargs.setdefault("inp", []).extend(other_inp)
-    if len(other_out) > 0:
-        kwargs.setdefault("out", []).extend(other_out)
-    if len(kwargs) > 0:
-        if fmt in ["json", "auto"]:
-            try:
-                serial = json.dumps(kwargs, indent=None if inp is None else 2)
-                fmt = "json"
-            except TypeError:
-                if fmt == "auto":
-                    fmt = "pickle"
-                else:
-                    raise
-        if fmt == "pickle":
-            serial = pickle.dumps(kwargs)
-
-    if fmt == "auto":
-        fmt = "json"
-    if fmt not in ["json", "pickle"]:
-        raise ValueError(f"Invalid format for serialization of arguments: {fmt}.")
-
-    # Prepare arguments for the step function
-    step_kwargs = {
-        "inp": [*other_inp],
-        "env": env,
-        "out": [*other_out],
-        "vol": vol,
-        "workdir": workdir,
-        "optional": optional,
-        "resources": resources,
-    }
-
-    # Input handling
-    command = format_command(executable)
-    path_inp = f"{prefix}_inp.{fmt}" if ((fmt == "pickle" and inp is None) or inp is True) else inp
-    if serial is not None:
-        # Provide input some way.
-        if path_inp is None:
-            command += " " + shlex.quote(serial)
-        else:
-            amend(out=path_inp)
-            if isinstance(serial, str):
-                with open(path_inp, "w") as fh:
-                    fh.write(serial)
-            else:
-                with open(path_inp, "bw") as fh:
-                    fh.write(serial)
-    if isinstance(path_inp, str):
-        # There is an input file, either created here or elsewhere.
-        step_kwargs["inp"].insert(0, path_inp)
-        command += f" --inp={shlex.quote(path_inp)}"
-
-    # Output handling
-    path_out = f"{prefix}_out.{fmt}" if (out is None or out is True) else out
-    if isinstance(path_out, str):
-        # The output file is created here.
-        command += f" --out={shlex.quote(path_out)}"
-        if out is None:
-            command += " --amend-out"
-        else:
-            step_kwargs["out"].insert(0, path_out)
-
-    return run(command, **step_kwargs)
-
-
 def script(
     executable: str,
     *,
@@ -990,8 +923,11 @@ def script(
 ) -> StepInfo:
     """Run the executable with a single argument `plan` in a working directory.
 
-    This function assumes that the executable implements StepUp's
-    [script protocol](../getting_started/script_single.md).
+    !!! warning
+
+        The script interface for calling user Python scripts from `plan.py` has been deprecated
+        in favor of the new [Call](../getting_started/call.md) interface.
+        You are encouraged to migrate your `plan.py` files to the new API.
 
     Parameters
     ----------
@@ -1110,6 +1046,46 @@ def loadns(
 
     # Return as a namespace
     return SimpleNamespace(**variables)
+
+
+def dumpns(path: str, data: dict | SimpleNamespace, *, do_amend: bool = True) -> None:
+    """Write variables to a JSON or YAML file.
+
+    Parameters
+    ----------
+    path
+        Destination file path. The format is inferred from the extension:
+        `.json` for JSON, `.yaml` or `.yml` for YAML.
+        Environment variables in the path are substituted.
+    data
+        A `dict` or `SimpleNamespace` of variables to write.
+        `cattrs`-supported types (attrs classes, dataclasses) are unstructured automatically.
+    do_amend
+        If `True`, the file is amended as an output of the current step before writing.
+
+    Raises
+    ------
+    ValueError
+        When the file extension is not `.json`, `.yaml`, or `.yml`.
+    """
+    with subs_env_vars() as subs:
+        path = subs(path)
+    if do_amend:
+        amend(out=path)
+    if isinstance(data, SimpleNamespace):
+        data = vars(data)
+    path_obj = Path(path)
+    if path_obj.suffix == ".json":
+        unstructured = json_converter.unstructure(data)
+        with open(path_obj, "w") as fh:
+            json.dump(unstructured, fh, indent=2)
+            fh.write("\n")
+    elif path_obj.suffix in (".yaml", ".yml"):
+        unstructured = yaml_converter.unstructure(data)
+        with open(path_obj, "w") as fh:
+            yaml.dump(unstructured, fh)
+    else:
+        raise ValueError(f"dumpns: unsupported file format: {path_obj.suffix!r}")
 
 
 def render_jinja(

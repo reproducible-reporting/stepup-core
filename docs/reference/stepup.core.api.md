@@ -35,6 +35,8 @@ may undergo larger changes and are not intended to be API stable.
 
 ### ::: stepup.core.api.loadns
 
+### ::: stepup.core.api.dumpns
+
 ### ::: stepup.core.api.render_jinja
 
 ## Utilities for API extensions

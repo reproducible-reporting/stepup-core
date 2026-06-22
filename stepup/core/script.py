@@ -19,7 +19,11 @@
 # --
 """Driver function to facilitate writing scripts that adhere to StepUp's script protocol.
 
-See [Script Protocol](../getting_started/script_single.md) for more details.
+!!! warning
+
+    The script interface for calling user Python scripts from `plan.py` has been deprecated
+    in favor of the new [Call](../getting_started/call.md) interface.
+    You are encouraged to migrate your `plan.py` files to the new API.
 """
 
 import argparse

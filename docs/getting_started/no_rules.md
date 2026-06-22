@@ -5,11 +5,11 @@ to specify how a common build step can be applied to different inputs.
 StepUp does not need to introduce the concept of a build rule
 because Python functions and loops already provide similar facilities.
 
-StepUp already comes with a few built-in "rules" defined this way:
+StepUp already comes with a few built-in "rules" defined this way, e.g.,
 [`plan()`][stepup.core.api.plan],
 [`copy()`][stepup.core.api.copy],
 [`getenv()`][stepup.core.api.getenv] and
-[`script()`][stepup.core.api.script].
+[`call()`][stepup.core.api.call].
 Some of these were already discussed in the previous tutorials,
 and their source code offers some inspiration for writing your own.
 

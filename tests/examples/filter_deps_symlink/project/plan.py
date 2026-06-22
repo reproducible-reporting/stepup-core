@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import call, static
+from stepup.core.api import run, static
 
 static("worker.py", "../pkgs_a/")
-call("worker.py")
+run("./worker.py")

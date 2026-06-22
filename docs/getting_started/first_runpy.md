@@ -79,12 +79,8 @@ which always executes the command as a normal subprocess.
   the `STEPUP_PATH_FILTER` environment variable.
   See [Environment Variables](../reference/configuration.md).
 
-- StepUp also provides more sophisticated interfaces for running (Python) scripts,
-  which are described in the following sections:
-
-    - [Script (Single Case)](./script_single.md)
-    - [Script (Multiple Cases)](./script_multiple.md)
-    - [Function Calls](./call.md)
+- StepUp also provides a more sophisticated interface for running functions in (Python) scripts,
+  which is described in the [Function Calls](./call.md) tutorial.
 
 - When `--fork-runpy` is active (the default on Linux), you can pre-load additional modules
   into the forkserver with `--preload-modules` (or `preload_modules` in the config file).

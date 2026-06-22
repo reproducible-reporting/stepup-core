@@ -1,0 +1,63 @@
+root:
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   root:
+            consumes   file:plan.py
+             creates   file:dir/a.txt
+             creates   file:dir/b.txt
+             creates   file:work.py
+             creates   step:./work.py plan '{}'
+
+file:dir/a.txt
+               state = STATIC
+          created by   step:./plan.py
+            supplies   step:./work.py plan '{}'
+            supplies   step:./work.py run '{"inp": ["dir/a.txt", "dir/b.txt"], "out": ["result.txt"]}'
+
+file:dir/b.txt
+               state = STATIC
+          created by   step:./plan.py
+            supplies   step:./work.py plan '{}'
+            supplies   step:./work.py run '{"inp": ["dir/a.txt", "dir/b.txt"], "out": ["result.txt"]}'
+
+file:work.py
+               state = STATIC
+          created by   step:./plan.py
+            supplies   step:./work.py plan '{}'
+            supplies   step:./work.py run '{"inp": ["dir/a.txt", "dir/b.txt"], "out": ["result.txt"]}'
+
+step:./work.py plan '{}'
+               state = SUCCEEDED
+                need = PLAN
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   step:./plan.py
+            consumes   file:dir/a.txt [amended]
+            consumes   file:dir/b.txt [amended]
+            consumes   file:work.py
+             creates   step:./work.py run '{"inp": ["dir/a.txt", "dir/b.txt"], "out": ["result.txt"]}'
+
+step:./work.py run '{"inp": ["dir/a.txt", "dir/b.txt"], "out": ["result.txt"]}'
+               state = SUCCEEDED
+                need = DEFAULT
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   step:./work.py plan '{}'
+            consumes   file:dir/a.txt
+            consumes   file:dir/b.txt
+            consumes   file:work.py
+             creates   file:result.txt
+            supplies   file:result.txt
+
+file:result.txt
+               state = BUILT
+          created by   step:./work.py run '{"inp": ["dir/a.txt", "dir/b.txt"], "out": ["result.txt"]}'
+            consumes   step:./work.py run '{"inp": ["dir/a.txt", "dir/b.txt"], "out": ["result.txt"]}'

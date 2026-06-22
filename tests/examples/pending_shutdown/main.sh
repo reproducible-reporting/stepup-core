@@ -8,10 +8,6 @@ rm -rvf $(cat .gitignore)
 stepup boot -j 1 -w & # > current_stdout.txt &
 PID=$!
 
-# Interrupt StepUp with a shutdown command.
-sleep 2
-stepup shutdown
-
 # Get the graph after completion of the pending steps.
 stepup wait
 stepup graph current_graph

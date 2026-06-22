@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-from helper import get_version
+import json
 
-from stepup.core.call import driver
+from helper import get_version
 
 
 def run():
-    return get_version()
+    with open("worker_out.json", "w") as f:
+        json.dump(get_version(), f)
 
 
 if __name__ == "__main__":
-    driver()
+    run()

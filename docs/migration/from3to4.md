@@ -203,9 +203,21 @@ The following environment variables have been renamed to have a `STEPUP_BOOT_` p
 | `STEPUP_WATCH_FIRST` | `STEPUP_BOOT_WATCH_FIRST` |
 | `STEPUP_YAPPI` | `STEPUP_BOOT_YAPPI` |
 
+## Deprecated Features
+
+The following features are still supported but will be removed from StepUp 5.0
+or a future StepUp 4.X release after June 2027, whichever comes first.
+You are encouraged to migrate your `plan.py` files to the new API.
+
+- The script interface for calling user Python scripts from `plan.py` has been deprecated
+  in favor of the new [Call](../getting_started/call.md) interface.
+
 ## Abandoned Features
 
 The following were practically unused and have been removed:
 
 - The `_required=True` argument to `glob()`.
   In the rare cases that it is useful, it can be implemented with a simple check in the `plan.py` file.
+- The previously experimental `call()` API has been replaced by an incompatible new design.
+  No migration path is needed given its experimental status and limited adoption;
+  see [Function Calls](../getting_started/call.md) for the new interface.

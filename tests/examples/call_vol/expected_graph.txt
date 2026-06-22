@@ -1,0 +1,43 @@
+root:
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   root:
+            consumes   file:plan.py
+             creates   file:work.py
+             creates   step:./work.py run '{"out": ["stable.txt"]}'
+
+file:work.py
+               state = STATIC
+          created by   step:./plan.py
+            supplies   step:./work.py run '{"out": ["stable.txt"]}'
+
+step:./work.py run '{"out": ["stable.txt"]}'
+               state = SUCCEEDED
+                need = DEFAULT
+             env_var = STEPUP_PATH_FILTER [amended]
+          created by   step:./plan.py
+            consumes   file:work.py
+             creates   file:stable.txt
+             creates   file:volatile.txt
+            supplies   file:stable.txt
+            supplies   file:volatile.txt
+
+file:stable.txt
+               state = BUILT
+          created by   step:./work.py run '{"out": ["stable.txt"]}'
+            consumes   step:./work.py run '{"out": ["stable.txt"]}'
+
+file:volatile.txt
+               state = VOLATILE
+          created by   step:./work.py run '{"out": ["stable.txt"]}'
+            consumes   step:./work.py run '{"out": ["stable.txt"]}'

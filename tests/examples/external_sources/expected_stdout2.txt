@@ -1,13 +1,13 @@
 Changing to ${CASE}/project
         0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 4 files from initial database
+        0/0 |    STARTUP │ Watching directories for 3 files from initial database
         0/0 |    STARTUP │ Making steps pending that use changed environment variables
         0/0 |    STARTUP │ Scanning initial database for changed files
         0/0 |    UPDATED │ ../pkgs/helper.py (digest d88d2a0e ➜ 31b25e5b)
         0/0 |    STARTUP │ Scanning initial database for new nglob matches
         1/2 |      PHASE │ build
-        1/2 |      START │ ./worker.py --out=worker_out.json --amend-out
-        2/2 |    SUCCESS │ ./worker.py --out=worker_out.json --amend-out
+        1/2 |      START │ ./worker.py
+        2/2 |    SUCCESS │ ./worker.py
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch
         2/2 |   DIRECTOR │ See you!

@@ -5,8 +5,9 @@ As an exception, steps can be made optional by adding the `optional=True` option
 This is the opposite of most build tools, where steps are only executed when they are *targets*.
 
 The reason for this difference is that conventional build tools work with rigid predefined graphs.
-By accepting command-line arguments with target steps, they introduce some flexibility:
-this lets the user control which part of the graph is executed.
+They introduce some flexibility
+by allowing users to specify which steps are *targets* on the command line.
+This gives the user some control over which part of the graph is executed.
 
 StepUp offers such flexibility differently.
 The basic premise is that all outdated or missing outputs need to be (re)built.
@@ -39,9 +40,8 @@ which it would need to decide that an optional step is required by another step.
 
 Example source files: [`docs/advanced_topics/optional_steps/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/optional_steps)
 
-The example below uses the [`script()`][stepup.core.api.script] feature introduced in
-[Script (Single Case)](../getting_started/script_single.md) and
-[Script (Multiple Cases)](../getting_started/script_multiple.md)
+The example below uses the [`call()`][stepup.core.api.call] feature introduced in
+the [Call](../getting_started/call.md) tutorial
 to create a somewhat entertaining example.
 However, practically all step-generating functions support the `optional` argument,
 and can thus be made optional in the same way.
@@ -88,7 +88,8 @@ In such situations, optional steps can be convenient.
 
 ## Try the Following
 
-- Remove the `optional=True` keyword argument and rerun the plan.
+- Remove the `optional=True` keyword argument from the `call()` for `generate.py` in `plan.py`
+  and rerun the plan.
   As expected, additional text files with sequences will be created.
 
 - Restore the `optional=True` keyword argument and rerun the plan.

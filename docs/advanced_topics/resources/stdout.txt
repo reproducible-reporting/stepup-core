@@ -4,8 +4,8 @@
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
-     START │ sleep 0.1; echo B
      START │ sleep 0.1; echo A
+     START │ sleep 0.1; echo B
    SUCCESS │ sleep 0.1; echo B
 ─────────────────────────────── Standard output ────────────────────────────────
 B

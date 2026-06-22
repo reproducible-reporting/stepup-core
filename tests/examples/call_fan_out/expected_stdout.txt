@@ -1,0 +1,15 @@
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/1 |      PHASE │ build
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ ./work.py plan '{}'
+        2/5 |    SUCCESS │ ./work.py plan '{}'
+        2/5 |      START │ ./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
+        3/5 |    SUCCESS │ ./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
+        3/5 |      START │ ./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
+        4/5 |    SUCCESS │ ./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
+        4/5 |      START │ ./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
+        5/5 |    SUCCESS │ ./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
+        5/5 |   DIRECTOR │ Trying to delete 0 outdated output(s)
+        5/5 |      PHASE │ watch
+        5/5 |   DIRECTOR │ See you!

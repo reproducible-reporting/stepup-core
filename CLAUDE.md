@@ -26,7 +26,13 @@ and `STEPUP_SYNC_RPC_TIMEOUT=30` for development.
 ### Linting
 
 Pre-commit hooks run `ruff format` and `ruff check` automatically on commit.
-To run manually:
+After making code changes, run all pre-commit checks before considering the work done:
+
+```bash
+pre-commit run --all
+```
+
+To run individual linters manually:
 
 ```bash
 ruff format stepup/ tests/
@@ -51,6 +57,20 @@ mkdocs serve                      # live preview at http://127.0.0.1:8000/
 ```
 
 Note that docstrings are written in Markdown, not reStructuredText!
+
+#### Documentation examples
+
+Each `docs/getting_started/<example>/` directory contains a `main.sh`
+that generates `stdout.txt` (the terminal output shown in the tutorial page).
+To regenerate after changing example scripts, run:
+
+```bash
+cd docs/getting_started/<example>
+bash main.sh
+```
+
+This runs StepUp locally and captures the output via `sed -f ../../clean_stdout.sed`.
+Commit the updated `stdout.txt` alongside any source changes.
 
 ## Coding Conventions
 
@@ -102,6 +122,22 @@ Some conventions specific to this codebase:
     Path
         The parent directory path.
     ```
+
+### Markdown
+
+The project uses markdownlint (via pre-commit) on all `.md` files.
+Two rules that are easy to get wrong:
+
+- **MD007** — nested list items must use **4-space** indentation, not 2-space.
+  Match the pattern already in use throughout the repo:
+
+  ```markdown
+  - Top-level item
+      - Nested item (4 spaces)
+  ```
+
+- **MD031** — fenced code blocks must have a **blank line** before and after them,
+  even when they appear inside a list item.
 
 ### Dependencies
 

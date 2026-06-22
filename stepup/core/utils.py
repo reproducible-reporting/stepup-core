@@ -63,36 +63,36 @@ logger = logging.getLogger(__name__)
 #
 
 
-def mynormpath(path: str) -> Path:
-    """Normalize the path but keep the trailing separator"""
-    result = Path(path).normpath()
-    if path.endswith(os.sep) and not result.endswith("/"):
+def _myfix_trailing(path: str, result: Path, enforce: bool = False) -> Path:
+    if (path.endswith(os.sep) or enforce) and not result.endswith("/"):
         result = result / ""
     return result
+
+
+def _myfix_leading(path: str, result: Path) -> Path:
+    if path.startswith(f".{os.sep}") and not result.startswith("./"):
+        result = "." / result
+    return result
+
+
+def mynormpath(path: str) -> Path:
+    """Normalize the path but keep the leading and trailing separator"""
+    return _myfix_leading(path, _myfix_trailing(path, Path(path).normpath()))
 
 
 def myrealpath(path: str) -> Path:
     """Like Path.realpath path but keep the trailing separator"""
-    result = Path(path).realpath()
-    if path.endswith(os.sep) and not result.endswith("/"):
-        result = result / ""
-    return result
+    return _myfix_leading(path, _myfix_trailing(path, Path(path).realpath()))
 
 
 def myrelpath(path: str, start: str = ".") -> Path:
     """Like Path.relpath path but keep the trailing separator"""
-    result = Path(path).relpath(start)
-    if path.endswith(os.sep) and not result.endswith("/"):
-        result = result / ""
-    return result
+    return _myfix_leading(path, _myfix_trailing(path, Path(path).relpath(start)))
 
 
 def myabsolute(path: str, is_dir: bool = False) -> Path:
     """Like Path.absolute path but keep the trailing separator"""
-    result = Path(path).absolute()
-    if (path.endswith(os.sep) or is_dir) and not result.endswith("/"):
-        result = result / ""
-    return result
+    return _myfix_trailing(path, Path(path).absolute(), enforce=is_dir)
 
 
 def myparent(path: str) -> Path | None:
@@ -151,7 +151,12 @@ def make_path_out(
         path_out = path_in
         if ext is not None:
             path_out = Path(path_out.stem + ext)
-        path_out = path_in.parent / path_out if dest is None else Path(dest) / path_out.basename()
+        if dest is None:
+            path_out = path_in.parent / path_out
+        else:
+            path_out = path_out.basename()
+            if dest not in (".", "./"):
+                path_out = Path(dest) / path_out
     else:
         path_out = Path(dest)
     if path_out == path_in:

@@ -17,126 +17,230 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""Driver function to facilitate writing scripts that adhere to StepUp's call protocol.
+"""Dispatch decorator and driver for scripts invoked by `call()`.
 
-See [Call Protocol](../getting_started/call.md) for more details.
+`callme` optionally registers functions for restricted dispatch and list mode.
+`driver` is the explicit entry point: add it to every worker script called via `call()`:
+
+```python
+if __name__ == "__main__":
+    driver()
+```
 """
 
 import argparse
 import inspect
 import json
-import pickle
+import os
+import shlex
 import sys
-from typing import Any
+import typing
+from collections.abc import Callable
 
-from path import Path
+from rich.console import Console
 
-__all__ = ("driver",)
+from .cattrs import json_converter
+
+__all__ = ("callme", "driver")
+
+_registry: dict[str, dict[str, Callable]] = {}
 
 
-def driver(obj: Any = None):
-    """Implement call protocol.
+def callme(fn: Callable) -> Callable:
+    """Register a function for restricted dispatch and list mode.
 
-    The most common usage is to call `driver()` from a script that defines a `run()` function, e.g.:
+    When `@callme` is used, only decorated functions are callable via `driver()`.
+    When `@callme` is omitted entirely, `driver()` falls back to dispatching any
+    public function in the module by name.
+
+    Parameters
+    ----------
+    fn
+        The function to register.
+        It is returned unchanged, so `@callme` is transparent to callers.
+
+    Returns
+    -------
+    fn
+        The original function, unmodified.
+    """
+    frame = inspect.currentframe().f_back
+    module_name = frame.f_globals["__name__"]
+
+    if module_name not in _registry:
+        _registry[module_name] = {}
+
+    _registry[module_name][fn.__name__] = fn
+    return fn
+
+
+def driver() -> None:
+    """Dispatch a function by name when a script is invoked via `call()`.
+
+    Add this to every worker script called via `call()`:
 
     ```python
-    #!/usr/bin/env python3
-    from stepup.core.call import driver
-
-    def run(a: int, b: int) -> int:
-        return a + b
-
     if __name__ == "__main__":
         driver()
     ```
 
-    Parameters
-    ----------
-    obj
-        When not provided, the namespace of the module where `driver` is defined
-        will be searched for the name 'run' to implement the call protocol.
-        When an object is given as a parameter, its attributes are searched instead.
+    When `@callme` decorators are present, only decorated functions are callable.
+    When no `@callme` decorators are used, any public (non-underscore) function
+    in the module is callable by name.
+
+    When invoked with no function argument, `driver()` prints one suggested command
+    per callable function and exits, which is useful for discovery.
     """
-    frame = inspect.currentframe().f_back
-    script_path = Path(frame.f_locals["__file__"]).relpath()
-    if obj is None:
-        # Get the calling module and use it as obj
-        module_name = frame.f_locals["__name__"]
-        obj = sys.modules.get(module_name)
-        if obj is None:
-            raise ValueError(
-                f"The driver must be called from an imported module, got {module_name}"
-            )
-    args = parse_args(script_path)
-
-    # Load the keyword arguments
-    if args.json_inp is not None:
-        kwargs = json.loads(args.json_inp)
-    elif args.path_inp is None:
-        kwargs = {}
-    elif args.path_inp.suffix == ".json":
-        with open(args.path_inp) as fh:
-            kwargs = json.load(fh)
-    elif args.path_inp.suffix == ".pickle":
-        with open(args.path_inp, "rb") as fh:
-            kwargs = pickle.load(fh)
+    # Use the caller's frame globals to find functions in the no-@callme case.
+    # sys.modules["__main__"] is NOT updated by runpy.run_path (used by the forkserver),
+    # so it would point to the forkserver process instead of the user script.
+    # The caller's frame globals are the script's execution namespace in both cases.
+    caller_globals = inspect.currentframe().f_back.f_globals
+    module_file = caller_globals.get("__file__", sys.argv[0])
+    registry = _registry.get("__main__")
+    if registry is not None:
+        _dispatch(module_file, registry)
     else:
-        raise NotImplementedError(f"Unsupported input file format: {args.path_inp.suffix}")
-
-    # Call the run function
-    run = getattr(obj, "run", None)
-    if run is None:
-        raise AttributeError("The module must define a 'run' function")
-    # Filter kwargs to only include those accepted by the run function
-    run_signature = inspect.signature(run)
-    filtered_kwargs = {k: v for k, v in kwargs.items() if k in run_signature.parameters}
-    # Turn inp, out and vol kwargs into lists of Path instances.
-    for key in ("inp", "out", "vol"):
-        key_paths = filtered_kwargs.get(key)
-        if isinstance(key_paths, str):
-            filtered_kwargs[key] = Path(key_paths)
-        elif isinstance(key_paths, list):
-            filtered_kwargs[key] = [Path(p) for p in key_paths]
-    # Call the run function with the filtered kwargs.
-    result = run(**filtered_kwargs)
-
-    # Use a local import because the API is only needed when the driver is called.
-    from .api import amend  # noqa: PLC0415
-
-    # Amend inputs using imported modules.
-    # This goes a bit against good practice, in the sense that amending should be done early.
-    # It is acceptable here because the driver would fail anyway if the imports are not available.
-    # By amending after calling the driver, we also pick up local imports, if any.
-    out = []
-    if not (result is None or args.path_out is None) and args.amend_out:
-        out.append(args.path_out)
-    amend(out=out)
-
-    # Save the result if not None
-    if result is not None:
-        if args.path_out is None:
-            raise ValueError("The output path is mandatory when the run function returns a value.")
-        if args.path_out.suffix == ".json":
-            with open(args.path_out, "w") as fh:
-                json.dump(result, fh)
-                fh.write("\n")
-        elif args.path_out.suffix == ".pickle":
-            with open(args.path_out, "wb") as fh:
-                pickle.dump(result, fh)
-        else:
-            raise NotImplementedError(f"Unsupported output file format: {args.path_out.suffix}")
+        _dispatch_plain(module_file, caller_globals)
 
 
-def parse_args(script_path: str) -> argparse.Namespace:
-    """Parse command-line arguments."""
+def _dispatch(script_path: str, registry: dict[str, Callable]) -> None:
+    """Dispatch to a function in *registry* by name, using the current sys.argv."""
+    args = _parse_args(script_path)
+
+    if args.function is None:
+        _print_list(script_path, registry)
+        return
+
+    fn = registry.get(args.function)
+    if fn is None:
+        raise AttributeError(
+            f"{script_path} does not define a '@callme' function '{args.function}'"
+        )
+
+    _call_fn(fn, args, script_path)
+
+
+def _dispatch_plain(script_path: str, ns: dict) -> None:
+    """Dispatch to any public function in the *ns* namespace by name."""
+    args = _parse_args(script_path)
+
+    if args.function is None:
+        _print_list(script_path, None, ns)
+        return
+
+    fn = ns.get(args.function)
+    if fn is None or not callable(fn):
+        raise AttributeError(f"{script_path} does not define a function '{args.function}'")
+
+    _call_fn(fn, args, script_path)
+
+
+def _call_fn(fn: Callable, args: argparse.Namespace, script_path: str) -> None:
+    """Load kwargs from args and invoke *fn*."""
+    if args.json_inp is not None:
+        all_kwargs = json.loads(args.json_inp)
+    elif args.path_inp is not None:
+        from stepup.core.api import loadns  # noqa: PLC0415
+
+        all_kwargs = vars(loadns(args.path_inp))
+    else:
+        all_kwargs = {}
+
+    sig = inspect.signature(fn)
+    hints = typing.get_type_hints(fn)
+    if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
+        fn(**_structure_kwargs(all_kwargs, hints, script_path))
+    else:
+        extra = {k for k in all_kwargs if k not in sig.parameters and k not in ("inp", "out")}
+        if extra:
+            raise TypeError(
+                f"{script_path}: function '{fn.__name__}' received unexpected arguments: "
+                + ", ".join(sorted(extra))
+            )
+        filtered = {k: v for k, v in all_kwargs.items() if k in sig.parameters}
+        fn(**_structure_kwargs(filtered, hints, script_path))
+
+
+def _parse_args(script_path: str) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        prog=script_path, description=f"StepUp call driver for {script_path}."
+        prog=script_path,
+        description="Dispatch a function by name.",
     )
-    parser.add_argument("json_inp", nargs="?", type=str, help="JSON string input (if any)")
-    parser.add_argument("--out", dest="path_out", type=Path, help="Output path (if any)")
-    parser.add_argument("--inp", dest="path_inp", type=Path, help="Input path (if any)")
-    parser.add_argument("--amend-out", action="store_true", help="Amend the output file")
+    parser.add_argument(
+        "function",
+        nargs="?",
+        default=None,
+        help="Name of the function to invoke.",
+    )
+    parser.add_argument(
+        "json_inp",
+        nargs="?",
+        default=None,
+        help="JSON string of keyword arguments (mutually exclusive with --inp).",
+    )
+    parser.add_argument(
+        "--inp",
+        dest="path_inp",
+        default=None,
+        metavar="PATH",
+        help="Path to a JSON/YAML file of kwargs (mutually exclusive with positional JSON).",
+    )
     args = parser.parse_args()
-    if None not in (args.json_inp, args.path_inp):
-        raise ValueError("Cannot provide both JSON input string and an input file")
+    if args.json_inp is not None and args.path_inp is not None:
+        parser.error("Cannot use both positional JSON and --inp.")
     return args
+
+
+def _short_path(script_path: str) -> str:
+    rel = os.path.relpath(os.path.abspath(script_path))
+    return rel if "/" in rel else f"./{rel}"
+
+
+def _print_list(
+    script_path: str, registry: dict[str, Callable] | None, ns: dict | None = None
+) -> None:
+    if registry is None and ns is not None:
+        if "__all__" in ns:
+            registry = {
+                name: fn for name, fn in ns.items() if name in ns["__all__"] and callable(fn)
+            }
+        else:
+            module_name = ns.get("__name__")
+            registry = {
+                name: fn
+                for name, fn in ns.items()
+                if not name.startswith("_")
+                and callable(fn)
+                and (module_name is None or getattr(fn, "__module__", None) == module_name)
+            }
+    if not registry:
+        return
+    console = Console(highlight=False)
+    display = _short_path(script_path)
+    for fn_name, fn in registry.items():
+        sig = inspect.signature(fn)
+        params = {
+            name: (None if param.default is inspect.Parameter.empty else param.default)
+            for name, param in sig.parameters.items()
+            if param.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+        }
+        console.print(
+            f"[cyan]{display}[/] [yellow]{fn_name}[/] [grey50]{shlex.quote(json.dumps(params))}[/]"
+        )
+
+
+def _structure_kwargs(kwargs: dict, hints: dict, script_path: str) -> dict:
+    result = {}
+    for k, v in kwargs.items():
+        ann = hints.get(k)
+        if ann is None:
+            result[k] = v
+        else:
+            try:
+                result[k] = json_converter.structure(v, ann)
+            except Exception as exc:
+                raise TypeError(
+                    f"{script_path}: argument '{k}' expected {ann}, got {type(v).__name__}: {v!r}"
+                ) from exc
+    return result

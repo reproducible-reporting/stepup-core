@@ -15,33 +15,26 @@ step:./plan.py
             consumes   file:plan.py
              creates   file:worker.py
              creates   sr:../pkgs/
-             creates   step:./worker.py --out=worker_out.json --amend-out
+             creates   step:./worker.py
 
 file:worker.py
                state = STATIC
           created by   step:./plan.py
-            supplies   step:./worker.py --out=worker_out.json --amend-out
+            supplies   step:./worker.py
 
 sr:../pkgs/
           created by   step:./plan.py
              creates   file:../pkgs/helper.py
 
-step:./worker.py --out=worker_out.json --amend-out
+step:./worker.py
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
           created by   step:./plan.py
             consumes   file:../pkgs/helper.py [amended]
             consumes   file:worker.py
-             creates   file:worker_out.json
-            supplies   file:worker_out.json [amended]
-
-file:worker_out.json
-               state = BUILT
-          created by   step:./worker.py --out=worker_out.json --amend-out
-            consumes   step:./worker.py --out=worker_out.json --amend-out
 
 file:../pkgs/helper.py
                state = STATIC
           created by   sr:../pkgs/
-            supplies   step:./worker.py --out=worker_out.json --amend-out
+            supplies   step:./worker.py

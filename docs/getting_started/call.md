@@ -1,122 +1,210 @@
 # Function Calls
 
-!!! note
-
-    This feature was introduced in StepUp 2.0.0.
-
-!!! warning
-
-    This feature is experimental and may change significantly in the future.
-
-The [`call()`][stepup.core.api.call] function is a function wrapper for local executable scripts.
-These scripts can be written in any language,
-as long as they adhere to the "call protocol" described below.
-StepUp provides a [`driver()`][stepup.core.call.driver] function in the module `stepup.core.call`
-to facilitate the implementation of Python scripts that adhere to the call protocol.
+StepUp Core implements a *call protocol*
+for invoking named functions in scripts from a `plan.py` file.
+Each [`call()`][stepup.core.api.call] registers exactly one step,
+and a called function may itself call `call()` to register further steps,
+enabling arbitrarily deep, dynamic planning.
 
 ## Call Protocol
 
-In its simplest form, the following use of `call()` in a `plan.py` script
+The following `plan.py`:
 
 ```python
-call("executable", parameter="value")
+#!/usr/bin/env python3
+from stepup.core.api import call, static
+
+static("./cat.py", "data.txt")
+call("./cat.py", "main", inp="data.txt", out="result.txt")
 ```
 
-is roughly equivalent to
+registers a step that runs:
+
+```bash
+./cat.py main '{"inp": ["data.txt"], "out": ["result.txt"]}'
+```
+
+The function name (`"main"`) is the first command-line argument
+and the serialized keyword arguments are the second.
+StepUp treats the command string as part of the step's digest,
+so any change to the arguments automatically triggers a re-run.
+
+## The `driver()` Function
+
+The call protocol does not require the called script,
+e.g. `./cat.py` in the previous example, to be a Python script.
+However, in practice, that will often be the case.
+To facilitate writing such Python scripts,
+StepUp provides [`driver()`][stepup.core.call.driver],
+which dispatches to the appropriate function based on the first command-line argument.
+
+Add `driver()` to the `if __name__ == "__main__":` block of any Python script
+called via `call()`:
 
 ```python
-run("./executable '{\"parameter\": \"value\"}'")
+#!/usr/bin/env python3
+from stepup.core.call import driver
+
+def main(inp, out):
+    if len(out) != 1:
+        raise ValueError("Exactly one output file must be specified")
+    with open(out[0], "w") as f:
+        for path in inp:
+            f.write(open(path).read())
+
+if __name__ == "__main__":
+    driver()
 ```
 
-(It also works without any parameters.)
-The script `executable` is expected to decode the JSON given on the command-line,
-and then use these parameters.
-If the script has the `.py` extension, the Python-aware mode is used automatically.
+When the script is invoked with a function name as the first argument,
+`driver()` dispatches to the matching function by name.
+When invoked without any arguments, it prints one suggested command line
+per callable function defined in the script, which may aid discovery:
 
-The [`call()`][stepup.core.api.call] function supports many optional arguments
-that control with which options the executable is called.
-In a nutshell, the parameters can also be provided through an input file.
-By default, this is a JSON file, but PICKLE is provided as a fallback
-in case the types of the parameters are not compatible with JSON.
-When the executable script produces a "return value",
-it should write this to an output file, either in JSON or PICKLE format.
+```bash
+$ ./cat.py
+./cat.py main '{"inp": null, "out": null}'
+```
 
-Because of the delayed execution, the `call()` function cannot return any results.
-If you are familiar with Python's built-in `concurrent.futures` module,
-you can think of the script's output file as the `Future` object that is returned by
-`concurrent.futures.Executor.submit()`.
-The `call()` function returns a [`StepInfo`][stepup.core.stepinfo.StepInfo] object
-from which you can extract the path of the output file.
+The function only declares the parameters it actually uses.
+`inp` and `out` are always forwarded as lists,
+even if they were passed as a single string to `call()`.
 
-To fully support the `call()` protocol,
-the executable must be able to handle the following command-line arguments:
+## The `@callme` Decorator
 
-- `JSON_INP`:
-  The JSON-encoded parameters.
-- `--inp=PATH_INP`:
-  As an alternative to the previous, a file with parameters in JSON or PICKLE format.
-- `--out=PATH_OUT`:
-  The output file to use (if there is a return value), either in JSON or PICKLE format.
-- `--amend-out`:
-  If given, the executable must call `amend(out=PATH_OUT)` before writing the output file.
+The [`@callme`][stepup.core.call.callme] decorator is optional.
+When used, it restricts which functions `driver()` will dispatch to:
+only decorated functions are callable, and the no-argument listing shows only them.
+This is useful when a script contains helper functions that should not be invocable directly.
 
-## Call Driver
+```python
+#!/usr/bin/env python3
+from stepup.core.call import callme, driver
 
-StepUp implements a [`driver()`][stepup.core.call.driver] function
-in the module `stepup.core.call` that greatly facilitates
-writing Python scripts that adhere to the call protocol.
-The usage of this `driver()` function is illustrated in the example below.
 
-Note that the `driver()` function also detects local modules that are imported in the script,
-and amends these as required inputs.
-Changes to modules imported in your Python script will automatically trigger a re-run of the script.
-By default, only the modules inside `${STEPUP_ROOT}`
-(but not in `${STEPUP_ROOT}/venv*`) are treated as dependencies.
-You can control the filtering of automatically detected dependencies with the
-[`STEPUP_PATH_FILTER` environment variable](../reference/configuration.md).
+@callme
+def run(inp: list[str], out: list[str]):
+    ...  # only this function is callable via call()
 
-## Example
+
+def helper():
+    ...  # not accessible via driver()
+
+
+if __name__ == "__main__":
+    driver()
+```
+
+Alternatively, you can prefix private functions with an underscore (`_`),
+e.g. `_helper()`, to hide them from `driver()`.
+Imported names are also excluded automatically.
+To expose an imported callable, list it explicitly in `__all__`.
+
+## Passing kwargs
+
+Any JSON-serializable keyword argument passed to `call()` is forwarded to the function.
+The function's signature determines which parameters it receives.
+Passing a keyword argument that the function does not declare raises a `TypeError`,
+so typos in argument names are caught at execution time rather than silently ignored.
+The only exceptions are `inp` and `out`, which are silently dropped when absent
+from the function's signature, since many functions do not need both.
+
+```python
+# plan.py — pass a threshold to the run function
+call("./work.py", "run", inp=["data.txt"], out=["result.txt"], threshold=0.5)
+```
+
+```python
+# work.py
+from stepup.core.call import driver
+
+
+def run(inp: list[str], out: list[str], threshold: float):
+    ...
+
+
+if __name__ == "__main__":
+    driver()
+```
+
+Type annotations on the function parameters are respected:
+`driver()` uses [cattrs](https://github.com/python-attrs/cattrs)
+to coerce and validate each argument before calling the function.
+
+## `args_file` Variant
+
+When the JSON-serialized arguments are large,
+they may become impractical to include inline on the command line.
+You can also use an `args_file` to keep the commands short and readable:
+
+```python
+call("./work.py", "run",
+     inp=["data.txt"], out=["result.txt"],
+     args_file="run_args.json")
+```
+
+This writes the arguments to `run_args.json`
+(using [`dumpns()`][stepup.core.api.dumpns])
+and passes `--inp=run_args.json` to the script instead of an inline JSON string.
+StepUp tracks `run_args.json` as an output of the calling step and an input of the called step,
+so changes to the arguments are detected through the file's hash.
+
+Supported extensions are `.json`, `.yaml`, and `.yml`.
+
+## Two-Phase Example
 
 Example source files: [`docs/getting_started/call/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/call)
 
-First create a `wavegen.py` script as follows:
+The real power of `call()` is composing steps dynamically.
+One common pattern is a two-phase script, where a `plan()` function registers a `run()` function.
+The benefit of such a split is that the top-level `./plan.py`
+can focus on the high-level logic of the workflow,
+while some details of the workflow are deferred to the `plan()` function of the called script.
 
-```python
-{% include 'getting_started/call/wavegen.py' %}
-```
+To make the example more engaging,
+it leverages [NumPy](https://numpy.org/) and [Matplotlib](https://matplotlib.org/).
+The same plotting function is applied to two datasets of hourly temperatures recorded at
+the airports of Brussels and Ostend in February 2024, downloaded from the
+[ASOS network hosted by Iowa State University](https://mesonet.agron.iastate.edu/request/download.phtml).
 
-Then create a `plan.py` script as follows:
+Add the following `plan.py`:
 
 ```python
 {% include 'getting_started/call/plan.py' %}
 ```
 
-Finally, make the Python scripts executable and start StepUp:
+And `plot.py` with both a `plan()` and a `run()` function,
+and a `driver()` entry point:
+
+```python
+{% include 'getting_started/call/plot.py' %}
+```
+
+It is assumed that the input files `ebbr.csv`, `ebos.csv`, and `matplotlibrc`
+are present in the same directory as `plan.py` and `plot.py`.
+Make the Python scripts executable and run StepUp:
 
 ```bash
-chmod +x wavegen.py plan.py
+chmod +x plan.py plot.py
 stepup boot -j 1
 ```
 
-You should see the following output on screen:
+You should see output like:
 
 ```text
 {% include 'getting_started/call/stdout.txt' %}
 ```
 
-## Practical Considerations
+This produces the following figures:
 
-- As shown by the example, the `driver()` function takes care of
-  parsing the command-line arguments in the call protocol and amending the output.
-  You don't need to worry about this in your script.
-  You simply add the `run()` function that takes the parameters as arguments
-  and returns the result.
-- Scripts that use the `driver()` function can be run as standalone scripts.
-  This is useful for debugging and testing.
-- Scripts that adhere to the call protocol can be reused across the entire workflow.
-  If you want to place it in the top-level directory and execute it in any other directory,
-  you can use the [`ROOT`](../advanced_topics/here_and_root.md) variable:
+![EBBR](call/plot_ebbr.png)
+![EBOS](call/plot_ebos.png)
 
-    ```python
-    call("${ROOT}/wavegen.py", freq=235, duration=1.0, out="sine.json")
-    ```
+## Try the Following
+
+- Modify `matplotlibrc` and re-run StepUp.
+  Only the `plot.py run ...` steps re-execute because `matplotlibrc`
+  is an input to the `run()` function, not the `plan()` function.
+
+- Add a third CSV file with weather data from an airport of your choice,
+  and extend `plan.py` accordingly.

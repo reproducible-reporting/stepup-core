@@ -80,8 +80,6 @@ nav:
     - getting_started/interactive_usage.md
     - getting_started/failing_steps.md
     - getting_started/call.md
-    - getting_started/script_single.md
-    - getting_started/script_multiple.md
     - getting_started/no_rules.md
     - getting_started/distributed_plans.md
     - getting_started/load_namespace.md
@@ -107,9 +105,8 @@ nav:
     - migration/from3to4.md
   - Reference:
     - reference/stepup.core.api.md
-    - reference/stepup.core.call.md
     - reference/stepup.core.nglob.md
-    - reference/stepup.core.script.md
+    - reference/stepup.core.call.md
     - reference/stepup.core.stepinfo.md
     - reference/interactive.md
     - reference/returncode.md
@@ -122,6 +119,11 @@ nav:
   - changelog.md
   - development.md
   - license.md
+  - Deprecated:
+    - deprecated/introduction.md
+    - deprecated/script_single.md
+    - deprecated/script_multiple.md
+    - deprecated/stepup.core.script.md
 
 exclude_docs: |
   */*/ch*/*.md

@@ -14,9 +14,7 @@ step:./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:README NOW.txt
-             creates   file:call is cool.py
              creates   file:script is cool.py
-             creates   step:'./call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
              creates   step:'./script is cool.py' plan
              creates   step:cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
 
@@ -25,11 +23,6 @@ file:README NOW.txt
           created by   step:./plan.py
             supplies   step:'./script is cool.py' run
             supplies   step:cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-
-file:call is cool.py
-               state = STATIC
-          created by   step:./plan.py
-            supplies   step:'./call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
 
 file:script is cool.py
                state = STATIC
@@ -49,15 +42,6 @@ file:white space leaves a lot of room for mistakes.txt
                state = BUILT
           created by   step:cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
             consumes   step:cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-
-step:'./call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
-               state = SUCCEEDED
-                need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:call is cool.py
-             creates   file:call is cool_out.json
-            supplies   file:call is cool_out.json [amended]
 
 step:'./script is cool.py' plan
                state = SUCCEEDED
@@ -81,8 +65,3 @@ file:the road to hell is paved with whitespace.txt
                state = BUILT
           created by   step:'./script is cool.py' run
             consumes   step:'./script is cool.py' run
-
-file:call is cool_out.json
-               state = BUILT
-          created by   step:'./call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out
-            consumes   step:'./call is cool.py' '{"text": "abcd"}' --out='call is cool_out.json' --amend-out

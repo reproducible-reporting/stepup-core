@@ -1,5 +1,4 @@
-.stepup
+.stepup/
 current*
-add_inp.json
-add_out.json
-square_out.json
+intermediate.txt
+final.txt

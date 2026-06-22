@@ -4,8 +4,9 @@ set -e
 trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
 rm -rvf $(cat .gitignore)
 
-# Run the example
+# Run the example.
 stepup boot -j 1 -w & # > current_stdout.txt &
+PID=$!
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -13,10 +14,9 @@ stepup graph current_graph
 stepup join
 
 # Wait for background processes, if any.
-wait
+set +e; wait -fn $PID; RETURNCODE=$?; set -e
+[[ "${RETURNCODE}" -eq 0 ]] || exit 1
 
-# Check files that are expected to be present and/or missing.
-[[ -f plan.py ]] || exit 1
-[[ -f add_inp.json ]] || exit 1
-grep 42 add_out.json || exit 1
-grep 1764 square_out.json || exit 1
+# Check files that are expected to be present.
+grep "HELLO WORLD" intermediate.txt
+grep "HELLO WORLD done" final.txt

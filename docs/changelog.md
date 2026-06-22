@@ -33,6 +33,10 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ### Changed
 
+- Redesigned `call()` interface:
+  the old inp/out/pickle argument modes are replaced
+  by explicit function dispatch and optional `args_file` support for file-based argument passing.
+  See [Function Calls](getting_started/call.md) for details.
 - The database schema version has been incremented to 5 because:
     - UINT64 type is used for inodes in the SQLite storage
     - Directories are no longer stored in the database
@@ -83,6 +87,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
       File hashing is offloaded to a dedicated subprocess (`_stepup_hasher` or a forkserver child).
     - The *run phase* has been renamed to *build phase* throughout the documentation and source code.
     - The Runner has been renamed to Builder.
+
+### Deprecated
+
+- The script interface for calling user Python scripts from `plan.py` has been deprecated
+  in favor of the new [Call](getting_started/call.md) interface.
+  You are encouraged to migrate your `plan.py` files to the new API.
 
 ### Removed
 

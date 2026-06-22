@@ -30,6 +30,7 @@ A per-step mutable state lives in a `RunningStep` created for each job.
 """
 
 import asyncio
+import atexit
 import contextlib
 import functools
 import importlib
@@ -105,47 +106,51 @@ def _forkserver_entry(
     When `ep_value` is a `module:attr` string, the corresponding console_script function
     is imported and called directly without import tracking.
     """
-    os.environ.clear()
-    os.environ.update(env_snapshot)
-    stdout_buf = io.StringIO()
-    stderr_buf = io.StringIO()
-    returncode = 0
-    ru_self_start = resource.getrusage(resource.RUSAGE_SELF)
-    ru_children_start = resource.getrusage(resource.RUSAGE_CHILDREN)
     try:
+        os.environ.clear()
+        os.environ.update(env_snapshot)
+        stdout_buf = io.StringIO()
+        stderr_buf = io.StringIO()
+        returncode = 0
+        ru_self_start = resource.getrusage(resource.RUSAGE_SELF)
+        ru_children_start = resource.getrusage(resource.RUSAGE_CHILDREN)
+        ru_self_end = ru_self_start
+        ru_children_end = ru_children_start
+        os.chdir(workdir)
+        sys.stdout = stdout_buf
+        sys.stderr = stderr_buf
         sys.argv = [cmd, *args]
-        with (
-            contextlib.chdir(workdir),
-            contextlib.redirect_stdout(stdout_buf),
-            contextlib.redirect_stderr(stderr_buf),
-        ):
-            try:
-                if ep_value is None:
-                    runpy.run_path(cmd, run_name="__main__")
-                else:
-                    module_name, attr_name = ep_value.split(":", 1)
-                    func = getattr(importlib.import_module(module_name), attr_name)
-                    func()
-            except SystemExit as exc:
-                returncode = (
-                    exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
-                )
-            finally:
-                if ep_value is None:
-                    # Must be imported ONLY in the forked process:
-                    # it opens a new connection to the director socket,
-                    # which should happen in the forked process, not its parent.
-                    from stepup.core.api import amend  # noqa: PLC0415
+        try:
+            if ep_value is None:
+                runpy.run_path(cmd, run_name="__main__")
+            else:
+                module_name, attr_name = ep_value.split(":", 1)
+                func = getattr(importlib.import_module(module_name), attr_name)
+                func()
+        except SystemExit as exc:
+            returncode = exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
+        finally:
+            # Run atexit handlers before sending the result so that any amend() calls
+            # from atexit handlers are processed while the step is still RUNNING.
+            # There is no public API for this in CPython; _run_exitfuncs is a stable
+            # private implementation detail present in every CPython release since 2.0.
+            with contextlib.suppress(AttributeError):
+                atexit._run_exitfuncs()
+            if ep_value is None:
+                # Must be imported ONLY in the forked process:
+                # it opens a new connection to the director socket,
+                # which should happen in the forked process, not its parent.
+                from stepup.core.api import amend  # noqa: PLC0415
 
-                    amend(inp=get_local_import_paths(script_path=Path(cmd)))
+                amend(inp=get_local_import_paths(script_path=Path(cmd)))
+        ru_self_end = resource.getrusage(resource.RUSAGE_SELF)
+        ru_children_end = resource.getrusage(resource.RUSAGE_CHILDREN)
     except BaseException:  # noqa: BLE001
         # All exceptions must be caught here, to be able to send the corresponding
         # output and return code back to the director process.
         # Otherwise, the parent process would just see a connection error.
         traceback.print_exc(file=stderr_buf)
         returncode = 1
-    ru_self_end = resource.getrusage(resource.RUSAGE_SELF)
-    ru_children_end = resource.getrusage(resource.RUSAGE_CHILDREN)
     utime = (ru_self_end.ru_utime - ru_self_start.ru_utime) + (
         ru_children_end.ru_utime - ru_children_start.ru_utime
     )
@@ -155,18 +160,18 @@ def _forkserver_entry(
     result_conn.send((returncode, stdout_buf.getvalue(), stderr_buf.getvalue(), utime, stime))
 
 
-def _binary_uses_same_python(binary_path: str) -> bool:
+def _executable_uses_same_python(path_exec: str) -> bool:
     """Check if an executable script's shebang resolves to the same Python as the current process.
 
     This detects console_script wrappers installed in PATH-extended locations
     (e.g., additional environment modules loaded on top of the base Python module)
     whose shebang points to the same Python executable as `sys._base_executable`.
-    When true, the binary and the forkserver use the same interpreter and inherit
+    When true, the executable and the forkserver use the same interpreter and inherit
     the same environment variables, so their behavior is equivalent.
 
     Parameters
     ----------
-    binary_path
+    path_exec
         Path to the executable script to inspect.
 
     Returns
@@ -177,7 +182,7 @@ def _binary_uses_same_python(binary_path: str) -> bool:
     """
     base_exec = Path(sys._base_executable).resolve()
     try:
-        with open(binary_path, "rb") as f:
+        with open(path_exec, "rb") as f:
             head = f.read(256)
     except OSError:
         return False
@@ -242,7 +247,7 @@ def _detect_python_entrypoint(cmd: str) -> str | None:
         env_bins.add((Path(sys.base_prefix) / "bin").realpath())
         env_bins.add((Path(sys.base_exec_prefix) / "bin").realpath())
     path_ok = any(resolved.startswith(d + "/") or resolved == d for d in env_bins)
-    if not path_ok and not _binary_uses_same_python(which_path):
+    if not path_ok and not _executable_uses_same_python(which_path):
         print(
             f"WARNING: Command '{cmd}' is a Python entry point but its executable"
             f" ('{which_path}') is not in the current Python environment ({sys.prefix})."

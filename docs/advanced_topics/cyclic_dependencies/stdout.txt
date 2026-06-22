@@ -8,7 +8,7 @@ Command               ./plan.py
 Return code           1
 ──────────────────────────────── Standard error ────────────────────────────────
 Traceback (most recent call last):
-  File "stepup/core/executor.py", line 124, in _forkserver_entry
+  File "stepup/core/executor.py", line 125, in _forkserver_entry
     runpy.run_path(cmd, run_name="__main__")
     ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "<frozen runpy>", line 294, in run_path
@@ -17,13 +17,13 @@ Traceback (most recent call last):
   File "./plan.py", line 5, in <module>
     copy("b.txt", "a.txt")
     ~~~~^^^^^^^^^^^^^^^^^^
-  File "stepup/core/api.py", line 698, in copy
+  File "stepup/core/api.py", line 839, in copy
     return step(
         "cp -p ${inp} ${out}",
     ...<4 lines>...
         shell=False,
     )
-  File "stepup/core/api.py", line 331, in step
+  File "stepup/core/api.py", line 332, in step
     to_check = RPC_CLIENT.call.step(
         _get_step_i(),
     ...<8 lines>...
