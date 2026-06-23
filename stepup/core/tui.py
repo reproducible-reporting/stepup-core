@@ -130,6 +130,7 @@ async def async_boot(args: argparse.Namespace, default_resources: str):
             argv.append("--no-clean")
         if args.show_perf > 1:
             argv.append("--show-perf")
+        argv.append(f"--max-output-size={args.max_output_size}")
         args.resources = merge_resources(default_resources, args.resources)
         if args.resources:
             argv.append(f"--resources={args.resources}")
@@ -328,6 +329,14 @@ def boot_subcommand(subparsers, loader: ConfigLoader) -> callable:
         default=0,
         action="count",
         help="Show the performance info on each line. Repeat for more detailed info.",
+    )
+    parser.add_argument(
+        "--max-output-size",
+        type=int,
+        default=0,
+        help="Maximum number of bytes of stdout/stderr stored per step stream in the "
+        "database; 0 means unlimited. The full output is always shown in the TUI. "
+        "[default: %(default)s]",
     )
     resources_action = parser.add_argument(
         "--resources",

@@ -125,7 +125,49 @@ CREATE TABLE IF NOT EXISTS step_resource (
     FOREIGN KEY (node) REFERENCES node(i)
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS step_resource_name ON step_resource(name);
+
+CREATE TABLE IF NOT EXISTS step_output (
+    node    INTEGER NOT NULL,
+    kind    TEXT    NOT NULL,  -- 'stdout' or 'stderr' (extensible)
+    content TEXT    NOT NULL,
+    PRIMARY KEY (node, kind),
+    -- No ON DELETE CASCADE on purpose: rows are removed explicitly in Step.clean()
+    -- *before* the node row is deleted, matching step_hash / env_var.
+    FOREIGN KEY (node) REFERENCES node(i)
+) WITHOUT ROWID;
 """
+
+
+def truncate_output(content: str, max_size: int) -> str:
+    """Truncate `content` to at most `max_size` UTF-8 bytes, appending a sentinel if cut.
+
+    A `max_size` of `0` (or any non-positive value) means unlimited: the content is
+    returned unchanged. Otherwise the cut is made on a valid UTF-8 character boundary
+    (`decode(..., "ignore")` drops a trailing partial multi-byte sequence), so the result
+    is always valid text.
+
+    Parameters
+    ----------
+    content
+        The captured text to (possibly) truncate.
+    max_size
+        Maximum number of UTF-8 bytes to keep, or `0` (or any non-positive value) for
+        unlimited.
+
+    Returns
+    -------
+    truncated
+        The original content if within the budget or unlimited, otherwise the content cut
+        to `max_size` bytes with a sentinel line appended.
+    """
+    if max_size <= 0:
+        return content
+    encoded = content.encode("utf-8")
+    if len(encoded) <= max_size:
+        return content
+    truncated = encoded[:max_size].decode("utf-8", "ignore")
+    return f"{truncated}\n[output truncated at {max_size} bytes]\n"
+
 
 # When a step is detached or recycled, its creator chain changes, which alters the "safe" state
 # of the step and of every step it created (recursively): whether their (indirect) creator is in
@@ -282,6 +324,7 @@ class Step(Node):
         self.con.execute("DELETE FROM nglob_multi WHERE node = ?", (self.i,))
         self.con.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))
         self.con.execute("DELETE FROM step_resource WHERE node = ?", (self.i,))
+        self.delete_outputs()
 
     def give_up(self):
         """Clean up a detached node because it loses a product node.
@@ -665,6 +708,9 @@ class Step(Node):
             file = File(self.workflow, i, label)
             file.mark_outdated()
 
+        # Drop any output stored by a previous run.
+        self.delete_outputs()
+
     def completed(self, new_hash: StepHash | None):
         """Set a step as completed (succeeded or failed) and trigger the consequences.
 
@@ -721,6 +767,42 @@ class Step(Node):
 
     def delete_hash(self):
         self.con.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))
+
+    def store_output(self, kind: str, content: str, max_size: int) -> None:
+        """Persist captured output of one stream for this step.
+
+        Any previously stored row for this `(node, kind)` pair is removed first,
+        so a stream that produced output on an earlier run but is empty now does not
+        leave a stale row.
+
+        Parameters
+        ----------
+        kind
+            The stream identifier, e.g. `'stdout'` or `'stderr'`.
+        content
+            The full captured text (untruncated).
+        max_size
+            Maximum number of UTF-8 bytes to store, or `0` for unlimited.
+            See `truncate_output`.
+        """
+        # Delete the existing row for this kind first: INSERT OR REPLACE cannot
+        # remove a row whose content is now empty, so an explicit DELETE is needed.
+        self.con.execute("DELETE FROM step_output WHERE node = ? AND kind = ?", (self.i, kind))
+        if content:
+            self.con.execute(
+                "INSERT INTO step_output VALUES (?, ?, ?)",
+                (self.i, kind, truncate_output(content, max_size)),
+            )
+
+    def get_output(self, kind: str) -> str:
+        """Return the stored output for one stream, or an empty string if absent."""
+        sql = "SELECT content FROM step_output WHERE node = ? AND kind = ?"
+        row = self.con.execute(sql, (self.i, kind)).fetchone()
+        return row[0] if row else ""
+
+    def delete_outputs(self) -> None:
+        """Remove all stored output rows for this step."""
+        self.con.execute("DELETE FROM step_output WHERE node = ?", (self.i,))
 
     def set_resources(self, resources: dict[str, int] | None):
         self.con.execute("DELETE FROM step_resource WHERE node = ?", (self.i,))

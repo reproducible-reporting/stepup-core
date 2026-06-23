@@ -120,6 +120,32 @@ def _forkserver_entry(
         os.chdir(workdir)
         sys.stdout = stdout_buf
         sys.stderr = stderr_buf
+        # Capture OS-level fd 1/2 output (subprocesses, C extensions) that the StringIO
+        # redirect above does NOT see. Save the originals first so we can restore them
+        # afterwards; restoring (rather than closing) also signals EOF to the drain threads.
+        saved_out_fd = os.dup(1)
+        saved_err_fd = os.dup(2)
+        r_out, w_out = os.pipe()
+        r_err, w_err = os.pipe()
+        os.dup2(w_out, 1)
+        os.close(w_out)
+        os.dup2(w_err, 2)
+        os.close(w_err)
+
+        os_stdout_chunks: list[bytes] = []
+        os_stderr_chunks: list[bytes] = []
+
+        def _drain(fd: int, chunks: list[bytes]) -> None:
+            # Blocks until EOF, i.e. until every writer of this pipe end has closed it.
+            # Same semantics as _communicate_wait4: a step that leaves a daemon holding
+            # the inherited fd open will keep this thread (and the join below) waiting.
+            with os.fdopen(fd, "rb") as f:
+                chunks.append(f.read())
+
+        drain_out = threading.Thread(target=_drain, args=(r_out, os_stdout_chunks), daemon=True)
+        drain_err = threading.Thread(target=_drain, args=(r_err, os_stderr_chunks), daemon=True)
+        drain_out.start()
+        drain_err.start()
         sys.argv = [cmd, *args]
         try:
             if ep_value is None:
@@ -152,6 +178,19 @@ def _forkserver_entry(
         # Otherwise, the parent process would just see a connection error.
         traceback.print_exc(file=stderr_buf)
         returncode = 1
+    # Restore the real fds 1/2. dup2 here closes the current fd 1/2 (the pipe write ends),
+    # which is what makes the drain threads see EOF — so this both restores stdout/stderr
+    # and unblocks the drains in one step. Done unconditionally (normal and error paths).
+    os.dup2(saved_out_fd, 1)
+    os.close(saved_out_fd)
+    os.dup2(saved_err_fd, 2)
+    os.close(saved_err_fd)
+    drain_out.join()
+    drain_err.join()
+    # Append OS-level output to the Python-level StringIO content. Decode tolerantly:
+    # subprocesses may emit invalid UTF-8.
+    stdout_buf.write(b"".join(os_stdout_chunks).decode("utf-8", "ignore"))
+    stderr_buf.write(b"".join(os_stderr_chunks).decode("utf-8", "ignore"))
     utime = (ru_self_end.ru_utime - ru_self_start.ru_utime) + (
         ru_children_end.ru_utime - ru_children_start.ru_utime
     )
@@ -590,6 +629,9 @@ class StepExecutor:
     step_env: dict = attrs.field(kw_only=True, factory=dict)
     """Environment variables exported to step child processes, overriding `os.environ`."""
 
+    max_output_size: int = attrs.field(kw_only=True, default=0)
+    """Maximum bytes of stdout/stderr stored per step stream in the DB; 0 = unlimited."""
+
     running: set = attrs.field(init=False, factory=set)
     """The set of `RunningStep` instances whose command is currently running."""
 
@@ -708,6 +750,12 @@ class StepExecutor:
                 if not success:
                     new_hash = None
                 step.completed(new_hash)
+                # Persist the captured output in the same transaction as completed(),
+                # so a crash cannot leave a completed step without its output (or vice
+                # versa). rs.stdout/rs.stderr stay untruncated; store_output truncates a
+                # copy internally, so report() below still forwards the full text to the TUI.
+                step.store_output("stdout", rs.stdout, self.max_output_size)
+                step.store_output("stderr", rs.stderr, self.max_output_size)
                 step_counts = self.workflow.get_step_counts()
             await self.reporter.update_step_counts(step_counts)
 

@@ -21,11 +21,13 @@
 
 import argparse
 import contextlib
+import html
 import importlib.resources
 import os
 import pickle
 import stat
 import traceback
+import webbrowser
 from collections.abc import Iterator
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -68,12 +70,17 @@ def browse_tool(args: argparse.Namespace):
     # Copy the database in memory and work on the copy.
     root = Path(os.getenv("STEPUP_ROOT", "."))
     path_db = root / ".stepup/graph.db"
+    if not path_db.exists():
+        raise FileNotFoundError(f"Graph database {path_db} does not exist.")
     # Ugly hack to pass information to the request handler.
     GraphServer.path_db = path_db
     # Standard library HTTP server.
     server = HTTPServer(("localhost", args.port), GraphServer)
-    print(f"Server started http://localhost:{args.port}")
+    url = f"http://localhost:{args.port}"
+    print(f"Server started {url}")
     print("Press Ctrl+C to stop the server.")
+    if not webbrowser.open(url):
+        print("Warning: could not open a browser. Open the URL above manually.")
     with contextlib.suppress(KeyboardInterrupt):
         server.serve_forever()
     server.server_close()
@@ -91,6 +98,7 @@ HTML_TEMPLATE = """\
     :root {
       --main-font: IBM Plex Sans, Arial, sans-serif;
       --background-color: #eeeeee;
+      --pre-color: #dddddd;
       --heading-color: #222222;
       --text-color: #000000;
       --link-color: #444444;
@@ -104,6 +112,7 @@ HTML_TEMPLATE = """\
     @media (prefers-color-scheme: dark) {
       :root {
         --background-color: #181818;
+        --pre-color: #333333;
         --heading-color: #cccccc;
         --text-color: #ffffff;
         --link-color: #aaaaaa;
@@ -134,6 +143,14 @@ HTML_TEMPLATE = """\
       margin-left: 10px;
       margin-top: 5px;
       margin-bottom: 5px;
+    }
+    pre {
+      background-color: var(--pre-color);
+      margin-left: 10px;
+      margin-top: 5px;
+      margin-bottom: 5px;
+      padding: 10px;
+      border-radius: 4px;
     }
     a {
       color: var(--link-color);
@@ -455,6 +472,15 @@ class GraphServer(BaseHTTPRequestHandler):
                 for row in ngms:
                     ngm = pickle.loads(row[0])
                     yield f"<p>{[ngs.pattern for ngs in ngm.nglob_singles]} {ngm.subs}</p>"
+
+            sql_out = "SELECT kind, content FROM step_output WHERE node = ? ORDER BY kind"
+            first = True
+            for out_kind, out_content in self.con.execute(sql_out, (node_i,)):
+                if first:
+                    yield "<h3>Output</h3>"
+                    first = False
+                yield f"<p>{out_kind.capitalize()}</p>"
+                yield f"<pre>{html.escape(out_content)}</pre>"
 
         elif kind == "file":
             (state_i, digest, mode, mtime, size, inode) = self.con.execute(

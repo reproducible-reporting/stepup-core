@@ -12,6 +12,16 @@ so you may ignore them when you just use them as a reference for how to make som
 
 When writing new examples, the following conventions ensure that they are properly tested:
 
+- **Register the example** in the `@pytest.mark.parametrize` `name` list of `test_example`
+  in `tests/test_examples.py`. Examples are *not* auto-discovered from this directory, so an
+  unregistered example is silently never run. If its `plan.py` should also be exercised
+  standalone (without StepUp), add the name to the `test_plan` list as well.
+
+- CI runs the whole example suite twice, once with `STEPUP_BOOT_FORK_RUNPY=1` and once with
+  `STEPUP_BOOT_FORK_RUNPY=0`, so an example must pass under **both** the forkserver and the
+  plain-subprocess execution paths. Do not pin `fork_runpy` in a per-example `stepup.toml`
+  unless the example is specifically about one path.
+
 - To facilitate debugging, the shebang line runs bash in verbose mode: `#!/usr/bin/env -S bash -x`.
 
 - Each `main.sh` starts with three boilerplate lines:
@@ -85,6 +95,12 @@ When writing new examples, the following conventions ensure that they are proper
 
 - Several lines starting with `[[ -f ... ]]` or `[[ ! -f ... ]]` verify that expected
   files are present or absent after a run.
+
+- The **"Standard error" page is not compared verbatim**: the test builder
+  (`stepup/core/pytest.py`) replaces its body with `(stripped)` in the captured stdout before
+  comparison, because stderr varies across OS and Python versions. To assert specific stderr
+  (or stdout) text, grep `.stepup/success.log` from within `main.sh` — it keeps the full,
+  un-stripped reporter output, including the standard-error page.
 
 The test builder in `tests/test_examples.py` copies each example to a temporary directory,
 applies the `sed` rewrite to `main.sh`, runs it, and compares all `current_*` files against

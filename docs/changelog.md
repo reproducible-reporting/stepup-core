@@ -36,6 +36,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   in-process rather than spawning a new subprocess, reducing overhead.
   If the entry point belongs to a different Python environment, a warning is logged and
   the command falls back to direct subprocess execution (`runexec` action).
+- StepUp now stores the captured stdout and stderr of each step in the workflow database,
+  so they can be inspected after the build.
+  Output from subprocesses launched by a forked Python step is captured properly.
+  The amount stored per stream can be capped with the new
+  `stepup boot --max-output-size` option (`0` = unlimited, the default).
+  These outputs can later be viewed with `stepup browse`.
 
 ### Changed
 
@@ -56,6 +62,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
       The information represented by this column is now inferred from `rescheduled_info`.
     - The `pool` table was replaced by a `step_resource` table.
     - The step state `QUEUED` has been removed, as it is no longer needed.
+    - A `step_output` table was added to store the stdout/stderr of steps.
 - The "deferred glob" has been replaced by a simpler "static root" concept.
   Files in a static root directory become static only when they are used as inputs.
   This allows for huge static data directories, of which only some are used,
@@ -81,7 +88,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   and the environment variable changes from `STEPUP_NUM_WORKERS` to `STEPUP_BOOT_JOBS`.
 - Several environment variables have been renamed for consistency.
   See [Configuration files](reference/configuration.md) for details.
-- Documentation has been updated to reflect the API changes and to clarify some other points.
+- Documentation has been updated to reflect the API changes and to clarify some other points:
+    - All tutorials have been updated to reflect the new API and workflow.
+    - A [migration guide](migration/from_3x_to_40.md) has been added
+      to help users migrate from StepUp 3 to StepUp 4.
+- The `stepup browse` command has become easier to use:
+  It opens a browser window automatically.
 - Updates of internals:
     - Renamed "orphan" and related names to "detached", which is more intuitive.
       The new terminology is applied more consistently with consistent distinction between

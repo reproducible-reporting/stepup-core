@@ -24,7 +24,7 @@ import pytest
 from stepup.core.cascade import CASCADE_SCHEMA
 from stepup.core.enums import Need, StepState
 from stepup.core.sqlite3 import connect
-from stepup.core.step import RECURSIVE_CHECK_WITH_PRODUCTS, STEP_SCHEMA
+from stepup.core.step import RECURSIVE_CHECK_WITH_PRODUCTS, STEP_SCHEMA, truncate_output
 
 
 @pytest.fixture
@@ -105,3 +105,38 @@ def test_check_with_products_single_step(con):
     _insert_step(con, 2, 1)
     con.execute(RECURSIVE_CHECK_WITH_PRODUCTS, (2,))
     assert _flagged(con) == {2}
+
+
+def test_truncate_output_unlimited():
+    """A non-positive max_size returns the content unchanged, even when large."""
+    content = "x" * 10_000
+    assert truncate_output(content, 0) is content
+    assert truncate_output(content, -1) is content
+
+
+def test_truncate_output_under_limit():
+    """Content within the byte budget is returned unchanged."""
+    content = "hello\n"
+    assert truncate_output(content, 100) == content
+
+
+def test_truncate_output_over_limit():
+    """Content over the budget is cut and a sentinel line is appended."""
+    content = "abcdefghij"  # 10 ASCII bytes
+    result = truncate_output(content, 5)
+    assert result == "abcde\n[output truncated at 5 bytes]\n"
+    # The kept portion stays within the byte budget.
+    assert len(result.split("\n")[0].encode("utf-8")) <= 5
+
+
+def test_truncate_output_multibyte_boundary():
+    """Cutting in the middle of a multi-byte character yields valid UTF-8 within budget."""
+    content = "é" * 10  # each 'é' is 2 UTF-8 bytes => 20 bytes total
+    # max_size 5 lands in the middle of the third 'é' (after 2 full chars = 4 bytes).
+    result = truncate_output(content, 5)
+    kept = result.split("\n")[0]
+    assert kept == "éé"
+    # The result is valid text (no replacement characters) and within the budget.
+    assert "�" not in result
+    assert len(kept.encode("utf-8")) <= 5
+    assert result.endswith("[output truncated at 5 bytes]\n")

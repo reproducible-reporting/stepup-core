@@ -112,6 +112,7 @@ async def async_main(args: argparse.Namespace, mp_ctx=None):
                 args.watch,
                 args.watch_first,
                 args.resources,
+                args.max_output_size,
                 mp_ctx=mp_ctx,
             )
         except Exception as exc:
@@ -199,6 +200,12 @@ def parse_args() -> argparse.Namespace:
         help="Add performance details after completed step.",
     )
     parser.add_argument(
+        "--max-output-size",
+        type=int,
+        default=0,
+        help="Maximum bytes of stdout/stderr stored per step stream; 0 = unlimited.",
+    )
+    parser.add_argument(
         "--resources",
         default=None,
         help="Available resources for steps, e.g. 'cpu:4,gpu:1,memgb:16'.",
@@ -254,6 +261,7 @@ async def serve(
     do_watch: bool,
     do_watch_first: bool,
     available_resources: str | None,
+    max_output_size: int = 0,
     mp_ctx=None,
 ) -> ReturnCode:
     """Server program.
@@ -284,6 +292,9 @@ async def serve(
     available_resources
         A dictionary of named resources and their available quantities,
         e.g. `{"cpu": 4, "gpu": 1}`. Defaults to an empty dict.
+    max_output_size
+        The maximum number of bytes of stdout/stderr stored per step stream in the
+        workflow database. `0` (the default) means unlimited (no truncation).
     mp_ctx
         A `multiprocessing` forkserver context for Python step execution and file hashing,
         or `None` to use plain subprocesses.
@@ -335,6 +346,7 @@ async def serve(
         do_remove_outdated=do_clean,
         mp_ctx=mp_ctx,
         step_env=step_env,
+        max_output_size=max_output_size,
     )
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(

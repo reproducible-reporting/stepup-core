@@ -1944,3 +1944,50 @@ def test_define_step_invalid_resources(wfp: Workflow, resources: dict):
     plan = wfp.find(Step, "./plan.py")
     with pytest.raises(sqlite3.IntegrityError), wfp.con:
         wfp.define_step(plan, "echo", resources=resources)
+
+
+def test_step_output_roundtrip(wfp: Workflow):
+    """store_output / get_output / delete_outputs round-trip each stream independently."""
+    step = wfp.find(Step, "./plan.py")
+
+    # Empty content stores no row.
+    step.store_output("stdout", "", 0)
+    assert step.get_output("stdout") == ""
+
+    # Non-empty content round-trips, each stream independently.
+    step.store_output("stdout", "hello out\n", 0)
+    step.store_output("stderr", "hello err\n", 0)
+    assert step.get_output("stdout") == "hello out\n"
+    assert step.get_output("stderr") == "hello err\n"
+
+    # Re-storing empty content clears the stale row without touching the other stream.
+    step.store_output("stdout", "", 0)
+    assert step.get_output("stdout") == ""
+    assert step.get_output("stderr") == "hello err\n"
+
+    # delete_outputs removes all kinds at once.
+    step.store_output("stdout", "again\n", 0)
+    step.delete_outputs()
+    assert step.get_output("stdout") == ""
+    assert step.get_output("stderr") == ""
+
+
+def test_step_output_truncated_on_store(wfp: Workflow):
+    """store_output applies the byte budget; get_output returns the truncated text."""
+    step = wfp.find(Step, "./plan.py")
+    step.store_output("stdout", "abcdefghij", 5)
+    assert step.get_output("stdout") == "abcde\n[output truncated at 5 bytes]\n"
+
+
+def test_step_output_give_up_no_fk_error(wfp: Workflow):
+    """give_up() removes stored output (clean() runs before node deletion, no FK error)."""
+    plan = wfp.find(Step, "./plan.py")
+    wfp.define_step(plan, "echo hi")
+    step = wfp.find(Step, "echo hi")
+    step.store_output("stdout", "data\n", 0)
+    step.store_output("stderr", "oops\n", 0)
+    # clean() deletes step_output rows before give_up() deletes the node row. With no
+    # ON DELETE CASCADE, a leftover row would trigger a foreign-key error here.
+    step.give_up()
+    assert step.get_output("stdout") == ""
+    assert step.get_output("stderr") == ""

@@ -586,6 +586,7 @@ class Cascade:
         # - Added CHECKING step state (value 25): steps being hash-checked for possible skipping
         #   without consuming named resource slots.
         #   The STEP_SCHEMA CHECK constraint was updated from <= 24 to <= 25.
+        # - Added a step_output table to store the stdout/stderr of steps.
 
         return 5
 

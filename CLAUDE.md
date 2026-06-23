@@ -247,6 +247,13 @@ Used in the API for dynamic file discovery with consistency constraints across p
   These are run by `tests/test_examples.py`.
   See `tests/examples/README.md` for a detailed explanation of the `main.sh` conventions
   and how the test builder compares `current_*` files against `expected_*` files.
+    - New examples are **not** auto-discovered: register each in the `@pytest.mark.parametrize`
+      `name` list of `test_example` in `tests/test_examples.py` (and `test_plan` if the plan
+      should run standalone), or it is silently never run.
+    - CI runs the example suite twice, with `STEPUP_BOOT_FORK_RUNPY=1` and `=0`, so examples
+      must pass under both the forkserver and plain-subprocess paths.
+    - The "Standard error" page is replaced with `(stripped)` before comparison, so assert
+      stderr text by grepping `.stepup/success.log` (full output) instead of `expected_stdout.txt`.
 - `stepup/core/pytest.py`:
   Pytest helpers for integration tests that run actual StepUp workflows.
 - To regenerate `expected_*` files after an intentional behavior change, run:

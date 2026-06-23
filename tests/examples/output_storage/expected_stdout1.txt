@@ -1,0 +1,24 @@
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/1 |      PHASE │ build
+        0/1 |      START │ ./plan.py
+        1/3 |    SUCCESS │ ./plan.py
+        1/3 |      START │ ./big.py
+        2/3 |    SUCCESS │ ./big.py
+─────────────────────────────── Standard output ────────────────────────────────
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+────────────────────────────────────────────────────────────────────────────────
+        2/3 |      START │ ./fail.py
+        2/2 |       FAIL │ ./fail.py
+────────────────────────────────── Step info ───────────────────────────────────
+Command               ./fail.py
+Return code           1
+─────────────────────────────── Standard output ────────────────────────────────
+fail-output-line
+──────────────────────────────── Standard error ────────────────────────────────
+(stripped)
+────────────────────────────────────────────────────────────────────────────────
+        2/2 |    WARNING │ 1 step(s) failed.
+        2/2 |    WARNING │ Skipping file cleanup due to incomplete build
+        2/2 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+        2/2 |      PHASE │ watch
+        2/2 |   DIRECTOR │ See you!

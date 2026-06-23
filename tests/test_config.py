@@ -26,6 +26,7 @@ import pytest
 from path import Path
 
 from stepup.core.config import ConfigLoader
+from stepup.core.tui import boot_subcommand
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -554,3 +555,32 @@ def test_full_integration(path_tmp, parser):
     assert ns.debug is True  # from env
     assert ns.search_paths == "/usr/share:/home/user/lib"  # merge handler
     assert ns.label == "cli"  # CLI overrides pyproject
+
+
+def test_boot_max_output_size_default():
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers()
+    boot_subcommand(subparsers, ConfigLoader("stepup", environ={}))
+    assert parser.parse_args(["boot"]).max_output_size == 0
+
+
+def test_boot_max_output_size_from_env():
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers()
+    boot_subcommand(
+        subparsers, ConfigLoader("stepup", environ={"STEPUP_BOOT_MAX_OUTPUT_SIZE": "128"})
+    )
+    args = parser.parse_args(["boot"])
+    assert args.max_output_size == 128
+    assert isinstance(args.max_output_size, int)
+    # An explicit command-line value still wins over the environment variable.
+    assert parser.parse_args(["boot", "--max-output-size=256"]).max_output_size == 256
+
+
+def test_boot_max_output_size_from_file(path_tmp):
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b"[boot]\nmax_output_size = 64\n")
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers()
+    boot_subcommand(subparsers, ConfigLoader("stepup", config_paths=[cfg], environ={}))
+    assert parser.parse_args(["boot"]).max_output_size == 64

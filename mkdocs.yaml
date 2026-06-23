@@ -102,7 +102,7 @@ nav:
     - advanced_topics/stepup_root.md
     - advanced_topics/step_info.md
   - Migration:
-    - migration/from3to4.md
+    - migration/from_3x_to_40.md
   - Reference:
     - reference/stepup.core.api.md
     - reference/stepup.core.call.md

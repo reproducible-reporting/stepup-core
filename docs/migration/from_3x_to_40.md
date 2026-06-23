@@ -1,4 +1,4 @@
-# Migration from StepUp 3.X to 4.X
+# Migration from StepUp 3.X to 4.0
 
 A few things have changed in StepUp 4 that might require changes to your `plan.py` file.
 These changes reflect optimizations of StepUp's internals or

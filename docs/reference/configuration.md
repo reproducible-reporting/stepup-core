@@ -130,6 +130,14 @@ separated by slashes, where applicable.
     which reduces startup overhead.
     This is enabled by default on Linux.
 
+`max_output_size` / `STEPUP_BOOT_MAX_OUTPUT_SIZE` / `--max-output-size`
+
+:   The maximum number of bytes of standard output and standard error stored per step
+    stream in the workflow database. The default is `0`, meaning unlimited (no truncation).
+    The full output is always shown in the terminal user interface; this limit only affects
+    what is persisted. When a stream exceeds the limit, it is truncated on a UTF-8 character
+    boundary and a `[output truncated at N bytes]` line is appended.
+
 `preload_modules` / `STEPUP_BOOT_PRELOAD_MODULES` / `--preload-modules`
 
 :   A comma-separated list of Python modules to pre-load into the forkserver.
