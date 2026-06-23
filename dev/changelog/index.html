@@ -1428,14 +1428,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../migration/from3to4/" class="md-nav__link">
+      <a href="../migration/from_3x_to_40/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Migration from StepUp 3.X to 4.X
+    Migration from StepUp 3.X to 4.0
   
 
     
@@ -5587,6 +5587,12 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   in-process rather than spawning a new subprocess, reducing overhead.
   If the entry point belongs to a different Python environment, a warning is logged and
   the command falls back to direct subprocess execution (<code>runexec</code> action).</li>
+<li>StepUp now stores the captured stdout and stderr of each step in the workflow database,
+  so they can be inspected after the build.
+  Output from subprocesses launched by a forked Python step is captured properly.
+  The amount stored per stream can be capped with the new
+  <code>stepup boot --max-output-size</code> option (<code>0</code> = unlimited, the default).
+  These outputs can later be viewed with <code>stepup browse</code>.</li>
 </ul>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
 <ul>
@@ -5607,6 +5613,7 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   The information represented by this column is now inferred from <code>rescheduled_info</code>.</li>
 <li>The <code>pool</code> table was replaced by a <code>step_resource</code> table.</li>
 <li>The step state <code>QUEUED</code> has been removed, as it is no longer needed.</li>
+<li>A <code>step_output</code> table was added to store the stdout/stderr of steps.</li>
 </ul>
 </li>
 <li>The &ldquo;deferred glob&rdquo; has been replaced by a simpler &ldquo;static root&rdquo; concept.
@@ -5636,7 +5643,14 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   and the environment variable changes from <code>STEPUP_NUM_WORKERS</code> to <code>STEPUP_BOOT_JOBS</code>.</li>
 <li>Several environment variables have been renamed for consistency.
   See <a href="../reference/configuration/">Configuration files</a> for details.</li>
-<li>Documentation has been updated to reflect the API changes and to clarify some other points.</li>
+<li>Documentation has been updated to reflect the API changes and to clarify some other points:<ul>
+<li>All tutorials have been updated to reflect the new API and workflow.</li>
+<li>A <a href="../migration/from_3x_to_40/">migration guide</a> has been added
+  to help users migrate from StepUp 3 to StepUp 4.</li>
+</ul>
+</li>
+<li>The <code>stepup browse</code> command has become easier to use:
+  It opens a browser window automatically.</li>
 <li>Updates of internals:<ul>
 <li>Renamed &ldquo;orphan&rdquo; and related names to &ldquo;detached&rdquo;, which is more intuitive.
   The new terminology is applied more consistently with consistent distinction between

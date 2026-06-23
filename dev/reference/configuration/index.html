@@ -1428,14 +1428,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../migration/from3to4/" class="md-nav__link">
+      <a href="../../migration/from_3x_to_40/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Migration from StepUp 3.X to 4.X
+    Migration from StepUp 3.X to 4.0
   
 
     
@@ -2535,6 +2535,14 @@ which can be undesirable in some cases, such as testing.</p>
 <p>Set to <code>true</code> to use a forkserver for Python step execution and file hashing,
 which reduces startup overhead.
 This is enabled by default on Linux.</p>
+</dd>
+<dt><code>max_output_size</code> / <code>STEPUP_BOOT_MAX_OUTPUT_SIZE</code> / <code>--max-output-size</code></dt>
+<dd>
+<p>The maximum number of bytes of standard output and standard error stored per step
+stream in the workflow database. The default is <code>0</code>, meaning unlimited (no truncation).
+The full output is always shown in the terminal user interface; this limit only affects
+what is persisted. When a stream exceeds the limit, it is truncated on a UTF-8 character
+boundary and a <code>[output truncated at N bytes]</code> line is appended.</p>
 </dd>
 <dt><code>preload_modules</code> / <code>STEPUP_BOOT_PRELOAD_MODULES</code> / <code>--preload-modules</code></dt>
 <dd>
