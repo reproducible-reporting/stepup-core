@@ -15,7 +15,7 @@ step:./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:variables.py
-             creates   sr:static/
+             creates   st:static/
              creates   step:./plan.py  # wd=static/
              creates   step:cp -p static/preamble.inc.tex public/preamble.inc.tex
 
@@ -24,7 +24,7 @@ file:variables.py
           created by   step:./plan.py
             supplies   step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
 
-sr:static/
+st:static/
           created by   step:./plan.py
              creates   file:static/main.tex
              creates   file:static/plan.py
@@ -41,7 +41,7 @@ step:cp -p static/preamble.inc.tex public/preamble.inc.tex
 
 file:static/preamble.inc.tex
                state = STATIC
-          created by   sr:static/
+          created by   st:static/
             supplies   step:cp -p static/preamble.inc.tex public/preamble.inc.tex
 
 file:public/preamble.inc.tex
@@ -60,7 +60,7 @@ step:./plan.py  # wd=static/
 
 file:static/plan.py
                state = STATIC
-          created by   sr:static/
+          created by   st:static/
             supplies   step:./plan.py  # wd=static/
 
 step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
@@ -77,12 +77,12 @@ step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.te
 
 file:static/main.tex
                state = STATIC
-          created by   sr:static/
+          created by   st:static/
             supplies   step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
 
 file:static/variables.py
                state = STATIC
-          created by   sr:static/
+          created by   st:static/
             supplies   step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
 
 file:public/main.tex

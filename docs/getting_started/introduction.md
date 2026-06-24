@@ -85,7 +85,7 @@ The nodes of the graph can be instances of the following two main classes:
 There are also a few special nodes:
 
 - The `Root` node is the top-level node, of which there is only one.
-- A `StaticRoot` stores a directory name whose contents
+- A `StaticTree` stores a directory name whose contents
   (also in subdirectories) can only be static files.
 
 #### Edges

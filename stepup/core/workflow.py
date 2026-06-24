@@ -38,7 +38,7 @@ from .file import File
 from .hash import FileHash, fmt_digest
 from .nglob import NGlobMulti, has_wildcards
 from .sqlite3 import UInt64, escape_like_pattern
-from .static_root import StaticRoot
+from .static_tree import StaticTree
 from .step import Step
 from .utils import string_to_bool
 
@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 
 # Find all inputs of steps (recursively through creator-product relations) that are missing,
-# and whose creator is a static root.
+# and whose creator is a static tree.
 RECURSE_DEFERRED_INPUTS = f"""
 WITH RECURSIVE missing(i, label, creator_kind) AS (
     SELECT node.i, node.label, cnode.kind FROM node
@@ -65,7 +65,7 @@ WITH RECURSIVE missing(i, label, creator_kind) AS (
     JOIN missing ON consumer = missing.i
     WHERE node.kind = 'file' AND file.state = {FileState.MISSING.value}
 )
-SELECT i, label FROM missing WHERE creator_kind = 'sr'
+SELECT i, label FROM missing WHERE creator_kind = 'st'
 """
 
 # Recursively find all product steps and finally select those whose inputs are awaited or outdated.
@@ -104,7 +104,7 @@ class SupplyInfo:
     deferred: list[Node] = attrs.field()
     """A list of MISSING file nodes whose existence and validity must be checked.
 
-    These are typically new matches of a static root.
+    These are typically new matches of a static tree.
     """
 
     new_idep: int | None = attrs.field()
@@ -223,7 +223,7 @@ class Workflow(Cascade):
 
     @staticmethod
     def default_node_classes() -> list[type[Node]]:
-        return [*Cascade.default_node_classes(), File, Step, StaticRoot]
+        return [*Cascade.default_node_classes(), File, Step, StaticTree]
 
     #
     # Workflow introspection
@@ -244,7 +244,7 @@ class Workflow(Cascade):
                 props = ""
             elif kind == "file":
                 props = " shape=rect fillcolor=9"
-            elif kind == "sr":
+            elif kind == "st":
                 props = " shape=octagon fillcolor=7"
             else:
                 props = " shape=hexagon fillcolor=6"
@@ -325,13 +325,13 @@ class Workflow(Cascade):
         if creator is None or node_type is Root:
             return
         if (
-            (node_type == File and not isinstance(creator, (Step, StaticRoot, Root)))
+            (node_type == File and not isinstance(creator, (Step, StaticTree, Root)))
             or (node_type == Step and not isinstance(creator, (Step, Root)))
-            or (node_type == StaticRoot and not isinstance(creator, Step))
+            or (node_type == StaticTree and not isinstance(creator, Step))
         ):
             raise GraphError(
                 f"Cannot create {node_type.__name__} with creator {creator.key()!r}: "
-                "creator must be a step or static root"
+                "creator must be a step or static tree"
             )
 
     def _check_supplier(self, supplier: Node, consumer: Node) -> None:
@@ -339,23 +339,23 @@ class Workflow(Cascade):
         if (
             (isinstance(supplier, File) and not isinstance(consumer, Step))
             or (isinstance(supplier, Step) and not isinstance(consumer, File))
-            or (isinstance(supplier, StaticRoot) and not isinstance(consumer, File))
+            or (isinstance(supplier, StaticTree) and not isinstance(consumer, File))
         ):
             raise GraphError(
                 f"Node {consumer.key()!r} (kind={consumer.kind()!r}) "
                 "cannot be a dependency consumer"
             )
 
-    def matching_static_root(self, path: str) -> StaticRoot | None:
+    def matching_static_tree(self, path: str) -> StaticTree | None:
         srs = []
         sql = (
-            "SELECT i, label FROM node WHERE kind = 'sr' AND NOT detached AND "
+            "SELECT i, label FROM node WHERE kind = 'st' AND NOT detached AND "
             "label = substr(?, 1, length(label))"
         )
         for i, label in self.con.execute(sql, (path,)):
-            srs.append(StaticRoot(self, i, label))
+            srs.append(StaticTree(self, i, label))
         if len(srs) > 1:
-            raise GraphError(f"Multiple static roots match: {path}")
+            raise GraphError(f"Multiple static trees match: {path}")
         if len(srs) == 1:
             return srs[0]
         return None
@@ -388,11 +388,11 @@ class Workflow(Cascade):
         file, detached = self.find_detached(File, path)
         deferred = []
         if file is None or detached:
-            sr = self.matching_static_root(path)
-            if sr is None:
+            st = self.matching_static_tree(path)
+            if st is None:
                 file = self.create(File, None, path, state=FileState.AWAITED)
             else:
-                file = self.create(File, sr, path, state=FileState.MISSING)
+                file = self.create(File, st, path, state=FileState.MISSING)
                 deferred.append(file)
                 available = True
             self.put_dir_queue(Path(path).parent)
@@ -425,7 +425,7 @@ class Workflow(Cascade):
         Parameters
         ----------
         creator
-            The creating step or static root.
+            The creating step or static tree.
         path
             The (normalized path). Directories must have trailing slashes.
         file_state
@@ -444,8 +444,8 @@ class Workflow(Cascade):
             raise ValueError("Cannot create a STATIC file. It must be MISSING first.")
         if file_state == FileState.VOLATILE and path.endswith(os.sep):
             raise GraphError("A volatile output cannot be a directory.")
-        if not (creator.kind() == "sr" or self.matching_static_root(path) is None):
-            raise GraphError("Cannot manually add a file that matches a static root.")
+        if not (creator.kind() == "st" or self.matching_static_tree(path) is None):
+            raise GraphError("Cannot manually add a file that matches a static tree.")
 
         file = self.create(File, creator, path, state=file_state)
 
@@ -503,7 +503,7 @@ class Workflow(Cascade):
         Parameters
         ----------
         deferred
-            MISSING file nodes that match a static root.
+            MISSING file nodes that match a static tree.
 
         Returns
         -------
@@ -801,7 +801,7 @@ class Workflow(Cascade):
         )
         step.set_resources(resources)
 
-        # Keep track of all missing files that match a static root and need to be confirmed.
+        # Keep track of all missing files that match a static tree and need to be confirmed.
         deferred = set()
 
         # Supply inp_paths
@@ -846,7 +846,7 @@ class Workflow(Cascade):
         -------
         deferred
             If the step can be reused, a possibly empty list is returned with
-            MISSING file nodes that match a static root and need to be confirmed.
+            MISSING file nodes that match a static tree and need to be confirmed.
         """
         label = Step.create_label(command, workdir=workdir)
         old_step, detached = self.find_detached(Step, label)
@@ -891,7 +891,7 @@ class Workflow(Cascade):
             step = Step(self, i, label)
             step.mark_pending()
 
-        # Look for MISSING inputs and determine which were matching a static root.
+        # Look for MISSING inputs and determine which were matching a static tree.
         # Their existence still needs to be checked by the client and ideally confirmed as existing
         # in a follow-up call to `confirm_hashes`.
         deferred = {
@@ -996,15 +996,15 @@ class Workflow(Cascade):
             raise GraphError(f"step is detached: '{step.key()}'")
         step.register_nglob(nglob_multi)
 
-    def register_static_root(self, creator: Node, path: str) -> list[tuple[str, FileHash]]:
-        """Install a static root.
+    def register_static_tree(self, creator: Node, path: str) -> list[tuple[str, FileHash]]:
+        """Install a static tree.
 
         Parameters
         ----------
         creator
-            The step creating the static root.
+            The step creating the static tree.
         path
-            A path to a directory that will be treated as a static root.
+            A path to a directory that will be treated as a static tree.
 
         Returns
         -------
@@ -1015,20 +1015,20 @@ class Workflow(Cascade):
         if not isinstance(path, str):
             raise TypeError("The argument path must be a string.")
         if path.startswith("/"):
-            raise ValueError(f"Static root paths cannot be absolute paths: {path}")
+            raise ValueError(f"Static tree paths cannot be absolute paths: {path}")
         if has_wildcards(path):
-            raise ValueError(f"Static root does not support wildcards: {path}")
+            raise ValueError(f"Static tree does not support wildcards: {path}")
         if not path.endswith(os.sep):
             path = path + os.sep
-        if self.matching_static_root(path) is not None:
-            raise GraphError(f"Static root is a subdirectory of an existing static root: {path}")
-        sql = "SELECT 1 FROM node WHERE kind = 'sr' AND NOT detached AND label LIKE ? ESCAPE '\\'"
+        if self.matching_static_tree(path) is not None:
+            raise GraphError(f"Static tree is a subdirectory of an existing static tree: {path}")
+        sql = "SELECT 1 FROM node WHERE kind = 'st' AND NOT detached AND label LIKE ? ESCAPE '\\'"
         pattern = f"{escape_like_pattern(path)}%"
         if self.con.execute(sql, (pattern,)).fetchone() is not None:
             raise GraphError(
-                f"Static root is a parent directory of an existing static root: {path}"
+                f"Static tree is a parent directory of an existing static tree: {path}"
             )
-        sr = self.create(StaticRoot, creator, path)
+        st = self.create(StaticTree, creator, path)
         # Check for matches in existing files.
         # For example previously defined inputs whose origin was not determined yet.
         pattern = f"{escape_like_pattern(path)}%"
@@ -1038,12 +1038,12 @@ class Workflow(Cascade):
             "AND node.label LIKE ?"
         )
         matching_paths = [path for (path,) in self._con.execute(sql, (pattern,))]
-        return self.declare_missing(sr, matching_paths)
+        return self.declare_missing(st, matching_paths)
 
     def clean(self):
-        # Get rid of static root files that are no longer used.
-        for sr in self.nodes(StaticRoot):
-            files = sorted(sr.products(), reverse=True, key=(lambda node: node.path))
+        # Get rid of static tree files that are no longer used.
+        for st in self.nodes(StaticTree):
+            files = sorted(st.products(), reverse=True, key=(lambda node: node.path))
             for file in files:
                 if not any(file.consumers()):
                     file.detach()

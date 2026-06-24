@@ -325,11 +325,11 @@ SELECT_RESOURCE_COUNTS = f"""
 SELECT ar.name, COALESCE(running.used, 0) AS used, ar.units AS available
 FROM available_resource AS ar
 LEFT JOIN (
-    SELECT sr.name, SUM(sr.units) AS used
-    FROM step_resource AS sr
-    JOIN step AS s ON s.node = sr.node
+    SELECT st.name, SUM(st.units) AS used
+    FROM step_resource AS st
+    JOIN step AS s ON s.node = st.node
     WHERE s.state = {StepState.RUNNING.value}
-    GROUP BY sr.name
+    GROUP BY st.name
 ) AS running ON running.name = ar.name
 """
 

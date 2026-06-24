@@ -1,0 +1,18 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+   WARNING │ 1 step(s) remained pending ...
+─────────────────────────────── Detached inputs ────────────────────────────────
+             AWAITED  data/somefile.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Reason                required inputs are unavailable
+Command               cp -p data/somefile.txt out/somefile.txt
+Working directory     ./
+Inputs       AWAITED  (data/somefile.txt)
+Outputs      AWAITED  out/somefile.txt
+────────────────────────────────────────────────────────────────────────────────
+   WARNING │ Skipping file cleanup due to incomplete build
+   WARNING │ Check logs: .stepup/warning.log
+  DIRECTOR │ See you!

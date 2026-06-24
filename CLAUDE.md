@@ -184,8 +184,8 @@ The core data structure is a combined **provenance** and **dependency** graph st
   Tracks files with states `STATIC | AWAITED | BUILT | OUTDATED | MISSING | VOLATILE`.
 - **`Step`** (`step.py`):
   A build step (command + inputs/outputs). States: `PENDING | RUNNING | SUCCEEDED | FAILED`.
-- **`StaticRoot`** (`static_root.py`):
-  Static root node, used for inputs that are automatically declared as static (e.g., source files).
+- **`StaticTree`** (`static_tree.py`):
+  Static tree node, used for inputs that are automatically declared as static (e.g., source files).
 
 All graph mutations happen inside SQLite transactions.
 The `DBLock` in `utils.py` serializes writes.

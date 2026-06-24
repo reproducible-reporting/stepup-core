@@ -14,7 +14,7 @@ step:./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:worker.py
-             creates   sr:../pkgs/
+             creates   st:../pkgs/
              creates   step:./worker.py
 
 file:worker.py
@@ -22,7 +22,7 @@ file:worker.py
           created by   step:./plan.py
             supplies   step:./worker.py
 
-sr:../pkgs/
+st:../pkgs/
           created by   step:./plan.py
              creates   file:../pkgs/helper.py
 
@@ -36,5 +36,5 @@ step:./worker.py
 
 file:../pkgs/helper.py
                state = STATIC
-          created by   sr:../pkgs/
+          created by   st:../pkgs/
             supplies   step:./worker.py

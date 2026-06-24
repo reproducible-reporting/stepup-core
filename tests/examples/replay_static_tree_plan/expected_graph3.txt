@@ -13,28 +13,27 @@ step:./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
-             creates   file:worker.py
-             creates   st:../pkgs/
-             creates   step:./worker.py
+             creates   st:data/
+             creates   step:cp -p data/inp.txt out.txt
 
-file:worker.py
-               state = STATIC
+st:data/
           created by   step:./plan.py
-            supplies   step:./worker.py
+             creates   file:data/inp.txt
 
-st:../pkgs/
-          created by   step:./plan.py
-             creates   file:../pkgs/helper.py
-
-step:./worker.py
+step:cp -p data/inp.txt out.txt
                state = SUCCEEDED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
           created by   step:./plan.py
-            consumes   file:../pkgs/helper.py [amended]
-            consumes   file:worker.py
+            consumes   file:data/inp.txt
+             creates   file:out.txt
+            supplies   file:out.txt
 
-file:../pkgs/helper.py
+file:data/inp.txt
                state = STATIC
-          created by   st:../pkgs/
-            supplies   step:./worker.py
+          created by   st:data/
+            supplies   step:cp -p data/inp.txt out.txt
+
+file:out.txt
+               state = BUILT
+          created by   step:cp -p data/inp.txt out.txt
+            consumes   step:cp -p data/inp.txt out.txt

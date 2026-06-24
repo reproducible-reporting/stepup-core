@@ -1,0 +1,40 @@
+root:
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+             env_var = ENV_VAR_TEST_STEPUP_INP [amended]
+                     = STEPUP_PATH_FILTER [amended]
+          created by   root:
+            consumes   file:plan.py
+             creates   st:static/
+             creates   step:cp -p static/sub/bar.txt copy.txt
+
+file:copy.txt
+               state = BUILT
+          created by   step:cp -p static/sub/bar.txt copy.txt
+            consumes   step:cp -p static/sub/bar.txt copy.txt
+
+st:static/
+          created by   step:./plan.py
+             creates   file:static/sub/bar.txt
+
+step:cp -p static/sub/bar.txt copy.txt
+               state = SUCCEEDED
+                need = DEFAULT
+          created by   step:./plan.py
+            consumes   file:static/sub/bar.txt
+             creates   file:copy.txt
+            supplies   file:copy.txt
+
+file:static/sub/bar.txt
+               state = STATIC
+          created by   st:static/
+            supplies   step:cp -p static/sub/bar.txt copy.txt

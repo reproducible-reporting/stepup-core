@@ -104,7 +104,7 @@ In short: use `run()` with the default `shell=False` unless you specifically nee
 
 In StepUp 3, directories were stored in the database and had to be created explicitly using `mkdir()`
 or made static with `static()` or `glob()`.
-In StepUp 4, directories are no longer stored in the database (except for static roots, see below).
+In StepUp 4, directories are no longer stored in the database (except for static trees, see below).
 Instead, they are created when needed.
 This has a few practical consequences for your `plan.py` file:
 

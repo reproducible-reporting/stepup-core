@@ -34,7 +34,7 @@ from .enums import FileState, Need, StepState
 from .file import File, FileHash
 from .hash import StepHash
 from .nglob import NGlobMulti
-from .static_root import StaticRoot
+from .static_tree import StaticTree
 from .stepinfo import StepInfo
 from .utils import format_digest
 
@@ -650,7 +650,7 @@ class Step(Node):
         - nglob_multis
         - created steps
         - static file definitions
-        - static roots
+        - static trees
 
         The following are marked as outdated:
 
@@ -709,11 +709,11 @@ class Step(Node):
             file = File(self.workflow, i, label)
             file.detach()
 
-        # Detach static roots
-        sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'sr'"
+        # Detach static trees
+        sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'st'"
         for i, label in self.con.execute(sql, (self.i,)):
-            sr = StaticRoot(self.workflow, i, label)
-            sr.detach()
+            st = StaticTree(self.workflow, i, label)
+            st.detach()
 
         # Mark BUILT outputs OUTDATED.
         sql = (

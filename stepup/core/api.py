@@ -96,7 +96,7 @@ def static(*paths: str | Iterable[str]):
         Each string must refer to an existing file or directory and can be one of:
 
         1. A file: declared immediately as a static path.
-        2. A directory: registered as a static root; files within it are lazily
+        2. A directory: registered as a static tree; files within it are lazily
            declared static the first time they are used as step inputs.
 
     Raises
@@ -139,7 +139,7 @@ def static(*paths: str | Iterable[str]):
             # Translate paths to make them relative to the working directory of the director.
             tr_dir_paths = sorted(translate(su_dir_path) for su_dir_path in su_dir_paths)
             # Declare the missing and then confirm the directories.
-            to_check = RPC_CLIENT.call.static_roots(_get_step_i(), tr_dir_paths)
+            to_check = RPC_CLIENT.call.static_trees(_get_step_i(), tr_dir_paths)
             _confirm_deferred(to_check)
 
 
@@ -352,7 +352,7 @@ def step(
         shell,
     )
 
-    # Check the existence of files matching static roots.
+    # Check the existence of files matching static trees.
     _confirm_deferred(to_check)
 
     # Return a StepInfo instance to facilitate the definition of follow-up steps
@@ -1189,7 +1189,7 @@ def render_jinja(
 
 
 class DeferredNotConfirmedError(Exception):
-    """Raised when static root matches cannot be confirmed."""
+    """Raised when static tree matches cannot be confirmed."""
 
 
 def _confirm_static(to_check: list[tuple[str, FileHash]] | None):
@@ -1208,7 +1208,7 @@ def _confirm_static(to_check: list[tuple[str, FileHash]] | None):
 def _confirm_deferred(to_check: list[tuple[str, FileHash]] | None, step_i: int | None = None):
     """Check file, update hashes of existing ones, and send the updates to the director."""
     if to_check is not None and len(to_check) > 0:
-        # Select matches of the static root that exist and update their hashes.
+        # Select matches of the static tree that exist and update their hashes.
         checked = []
         missing = []
         for tr_path, old_file_hash in to_check:

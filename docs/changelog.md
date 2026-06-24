@@ -59,8 +59,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - The database schema version has been incremented to 5 because:
     - UINT64 type is used for inodes in the SQLite storage
     - Directories are no longer stored in the database
-      (except for static roots, which are stored as special nodes in the graph.)
-    - Deferred globs have been retired and replaced by static roots.
+      (except for static trees, which are stored as special nodes in the graph.)
+    - Deferred globs have been retired and replaced by static trees.
       (More on that below.)
     - A new metadata update mechanism has been implemented for steps,
       which introduced several new columns to the `step` table:
@@ -70,12 +70,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
     - The `pool` table was replaced by a `step_resource` table.
     - The step state `QUEUED` has been removed, as it is no longer needed.
     - A `step_output` table was added to store the stdout/stderr of steps.
-- The "deferred glob" has been replaced by a simpler "static root" concept.
-  Files in a static root directory become static only when they are used as inputs.
+- The "deferred glob" has been replaced by a simpler "static tree" concept.
+  Files in a static tree become static only when they are used as inputs.
   This allows for huge static data directories, of which only some are used,
   without having to glob the entire directory recursively.
-  To declare a static root directory, just pass it as an argument to the `static()` function.
-  It will treat all directory arguments are static roots.
+  To declare a static tree directory, just pass it as an argument to the `static()` function.
+  It will treat all directory arguments are static trees.
 - The `runsh()` and `runpy()` functions have been replaced by the more flexible `run()` function.
   The new implementation is more efficient and automatically tracks local scripts as dependencies.
 - The `plan()` function has been made maximally similar to `run()`,

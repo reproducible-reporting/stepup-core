@@ -74,7 +74,7 @@ nav:
     - getting_started/copy.md
     - getting_started/workdir.md
     - getting_started/static_files.md
-    - getting_started/static_root.md
+    - getting_started/static_tree.md
     - getting_started/static_glob.md
     - getting_started/static_glob_conditional.md
     - getting_started/interactive_usage.md

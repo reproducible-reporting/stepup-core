@@ -32,7 +32,7 @@ from stepup.core.exceptions import GraphError
 from stepup.core.file import File
 from stepup.core.hash import FileHash, StepHash
 from stepup.core.nglob import NGlobMulti
-from stepup.core.static_root import StaticRoot
+from stepup.core.static_tree import StaticTree
 from stepup.core.step import Step
 from stepup.core.workflow import RECURSE_DEFERRED_INPUTS, RECURSE_OUTDATED_STEPS, Workflow
 
@@ -1294,19 +1294,19 @@ def test_cyclic_two_steps(wfp: Workflow):
         wfp.define_step(plan, "cat second > first", inp_paths=["second"], out_paths=["first"])
 
 
-def test_static_root_basic(wfp: Workflow):
+def test_static_tree_basic(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     # Define a step with a detached input
     to_check = wfp.define_step(plan, "cat head/one.txt", inp_paths=["head/one.txt"])
     assert to_check == []
 
-    # Define static root and check attributes
+    # Define static tree and check attributes
     with pytest.raises(ValueError):
-        wfp.register_static_root(plan, "head*/")
-    to_check_h = wfp.register_static_root(plan, "head/")
-    to_check_t = wfp.register_static_root(plan, "tail")
-    assert isinstance(wfp.find(StaticRoot, "head/"), StaticRoot)
-    assert isinstance(wfp.find(StaticRoot, "tail/"), StaticRoot)
+        wfp.register_static_tree(plan, "head*/")
+    to_check_h = wfp.register_static_tree(plan, "head/")
+    to_check_t = wfp.register_static_tree(plan, "tail")
+    assert isinstance(wfp.find(StaticTree, "head/"), StaticTree)
+    assert isinstance(wfp.find(StaticTree, "tail/"), StaticTree)
 
     # Validate the to_check result
     assert to_check_h == [("head/one.txt", FileHash.unknown())]
@@ -1318,7 +1318,7 @@ def test_static_root_basic(wfp: Workflow):
     wfp.update_file_hashes([("head/one.txt", fake_hash("head/one.txt"))], HashUpdateCause.CONFIRMED)
     assert head1.get_state() == FileState.STATIC
 
-    # Use static root after it is added
+    # Use static tree after it is added
     to_check = wfp.define_step(plan, "cat tail/one.txt", inp_paths=["tail/one.txt"])
     assert to_check == [("tail/one.txt", FileHash.unknown())]
     tail1 = wfp.find(File, "tail/one.txt")
@@ -1329,9 +1329,9 @@ def test_static_root_basic(wfp: Workflow):
     assert tail1.get_state() == FileState.STATIC
 
 
-def test_static_root_clean(wfp: Workflow):
+def test_static_tree_clean(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    to_check = wfp.register_static_root(plan, "static")
+    to_check = wfp.register_static_tree(plan, "static")
     assert len(to_check) == 0
     inp_paths = ["static/foo/bar.txt"]
     to_check = wfp.define_step(plan, "cat static/foo/bar.txt", inp_paths=inp_paths)
@@ -1344,7 +1344,7 @@ def test_static_root_clean(wfp: Workflow):
     )
     step = wfp.find(Step, "cat static/foo/bar.txt")
 
-    # Check effect of defining the step on the static root
+    # Check effect of defining the step on the static tree
     assert wfp.find(File, "static/foo/bar.txt").get_state() == FileState.STATIC
 
     # Simulate the execution of the steps
@@ -1358,7 +1358,7 @@ def test_static_root_clean(wfp: Workflow):
     # Detach the step, manually outdate it, clean and check result
     step.detach()
     wfp.clean()
-    sr = wfp.find(StaticRoot, "static/")
+    sr = wfp.find(StaticTree, "static/")
     assert sr.creator().i == plan.i
     assert not step.is_alive()
     assert wfp.find_detached(File, "static/") == (None, None)
@@ -1371,48 +1371,48 @@ def test_static_root_clean(wfp: Workflow):
     assert plan.get_state() == StepState.PENDING
 
 
-def test_static_root_subdir(wfp: Workflow):
+def test_static_tree_subdir(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.register_static_root(plan, "static/sub")
+    wfp.register_static_tree(plan, "static/sub")
     with pytest.raises(GraphError):
-        wfp.register_static_root(plan, "static")
+        wfp.register_static_tree(plan, "static")
     with pytest.raises(GraphError):
-        wfp.register_static_root(plan, "static/sub/dir")
+        wfp.register_static_tree(plan, "static/sub/dir")
 
 
-def test_static_root_static(wfp: Workflow):
+def test_static_tree_static(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.register_static_root(plan, "static")
+    wfp.register_static_tree(plan, "static")
     with pytest.raises(GraphError):
         declare_static(wfp, plan, ["static/README.md"])
 
 
-def test_static_root_output(wfp: Workflow):
+def test_static_tree_output(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.register_static_root(plan, "static")
+    wfp.register_static_tree(plan, "static")
     with pytest.raises(GraphError):
         wfp.define_step(plan, "echo foo > static/README.md", out_paths=["static/README.md"])
 
 
-def test_static_root_volatile(wfp: Workflow):
+def test_static_tree_volatile(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.register_static_root(plan, "static")
+    wfp.register_static_tree(plan, "static")
     with pytest.raises(GraphError):
         wfp.define_step(plan, "echo foo > static/README.md", vol_paths=["static/README.md"])
 
 
-def test_orhphaned_static_root(wfp: Workflow):
+def test_orhphaned_static_tree(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.register_static_root(plan, "part_a")
-    wfp.register_static_root(plan, "part_b")
-    wfp.find(StaticRoot, "part_a/").detach()
+    wfp.register_static_tree(plan, "part_a")
+    wfp.register_static_tree(plan, "part_b")
+    wfp.find(StaticTree, "part_a/").detach()
     to_check = wfp.define_step(plan, "prog", inp_paths=["part_a/README.md", "part_b/README.md"])
     assert to_check == [("part_b/README.md", FileHash.unknown())]
 
 
-def test_static_root_amend_inp(wfp: Workflow):
+def test_static_tree_amend_inp(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.register_static_root(plan, "static")
+    wfp.register_static_tree(plan, "static")
     to_check = wfp.define_step(plan, "prog", inp_paths=["static/initial.md", "other/initial.md"])
     assert to_check == [("static/initial.md", FileHash.unknown())]
     prog = wfp.find(Step, "prog")
@@ -1424,9 +1424,9 @@ def test_static_root_amend_inp(wfp: Workflow):
     assert to_check == [("static/amended.md", FileHash.unknown())]
 
 
-def test_static_root_amend_out(wfp: Workflow):
+def test_static_tree_amend_out(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.register_static_root(plan, "data")
+    wfp.register_static_tree(plan, "data")
     to_check = wfp.define_step(plan, "prog", inp_paths=["data/somefile.txt"])
     assert to_check == [("data/somefile.txt", FileHash.unknown())]
     prog = wfp.find(Step, "prog")
@@ -1436,9 +1436,9 @@ def test_static_root_amend_out(wfp: Workflow):
         wfp.amend_step(prog, out_paths=["data/out_amended/out.txt"])
 
 
-def test_static_root_recursive(wfp: Workflow):
+def test_static_tree_recursive(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.register_static_root(plan, "data/")
+    wfp.register_static_tree(plan, "data/")
     to_check = wfp.define_step(plan, "prog", inp_paths=["data/foo/a/bar.txt", "data/foo/b/egg.txt"])
     assert to_check == [
         ("data/foo/a/bar.txt", FileHash.unknown()),
@@ -1652,9 +1652,9 @@ def test_amend_step_vol_nested(wfp: Workflow):
     assert set(step.vol_paths()) == {"sub/foo/bar"}
 
 
-def test_step_static_root(wfp: Workflow):
+def test_step_static_tree(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    assert wfp.register_static_root(plan, "sub/") == []
+    assert wfp.register_static_tree(plan, "sub/") == []
     inp_paths = ["test.png", "test.txt", "other.txt", "sub/boom.txt", "sub/README.md"]
     to_check = wfp.define_step(plan, "prog", inp_paths=inp_paths)
     assert to_check == [
@@ -1721,14 +1721,14 @@ def test_step_lost_child(wfp: Workflow):
     assert list(wfp.nodes(Step, include_detached=True)) == [plan]
 
 
-def test_static_root_lost_child(wfp: Workflow):
+def test_static_tree_lost_child(wfp: Workflow):
     # Construct a workflow with a statoc root
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "prog")
     prog = wfp.find(Step, "prog")
-    wfp.register_static_root(prog, "data/")
+    wfp.register_static_tree(prog, "data/")
 
-    # Simulate the creation of a static data/foo.txt through the static root.
+    # Simulate the creation of a static data/foo.txt through the static tree.
     to_check = wfp.define_step(prog, "work", inp_paths=["data/foo.txt"])
     assert to_check == [("data/foo.txt", FileHash.unknown())]
     wfp.update_file_hashes([("data/foo.txt", fake_hash("data/foo.txt"))], HashUpdateCause.CONFIRMED)
@@ -1744,7 +1744,7 @@ def test_static_root_lost_child(wfp: Workflow):
     assert data.creator() == wfp.root
 
     # Check that step of prog is gone
-    assert list(wfp.nodes(StaticRoot, include_detached=True)) == []
+    assert list(wfp.nodes(StaticTree, include_detached=True)) == []
 
 
 def test_consistency_parent(wfp: Workflow):
@@ -1833,7 +1833,7 @@ def test_recurse_deferred_inputs1(wfp: Workflow, inp_path: str):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "prog", inp_paths=[inp_path])
     prog = wfp.find(Step, "prog")
-    wfp.register_static_root(plan, "data/")
+    wfp.register_static_tree(plan, "data/")
     rows = wfp.con.execute(RECURSE_DEFERRED_INPUTS, (prog.i,)).fetchall()
     assert len(rows) == 1
     data = wfp.find(File, inp_path)
@@ -1842,7 +1842,7 @@ def test_recurse_deferred_inputs1(wfp: Workflow, inp_path: str):
 
 def test_recreate_step_to_check(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.register_static_root(plan, "data/")
+    wfp.register_static_tree(plan, "data/")
     to_check = wfp.define_step(plan, "prog", inp_paths=["data/foo.txt"])
     assert to_check == [("data/foo.txt", FileHash.unknown())]
     prog = wfp.find(Step, "prog")
@@ -1853,7 +1853,7 @@ def test_recreate_step_to_check(wfp: Workflow):
 
 def test_recreate_step_to_check_amend(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.register_static_root(plan, "static/")
+    wfp.register_static_tree(plan, "static/")
     to_check = wfp.define_step(
         plan,
         "prog",

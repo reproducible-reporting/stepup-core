@@ -281,7 +281,7 @@ KIND_NAMES = {
     "root": "Root",
     "file": "File",
     "step": "Step",
-    "sr": "Static Root",
+    "st": "Static Tree",
 }
 
 STATE_SQL = """

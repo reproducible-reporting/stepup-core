@@ -440,7 +440,7 @@ class DirectorHandler:
             self.workflow.register_nglob(creator, ngm)
 
     @allow_rpc
-    async def static_roots(self, creator_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
+    async def static_trees(self, creator_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
         """Register directories whose contents become static files when used.
 
         Returns
@@ -452,7 +452,7 @@ class DirectorHandler:
         async with self.dblock:
             creator = self.workflow.node(Step, creator_i)
             for path in paths:
-                to_check.extend(self.workflow.register_static_root(creator, path))
+                to_check.extend(self.workflow.register_static_tree(creator, path))
         return to_check
 
     @allow_rpc
@@ -532,7 +532,7 @@ class DirectorHandler:
         to_check
             A list of `(path, file_hash)` tuples to check and make static if valid.
             This is only relevant when `keep_going` is `True`.
-            If some of the static root matches cannot be confirmed,
+            If some of the static tree matches cannot be confirmed,
             the caller has to change `keep_going` to `False`.
         """
         async with self.dblock:

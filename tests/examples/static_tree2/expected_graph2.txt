@@ -13,18 +13,7 @@ step:./plan.py
              env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
-             creates   st:subdir/
-             creates   step:cat subdir
+             creates   st:static/
 
-st:subdir/
+st:static/
           created by   step:./plan.py
-
-step:cat subdir
-               state = PENDING
-                need = DEFAULT
-          created by   step:./plan.py
-            consumes   (file:subdir)
-
-(file:subdir)
-               state = AWAITED
-            supplies   step:cat subdir

@@ -16,7 +16,7 @@ step:./plan.py
             consumes   file:plan.py
              creates   file:subs.txt
              creates   file:work.py
-             creates   sr:data/
+             creates   st:data/
              creates   step:./work.py
 
 file:subs.txt
@@ -29,7 +29,7 @@ file:work.py
           created by   step:./plan.py
             supplies   step:./work.py
 
-sr:data/
+st:data/
           created by   step:./plan.py
              creates   file:data/inp1.txt
 
@@ -47,7 +47,7 @@ step:./work.py
 
 file:data/inp1.txt
                state = STATIC
-          created by   sr:data/
+          created by   st:data/
             supplies   step:./work.py
 
 file:copy.txt
