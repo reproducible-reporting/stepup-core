@@ -858,7 +858,7 @@ def copy(
 
 def getenv(
     name: str,
-    default: Path | str | None = None,
+    default: str | None = None,
     *,
     path: bool = False,
     back: bool = False,

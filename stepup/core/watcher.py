@@ -352,7 +352,7 @@ class AsyncInotifyWrapper:
             else:
                 self.change_queue.put_nowait((change, path))
 
-    def _install_watch(self, path: str | Path):
+    def _install_watch(self, path: str):
         self.watches[Path(path)] = self.inotify.add_watch(
             path,
             (

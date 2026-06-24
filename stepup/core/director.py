@@ -41,6 +41,7 @@ except ImportError:
 
 from .asyncio import wait_for_events
 from .builder import Builder
+from .constants import DIRECTOR_LOG, DIRECTOR_PROF, GRAPH_DB
 from .enums import HashUpdateCause, Need, ReturnCode, StepState
 from .exceptions import GraphError
 from .hash import FileHash
@@ -126,7 +127,7 @@ async def async_main(args: argparse.Namespace, mp_ctx=None):
             if args.yappi and yappi is not None:
                 yappi.stop()
                 stats = yappi.get_func_stats()
-                stats.save(".stepup/director.prof", type="pstat")
+                stats.save(DIRECTOR_PROF, type="pstat")
         sys.exit(returncode.value)
 
 
@@ -321,7 +322,7 @@ async def serve(
     }
 
     # Create basic components
-    con = connect(".stepup/graph.db")
+    con = connect(GRAPH_DB)
     dblock = DBLock(con)
     dir_queue = asyncio.Queue() if do_watch else None
     workflow = Workflow(con, dir_queue=dir_queue)
@@ -735,7 +736,7 @@ class DirectorHandler:
 def get_socket() -> str:
     """Block until the director socket is known and return it."""
     stepup_root = Path(os.getenv("STEPUP_ROOT", "./"))
-    path_director_log = stepup_root / ".stepup/director.log"
+    path_director_log = stepup_root / DIRECTOR_LOG
     secs = 0
     while True:
         time.sleep(secs)

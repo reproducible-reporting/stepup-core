@@ -105,7 +105,7 @@ class ConfigLoader:
     """
 
     _prefix: str = attrs.field()
-    _config_paths: list[str | Path] = attrs.field(factory=list, kw_only=True)
+    _config_paths: list[str] = attrs.field(factory=list, kw_only=True)
     _environ: dict[str, str] | None = attrs.field(default=None)
     _configs: list[dict] = attrs.field(init=False, factory=list)
     _env: dict[str, str] = attrs.field(init=False, factory=dict)
@@ -121,7 +121,7 @@ class ConfigLoader:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _load_file(self, path: str | Path, section: str | None = None) -> dict:
+    def _load_file(self, path: str, section: str | None = None) -> dict:
         """Load a TOML config file and navigate to a section, without filtering.
 
         Parameters
@@ -240,7 +240,7 @@ class ConfigLoader:
         return self._prefix
 
     @property
-    def config_paths(self) -> list[str | Path]:
+    def config_paths(self) -> list[str]:
         """Config file paths, in priority order (lowest to highest)."""
         return list(self._config_paths)
 

@@ -35,6 +35,7 @@ from rich.rule import Rule
 from rich.text import Text
 from rich.theme import Theme
 
+from .constants import FAIL_LOG, SUCCESS_LOG, WARNING_LOG
 from .enums import StepState
 from .rpc import AsyncRPCClient, BaseAsyncRPCClient, DummyAsyncRPCClient, allow_rpc
 
@@ -255,14 +256,12 @@ class ReporterHandler:
         # File logging
         if action == "PHASE" and description == "build":
             # Delete the log files at the start of a new build phase.
-            for path_log in [".stepup/fail.log", ".stepup/warning.log", ".stepup/success.log"]:
-                Path(path_log).remove_p()
-        path_log = Path(
-            {
-                "red": ".stepup/fail.log",
-                "yellow": ".stepup/warning.log",
-            }.get(action_color, ".stepup/success.log")
-        )
+            for path_log in [FAIL_LOG, WARNING_LOG, SUCCESS_LOG]:
+                path_log.remove_p()
+        path_log = {
+            "red": FAIL_LOG,
+            "yellow": WARNING_LOG,
+        }.get(action_color, SUCCESS_LOG)
         path_log.parent.makedirs_p()
         with open(path_log, "a") as file:
             console = Console(file=file, width=80)
@@ -297,11 +296,7 @@ class ReporterHandler:
     @allow_rpc
     def check_logs(self):
         """Check for the presence of fail/warning logs and report them."""
-        paths_log = [
-            path_log
-            for path_log in [".stepup/fail.log", ".stepup/warning.log"]
-            if Path(path_log).exists()
-        ]
+        paths_log = [path_log for path_log in [FAIL_LOG, WARNING_LOG] if path_log.exists()]
         if len(paths_log) > 0:
             self.report("WARNING", "Check logs: {}".format(" ".join(paths_log)), [])
 

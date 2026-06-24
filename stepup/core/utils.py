@@ -31,6 +31,8 @@ from collections.abc import Collection
 import attrs
 from path import Path
 
+from .constants import CURDIR
+
 __all__ = (
     "CaseSensitiveTemplate",
     "DBLock",
@@ -109,7 +111,7 @@ def myparent(path: str) -> Path | None:
         None when the given path is "." or "/".
     """
     path = Path(path).normpath()
-    if path in "./":
+    if path in CURDIR:
         return None
     result = path.parent
     if result == "":
@@ -153,7 +155,7 @@ def make_path_out(
             path_out = path_in.parent / path_out
         else:
             path_out = path_out.basename()
-            if dest not in (".", "./"):
+            if dest not in (".", CURDIR):
                 path_out = Path(dest) / path_out
     else:
         path_out = Path(dest)
@@ -167,7 +169,7 @@ def make_path_out(
 def remove_path(path: str) -> bool:
     """Remove a file or directory. Return `True` of the file was removed."""
     path = Path(path)
-    if path.endswith("/"):
+    if path.endswith(os.sep):
         try:
             path.rmdir()
             return True
@@ -220,9 +222,11 @@ def format_digest(digest: bytes) -> str:
 
 def format_command(executable: str) -> str:
     """Format a relative path to a local executable for execution in a shell."""
-    if executable.startswith("/"):
+    executable = Path(executable)
+    if executable.isabs():
         raise ValueError(f"Executable is not a relative path: {executable}")
-    return shlex.quote(executable if executable.startswith(("./", "../")) else f"./{executable}")
+    relative = executable if executable.startswith(("./", "../")) else "." / executable
+    return shlex.quote(relative)
 
 
 def format_subprocess(
@@ -267,7 +271,7 @@ def format_subprocess(
         parts.extend(f"{key}={shlex.quote(value)}" for key, value in env.items())
     parts.append(cmd)
     line = " ".join(parts)
-    if workdir not in ("./", "", "."):
+    if workdir not in (CURDIR, "", "."):
         inner = f"({line})" if shell else line
         line = f"(cd {shlex.quote(workdir)} && {inner})"
     if returncode is None:
@@ -336,7 +340,7 @@ def translate(path: str, workdir: str = ".") -> Path:
         path = workdir / path
         if not workdir.isabs():
             root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
-            here = Path(os.getenv("HERE", myrelpath("./", root)))
+            here = Path(os.getenv("HERE", myrelpath(CURDIR, root)))
             path = myrelpath(mynormpath(root / here / path), root)
     return path
 
@@ -363,7 +367,7 @@ def translate_back(path: str, workdir: str = ".") -> Path:
             path = myrelpath(path, workdir)
     else:
         root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
-        here = Path(os.getenv("HERE", myrelpath("./", root)))
+        here = Path(os.getenv("HERE", myrelpath(CURDIR, root)))
         path = myrelpath(root / path, root / here / workdir)
     return path
 

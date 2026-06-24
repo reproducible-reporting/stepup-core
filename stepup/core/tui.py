@@ -34,6 +34,7 @@ from path import Path
 
 from .asyncio import stoppable_iterator, wait_for_path
 from .config import ConfigLoader
+from .constants import DIRECTOR_LOG, PERF_DATA, STEPUP_DIR
 from .director import interpret_jobs
 from .reporter import ReporterClient, ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
@@ -64,8 +65,8 @@ async def async_build(args: argparse.Namespace, default_resources: str):
         raise RuntimeError("File plan.py does not exist.")
 
     # Check if another StepUp director is already/still running.
-    if Path(".stepup/director.log").exists():
-        with open(".stepup/director.log") as fh:
+    if DIRECTOR_LOG.exists():
+        with open(DIRECTOR_LOG) as fh:
             try:
                 line = next(fh)
                 path_old_socket = line.split()[-1]
@@ -77,7 +78,7 @@ async def async_build(args: argparse.Namespace, default_resources: str):
                 pass
 
     # Create dir
-    dir_stepup = Path(".stepup")
+    dir_stepup = STEPUP_DIR
     dir_stepup.makedirs_p()
     for path_log in dir_stepup.glob("*.log"):
         path_log.remove_p()
@@ -102,9 +103,7 @@ async def async_build(args: argparse.Namespace, default_resources: str):
         njob = interpret_jobs(args.jobs)
         argv = []
         if args.perf is not None:
-            argv.extend(
-                ["perf", "record", "-F", str(args.perf), "-i", "-g", "-o", ".stepup/perf.data"]
-            )
+            argv.extend(["perf", "record", "-F", str(args.perf), "-i", "-g", "-o", PERF_DATA])
         argv.append(sys.executable)
         if args.perf is not None:
             argv.extend(["-X", "perf"])
@@ -143,7 +142,7 @@ async def async_build(args: argparse.Namespace, default_resources: str):
             argv.append("--yappi")
         returncode = 1  # Internal error unless it is overriden later by the director subprocess
         try:
-            with open(".stepup/director.log", "w") as log_file:
+            with open(DIRECTOR_LOG, "w") as log_file:
                 process_director = await asyncio.create_subprocess_exec(
                     *argv,
                     stdin=subprocess.DEVNULL,
@@ -167,9 +166,9 @@ async def async_build(args: argparse.Namespace, default_resources: str):
                 reporter_handler.report("ERROR", "Could not connect to director", [])
 
     # Check if the director.log file has error messages
-    with open(".stepup/director.log") as fh:
+    with open(DIRECTOR_LOG) as fh:
         if any(("ERROR" in line) or ("CRITICAL" in line) for line in fh):
-            reporter_handler.report("WARNING", "Errors logged in .stepup/director.log", [])
+            reporter_handler.report("WARNING", f"Errors logged in {DIRECTOR_LOG}", [])
 
     sys.exit(returncode)
 

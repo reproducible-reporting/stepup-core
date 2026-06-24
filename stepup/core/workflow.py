@@ -32,6 +32,7 @@ import attrs
 from path import Path
 
 from .cascade import Cascade, Node, Root
+from .constants import CURDIR
 from .enums import FileState, HashUpdateCause, Need, StepState
 from .exceptions import GraphError
 from .file import File
@@ -200,7 +201,7 @@ class Workflow(Cascade):
         initialized
             Whether the boot script was (re)initialized.
         """
-        command = "./plan.py"
+        command = "." / Path("plan.py")
         nodes = {node.key(): node for node in self.root.products()}
         del nodes["root:"]
         if (
@@ -458,7 +459,7 @@ class Workflow(Cascade):
             self.put_dir_queue(Path(path).parent)
         return file
 
-    def put_dir_queue(self, path: Path | str):
+    def put_dir_queue(self, path: str):
         """Put a directory in the dir_queue, with some consistency checks."""
         path = Path(path)
         if path == "":
@@ -713,7 +714,7 @@ class Workflow(Cascade):
         env_vars: Collection[str] = (),
         out_paths: Collection[str] = (),
         vol_paths: Collection[str] = (),
-        workdir: str = "./",
+        workdir: str = CURDIR,
         need: Need = Need.DEFAULT,
         resources: dict[str, int] | None = None,
         safe: bool = False,
@@ -1014,7 +1015,7 @@ class Workflow(Cascade):
         """
         if not isinstance(path, str):
             raise TypeError("The argument path must be a string.")
-        if path.startswith("/"):
+        if Path(path).isabs():
             raise ValueError(f"Static tree paths cannot be absolute paths: {path}")
         if has_wildcards(path):
             raise ValueError(f"Static tree does not support wildcards: {path}")

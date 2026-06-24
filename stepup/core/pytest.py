@@ -28,6 +28,8 @@ import sys
 
 from path import Path
 
+from .constants import DIRECTOR_LOG, STEPUP_DIR
+
 __all__ = ("remove_hashes", "run_example")
 
 
@@ -76,7 +78,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     await sed_proc.wait()
     assert sed_proc.returncode == 0
     stepup_proc = await asyncio.create_subprocess_shell(
-        "./main.sh",
+        "." / Path("main.sh"),
         stdin=subprocess.DEVNULL,
         cwd=workdir,
         env=os.environ | {"PYTHONUNBUFFERED": "yes", "COLUMNS": "80", "STEPUP_DEBUG": "1"},
@@ -129,7 +131,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
                     exp = fh.read().rstrip()
                 pairs.append((path_exp, cur, exp))
     finally:
-        for path_log in sorted(workdir.glob(".stepup/*.log")):
+        for path_log in sorted(workdir.glob(STEPUP_DIR / "*.log")):
             print()
             print(f"########## {path_log} ##########")
             print()
@@ -142,7 +144,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
 
     assert stepup_proc.returncode == 0
 
-    director_log = workdir / ".stepup/director.log"
+    director_log = workdir / DIRECTOR_LOG
     if director_log.is_file():
         with open(director_log) as fh:
             log_text = fh.read()

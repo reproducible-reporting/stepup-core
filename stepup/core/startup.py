@@ -176,8 +176,9 @@ async def scan_nglob_changes(
     for ngm in nglob_multis:
         for ngs in ngm.nglob_singles:
             for path in glob.iglob(ngs.glob_pattern, recursive=True, include_hidden=True):
-                if Path(path).is_dir() and not path.endswith("/"):
-                    path += "/"
+                path = Path(path)
+                if path.is_dir() and not path.endswith(os.sep):
+                    path = path / ""
                 if ngs.regex.fullmatch(path) and path not in paths:
                     paths.add(path)
 

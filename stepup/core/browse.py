@@ -38,6 +38,7 @@ import jinja2
 from path import Path
 
 from .config import ConfigLoader
+from .constants import GRAPH_DB
 from .enums import FileState, Need, StepState
 from .hash import fmt_digest
 from .sqlite3 import connect
@@ -71,7 +72,7 @@ def browse_tool(args: argparse.Namespace):
     """Launch a web server to browse the build graph and print the URL to the console."""
     # Copy the database in memory and work on the copy.
     root = Path(os.getenv("STEPUP_ROOT", "."))
-    path_db = root / ".stepup/graph.db"
+    path_db = root / GRAPH_DB
     if not path_db.exists():
         raise FileNotFoundError(f"Graph database {path_db} does not exist.")
     # Ugly hack to pass information to the request handler.

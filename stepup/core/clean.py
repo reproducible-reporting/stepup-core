@@ -28,6 +28,7 @@ from rich.console import Console
 
 from .cascade import DROP_CONSUMERS, INITIAL_CONSUMERS, RECURSE_CONSUMERS
 from .config import ConfigLoader
+from .constants import GRAPH_DB
 from .enums import FileState
 from .hash import FileHash
 from .sqlite3 import copy_db_in_memory, escape_like_pattern
@@ -102,7 +103,7 @@ def clean_tool(args: argparse.Namespace):
 
     # Copy the database in memory and work on the copy.
     root = Path(os.getenv("STEPUP_ROOT", "."))
-    path_db = root / ".stepup/graph.db"
+    path_db = root / GRAPH_DB
     with copy_db_in_memory(path_db) as con:
         clean(con, tr_paths, args)
 

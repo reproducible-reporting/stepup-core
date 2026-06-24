@@ -358,14 +358,15 @@ def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrap
 
 def _driver_cases(script_path: str, wrapper: ScriptWrapper):
     """Print all commands on script that can be used to run the script."""
+    local_script = "." / Path(script_path)
     if wrapper.has_single:
-        print(f"./{script_path} run")
+        print(f"{local_script} run")
     if wrapper.has_cases:
         for case_args, case_kwargs in wrapper.generate_cases():
             argstr = shlex.quote(wrapper.format(*case_args, **case_kwargs))
             if argstr.startswith("-"):
                 argstr = f"-- {argstr}"
-            print(f"./{script_path} run {argstr}")
+            print(f"{local_script} run {argstr}")
 
 
 def _driver_run(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapper):
