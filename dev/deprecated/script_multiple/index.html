@@ -592,14 +592,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/static_root/" class="md-nav__link">
+      <a href="../../getting_started/static_tree/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Root
+    Static Tree
   
 
     
@@ -2346,7 +2346,9 @@
 <p class="admonition-title">Warning</p>
 <p>The script interface for calling user Python scripts from <code>plan.py</code> has been deprecated
 in favor of the new <a href="../../getting_started/call/">Call</a> interface.
-You are encouraged to migrate your <code>plan.py</code> files to the new API.</p>
+You are encouraged to migrate your <code>plan.py</code> files to the new API.
+See <a href="../../migration/from_3x_to_40/#optional-migration-from-script-to-call">Migrating from the script interface to <code>call()</code></a>
+for a step-by-step guide.</p>
 </div>
 <p>In the <a href="../script_single/">previous tutorial</a>, the script protocol and driver
 were illustrated with a single use case of a script.
@@ -2471,7 +2473,7 @@ the airports of Brussels and Ostend in February 2024, downloaded from the
 </span></code></pre></div>
 <p>Make the scripts executable and run StepUp to get the results:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py<span class="w"> </span>plot.py
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>stepup<span class="w"> </span>build<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should see the following terminal output with the plan and run steps of the plotting script:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)

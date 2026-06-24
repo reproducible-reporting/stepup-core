@@ -592,14 +592,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting_started/static_root/" class="md-nav__link">
+      <a href="../getting_started/static_tree/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Root
+    Static Tree
   
 
     
@@ -5583,7 +5583,7 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   which reduces startup overhead.
   This can be controlled with the <code>--fork-runpy</code> flag,
   which is enabled by default on Linux.</li>
-<li>Added <code>--preload-modules</code> option to <code>stepup boot</code> to specify a comma-separated list of Python
+<li>Added <code>--preload-modules</code> option to <code>stepup build</code> to specify a comma-separated list of Python
   modules to be pre-loaded into the forkserver.
   This only has an effect when <code>--fork-runpy</code> is active and can speed up workflows
   that repeatedly import large modules.</li>
@@ -5598,7 +5598,7 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   so they can be inspected after the build.
   Output from subprocesses launched by a forked Python step is captured properly.
   The amount stored per stream can be capped with the new
-  <code>stepup boot --max-output-size</code> option (<code>0</code> = unlimited, the default).
+  <code>stepup build --max-output-size</code> option (<code>0</code> = unlimited, the default).
   These outputs can later be viewed with <code>stepup browse</code>.</li>
 </ul>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
@@ -5610,8 +5610,8 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>The database schema version has been incremented to 5 because:<ul>
 <li>UINT64 type is used for inodes in the SQLite storage</li>
 <li>Directories are no longer stored in the database
-  (except for static roots, which are stored as special nodes in the graph.)</li>
-<li>Deferred globs have been retired and replaced by static roots.
+  (except for static trees, which are stored as special nodes in the graph.)</li>
+<li>Deferred globs have been retired and replaced by static trees.
   (More on that below.)</li>
 <li>A new metadata update mechanism has been implemented for steps,
   which introduced several new columns to the <code>step</code> table:
@@ -5623,12 +5623,12 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>A <code>step_output</code> table was added to store the stdout/stderr of steps.</li>
 </ul>
 </li>
-<li>The &ldquo;deferred glob&rdquo; has been replaced by a simpler &ldquo;static root&rdquo; concept.
-  Files in a static root directory become static only when they are used as inputs.
+<li>The &ldquo;deferred glob&rdquo; has been replaced by a simpler &ldquo;static tree&rdquo; concept.
+  Files in a static tree become static only when they are used as inputs.
   This allows for huge static data directories, of which only some are used,
   without having to glob the entire directory recursively.
-  To declare a static root directory, just pass it as an argument to the <code>static()</code> function.
-  It will treat all directory arguments are static roots.</li>
+  To declare a static tree directory, just pass it as an argument to the <code>static()</code> function.
+  It will treat all directory arguments are static trees.</li>
 <li>The <code>runsh()</code> and <code>runpy()</code> functions have been replaced by the more flexible <code>run()</code> function.
   The new implementation is more efficient and automatically tracks local scripts as dependencies.</li>
 <li>The <code>plan()</code> function has been made maximally similar to <code>run()</code>,
@@ -5644,10 +5644,10 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>The <code>optional</code> feature has become more robust.</li>
 </ul>
 </li>
-<li>The <code>--num-workers</code> / <code>-n</code> option of <code>stepup boot</code> has been renamed to <code>--jobs</code> / <code>-j</code>,
+<li>The <code>--num-workers</code> / <code>-n</code> option of <code>stepup build</code> has been renamed to <code>--jobs</code> / <code>-j</code>,
   in line with the convention used by <code>make</code> and similar tools.
   The config-file key changes from <code>num_workers</code> to <code>jobs</code>,
-  and the environment variable changes from <code>STEPUP_NUM_WORKERS</code> to <code>STEPUP_BOOT_JOBS</code>.</li>
+  and the environment variable changes from <code>STEPUP_NUM_WORKERS</code> to <code>STEPUP_BUILD_JOBS</code>.</li>
 <li>Several environment variables have been renamed for consistency.
   See <a href="../reference/configuration/">Configuration files</a> for details.</li>
 <li>Documentation has been updated to reflect the API changes and to clarify some other points:<ul>
@@ -5674,6 +5674,9 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 </ul>
 <h3 id="deprecated">Deprecated<a class="headerlink" href="#deprecated" title="Permanent link">&para;</a></h3>
 <ul>
+<li>The <code>stepup boot</code> command has been deprecated in favor of <code>stepup build</code>.
+  The <code>boot</code> command will be removed in a future release.
+  You can use the new <code>sb</code> entrypoint as a shortcut for <code>stepup build</code>.</li>
 <li>The script interface for calling user Python scripts from <code>plan.py</code> has been deprecated
   in favor of the new <a href="../getting_started/call/">Call</a> interface.
   You are encouraged to migrate your <code>plan.py</code> files to the new API.</li>
@@ -5738,7 +5741,7 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   and/or executed in a terminal to remove the files.</li>
 <li>Unless the <code>--all</code> option is used, only detached files are removed.
   (These are outputs of old steps that are no longer part of the workflow.
-  StepUp cleans these up automatically unless you run <code>stepup boot --no-clean</code>.)</li>
+  StepUp cleans these up automatically unless you run <code>stepup build --no-clean</code>.)</li>
 <li>By default, modified output files were never removed.
   Use the <code>--unsafe</code> option to override this safety mechanism.</li>
 </ul>
@@ -5763,8 +5766,8 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <h2 id="v3.1.3"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.1.3">3.1.3</a> - 2025-11-27<a class="headerlink" href="#v3.1.3" title="Permanent link">&para;</a></h2>
 <h3 id="changed_3">Changed<a class="headerlink" href="#changed_3" title="Permanent link">&para;</a></h3>
 <ul>
-<li>All command-line options of <code>stepup boot</code> now also have a corresponding environment variable.</li>
-<li>More systematic command-line options for the <code>stepup boot</code> command.
+<li>All command-line options of <code>stepup build</code> now also have a corresponding environment variable.</li>
+<li>More systematic command-line options for the <code>stepup build</code> command.
   All boolean options now have both a positive and a negative form,
   e.g. <code>--watch</code> and <code>--no-watch</code>.</li>
 </ul>
@@ -5860,7 +5863,7 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <h2 id="v3.0.3"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.3">3.0.3</a> - 2025-05-18<a class="headerlink" href="#v3.0.3" title="Permanent link">&para;</a></h2>
 <h3 id="fixed_7">Fixed<a class="headerlink" href="#fixed_7" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Make <code>stepup boot</code> work on macOS, albeit without the <code>--watch</code> option.
+<li>Make <code>stepup build</code> work on macOS, albeit without the <code>--watch</code> option.
   (The <code>--watch</code> option is implemented using the <code>asyncinotify</code> library, which is Linux only.)</li>
 </ul>
 <h2 id="v3.0.2"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.0.2">3.0.2</a> - 2025-05-18<a class="headerlink" href="#v3.0.2" title="Permanent link">&para;</a></h2>
@@ -5934,7 +5937,7 @@ and improved terminal user interface.</p>
 <li>The <code>stepup</code> command now uses subcommands to run different tools within StepUp.
 The following tools have been implemented:<ul>
 <li><code>stepup act</code>: Execute an action, mostly for debugging.</li>
-<li><code>stepup boot</code>: Equivalent to just <code>stepup</code> in StepUp 2.</li>
+<li><code>stepup build</code>: Equivalent to just <code>stepup</code> in StepUp 2.</li>
 <li><code>stepup clean</code>: Equivalent to <code>cleanup</code> in StepUp 2.`</li>
 <li><code>stepup drain</code>: No new steps are started, but running steps are allowed to finish.</li>
 <li><code>stepup join</code>: Wait for the runner to complete all steps and then shut down StepUp.</li>

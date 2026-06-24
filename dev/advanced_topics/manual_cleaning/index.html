@@ -592,14 +592,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/static_root/" class="md-nav__link">
+      <a href="../../getting_started/static_tree/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Root
+    Static Tree
   
 
     
@@ -2352,7 +2352,7 @@ This check can be disabled with the <code>--unsafe</code> option.</p>
 <p>The <code>stepup clean</code> tool only removes files or directories.
 It never changes StepUp&rsquo;s workflow database.
 Hence, removed files remain in StepUp&rsquo;s workflow as detached nodes,
-until one runs <code>stepup boot</code> (with <code>--clean</code> or <code>STEPUP_CLEAN=1</code>)
+until one runs <code>stepup build</code> (with <code>--clean</code> or <code>STEPUP_CLEAN=1</code>)
 to trigger automatic cleaning.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -2363,7 +2363,7 @@ to trigger automatic cleaning.</p>
 <li>
 <p>The <a href="../static_named_glob/">Static Named Glob</a> tutorial provides a good test case
   for experimenting with <code>stepup clean</code>.
-  For this example, run <code>stepup boot</code> without any arguments.
+  For this example, run <code>stepup build</code> without any arguments.
   Then open a second terminal in the same directory and run
   <code>stepup clean ch3/sec3_1_applications.txt --all</code>.
   You will see that the following files have been deleted:</p>

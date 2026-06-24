@@ -592,14 +592,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/static_root/" class="md-nav__link">
+      <a href="../../getting_started/static_tree/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Root
+    Static Tree
   
 
     
@@ -2248,7 +2248,7 @@ It can be a sum of the following codes:</p>
 </ul>
 <p>To test for a specific flag in Bash, use the bitwise AND operator <code>&amp;</code>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env bash</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>stepup<span class="w"> </span>boot
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>stepup<span class="w"> </span>build
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nv">RET</span><span class="o">=</span><span class="nv">$?</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="k">$((</span><span class="nv">$RET</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="m">2</span><span class="k">))</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;At least one step failed&quot;</span>

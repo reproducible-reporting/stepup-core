@@ -3,7 +3,7 @@ git clean -qdfX .
 export COLUMNS=80
 unset STEPUP_ROOT
 unset STEPUP_DEBUG
-export STEPUP_BOOT_RESOURCES="cpu:2,gpu:1"
-stepup boot --no-progress -j 4 | sed -f ../../clean_stdout.sed > stdout.txt
+export STEPUP_BUILD_RESOURCES="cpu:2,gpu:1"
+stepup build --no-progress -j 4 | sed -f ../../clean_stdout.sed > stdout.txt
 
 # INP: plan.py

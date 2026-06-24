@@ -594,14 +594,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../static_root/" class="md-nav__link">
+      <a href="../static_tree/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Root
+    Static Tree
   
 
     
@@ -2356,7 +2356,7 @@ prints a sentence to the standard output.</p>
 </span></code></pre></div>
 <p>Make the appropriate files executable and run the plan:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py<span class="w"> </span>print_sentence.py
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>stepup<span class="w"> </span>build<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should get the following screen output:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
@@ -2376,7 +2376,7 @@ prints a sentence to the standard output.</p>
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
-<p>Run the plan again with <code>stepup boot -j 1</code>.
+<p>Run the plan again with <code>stepup build -j 1</code>.
   The steps are not executed again, as expected.</p>
 </li>
 <li>

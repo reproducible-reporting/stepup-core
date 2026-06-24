@@ -594,14 +594,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../static_root/" class="md-nav__link">
+      <a href="../static_tree/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Root
+    Static Tree
   
 
     
@@ -2388,7 +2388,7 @@ and writes out the result to <code>average.txt</code>:</p>
 </span></code></pre></div>
 <p>To run the example, make the scripts executable and fire up StepUp:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>expensive.py<span class="w"> </span>plan.py
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>stepup<span class="w"> </span>build<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should get the following output:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
@@ -2408,7 +2408,7 @@ and writes out the result to <code>average.txt</code>:</p>
 </span></code></pre></div>
 <p>Now, simulate the situation where the dataset is absent by renaming the directory:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>mv<span class="w"> </span>dataset<span class="w"> </span>tmp
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>stepup<span class="w"> </span>build<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>The new output reveals that the dataset is completely ignored
 while the file <code>average.txt</code> is still used:</p>

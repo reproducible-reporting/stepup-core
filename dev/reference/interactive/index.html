@@ -592,14 +592,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/static_root/" class="md-nav__link">
+      <a href="../../getting_started/static_tree/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Root
+    Static Tree
   
 
     
@@ -2380,7 +2380,7 @@
 <p class="admonition-title">Note</p>
 <p>Changes since StepUp 3.0.0:</p>
 <ul>
-<li>You have to start the StepUp workflow with <code>stepup boot</code> instead of <code>stepup</code>.</li>
+<li>You have to start the StepUp workflow with <code>stepup build</code> instead of <code>stepup</code>.</li>
 </ul>
 <p>Changes since StepUp 2.0.0:</p>
 <ul>
@@ -2426,7 +2426,7 @@ except for <code>r</code> which only has an effect during the <em>watch phase</e
 <h2 id="interacting-with-a-background-stepup-process">Interacting With a Background StepUp Process<a class="headerlink" href="#interacting-with-a-background-stepup-process" title="Permanent link">&para;</a></h2>
 <p>You can run StepUp in the background in several ways:</p>
 <ul>
-<li>Just start it with <code>stepup boot &gt; stepup.log &amp;</code>
+<li>Just start it with <code>stepup build &gt; stepup.log &amp;</code>
   and then use <code>tail -f stepup.log</code> to see the output.</li>
 <li>Run StepUp inside a <code>screen</code> or <code>tmux</code> session.</li>
 <li>Run StepUp in a Slurm/PBS/&hellip; batch job on a cluster.</li>
@@ -2450,12 +2450,12 @@ However, you can still interact with StepUp as follows:</p>
 </ol>
 <h2 id="interacting-with-stepup-from-within-an-ide">Interacting With StepUp From Within an IDE<a class="headerlink" href="#interacting-with-stepup-from-within-an-ide" title="Permanent link">&para;</a></h2>
 <p>If you don&rsquo;t want to switch to a terminal to restart StepUp while working in an IDE,
-you can run it in &ldquo;watch mode&rdquo; (<code>stepup boot -w</code>) and configure your IDE
+you can run it in &ldquo;watch mode&rdquo; (<code>stepup build -w</code>) and configure your IDE
 to bind the following command to a keyboard shortcut:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>stepup<span class="w"> </span>run
 </span></code></pre></div>
 <p>This command must be executed in the top-level directory
-where a <code>stepup boot</code> command is running in interactive mode.
+where a <code>stepup build</code> command is running in interactive mode.
 (You can also set the <code>STEPUP_ROOT</code> environment variable instead.)</p>
 <h3 id="configuration-of-a-task-in-vscode">Configuration of a Task in VSCode<a class="headerlink" href="#configuration-of-a-task-in-vscode" title="Permanent link">&para;</a></h3>
 <p>You can define a
@@ -2505,7 +2505,7 @@ The rest of the <code>command</code> field is the same as the command we used in
 </span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="p">]</span>
 </span></code></pre></div>
 <p>VSCode will automatically save the file when you run the task with this keybinding.</p>
-<p>Instead of this shortcut, you can also use <code>stepup boot -W</code>,
+<p>Instead of this shortcut, you can also use <code>stepup build -W</code>,
 which will automatically rerun the build as soon as you delete, save or add a relevant file.</p>
 
 

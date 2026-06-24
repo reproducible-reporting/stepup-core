@@ -592,14 +592,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/static_root/" class="md-nav__link">
+      <a href="../../getting_started/static_tree/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Root
+    Static Tree
   
 
     
@@ -1818,10 +1818,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#settings-for-stepup-boot" class="md-nav__link">
+  <a href="#settings-for-stepup-build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Settings for stepup boot
+        Settings for stepup build
       
     </span>
   </a>
@@ -2339,10 +2339,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#settings-for-stepup-boot" class="md-nav__link">
+  <a href="#settings-for-stepup-build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Settings for stepup boot
+        Settings for stepup build
       
     </span>
   </a>
@@ -2409,7 +2409,7 @@
 
 <h1 id="stepup-configuration">StepUp Configuration<a class="headerlink" href="#stepup-configuration" title="Permanent link">&para;</a></h1>
 <p>StepUp can be configured using configuration files, environment variables, and command-line options.
-When a <code>stepup</code> tool starts, e.g. <code>stepup boot</code>,
+When a <code>stepup</code> tool starts, e.g. <code>stepup build</code>,
 it will load its settings in the following order, with later settings overriding earlier ones:</p>
 <ul>
 <li><code>/etc/stepup.toml</code> (system-wide configuration file)</li>
@@ -2427,12 +2427,12 @@ it will load its settings in the following order, with later settings overriding
 </ul>
 <p>Settings for all subcommands are placed at the top level of the config file
 (or under <code>[tool.stepup]</code> in <code>pyproject.toml</code>).
-Settings specific to the <code>boot</code> subcommand go under a <code>[boot]</code> section
-(or <code>[tool.stepup.boot]</code> in <code>pyproject.toml</code>).</p>
+Settings specific to the <code>build</code> subcommand go under a <code>[build]</code> section
+(or <code>[tool.stepup.build]</code> in <code>pyproject.toml</code>).</p>
 <p>Example <code>stepup.toml</code>:</p>
 <div class="language-toml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">log_level</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">[boot]</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">[build]</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">jobs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">watch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
 </span></code></pre></div>
@@ -2506,19 +2506,19 @@ If not set, StepUp will look for this file in the current directory.
 This setting cannot be configured through config files.</p>
 </dd>
 </dl>
-<h2 id="settings-for-stepup-boot">Settings for <code>stepup boot</code><a class="headerlink" href="#settings-for-stepup-boot" title="Permanent link">&para;</a></h2>
-<p>These settings are stored under the <code>[boot]</code> section in config files
-(or <code>[tool.stepup.boot]</code> in <code>pyproject.toml</code>).
+<h2 id="settings-for-stepup-build">Settings for <code>stepup build</code><a class="headerlink" href="#settings-for-stepup-build" title="Permanent link">&para;</a></h2>
+<p>These settings are stored under the <code>[build]</code> section in config files
+(or <code>[tool.stepup.build]</code> in <code>pyproject.toml</code>).
 Each entry below lists the config file key, environment variable, and command-line option
 separated by slashes, where applicable.</p>
 <dl>
-<dt><code>clean</code> / <code>STEPUP_BOOT_CLEAN</code> / <code>--clean</code>, <code>--no-clean</code></dt>
+<dt><code>clean</code> / <code>STEPUP_BUILD_CLEAN</code> / <code>--clean</code>, <code>--no-clean</code></dt>
 <dd>
 <p>Set to <code>false</code> to disable automatic cleaning of outdated output files.
 By default, StepUp automatically removes old output files that are no longer created
 by any step in the workflow.</p>
 </dd>
-<dt><code>duration</code> / <code>STEPUP_BOOT_DURATION</code> / <code>--duration</code>, <code>--no-duration</code></dt>
+<dt><code>duration</code> / <code>STEPUP_BUILD_DURATION</code> / <code>--duration</code>, <code>--no-duration</code></dt>
 <dd>
 <p>Set to <code>false</code> to disable the use of step duration information for scheduling decisions.
 By default, StepUp uses the duration information of steps to prioritize the execution
@@ -2526,17 +2526,17 @@ of steps that are expected to take longer, which can lead to faster overall exec
 While this is generally beneficial, it can result in non-deterministic execution order,
 which can be undesirable in some cases, such as testing.</p>
 </dd>
-<dt><code>explain_rerun</code> / <code>STEPUP_BOOT_EXPLAIN_RERUN</code> / <code>--explain-rerun</code>, <code>-e</code>, <code>--no-explain-rerun</code></dt>
+<dt><code>explain_rerun</code> / <code>STEPUP_BUILD_EXPLAIN_RERUN</code> / <code>--explain-rerun</code>, <code>-e</code>, <code>--no-explain-rerun</code></dt>
 <dd>
 <p>Set to <code>true</code> to explain for every step with recording info why it cannot be skipped.</p>
 </dd>
-<dt><code>fork_runpy</code> / <code>STEPUP_BOOT_FORK_RUNPY</code> / <code>--fork-runpy</code>, <code>--no-fork-runpy</code></dt>
+<dt><code>fork_runpy</code> / <code>STEPUP_BUILD_FORK_RUNPY</code> / <code>--fork-runpy</code>, <code>--no-fork-runpy</code></dt>
 <dd>
 <p>Set to <code>true</code> to use a forkserver for Python step execution and file hashing,
 which reduces startup overhead.
 This is enabled by default on Linux.</p>
 </dd>
-<dt><code>max_output_size</code> / <code>STEPUP_BOOT_MAX_OUTPUT_SIZE</code> / <code>--max-output-size</code></dt>
+<dt><code>max_output_size</code> / <code>STEPUP_BUILD_MAX_OUTPUT_SIZE</code> / <code>--max-output-size</code></dt>
 <dd>
 <p>The maximum number of bytes of standard output and standard error stored per step
 stream in the workflow database. The default is <code>0</code>, meaning unlimited (no truncation).
@@ -2544,7 +2544,7 @@ The full output is always shown in the terminal user interface; this limit only 
 what is persisted. When a stream exceeds the limit, it is truncated on a UTF-8 character
 boundary and a <code>[output truncated at N bytes]</code> line is appended.</p>
 </dd>
-<dt><code>preload_modules</code> / <code>STEPUP_BOOT_PRELOAD_MODULES</code> / <code>--preload-modules</code></dt>
+<dt><code>preload_modules</code> / <code>STEPUP_BUILD_PRELOAD_MODULES</code> / <code>--preload-modules</code></dt>
 <dd>
 <p>A comma-separated list of Python modules to pre-load into the forkserver.
 Only has effect when <code>fork_runpy = true</code>.
@@ -2553,25 +2553,25 @@ For example, <code>preload_modules = "numpy,scipy"</code> pre-loads NumPy and Sc
 so that each Python step forked from it inherits them at zero import cost.
 By default, no additional modules are pre-loaded (only internal StepUp modules are pre-loaded).</p>
 </dd>
-<dt><code>jobs</code> / <code>STEPUP_BOOT_JOBS</code> / <code>--jobs</code>, <code>-j</code></dt>
+<dt><code>jobs</code> / <code>STEPUP_BUILD_JOBS</code> / <code>--jobs</code>, <code>-j</code></dt>
 <dd>
 <p>The maximum number of steps to run concurrently.
 When given as a floating point number, the value is multiplied by the number of available CPU cores.
 The default is <code>1.2</code>.</p>
 </dd>
-<dt><code>perf</code> / <code>STEPUP_BOOT_PERF</code> / <code>--perf</code></dt>
+<dt><code>perf</code> / <code>STEPUP_BUILD_PERF</code> / <code>--perf</code></dt>
 <dd>
 <p>Set to a frequency in Hz to enable performance monitoring of the director process
 with the <a href="https://perfwiki.github.io/main/">Linux perf profiler</a>.
 See the section on <a href="../../development/#profiling">Profiling</a>
 in the development documentation for more details.</p>
 </dd>
-<dt><code>progress</code> / <code>STEPUP_BOOT_PROGRESS</code> / <code>--progress</code>, <code>--no-progress</code></dt>
+<dt><code>progress</code> / <code>STEPUP_BUILD_PROGRESS</code> / <code>--progress</code>, <code>--no-progress</code></dt>
 <dd>
 <p>Set to <code>false</code> to disable the progress bar in the terminal user interface.
 This can be useful to simplify and reduce the output.</p>
 </dd>
-<dt><code>resources</code> / <code>STEPUP_BOOT_RESOURCES</code> / <code>--resources</code>, <code>-r</code></dt>
+<dt><code>resources</code> / <code>STEPUP_BUILD_RESOURCES</code> / <code>--resources</code>, <code>-r</code></dt>
 <dd>
 <p>A comma-separated list of resource names and available quantities
 to be used for scheduling decisions.
@@ -2580,20 +2580,20 @@ Any resource labels can be used, and the available quantity can be any positive 
 Note that resource specifications from config files, the environment variable, and the CLI option
 are merged together, with the CLI option taking precedence over the environment variable.</p>
 </dd>
-<dt><code>show_perf</code> / <code>STEPUP_BOOT_SHOW_PERF</code> / <code>--show-perf</code>, <code>-s</code></dt>
+<dt><code>show_perf</code> / <code>STEPUP_BUILD_SHOW_PERF</code> / <code>--show-perf</code>, <code>-s</code></dt>
 <dd>
 <p>Set to <code>1</code> to show basic performance information
 (like execution time) for each step in the terminal user interface.
 Set to <code>2</code> to show more detailed performance information.</p>
 </dd>
-<dt><code>watch</code> / <code>STEPUP_BOOT_WATCH</code> / <code>--watch</code>, <code>-w</code>, <code>--no-watch</code></dt>
+<dt><code>watch</code> / <code>STEPUP_BUILD_WATCH</code> / <code>--watch</code>, <code>-w</code>, <code>--no-watch</code></dt>
 <dd>
 <p>Set to <code>true</code> to enable watch mode.
 In watch mode, StepUp will monitor the file system for changes
 and rerun affected steps after pressing the <code>r</code> key in the terminal user interface.
 Only supported on Linux.</p>
 </dd>
-<dt><code>watch_first</code> / <code>STEPUP_BOOT_WATCH_FIRST</code> / <code>--watch-first</code>, <code>-W</code>, <code>--no-watch-first</code></dt>
+<dt><code>watch_first</code> / <code>STEPUP_BUILD_WATCH_FIRST</code> / <code>--watch-first</code>, <code>-W</code>, <code>--no-watch-first</code></dt>
 <dd>
 <p>Set to <code>true</code> to automatically rerun affected steps
 when relevant file changes are observed,
@@ -2601,7 +2601,7 @@ without needing to press the <code>r</code> key.
 This implies <code>watch = true</code>.
 Only supported on Linux.</p>
 </dd>
-<dt><code>yappi</code> / <code>STEPUP_BOOT_YAPPI</code> / <code>--yappi</code>, <code>--no-yappi</code></dt>
+<dt><code>yappi</code> / <code>STEPUP_BUILD_YAPPI</code> / <code>--yappi</code>, <code>--no-yappi</code></dt>
 <dd>
 <p>Set to <code>true</code> to profile the director process with the <a href="https://github.com/sumerc/yappi">Yappi profiler</a>.
 See the section on <a href="../../development/#profiling">Profiling</a>

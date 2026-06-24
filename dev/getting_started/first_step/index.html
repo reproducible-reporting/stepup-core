@@ -713,14 +713,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../static_root/" class="md-nav__link">
+      <a href="../static_tree/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Root
+    Static Tree
   
 
     
@@ -2449,10 +2449,10 @@ For the sake of simplicity, a minimal workflow will be defined that does very li
 It does capture standard output and error, as shown below.</p>
 <h3 id="running-stepup">Running StepUp<a class="headerlink" href="#running-stepup" title="Permanent link">&para;</a></h3>
 <p>In the same directory, run:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>stepup<span class="w"> </span>build<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <ul>
-<li>The <code>boot</code> subcommand starts the StepUp terminal user interface and
+<li>The <code>build</code> subcommand starts the StepUp terminal user interface and
   the director process in the background, which will begin executing steps defined in <code>plan.py</code>.</li>
 <li>The option <code>-n 1</code> limits parallel execution to a single step at a time.</li>
 </ul>
@@ -2488,7 +2488,7 @@ It does capture standard output and error, as shown below.</p>
 </ul>
 <h3 id="re-running-stepup">Re-running StepUp<a class="headerlink" href="#re-running-stepup" title="Permanent link">&para;</a></h3>
 <p>Now repeat the execution of StepUp with:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>stepup<span class="w"> </span>build<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You will see a slightly different output:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
@@ -2523,7 +2523,7 @@ StepUp will automatically track it as a dependency of the step and rerun it when
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
-<p>Change the arguments of the <code>echo</code> command in <code>plan.py</code> and run <code>stepup boot -j 1</code> again.
+<p>Change the arguments of the <code>echo</code> command in <code>plan.py</code> and run <code>stepup build -j 1</code> again.
   As expected, StepUp detects the change and repeats the <code>plan.py</code> and <code>echo</code> steps.</p>
 </li>
 <li>

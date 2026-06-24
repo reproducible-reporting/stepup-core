@@ -12,7 +12,7 @@
         <meta name="author" content="Toon Verstraelen">
       
       
-        <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/getting_started/static_root/">
+        <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/getting_started/static_tree/">
       
       
         <link rel="prev" href="../static_files/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Static Root - StepUp Core</title>
+        <title>Static Tree - StepUp Core</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#static-root" class="md-skip">
+        <a href="#static-tree" class="md-skip">
           Skip to content
         </a>
       
@@ -133,7 +133,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Static Root
+              Static Tree
             
           </span>
         </div>
@@ -610,7 +610,7 @@
   <span class="md-ellipsis">
     
   
-    Static Root
+    Static Tree
   
 
     
@@ -628,7 +628,7 @@
   <span class="md-ellipsis">
     
   
-    Static Root
+    Static Tree
   
 
     
@@ -2311,7 +2311,7 @@
 
 
   
-    <a href="https://github.com/reproducible-reporting/stepup-core/edit/main/docs/getting_started/static_root.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/reproducible-reporting/stepup-core/edit/main/docs/getting_started/static_tree.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2319,7 +2319,7 @@
   
 
 
-<h1 id="static-root">Static Root<a class="headerlink" href="#static-root" title="Permanent link">&para;</a></h1>
+<h1 id="static-tree">Static Tree<a class="headerlink" href="#static-tree" title="Permanent link">&para;</a></h1>
 <p>In the previous tutorial, static files were declared explicitly with the <code>static()</code> function.
 Explicitly declaring each static file separately is tedious when dealing with many such files.
 To simplify matters, StepUp provides several methods to declare static files in bulk.</p>
@@ -2327,7 +2327,7 @@ To simplify matters, StepUp provides several methods to declare static files in 
 You can achieve this simply by passing the directory path to the <code>static()</code> function.
 In this tutorial, we will see how to use this method to declare static files.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
-<p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/static_root"><code>docs/getting_started/static_root/</code></a></p>
+<p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/static_tree"><code>docs/getting_started/static_tree/</code></a></p>
 <p>Create a subdirectory <code>data/</code> with one file: <code>somefile.txt</code>.
 Also, create a <code>plan.py</code> file with the following contents:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
@@ -2338,7 +2338,7 @@ Also, create a <code>plan.py</code> file with the following contents:</p>
 </span></code></pre></div>
 <p>Make the plan executable and run it non-interactively:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>stepup<span class="w"> </span>boot<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>stepup<span class="w"> </span>build<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>This should produce the following output:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
@@ -2346,10 +2346,19 @@ Also, create a <code>plan.py</code> file with the following contents:</p>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>     PHASE │ build
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>     START │ ./plan.py
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>   SUCCESS │ ./plan.py
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>     START │ cp -p data/somefile.txt out/somefile.txt
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>   SUCCESS │ cp -p data/somefile.txt out/somefile.txt
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>  DIRECTOR │ See you!
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>   WARNING │ 1 step(s) remained pending ...
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>─────────────────────────────── Detached inputs ────────────────────────────────
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>             AWAITED  data/somefile.txt
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>───────────────────────────────── PENDING Step ─────────────────────────────────
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>Reason                required inputs are unavailable
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>Command               cp -p data/somefile.txt out/somefile.txt
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>Working directory     ./
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>Inputs       AWAITED  (data/somefile.txt)
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>Outputs      AWAITED  out/somefile.txt
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>────────────────────────────────────────────────────────────────────────────────
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>   WARNING │ Skipping file cleanup due to incomplete build
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>   WARNING │ Check logs: .stepup/warning.log
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>  DIRECTOR │ See you!
 </span></code></pre></div>
 <p>Under the hood, StepUp will not immediately declare all files in the <code>data/</code> directory as static.
 Instead, they are declared static lazily when they are first accessed.

@@ -592,14 +592,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/static_root/" class="md-nav__link">
+      <a href="../../getting_started/static_tree/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static Root
+    Static Tree
   
 
     
@@ -1606,6 +1606,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#optional-migration-from-script-to-call" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional Migration from script() to call()
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Optional Migration from script() to call()">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#single-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Single case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple cases
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remarks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remarks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gotchas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gotchas
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#abandoned-features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2505,6 +2566,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#optional-migration-from-script-to-call" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional Migration from script() to call()
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Optional Migration from script() to call()">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#single-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Single case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple cases
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remarks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remarks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gotchas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gotchas
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#abandoned-features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2555,7 +2677,10 @@
 <p>A few things have changed in StepUp 4 that might require changes to your <code>plan.py</code> file.
 These changes reflect optimizations of StepUp&rsquo;s internals or
 get rid of poor historical API design choices.</p>
-<p>What used to be called the <em>run phase</em> is now called the <em>build phase</em> in documentation and source code.</p>
+<p>What used to be called the <em>run phase</em> is now called the <em>build phase</em> in documentation and source code.
+For consistency, the <code>stepup build</code> command is now the main entry point for running the build phase,
+while <code>stepup boot</code> is deprecated and will be removed in a future release.
+You can use the new <code>sb</code> entrypoint as a shortcut for <code>stepup build</code>.</p>
 <h2 id="the-new-run-function-replaces-the-old-runsh-and-runpy-functions">The new <code>run()</code> function replaces the old <code>runsh()</code> and <code>runpy()</code> functions<a class="headerlink" href="#the-new-run-function-replaces-the-old-runsh-and-runpy-functions" title="Permanent link">&para;</a></h2>
 <p>StepUp 4 unifies <code>runsh()</code> and <code>runpy()</code> into a single and more powerful <code>run()</code> function,
 which takes an optional boolean <code>shell</code> argument (default <code>False</code>)
@@ -2635,7 +2760,7 @@ compared to execution via <code>run()</code> with <code>shell=False</code>:</p>
 <h2 id="directory-handling">Directory Handling<a class="headerlink" href="#directory-handling" title="Permanent link">&para;</a></h2>
 <p>In StepUp 3, directories were stored in the database and had to be created explicitly using <code>mkdir()</code>
 or made static with <code>static()</code> or <code>glob()</code>.
-In StepUp 4, directories are no longer stored in the database (except for static roots, see below).
+In StepUp 4, directories are no longer stored in the database (except for static trees, see below).
 Instead, they are created when needed.
 This has a few practical consequences for your <code>plan.py</code> file:</p>
 <ul>
@@ -2701,7 +2826,7 @@ except for a few small differences:</p>
   When defining steps, you can then specify the required resources, e.g., <code>resources="gpu:1,cpu:4"</code>,
   and StepUp will ensure that the available resources are not over-committed.
   You can override the available resources with the
-  <code>--resources</code> command-line argument to <code>stepup boot</code> if needed.</p>
+  <code>--resources</code> command-line argument to <code>stepup build</code> if needed.</p>
 <p>Note that the resource names are user-specified strings and StepUp does not implement
 pre-defined resource types, such as <code>gpu</code> or <code>cpu</code>.
 These resource definitions are only used to impose constraints when deciding which steps to run.
@@ -2715,10 +2840,10 @@ You could equally use <code>foo</code> and <code>bar</code> in this example and 
 </li>
 </ul>
 <h2 id="changed-command-line-arguments">Changed Command-Line Arguments<a class="headerlink" href="#changed-command-line-arguments" title="Permanent link">&para;</a></h2>
-<p>The <code>stepup boot</code> command was changed to have <code>-j</code> and <code>--jobs</code> options
+<p>The <code>stepup build</code> command was changed to have <code>-j</code> and <code>--jobs</code> options
 instead of <code>-n</code> and <code>--num-workers</code>.</p>
 <h2 id="changed-environment-variable-names">Changed Environment Variable Names<a class="headerlink" href="#changed-environment-variable-names" title="Permanent link">&para;</a></h2>
-<p>The following environment variables have been renamed to have a <code>STEPUP_BOOT_</code> prefix instead of <code>STEPUP_</code>:</p>
+<p>The following environment variables have been renamed to have a <code>STEPUP_BUILD_</code> prefix instead of <code>STEPUP_</code>:</p>
 <table>
 <thead>
 <tr>
@@ -2729,39 +2854,39 @@ instead of <code>-n</code> and <code>--num-workers</code>.</p>
 <tbody>
 <tr>
 <td><code>STEPUP_CLEAN</code></td>
-<td><code>STEPUP_BOOT_CLEAN</code></td>
+<td><code>STEPUP_BUILD_CLEAN</code></td>
 </tr>
 <tr>
 <td><code>STEPUP_EXPLAIN_RERUN</code></td>
-<td><code>STEPUP_BOOT_EXPLAIN_RERUN</code></td>
+<td><code>STEPUP_BUILD_EXPLAIN_RERUN</code></td>
 </tr>
 <tr>
 <td><code>STEPUP_NUM_WORKERS</code></td>
-<td><code>STEPUP_BOOT_JOBS</code></td>
+<td><code>STEPUP_BUILD_JOBS</code></td>
 </tr>
 <tr>
 <td><code>STEPUP_PERF</code></td>
-<td><code>STEPUP_BOOT_PERF</code></td>
+<td><code>STEPUP_BUILD_PERF</code></td>
 </tr>
 <tr>
 <td><code>STEPUP_PROGRESS</code></td>
-<td><code>STEPUP_BOOT_PROGRESS</code></td>
+<td><code>STEPUP_BUILD_PROGRESS</code></td>
 </tr>
 <tr>
 <td><code>STEPUP_SHOW_PERF</code></td>
-<td><code>STEPUP_BOOT_SHOW_PERF</code></td>
+<td><code>STEPUP_BUILD_SHOW_PERF</code></td>
 </tr>
 <tr>
 <td><code>STEPUP_WATCH</code></td>
-<td><code>STEPUP_BOOT_WATCH</code></td>
+<td><code>STEPUP_BUILD_WATCH</code></td>
 </tr>
 <tr>
 <td><code>STEPUP_WATCH_FIRST</code></td>
-<td><code>STEPUP_BOOT_WATCH_FIRST</code></td>
+<td><code>STEPUP_BUILD_WATCH_FIRST</code></td>
 </tr>
 <tr>
 <td><code>STEPUP_YAPPI</code></td>
-<td><code>STEPUP_BOOT_YAPPI</code></td>
+<td><code>STEPUP_BUILD_YAPPI</code></td>
 </tr>
 </tbody>
 </table>
@@ -2772,6 +2897,157 @@ You are encouraged to migrate your <code>plan.py</code> files to the new API.</p
 <ul>
 <li>The script interface for calling user Python scripts from <code>plan.py</code> has been deprecated
   in favor of the new <a href="../../getting_started/call/">Call</a> interface.</li>
+</ul>
+<h2 id="optional-migration-from-script-to-call">Optional Migration from <code>script()</code> to <code>call()</code><a class="headerlink" href="#optional-migration-from-script-to-call" title="Permanent link">&para;</a></h2>
+<p>The old script interface still works
+(until it is removed, see <a href="#deprecated-features">Deprecated Features</a> above),
+but switching to <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, planning=False, resources=None, args_file=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> is recommended.
+See <a href="../../getting_started/call/">Function Calls</a> for a full introduction to the new interface.</p>
+<p>The translation is mechanical:</p>
+<ul>
+<li>Import <code>driver()</code> from <code>stepup.core.call</code> instead of <code>stepup.core.script</code>.</li>
+<li>Replace <code>script("foo.py")</code> in <code>plan.py</code> with <code>call("./foo.py", "plan", planning=True)</code>.
+  Note the <code>./</code> prefix (the executable must be a relative path containing a separator)
+  and the explicit <code>"plan"</code> function name.</li>
+<li>Turn the planning logic (the <code>info()</code> / <code>cases()</code> / <code>case_info()</code> functions)
+  into an ordinary <code>plan()</code> function that calls <code>call("./foo.py", "run", ...)</code>
+  for each run step it wants to register.</li>
+<li>Any <code>static</code> declared via the info dictionary becomes an explicit <code>static()</code> call.</li>
+</ul>
+<h3 id="single-case">Single case<a class="headerlink" href="#single-case" title="Permanent link">&para;</a></h3>
+<p>In StepUp 3, a single-case script returned its planning data from <code>info()</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># StepUp 3 — generate.py</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.script</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">info</span><span class="p">():</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;inp&quot;</span><span class="p">:</span> <span class="s2">&quot;config.json&quot;</span><span class="p">,</span> <span class="s2">&quot;out&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;cos.npy&quot;</span><span class="p">,</span> <span class="s2">&quot;sin.npy&quot;</span><span class="p">]}</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    <span class="o">...</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    <span class="n">driver</span><span class="p">()</span>
+</span></code></pre></div>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># StepUp 3 — plan.py</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">script</span><span class="p">,</span> <span class="n">static</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">static</span><span class="p">(</span><span class="s2">&quot;generate.py&quot;</span><span class="p">,</span> <span class="s2">&quot;config.json&quot;</span><span class="p">)</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">script</span><span class="p">(</span><span class="s2">&quot;generate.py&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>In StepUp 4, the <code>info()</code> function becomes a <code>plan()</code> function that registers the run step:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># StepUp 4 — generate.py</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">call</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.call</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">plan</span><span class="p">():</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    <span class="n">call</span><span class="p">(</span><span class="s2">&quot;./generate.py&quot;</span><span class="p">,</span> <span class="s2">&quot;run&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;config.json&quot;</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;cos.npy&quot;</span><span class="p">,</span> <span class="s2">&quot;sin.npy&quot;</span><span class="p">])</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    <span class="o">...</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>    <span class="n">driver</span><span class="p">()</span>
+</span></code></pre></div>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># StepUp 4 — plan.py</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">call</span><span class="p">,</span> <span class="n">static</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">static</span><span class="p">(</span><span class="s2">&quot;generate.py&quot;</span><span class="p">,</span> <span class="s2">&quot;config.json&quot;</span><span class="p">)</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">call</span><span class="p">(</span><span class="s2">&quot;./generate.py&quot;</span><span class="p">,</span> <span class="s2">&quot;plan&quot;</span><span class="p">,</span> <span class="n">planning</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="multiple-cases">Multiple cases<a class="headerlink" href="#multiple-cases" title="Permanent link">&para;</a></h3>
+<p>In StepUp 3, running the same script for several cases required the <code>cases()</code> generator,
+a <code>CASE_FMT</code> template, and a <code>case_info()</code> function:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># StepUp 3 — plot.py</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.script</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">cases</span><span class="p">():</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="k">yield</span> <span class="s2">&quot;ebbr&quot;</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="k">yield</span> <span class="s2">&quot;ebos&quot;</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="n">CASE_FMT</span> <span class="o">=</span> <span class="s2">&quot;plot_</span><span class="si">{}</span><span class="s2">&quot;</span>
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>
+</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>
+</span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="k">def</span><span class="w"> </span><span class="nf">case_info</span><span class="p">(</span><span class="n">airport</span><span class="p">):</span>
+</span><span id="__span-10-14"><a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    <span class="k">return</span> <span class="p">{</span>
+</span><span id="__span-10-15"><a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>        <span class="s2">&quot;inp&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;matplotlibrc&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">airport</span><span class="si">}</span><span class="s2">.csv&quot;</span><span class="p">],</span>
+</span><span id="__span-10-16"><a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>        <span class="s2">&quot;out&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;plot_</span><span class="si">{</span><span class="n">airport</span><span class="si">}</span><span class="s2">.png&quot;</span><span class="p">,</span>
+</span><span id="__span-10-17"><a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>        <span class="s2">&quot;airport&quot;</span><span class="p">:</span> <span class="n">airport</span><span class="p">,</span>
+</span><span id="__span-10-18"><a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>    <span class="p">}</span>
+</span><span id="__span-10-19"><a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>
+</span><span id="__span-10-20"><a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>
+</span><span id="__span-10-21"><a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">airport</span><span class="p">):</span>
+</span><span id="__span-10-22"><a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>    <span class="o">...</span>
+</span><span id="__span-10-23"><a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>    <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+</span><span id="__span-10-24"><a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>
+</span><span id="__span-10-25"><a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>
+</span><span id="__span-10-26"><a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+</span><span id="__span-10-27"><a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a>    <span class="n">driver</span><span class="p">()</span>
+</span></code></pre></div>
+<p>In StepUp 4, the same plan/run separation is kept inside the script,
+but the <code>cases()</code> / <code>CASE_FMT</code> / <code>case_info()</code> machinery collapses into a plain loop
+in the <code>plan()</code> function. Cases are passed as ordinary keyword arguments,
+so there is no longer any <code>CASE_FMT</code>/<a href="https://github.com/r1chardj0n3s/parse"><code>parse</code></a>
+string round-trip to keep consistent:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># StepUp 4 — plot.py</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">call</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.call</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">plan</span><span class="p">():</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    <span class="k">for</span> <span class="n">airport</span> <span class="ow">in</span> <span class="s2">&quot;ebbr&quot;</span><span class="p">,</span> <span class="s2">&quot;ebos&quot;</span><span class="p">:</span>
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>        <span class="n">call</span><span class="p">(</span>
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>            <span class="s2">&quot;./plot.py&quot;</span><span class="p">,</span>
+</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>            <span class="s2">&quot;run&quot;</span><span class="p">,</span>
+</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>            <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;matplotlibrc&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">airport</span><span class="si">}</span><span class="s2">.csv&quot;</span><span class="p">],</span>
+</span><span id="__span-11-12"><a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>            <span class="n">out</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;plot_</span><span class="si">{</span><span class="n">airport</span><span class="si">}</span><span class="s2">.png&quot;</span><span class="p">,</span>
+</span><span id="__span-11-13"><a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>            <span class="n">airport</span><span class="o">=</span><span class="n">airport</span><span class="p">,</span>
+</span><span id="__span-11-14"><a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>        <span class="p">)</span>
+</span><span id="__span-11-15"><a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>
+</span><span id="__span-11-16"><a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>
+</span><span id="__span-11-17"><a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">airport</span><span class="p">):</span>
+</span><span id="__span-11-18"><a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>    <span class="o">...</span>
+</span><span id="__span-11-19"><a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>    <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span><span id="__span-11-20"><a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>
+</span><span id="__span-11-21"><a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>
+</span><span id="__span-11-22"><a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+</span><span id="__span-11-23"><a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>    <span class="n">driver</span><span class="p">()</span>
+</span></code></pre></div>
+<p>The <code>plan.py</code> file is the same as in the single-case example,
+just pointing at <code>plot.py</code> instead of <code>generate.py</code>.</p>
+<h3 id="remarks">Remarks<a class="headerlink" href="#remarks" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Keeping a dedicated <code>plan()</code> function inside the script is <strong>optional</strong>.
+  For simple cases, the loop can live directly in <code>plan.py</code>
+  by calling <code>call("./plot.py", "run", ...)</code> for each case there
+  (as shown in the <a href="../../getting_started/call/">Call tutorial</a>).
+  Conversely, a function invoked via <code>call()</code> may itself call <code>call()</code> again,
+  so highly complex workflows are not limited to two stages.
+  They can chain arbitrarily many levels of dynamic planning.</li>
+<li>In most cases, the loop in <code>plan()</code> is not the best design choice,
+  as it typically hides key information about the overall workflow.
+  Such loops are often better expressed in the top-level <code>plan.py</code> file.
+  The fact that the old script interface imposed this anti-pattern is
+  one of the reasons it was deprecated in favor of the new <code>call()</code> interface.</li>
+</ul>
+<h3 id="gotchas">Gotchas<a class="headerlink" href="#gotchas" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The first argument of <code>call()</code> must be a relative path containing a separator,
+  so write <code>"./plot.py"</code>, not <code>"plot.py"</code>.</li>
+<li>In <code>run()</code>, the <code>out</code> argument is always a list, even when a single output path
+  was passed to <code>call()</code>. Use <code>out[0]</code> where the old <code>run()</code> could use <code>out</code> directly.</li>
+<li>Replace <code>script(..., optional=True)</code> with <code>call(..., optional=True)</code>;
+  the value is forwarded to the run steps automatically.</li>
+<li>The <code>step_info=...</code> argument of <code>script()</code> is no longer needed:
+  because <code>plan()</code> registers the run steps directly, their information is available
+  without writing an intermediate JSON file.</li>
 </ul>
 <h2 id="abandoned-features">Abandoned Features<a class="headerlink" href="#abandoned-features" title="Permanent link">&para;</a></h2>
 <p>The following were practically unused and have been removed:</p>
@@ -2819,12 +3095,12 @@ the following utilities have moved to the new
 </tbody>
 </table>
 <p>Update your imports accordingly:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># StepUp 3 / early StepUp 4</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_rpc_client</span><span class="p">,</span> <span class="n">subs_env_vars</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_dependencies</span><span class="p">,</span> <span class="n">get_local_import_paths</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1"># StepUp 4 (current)</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.extapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_dependencies</span><span class="p">,</span> <span class="n">get_local_import_paths</span><span class="p">,</span> <span class="n">get_rpc_client</span><span class="p">,</span> <span class="n">subs_env_vars</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># StepUp 3 / early StepUp 4</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_rpc_client</span><span class="p">,</span> <span class="n">subs_env_vars</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_dependencies</span><span class="p">,</span> <span class="n">get_local_import_paths</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="c1"># StepUp 4 (current)</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.extapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_dependencies</span><span class="p">,</span> <span class="n">get_local_import_paths</span><span class="p">,</span> <span class="n">get_rpc_client</span><span class="p">,</span> <span class="n">subs_env_vars</span>
 </span></code></pre></div>
 
 
