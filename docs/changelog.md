@@ -18,6 +18,13 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   (`filter_dependencies`, `get_local_import_paths`).
   See [stepup.core.extapi](reference/stepup.core.extapi.md) for the full reference
   and [Custom API Functions](extending/api.md) for usage guidance.
+- Extension wrapper steps can now record the exact subprocess invocations they make,
+  using `run_subprocess` and `record_subprocess` in `stepup.core.extapi`.
+  The command line, working directory, environment overlay and return code are stored in a
+  new `step_subprocess` table for a future archival export.
+  Recorded invocations are shown in a `Subprocesses` section of the terminal output when a
+  step completes (and in `stepup browse`), formatted as shell-pasteable command lines.
+  See [Custom API Functions](extending/api.md) for usage guidance.
 - In addition to environment variables and command-line arguments,
   StepUp can now also be configured through configuration files.
   See [Configuration files](reference/configuration.md) for details.

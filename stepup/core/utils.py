@@ -37,6 +37,7 @@ __all__ = (
     "check_plan",
     "format_command",
     "format_digest",
+    "format_subprocess",
     "make_path_out",
     "myabsolute",
     "mynormpath",
@@ -222,6 +223,58 @@ def format_command(executable: str) -> str:
     if executable.startswith("/"):
         raise ValueError(f"Executable is not a relative path: {executable}")
     return shlex.quote(executable if executable.startswith(("./", "../")) else f"./{executable}")
+
+
+def format_subprocess(
+    cmd: str,
+    workdir: str,
+    env: dict[str, str] | None,
+    returncode: int | None,
+    *,
+    shell: bool = False,
+) -> str:
+    """Format a recorded subprocess invocation as a single, shell-pasteable line.
+
+    The result is informative, not authoritative: the command line is shown verbatim
+    (the wrapper that recorded it is responsible for quoting), an environment overlay becomes
+    a `VAR=value` assignment prefix, a non-default working directory is rendered with a
+    `(cd ... && ...)` shell wrapper (this is also reused to display failed step commands),
+    and a non-zero exit code is appended as a trailing shell comment.
+
+    Parameters
+    ----------
+    cmd
+        The command line, as a single shell-quoted string.
+    workdir
+        The working directory of the subprocess, relative to `STEPUP_ROOT`.
+    env
+        The environment overlay (variables set on top of the inherited environment),
+        or `None` when no overlay was applied.
+    returncode
+        The exit code of the subprocess, or `None` when the subprocess was not run.
+    shell
+        Whether `cmd` is a shell command line (as in `subprocess.run(..., shell=True)`).
+        When `True`, a `cd` wrapper groups `cmd` in an extra `(...)` so a compound command
+        stays gated on the `cd` succeeding; a single command needs no such grouping.
+
+    Returns
+    -------
+    line
+        A single-line, shell-pasteable representation of the invocation.
+    """
+    parts = []
+    if env:
+        parts.extend(f"{key}={shlex.quote(value)}" for key, value in env.items())
+    parts.append(cmd)
+    line = " ".join(parts)
+    if workdir not in ("./", "", "."):
+        inner = f"({line})" if shell else line
+        line = f"(cd {shlex.quote(workdir)} && {inner})"
+    if returncode is None:
+        line += "  # not executed"
+    elif returncode != 0:
+        line += f"  # exit={returncode}"
+    return line
 
 
 def parse_resources(s: str) -> dict[str, int]:

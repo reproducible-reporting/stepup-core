@@ -11,9 +11,8 @@ missing.txt
         2/3 |    SUCCESS │ echo Will be deleted by accident > missing.txt
         2/3 |      START │ ./work.py
         2/2 |       FAIL │ ./work.py
-────────────────────────────────── Step info ───────────────────────────────────
-Command               ./work.py
-Return code           1
+──────────────────────────────── Failed command ────────────────────────────────
+./work.py  # exit=1
 ──────────────────────────────── Invalid inputs ────────────────────────────────
 Input vanished unexpectedly: missing.txt
 ──────────────────────────────── Standard error ────────────────────────────────

@@ -49,3 +49,44 @@ and needs to report only the relevant subset back to the director.
 [`get_local_import_paths()`][stepup.core.extapi.get_local_import_paths] builds on this to
 return all Python modules currently loaded in `sys.modules` that pass the filter —
 useful for scripts that need to amend their Python-import dependencies.
+
+### Recording subprocesses
+
+A wrapper step often runs an external tool as a subprocess
+(e.g. a `compile-typst` step that internally calls the `typst` binary).
+From the director's perspective, the exact subprocess invocation is invisible:
+only the wrapper's own command is recorded in the workflow.
+[`run_subprocess()`][stepup.core.extapi.run_subprocess] makes the invocation transparent by
+running the command and recording its command line, working directory, environment overlay
+and return code in the workflow database, for a future archival export:
+
+```python
+import shlex
+from stepup.core.extapi import run_subprocess
+
+def compile_typst(src, out, root):
+    run_subprocess(shlex.join(["typst", "compile", "--root", root, src, out]))
+```
+
+The `cmd` argument is a single shell-quoted string.
+By default, `run_subprocess()` splits the command with `shlex.split` and runs it without a shell.
+With the option `shell=True`, the command is run via a shell, which allows you to use shell features
+like pipes and redirections.
+The string is stored and displayed verbatim and you are responsible for proper quoting.
+This gives you the opportunity to prepare a convenient human-readable command string.
+
+The recorded metadata is **informative for archival and debugging, not authoritative**.
+The `env` argument is an **overlay**: it is merged over `os.environ` for execution
+(so it adds variables without dropping `PATH` and the rest),
+and only the overlay — not the full resolved environment — is stored.
+By default a non-zero return code raises `subprocess.CalledProcessError`,
+but the invocation is recorded first, so failures are archived too.
+
+Wrappers that need streaming output or `Popen`-style pipe interaction
+run the subprocess themselves and record it afterwards with
+[`record_subprocess()`][stepup.core.extapi.record_subprocess].
+
+Only Python wrapper steps can record subprocesses;
+shell steps and direct-exec steps cannot.
+Outside a running step (for example in tests), both functions degrade gracefully:
+`record_subprocess()` becomes a no-op and `run_subprocess()` still runs the command.

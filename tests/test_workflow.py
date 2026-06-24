@@ -1991,3 +1991,60 @@ def test_step_output_give_up_no_fk_error(wfp: Workflow):
     step.give_up()
     assert step.get_output("stdout") == ""
     assert step.get_output("stderr") == ""
+
+
+def test_step_subprocess_roundtrip(wfp: Workflow):
+    """record_subprocess / iter_subprocesses round-trip cmd, workdir, env, returncode, shell."""
+    step = wfp.find(Step, "./plan.py")
+
+    # No records yet.
+    assert list(step.iter_subprocesses()) == []
+
+    # Record two invocations: one with an env overlay, a non-zero return code, and shell=False;
+    # one without an overlay and shell=True.
+    step.record_subprocess("typst compile a.typ a.pdf", "./sub/", {"TR": "/x"}, 7, False)
+    step.record_subprocess("echo hi | tr a b", "./", None, 0, True)
+
+    # They round-trip in seq order, with cmd stored verbatim and env decoded back to a dict.
+    assert list(step.iter_subprocesses()) == [
+        (0, "typst compile a.typ a.pdf", "./sub/", {"TR": "/x"}, 7, False),
+        (1, "echo hi | tr a b", "./", None, 0, True),
+    ]
+
+
+def test_step_subprocess_clean_restarts_seq(wfp: Workflow):
+    """delete_subprocesses removes all rows and the seq numbering restarts at 0."""
+    step = wfp.find(Step, "./plan.py")
+    step.record_subprocess("a", "./", None, 0)
+    step.record_subprocess("b", "./", None, 0)
+    assert [row[0] for row in step.iter_subprocesses()] == [0, 1]
+
+    step.delete_subprocesses()
+    assert list(step.iter_subprocesses()) == []
+
+    # A fresh record after cleanup restarts the sequence at 0.
+    step.record_subprocess("c", "./", None, 0)
+    assert [row[0] for row in step.iter_subprocesses()] == [0]
+
+
+def test_step_subprocess_clean_before_run(wfp: Workflow):
+    """clean_before_run drops subprocess rows recorded by a previous run."""
+    plan = wfp.find(Step, "./plan.py")
+    wfp.define_step(plan, "echo hi")
+    step = wfp.find(Step, "echo hi")
+    step.record_subprocess("echo hi", "./", None, 0)
+    assert len(list(step.iter_subprocesses())) == 1
+    step.clean_before_run()
+    assert list(step.iter_subprocesses()) == []
+
+
+def test_step_subprocess_give_up_no_fk_error(wfp: Workflow):
+    """give_up() removes recorded subprocesses (clean() runs before node deletion, no FK error)."""
+    plan = wfp.find(Step, "./plan.py")
+    wfp.define_step(plan, "echo hi")
+    step = wfp.find(Step, "echo hi")
+    step.record_subprocess("echo hi", "./", None, 0)
+    # clean() deletes step_subprocess rows before give_up() deletes the node row. With no
+    # ON DELETE CASCADE, a leftover row would trigger a foreign-key error here.
+    step.give_up()
+    assert list(step.iter_subprocesses()) == []

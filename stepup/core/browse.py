@@ -23,6 +23,7 @@ import argparse
 import contextlib
 import html
 import importlib.resources
+import json
 import os
 import pickle
 import stat
@@ -41,6 +42,7 @@ from .enums import FileState, Need, StepState
 from .hash import fmt_digest
 from .sqlite3 import connect
 from .step import Step
+from .utils import format_subprocess
 
 
 def browse_subcommand(subparsers, loader: ConfigLoader) -> callable:
@@ -481,6 +483,25 @@ class GraphServer(BaseHTTPRequestHandler):
                     first = False
                 yield f"<p>{out_kind.capitalize()}</p>"
                 yield f"<pre>{html.escape(out_content)}</pre>"
+
+            sql_sub = (
+                "SELECT cmd, workdir, env, returncode, shell FROM step_subprocess "
+                "WHERE node = ? ORDER BY seq"
+            )
+            subs = list(self.con.execute(sql_sub, (node_i,)))
+            if len(subs) > 0:
+                yield "<h3>Subprocesses</h3>"
+                lines = [
+                    format_subprocess(
+                        cmd,
+                        workdir,
+                        None if env_json is None else json.loads(env_json),
+                        returncode,
+                        shell=bool(shell_int),
+                    )
+                    for cmd, workdir, env_json, returncode, shell_int in subs
+                ]
+                yield f"<pre>{html.escape(chr(10).join(lines))}</pre>"
 
         elif kind == "file":
             (state_i, digest, mode, mtime, size, inode) = self.con.execute(

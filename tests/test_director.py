@@ -22,7 +22,12 @@
 from decimal import Decimal
 from unittest.mock import patch
 
-from stepup.core.director import interpret_jobs
+import pytest
+
+from stepup.core.director import DirectorHandler, interpret_jobs
+from stepup.core.step import Step
+from stepup.core.utils import DBLock
+from stepup.core.workflow import Workflow
 
 
 def test_interpret_jobs_integer():
@@ -43,3 +48,24 @@ def test_interpret_jobs_fraction_cpu_count():
         mock_os.cpu_count.return_value = 8
         result = interpret_jobs(Decimal("1.5"))
     assert result == 12
+
+
+@pytest.mark.asyncio
+async def test_record_subprocess_rpc(wfp: Workflow):
+    """The record_subprocess RPC handler inserts a row for the targeted step."""
+    handler = DirectorHandler(
+        scheduler=None,
+        workflow=wfp,
+        dblock=DBLock(wfp.con),
+        reporter=None,
+        builder=None,
+        watcher=None,
+        stop_event=None,
+    )
+    step = wfp.find(Step, "./plan.py")
+    await handler.record_subprocess(step.i, "typst compile a.typ", "./sub/", {"X": "1"}, 0, False)
+    await handler.record_subprocess(step.i, "echo hi", "./", None, 3, True)
+    assert list(step.iter_subprocesses()) == [
+        (0, "typst compile a.typ", "./sub/", {"X": "1"}, 0, False),
+        (1, "echo hi", "./", None, 3, True),
+    ]

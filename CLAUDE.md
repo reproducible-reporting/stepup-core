@@ -104,7 +104,9 @@ Some conventions specific to this codebase:
   (e.g., "The parent directory path.").
 - Do not repeat type annotations in the docstring — they are already in the function signature.
 - In `Parameters` sections, use the **parameter name** as the heading for each parameter,
-  not the type:
+  not the type. Grouping closely related parameters under a combined heading
+  (e.g., `stdout, stderr`) is allowed when the mkdocs rendering supports it and
+  the parameters share the same description.
 
    ```python
     In `Returns` sections, use a **semantic name** for the return value, not the type:
@@ -187,6 +189,19 @@ The core data structure is a combined **provenance** and **dependency** graph st
 
 All graph mutations happen inside SQLite transactions.
 The `DBLock` in `utils.py` serializes writes.
+
+#### Database schema versioning
+
+The schema version is `Cascade.schema_version` (in `cascade.py`), written to the database via
+`PRAGMA user_version`. On a version mismatch, the database is **wiped and recreated** from
+scratch (`wipe_database`) — there is no `ALTER TABLE` migration path.
+
+**Policy: bump `schema_version` at most once per release.**
+During a pre-release refactor, many commits may change the schema,
+but they all share the single bumped version for the upcoming release;
+do not bump the version again within the same release cycle.
+Record each individual schema change as a comment line in the `schema_version` docstring,
+even when the number itself does not change.
 
 ### RPC Layer (`rpc.py`)
 

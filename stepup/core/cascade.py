@@ -587,6 +587,9 @@ class Cascade:
         #   without consuming named resource slots.
         #   The STEP_SCHEMA CHECK constraint was updated from <= 24 to <= 25.
         # - Added a step_output table to store the stdout/stderr of steps.
+        # - Added a step_subprocess table to record subprocess invocations of wrapper steps.
+        #   The cmd column stores a plain shell command line (not a JSON argv list).
+        # - Added shell column to step_subprocess (records whether cmd was run via a shell).
 
         return 5
 

@@ -62,7 +62,7 @@ from .hasher import HashResult, HashTask, hash_fork_entry
 from .reporter import ReporterClient
 from .scheduler import Scheduler
 from .step import Step, split_step_label
-from .utils import DBLock
+from .utils import DBLock, format_subprocess
 from .workflow import Workflow
 
 __all__ = ("RunningStep", "StepExecutor")
@@ -574,6 +574,9 @@ class RunningStep:
     pid: int | None = attrs.field(init=False, default=None)
     """The pid of the forkserver child currently running the command, if any."""
 
+    subprocesses: list = attrs.field(init=False, factory=list)
+    """Recorded subprocess invocations: `(seq, cmd, workdir, env, returncode)` tuples."""
+
     @property
     def description(self):
         """The command, optionally annotated with the working directory."""
@@ -756,6 +759,9 @@ class StepExecutor:
                 # copy internally, so report() below still forwards the full text to the TUI.
                 step.store_output("stdout", rs.stdout, self.max_output_size)
                 step.store_output("stderr", rs.stderr, self.max_output_size)
+                # Read recorded subprocesses in the same transaction, so report() can show
+                # them without a separate DB access (the child has finished writing rows).
+                rs.subprocesses = list(step.iter_subprocesses())
                 step_counts = self.workflow.get_step_counts()
             await self.reporter.update_step_counts(step_counts)
 
@@ -980,14 +986,16 @@ class StepExecutor:
     async def report(self, rs: RunningStep):
         pages = []
         if not rs.success:
-            # Format command for display (can be copied and pasted into a shell).
-            display_cmd = rs.command
-            if rs.workdir != Path("./"):
-                display_cmd = f"(cd {rs.workdir} && ({display_cmd}))"
-            lines = [f"Command               {display_cmd}"]
-            if rs.returncode is not None:
-                lines.append(f"Return code           {rs.returncode}")
-            pages.append(("Step info", "\n".join(lines)))
+            # Format command for display (can be copied and pasted into a shell); a non-zero
+            # return code is appended as a trailing `# exit=N` comment by format_subprocess.
+            pages.append(
+                (
+                    "Failed command",
+                    format_subprocess(
+                        rs.command, str(rs.workdir), None, rs.returncode, shell=rs.subshell
+                    ),
+                )
+            )
         if len(rs.perf_info) > 0:
             pages.append(("Performance details", rs.perf_info))
         if rs.rescheduled_info != "":
@@ -1005,6 +1013,12 @@ class StepExecutor:
         stderr = rs.stderr.rstrip()
         if len(stderr) > 0:
             pages.append(("Standard error", stderr))
+        if len(rs.subprocesses) > 0:
+            page = "\n".join(
+                format_subprocess(cmd, workdir, env, returncode, shell=shell)
+                for _seq, cmd, workdir, env, returncode, shell in rs.subprocesses
+            )
+            pages.append(("Subprocesses", page))
         if rs.rescheduled_info != "":
             action = "RESCHEDULE"
         elif rs.success:

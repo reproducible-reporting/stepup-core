@@ -9,9 +9,8 @@ BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 ────────────────────────────────────────────────────────────────────────────────
         2/3 |      START │ ./fail.py
         2/2 |       FAIL │ ./fail.py
-────────────────────────────────── Step info ───────────────────────────────────
-Command               ./fail.py
-Return code           1
+──────────────────────────────── Failed command ────────────────────────────────
+./fail.py  # exit=1
 ─────────────────────────────── Standard output ────────────────────────────────
 fail-output-line
 ──────────────────────────────── Standard error ────────────────────────────────

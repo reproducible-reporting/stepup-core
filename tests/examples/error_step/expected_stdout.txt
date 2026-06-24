@@ -4,9 +4,8 @@
         1/2 |    SUCCESS │ ./plan.py
         1/2 |      START │ rm .sjdksjdfkjasdfkdjsak
         1/1 |       FAIL │ rm .sjdksjdfkjasdfkdjsak
-────────────────────────────────── Step info ───────────────────────────────────
-Command               rm .sjdksjdfkjasdfkdjsak
-Return code           1
+──────────────────────────────── Failed command ────────────────────────────────
+rm .sjdksjdfkjasdfkdjsak  # exit=1
 ───────────────────────── Expected outputs not created ─────────────────────────
 oops.txt
 ──────────────────────────────── Standard error ────────────────────────────────

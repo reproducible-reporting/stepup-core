@@ -26,16 +26,21 @@ filter step dependencies, or implement custom API functions that handle environm
 
 import contextlib
 import os
+import shlex
+import subprocess
 import sys
 from collections.abc import Callable, Collection, Iterator
 
 from path import Path
 
-from .utils import CaseSensitiveTemplate, mynormpath, myrealpath, myrelpath
+from .rpc import SocketSyncRPCClient
+from .utils import CaseSensitiveTemplate, mynormpath, myrealpath, myrelpath, translate
 
 __all__ = (
     "filter_dependencies",
     "get_local_import_paths",
+    "record_subprocess",
+    "run_subprocess",
     "subs_env_vars",
 )
 
@@ -83,6 +88,125 @@ def subs_env_vars() -> Iterator[Callable[[str | None], Path | None]]:
 
     yield subs
     amend(env=env_vars)
+
+
+def record_subprocess(
+    cmd: str,
+    returncode: int,
+    *,
+    workdir: str = "./",
+    env: dict[str, str] | None = None,
+    shell: bool = False,
+) -> None:
+    """Record a subprocess invocation (already run by the caller) for archival purposes.
+
+    This is the low-level escape hatch for wrappers that run the subprocess themselves
+    (e.g. for streaming output, `Popen`-style pipe interaction, shell features, or
+    conditional invocations).
+
+    Most wrappers should use `run_subprocess` instead.
+
+    The recorded metadata is meant to be informative for archival and debugging, not authoritative.
+    Outside a running step (e.g. under the dummy RPC client used in tests or driver code),
+    this function is a no-op.
+
+    Parameters
+    ----------
+    cmd
+        The command line, as a single shell-quoted string.
+        The caller is responsible for quoting: build it from parts with `shlex.join(parts)`
+        when arguments may contain spaces or special characters.
+        The string is stored and displayed verbatim.
+    returncode
+        The exit code of the subprocess.
+    workdir
+        The working directory of the subprocess, relative to the step's own working directory.
+        It is translated to be relative to `STEPUP_ROOT` for storage.
+    env
+        The environment **overlay** that the caller applied on top of the inherited
+        environment (only the variables it explicitly set), or `None`. Only this overlay
+        is stored, not the full resolved environment.
+    shell
+        Whether `cmd` was executed via a shell (i.e. `subprocess.run(..., shell=True)`).
+        This is stored and used when formatting the invocation for display.
+    """
+    from stepup.core.api import RPC_CLIENT, _get_step_i  # noqa: PLC0415
+
+    if isinstance(RPC_CLIENT, SocketSyncRPCClient):
+        step_i = _get_step_i()
+        RPC_CLIENT.call.record_subprocess(step_i, cmd, translate(workdir), env, returncode, shell)
+
+
+def run_subprocess(
+    cmd: str,
+    *,
+    workdir: str = "./",
+    env: dict[str, str] | None = None,
+    stdout=None,
+    stderr=None,
+    check: bool = True,
+    shell: bool = False,
+) -> subprocess.CompletedProcess:
+    """Run a subprocess and record it for archival purposes.
+
+    This is the convenience wrapper for the case where an extension step wraps an executable.
+    The invocation and its return code are recorded via `record_subprocess`.
+
+    Parameters
+    ----------
+    cmd
+        The command line, as a single shell-quoted string.
+        When `shell=False` (the default), `cmd` is split with `shlex.split` and executed
+        directly (no shell), so shell features (pipes, redirections, ...) are not available.
+        When `shell=True`, `cmd` is passed as-is to the system shell, which enables shell features.
+        In either case, the caller is then responsible for proper quoting.
+    workdir
+        The working directory of the subprocess, relative to the step's own working directory.
+        It is passed to `subprocess.run` as `cwd`.
+    env
+        An environment **overlay**, merged over `os.environ` for execution
+        (so passing `env={"FOO": "bar"}` adds `FOO` without dropping `PATH` and the rest).
+        Only this overlay is recorded, not the full resolved environment.
+        When `None`, the environment is inherited unchanged and nothing is recorded for it.
+    stdout, stderr
+        Passed through to `subprocess.run`. When left at their default (`None`), output
+        goes wherever the step process's own file descriptors point.
+    check
+        When `True`, a `subprocess.CalledProcessError` is raised on a non-zero exit code.
+        The invocation is recorded **before** this check, so a failing subprocess is still archived.
+    shell
+        When `True`, execute `cmd` via the system shell (`subprocess.run(..., shell=True)`).
+        Enables shell features such as pipes, redirections, and glob expansion.
+        The flag is also recorded for display purposes.
+
+    Returns
+    -------
+    completed
+        The `subprocess.CompletedProcess` returned by `subprocess.run`.
+
+    Raises
+    ------
+    subprocess.CalledProcessError
+        When `check` is `True` and the subprocess exits with a non-zero return code.
+    """
+    run_env = None if env is None else {**os.environ, **env}
+    # Flush so already-buffered parent output is written before the subprocess (which inherits
+    # our file descriptors when stdout/stderr are None) can write to the same streams.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    if shell:
+        cp = subprocess.run(
+            cmd, cwd=workdir, env=run_env, stdout=stdout, stderr=stderr, check=False, shell=True
+        )
+    else:
+        argv = shlex.split(cmd)
+        cp = subprocess.run(
+            argv, cwd=workdir, env=run_env, stdout=stdout, stderr=stderr, check=False
+        )
+    record_subprocess(cmd, cp.returncode, workdir=workdir, env=env, shell=shell)
+    if check and cp.returncode != 0:
+        raise subprocess.CalledProcessError(cp.returncode, cmd, cp.stdout, cp.stderr)
+    return cp
 
 
 def filter_dependencies(paths: Collection[str]) -> set[Path]:

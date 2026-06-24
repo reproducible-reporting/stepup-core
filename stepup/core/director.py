@@ -553,6 +553,27 @@ class DirectorHandler:
             step.add_rescheduled_info(reason)
 
     @allow_rpc
+    async def record_subprocess(
+        self,
+        step_i: int,
+        cmd: str,
+        workdir: str,
+        env: dict[str, str] | None,
+        returncode: int,
+        shell: bool = False,
+    ):
+        """Record a subprocess invocation made by a wrapper step.
+
+        Notes
+        -----
+        This is an RPC wrapper for `Step.record_subprocess`.
+        The recorded metadata is informative for archival and debugging, not authoritative.
+        """
+        async with self.dblock:
+            step = self.workflow.node(Step, step_i)
+            step.record_subprocess(cmd, workdir, env, returncode, shell)
+
+    @allow_rpc
     async def getinfo(self, step_i: int) -> StepInfo:
         """Return step information, consistent with return values of functions in stepup.core.api.
 

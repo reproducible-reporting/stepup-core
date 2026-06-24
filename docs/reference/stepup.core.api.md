@@ -38,8 +38,3 @@ may undergo larger changes and are not intended to be API stable.
 ### ::: stepup.core.api.dumpns
 
 ### ::: stepup.core.api.render_jinja
-
-## Utilities for API extensions
-
-See [stepup.core.extapi](stepup.core.extapi.md) for utilities intended for extension developers,
-including `subs_env_vars`, `get_rpc_client`, `filter_dependencies`, and `get_local_import_paths`.

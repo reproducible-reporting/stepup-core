@@ -4,9 +4,8 @@
         1/2 |    SUCCESS │ ./plan.py
         1/2 |      START │ ls --this-option-does-not-exist
         1/1 |       FAIL │ ls --this-option-does-not-exist
-────────────────────────────────── Step info ───────────────────────────────────
-Command               ls --this-option-does-not-exist
-Return code           2
+──────────────────────────────── Failed command ────────────────────────────────
+ls --this-option-does-not-exist  # exit=2
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────

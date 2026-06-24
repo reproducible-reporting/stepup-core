@@ -1272,7 +1272,7 @@ def _get_step_i() -> int:
     """Get the current step node index from the STEPUP_STEP_I environment variable."""
     step_i = os.getenv("STEPUP_STEP_I")
     if step_i is None:
-        if isinstance(RPC_CLIENT, DummySyncRPCClient):
+        if not isinstance(RPC_CLIENT, SocketSyncRPCClient):
             return -1
         raise RuntimeError("The STEPUP_STEP_I environment variable is not defined.")
     return int(step_i)

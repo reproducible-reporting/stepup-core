@@ -6,9 +6,8 @@
         2/3 |    SUCCESS │ touch input.txt
         2/3 |      START │ cp input.txt wrong.txt
         2/2 |       FAIL │ cp input.txt wrong.txt
-────────────────────────────────── Step info ───────────────────────────────────
-Command               cp input.txt wrong.txt
-Return code           0
+──────────────────────────────── Failed command ────────────────────────────────
+cp input.txt wrong.txt
 ───────────────────────── Expected outputs not created ─────────────────────────
 output.txt
 ────────────────────────────────────────────────────────────────────────────────

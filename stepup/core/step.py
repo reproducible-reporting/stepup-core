@@ -19,6 +19,7 @@
 # --
 """A `Step` is a command that can be executed and that has inputs and/or outputs."""
 
+import json
 import logging
 import os
 import pickle
@@ -133,6 +134,21 @@ CREATE TABLE IF NOT EXISTS step_output (
     PRIMARY KEY (node, kind),
     -- No ON DELETE CASCADE on purpose: rows are removed explicitly in Step.clean()
     -- *before* the node row is deleted, matching step_hash / env_var.
+    FOREIGN KEY (node) REFERENCES node(i)
+) WITHOUT ROWID;
+
+CREATE TABLE IF NOT EXISTS step_subprocess (
+    node       INTEGER NOT NULL,        -- step node
+    seq        INTEGER NOT NULL,        -- order of invocation within the step
+    cmd        TEXT    NOT NULL,        -- shell command line
+    workdir    TEXT    NOT NULL DEFAULT './',  -- relative to STEPUP_ROOT
+    env        TEXT,                    -- JSON-encoded dict[str, str] overlay, or NULL
+    returncode INTEGER NOT NULL,
+    shell      INTEGER NOT NULL DEFAULT 0,    -- 1 if cmd was run via a shell
+    PRIMARY KEY (node, seq),
+    -- No ON DELETE CASCADE on purpose: rows are removed explicitly in Step.clean()
+    -- and Step.clean_before_run() *before* the node row is deleted, matching
+    -- step_hash / env_var / step_resource / step_output.
     FOREIGN KEY (node) REFERENCES node(i)
 ) WITHOUT ROWID;
 """
@@ -325,6 +341,7 @@ class Step(Node):
         self.con.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))
         self.con.execute("DELETE FROM step_resource WHERE node = ?", (self.i,))
         self.delete_outputs()
+        self.delete_subprocesses()
 
     def give_up(self):
         """Clean up a detached node because it loses a product node.
@@ -711,6 +728,9 @@ class Step(Node):
         # Drop any output stored by a previous run.
         self.delete_outputs()
 
+        # Drop any subprocess invocations recorded by a previous run.
+        self.delete_subprocesses()
+
     def completed(self, new_hash: StepHash | None):
         """Set a step as completed (succeeded or failed) and trigger the consequences.
 
@@ -803,6 +823,81 @@ class Step(Node):
     def delete_outputs(self) -> None:
         """Remove all stored output rows for this step."""
         self.con.execute("DELETE FROM step_output WHERE node = ?", (self.i,))
+
+    def record_subprocess(
+        self,
+        cmd: str,
+        workdir: str,
+        env: dict[str, str] | None,
+        returncode: int,
+        shell: bool = False,
+    ) -> None:
+        """Record a subprocess invocation made by this (wrapper) step.
+
+        The recorded metadata is informative for archival and debugging, not authoritative.
+        The `env` overlay holds only the variables the wrapper explicitly set on top of the
+        inherited environment, not the full resolved environment.
+
+        Parameters
+        ----------
+        cmd
+            The command line, as a single shell-quoted string, stored verbatim.
+        workdir
+            The working directory of the subprocess, relative to `STEPUP_ROOT`.
+        env
+            The environment overlay (variables set on top of the inherited environment),
+            or `None` when no overlay was applied.
+        returncode
+            The exit code of the subprocess.
+        shell
+            Whether `cmd` was executed via a shell (`subprocess.run(..., shell=True)`).
+        """
+        # The per-step sequence number is assigned here, under the director's DBLock,
+        # so concurrent steps cannot collide and a re-run (which clears the rows first)
+        # restarts the numbering at 0.
+        (seq,) = self.con.execute(
+            "SELECT COALESCE(MAX(seq) + 1, 0) FROM step_subprocess WHERE node = ?", (self.i,)
+        ).fetchone()
+        self.con.execute(
+            "INSERT INTO step_subprocess VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                self.i,
+                seq,
+                cmd,
+                workdir,
+                None if env is None else json.dumps(env),
+                returncode,
+                int(shell),
+            ),
+        )
+
+    def iter_subprocesses(self) -> Iterator[tuple[int, str, str, dict | None, int, bool]]:
+        """Iterate over recorded subprocess invocations, ordered by sequence number.
+
+        Yields
+        ------
+        record
+            A tuple `(seq, cmd, workdir, env, returncode, shell)` where `cmd` is the stored
+            command line, `env` is the decoded overlay dict (or `None`), and `shell` indicates
+            whether `cmd` was executed via a shell.
+        """
+        sql = (
+            "SELECT seq, cmd, workdir, env, returncode, shell FROM step_subprocess "
+            "WHERE node = ? ORDER BY seq"
+        )
+        for seq, cmd, workdir, env, returncode, shell in self.con.execute(sql, (self.i,)):
+            yield (
+                seq,
+                cmd,
+                workdir,
+                None if env is None else json.loads(env),
+                returncode,
+                bool(shell),
+            )
+
+    def delete_subprocesses(self) -> None:
+        """Remove all recorded subprocess rows for this step."""
+        self.con.execute("DELETE FROM step_subprocess WHERE node = ?", (self.i,))
 
     def set_resources(self, resources: dict[str, int] | None):
         self.con.execute("DELETE FROM step_resource WHERE node = ?", (self.i,))

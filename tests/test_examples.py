@@ -137,6 +137,7 @@ OVERWRITE_EXPECTED = "STEPUP_OVERWRITE_EXPECTED" in os.environ
         "permissions_step_restart",
         "plan_inp",
         pytest.param("preload_modules", marks=pytest.mark.requires_fork_runpy),
+        "record_subprocess",
         "recreate_elsewhere",
         "recursive_glob",
         "runpyep",
