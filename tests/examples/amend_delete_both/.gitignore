@@ -1,5 +1,5 @@
 .stepup
-current*
+current_*
 data1.txt
 data2.txt
 log.txt

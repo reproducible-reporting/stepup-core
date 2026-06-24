@@ -1,5 +1,5 @@
 .stepup/
-current*
+current_*
 output_a.txt
 output_b.txt
 output_c.txt

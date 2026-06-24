@@ -1,5 +1,5 @@
 .stepup
-current*
+current_*
 foo1.txt
 foo2.txt
 bar.txt

@@ -1,5 +1,5 @@
 .stepup
-current*
+current_*
 out0.txt
 sub/out1.txt
 out2.txt

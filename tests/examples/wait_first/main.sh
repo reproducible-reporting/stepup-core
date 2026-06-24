@@ -1,8 +1,5 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and clean up.
-set -e
-trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
-rm -rvf $(cat .gitignore)
+source ../example.rc
 
 # Run the example
 echo hello > inp.txt

@@ -1,8 +1,5 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and clean up.
-set -e
-trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
-rm -rvf $(cat .gitignore)
+source ../example.rc
 
 # Prepare symlinked package directory.
 ln -s pkgs_a pkgs_b

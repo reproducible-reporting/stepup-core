@@ -64,6 +64,8 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
     """
     workdir = tmpdir / "example"
     shutil.copytree(srcdir, workdir)
+    # Make the shared boilerplate available at ../example.rc relative to main.sh.
+    shutil.copy(srcdir.parent / "example.rc", workdir.parent / "example.rc")
 
     # Rewrite the script to redirect the input and output of stepup.
     sed_proc = await asyncio.create_subprocess_shell(

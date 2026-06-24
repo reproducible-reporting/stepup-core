@@ -1,5 +1,5 @@
 .stepup
-current*
+current_*
 out.txt
 plan.py
 data

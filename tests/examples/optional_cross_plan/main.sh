@@ -1,8 +1,5 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and clean up.
-set -e
-trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
-rm -rvf $(cat .gitignore)
+source ../example.rc
 
 # Phase 1: the sub-plan consumes ../out.txt, so the optional producer becomes needed.
 cp sub/plan1.py sub/plan.py

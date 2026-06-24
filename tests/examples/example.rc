@@ -1,0 +1,7 @@
+# Exit on first error and clean up.
+set -e
+# Examples may override `cleanup` to add their own teardown; it runs on exit,
+# after any lingering background processes have been killed.
+cleanup() { :; }
+trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :; cleanup' EXIT
+rm -rvf $(cat .gitignore)

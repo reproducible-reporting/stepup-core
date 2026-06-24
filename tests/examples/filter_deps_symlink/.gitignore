@@ -1,5 +1,5 @@
 project/.stepup
-current*
+current_*
 project/worker_out.json
 pkgs_a/__pycache__/
 pkgs_b

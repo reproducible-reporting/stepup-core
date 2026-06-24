@@ -1,7 +1,5 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and clean up.
-set -e
-rm -rvf $(cat .gitignore)
+source ../example.rc
 
 # Run the example
 stepup boot -j 1 -w -e & # > current_stdout1.txt &

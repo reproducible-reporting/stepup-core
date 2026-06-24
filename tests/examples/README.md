@@ -24,11 +24,12 @@ When writing new examples, the following conventions ensure that they are proper
 
 - To facilitate debugging, the shebang line runs bash in verbose mode: `#!/usr/bin/env -S bash -x`.
 
-- Each `main.sh` starts with three boilerplate lines:
-    - `set -e` terminates the script as soon as any command fails.
-    - `trap ...` kills background processes when the script exits,
-      which only matters when the example fails.
-    - `rm -rvf $(cat .gitignore)` cleans up outputs from a previous run.
+- After the shebang, each `main.sh` sources the shared boilerplate with
+  `source ../example.rc`.
+
+  The test runner copies `example.rc` next to the per-example working directory,
+  so `../example.rc` resolves both under the test harness and when running
+  `bash main.sh` directly inside an example directory.
 
 - A local `.gitignore` file lists all StepUp-managed outputs,
   so that they are not accidentally committed to git.
@@ -36,7 +37,7 @@ When writing new examples, the following conventions ensure that they are proper
 
   ```text
   .stepup/
-  current*
+  current_*
   # Add any other expected outputs here
   ```
 

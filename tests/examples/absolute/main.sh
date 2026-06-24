@@ -1,12 +1,9 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and clean up.
-set -e
-trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
-rm -rvf $(cat .gitignore)
+source ../example.rc
 
 # Prepare
 export mytmpdir=$(mktemp -d)
-trap 'rm -rf $tmpdir' EXIT
+cleanup() { rm -rf "$mytmpdir"; }
 PATH_SRC="$mytmpdir/this_is_potentially_unsafe_18731"
 PATH_DST="$mytmpdir/this_is_potentially_unsafe_79824"
 echo hello > $PATH_SRC

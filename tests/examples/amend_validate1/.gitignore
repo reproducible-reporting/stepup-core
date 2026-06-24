@@ -1,5 +1,5 @@
 .stepup
-current*
+current_*
 ping.txt
 pong.txt
 work.txt

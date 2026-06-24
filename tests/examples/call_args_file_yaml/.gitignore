@@ -1,4 +1,4 @@
 .stepup/
-current*
+current_*
 args.yaml
 result.txt

@@ -1,8 +1,5 @@
 #!/usr/bin/env -S bash -x
-# Exit on first error and clean up.
-set -e
-trap 'kill $(pgrep -g $$ | grep -v $$) > /dev/null 2> /dev/null || :' EXIT
-rm -rvf $(cat .gitignore)
+source ../example.rc
 
 # Copy sec-2-2.txt in place
 cp sec-2-2.txt ch-2-theory/sec-2-2-advanced.txt
