@@ -3,7 +3,7 @@ source ../example.rc
 
 # Run the example
 cp plan1.py plan.py
-stepup boot -j 1 -w & # > current_stdout_1.txt &
+sb -j 1 -w & # > current_stdout_1.txt &
 PID=$!
 
 # Get the graph after completion of the pending steps.
@@ -20,7 +20,7 @@ set +e; wait -fn $PID; RETURNCODE=$?; set -e
 
 # Run the example
 cp plan2.py plan.py
-stepup boot -j 1 -w > current_stdout_2.txt &
+sb -j 1 -w > current_stdout_2.txt &
 PID=$!
 
 # Get the graph after completion of the pending steps.

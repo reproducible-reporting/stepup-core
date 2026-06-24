@@ -2,8 +2,8 @@
 source ../example.rc
 
 # Run the example with token resource explicitly set to zero capacity.
-export STEPUP_BOOT_RESOURCES="token:0"
-stepup boot -j 1 -w & # > current_stdout.txt &
+export STEPUP_BUILD_RESOURCES="token:0"
+sb -j 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

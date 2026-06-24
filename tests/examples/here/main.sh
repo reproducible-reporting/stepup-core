@@ -4,7 +4,7 @@ source ../example.rc
 # Run the example
 export STEPUP_ROOT="${PWD}/source"
 export PUBLIC="../public"
-stepup boot -j 1 -w & # > current_stdout.txt &
+sb -j 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

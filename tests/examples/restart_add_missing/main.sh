@@ -3,7 +3,7 @@ source ../example.rc
 
 # Run the example
 echo hello > inp.txt
-stepup boot -j 1 -w & # > current_stdout1.txt &
+sb -j 1 -w & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -33,7 +33,7 @@ wait
 
 # Restore the input and restart
 echo hello > inp.txt
-stepup boot -j 1 -w -e & # > current_stdout2.txt &
+sb -j 1 -w -e & # > current_stdout2.txt &
 
 stepup wait
 stepup graph current_graph3

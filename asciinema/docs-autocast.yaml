@@ -10,4 +10,4 @@ settings:
 
 instructions:
   - !Command
-    command: stepup boot -j 4
+    command: stepup build -j 4

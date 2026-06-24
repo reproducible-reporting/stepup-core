@@ -2,8 +2,8 @@
 source ../example.rc
 
 # Run the example
-export STEPUP_BOOT_RESOURCES="transform:1"
-stepup boot -j 2 -w & # > current_stdout.txt &
+export STEPUP_BUILD_RESOURCES="transform:1"
+sb -j 2 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

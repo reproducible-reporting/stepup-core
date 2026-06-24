@@ -171,7 +171,7 @@ StepUp runs as two process types:
   Boots the director as a subprocess and connects to it via the reporter RPC socket.
   Renders progress to the terminal.
 
-The entry point `stepup boot` (in `tui.py`) is what users run.
+The entry point `stepup build` (in `tui.py`) is what users run.
 It spawns the director and connects to it.
 
 ### Workflow Graph (`cascade.py`, `workflow.py`)
@@ -265,7 +265,7 @@ Used in the API for dynamic file discovery with consistency constraints across p
     - New examples are **not** auto-discovered: register each in the `@pytest.mark.parametrize`
       `name` list of `test_example` in `tests/test_examples.py` (and `test_plan` if the plan
       should run standalone), or it is silently never run.
-    - CI runs the example suite twice, with `STEPUP_BOOT_FORK_RUNPY=1` and `=0`, so examples
+    - CI runs the example suite twice, with `STEPUP_BUILD_FORK_RUNPY=1` and `=0`, so examples
       must pass under both the forkserver and plain-subprocess paths.
     - The "Standard error" page is replaced with `(stripped)` before comparison, so assert
       stderr text by grepping `.stepup/success.log` (full output) instead of `expected_stdout.txt`.

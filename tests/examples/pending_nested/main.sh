@@ -6,7 +6,7 @@ echo a > inp1.txt
 echo a > inp2.txt
 echo a > inp3.txt
 export LEVEL=1
-stepup boot -j 1 -w & # > current_stdout1.txt &
+sb -j 1 -w & # > current_stdout1.txt &
 
 # Wait for StepUp to complete
 stepup wait
@@ -34,7 +34,7 @@ export LEVEL=2
 rm inp1.txt
 echo b > inp3.txt
 rm .stepup/*.log
-stepup boot -j 1 -w & # > current_stdout2.txt &
+sb -j 1 -w & # > current_stdout2.txt &
 PID=$!
 
 # Wait for StepUp to complete
@@ -69,7 +69,7 @@ grep 'level=1' out3.txt
 export LEVEL=3
 echo a > inp1.txt
 rm .stepup/*.log
-stepup boot -j 1 -w & # > current_stdout3.txt &
+sb -j 1 -w & # > current_stdout3.txt &
 
 # Wait for StepUp to complete
 stepup wait

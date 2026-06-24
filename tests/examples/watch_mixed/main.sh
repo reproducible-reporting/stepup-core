@@ -4,7 +4,7 @@ source ../example.rc
 # Run the initial plan.
 cp plan_full.py plan.py
 cp backup.txt orig.txt
-stepup boot -j 1 -w & # > current_stdout.txt &
+sb -j 1 -w & # > current_stdout.txt &
 
 # First graph
 stepup wait

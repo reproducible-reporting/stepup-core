@@ -26,7 +26,7 @@ import pytest
 from path import Path
 
 from stepup.core.config import ConfigLoader
-from stepup.core.tui import boot_subcommand
+from stepup.core.tui import build_subcommand
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -104,8 +104,8 @@ def test_load_file_tilde_expansion(path_tmp: Path, loader: ConfigLoader, monkeyp
 
 def test_load_file_preserves_nested_sections(path_tmp: Path, loader: ConfigLoader):
     cfg = path_tmp / "stepup.toml"
-    cfg.write_bytes(b"jobs = 4\n[boot]\nclean = false\n")
-    assert loader._load_file(cfg) == {"jobs": 4, "boot": {"clean": False}}
+    cfg.write_bytes(b"jobs = 4\n[build]\nclean = false\n")
+    assert loader._load_file(cfg) == {"jobs": 4, "build": {"clean": False}}
 
 
 # ---------------------------------------------------------------------------
@@ -137,9 +137,9 @@ def test_configs_missing_stem_gives_empty_dict():
 
 def test_configs_pyproject_auto_section(path_tmp: Path):
     cfg = path_tmp / "pyproject.toml"
-    cfg.write_bytes(b"[tool.stepup]\njobs = 2\n[tool.stepup.boot]\nclean = false\n")
+    cfg.write_bytes(b"[tool.stepup]\njobs = 2\n[tool.stepup.build]\nclean = false\n")
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
-    assert loader._configs == [(cfg, {"jobs": 2, "boot": {"clean": False}})]
+    assert loader._configs == [(cfg, {"jobs": 2, "build": {"clean": False}})]
 
 
 def test_env_preloaded_at_construction():
@@ -316,8 +316,8 @@ def test_patch_parser_env_unknown_vars_ignored(parser):
 
 
 def test_patch_parser_env_with_section(parser):
-    loader = ConfigLoader("stepup", environ={"STEPUP_BOOT_JOBS": "12"})
-    loader.patch_parser(parser, "boot")
+    loader = ConfigLoader("stepup", environ={"STEPUP_BUILD_JOBS": "12"})
+    loader.patch_parser(parser, "build")
     assert parser.parse_args([]).jobs == 12
     assert isinstance(parser.parse_args([]).jobs, Decimal)
 
@@ -325,7 +325,7 @@ def test_patch_parser_env_with_section(parser):
 def test_patch_parser_env_section_prefix_required(parser):
     # The un-prefixed name is NOT matched when a section is given.
     loader = ConfigLoader("stepup", environ={"STEPUP_JOBS": "12"})
-    loader.patch_parser(parser, "boot")
+    loader.patch_parser(parser, "build")
     assert parser.parse_args([]).jobs == Decimal("1.2")  # unchanged
 
 
@@ -455,9 +455,9 @@ def test_patches_recorded_no_section(parser, loader):
 
 
 def test_patches_recorded_with_section(parser, loader):
-    loader.patch_parser(parser, "boot")
+    loader.patch_parser(parser, "build")
     section, actions = loader._patches[0]
-    assert section == "boot"
+    assert section == "build"
     assert "jobs" in actions
 
 
@@ -498,12 +498,12 @@ def test_env_to_toml_map_no_section():
 
 
 def test_env_to_toml_map_with_section():
-    loader = ConfigLoader("stepup", environ={"STEPUP_BOOT_JOBS": "8"})
+    loader = ConfigLoader("stepup", environ={"STEPUP_BUILD_JOBS": "8"})
     p = argparse.ArgumentParser()
     p.add_argument("--jobs", dest="jobs", type=int)
-    loader.patch_parser(p, "boot")
+    loader.patch_parser(p, "build")
     result = loader.env_to_toml_map()
-    assert result == {"STEPUP_BOOT_JOBS": [("boot", "jobs", 8)]}
+    assert result == {"STEPUP_BUILD_JOBS": [("build", "jobs", 8)]}
 
 
 def test_env_to_toml_map_unset_var_excluded(parser, loader):
@@ -514,18 +514,18 @@ def test_env_to_toml_map_unset_var_excluded(parser, loader):
 def test_env_to_toml_map_multiple_sections():
     loader = ConfigLoader(
         "stepup",
-        environ={"STEPUP_JOBS": "4", "STEPUP_BOOT_LABEL": "prod"},
+        environ={"STEPUP_JOBS": "4", "STEPUP_BUILD_LABEL": "prod"},
     )
     p_main = argparse.ArgumentParser()
     p_main.add_argument("--jobs", dest="jobs", type=int)
-    p_boot = argparse.ArgumentParser()
-    p_boot.add_argument("--label")
+    p_build = argparse.ArgumentParser()
+    p_build.add_argument("--label")
     loader.patch_parser(p_main)
-    loader.patch_parser(p_boot, "boot")
+    loader.patch_parser(p_build, "build")
     result = loader.env_to_toml_map()
     assert result == {
         "STEPUP_JOBS": [(None, "jobs", 4)],
-        "STEPUP_BOOT_LABEL": [("boot", "label", "prod")],
+        "STEPUP_BUILD_LABEL": [("build", "label", "prod")],
     }
 
 
@@ -557,30 +557,30 @@ def test_full_integration(path_tmp, parser):
     assert ns.label == "cli"  # CLI overrides pyproject
 
 
-def test_boot_max_output_size_default():
+def test_build_max_output_size_default():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
-    boot_subcommand(subparsers, ConfigLoader("stepup", environ={}))
-    assert parser.parse_args(["boot"]).max_output_size == 0
+    build_subcommand(subparsers, ConfigLoader("stepup", environ={}))
+    assert parser.parse_args(["build"]).max_output_size == 0
 
 
-def test_boot_max_output_size_from_env():
+def test_build_max_output_size_from_env():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
-    boot_subcommand(
-        subparsers, ConfigLoader("stepup", environ={"STEPUP_BOOT_MAX_OUTPUT_SIZE": "128"})
+    build_subcommand(
+        subparsers, ConfigLoader("stepup", environ={"STEPUP_BUILD_MAX_OUTPUT_SIZE": "128"})
     )
-    args = parser.parse_args(["boot"])
+    args = parser.parse_args(["build"])
     assert args.max_output_size == 128
     assert isinstance(args.max_output_size, int)
     # An explicit command-line value still wins over the environment variable.
-    assert parser.parse_args(["boot", "--max-output-size=256"]).max_output_size == 256
+    assert parser.parse_args(["build", "--max-output-size=256"]).max_output_size == 256
 
 
-def test_boot_max_output_size_from_file(path_tmp):
+def test_build_max_output_size_from_file(path_tmp):
     cfg = path_tmp / "stepup.toml"
-    cfg.write_bytes(b"[boot]\nmax_output_size = 64\n")
+    cfg.write_bytes(b"[build]\nmax_output_size = 64\n")
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
-    boot_subcommand(subparsers, ConfigLoader("stepup", config_paths=[cfg], environ={}))
-    assert parser.parse_args(["boot"]).max_output_size == 64
+    build_subcommand(subparsers, ConfigLoader("stepup", config_paths=[cfg], environ={}))
+    assert parser.parse_args(["build"]).max_output_size == 64

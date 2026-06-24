@@ -3,7 +3,7 @@ source ../example.rc
 
 # Run the plan with the first input.
 echo first > input.txt
-stepup boot -j 1 -w & # > current_stdout1.txt &
+sb -j 1 -w & # > current_stdout1.txt &
 
 # Wait for StepUp to complete
 stepup wait
@@ -21,7 +21,7 @@ grep first output.txt
 # Run the plan with the second input.
 echo second > input.txt
 rm .stepup/*.log
-stepup boot -j 1 -w & # > current_stdout2.txt &
+sb -j 1 -w & # > current_stdout2.txt &
 
 # Restart StepUp.
 stepup wait

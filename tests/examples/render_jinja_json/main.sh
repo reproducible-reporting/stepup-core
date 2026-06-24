@@ -2,7 +2,7 @@
 source ../example.rc
 
 # Run the example
-stepup boot -w -j 1 & # > current_stdout.txt &
+sb -w -j 1 & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

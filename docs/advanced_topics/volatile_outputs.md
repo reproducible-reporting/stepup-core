@@ -25,7 +25,7 @@ Make the plan executable and run it as follows:
 
 ```bash
 chmod +x plan.py
-stepup boot -j 1
+stepup build -j 1
 ```
 
 The file `date.txt` will contain the current time.

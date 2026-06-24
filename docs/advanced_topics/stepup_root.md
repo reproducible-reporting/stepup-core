@@ -7,7 +7,7 @@ where you would normally call the `stepup` command.
 (The top-level directory contains the `.stepup` subdirectory and the top-level `plan.py`.)
 
 With `STEPUP_ROOT` set, it is no longer necessary to change to the top-level directory
-before running `stepup boot`.
+before running `stepup build`.
 Also, `stepup clean` arguments will be interpreted correctly in subdirectories.
 
 You can manually set `STEPUP_ROOT` in the top-level directory as follows:

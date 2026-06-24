@@ -5,7 +5,7 @@ source ../example.rc
 mkdir -p data
 echo inp1 > data/inp1.txt
 echo data/inp1.txt > subs.txt
-stepup boot -j 1 -w -e & # > current_stdout.txt &
+sb -j 1 -w -e & # > current_stdout.txt &
 
 # Initial graph
 stepup wait

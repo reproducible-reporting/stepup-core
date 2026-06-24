@@ -5,7 +5,7 @@ source ../example.rc
 export MY_STEP_VALUE="hello"
 
 # Run the example.
-stepup boot -j 1 -w & # > current_stdout.txt &
+sb -j 1 -w & # > current_stdout.txt &
 PID=$!
 
 # Get the graph after completion of the pending steps.

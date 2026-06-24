@@ -1,7 +1,7 @@
 # StepUp Configuration
 
 StepUp can be configured using configuration files, environment variables, and command-line options.
-When a `stepup` tool starts, e.g. `stepup boot`,
+When a `stepup` tool starts, e.g. `stepup build`,
 it will load its settings in the following order, with later settings overriding earlier ones:
 
 - `/etc/stepup.toml` (system-wide configuration file)
@@ -19,15 +19,15 @@ it will load its settings in the following order, with later settings overriding
 
 Settings for all subcommands are placed at the top level of the config file
 (or under `[tool.stepup]` in `pyproject.toml`).
-Settings specific to the `boot` subcommand go under a `[boot]` section
-(or `[tool.stepup.boot]` in `pyproject.toml`).
+Settings specific to the `build` subcommand go under a `[build]` section
+(or `[tool.stepup.build]` in `pyproject.toml`).
 
 Example `stepup.toml`:
 
 ```toml
 log_level = "INFO"
 
-[boot]
+[build]
 jobs = 4
 watch = true
 ```
@@ -99,20 +99,20 @@ separated by slashes, where applicable.
     If not set, StepUp will look for this file in the current directory.
     This setting cannot be configured through config files.
 
-## Settings for `stepup boot`
+## Settings for `stepup build`
 
-These settings are stored under the `[boot]` section in config files
-(or `[tool.stepup.boot]` in `pyproject.toml`).
+These settings are stored under the `[build]` section in config files
+(or `[tool.stepup.build]` in `pyproject.toml`).
 Each entry below lists the config file key, environment variable, and command-line option
 separated by slashes, where applicable.
 
-`clean` / `STEPUP_BOOT_CLEAN` / `--clean`, `--no-clean`
+`clean` / `STEPUP_BUILD_CLEAN` / `--clean`, `--no-clean`
 
 :   Set to `false` to disable automatic cleaning of outdated output files.
     By default, StepUp automatically removes old output files that are no longer created
     by any step in the workflow.
 
-`duration` / `STEPUP_BOOT_DURATION` / `--duration`, `--no-duration`
+`duration` / `STEPUP_BUILD_DURATION` / `--duration`, `--no-duration`
 
 :   Set to `false` to disable the use of step duration information for scheduling decisions.
     By default, StepUp uses the duration information of steps to prioritize the execution
@@ -120,17 +120,17 @@ separated by slashes, where applicable.
     While this is generally beneficial, it can result in non-deterministic execution order,
     which can be undesirable in some cases, such as testing.
 
-`explain_rerun` / `STEPUP_BOOT_EXPLAIN_RERUN` / `--explain-rerun`, `-e`, `--no-explain-rerun`
+`explain_rerun` / `STEPUP_BUILD_EXPLAIN_RERUN` / `--explain-rerun`, `-e`, `--no-explain-rerun`
 
 :   Set to `true` to explain for every step with recording info why it cannot be skipped.
 
-`fork_runpy` / `STEPUP_BOOT_FORK_RUNPY` / `--fork-runpy`, `--no-fork-runpy`
+`fork_runpy` / `STEPUP_BUILD_FORK_RUNPY` / `--fork-runpy`, `--no-fork-runpy`
 
 :   Set to `true` to use a forkserver for Python step execution and file hashing,
     which reduces startup overhead.
     This is enabled by default on Linux.
 
-`max_output_size` / `STEPUP_BOOT_MAX_OUTPUT_SIZE` / `--max-output-size`
+`max_output_size` / `STEPUP_BUILD_MAX_OUTPUT_SIZE` / `--max-output-size`
 
 :   The maximum number of bytes of standard output and standard error stored per step
     stream in the workflow database. The default is `0`, meaning unlimited (no truncation).
@@ -138,7 +138,7 @@ separated by slashes, where applicable.
     what is persisted. When a stream exceeds the limit, it is truncated on a UTF-8 character
     boundary and a `[output truncated at N bytes]` line is appended.
 
-`preload_modules` / `STEPUP_BOOT_PRELOAD_MODULES` / `--preload-modules`
+`preload_modules` / `STEPUP_BUILD_PRELOAD_MODULES` / `--preload-modules`
 
 :   A comma-separated list of Python modules to pre-load into the forkserver.
     Only has effect when `fork_runpy = true`.
@@ -147,25 +147,25 @@ separated by slashes, where applicable.
     so that each Python step forked from it inherits them at zero import cost.
     By default, no additional modules are pre-loaded (only internal StepUp modules are pre-loaded).
 
-`jobs` / `STEPUP_BOOT_JOBS` / `--jobs`, `-j`
+`jobs` / `STEPUP_BUILD_JOBS` / `--jobs`, `-j`
 
 :   The maximum number of steps to run concurrently.
     When given as a floating point number, the value is multiplied by the number of available CPU cores.
     The default is `1.2`.
 
-`perf` / `STEPUP_BOOT_PERF` / `--perf`
+`perf` / `STEPUP_BUILD_PERF` / `--perf`
 
 :   Set to a frequency in Hz to enable performance monitoring of the director process
     with the [Linux perf profiler](https://perfwiki.github.io/main/).
     See the section on [Profiling](../development.md#profiling)
     in the development documentation for more details.
 
-`progress` / `STEPUP_BOOT_PROGRESS` / `--progress`, `--no-progress`
+`progress` / `STEPUP_BUILD_PROGRESS` / `--progress`, `--no-progress`
 
 :   Set to `false` to disable the progress bar in the terminal user interface.
     This can be useful to simplify and reduce the output.
 
-`resources` / `STEPUP_BOOT_RESOURCES` / `--resources`, `-r`
+`resources` / `STEPUP_BUILD_RESOURCES` / `--resources`, `-r`
 
 :   A comma-separated list of resource names and available quantities
     to be used for scheduling decisions.
@@ -174,20 +174,20 @@ separated by slashes, where applicable.
     Note that resource specifications from config files, the environment variable, and the CLI option
     are merged together, with the CLI option taking precedence over the environment variable.
 
-`show_perf` / `STEPUP_BOOT_SHOW_PERF` / `--show-perf`, `-s`
+`show_perf` / `STEPUP_BUILD_SHOW_PERF` / `--show-perf`, `-s`
 
 :   Set to `1` to show basic performance information
     (like execution time) for each step in the terminal user interface.
     Set to `2` to show more detailed performance information.
 
-`watch` / `STEPUP_BOOT_WATCH` / `--watch`, `-w`, `--no-watch`
+`watch` / `STEPUP_BUILD_WATCH` / `--watch`, `-w`, `--no-watch`
 
 :   Set to `true` to enable watch mode.
     In watch mode, StepUp will monitor the file system for changes
     and rerun affected steps after pressing the `r` key in the terminal user interface.
     Only supported on Linux.
 
-`watch_first` / `STEPUP_BOOT_WATCH_FIRST` / `--watch-first`, `-W`, `--no-watch-first`
+`watch_first` / `STEPUP_BUILD_WATCH_FIRST` / `--watch-first`, `-W`, `--no-watch-first`
 
 :   Set to `true` to automatically rerun affected steps
     when relevant file changes are observed,
@@ -195,7 +195,7 @@ separated by slashes, where applicable.
     This implies `watch = true`.
     Only supported on Linux.
 
-`yappi` / `STEPUP_BOOT_YAPPI` / `--yappi`, `--no-yappi`
+`yappi` / `STEPUP_BUILD_YAPPI` / `--yappi`, `--no-yappi`
 
 :   Set to `true` to profile the director process with the [Yappi profiler](https://github.com/sumerc/yappi).
     See the section on [Profiling](../development.md#profiling)

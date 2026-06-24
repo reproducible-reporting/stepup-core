@@ -3,7 +3,7 @@ source ../example.rc
 
 # Run the example
 cp helper1.py helper.py
-stepup boot -j 1 -w & # > current_stdout1.txt &
+sb -j 1 -w & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -21,7 +21,7 @@ grep first hello.txt
 
 # Restart the example with a different helper
 cp helper2.py helper.py
-stepup boot -j 1 -w & # > current_stdout2.txt &
+sb -j 1 -w & # > current_stdout2.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

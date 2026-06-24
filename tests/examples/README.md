@@ -17,8 +17,8 @@ When writing new examples, the following conventions ensure that they are proper
   unregistered example is silently never run. If its `plan.py` should also be exercised
   standalone (without StepUp), add the name to the `test_plan` list as well.
 
-- CI runs the whole example suite twice, once with `STEPUP_BOOT_FORK_RUNPY=1` and once with
-  `STEPUP_BOOT_FORK_RUNPY=0`, so an example must pass under **both** the forkserver and the
+- CI runs the whole example suite twice, once with `STEPUP_BUILD_FORK_RUNPY=1` and once with
+  `STEPUP_BUILD_FORK_RUNPY=0`, so an example must pass under **both** the forkserver and the
   plain-subprocess execution paths. Do not pin `fork_runpy` in a per-example `stepup.toml`
   unless the example is specifically about one path.
 
@@ -46,14 +46,20 @@ When writing new examples, the following conventions ensure that they are proper
   Without it, the test runner fails immediately with "Permission denied".
   Run `chmod +x` on each such file after creating it.
 
-- `stepup boot` is launched in the background with a commented-out redirect:
+- `sb` is launched in the background with a commented-out redirect:
 
   ```bash
-  stepup boot -j 1 -w & # > current_stdout.txt &
+  sb -j 1 -w & # > current_stdout.txt &
   ```
 
   The test builder strips the `& #` before executing, so the director's reporter output is
   captured in `current_stdout.txt` and compared against `expected_stdout.txt`.
+
+  If you need to pass global stepup options, use the long form:
+
+  ```bash
+  stepup --log-level=INFO build -j 1 -w & # > current_stdout.txt &
+  ```
 
 - The following `stepup` subcommands are used to interact with the running director
   and to verify the workflow state at well-defined points in time:
@@ -69,13 +75,13 @@ When writing new examples, the following conventions ensure that they are proper
     - `stepup clean ...` — removes StepUp-managed outputs; its output is captured in
       `current_cleanup.txt` and compared against `expected_cleanup.txt`.
 
-- After `stepup join`, wait for the background `stepup boot` process and capture its exit code:
+- After `stepup join`, wait for the background `stepup build` process and capture its exit code:
 
   ```bash
   set +e; wait -fn $PID; RETURNCODE=$?; set -e
   ```
 
-  `stepup boot` exits with **0** when all steps succeeded, **2** when at least one step failed.
+  `stepup build` exits with **0** when all steps succeeded, **2** when at least one step failed.
 
     - For tests where all steps must succeed, assert the exit code:
 

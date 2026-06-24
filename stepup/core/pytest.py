@@ -69,7 +69,7 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
 
     # Rewrite the script to redirect the input and output of stepup.
     sed_proc = await asyncio.create_subprocess_shell(
-        "sed -i -e '/^stepup/ s/ & #//' main.sh",
+        r"sed -i -e '/^\(stepup\|sb\)/ s/ & #//' main.sh",
         stdin=subprocess.DEVNULL,
         cwd=workdir,
     )

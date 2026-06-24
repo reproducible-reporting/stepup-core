@@ -3,7 +3,7 @@ source ../example.rc
 
 # Run the example
 export ENV_VAR_TEST_STEPUP_RENDER="cool"
-stepup boot -w -j 1 & # > current_stdout.txt &
+sb -w -j 1 & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

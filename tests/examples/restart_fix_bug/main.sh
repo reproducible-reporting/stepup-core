@@ -3,7 +3,7 @@ source ../example.rc
 
 # Run the first plan.
 cp plan1.py plan.py
-stepup boot -j 1 -w -e & # > current_stdout1.txt &
+sb -j 1 -w -e & # > current_stdout1.txt &
 PID=$!
 
 # Run StepUp for a first time.
@@ -22,7 +22,7 @@ set +e; wait -fn $PID; RETURNCODE=$?; set -e
 # second with a different plan.
 rm .stepup/*.log
 cp plan2.py plan.py
-stepup boot -j 1 -w -e & # > current_stdout2.txt &
+sb -j 1 -w -e & # > current_stdout2.txt &
 PID=$!
 
 # Restart StepUp.

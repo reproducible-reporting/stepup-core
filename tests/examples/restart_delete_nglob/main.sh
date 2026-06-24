@@ -4,7 +4,7 @@ source ../example.rc
 # Run the example with two input files.
 echo one > inp1.txt
 echo two > inp2.txt
-stepup boot -j 1 -w & # > current_stdout1.txt &
+sb -j 1 -w & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -27,7 +27,7 @@ grep two foo2.txt
 
 # Remove an input file and restart.
 rm inp1.txt
-stepup boot -j 1 -w -e & # > current_stdout2.txt &
+sb -j 1 -w -e & # > current_stdout2.txt &
 
 stepup wait
 stepup graph current_graph2
@@ -48,7 +48,7 @@ grep two foo2.txt
 
 # Remove also the other input file and restart
 rm inp2.txt
-stepup boot -j 1 -w -e & # > current_stdout3.txt &
+sb -j 1 -w -e & # > current_stdout3.txt &
 
 stepup wait
 stepup graph current_graph3

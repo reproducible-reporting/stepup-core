@@ -2,7 +2,7 @@
 source ../example.rc
 
 # Run the plan.
-stepup boot -j 1 -w -e & # > current_stdout1.txt &
+sb -j 1 -w -e & # > current_stdout1.txt &
 
 stepup wait
 stepup graph current_graph1
@@ -19,7 +19,7 @@ wait
 # Restart StepUp after removing the output.
 rm copy.txt
 rm .stepup/*.log
-stepup boot -j 1 -w -e & # > current_stdout2.txt &
+sb -j 1 -w -e & # > current_stdout2.txt &
 
 stepup wait
 stepup graph current_graph2

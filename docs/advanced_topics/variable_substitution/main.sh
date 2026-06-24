@@ -3,7 +3,7 @@ git clean -qdfX .
 export COLUMNS=80
 unset STEPUP_ROOT
 unset STEPUP_DEBUG
-MYVAR=foo stepup boot -j 1 | sed -f ../../clean_stdout.sed > stdout.txt
+MYVAR=foo stepup build -j 1 | sed -f ../../clean_stdout.sed > stdout.txt
 
 # INP: plan.py
 # INP: step.py

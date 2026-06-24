@@ -4,7 +4,7 @@ source ../example.rc
 # Run the example
 export INP_VAR_TEST_STEPUP_FOO="foo"
 export INP_VAR_TEST_STEPUP_BAR="bar"
-stepup boot -j 1 -w & # > current_stdout.txt &
+sb -j 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

@@ -3,7 +3,7 @@ source ../example.rc
 
 # Run the example
 cp plan1.py plan.py
-stepup boot -j 1 -w & # > current_stdout.txt &
+sb -j 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

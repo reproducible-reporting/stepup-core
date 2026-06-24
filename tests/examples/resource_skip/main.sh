@@ -4,8 +4,8 @@ source ../example.rc
 echo "content" > input.txt
 
 # First run: resource is available, step executes and its stored hash is set.
-export STEPUP_BOOT_RESOURCES="limited:1"
-stepup boot -j 1 -w & # > current_stdout1.txt &
+export STEPUP_BUILD_RESOURCES="limited:1"
+sb -j 1 -w & # > current_stdout1.txt &
 stepup wait
 stepup graph current_graph1
 
@@ -32,9 +32,9 @@ echo "content" > input.txt
 # Second run: no resource available. The step is PENDING with a stored hash
 # whose inp_digest matches the current input (both "content"). It should be
 # SKIPPED via the CHECKING state — no resource slot is needed for the hash check.
-unset STEPUP_BOOT_RESOURCES
+unset STEPUP_BUILD_RESOURCES
 rm -f .stepup/director.log .stepup/success.log
-stepup boot -j 1 -w & # > current_stdout2.txt &
+sb -j 1 -w & # > current_stdout2.txt &
 stepup wait
 stepup graph current_graph2
 stepup join

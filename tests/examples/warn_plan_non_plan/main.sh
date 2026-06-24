@@ -1,7 +1,7 @@
 #!/usr/bin/env -S bash -x
 source ../example.rc
 
-stepup boot -j 1 -w & # > current_stdout.txt &
+sb -j 1 -w & # > current_stdout.txt &
 PID=$!
 stepup wait
 stepup join

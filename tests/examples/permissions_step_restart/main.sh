@@ -3,7 +3,7 @@ source ../example.rc
 
 # Run the plan with non-executable work.py.
 chmod -x work.py
-stepup boot -j 1 -w -e & # > current_stdout1.txt &
+sb -j 1 -w -e & # > current_stdout1.txt &
 
 # Wait and get graph.
 stepup wait
@@ -21,7 +21,7 @@ wait
 # Restart the plan with executable work.py.
 chmod +x work.py
 rm .stepup/*.log
-stepup boot -j 1 -w -e & # > current_stdout2.txt &
+sb -j 1 -w -e & # > current_stdout2.txt &
 
 # Wait and get graph.
 stepup wait

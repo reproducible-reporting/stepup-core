@@ -6,7 +6,7 @@ echo "This is the first half and" > asource1.txt
 echo "this is the second half." > asource2.txt
 
 # Run the plan.
-stepup boot -j 1 -w -e & # > current_stdout1.txt &
+sb -j 1 -w -e & # > current_stdout1.txt &
 
 # Initial graph
 stepup wait
@@ -27,7 +27,7 @@ wait
 # Remove both intermediates the output and one of the inputs, and restart.
 # There should be pending steps because some input is missing.
 rm data1.txt data2.txt log.txt asource1.txt
-stepup --log-level INFO boot -j 1 -w -e & # > current_stdout2.txt &
+stepup --log-level INFO build -j 1 -w -e & # > current_stdout2.txt &
 PID=$!
 
 # Initial graph

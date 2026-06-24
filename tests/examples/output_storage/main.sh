@@ -2,7 +2,7 @@
 source ../example.rc
 
 # Run the example. max_output_size = 64 comes from stepup.toml.
-stepup boot -j 1 -w & # > current_stdout1.txt &
+sb -j 1 -w & # > current_stdout1.txt &
 PID=$!
 
 stepup wait

@@ -4,7 +4,7 @@ source ../example.rc
 # Run the initial plan.
 mkdir -p data/sub
 echo hi > data/sub/inp.txt
-stepup boot -j 1 -w & # > current_stdout.txt &
+sb -j 1 -w & # > current_stdout.txt &
 PID=$!
 
 # Initial graph

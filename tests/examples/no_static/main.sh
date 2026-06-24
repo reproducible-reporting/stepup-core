@@ -2,7 +2,7 @@
 source ../example.rc
 
 # Run the example
-stepup boot & # > current_stdout.txt &
+sb & # > current_stdout.txt &
 PID=$!
 
 # Get the graph after completion of the pending steps.
@@ -24,7 +24,7 @@ set +e; wait -fn $PID; RETURNCODE=$?; set -e
 
 # order is not reproducible.
 rm .stepup/*.log
-stepup boot &
+sb &
 
 # Wait for watch phase.
 stepup wait

@@ -4,7 +4,7 @@
 
     Changes since StepUp 3.0.0:
 
-    - You have to start the StepUp workflow with `stepup boot` instead of `stepup`.
+    - You have to start the StepUp workflow with `stepup build` instead of `stepup`.
 
     Changes since StepUp 2.0.0:
 
@@ -56,7 +56,7 @@ Note that the `SIGINT` signal (pressing `Ctrl+C`) are also supported to stop Ste
 
 You can run StepUp in the background in several ways:
 
-- Just start it with `stepup boot > stepup.log &`
+- Just start it with `stepup build > stepup.log &`
   and then use `tail -f stepup.log` to see the output.
 - Run StepUp inside a `screen` or `tmux` session.
 - Run StepUp in a Slurm/PBS/... batch job on a cluster.
@@ -78,7 +78,7 @@ However, you can still interact with StepUp as follows:
 ## Interacting With StepUp From Within an IDE
 
 If you don't want to switch to a terminal to restart StepUp while working in an IDE,
-you can run it in "watch mode" (`stepup boot -w`) and configure your IDE
+you can run it in "watch mode" (`stepup build -w`) and configure your IDE
 to bind the following command to a keyboard shortcut:
 
 ```bash
@@ -86,7 +86,7 @@ stepup run
 ```
 
 This command must be executed in the top-level directory
-where a `stepup boot` command is running in interactive mode.
+where a `stepup build` command is running in interactive mode.
 (You can also set the `STEPUP_ROOT` environment variable instead.)
 
 ### Configuration of a Task in VSCode
@@ -147,5 +147,5 @@ The following `keybindings.json` file will bind `ctrl+'` to run the task:
 
 VSCode will automatically save the file when you run the task with this keybinding.
 
-Instead of this shortcut, you can also use `stepup boot -W`,
+Instead of this shortcut, you can also use `stepup build -W`,
 which will automatically rerun the build as soon as you delete, save or add a relevant file.

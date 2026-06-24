@@ -2,7 +2,7 @@
 source ../example.rc
 
 # Run the initial plan.
-stepup boot -j 1 -w > current_stdout.txt &
+sb -j 1 -w > current_stdout.txt &
 
 # Initial graph
 stepup wait

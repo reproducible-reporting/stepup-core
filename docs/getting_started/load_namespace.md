@@ -42,7 +42,7 @@ Make the appropriate files executable and run the plan:
 
 ```bash
 chmod +x plan.py print_sentence.py
-stepup boot -j 1
+stepup build -j 1
 ```
 
 You should get the following screen output:
@@ -55,7 +55,7 @@ As you can see, the sentence contains elements from the configuration file.
 
 ## Try the Following
 
-- Run the plan again with `stepup boot -j 1`.
+- Run the plan again with `stepup build -j 1`.
   The steps are not executed again, as expected.
 
 - Change some fields in the configuration file and run the plan again.

@@ -5,7 +5,7 @@ source ../example.rc
 mkdir -p data
 echo hello > data/inp.txt
 cp plan1.py plan.py
-stepup boot -j 1 -w & # > current_stdout.txt &
+sb -j 1 -w & # > current_stdout.txt &
 
 # Initial graph.
 stepup wait

@@ -7,7 +7,7 @@ export ENV_VAR_TEST_STEPUP_DFTHYH="BBBB"
 
 # Run the example
 cp variables1.json variables.json
-stepup boot -j 1 -w -e & # > current_stdout1.txt &
+sb -j 1 -w -e & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -51,7 +51,7 @@ cp current_variables.txt current_variables3.txt
 # Change a variable and restart
 export ENV_VAR_TEST_STEPUP_DFTHYH="CCCC"
 rm .stepup/*.log
-stepup boot -j 1 -w -e & # > current_stdout2.txt &
+sb -j 1 -w -e & # > current_stdout2.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -70,7 +70,7 @@ cp current_variables.txt current_variables4.txt
 # unset a variable and restart
 unset ENV_VAR_TEST_STEPUP_AWDFTD
 rm .stepup/*.log
-stepup boot -j 1 -w -e & # > current_stdout3.txt &
+sb -j 1 -w -e & # > current_stdout3.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -89,7 +89,7 @@ cp current_variables.txt current_variables5.txt
 # Set a variable again and restart
 export ENV_VAR_TEST_STEPUP_AWDFTD="DDDD"
 rm .stepup/*.log
-stepup boot -j 1 -w -e & # > current_stdout4.txt &
+sb -j 1 -w -e & # > current_stdout4.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

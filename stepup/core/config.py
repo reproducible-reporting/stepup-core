@@ -31,7 +31,7 @@ Environment variable naming convention
 The env var name is derived from the prefix, the section (if any), and the dest:
 
 - No section: `STEPUP_DEBUG` (prefix + dest)
-- Section `"boot"`: `STEPUP_BOOT_JOBS` (prefix + section + dest)
+- Section `"build"`: `STEPUP_BUILD_JOBS` (prefix + section + dest)
 - Dotted section `"some.thing"`: `STEPUP_SOME_THING`
 - Hyphenated section `"render-jinja"`: `STEPUP_RENDER_JINJA`
 
@@ -93,7 +93,7 @@ class ConfigLoader:
     prefix
         Prefix for environment variable names.
         With no section, `"stepup"` maps dest `log_level` to `STEPUP_LOG_LEVEL`.
-        With section `"boot"`, dest `jobs` maps to `STEPUP_BOOT_JOBS`.
+        With section `"build"`, dest `jobs` maps to `STEPUP_BUILD_JOBS`.
         Also determines the default *pyproject_section* (e.g. `"tool.stepup"`).
     config_paths
         Ordered list of config file locations, from lowest to highest priority.
@@ -336,7 +336,7 @@ class ConfigLoader:
             Argparse parser to patch.
             Argument defaults are mutated in place.
         section
-            Dotted key path into each config dict, e.g. `"boot"` or `"some.other"`.
+            Dotted key path into each config dict, e.g. `"build"` or `"some.other"`.
             `None` uses the top-level dict.
             Configs that do not contain the section are silently skipped.
         merge_handlers

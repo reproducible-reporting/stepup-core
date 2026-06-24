@@ -2,7 +2,7 @@
 source ../example.rc
 
 # Run the example with one token resource available.
-stepup boot -j 1 -w --resources="token:1" & # > current_stdout.txt &
+sb -j 1 -w --resources="token:1" & # > current_stdout.txt &
 PID=$!
 
 # Get the graph after completion of the pending steps.

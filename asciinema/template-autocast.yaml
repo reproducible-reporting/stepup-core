@@ -10,7 +10,7 @@ settings:
 
 instructions:
   - !Interactive
-    command: stepup boot -j 4 -w
+    command: stepup build -j 4 -w
     keys:
       - 18s
       - r

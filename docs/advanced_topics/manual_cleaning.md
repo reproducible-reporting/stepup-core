@@ -48,7 +48,7 @@ This check can be disabled with the `--unsafe` option.
 The `stepup clean` tool only removes files or directories.
 It never changes StepUp's workflow database.
 Hence, removed files remain in StepUp's workflow as detached nodes,
-until one runs `stepup boot` (with `--clean` or `STEPUP_CLEAN=1`)
+until one runs `stepup build` (with `--clean` or `STEPUP_CLEAN=1`)
 to trigger automatic cleaning.
 
 !!! note
@@ -59,7 +59,7 @@ to trigger automatic cleaning.
 
 - The [Static Named Glob](static_named_glob.md) tutorial provides a good test case
   for experimenting with `stepup clean`.
-  For this example, run `stepup boot` without any arguments.
+  For this example, run `stepup build` without any arguments.
   Then open a second terminal in the same directory and run
   `stepup clean ch3/sec3_1_applications.txt --all`.
   You will see that the following files have been deleted:

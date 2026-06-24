@@ -6,7 +6,7 @@ echo "First input" > inp1.txt
 echo "Second input" > inp2.txt
 
 # Run the example
-stepup boot -j 1 -w -e & # > current_stdout1.txt &
+sb -j 1 -w -e & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -45,7 +45,7 @@ grep Third out3.txt
 echo "Fourth input" > inp4.txt
 rm inp2.txt
 rm .stepup/*.log
-stepup boot -j 1 -w -e & # > current_stdout2.txt &
+sb -j 1 -w -e & # > current_stdout2.txt &
 
 stepup wait
 stepup graph current_graph3

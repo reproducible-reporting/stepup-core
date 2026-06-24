@@ -3,7 +3,7 @@ source ../example.rc
 
 # Run the initial plan.
 cp config1.json config.json
-stepup --log-level INFO boot -j 1 -w & # > current_stdout.txt &
+stepup --log-level INFO build -j 1 -w & # > current_stdout.txt &
 
 # Initial graph
 stepup wait

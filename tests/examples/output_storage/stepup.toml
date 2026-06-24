@@ -1,4 +1,4 @@
-[boot]
+[build]
 jobs = 1
 watch = true
 max_output_size = 64

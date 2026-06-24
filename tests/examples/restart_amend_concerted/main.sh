@@ -4,7 +4,7 @@ source ../example.rc
 # Run the first plan.
 echo a1 > inp1.txt
 echo a2 > inp2.txt
-stepup boot -j 1 -w -e & # > current_stdout1.txt &
+sb -j 1 -w -e & # > current_stdout1.txt &
 
 # Run StepUp for a first time.
 stepup wait
@@ -25,7 +25,7 @@ grep a2 out2.txt || exit 1
 rm .stepup/*.log
 echo b1 > inp1.txt
 echo b2 > inp2.txt
-stepup boot -j 1 -w -e & # > current_stdout2.txt &
+sb -j 1 -w -e & # > current_stdout2.txt &
 
 # Restart StepUp.
 stepup wait

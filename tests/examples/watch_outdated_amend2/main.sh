@@ -4,7 +4,7 @@ source ../example.rc
 # Run with the initial subs.txt.
 echo inp1 > inp1.txt
 echo conv1.txt > subs1.txt
-stepup boot -j 1 -w -e & # > current_stdout.txt &
+sb -j 1 -w -e & # > current_stdout.txt &
 
 # Initial graph
 stepup wait

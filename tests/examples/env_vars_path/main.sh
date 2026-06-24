@@ -3,7 +3,7 @@ source ../example.rc
 
 # Run the example
 export ENV_VAR_TEST_STEPUP_PREFIX="README"
-stepup boot -j 1 -w -e & # > current_stdout1.txt &
+sb -j 1 -w -e & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -21,7 +21,7 @@ wait
 # Restart the example with a different variable
 export ENV_VAR_TEST_STEPUP_PREFIX="FOO"
 rm .stepup/*.log
-stepup boot -j 1 -w -e & # > current_stdout2.txt &
+sb -j 1 -w -e & # > current_stdout2.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

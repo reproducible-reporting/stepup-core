@@ -41,6 +41,12 @@ def main():
         parser.print_help()
 
 
+def sb_main():
+    """Shortcut for `stepup build` (accepts the same arguments)."""
+    sys.argv.insert(1, "build")
+    main()
+
+
 def build_parser() -> tuple[argparse.ArgumentParser, list[callable]]:
     # Configuration loader
     stepup_root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))

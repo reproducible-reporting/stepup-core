@@ -96,7 +96,7 @@ Make the scripts executable and run StepUp to get the results:
 
 ```bash
 chmod +x plan.py plot.py
-stepup boot -j 1
+stepup build -j 1
 ```
 
 You should see the following terminal output with the plan and run steps of the plotting script:

@@ -44,16 +44,16 @@ pytest.register_assert_rewrite("stepup.core.pytest")
 
 
 def pytest_collection_modifyitems(items):
-    if os.environ.get("STEPUP_BOOT_FORK_RUNPY") == "0":
+    if os.environ.get("STEPUP_BUILD_FORK_RUNPY") == "0":
         skip = pytest.mark.skip(
-            reason="requires fork-based process execution (STEPUP_BOOT_FORK_RUNPY != 0)"
+            reason="requires fork-based process execution (STEPUP_BUILD_FORK_RUNPY != 0)"
         )
         for item in items:
             if item.get_closest_marker("requires_fork_runpy"):
                 item.add_marker(skip)
 
 
-BOOT_UNTIL_DONE = """\
+BUILD_UNTIL_DONE = """\
 #!/usr/bin/env python3
 from path import Path
 from time import sleep
@@ -75,7 +75,7 @@ async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
         director_socket_path = dir_sockects / "director"
 
         with open("plan.py", "w") as fh:
-            fh.write(BOOT_UNTIL_DONE)
+            fh.write(BUILD_UNTIL_DONE)
         os.chmod("plan.py", stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
         reporter = ReporterClient()
         director = asyncio.create_task(
@@ -139,7 +139,7 @@ def wfs() -> Iterator[Workflow]:
 
 @pytest.fixture
 def wfp() -> Iterator[Workflow]:
-    """A workflow with a boots step plan.py"""
+    """A workflow with a boot step plan.py"""
     dir_queue = asyncio.Queue()
     workflow = Workflow(connect(":memory:"), makedirs=False, dir_queue=dir_queue)
     with workflow.con:

@@ -62,11 +62,13 @@ Changelog = "https://reproducible-reporting.github.io/stepup-core/changelog/"
 
 [project.scripts]
 stepup = "stepup.core.__main__:main"
+sb = "stepup.core.__main__:sb_main"
 _stepup_hasher = "stepup.core.hasher:hasher_tool"
 
 [project.entry-points."stepup.tools"]
-browse = "stepup.core.browse:browse_subcommand"
 boot = "stepup.core.tui:boot_subcommand"
+browse = "stepup.core.browse:browse_subcommand"
+build = "stepup.core.tui:build_subcommand"
 clean = "stepup.core.clean:clean_subcommand"
 drain = "stepup.core.interact:drain_subcommand"
 run = "stepup.core.interact:run_subcommand"
@@ -85,7 +87,7 @@ status = "stepup.core.interact:status_subcommand"
 addopts = "-n auto --dist worksteal -W error -W ignore::ResourceWarning"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
-    "requires_fork_runpy: mark test that requires STEPUP_BOOT_FORK_RUNPY != 0",
+    "requires_fork_runpy: mark test that requires STEPUP_BUILD_FORK_RUNPY != 0",
 ]
 
 [tool.ruff]

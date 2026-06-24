@@ -3,7 +3,7 @@ source ../example.rc
 
 # Run the plan.
 echo version1 > inp.txt
-stepup boot -j 1 -w -e & # > current_stdout1.txt &
+sb -j 1 -w -e & # > current_stdout1.txt &
 
 stepup wait
 stepup graph current_graph1
@@ -36,7 +36,7 @@ grep version1 final.txt
 # Restart StepUp after removing the output.
 echo version2 > inp.txt
 rm .stepup/*.log
-stepup boot -j 1 -w -e & # > current_stdout2.txt &
+sb -j 1 -w -e & # > current_stdout2.txt &
 PID=$!
 
 stepup wait

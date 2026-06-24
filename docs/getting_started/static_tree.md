@@ -23,7 +23,7 @@ Make the plan executable and run it non-interactively:
 
 ```bash
 chmod +x plan.py
-stepup boot -j 1
+stepup build -j 1
 ```
 
 This should produce the following output:

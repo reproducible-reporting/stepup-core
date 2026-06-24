@@ -2,7 +2,7 @@
 source ../example.rc
 
 # Run the example
-stepup boot & # > current_stdout.txt &
+sb & # > current_stdout.txt &
 PID=$!
 
 # Get the graph after completion of the pending steps.

@@ -3,7 +3,7 @@ source ../example.rc
 
 # Run the example
 cp plan1.py plan.py
-stepup boot -j 1 -w & # > current_stdout1.txt &
+sb -j 1 -w & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -19,7 +19,7 @@ wait
 # Change the plan to a different one and restart with --no-clean
 cp plan2.py plan.py
 rm .stepup/*.log
-stepup boot -j 1 -w --no-clean & # > current_stdout2.txt &
+sb -j 1 -w --no-clean & # > current_stdout2.txt &
 
 # Wait for watch phase.
 stepup wait

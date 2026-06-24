@@ -3,7 +3,7 @@ source ../example.rc
 
 # First build.
 cp plan1.py plan.py
-stepup boot -j 1 -w & # > current_stdout1.txt &
+sb -j 1 -w & # > current_stdout1.txt &
 PID=$!
 
 stepup wait
@@ -43,7 +43,7 @@ set +e; wait -fn $PID; RETURNCODE=$?; set -e
 
 # Restart StepUp from scratch and confirm the step_output rows survive a full restart.
 rm .stepup/*.log
-stepup boot -j 1 -w & # > current_stdout2.txt &
+sb -j 1 -w & # > current_stdout2.txt &
 PID=$!
 
 stepup wait

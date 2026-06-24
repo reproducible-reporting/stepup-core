@@ -6,7 +6,7 @@ cat > cases.txt << EOD
 case1.txt
 case2.txt
 EOD
-stepup boot -j 1 -w & # > current_stdout.txt &
+sb -j 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

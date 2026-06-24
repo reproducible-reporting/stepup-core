@@ -4,7 +4,7 @@ source ../example.rc
 # Run the example
 mkdir sub/
 echo hello > sub/message.txt
-stepup boot -j 1 -w & # > current_stdout.txt &
+sb -j 1 -w & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

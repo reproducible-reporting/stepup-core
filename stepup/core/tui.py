@@ -48,11 +48,11 @@ def merge_resources(base: str | None, override: str | None) -> str:
     return ",".join(f"{k}:{v}" for k, v in merged.items())
 
 
-def boot_tool(args: argparse.Namespace, default_resources: str):
-    asyncio.run(async_boot(args, default_resources))
+def build_tool(args: argparse.Namespace, default_resources: str):
+    asyncio.run(async_build(args, default_resources))
 
 
-async def async_boot(args: argparse.Namespace, default_resources: str):
+async def async_build(args: argparse.Namespace, default_resources: str):
     if WATCHER_AVAILABLE and args.watch_first:
         args.watch = True
     if args.root.absolute() != Path.cwd():
@@ -252,20 +252,35 @@ async def keyboard(
                 await reporter("KEYBOARD", f"Unsupported key {ch}", pages)
 
 
-def boot_subcommand(subparsers, loader: ConfigLoader) -> callable:
-    """Define command-line arguments for the boot tool.
+def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: str) -> str:
+    """Register the build subparser under *name* and return its default resources.
+
+    The argument definitions are identical for every subcommand name; only the
+    subparser name and its help text differ. Configuration always comes from the
+    `"build"` section, regardless of *name*, so `stepup build` and its aliases
+    share a single source of truth for configuration.
 
     Parameters
     ----------
     subparsers
-        The sub parser to add the boot tool to.
+        The sub parser to add the build tool to.
     loader
         The configuration loader to override the default configuration with
         config file values.
+    name
+        The subcommand name to register (e.g. `"build"` or `"boot"`).
+    help_text
+        The help text shown for this subcommand.
+
+    Returns
+    -------
+    default_resources
+        The default value of the `--resources` argument, used to seed
+        `merge_resources` in the build tool.
     """
     parser = subparsers.add_parser(
-        "boot",
-        help="Boot the StepUp terminal user interface and director process.",
+        name,
+        help=help_text,
     )
     parser.add_argument(
         "--clean",
@@ -344,7 +359,7 @@ def boot_subcommand(subparsers, loader: ConfigLoader) -> callable:
         type=str,
         default=None,
         help="Available resources for steps, e.g. 'cpu:4,gpu:1,memgb:16'. "
-        "Merged with (not overriding) config files and STEPUP_BOOT_RESOURCES env var.",
+        "Merged with (not overriding) config files and STEPUP_BUILD_RESOURCES env var.",
     )
     if WATCHER_AVAILABLE:
         parser.add_argument(
@@ -372,5 +387,45 @@ def boot_subcommand(subparsers, loader: ConfigLoader) -> callable:
         "This produces a .stepup/director.prof file that can be analyzed with "
         "tools like SnakeViz.",
     )
-    loader.patch_parser(parser, "boot", {"resources": merge_resources})
-    return partial(boot_tool, default_resources=resources_action.default)
+    loader.patch_parser(parser, "build", {"resources": merge_resources})
+    return resources_action.default
+
+
+def build_subcommand(subparsers, loader: ConfigLoader) -> callable:
+    """Define command-line arguments for the build tool.
+
+    Parameters
+    ----------
+    subparsers
+        The sub parser to add the build tool to.
+    loader
+        The configuration loader to override the default configuration with
+        config file values.
+    """
+    default_resources = _add_build_parser(subparsers, loader, "build", "Build the StepUp workflow.")
+    return partial(build_tool, default_resources=default_resources)
+
+
+def boot_subcommand(subparsers, loader: ConfigLoader) -> callable:
+    """Define command-line arguments for the deprecated `boot` alias of `build`.
+
+    Parameters
+    ----------
+    subparsers
+        The sub parser to add the boot tool to.
+    loader
+        The configuration loader to override the default configuration with
+        config file values.
+    """
+    default_resources = _add_build_parser(
+        subparsers, loader, "boot", "Deprecated alias of 'stepup build'."
+    )
+    return partial(_deprecated_boot_tool, default_resources=default_resources)
+
+
+def _deprecated_boot_tool(args: argparse.Namespace, default_resources: str):
+    print(
+        "Warning: 'stepup boot' is deprecated; use 'stepup build' instead.",
+        file=sys.stderr,
+    )
+    build_tool(args, default_resources=default_resources)

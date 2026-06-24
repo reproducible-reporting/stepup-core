@@ -2,7 +2,7 @@
 source ../example.rc
 
 # Run the example a first time, leaving the filter to its default value.
-stepup boot -j 1 -w & # > current_stdout1.txt &
+sb -j 1 -w & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -20,7 +20,7 @@ grep bar paths.txt
 
 # Run the example a second time, setting the filter to an empty string, which will allow venv.
 export STEPUP_PATH_FILTER=""
-stepup boot -j 1 -w & # > current_stdout2.txt &
+sb -j 1 -w & # > current_stdout2.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

@@ -4,7 +4,7 @@ source ../example.rc
 # Run the example
 export SOURCE_DATE_EPOCH="315532800"
 export PUBLIC="public/"
-stepup boot -w -j 1 & # > current_stdout.txt &
+sb -w -j 1 & # > current_stdout.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

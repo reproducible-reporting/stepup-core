@@ -2,7 +2,7 @@
 source ../example.rc
 
 # Run the example with factor=2.
-stepup boot -j 1 -w & # > current_stdout1.txt &
+sb -j 1 -w & # > current_stdout1.txt &
 stepup wait
 stepup graph current_graph1
 

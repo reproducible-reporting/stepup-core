@@ -2,7 +2,7 @@
 source ../example.rc
 
 # Run the example. The plan step is expected to fail.
-stepup boot -j 1 -w & # > current_stdout.txt &
+sb -j 1 -w & # > current_stdout.txt &
 PID=$!
 
 # Get the graph after completion of the pending steps.

@@ -3,7 +3,7 @@ source ../example.rc
 
 # Run the example
 echo "hello" > input.txt
-stepup boot -j 1 -w & # > current_stdout1.txt &
+sb -j 1 -w & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -45,7 +45,7 @@ wait
 grep bye output.txt
 
 # Do nothig and run again
-stepup boot -j 1 -w & # > current_stdout2.txt &
+sb -j 1 -w & # > current_stdout2.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

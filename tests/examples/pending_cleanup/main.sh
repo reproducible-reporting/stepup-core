@@ -4,7 +4,7 @@ source ../example.rc
 # Run the example
 echo "created elsewhere" > hello.txt
 echo "created elsewhere, but will be overwritten and deleted" > bye.txt
-stepup boot -j 1 -w & # > current_stdout1.txt &
+sb -j 1 -w & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -31,7 +31,7 @@ stepup clean --all --commit > current_cleanup.txt
 grep elsewhere hello.txt
 
 # Restart without changes
-stepup boot -j 1 -w > current_stdout2.txt &
+sb -j 1 -w > current_stdout2.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

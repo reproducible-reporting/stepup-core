@@ -5,6 +5,9 @@ These changes reflect optimizations of StepUp's internals or
 get rid of poor historical API design choices.
 
 What used to be called the *run phase* is now called the *build phase* in documentation and source code.
+For consistency, the `stepup build` command is now the main entry point for running the build phase,
+while `stepup boot` is deprecated and will be removed in a future release.
+You can use the new `sb` entrypoint as a shortcut for `stepup build`.
 
 ## The new `run()` function replaces the old `runsh()` and `runpy()` functions
 
@@ -170,7 +173,7 @@ The advantages of the new `plan()` function are:
   When defining steps, you can then specify the required resources, e.g., `resources="gpu:1,cpu:4"`,
   and StepUp will ensure that the available resources are not over-committed.
   You can override the available resources with the
-  `--resources` command-line argument to `stepup boot` if needed.
+  `--resources` command-line argument to `stepup build` if needed.
 
     Note that the resource names are user-specified strings and StepUp does not implement
     pre-defined resource types, such as `gpu` or `cpu`.
@@ -184,24 +187,24 @@ The advantages of the new `plan()` function are:
 
 ## Changed Command-Line Arguments
 
-The `stepup boot` command was changed to have `-j` and `--jobs` options
+The `stepup build` command was changed to have `-j` and `--jobs` options
 instead of `-n` and `--num-workers`.
 
 ## Changed Environment Variable Names
 
-The following environment variables have been renamed to have a `STEPUP_BOOT_` prefix instead of `STEPUP_`:
+The following environment variables have been renamed to have a `STEPUP_BUILD_` prefix instead of `STEPUP_`:
 
 | Old (StepUp 3) | New (StepUp 4) |
 | --- | --- |
-| `STEPUP_CLEAN` | `STEPUP_BOOT_CLEAN` |
-| `STEPUP_EXPLAIN_RERUN` | `STEPUP_BOOT_EXPLAIN_RERUN` |
-| `STEPUP_NUM_WORKERS` | `STEPUP_BOOT_JOBS` |
-| `STEPUP_PERF` | `STEPUP_BOOT_PERF` |
-| `STEPUP_PROGRESS` | `STEPUP_BOOT_PROGRESS` |
-| `STEPUP_SHOW_PERF` | `STEPUP_BOOT_SHOW_PERF` |
-| `STEPUP_WATCH` | `STEPUP_BOOT_WATCH` |
-| `STEPUP_WATCH_FIRST` | `STEPUP_BOOT_WATCH_FIRST` |
-| `STEPUP_YAPPI` | `STEPUP_BOOT_YAPPI` |
+| `STEPUP_CLEAN` | `STEPUP_BUILD_CLEAN` |
+| `STEPUP_EXPLAIN_RERUN` | `STEPUP_BUILD_EXPLAIN_RERUN` |
+| `STEPUP_NUM_WORKERS` | `STEPUP_BUILD_JOBS` |
+| `STEPUP_PERF` | `STEPUP_BUILD_PERF` |
+| `STEPUP_PROGRESS` | `STEPUP_BUILD_PROGRESS` |
+| `STEPUP_SHOW_PERF` | `STEPUP_BUILD_SHOW_PERF` |
+| `STEPUP_WATCH` | `STEPUP_BUILD_WATCH` |
+| `STEPUP_WATCH_FIRST` | `STEPUP_BUILD_WATCH_FIRST` |
+| `STEPUP_YAPPI` | `STEPUP_BUILD_YAPPI` |
 
 ## Deprecated Features
 

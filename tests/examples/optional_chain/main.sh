@@ -3,7 +3,7 @@ source ../example.rc
 
 # Run the example without mandatory steps.
 cp plan1.py plan.py
-stepup boot -j 1 -w -e & # > current_stdout1.txt &
+sb -j 1 -w -e & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -24,7 +24,7 @@ wait
 # Restart the example with a mandatory step.
 cp plan2.py plan.py
 rm .stepup/director.log
-stepup boot -j 1 -w -e & # > current_stdout2.txt &
+sb -j 1 -w -e & # > current_stdout2.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait
@@ -46,7 +46,7 @@ wait
 # Restart the example again without mandatory steps.
 cp plan1.py plan.py
 rm .stepup/director.log
-stepup boot -j 1 -w -e & # > current_stdout1.txt &
+sb -j 1 -w -e & # > current_stdout1.txt &
 
 # Get the graph after completion of the pending steps.
 stepup wait

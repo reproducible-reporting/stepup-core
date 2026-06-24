@@ -2,7 +2,7 @@
 source ../example.rc
 
 # Run the plan.
-stepup boot -j 1 -w & # > current_stdout.txt &
+sb -j 1 -w & # > current_stdout.txt &
 
 # Run StepUp for a first time.
 stepup wait

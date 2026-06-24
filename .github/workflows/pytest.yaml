@@ -32,7 +32,7 @@ jobs:
       # Enforce strict checks instead of trying to repair fixable issues.
       STEPUP_DEBUG: 1
       # Duration measurements are disabled to make tests deterministic.
-      STEPUP_BOOT_DURATION: 0
+      STEPUP_BUILD_DURATION: 0
       # RPC timeout is set shorter to speed up tests in case of failures.
       STEPUP_SYNC_RPC_TIMEOUT: 10
     strategy:
@@ -61,6 +61,6 @@ jobs:
       - name: Run fast unit tests
         run: pytest -vv -k "not test_example"
       - name: Run integration tests with forked subprocesses
-        run: STEPUP_BOOT_FORK_RUNPY=1 pytest -vv tests/test_examples.py
+        run: STEPUP_BUILD_FORK_RUNPY=1 pytest -vv tests/test_examples.py
       - name: Run integration tests with plain subprocesses
-        run: STEPUP_BOOT_FORK_RUNPY=0 pytest -vv tests/test_examples.py
+        run: STEPUP_BUILD_FORK_RUNPY=0 pytest -vv tests/test_examples.py
