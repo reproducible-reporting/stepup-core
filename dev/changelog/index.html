@@ -5569,6 +5569,13 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   (<code>filter_dependencies</code>, <code>get_local_import_paths</code>).
   See <a href="../reference/stepup.core.extapi/">stepup.core.extapi</a> for the full reference
   and <a href="../extending/api/">Custom API Functions</a> for usage guidance.</li>
+<li>Extension wrapper steps can now record the exact subprocess invocations they make,
+  using <code>run_subprocess</code> and <code>record_subprocess</code> in <code>stepup.core.extapi</code>.
+  The command line, working directory, environment overlay and return code are stored in a
+  new <code>step_subprocess</code> table for a future archival export.
+  Recorded invocations are shown in a <code>Subprocesses</code> section of the terminal output when a
+  step completes (and in <code>stepup browse</code>), formatted as shell-pasteable command lines.
+  See <a href="../extending/api/">Custom API Functions</a> for usage guidance.</li>
 <li>In addition to environment variables and command-line arguments,
   StepUp can now also be configured through configuration files.
   See <a href="../reference/configuration/">Configuration files</a> for details.</li>
