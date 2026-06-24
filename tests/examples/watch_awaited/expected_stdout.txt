@@ -8,7 +8,6 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               cp -p inp.txt out.txt
-Working directory     ./
 Inputs       AWAITED  (inp.txt)
 Outputs      AWAITED  out.txt
 ────────────────────────────────────────────────────────────────────────────────
@@ -22,7 +21,6 @@ Outputs      AWAITED  out.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               cp -p inp.txt out.txt
-Working directory     ./
 Inputs       AWAITED  (inp.txt)
 Outputs      AWAITED  out.txt
 ────────────────────────────────────────────────────────────────────────────────

@@ -16,24 +16,20 @@ inp1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                creator is not RUNNING or SUCCEEDED
 Command               echo first > inp1.txt
-Working directory     ./
 Outputs      AWAITED  inp1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                creator is not RUNNING or SUCCEEDED
 Command               echo second > inp2.txt
-Working directory     ./
 Outputs      AWAITED  inp2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               ./work1.py
-Working directory     ./
 Inputs        STATIC  work1.py
              AWAITED  inp2.txt [amended]
 Outputs      AWAITED  out2.txt [amended]
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               ./work2.py
-Working directory     ./
 Inputs        STATIC  work2.py
              AWAITED  inp1.txt [amended]
 Outputs      AWAITED  out1.txt [amended]

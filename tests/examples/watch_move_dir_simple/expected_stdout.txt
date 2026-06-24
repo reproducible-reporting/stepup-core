@@ -15,7 +15,6 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               cat data/sub/inp.txt > data/sub/out.txt
-Working directory     ./
 Inputs       MISSING  data/sub/inp.txt
 Outputs      AWAITED  data/sub/out.txt
 ────────────────────────────────────────────────────────────────────────────────

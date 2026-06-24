@@ -14,14 +14,14 @@ step:./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:sub/plan.py
-             creates   step:./plan.py  # wd=sub/
+             creates   step:./plan.py  # wd=sub
 
 file:sub/plan.py
                state = STATIC
           created by   step:./plan.py
-            supplies   step:./plan.py  # wd=sub/
+            supplies   step:./plan.py  # wd=sub
 
-step:./plan.py  # wd=sub/
+step:./plan.py  # wd=sub
                state = SUCCEEDED
                 need = PLAN
              env_var = STEPUP_PATH_FILTER [amended]
@@ -32,63 +32,63 @@ step:./plan.py  # wd=sub/
              creates   file:sub/inp1.txt
              creates   file:sub/inp2.txt
              creates   file:sub/inp3.txt
-             creates   step:cp -p inp1.txt out1.txt  # wd=sub/
-             creates   step:cp -p inp2.txt out2.txt  # wd=sub/
-             creates   step:cp -p inp3.txt out3.txt  # wd=sub/
+             creates   step:cp -p inp1.txt out1.txt  # wd=sub
+             creates   step:cp -p inp2.txt out2.txt  # wd=sub
+             creates   step:cp -p inp3.txt out3.txt  # wd=sub
 
 file:sub/inp1.txt
                state = STATIC
-          created by   step:./plan.py  # wd=sub/
-            supplies   step:cp -p inp1.txt out1.txt  # wd=sub/
+          created by   step:./plan.py  # wd=sub
+            supplies   step:cp -p inp1.txt out1.txt  # wd=sub
 
 file:sub/inp2.txt
                state = STATIC
-          created by   step:./plan.py  # wd=sub/
-            supplies   step:cp -p inp2.txt out2.txt  # wd=sub/
+          created by   step:./plan.py  # wd=sub
+            supplies   step:cp -p inp2.txt out2.txt  # wd=sub
 
-step:cp -p inp1.txt out1.txt  # wd=sub/
+step:cp -p inp1.txt out1.txt  # wd=sub
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py  # wd=sub/
+          created by   step:./plan.py  # wd=sub
             consumes   file:sub/inp1.txt
              creates   file:sub/out1.txt
             supplies   file:sub/out1.txt
 
 file:sub/out1.txt
                state = BUILT
-          created by   step:cp -p inp1.txt out1.txt  # wd=sub/
-            consumes   step:cp -p inp1.txt out1.txt  # wd=sub/
+          created by   step:cp -p inp1.txt out1.txt  # wd=sub
+            consumes   step:cp -p inp1.txt out1.txt  # wd=sub
 
-step:cp -p inp2.txt out2.txt  # wd=sub/
+step:cp -p inp2.txt out2.txt  # wd=sub
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py  # wd=sub/
+          created by   step:./plan.py  # wd=sub
             consumes   file:sub/inp2.txt
              creates   file:sub/out2.txt
             supplies   file:sub/out2.txt
 
 file:sub/out2.txt
                state = BUILT
-          created by   step:cp -p inp2.txt out2.txt  # wd=sub/
-            consumes   step:cp -p inp2.txt out2.txt  # wd=sub/
+          created by   step:cp -p inp2.txt out2.txt  # wd=sub
+            consumes   step:cp -p inp2.txt out2.txt  # wd=sub
 
 file:sub/inp3.txt
                state = STATIC
-          created by   step:./plan.py  # wd=sub/
-            supplies   step:cp -p inp3.txt out3.txt  # wd=sub/
+          created by   step:./plan.py  # wd=sub
+            supplies   step:cp -p inp3.txt out3.txt  # wd=sub
 
-step:cp -p inp3.txt out3.txt  # wd=sub/
+step:cp -p inp3.txt out3.txt  # wd=sub
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py  # wd=sub/
+          created by   step:./plan.py  # wd=sub
             consumes   file:sub/inp3.txt
              creates   file:sub/out3.txt
             supplies   file:sub/out3.txt
 
 file:sub/out3.txt
                state = BUILT
-          created by   step:cp -p inp3.txt out3.txt  # wd=sub/
-            consumes   step:cp -p inp3.txt out3.txt  # wd=sub/
+          created by   step:cp -p inp3.txt out3.txt  # wd=sub
+            consumes   step:cp -p inp3.txt out3.txt  # wd=sub

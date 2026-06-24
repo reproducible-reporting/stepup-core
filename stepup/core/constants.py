@@ -29,7 +29,6 @@ or joined against an absolute root with the `/` operator.
 from path import Path
 
 __all__ = (
-    "CURDIR",
     "DIRECTOR_LOG",
     "DIRECTOR_PROF",
     "FAIL_LOG",
@@ -39,9 +38,6 @@ __all__ = (
     "SUCCESS_LOG",
     "WARNING_LOG",
 )
-
-# The current working directory, keeping the "./" prefix (distinct from Path(".")).
-CURDIR = Path("./")
 
 # The internal directory in which StepUp stores its state and logs.
 STEPUP_DIR = Path(".stepup")

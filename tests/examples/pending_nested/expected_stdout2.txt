@@ -14,21 +14,18 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               ./work1.py
-Working directory     ./
 Inputs        STATIC  work1.py
              MISSING  (inp1.txt)
 Outputs     OUTDATED  out1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                creator is not RUNNING or SUCCEEDED
 Command               ./work2.py
-Working directory     ./
 Inputs        STATIC  work2.py
               STATIC  inp2.txt
 Outputs     OUTDATED  out2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                creator is not RUNNING or SUCCEEDED
 Command               ./work3.py
-Working directory     ./
 Inputs        STATIC  work3.py
               STATIC  inp3.txt
 Outputs     OUTDATED  out3.txt

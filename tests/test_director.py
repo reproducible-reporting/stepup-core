@@ -63,9 +63,9 @@ async def test_record_subprocess_rpc(wfp: Workflow):
         stop_event=None,
     )
     step = wfp.find(Step, "./plan.py")
-    await handler.record_subprocess(step.i, "typst compile a.typ", "./sub/", {"X": "1"}, 0, False)
-    await handler.record_subprocess(step.i, "echo hi", "./", None, 3, True)
+    await handler.record_subprocess(step.i, "typst compile a.typ", "sub", {"X": "1"}, 0, False)
+    await handler.record_subprocess(step.i, "echo hi", ".", None, 3, True)
     assert list(step.iter_subprocesses()) == [
-        (0, "typst compile a.typ", "./sub/", {"X": "1"}, 0, False),
-        (1, "echo hi", "./", None, 3, True),
+        (0, "typst compile a.typ", "sub", {"X": "1"}, 0, False),
+        (1, "echo hi", ".", None, 3, True),
     ]

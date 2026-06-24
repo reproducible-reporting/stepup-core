@@ -3,7 +3,7 @@ from stepup.core.api import amend, getinfo
 
 info = getinfo()
 assert info.command == "./getinfo.py"
-assert info.workdir == "sub/"
+assert info.workdir == "sub"
 assert set(info.inp) == {"getinfo.py", "../README.txt", "inp0.txt"}
 assert info.env == ["BAR", "FOO"]
 assert info.out == ["../out0.txt", "out1.txt"]
@@ -28,7 +28,7 @@ with open("../vol2.txt", "w") as f:
 # Info should not be affected by amendments.
 info = getinfo()
 assert info.command == "./getinfo.py"
-assert info.workdir == "sub/"
+assert info.workdir == "sub"
 assert set(info.inp) == {"getinfo.py", "../README.txt", "inp0.txt"}
 assert info.env == ["BAR", "FOO"]
 assert info.out == ["../out0.txt", "out1.txt"]

@@ -185,7 +185,7 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
             {},
             ["copy.txt"],
             [],
-            "./",
+            ".",
             Need.DEFAULT.value,
             {},
             True,

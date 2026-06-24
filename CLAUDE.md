@@ -116,7 +116,7 @@ Some conventions specific to this codebase:
     Returns
     -------
     parent
-        The parent directory path with a trailing slash.
+        The parent directory path.
 
     # wrong — the type is already in the signature
     Returns
@@ -209,6 +209,24 @@ Lightweight pickle-based RPC over asyncio streams or Unix sockets.
 Methods decorated with `@allow_rpc` are exposed remotely.
 Both sync (`SocketSyncRPCClient`) and async (`AsyncRPCClient`) clients exist.
 The director runs a socket RPC server; step child processes and the TUI are the clients.
+
+### File path considerations
+
+StepUp uses the `path` module instead of the built-in `pathlib` to handle file paths.
+In some cases, path affixes must be preserved (leading `./` or trailing `/`),
+which `pathlib` normalizes away. The `path` module preserves these affixes.
+
+The affixes are currently used in the places in StepUp:
+
+- The `dst` argument of the `copy()` function in `stepup.core.api`, with
+  a reusable mechanism for output path construction in `make_path_out()` in `stepup.core.utils`.
+- A local executable must contain at least one slash, e.g., `./script.sh` or `bin/script.sh`.
+- The `getenv()` function in `stepup.core.utils` preserves path affixes
+  when reading environment variables must be treated as paths.
+- A static tree path in the database is always stored with a trailing slash.
+
+The `get_affixes()` and `apply_affixes()` functions in `stepup.core.utils` are used to
+extract and re-apply the affixes when needed.
 
 ### User-Facing API (`api.py`)
 

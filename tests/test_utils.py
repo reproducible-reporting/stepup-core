@@ -23,12 +23,9 @@ import pytest
 from path import Path
 
 from stepup.core.utils import (
+    apply_affixes,
+    get_affixes,
     make_path_out,
-    myabsolute,
-    mynormpath,
-    myparent,
-    myrealpath,
-    myrelpath,
     parse_resources,
     translate,
     translate_back,
@@ -36,80 +33,66 @@ from stepup.core.utils import (
 
 
 @pytest.mark.parametrize(
-    ("inp", "out"),
+    ("path", "expected"),
     [
-        ("./foo", "foo"),
-        ("./dir/", "dir/"),
-        (".", "."),
-        ("./", "./"),
-        ("/foo/", "/foo/"),
-        ("/foo", "/foo"),
-        ("/foo/../bar", "/bar"),
-        ("/foo/./bar", "/foo/bar"),
-        ("./foo/./bar/", "foo/bar/"),
-        ("/", "/"),
+        ("foo", ("", "")),
+        ("sub/foo", ("", "")),
+        ("./foo", ("./", "")),
+        ("foo/", ("", "/")),
+        ("./foo/", ("./", "/")),
+        ("./sub/foo/", ("./", "/")),
+        ("/foo", ("", "")),
+        ("/foo/", ("", "/")),
+        (".", ("", "")),
+        ("..", ("", "")),
+        ("./", ("", "/")),
     ],
 )
-def test_mynormpath(inp: str, out: str):
-    assert mynormpath(inp) == out
+def test_get_affixes(path, expected):
+    assert get_affixes(path) == expected
 
 
 @pytest.mark.parametrize(
-    ("inp", "start", "out"),
+    ("path", "leading", "trailing", "expected"),
     [
-        ("/foo/bar/", "/foo", "bar/"),
-        ("/foo/bar", "/foo", "bar"),
-        ("/foo/sub/../extra/some", "/foo/bar", "../extra/some"),
-        ("/foo/sub/../extra/some/", "/foo/bar", "../extra/some/"),
+        ("foo", "", "", "foo"),
+        ("sub/foo", "", "", "sub/foo"),
+        ("foo", "./", "", "./foo"),
+        ("foo", "", "/", "foo/"),
+        ("foo", "./", "/", "./foo/"),
+        ("sub/foo", "./", "/", "./sub/foo/"),
     ],
 )
-def test_myrelpath(inp: str, start: str, out: str):
-    assert myrelpath(inp, start) == out
+def test_apply_affixes(path, leading, trailing, expected):
+    assert apply_affixes(path, leading, trailing) == expected
 
 
 @pytest.mark.parametrize(
-    "inp",
+    ("path", "leading", "trailing"),
     [
-        "/foo/bar/",
-        "/foo/bar",
-        "/foo/sub/../extra/some",
-        "/foo/sub/../extra/some/",
-        "/",
+        ("foo", "../", ""),  # leading must be "" or "./"
+        ("foo", ".", ""),  # leading must be "" or "./"
+        ("foo", "", "//"),  # trailing must be "" or "/"
+        ("foo", "", "."),  # trailing must be "" or "/"
+        ("./foo", "./", ""),  # path already has a leading "./"
+        ("/foo", "./", ""),  # path already has a leading "/"
+        ("foo/", "", "/"),  # path already has a trailing "/"
     ],
 )
-def test_myabsolute(inp: str):
-    assert myabsolute(inp, is_dir=True).endswith("/")
-    if inp.endswith("/"):
-        assert myabsolute(inp).endswith("/")
-    assert myabsolute(inp).normpath() == Path(inp).absolute()
-
-
-def test_myrealpath(tmp_path: Path):
-    (tmp_path / "dir").mkdir()
-    (tmp_path / "dir/file.txt").write_text("hello")
-    (tmp_path / "link").symlink_to(tmp_path / "dir/file.txt")
-    (tmp_path / "dir/linkdir").symlink_to(tmp_path / "dir")
-    assert myrealpath(str(tmp_path / "link")) == str(tmp_path / "dir/file.txt")
-    assert myrealpath(str(tmp_path / "dir/linkdir/file.txt")) == str(tmp_path / "dir/file.txt")
-    assert myrealpath(str(tmp_path / "dir/linkdir/")) == str(tmp_path / "dir/")
+def test_apply_affixes_invalid(path, leading, trailing):
+    with pytest.raises(ValueError):
+        apply_affixes(path, leading, trailing)
 
 
 @pytest.mark.parametrize(
-    ("inp", "out"),
-    [
-        ("foo/bar", "foo/"),
-        ("foo/bar/", "foo/"),
-        ("foo/bar/egg.txt", "foo/bar/"),
-        ("foo/", "./"),
-        ("foo", "./"),
-        (".", None),
-        ("./", None),
-        ("/", None),
-        ("/usr", "/"),
-    ],
+    "path",
+    ["foo", "sub/foo", "./foo", "foo/", "./foo/", "./sub/foo/", "/foo", "/foo/", "./"],
 )
-def test_myparent(inp, out):
-    assert myparent(inp) == out
+def test_affixes_round_trip(path):
+    # Extracting the affixes and re-applying them to the stripped path restores the original.
+    leading, trailing = get_affixes(path)
+    stripped = path[len(leading) : len(path) - len(trailing)]
+    assert apply_affixes(stripped, leading, trailing) == path
 
 
 def test_make_path_out():

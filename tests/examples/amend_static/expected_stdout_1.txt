@@ -15,7 +15,6 @@ First input
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               ./work.py
-Working directory     ./
 Inputs        STATIC  inp1.txt [amended]
               STATIC  work.py
              AWAITED  (inp2.txt) [amended]

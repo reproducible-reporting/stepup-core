@@ -1,8 +1,12 @@
 # Migration from StepUp 3.X to 4.0
 
-A few things have changed in StepUp 4 that might require changes to your `plan.py` file.
-These changes reflect optimizations of StepUp's internals or
-get rid of poor historical API design choices.
+StepUp 4 comes with many new features and improvements,
+some of which required backward incompatible changes.
+As a result, you may need to make some changes to your `plan.py` file
+when upgrading from StepUp 3 to 4.
+Also the database format (used in `.stepup/graph.db`) has changed.
+If you have an existing StepUp 3 database, it will be ignored
+and your entire workflow will be re-executed to recreate the database in the new format.
 
 What used to be called the *run phase* is now called the *build phase* in documentation and source code.
 For consistency, the `stepup build` command is now the main entry point for running the build phase,
@@ -105,10 +109,10 @@ In short: use `run()` with the default `shell=False` unless you specifically nee
 
 ## Directory Handling
 
-In StepUp 3, directories were stored in the database and had to be created explicitly using `mkdir()`
-or made static with `static()` or `glob()`.
+In StepUp 3, directories were stored in the database
+and had to be created explicitly using `mkdir()` or made static with `static()` or `glob()`.
 In StepUp 4, directories are no longer stored in the database (except for static trees, see below).
-Instead, they are created when needed.
+Instead, they are created automatically when needed.
 This has a few practical consequences for your `plan.py` file:
 
 - `mkdir()` is no longer needed and has been removed.
@@ -127,6 +131,17 @@ This has a few practical consequences for your `plan.py` file:
   but is now abandoned due to subtle and difficult to solve bugs.)
 
 - Directories can no longer be used as inputs or outputs of steps.
+
+StepUp 3 insisted strongly on trailing slashes for directory paths,
+which has been abandoned almost entirely in StepUp 4.
+End users only need to specify such "path affixes" in two places to avoid ambiguity:
+
+- If the `dst` argument of `copy()` is a directory, it must end with a trailing slash.
+  (StepUp cannot check the file system to test if it is a directory
+  because the directory may not exist yet.)
+- When specifying a local executable, it must either start with a `./` prefix
+  or be a relative path containing a path separator (`/`)
+  This is needed to avoid ambiguity with executables found in the PATH.
 
 ## Distributed Plans
 

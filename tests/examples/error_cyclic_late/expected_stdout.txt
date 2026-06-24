@@ -14,7 +14,6 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                creator is not RUNNING or SUCCEEDED
 Command               cat first > second
-Working directory     ./
 Inputs       AWAITED  (first)
 Outputs      AWAITED  second
 ────────────────────────────────────────────────────────────────────────────────

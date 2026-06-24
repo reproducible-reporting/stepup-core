@@ -2,8 +2,8 @@
         0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub/
-        2/2 |    SUCCESS │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub/
+        1/2 |      START │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub
+        2/2 |    SUCCESS │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub
 ─────────────────────────────── Standard output ────────────────────────────────
 Hello from work.py!
 ────────────────────────────────────────────────────────────────────────────────

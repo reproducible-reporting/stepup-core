@@ -9,12 +9,10 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               cat src1.txt
-Working directory     ./
 Inputs       AWAITED  (src1.txt)
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               cat src2.txt
-Working directory     ./
 Inputs       AWAITED  (src2.txt)
 ────────────────────────────────────────────────────────────────────────────────
         1/3 |    WARNING │ Skipping file cleanup due to incomplete build

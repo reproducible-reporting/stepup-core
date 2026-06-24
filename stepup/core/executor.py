@@ -286,7 +286,7 @@ def _detect_python_entrypoint(cmd: str) -> str | None:
     if sys.prefix != sys.base_prefix:
         env_bins.add((Path(sys.base_prefix) / "bin").realpath())
         env_bins.add((Path(sys.base_exec_prefix) / "bin").realpath())
-    path_ok = any(resolved.startswith(d + "/") or resolved == d for d in env_bins)
+    path_ok = any(resolved.startswith(d / "") or resolved == d for d in env_bins)
     if not path_ok and not _executable_uses_same_python(which_path):
         print(
             f"WARNING: Command '{cmd}' is a Python entry point but its executable"
@@ -580,9 +580,7 @@ class RunningStep:
     @property
     def description(self):
         """The command, optionally annotated with the working directory."""
-        return (
-            self.command if self.workdir == Path("./") else f"{self.command}  # wd={self.workdir}"
-        )
+        return self.command if self.workdir == "." else f"{self.command}  # wd={self.workdir}"
 
     def merge_hash_result(self, result: "HashResult") -> None:
         """Apply the fields of a `HashResult` onto this running step.
@@ -909,7 +907,7 @@ class StepExecutor:
         env["STEPUP_STEP_INP_DIGEST"] = rs.inp_digest.hex()
         env["STEPUP_STEP_NEED"] = rs.need.name
         env["ROOT"] = str(Path.cwd().relpath(rs.workdir))
-        env["HERE"] = str(rs.workdir.relpath())
+        env["HERE"] = str(Path(rs.workdir).relpath())
         # Note: the variables defined here should be listed in stepup.core.api.getenv
 
         if self.show_perf:

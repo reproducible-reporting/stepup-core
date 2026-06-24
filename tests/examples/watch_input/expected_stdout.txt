@@ -14,7 +14,6 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               cp input.txt output.txt
-Working directory     ./
 Inputs       MISSING  input.txt
 Outputs     OUTDATED  output.txt
 ────────────────────────────────────────────────────────────────────────────────

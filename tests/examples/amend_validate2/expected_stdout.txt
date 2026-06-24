@@ -21,7 +21,6 @@ pong.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               ./work.py
-Working directory     ./
 Inputs        STATIC  work.py
                BUILT  ping.txt [amended]
              AWAITED  (pong.txt) [amended]

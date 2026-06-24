@@ -176,10 +176,7 @@ async def scan_nglob_changes(
     for ngm in nglob_multis:
         for ngs in ngm.nglob_singles:
             for path in glob.iglob(ngs.glob_pattern, recursive=True, include_hidden=True):
-                path = Path(path)
-                if path.is_dir() and not path.endswith(os.sep):
-                    path = path / ""
-                if ngs.regex.fullmatch(path) and path not in paths:
+                if path not in paths and ngs.regex.fullmatch(path):
                     paths.add(path)
 
     # Select the new ones, i.e. not present in the workflow (detached or missing)

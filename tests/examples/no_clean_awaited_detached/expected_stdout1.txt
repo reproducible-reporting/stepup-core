@@ -8,7 +8,6 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               echo Hello > test1.txt
-Working directory     ./
 Inputs       AWAITED  (bogus.txt)
 Outputs      AWAITED  test1.txt
              AWAITED  test2.txt

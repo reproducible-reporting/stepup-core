@@ -14,14 +14,14 @@ step:./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:../../common/script.py
-             creates   step:./script.py  # wd=../../common/
+             creates   step:./script.py  # wd=../../common
 
 file:../../common/script.py
                state = STATIC
           created by   step:./plan.py
-            supplies   step:./script.py  # wd=../../common/
+            supplies   step:./script.py  # wd=../../common
 
-step:./script.py  # wd=../../common/
+step:./script.py  # wd=../../common
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
@@ -32,5 +32,5 @@ step:./script.py  # wd=../../common/
 
 file:../public/foo.txt
                state = BUILT
-          created by   step:./script.py  # wd=../../common/
-            consumes   step:./script.py  # wd=../../common/
+          created by   step:./script.py  # wd=../../common
+            consumes   step:./script.py  # wd=../../common

@@ -15,7 +15,6 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               cp -p sub/message.txt message.txt
-Working directory     ./
 Inputs       MISSING  sub/message.txt
 Outputs      AWAITED  message.txt
 ────────────────────────────────────────────────────────────────────────────────

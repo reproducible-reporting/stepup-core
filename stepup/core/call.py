@@ -35,6 +35,7 @@ import shlex
 import sys
 from typing import Any, get_type_hints
 
+from path import Path
 from rich.console import Console
 
 from .cattrs import json_converter
@@ -166,5 +167,5 @@ def _print_list(script_path: str, ns: dict) -> None:
 
 
 def _short_path(script_path: str) -> str:
-    rel = os.path.relpath(os.path.abspath(script_path))
-    return rel if "/" in rel else f"./{rel}"
+    rel = Path(script_path).relpath()
+    return rel if os.sep in rel else "." / rel

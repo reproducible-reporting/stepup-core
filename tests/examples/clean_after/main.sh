@@ -21,7 +21,7 @@ wait
 # Now clean the outputs in sub/, adding an unknown file to test that it is not removed.
 touch sub/unknown
 mkdir other
-(cd other; STEPUP_ROOT="../" stepup clean ../sub/ --all --commit > ../current_cleanup.txt)
+(cd other; STEPUP_ROOT=".." stepup clean ../sub/ --all --commit > ../current_cleanup.txt)
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1

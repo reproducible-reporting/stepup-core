@@ -16,7 +16,6 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               ./plan.py
-Working directory     ./
 Declares      STATIC  original.txt
 Inputs       MISSING  plan.py
 ────────────────────────────────────────────────────────────────────────────────

@@ -1,9 +1,9 @@
 {
   "command": "./generate.py run",
-  "workdir": "work/",
+  "workdir": "work",
   "inp": [
-    "./generate.py",
-    "config.json"
+    "config.json",
+    "generate.py"
   ],
   "env": [],
   "out": [

@@ -8,7 +8,6 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required resources exceed maximum available
 Command               ./expensive.py
-Working directory     ./
 Inputs        STATIC  expensive.py
                BUILT  input.txt
 Outputs      AWAITED  output.txt
@@ -16,7 +15,6 @@ Resource     blocked  1
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               cp -p output.txt final.txt
-Working directory     ./
 Inputs       AWAITED  output.txt
 Outputs      AWAITED  final.txt
 ────────────────────────────────────────────────────────────────────────────────

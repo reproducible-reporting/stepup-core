@@ -31,23 +31,17 @@ from collections.abc import Collection
 import attrs
 from path import Path
 
-from .constants import CURDIR
-
 __all__ = (
     "CaseSensitiveTemplate",
     "DBLock",
+    "apply_affixes",
     "check_plan",
     "format_command",
     "format_digest",
     "format_subprocess",
+    "get_affixes",
     "make_path_out",
-    "myabsolute",
-    "mynormpath",
-    "myparent",
-    "myrealpath",
-    "myrelpath",
     "parse_resources",
-    "remove_path",
     "string_to_bool",
     "string_to_list",
     "translate",
@@ -63,56 +57,67 @@ logger = logging.getLogger(__name__)
 #
 
 
-def _myfix_trailing(path: str, result: Path, enforce: bool = False) -> Path:
-    if (path.endswith(os.sep) or enforce) and not result.endswith("/"):
-        result = result / ""
-    return result
-
-
-def mynormpath(path: str) -> Path:
-    """Normalize the path but keep the trailing separator"""
-    return _myfix_trailing(path, Path(path).normpath())
-
-
-def myrealpath(path: str) -> Path:
-    """Like Path.realpath path but keep the trailing separator"""
-    return _myfix_trailing(path, Path(path).realpath())
-
-
-def myrelpath(path: str, start: str = ".") -> Path:
-    """Like Path.relpath path but keep the trailing separator"""
-    return _myfix_trailing(path, Path(path).relpath(start))
-
-
-def myabsolute(path: str, is_dir: bool = False) -> Path:
-    """Like Path.absolute path but keep the trailing separator"""
-    return _myfix_trailing(path, Path(path).absolute(), enforce=is_dir)
-
-
-def myparent(path: str) -> Path | None:
-    """Construct the parent directory.
+def get_affixes(path: str) -> tuple[str, str]:
+    """Get the leading `./` and trailing `/` of a path.
 
     Parameters
     ----------
     path
-        The path of which the parent must be constructed.
-        The path is first normalized, so trailing slashes are removed.
+        The path from which the affixes will be extracted.
 
     Returns
     -------
-    parent
-        Parent path with trailing slash, to clarify that it is a directory.
-        None when the given path is "." or "/".
+    leading
+        The leading slash of the path, or `""` if there is none.
+    trailing
+        The trailing slash of the path, or `""` if there is none.
+
+    Notes
+    -----
+    For the special case of the path `"./"`, the leading is `""` and the trailing is `"/"`.
     """
-    path = Path(path).normpath()
-    if path in CURDIR:
-        return None
-    result = path.parent
-    if result == "":
-        result = Path(".")
-    if not result.endswith(os.sep):
-        result = result / ""
-    return result
+    trailing = ""
+    if path.endswith(os.sep):
+        trailing = os.sep
+        path = path[:-1]
+    leading = f".{os.sep}" if path.startswith(f".{os.sep}") else ""
+    return leading, trailing
+
+
+def apply_affixes(path: str, leading: str, trailing: str) -> str:
+    """Apply leading `./` and trailing `/` slashes to a path.
+
+    Parameters
+    ----------
+    path
+        The path to which the affixes will be applied.
+    leading
+        The leading slash to apply or `""`.
+    trailing
+        The trailing slash to apply or `""`.
+
+    Raises
+    ------
+    ValueError
+        If the path already has leading or trailing slashes and the corresponding affix is not None.
+    ValueError
+        If the leading is given and not one of `""` or `"./"`.
+    ValueError
+        If the trailing is given and not `""` or `"/"`.
+    """
+    if leading != "":
+        if leading != f".{os.sep}":
+            raise ValueError(f"Leading affix must be one of '' or './', got '{leading}'")
+        if path.startswith((os.sep, f".{os.sep}")):
+            raise ValueError(f"Path already has a leading slash: {path}")
+        path = leading + path
+    if trailing != "":
+        if trailing != os.sep:
+            raise ValueError(f"Trailing affix must be '' or '/', got '{trailing}'")
+        if path.endswith(os.sep):
+            raise ValueError(f"Path already has a trailing slash: {path}")
+        path = path + trailing
+    return path
 
 
 def make_path_out(
@@ -149,7 +154,7 @@ def make_path_out(
             path_out = path_in.parent / path_out
         else:
             path_out = path_out.basename()
-            if dest not in (".", CURDIR):
+            if dest not in (".", "./"):
                 path_out = Path(dest) / path_out
     else:
         path_out = Path(dest)
@@ -158,27 +163,6 @@ def make_path_out(
     if not (ext is None or path_out.suffix == ext or path_out.suffix in other_exts):
         raise ValueError(f"The output path does not have extension '{ext}': {path_out}.")
     return path_out
-
-
-def remove_path(path: str) -> bool:
-    """Remove a file or directory. Return `True` of the file was removed."""
-    path = Path(path)
-    if path.endswith(os.sep):
-        try:
-            path.rmdir()
-            return True
-        except FileNotFoundError:
-            return False
-        except OSError:
-            return False
-    else:
-        try:
-            path.remove()
-            return True
-        except FileNotFoundError:
-            return False
-        except OSError:
-            return False
 
 
 #
@@ -265,7 +249,7 @@ def format_subprocess(
         parts.extend(f"{key}={shlex.quote(value)}" for key, value in env.items())
     parts.append(cmd)
     line = " ".join(parts)
-    if workdir not in (CURDIR, "", "."):
+    if workdir not in ("", "."):
         inner = f"({line})" if shell else line
         line = f"(cd {shlex.quote(workdir)} && {inner})"
     if returncode is None:
@@ -328,14 +312,14 @@ def translate(path: str, workdir: str = ".") -> Path:
     translated_path
         A path that can be interpreted in the working directory of the StepUp director.
     """
-    path = mynormpath(path)
+    path = Path(path).normpath()
     if not path.isabs():
-        workdir = mynormpath(workdir)
+        workdir = Path(workdir).normpath()
         path = workdir / path
         if not workdir.isabs():
             root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
-            here = Path(os.getenv("HERE", myrelpath(CURDIR, root)))
-            path = myrelpath(mynormpath(root / here / path), root)
+            here = Path(os.getenv("HERE", Path(".").relpath(root)))
+            path = (root / here / path).normpath().relpath(root)
     return path
 
 
@@ -354,15 +338,15 @@ def translate_back(path: str, workdir: str = ".") -> Path:
     back_translated_path
         A path that can be interpreted in the working directory.
     """
-    path = mynormpath(path)
-    workdir = mynormpath(workdir)
+    path = Path(path).normpath()
+    workdir = Path(workdir).normpath()
     if path.isabs():
         if workdir.isabs() and path.startswith(workdir):
-            path = myrelpath(path, workdir)
+            path = Path(path).relpath(workdir)
     else:
         root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
-        here = Path(os.getenv("HERE", myrelpath(CURDIR, root)))
-        path = myrelpath(root / path, root / here / workdir)
+        here = Path(os.getenv("HERE", Path(".").relpath(root)))
+        path = Path(root / path).relpath(root / here / workdir)
     return path
 
 

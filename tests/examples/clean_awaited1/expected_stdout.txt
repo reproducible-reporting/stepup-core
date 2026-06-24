@@ -8,7 +8,6 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               cp -p missing.txt hello.txt
-Working directory     ./
 Inputs       AWAITED  (missing.txt)
 Outputs      AWAITED  hello.txt
 ────────────────────────────────────────────────────────────────────────────────
@@ -22,7 +21,6 @@ Outputs      AWAITED  hello.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               cp -p missing.txt hello.txt
-Working directory     ./
 Inputs       AWAITED  (missing.txt)
 Outputs      AWAITED  hello.txt
 ────────────────────────────────────────────────────────────────────────────────

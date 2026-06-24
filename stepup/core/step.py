@@ -30,7 +30,6 @@ import attrs
 from path import Path
 
 from .cascade import Node
-from .constants import CURDIR
 from .enums import FileState, Need, StepState
 from .file import File, FileHash
 from .hash import StepHash
@@ -235,7 +234,7 @@ UPDATE step SET _check_after = 1 FROM (
 def split_step_label(label: str) -> tuple[str, Path]:
     """Split a step label into command and workdir."""
     parts = label.split("  # wd=", maxsplit=1)
-    return parts[0], Path(parts[1]) if len(parts) == 2 else CURDIR
+    return parts[0], Path(parts[1] if len(parts) == 2 else ".")
 
 
 @attrs.define
@@ -254,14 +253,14 @@ class Step(Node):
         return STEP_SCHEMA
 
     @classmethod
-    def create_label(cls, label: str, workdir: str = CURDIR, **kwargs):
+    def create_label(cls, label: str, workdir: str = ".", **kwargs):
         """Derive the step label from the command and optional working directory."""
         if "  # wd=" in label:
             raise ValueError(
                 "Do not include a workdir comment in the command string. "
                 "Pass the workdir separately."
             )
-        if workdir != CURDIR:
+        if workdir != ".":
             label += f"  # wd={workdir}"
         return label
 

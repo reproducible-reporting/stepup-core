@@ -83,6 +83,7 @@ It has the following use cases:
 
 import copy
 import glob
+import os
 import re
 from collections.abc import Collection, Iterable, Iterator
 from typing import Self
@@ -767,13 +768,13 @@ def convert_nglob_to_regex(
                 ipart > 0
                 and ipart < len(parts) - 1
                 and part.endswith("*")
-                and parts[ipart - 1].endswith("/")
-                and parts[ipart + 1].startswith("/")
+                and parts[ipart - 1].endswith(os.sep)
+                and parts[ipart + 1].startswith(os.sep)
             ):
                 parts[ipart] = f"{part[:-1]}+"
         # - when the pattern ends with '*', it must also match paths with a trailing separator.
         if parts[-1] == r"[^/]*":
-            if len(parts) >= 2 and parts[-2].endswith("/"):
+            if len(parts) >= 2 and parts[-2].endswith(os.sep):
                 parts[-1] = r"[^/]+"
             parts.append("/?")
 

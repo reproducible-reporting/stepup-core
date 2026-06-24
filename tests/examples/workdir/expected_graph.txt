@@ -14,14 +14,14 @@ step:./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:sub/inp.txt
-             creates   step:cp inp.txt out.txt  # wd=sub/
+             creates   step:cp inp.txt out.txt  # wd=sub
 
 file:sub/inp.txt
                state = STATIC
           created by   step:./plan.py
-            supplies   step:cp inp.txt out.txt  # wd=sub/
+            supplies   step:cp inp.txt out.txt  # wd=sub
 
-step:cp inp.txt out.txt  # wd=sub/
+step:cp inp.txt out.txt  # wd=sub
                state = SUCCEEDED
                 need = DEFAULT
           created by   step:./plan.py
@@ -31,5 +31,5 @@ step:cp inp.txt out.txt  # wd=sub/
 
 file:sub/out.txt
                state = BUILT
-          created by   step:cp inp.txt out.txt  # wd=sub/
-            consumes   step:cp inp.txt out.txt  # wd=sub/
+          created by   step:cp inp.txt out.txt  # wd=sub
+            consumes   step:cp inp.txt out.txt  # wd=sub

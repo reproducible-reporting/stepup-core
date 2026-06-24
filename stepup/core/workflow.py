@@ -32,7 +32,6 @@ import attrs
 from path import Path
 
 from .cascade import Cascade, Node, Root
-from .constants import CURDIR
 from .enums import FileState, HashUpdateCause, Need, StepState
 from .exceptions import GraphError
 from .file import File
@@ -353,6 +352,7 @@ class Workflow(Cascade):
             "SELECT i, label FROM node WHERE kind = 'st' AND NOT detached AND "
             "label = substr(?, 1, length(label))"
         )
+        path = Path(path) / ""
         for i, label in self.con.execute(sql, (path,)):
             srs.append(StaticTree(self, i, label))
         if len(srs) > 1:
@@ -714,7 +714,7 @@ class Workflow(Cascade):
         env_vars: Collection[str] = (),
         out_paths: Collection[str] = (),
         vol_paths: Collection[str] = (),
-        workdir: str = CURDIR,
+        workdir: str = ".",
         need: Need = Need.DEFAULT,
         resources: dict[str, int] | None = None,
         safe: bool = False,
@@ -758,10 +758,6 @@ class Workflow(Cascade):
             These must be sent back to the client where the hashes can be checked
             and which then calls `confirm_hashes` with the updated hashes.
         """
-        # Sanity check
-        if not workdir.endswith(os.sep):
-            raise GraphError("The working directory must end with a trailing separator")
-
         # If it is a boot step, check that there was no boot step yet.
         if creator.i == self.root.i and any(self.root.products(Step)):
             raise GraphError("Boot step already defined.")
@@ -1019,8 +1015,7 @@ class Workflow(Cascade):
             raise ValueError(f"Static tree paths cannot be absolute paths: {path}")
         if has_wildcards(path):
             raise ValueError(f"Static tree does not support wildcards: {path}")
-        if not path.endswith(os.sep):
-            path = path + os.sep
+        path = Path(path) / ""
         if self.matching_static_tree(path) is not None:
             raise GraphError(f"Static tree is a subdirectory of an existing static tree: {path}")
         sql = "SELECT 1 FROM node WHERE kind = 'st' AND NOT detached AND label LIKE ? ESCAPE '\\'"

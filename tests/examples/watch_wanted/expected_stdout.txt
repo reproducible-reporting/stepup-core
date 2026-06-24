@@ -9,13 +9,11 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               cp input1.txt output1.txt
-Working directory     ./
 Inputs       AWAITED  (input1.txt)
 Outputs      AWAITED  output1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               cp input2.txt output2.txt
-Working directory     ./
 Inputs       AWAITED  (input2.txt)
 Outputs      AWAITED  output2.txt
 ────────────────────────────────────────────────────────────────────────────────
@@ -33,19 +31,16 @@ Outputs      AWAITED  output2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               ./plan.py
-Working directory     ./
 Declares      STATIC  static.txt
 Inputs       MISSING  plan.py
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                creator is not RUNNING or SUCCEEDED
 Command               cp input1.txt output1.txt
-Working directory     ./
 Inputs       AWAITED  (input1.txt)
 Outputs      AWAITED  output1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                creator is not RUNNING or SUCCEEDED
 Command               cp input2.txt output2.txt
-Working directory     ./
 Inputs       AWAITED  (input2.txt)
 Outputs      AWAITED  output2.txt
 ────────────────────────────────────────────────────────────────────────────────

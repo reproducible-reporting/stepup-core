@@ -1,17 +1,22 @@
         0/0 |    STARTUP │ (Re)initialized boot script
         0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |    WARNING │ 1 step(s) remained pending ...
-─────────────────────────────── Detached inputs ────────────────────────────────
-             AWAITED  subdir
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                required inputs are unavailable
-Command               cat subdir
-Working directory     ./
-Inputs       AWAITED  (subdir)
+        0/1 |       FAIL │ ./plan.py
+──────────────────────────────── Failed command ────────────────────────────────
+./plan.py  # exit=1
+──────────────────────────────── Standard error ────────────────────────────────
+(stripped)
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |    WARNING │ Skipping file cleanup due to incomplete build
-        1/2 |    WARNING │ Check logs: .stepup/warning.log
-        1/2 |      PHASE │ watch
-        1/2 |   DIRECTOR │ See you!
+        0/1 |    WARNING │ 1 step(s) failed.
+        0/1 |    WARNING │ 1 step(s) remained pending ...
+──────────────────────────────── Missing inputs ────────────────────────────────
+             MISSING  subdir
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Reason                creator is not RUNNING or SUCCEEDED
+Command               cat subdir
+Inputs       MISSING  subdir
+────────────────────────────────────────────────────────────────────────────────
+        0/1 |    WARNING │ Skipping file cleanup due to incomplete build
+        0/1 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+        0/1 |      PHASE │ watch
+        0/1 |   DIRECTOR │ See you!

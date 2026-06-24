@@ -12,7 +12,7 @@ info = getinfo()
 # Just checking for the sake of the test:
 print(info)
 assert info.command == "./plan.py"
-assert info.workdir == "sub/"
+assert info.workdir == "sub"
 assert info.inp == ["inp.txt", "plan.py"]
 assert info.env == []
 assert info.out == ["out.txt"]

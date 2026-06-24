@@ -43,7 +43,6 @@ from .asyncio import wait_for_events
 from .builder import Builder
 from .constants import DIRECTOR_LOG, DIRECTOR_PROF, GRAPH_DB
 from .enums import HashUpdateCause, Need, ReturnCode, StepState
-from .exceptions import GraphError
 from .hash import FileHash
 from .nglob import NGlobMulti
 from .reporter import ReporterClient
@@ -53,7 +52,7 @@ from .sqlite3 import connect
 from .startup import startup_from_db
 from .step import Step
 from .stepinfo import StepInfo
-from .utils import DBLock, check_plan, mynormpath
+from .utils import DBLock, check_plan
 from .watcher import WATCHER_AVAILABLE, Watcher
 from .workflow import Workflow
 
@@ -494,8 +493,6 @@ class DirectorHandler:
         to_check
             A list of (path, file_hash) tuples to check and make static if valid.
         """
-        if not workdir.endswith(os.sep):
-            raise GraphError(f"A working directory must end with a separator, got: {workdir}")
         async with self.dblock:
             creator = self.workflow.node(Step, creator_i)
             return self.workflow.define_step(
@@ -688,7 +685,7 @@ class DirectorHandler:
         """Block until the watcher observed an update of the file."""
         if self.watcher is None:
             return
-        path = mynormpath(path)
+        path = Path(path).normpath()
         await wait_for_events(
             self.watcher.active, self.stop_event, return_when=asyncio.FIRST_COMPLETED
         )
@@ -708,7 +705,7 @@ class DirectorHandler:
         """Block until the watcher observed the deletion of the file."""
         if self.watcher is None:
             return
-        path = mynormpath(path)
+        path = Path(path).normpath()
         await wait_for_events(
             self.watcher.active, self.stop_event, return_when=asyncio.FIRST_COMPLETED
         )
@@ -735,7 +732,7 @@ class DirectorHandler:
 
 def get_socket() -> str:
     """Block until the director socket is known and return it."""
-    stepup_root = Path(os.getenv("STEPUP_ROOT", "./"))
+    stepup_root = Path(os.getenv("STEPUP_ROOT", "."))
     path_director_log = stepup_root / DIRECTOR_LOG
     secs = 0
     while True:

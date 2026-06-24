@@ -16,13 +16,13 @@ step:./plan.py
             consumes   file:plan.py
              creates   file:variables.py
              creates   st:static/
-             creates   step:./plan.py  # wd=static/
+             creates   step:./plan.py  # wd=static
              creates   step:cp -p static/preamble.inc.tex public/preamble.inc.tex
 
 file:variables.py
                state = STATIC
           created by   step:./plan.py
-            supplies   step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
+            supplies   step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
 
 st:static/
           created by   step:./plan.py
@@ -49,26 +49,26 @@ file:public/preamble.inc.tex
           created by   step:cp -p static/preamble.inc.tex public/preamble.inc.tex
             consumes   step:cp -p static/preamble.inc.tex public/preamble.inc.tex
 
-step:./plan.py  # wd=static/
+step:./plan.py  # wd=static
                state = SUCCEEDED
                 need = PLAN
              env_var = PUBLIC [amended]
                      = STEPUP_PATH_FILTER [amended]
           created by   step:./plan.py
             consumes   file:static/plan.py
-             creates   step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
+             creates   step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
 
 file:static/plan.py
                state = STATIC
           created by   st:static/
-            supplies   step:./plan.py  # wd=static/
+            supplies   step:./plan.py  # wd=static
 
-step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
+step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
                state = SUCCEEDED
                 need = DEFAULT
              env_var = PUBLIC [amended]
                      = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py  # wd=static/
+          created by   step:./plan.py  # wd=static
             consumes   file:static/main.tex
             consumes   file:static/variables.py
             consumes   file:variables.py
@@ -78,14 +78,14 @@ step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.te
 file:static/main.tex
                state = STATIC
           created by   st:static/
-            supplies   step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
+            supplies   step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
 
 file:static/variables.py
                state = STATIC
           created by   st:static/
-            supplies   step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
+            supplies   step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
 
 file:public/main.tex
                state = BUILT
-          created by   step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
-            consumes   step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static/
+          created by   step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
+            consumes   step:stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static

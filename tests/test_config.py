@@ -47,7 +47,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--label", default=None)
     p.add_argument("--search-paths", dest="search_paths", default=None)
     p.add_argument("--resources", default="")
-    p.add_argument("--root", default="here/")
+    p.add_argument("--root", default="here")
     return p
 
 

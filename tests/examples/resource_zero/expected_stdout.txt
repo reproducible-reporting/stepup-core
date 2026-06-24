@@ -7,12 +7,10 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required resources exceed maximum available
 Command               echo 1
-Working directory     ./
 Resource       token  1
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required resources exceed maximum available
 Command               echo 2
-Working directory     ./
 Resource       token  1
 ────────────────────────────────────────────────────────────────────────────────
         1/3 |    WARNING │ Skipping file cleanup due to incomplete build

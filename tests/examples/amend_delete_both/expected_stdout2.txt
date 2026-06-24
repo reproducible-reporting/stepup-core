@@ -25,13 +25,11 @@ Same inp hash        asource2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               cp -p asource1.txt data1.txt
-Working directory     ./
 Inputs       MISSING  asource1.txt
 Outputs      AWAITED  data1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               ./work.py > log.txt
-Working directory     ./
 Inputs       AWAITED  data1.txt
               STATIC  work.py
                BUILT  data2.txt [amended]

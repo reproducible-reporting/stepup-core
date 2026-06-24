@@ -34,6 +34,7 @@ import logging
 import signal
 
 import attrs
+from path import Path
 
 from .asyncio import wait_for_events
 from .enums import FileState, Need, ReturnCode, StepState
@@ -42,7 +43,7 @@ from .hash import FileHash
 from .job import Job
 from .reporter import ReporterClient
 from .scheduler import Scheduler
-from .utils import DBLock, myparent, remove_path
+from .utils import DBLock
 from .watcher import Watcher
 from .workflow import Workflow
 
@@ -431,17 +432,16 @@ async def remove_outdated_outputs(workflow: Workflow, dblock: DBLock, reporter: 
     # Remove the files from the file system.
     parents = set()
     for path, file_hash in workflow.to_be_deleted:
-        if (
-            path.endswith("/") or file_hash is None or file_hash.regen(path) == file_hash
-        ) and remove_path(path):
+        path = Path(path)
+        if (file_hash is None or file_hash.regen(path) == file_hash) and _remove_file(path):
             await reporter("CLEAN", path)
-            parents.add(myparent(path))
+            parents.add(path.parent)
 
     # Clean up empty parent directories.
     parents = sorted(parents)
     while len(parents) > 0:
         parent = parents.pop()
-        if parent.is_dir() and not any(parent.iterdir()) and remove_path(parent):
+        if parent.is_dir() and not any(parent.iterdir()) and _remove_dir(parent):
             await reporter("CLEAN", parent)
             parent = parent.parent
             if parent.name not in ("..", ".", ""):
@@ -459,3 +459,23 @@ async def remove_outdated_outputs(workflow: Workflow, dblock: DBLock, reporter: 
             [(path, FileState.AWAITED.value, b"u") for path, _ in workflow.to_be_deleted],
         )
     workflow.to_be_deleted.clear()
+
+
+def _remove_file(path: Path) -> bool:
+    try:
+        path.remove()
+        return True
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return False
+
+
+def _remove_dir(path: Path) -> bool:
+    try:
+        path.rmdir()
+        return True
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return False

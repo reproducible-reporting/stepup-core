@@ -140,7 +140,7 @@ def test_step(wfs: Workflow):
         assert step.key() == "step:cp foo.txt sub/bar.txt"
         command, workdir = step.get_command_workdir()
         assert command == "cp foo.txt sub/bar.txt"
-        assert workdir == Path("./")
+        assert workdir == Path(".")
         assert isinstance(workdir, Path)
         assert wfs.format_str() == TEST_STEP_GRAPH
         assert list(wfs.nodes(Step)) == [step]
@@ -366,7 +366,7 @@ def test_define_boot_input_static(wfs: Workflow):
 
 def test_command_workdir_string(wfs: Workflow):
     with pytest.raises(ValueError):
-        wfs.define_step(wfs.root, "echo  # wd=foo/")
+        wfs.define_step(wfs.root, "echo  # wd=foo")
 
 
 def test_define_boot_static_input(wfs: Workflow):
@@ -546,12 +546,6 @@ def test_file_state_volatile_overlap(wfp: Workflow):
         wfp.amend_step(step, out_paths=["given"])
     with pytest.raises(GraphError), wfp.con:
         wfp.amend_step(step, vol_paths=["given"])
-
-
-def test_volatile_directory(wfp: Workflow):
-    plan = wfp.find(Step, "./plan.py")
-    with pytest.raises(GraphError):
-        wfp.define_step(plan, "touch given", vol_paths=["given/"])
 
 
 PENDING_STEP_SKIP_GRAPH = """\
@@ -1302,8 +1296,8 @@ def test_static_tree_basic(wfp: Workflow):
 
     # Define static tree and check attributes
     with pytest.raises(ValueError):
-        wfp.register_static_tree(plan, "head*/")
-    to_check_h = wfp.register_static_tree(plan, "head/")
+        wfp.register_static_tree(plan, "head*")
+    to_check_h = wfp.register_static_tree(plan, "head")
     to_check_t = wfp.register_static_tree(plan, "tail")
     assert isinstance(wfp.find(StaticTree, "head/"), StaticTree)
     assert isinstance(wfp.find(StaticTree, "tail/"), StaticTree)
@@ -1361,7 +1355,9 @@ def test_static_tree_clean(wfp: Workflow):
     sr = wfp.find(StaticTree, "static/")
     assert sr.creator().i == plan.i
     assert not step.is_alive()
+    assert wfp.find_detached(File, "static") == (None, None)
     assert wfp.find_detached(File, "static/") == (None, None)
+    assert wfp.find_detached(File, "static/foo") == (None, None)
     assert wfp.find_detached(File, "static/foo/") == (None, None)
     assert wfp.find_detached(File, "static/foo/bar.txt") == (None, None)
 
@@ -1438,7 +1434,7 @@ def test_static_tree_amend_out(wfp: Workflow):
 
 def test_static_tree_recursive(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.register_static_tree(plan, "data/")
+    wfp.register_static_tree(plan, "data")
     to_check = wfp.define_step(plan, "prog", inp_paths=["data/foo/a/bar.txt", "data/foo/b/egg.txt"])
     assert to_check == [
         ("data/foo/a/bar.txt", FileHash.unknown()),
@@ -1449,7 +1445,7 @@ def test_static_tree_recursive(wfp: Workflow):
 def test_define_step_reqdir_out_path(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "echo", out_paths=["sub/dir/out"])
-    reqdir, detached = wfp.find_detached(File, "sub/dir/")
+    reqdir, detached = wfp.find_detached(File, "sub/dir")
     assert reqdir is None
     assert detached is None
 
@@ -1457,20 +1453,20 @@ def test_define_step_reqdir_out_path(wfp: Workflow):
 def test_define_step_reqdir_vol_path(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "echo", vol_paths=["sub/dir/vol"])
-    reqdir, detached = wfp.find_detached(File, "sub/dir/")
+    reqdir, detached = wfp.find_detached(File, "sub/dir")
     assert reqdir is None
     assert detached is None
 
 
 def test_define_step_reqdir_workdir(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.define_step(plan, "echo", workdir="sub/dir/")
-    echo = wfp.find(Step, "echo  # wd=sub/dir/")
+    wfp.define_step(plan, "echo", workdir="sub/dir")
+    echo = wfp.find(Step, "echo  # wd=sub/dir")
     command, workdir = echo.get_command_workdir()
     assert command == "echo"
-    assert workdir == Path("sub/dir/")
+    assert workdir == Path("sub/dir")
     assert isinstance(workdir, Path)
-    reqdir, detached = wfp.find_detached(File, "sub/dir/")
+    reqdir, detached = wfp.find_detached(File, "sub/dir")
     assert reqdir is None
     assert detached is None
 
@@ -1480,7 +1476,7 @@ def test_amend_step_reqdir_out_path(wfp: Workflow):
     wfp.define_step(plan, "echo")
     step = wfp.find(Step, "echo")
     wfp.amend_step(step, out_paths=["sub/dir/out"])
-    reqdir, detached = wfp.find_detached(File, "sub/dir/")
+    reqdir, detached = wfp.find_detached(File, "sub/dir")
     assert reqdir is None
     assert detached is None
 
@@ -1490,7 +1486,7 @@ def test_amend_step_reqdir_vol_path(wfp: Workflow):
     wfp.define_step(plan, "echo")
     step = wfp.find(Step, "echo")
     wfp.amend_step(step, vol_paths=["sub/dir/vol"])
-    reqdir, detached = wfp.find_detached(File, "sub/dir/")
+    reqdir, detached = wfp.find_detached(File, "sub/dir")
     assert reqdir is None
     assert detached is None
 
@@ -1654,7 +1650,7 @@ def test_amend_step_vol_nested(wfp: Workflow):
 
 def test_step_static_tree(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    assert wfp.register_static_tree(plan, "sub/") == []
+    assert wfp.register_static_tree(plan, "sub") == []
     inp_paths = ["test.png", "test.txt", "other.txt", "sub/boom.txt", "sub/README.md"]
     to_check = wfp.define_step(plan, "prog", inp_paths=inp_paths)
     assert to_check == [
@@ -1726,7 +1722,7 @@ def test_static_tree_lost_child(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "prog")
     prog = wfp.find(Step, "prog")
-    wfp.register_static_tree(prog, "data/")
+    wfp.register_static_tree(prog, "data")
 
     # Simulate the creation of a static data/foo.txt through the static tree.
     to_check = wfp.define_step(prog, "work", inp_paths=["data/foo.txt"])
@@ -1833,7 +1829,7 @@ def test_recurse_deferred_inputs1(wfp: Workflow, inp_path: str):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "prog", inp_paths=[inp_path])
     prog = wfp.find(Step, "prog")
-    wfp.register_static_tree(plan, "data/")
+    wfp.register_static_tree(plan, "data")
     rows = wfp.con.execute(RECURSE_DEFERRED_INPUTS, (prog.i,)).fetchall()
     assert len(rows) == 1
     data = wfp.find(File, inp_path)
@@ -1842,7 +1838,7 @@ def test_recurse_deferred_inputs1(wfp: Workflow, inp_path: str):
 
 def test_recreate_step_to_check(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.register_static_tree(plan, "data/")
+    wfp.register_static_tree(plan, "data")
     to_check = wfp.define_step(plan, "prog", inp_paths=["data/foo.txt"])
     assert to_check == [("data/foo.txt", FileHash.unknown())]
     prog = wfp.find(Step, "prog")
@@ -1853,7 +1849,7 @@ def test_recreate_step_to_check(wfp: Workflow):
 
 def test_recreate_step_to_check_amend(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.register_static_tree(plan, "static/")
+    wfp.register_static_tree(plan, "static")
     to_check = wfp.define_step(
         plan,
         "prog",
@@ -2002,28 +1998,28 @@ def test_step_subprocess_roundtrip(wfp: Workflow):
 
     # Record two invocations: one with an env overlay, a non-zero return code, and shell=False;
     # one without an overlay and shell=True.
-    step.record_subprocess("typst compile a.typ a.pdf", "./sub/", {"TR": "/x"}, 7, False)
-    step.record_subprocess("echo hi | tr a b", "./", None, 0, True)
+    step.record_subprocess("typst compile a.typ a.pdf", "sub", {"TR": "/x"}, 7, False)
+    step.record_subprocess("echo hi | tr a b", ".", None, 0, True)
 
     # They round-trip in seq order, with cmd stored verbatim and env decoded back to a dict.
     assert list(step.iter_subprocesses()) == [
-        (0, "typst compile a.typ a.pdf", "./sub/", {"TR": "/x"}, 7, False),
-        (1, "echo hi | tr a b", "./", None, 0, True),
+        (0, "typst compile a.typ a.pdf", "sub", {"TR": "/x"}, 7, False),
+        (1, "echo hi | tr a b", ".", None, 0, True),
     ]
 
 
 def test_step_subprocess_clean_restarts_seq(wfp: Workflow):
     """delete_subprocesses removes all rows and the seq numbering restarts at 0."""
     step = wfp.find(Step, "./plan.py")
-    step.record_subprocess("a", "./", None, 0)
-    step.record_subprocess("b", "./", None, 0)
+    step.record_subprocess("a", ".", None, 0)
+    step.record_subprocess("b", ".", None, 0)
     assert [row[0] for row in step.iter_subprocesses()] == [0, 1]
 
     step.delete_subprocesses()
     assert list(step.iter_subprocesses()) == []
 
     # A fresh record after cleanup restarts the sequence at 0.
-    step.record_subprocess("c", "./", None, 0)
+    step.record_subprocess("c", ".", None, 0)
     assert [row[0] for row in step.iter_subprocesses()] == [0]
 
 
@@ -2032,7 +2028,7 @@ def test_step_subprocess_clean_before_run(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "echo hi")
     step = wfp.find(Step, "echo hi")
-    step.record_subprocess("echo hi", "./", None, 0)
+    step.record_subprocess("echo hi", ".", None, 0)
     assert len(list(step.iter_subprocesses())) == 1
     step.clean_before_run()
     assert list(step.iter_subprocesses()) == []
@@ -2043,7 +2039,7 @@ def test_step_subprocess_give_up_no_fk_error(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "echo hi")
     step = wfp.find(Step, "echo hi")
-    step.record_subprocess("echo hi", "./", None, 0)
+    step.record_subprocess("echo hi", ".", None, 0)
     # clean() deletes step_subprocess rows before give_up() deletes the node row. With no
     # ON DELETE CASCADE, a leftover row would trigger a foreign-key error here.
     step.give_up()

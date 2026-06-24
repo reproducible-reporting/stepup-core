@@ -17,7 +17,7 @@ assert " -c " in cmd, cmd
 assert "out.txt" in cmd, cmd
 
 # The workdir is stored relative to STEPUP_ROOT, and the run succeeded.
-assert workdir == "./", workdir
+assert workdir == ".", workdir
 assert returncode == 0, returncode
 
 # Only the environment overlay the wrapper explicitly set is stored, not the full environment.

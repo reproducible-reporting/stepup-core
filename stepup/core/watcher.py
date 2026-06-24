@@ -294,7 +294,7 @@ class AsyncInotifyWrapper:
             Event to interrupt processing items from the dir_queue.
         """
         async for path in stoppable_iterator(self.dir_queue.get, self.stop_event):
-            path = path.normpath()
+            path = Path(path).normpath()
             if not path.is_dir():
                 raise FileNotFoundError(f"Cannot watch non-directory: {path}")
             while path not in self.watches:

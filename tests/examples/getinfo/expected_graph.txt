@@ -17,29 +17,29 @@ step:./plan.py
              creates   file:inp1.txt
              creates   file:sub/getinfo.py
              creates   file:sub/inp0.txt
-             creates   step:./getinfo.py  # wd=sub/
+             creates   step:./getinfo.py  # wd=sub
 
 file:README.txt
                state = STATIC
           created by   step:./plan.py
-            supplies   step:./getinfo.py  # wd=sub/
+            supplies   step:./getinfo.py  # wd=sub
 
 file:inp1.txt
                state = STATIC
           created by   step:./plan.py
-            supplies   step:./getinfo.py  # wd=sub/
+            supplies   step:./getinfo.py  # wd=sub
 
 file:sub/getinfo.py
                state = STATIC
           created by   step:./plan.py
-            supplies   step:./getinfo.py  # wd=sub/
+            supplies   step:./getinfo.py  # wd=sub
 
 file:sub/inp0.txt
                state = STATIC
           created by   step:./plan.py
-            supplies   step:./getinfo.py  # wd=sub/
+            supplies   step:./getinfo.py  # wd=sub
 
-step:./getinfo.py  # wd=sub/
+step:./getinfo.py  # wd=sub
                state = SUCCEEDED
                 need = DEFAULT
              env_var = BAR
@@ -66,30 +66,30 @@ step:./getinfo.py  # wd=sub/
 
 file:out0.txt
                state = BUILT
-          created by   step:./getinfo.py  # wd=sub/
-            consumes   step:./getinfo.py  # wd=sub/
+          created by   step:./getinfo.py  # wd=sub
+            consumes   step:./getinfo.py  # wd=sub
 
 file:sub/out1.txt
                state = BUILT
-          created by   step:./getinfo.py  # wd=sub/
-            consumes   step:./getinfo.py  # wd=sub/
+          created by   step:./getinfo.py  # wd=sub
+            consumes   step:./getinfo.py  # wd=sub
 
 file:sub/vol0.txt
                state = VOLATILE
-          created by   step:./getinfo.py  # wd=sub/
-            consumes   step:./getinfo.py  # wd=sub/
+          created by   step:./getinfo.py  # wd=sub
+            consumes   step:./getinfo.py  # wd=sub
 
 file:vol1.txt
                state = VOLATILE
-          created by   step:./getinfo.py  # wd=sub/
-            consumes   step:./getinfo.py  # wd=sub/
+          created by   step:./getinfo.py  # wd=sub
+            consumes   step:./getinfo.py  # wd=sub
 
 file:out2.txt
                state = BUILT
-          created by   step:./getinfo.py  # wd=sub/
-            consumes   step:./getinfo.py  # wd=sub/
+          created by   step:./getinfo.py  # wd=sub
+            consumes   step:./getinfo.py  # wd=sub
 
 file:vol2.txt
                state = VOLATILE
-          created by   step:./getinfo.py  # wd=sub/
-            consumes   step:./getinfo.py  # wd=sub/
+          created by   step:./getinfo.py  # wd=sub
+            consumes   step:./getinfo.py  # wd=sub

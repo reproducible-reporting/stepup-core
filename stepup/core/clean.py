@@ -32,7 +32,7 @@ from .constants import GRAPH_DB
 from .enums import FileState
 from .hash import FileHash
 from .sqlite3 import copy_db_in_memory, escape_like_pattern
-from .utils import mynormpath, translate, translate_back
+from .utils import translate, translate_back
 
 
 def clean_subcommand(subparsers, loader: ConfigLoader) -> callable:
@@ -49,7 +49,7 @@ def clean_subcommand(subparsers, loader: ConfigLoader) -> callable:
     parser = subparsers.add_parser("clean", help="Remove (stale) outputs in a directory. ")
     parser.add_argument(
         "paths",
-        default=[Path("./")],
+        default=[Path(".")],
         type=Path,
         nargs="*",
         help="A list of paths to consider for the cleanup. "
@@ -94,12 +94,7 @@ def clean_tool(args: argparse.Namespace):
     # Translate all unique paths so they are relative to STEPUP_ROOT,
     # because this is how they are stored in the database. (tr_ prefix)
     # A trailing slash is appended to directories.
-    tr_paths = set()
-    for path in args.paths:
-        lo_path = mynormpath(path)
-        if lo_path.is_dir():
-            lo_path /= ""
-        tr_paths.add(translate(lo_path))
+    tr_paths = {translate(path.normpath()) for path in args.paths}
 
     # Copy the database in memory and work on the copy.
     root = Path(os.getenv("STEPUP_ROOT", "."))
@@ -179,11 +174,7 @@ def clean(con: sqlite3.Connection, tr_paths: set[str], args: argparse.Namespace)
     # Remove empty parent directories
     for parent in sorted(parents):
         while True:
-            if (
-                parent.is_dir()
-                and str(parent) not in (".", "./", "/")
-                and not any(parent.iterdir())
-            ):
+            if parent.is_dir() and str(parent) not in (".", os.sep) and not any(parent.iterdir()):
                 console.print(f"[cyan]rmdir[/] {parent}  [grey]# Empty parent directory[/]")
                 if args.commit:
                     parent.rmdir()
@@ -203,14 +194,9 @@ def fmtnum(i: int):
     return str(i)
 
 
-SQL_MATCH_DIR = """
+SQL_MATCH_PATH = """
 SELECT label FROM node JOIN file ON node.i = file.node
-WHERE label LIKE ? ESCAPE '\\'
-"""
-
-SQL_MATCH_FILE = """
-SELECT label FROM node JOIN file ON node.i = file.node
-WHERE label = ?
+WHERE label = ? OR label LIKE ? ESCAPE '\\'
 """
 
 
@@ -232,29 +218,19 @@ def search_matching_paths(con: sqlite3.Connection, tr_paths: set[str]) -> set[st
     """
     tr_matching_paths = set()
     for tr_path in tr_paths:
-        if tr_path.endswith("/"):
-            if tr_path.startswith("./"):
-                tr_path = tr_path[2:]
-            pattern = f"{escape_like_pattern(tr_path)}%"
-            sql = SQL_MATCH_DIR
-        else:
-            pattern = tr_path
-            sql = SQL_MATCH_FILE
-        tr_matching_paths.update(row[0] for row in con.execute(sql, (pattern,)))
+        pattern = "%" if tr_path == "." else escape_like_pattern(tr_path / "") + "%"
+        tr_matching_paths.update(row[0] for row in con.execute(SQL_MATCH_PATH, (tr_path, pattern)))
     return tr_matching_paths
 
 
-CREATE_INITIAL_PATHS = "CREATE TABLE temp.initial_path(path TEXT PRIMARY KEY) WITHOUT ROWID"
-
 SELECT_OUTPUTS = f"""
-SELECT label, file.state, detached, digest, mode, mtime, size, inode FROM node
-JOIN all_consumer ON node.i = all_consumer.current
+SELECT label, file.state, detached, digest, mode, mtime, size, inode
+FROM all_consumer
+JOIN node ON node.i = all_consumer.current
 JOIN file ON file.node = all_consumer.current
 WHERE file.state in
 ({FileState.BUILT.value}, {FileState.OUTDATED.value}, {FileState.VOLATILE.value})
 """
-
-DROP_INITIAL_PATHS = "DROP TABLE IF EXISTS temp.initial_path"
 
 
 def search_consuming_paths(
@@ -268,6 +244,7 @@ def search_consuming_paths(
         The database connection.
     initial_paths
         The initial paths to consider.
+        They will be included in the returned results.
 
     Returns
     -------
@@ -282,16 +259,11 @@ def search_consuming_paths(
         - The file hash
     """
     try:
-        con.execute(DROP_INITIAL_PATHS)
-        con.execute(CREATE_INITIAL_PATHS)
-        con.executemany(
-            "INSERT INTO temp.initial_path VALUES(?)", ((path,) for path in initial_paths)
-        )
         con.execute(DROP_CONSUMERS)
         con.execute(INITIAL_CONSUMERS)
-        con.execute(
-            "INSERT INTO temp.initial_consumer SELECT node.i AS current "
-            "FROM node JOIN temp.initial_path ON node.label = temp.initial_path.path"
+        con.executemany(
+            "INSERT INTO temp.initial_consumer SELECT node.i FROM node WHERE node.label = ?",
+            ((path,) for path in initial_paths),
         )
         select_outputs = SELECT_OUTPUTS
         if detached_only:
@@ -301,5 +273,4 @@ def search_consuming_paths(
             for row in con.execute(RECURSE_CONSUMERS + select_outputs)
         ]
     finally:
-        con.execute(DROP_INITIAL_PATHS)
         con.execute(DROP_CONSUMERS)

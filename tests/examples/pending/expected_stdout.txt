@@ -8,7 +8,6 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               cp -v first.txt second.txt
-Working directory     ./
 Inputs       AWAITED  (first.txt)
 Outputs      AWAITED  second.txt
             VOLATILE  third.txt

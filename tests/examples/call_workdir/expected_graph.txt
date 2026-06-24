@@ -15,19 +15,19 @@ step:./plan.py
             consumes   file:plan.py
              creates   file:sub/data.txt
              creates   file:sub/work.py
-             creates   step:./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub/
+             creates   step:./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub
 
 file:sub/data.txt
                state = STATIC
           created by   step:./plan.py
-            supplies   step:./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub/
+            supplies   step:./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub
 
 file:sub/work.py
                state = STATIC
           created by   step:./plan.py
-            supplies   step:./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub/
+            supplies   step:./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub
 
-step:./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub/
+step:./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
@@ -39,5 +39,5 @@ step:./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub/
 
 file:sub/result.txt
                state = BUILT
-          created by   step:./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub/
-            consumes   step:./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub/
+          created by   step:./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub
+            consumes   step:./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub

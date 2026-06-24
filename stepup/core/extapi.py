@@ -34,7 +34,7 @@ from collections.abc import Callable, Collection, Iterator
 from path import Path
 
 from .rpc import SocketSyncRPCClient
-from .utils import CaseSensitiveTemplate, mynormpath, myrealpath, myrelpath, translate
+from .utils import CaseSensitiveTemplate, translate
 
 __all__ = (
     "filter_dependencies",
@@ -83,8 +83,7 @@ def subs_env_vars() -> Iterator[Callable[[str | None], Path | None]]:
                     raise ValueError(f"Undefined shell variable: {name}")
                 mapping[name] = value
                 env_vars.add(name)
-        result = path if len(mapping) == 0 else template.substitute(mapping)
-        return mynormpath(result)
+        return Path(path if len(mapping) == 0 else template.substitute(mapping))
 
     yield subs
     amend(env=env_vars)
@@ -94,7 +93,7 @@ def record_subprocess(
     cmd: str,
     returncode: int,
     *,
-    workdir: str = "./",
+    workdir: str = ".",
     env: dict[str, str] | None = None,
     shell: bool = False,
 ) -> None:
@@ -140,7 +139,7 @@ def record_subprocess(
 def run_subprocess(
     cmd: str,
     *,
-    workdir: str = "./",
+    workdir: str = ".",
     env: dict[str, str] | None = None,
     stdout=None,
     stderr=None,
@@ -241,27 +240,27 @@ def filter_dependencies(paths: Collection[str]) -> set[Path]:
             keep = False
         else:
             raise ValueError(f"Invalid filter item: {filter_item}")
-        prefix = filter_item[1:]
-        if not prefix.startswith("/"):
-            prefix = myrealpath(stepup_root / prefix)
+        prefix = Path(filter_item[1:])
+        if not prefix.isabs():
+            prefix = (stepup_root / prefix).realpath()
         rules.append((prefix, keep))
 
     # Filter paths according to the rules.
     result = set()
-    realpwd = myrealpath(os.getcwd())
+    realpwd = Path.cwd().realpath()
     for path in paths:
-        abspath = myrealpath(path)
+        abspath = Path(path).realpath()
         for prefix, keep in rules:
             if abspath.startswith(prefix):
                 if keep:
-                    result.add(myrelpath(abspath, realpwd))
+                    result.add(abspath.relpath(realpwd))
                 break
         else:
             raise AssertionError(f"No matching rule found for path: {path}")
     return result
 
 
-def get_local_import_paths(script_path: Path | None = None) -> list[str]:
+def get_local_import_paths(script_path: str | None = None) -> list[str]:
     """Get all local files from `sys.modules`.
 
     Files are only included if they match the `${STEPUP_PATH_FILTER}` environment variable.
@@ -275,12 +274,12 @@ def get_local_import_paths(script_path: Path | None = None) -> list[str]:
         for module in sys.modules.values():
             mod_path = getattr(module, "__file__", None)
             if not (mod_path is None or mod_path.startswith("<")):
-                mod_path = mynormpath(mod_path)
+                mod_path = Path(mod_path).normpath()
                 if mod_path.exists():
                     yield mod_path
 
     mod_paths = filter_dependencies(iter_module_paths())
     # The script path is already included in the inputs.
     if script_path is not None:
-        mod_paths.discard(mynormpath(script_path))
+        mod_paths.discard(Path(script_path).normpath())
     return sorted(mod_paths)

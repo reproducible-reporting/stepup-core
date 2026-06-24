@@ -76,8 +76,8 @@ def test_filter_dependencies_relative2(monkeypatch, path_tmp):
     monkeypatch.setenv("STEPUP_PATH_FILTER", "+../external")
     (path_tmp / "project/sub").makedirs()
     with contextlib.chdir(path_tmp / "project/sub"):
-        monkeypatch.setenv("ROOT", path_tmp / "project/")
-        monkeypatch.setenv("HERE", "sub/")
+        monkeypatch.setenv("ROOT", path_tmp / "project")
+        monkeypatch.setenv("HERE", "sub")
         rel_paths = ["foo", "../../external/bar", "../../egg", "../../other/spam"]
         assert filter_dependencies(rel_paths) == {"foo", "../../external/bar"}
 
@@ -91,7 +91,7 @@ def test_run_subprocess_records_success(monkeypatch):
     cmd = shlex.join([sys.executable, "-c", ""])
     cp = run_subprocess(cmd)
     assert cp.returncode == 0
-    assert recorded == [(cmd, 0, {"workdir": "./", "env": None, "shell": False})]
+    assert recorded == [(cmd, 0, {"workdir": ".", "env": None, "shell": False})]
 
 
 def test_run_subprocess_check_records_before_raise(monkeypatch):
@@ -166,7 +166,7 @@ def test_run_subprocess_shell_true(monkeypatch):
     )
     cp = run_subprocess("echo hello", shell=True, stdout=subprocess.PIPE)
     assert cp.returncode == 0
-    assert recorded == [("echo hello", 0, {"workdir": "./", "env": None, "shell": True})]
+    assert recorded == [("echo hello", 0, {"workdir": ".", "env": None, "shell": True})]
 
 
 def test_run_subprocess_shell_false_splits(monkeypatch):

@@ -7,9 +7,9 @@
         3/4 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/4 |    SUCCESS │ ./plan.py
-        1/4 |       SKIP │ ./plan.py  # wd=sub/
+        1/4 |       SKIP │ ./plan.py  # wd=sub
         2/4 |       SKIP │ cp -p hop1.txt hop2.txt
-        3/4 |       SKIP │ cp -p ../hop2.txt hop3.txt  # wd=sub/
+        3/4 |       SKIP │ cp -p ../hop2.txt hop3.txt  # wd=sub
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |      PHASE │ watch
         4/4 |   DIRECTOR │ See you!

@@ -19,7 +19,6 @@
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               cp copy1.txt copy2.txt
-Working directory     ./
 Inputs      OUTDATED  (copy1.txt)
 Outputs     OUTDATED  copy2.txt
 ────────────────────────────────────────────────────────────────────────────────

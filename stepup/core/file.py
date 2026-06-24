@@ -20,6 +20,7 @@
 """A `File` is StepUp's node for an input or output file of a step."""
 
 import logging
+import os
 from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
@@ -89,7 +90,7 @@ class File(Node):
         # These are not allowed but may pass "existence" checks
         if label in (".", "..", ""):
             raise ValueError(f"Invalid file name: {label}")
-        if label.endswith("/"):
+        if label.endswith(os.sep):
             raise ValueError(f"Invalid file name (directory): {label}")
         if label.endswith(("/.", "/..")):
             raise ValueError(f"Invalid file name: {label}")

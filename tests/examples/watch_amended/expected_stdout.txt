@@ -19,7 +19,6 @@ inp.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
 Command               ./work.py
-Working directory     ./
 Inputs       MISSING  inp.txt [amended]
               STATIC  work.py
 Outputs     OUTDATED  out.txt [amended]

@@ -50,10 +50,10 @@ from .step import FileHash
 from .stepinfo import StepInfo
 from .utils import (
     CaseSensitiveTemplate,
+    apply_affixes,
     format_command,
+    get_affixes,
     make_path_out,
-    mynormpath,
-    myrelpath,
     parse_resources,
     string_to_list,
     translate,
@@ -126,7 +126,7 @@ def static(*paths: str | Iterable[str]):
     if len(paths) > 0:
         # Perform env var substitutions.
         with subs_env_vars() as subs:
-            su_paths = [subs(path) for path in paths]
+            su_paths = [subs(path).normpath() for path in paths]
         # Sanity checks
         su_file_paths, su_dir_paths = _check_inp_paths(su_paths, allow_dirs=True)
         if len(su_file_paths) > 0:
@@ -184,7 +184,7 @@ def glob(*patterns: str, **subs: str) -> NGlobMulti:
 
     # Substitute environment variables
     with subs_env_vars() as subs_path:
-        su_patterns = [subs_path(pattern) for pattern in patterns]
+        su_patterns = [subs_path(pattern).normpath() for pattern in patterns]
 
     # StepUp needs to know the patterns,
     # so it can identify new files matching the patterns in future runs.
@@ -222,7 +222,7 @@ def step(
     env: Collection[str] | str = (),
     out: Collection[str] | str = (),
     vol: Collection[str] | str = (),
-    workdir: str = "./",
+    workdir: str = ".",
     need: Need = Need.DEFAULT,
     resources: dict[str, int] | str | None = None,
     shell: bool = False,
@@ -251,7 +251,7 @@ def step(
         Directory outputs are not supported.
     workdir
         The directory where the action must be executed.
-        A trailing slash is added when not present.
+        The path is normalized before further processing.
         If this is a relative path, it is relative to the work directory of the caller.
         (The default is the current directory.)
     need
@@ -292,13 +292,11 @@ def step(
     env_vars = string_to_list(env)
     out_paths = string_to_list(out)
     vol_paths = string_to_list(vol)
-    if not workdir.endswith("/"):
-        workdir = f"{workdir}/"
     with subs_env_vars() as subs:
-        su_inp_paths = [subs(inp_path) for inp_path in inp_paths]
-        su_out_paths = [subs(out_path) for out_path in out_paths]
-        su_vol_paths = [subs(vol_path) for vol_path in vol_paths]
-        su_workdir = subs(workdir)
+        su_inp_paths = [subs(inp_path).normpath() for inp_path in inp_paths]
+        su_out_paths = [subs(out_path).normpath() for out_path in out_paths]
+        su_vol_paths = [subs(vol_path).normpath() for vol_path in vol_paths]
+        su_workdir = subs(workdir).normpath()
     _check_no_directories(su_inp_paths)
     _check_no_directories(su_out_paths)
     _check_no_directories(su_vol_paths)
@@ -367,7 +365,7 @@ def call(
     env: Collection[str] | str = (),
     out: Collection[str] | str = (),
     vol: Collection[str] | str = (),
-    workdir: str = "./",
+    workdir: str = ".",
     optional: bool = False,
     planning: bool = False,
     resources: dict[str, int] | str | None = None,
@@ -382,8 +380,7 @@ def call(
         Path to the script or binary to invoke.
         Must contain a path separator (e.g. `./script.py` or `sub/script.py`)
         and must not be an absolute path.
-        Unlike the other path arguments, environment variables are **not** substituted,
-        for consistency with the executable in [`run()`][stepup.core.api.run].
+        Environment variables in the path are substituted.
     function_
         Name of the function to invoke (first positional CLI argument).
     inp
@@ -397,7 +394,7 @@ def call(
     vol
         Volatile outputs of this step.
     workdir
-        Working directory for the step. Defaults to `"./"`.
+        Working directory for the step. Defaults to `"."`.
     optional
         When `True`, the step only runs if its outputs are (indirectly) needed
         by a non-optional step (`Need.OPTIONAL`).
@@ -437,12 +434,18 @@ def call(
     if optional and planning:
         raise ValueError("optional and planning are mutually exclusive")
 
-    # Normalize inp and out.
-    inp = string_to_list(inp)
-    out = string_to_list(out)
+    # Perform environment variable substitutions before building the command.
+    # This is somewhat redundant with the substitutions performed in `_prepare_run_command()`.
+    with subs_env_vars() as subs:
+        executable_ = subs(executable_)
+        inp = [subs(inp_path).normpath() for inp_path in string_to_list(inp)]
+        out = [subs(out_path).normpath() for out_path in string_to_list(out)]
+        workdir = subs(workdir).normpath()
+    prefix, suffix = get_affixes(executable_)
+    executable_ = apply_affixes(executable_.normpath(), prefix, suffix)
 
     # Validate executable path format.
-    if "/" not in executable_:
+    if os.sep not in executable_:
         raise ValueError(
             f"executable_ must contain a path separator (e.g. './script.py'), got: {executable_!r}"
         )
@@ -564,7 +567,7 @@ def amend(
         return
     env_vars = set(env_vars)
     with subs_env_vars() as subs:
-        su_inp_paths = {subs(inp_path) for inp_path in inp_paths}
+        su_inp_paths = {subs(inp_path).normpath() for inp_path in inp_paths}
         tr_inp_paths = {translate(inp_path) for inp_path in su_inp_paths}
         tr_out_paths = {translate(subs(out_path)) for out_path in out_paths}
         tr_vol_paths = {translate(subs(vol_path)) for vol_path in vol_paths}
@@ -675,12 +678,12 @@ def _prepare_run_command(
     # For example, this avoids duplicating the script in commands like `./script.sh ${inp}`.
     inp = string_to_list(inp)
     with subs_env_vars() as subs:
-        su_inp = [subs(p) for p in inp]
+        su_inp = [subs(path_inp).normpath() for path_inp in inp]
     command = CaseSensitiveTemplate(command).safe_substitute(inp=shlex.join(su_inp))
     # Auto-add the executable to inp when it is a local relative path
     # (contains "/" but is not absolute).
     exe = parts[0]
-    if "/" in exe and not exe.startswith("/"):
+    if os.sep in exe and not exe.startswith(os.sep):
         inp = [exe, *inp]
     elif need_relative_exe:
         raise ValueError(
@@ -697,7 +700,7 @@ def run(
     env: Collection[str] | str = (),
     out: Collection[str] | str = (),
     vol: Collection[str] | str = (),
-    workdir: str = "./",
+    workdir: str = ".",
     optional: bool = False,
     shell: bool = False,
     resources: dict[str, int] | str | None = None,
@@ -761,7 +764,7 @@ def plan(
     env: Collection[str] | str = (),
     out: Collection[str] | str = (),
     vol: Collection[str] | str = (),
-    workdir: str = "./",
+    workdir: str = ".",
     resources: dict[str, int] | str | None = None,
 ) -> StepInfo:
     """Run a planning script.
@@ -810,7 +813,11 @@ def plan(
 
 
 def copy(
-    src: str, dst: str, *, optional: bool = False, resources: dict[str, int] | str | None = None
+    src: str,
+    dst: str,
+    *,
+    optional: bool = False,
+    resources: dict[str, int] | str | None = None,
 ) -> StepInfo:
     """Add a step that copies a file.
 
@@ -838,14 +845,15 @@ def copy(
     at the time this function is called, not when the copy is actually made.
     """
     with subs_env_vars() as subs:
-        src = subs(src)
+        src = subs(src).normpath()
         dst = subs(dst)
-    path_src = mynormpath(src)
-    path_dst = make_path_out(src, dst, None)
+    prefix, suffix = get_affixes(dst)
+    dst = apply_affixes(dst.normpath(), prefix, suffix)
+    dst = make_path_out(src, dst, None)
     return step(
         "cp -p ${inp} ${out}",
-        inp=path_src,
-        out=path_dst,
+        inp=src,
+        out=dst,
         need=Need.OPTIONAL if optional else Need.DEFAULT,
         resources=resources,
         shell=False,
@@ -890,6 +898,7 @@ def getenv(
         If `back` is set to `True`, this is a translated `Path` instance.
         If `multi` is set to `True`, this is a list of `Path` instances.
         Otherwise, the result is a string.
+        All path variables are normalized.
     """
     path = path or back or multi
     value = os.getenv(name, default)
@@ -897,21 +906,32 @@ def getenv(
     # See stepup.core.executor.StepExecutor.run
     if name not in ["HERE", "ROOT", "STEPUP_STEP_I", "STEPUP_STEP_INP_DIGEST", "STEPUP_STEP_NEED"]:
         amend(env=name)
+
     if multi:
         if value is None:
             return []
-        value = [item.strip() for item in value.split(":")]
+        parts = value.split(":")
+        value = []
         with subs_env_vars() as subs:
-            value = [subs(item) for item in value if len(item) > 0]
-        if back:
-            value = [translate_back(item) for item in value if len(item) > 0]
+            for item in parts:
+                item = item.strip()
+                if len(item) > 0:
+                    item = subs(item)
+                    prefix, suffix = get_affixes(item)
+                    item = item.normpath()
+                    if back:
+                        item = translate_back(item)
+                    value.append(apply_affixes(item, prefix, suffix))
     elif path:
         if value is None:
             raise ValueError(f"Undefined shell variable: {name}. Cannot create path.")
         with subs_env_vars() as subs:
             value = subs(value)
+        prefix, suffix = get_affixes(value)
+        value = value.normpath()
         if back:
             value = translate_back(value)
+        value = apply_affixes(value, prefix, suffix)
     return value
 
 
@@ -923,7 +943,7 @@ def script(
     env: Collection[str] | str = (),
     out: Collection[str] | str = (),
     vol: Collection[str] | str = (),
-    workdir: str = "./",
+    workdir: str = ".",
     optional: bool = False,
     resources: dict[str, int] | str | None = None,
 ) -> StepInfo:
@@ -944,6 +964,7 @@ def script(
         The path of a local executable that will be called with the argument `plan`.
         The file must be executable.
         The path of the script is assumed to be relative to this directory.
+        Environment variables in the path are substituted.
     step_info
         When given, the steps generated in the plan part of the executable are written
         to this `step_info` file. (See [stepup.core.stepinfo][] module for the file format.)
@@ -964,9 +985,13 @@ def script(
     - The optional argument never applies to the plan stage,
       and is passed on the the run stage.
     """
+    # Substitute environment variables in the executable path and normalize it.
     with subs_env_vars() as subs:
         executable = subs(executable)
-        workdir = subs(workdir)
+    prefix, suffix = get_affixes(executable)
+    executable = apply_affixes(executable.normpath(), prefix, suffix)
+
+    # Start building the command and the step inputs.
     command = format_command(executable) + " plan"
     out = string_to_list(out)
     if step_info is not None:
@@ -1018,7 +1043,7 @@ def loadns(
     if dir_out is None:
         dir_out = Path.cwd()
     with subs_env_vars() as subs:
-        paths_variables = [subs(path_var) for path_var in paths_variables]
+        paths_variables = [subs(path_var).normpath() for path_var in paths_variables]
 
     # Build a dictionary of variables
     variables = {}
@@ -1046,7 +1071,7 @@ def loadns(
                 if name.startswith("_"):
                     continue
                 if isinstance(value, Path):
-                    value = myrelpath(value, dir_out)
+                    value = Path(value).relpath(dir_out)
                 variables[name] = value
         else:
             raise ValueError(f"unsupported variable file format: {path_var}")
@@ -1078,7 +1103,7 @@ def dumpns(path: str, data: dict | SimpleNamespace, *, do_amend: bool = True) ->
         When the file extension is not `.json`, `.yaml`, or `.yml`.
     """
     with subs_env_vars() as subs:
-        path = subs(path)
+        path = subs(path).normpath()
     if do_amend:
         amend(out=path)
     if isinstance(data, SimpleNamespace):
@@ -1238,7 +1263,7 @@ def _check_inp_paths(
         else:
             file_paths.append(inp_path)
         if not allow_dirs:
-            if inp_path.endswith("/"):
+            if inp_path.endswith(os.sep):
                 raise ValueError(f"Directory inputs are not supported: {inp_path}")
             if is_dir:
                 raise ValueError(f"Directory inputs are not supported: {inp_path}")

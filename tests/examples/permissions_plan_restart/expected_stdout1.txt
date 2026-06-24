@@ -2,10 +2,10 @@
         0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ ./plan.py  # wd=sub/
-        1/1 |       FAIL │ ./plan.py  # wd=sub/
+        1/2 |      START │ ./plan.py  # wd=sub
+        1/1 |       FAIL │ ./plan.py  # wd=sub
 ──────────────────────────────── Failed command ────────────────────────────────
-(cd sub/ && ./plan.py)  # exit=1
+(cd sub && ./plan.py)  # exit=1
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────

@@ -10,19 +10,18 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-             env_var = PUBLIC [amended]
-                     = STEPUP_PATH_FILTER [amended]
+             env_var = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:www/plan.py
-             creates   step:./plan.py  # wd=www/
+             creates   step:./plan.py  # wd=www
 
 file:www/plan.py
                state = STATIC
           created by   step:./plan.py
-            supplies   step:./plan.py  # wd=www/
+            supplies   step:./plan.py  # wd=www
 
-step:./plan.py  # wd=www/
+step:./plan.py  # wd=www
                state = SUCCEEDED
                 need = PLAN
              env_var = HERE [amended]
@@ -32,22 +31,22 @@ step:./plan.py  # wd=www/
           created by   step:./plan.py
             consumes   file:www/plan.py
              creates   file:www/index.md
-             creates   step:cp -p index.md ../../public/www/index.md  # wd=www/
+             creates   step:cp -p index.md ../../public/www/index.md  # wd=www
 
 file:www/index.md
                state = STATIC
-          created by   step:./plan.py  # wd=www/
-            supplies   step:cp -p index.md ../../public/www/index.md  # wd=www/
+          created by   step:./plan.py  # wd=www
+            supplies   step:cp -p index.md ../../public/www/index.md  # wd=www
 
-step:cp -p index.md ../../public/www/index.md  # wd=www/
+step:cp -p index.md ../../public/www/index.md  # wd=www
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py  # wd=www/
+          created by   step:./plan.py  # wd=www
             consumes   file:www/index.md
              creates   file:../public/www/index.md
             supplies   file:../public/www/index.md
 
 file:../public/www/index.md
                state = BUILT
-          created by   step:cp -p index.md ../../public/www/index.md  # wd=www/
-            consumes   step:cp -p index.md ../../public/www/index.md  # wd=www/
+          created by   step:cp -p index.md ../../public/www/index.md  # wd=www
+            consumes   step:cp -p index.md ../../public/www/index.md  # wd=www
