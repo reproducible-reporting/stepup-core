@@ -69,25 +69,19 @@ def _myfix_trailing(path: str, result: Path, enforce: bool = False) -> Path:
     return result
 
 
-def _myfix_leading(path: str, result: Path) -> Path:
-    if path.startswith(f".{os.sep}") and not result.startswith("./"):
-        result = "." / result
-    return result
-
-
 def mynormpath(path: str) -> Path:
-    """Normalize the path but keep the leading and trailing separator"""
-    return _myfix_leading(path, _myfix_trailing(path, Path(path).normpath()))
+    """Normalize the path but keep the trailing separator"""
+    return _myfix_trailing(path, Path(path).normpath())
 
 
 def myrealpath(path: str) -> Path:
     """Like Path.realpath path but keep the trailing separator"""
-    return _myfix_leading(path, _myfix_trailing(path, Path(path).realpath()))
+    return _myfix_trailing(path, Path(path).realpath())
 
 
 def myrelpath(path: str, start: str = ".") -> Path:
     """Like Path.relpath path but keep the trailing separator"""
-    return _myfix_leading(path, _myfix_trailing(path, Path(path).relpath(start)))
+    return _myfix_trailing(path, Path(path).relpath(start))
 
 
 def myabsolute(path: str, is_dir: bool = False) -> Path:

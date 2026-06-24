@@ -38,15 +38,15 @@ from stepup.core.utils import (
 @pytest.mark.parametrize(
     ("inp", "out"),
     [
-        ("./foo", "./foo"),
-        ("./dir/", "./dir/"),
+        ("./foo", "foo"),
+        ("./dir/", "dir/"),
         (".", "."),
         ("./", "./"),
         ("/foo/", "/foo/"),
         ("/foo", "/foo"),
         ("/foo/../bar", "/bar"),
         ("/foo/./bar", "/foo/bar"),
-        ("./foo/./bar/", "./foo/bar/"),
+        ("./foo/./bar/", "foo/bar/"),
         ("/", "/"),
     ],
 )

@@ -382,7 +382,8 @@ def call(
         Path to the script or binary to invoke.
         Must contain a path separator (e.g. `./script.py` or `sub/script.py`)
         and must not be an absolute path.
-        Environment variables are substituted before sending the step to the StepUp director.
+        Unlike the other path arguments, environment variables are **not** substituted,
+        for consistency with the executable in [`run()`][stepup.core.api.run].
     function_
         Name of the function to invoke (first positional CLI argument).
     inp
@@ -440,20 +441,15 @@ def call(
     inp = string_to_list(inp)
     out = string_to_list(out)
 
-    # Substitute environment variables in executable_.
-    with subs_env_vars() as subs:
-        su_executable = subs(executable_)
-
     # Validate executable path format.
-    if "/" not in su_executable:
+    if "/" not in executable_:
         raise ValueError(
-            "executable_ must contain a path separator (e.g. './script.py'),"
-            f" got: {su_executable!r}"
+            f"executable_ must contain a path separator (e.g. './script.py'), got: {executable_!r}"
         )
 
-    # Validate the resolved executable is not absolute.
-    if os.path.isabs(su_executable):
-        raise ValueError(f"executable_ must not be an absolute path, got: {su_executable!r}")
+    # Validate the executable is not absolute.
+    if os.path.isabs(executable_):
+        raise ValueError(f"executable_ must not be an absolute path, got: {executable_!r}")
 
     # Build the forwarded kwargs dict (inp and out are included when not empty).
     forwarded = kwargs.copy()
@@ -470,13 +466,13 @@ def call(
             raise ValueError(
                 "serialized call arguments exceed 128 KiB; pass args_file= to use a file instead"
             )
-        command = f"{shlex.quote(su_executable)} {function_} {shlex.quote(json_str)}"
-        step_inp = [su_executable, *inp]
+        command = f"{shlex.quote(executable_)} {function_} {shlex.quote(json_str)}"
+        step_inp = [executable_, *inp]
     else:
         # dumpns(do_amend=True) calls amend(out=args_file) before writing.
         dumpns(args_file, forwarded)
-        command = f"{shlex.quote(su_executable)} {function_} --inp={shlex.quote(args_file)}"
-        step_inp = [su_executable, *inp, args_file]
+        command = f"{shlex.quote(executable_)} {function_} --inp={shlex.quote(args_file)}"
+        step_inp = [executable_, *inp, args_file]
 
     # Map optional/planning flags to Need enum.
     if optional:
