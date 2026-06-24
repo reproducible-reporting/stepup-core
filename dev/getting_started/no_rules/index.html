@@ -2303,10 +2303,10 @@ to specify how a common build step can be applied to different inputs.
 StepUp does not need to introduce the concept of a build rule
 because Python functions and loops already provide similar facilities.</p>
 <p>StepUp already comes with a few built-in &ldquo;rules&rdquo; defined this way, e.g.,
-<a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='./', resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a>,
+<a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='.', resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a>,
 <a class="autorefs autorefs-internal" title="stepup.core.api.copy(src, dst, *, optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.copy"><code>copy()</code></a>,
 <a class="autorefs autorefs-internal" title="stepup.core.api.getenv(name, default=None, *, path=False, back=False, multi=False)" href="../../reference/stepup.core.api/#stepup.core.api.getenv"><code>getenv()</code></a> and
-<a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, planning=False, resources=None, args_file=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a>.
+<a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a>.
 Some of these were already discussed in the previous tutorials,
 and their source code offers some inspiration for writing your own.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>

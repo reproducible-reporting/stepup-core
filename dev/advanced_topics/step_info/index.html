@@ -2302,11 +2302,11 @@
 <p class="admonition-title">Note</p>
 <p>This feature was introduced in StepUp 1.3.0.</p>
 </div>
-<p>The <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None, shell=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function always return
+<p>The <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function always return
 an instance of <a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo"><code>StepInfo</code></a>.
 This object holds arguments used to define the step,
 which may be useful for creating follow-up steps.
-All API functions that create a step by calling the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='./', need=Need.DEFAULT, resources=None, shell=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function
+All API functions that create a step by calling the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function
 also return the <a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo"><code>StepInfo</code></a> object.</p>
 <p>Especially for higher-level API functions that create more advanced steps,
 such as the ones in <a href="https://reproducible-reporting.github.io/stepup-reprep/">StepUp RepRep</a>,

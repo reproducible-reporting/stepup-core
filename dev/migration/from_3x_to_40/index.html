@@ -2674,9 +2674,13 @@
 
 
 <h1 id="migration-from-stepup-3x-to-40">Migration from StepUp 3.X to 4.0<a class="headerlink" href="#migration-from-stepup-3x-to-40" title="Permanent link">&para;</a></h1>
-<p>A few things have changed in StepUp 4 that might require changes to your <code>plan.py</code> file.
-These changes reflect optimizations of StepUp&rsquo;s internals or
-get rid of poor historical API design choices.</p>
+<p>StepUp 4 comes with many new features and improvements,
+some of which required backward incompatible changes.
+As a result, you may need to make some changes to your <code>plan.py</code> file
+when upgrading from StepUp 3 to 4.
+Also the database format (used in <code>.stepup/graph.db</code>) has changed.
+If you have an existing StepUp 3 database, it will be ignored
+and your entire workflow will be re-executed to recreate the database in the new format.</p>
 <p>What used to be called the <em>run phase</em> is now called the <em>build phase</em> in documentation and source code.
 For consistency, the <code>stepup build</code> command is now the main entry point for running the build phase,
 while <code>stepup boot</code> is deprecated and will be removed in a future release.
@@ -2758,10 +2762,10 @@ compared to execution via <code>run()</code> with <code>shell=False</code>:</p>
 </ul>
 <p>In short: use <code>run()</code> with the default <code>shell=False</code> unless you specifically need shell features.</p>
 <h2 id="directory-handling">Directory Handling<a class="headerlink" href="#directory-handling" title="Permanent link">&para;</a></h2>
-<p>In StepUp 3, directories were stored in the database and had to be created explicitly using <code>mkdir()</code>
-or made static with <code>static()</code> or <code>glob()</code>.
+<p>In StepUp 3, directories were stored in the database
+and had to be created explicitly using <code>mkdir()</code> or made static with <code>static()</code> or <code>glob()</code>.
 In StepUp 4, directories are no longer stored in the database (except for static trees, see below).
-Instead, they are created when needed.
+Instead, they are created automatically when needed.
 This has a few practical consequences for your <code>plan.py</code> file:</p>
 <ul>
 <li>
@@ -2787,8 +2791,19 @@ This has a few practical consequences for your <code>plan.py</code> file:</p>
 <p>Directories can no longer be used as inputs or outputs of steps.</p>
 </li>
 </ul>
+<p>StepUp 3 insisted strongly on trailing slashes for directory paths,
+which has been abandoned almost entirely in StepUp 4.
+End users only need to specify such &ldquo;path affixes&rdquo; in two places to avoid ambiguity:</p>
+<ul>
+<li>If the <code>dst</code> argument of <code>copy()</code> is a directory, it must end with a trailing slash.
+  (StepUp cannot check the file system to test if it is a directory
+  because the directory may not exist yet.)</li>
+<li>When specifying a local executable, it must either start with a <code>./</code> prefix
+  or be a relative path containing a path separator (<code>/</code>)
+  This is needed to avoid ambiguity with executables found in the PATH.</li>
+</ul>
 <h2 id="distributed-plans">Distributed Plans<a class="headerlink" href="#distributed-plans" title="Permanent link">&para;</a></h2>
-<p>The function <a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='./', resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> now works differently,
+<p>The function <a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='.', resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> now works differently,
 and works almost in the same way as the <code>run()</code> function,
 except for a few small differences:</p>
 <ul>
@@ -2901,7 +2916,7 @@ You are encouraged to migrate your <code>plan.py</code> files to the new API.</p
 <h2 id="optional-migration-from-script-to-call">Optional Migration from <code>script()</code> to <code>call()</code><a class="headerlink" href="#optional-migration-from-script-to-call" title="Permanent link">&para;</a></h2>
 <p>The old script interface still works
 (until it is removed, see <a href="#deprecated-features">Deprecated Features</a> above),
-but switching to <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, planning=False, resources=None, args_file=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> is recommended.
+but switching to <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> is recommended.
 See <a href="../../getting_started/call/">Function Calls</a> for a full introduction to the new interface.</p>
 <p>The translation is mechanical:</p>
 <ul>

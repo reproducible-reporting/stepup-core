@@ -2410,7 +2410,7 @@
 <h1 id="function-calls">Function Calls<a class="headerlink" href="#function-calls" title="Permanent link">&para;</a></h1>
 <p>StepUp Core implements a <em>call protocol</em>
 for invoking named functions in scripts from a <code>plan.py</code> file.
-Each <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='./', optional=False, planning=False, resources=None, args_file=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> registers exactly one step,
+Each <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> registers exactly one step,
 and a called function may itself call <code>call()</code> to register further steps,
 enabling arbitrarily deep, dynamic planning.</p>
 <h2 id="call-protocol">Call Protocol<a class="headerlink" href="#call-protocol" title="Permanent link">&para;</a></h2>
