@@ -212,6 +212,178 @@ You are encouraged to migrate your `plan.py` files to the new API.
 - The script interface for calling user Python scripts from `plan.py` has been deprecated
   in favor of the new [Call](../getting_started/call.md) interface.
 
+## Optional Migration from `script()` to `call()`
+
+The old script interface still works
+(until it is removed, see [Deprecated Features](#deprecated-features) above),
+but switching to [`call()`][stepup.core.api.call] is recommended.
+See [Function Calls](../getting_started/call.md) for a full introduction to the new interface.
+
+The translation is mechanical:
+
+- Import `driver()` from `stepup.core.call` instead of `stepup.core.script`.
+- Replace `script("foo.py")` in `plan.py` with `call("./foo.py", "plan", planning=True)`.
+  Note the `./` prefix (the executable must be a relative path containing a separator)
+  and the explicit `"plan"` function name.
+- Turn the planning logic (the `info()` / `cases()` / `case_info()` functions)
+  into an ordinary `plan()` function that calls `call("./foo.py", "run", ...)`
+  for each run step it wants to register.
+- Any `static` declared via the info dictionary becomes an explicit `static()` call.
+
+### Single case
+
+In StepUp 3, a single-case script returned its planning data from `info()`:
+
+```python
+# StepUp 3 — generate.py
+from stepup.core.script import driver
+
+
+def info():
+    return {"inp": "config.json", "out": ["cos.npy", "sin.npy"]}
+
+
+def run(inp, out):
+    ...
+
+
+if __name__ == "__main__":
+    driver()
+```
+
+```python
+# StepUp 3 — plan.py
+from stepup.core.api import script, static
+
+static("generate.py", "config.json")
+script("generate.py")
+```
+
+In StepUp 4, the `info()` function becomes a `plan()` function that registers the run step:
+
+```python
+# StepUp 4 — generate.py
+from stepup.core.api import call
+from stepup.core.call import driver
+
+
+def plan():
+    call("./generate.py", "run", inp="config.json", out=["cos.npy", "sin.npy"])
+
+
+def run(inp, out):
+    ...
+
+
+if __name__ == "__main__":
+    driver()
+```
+
+```python
+# StepUp 4 — plan.py
+from stepup.core.api import call, static
+
+static("generate.py", "config.json")
+call("./generate.py", "plan", planning=True)
+```
+
+### Multiple cases
+
+In StepUp 3, running the same script for several cases required the `cases()` generator,
+a `CASE_FMT` template, and a `case_info()` function:
+
+```python
+# StepUp 3 — plot.py
+from stepup.core.script import driver
+
+
+def cases():
+    yield "ebbr"
+    yield "ebos"
+
+
+CASE_FMT = "plot_{}"
+
+
+def case_info(airport):
+    return {
+        "inp": ["matplotlibrc", f"{airport}.csv"],
+        "out": f"plot_{airport}.png",
+        "airport": airport,
+    }
+
+
+def run(inp, out, airport):
+    ...
+    fig.savefig(out)
+
+
+if __name__ == "__main__":
+    driver()
+```
+
+In StepUp 4, the same plan/run separation is kept inside the script,
+but the `cases()` / `CASE_FMT` / `case_info()` machinery collapses into a plain loop
+in the `plan()` function. Cases are passed as ordinary keyword arguments,
+so there is no longer any `CASE_FMT`/[`parse`](https://github.com/r1chardj0n3s/parse)
+string round-trip to keep consistent:
+
+```python
+# StepUp 4 — plot.py
+from stepup.core.api import call
+from stepup.core.call import driver
+
+
+def plan():
+    for airport in "ebbr", "ebos":
+        call(
+            "./plot.py",
+            "run",
+            inp=["matplotlibrc", f"{airport}.csv"],
+            out=f"plot_{airport}.png",
+            airport=airport,
+        )
+
+
+def run(inp, out, airport):
+    ...
+    fig.savefig(out[0])
+
+
+if __name__ == "__main__":
+    driver()
+```
+
+The `plan.py` file is the same as in the single-case example,
+just pointing at `plot.py` instead of `generate.py`.
+
+### Remarks
+
+- Keeping a dedicated `plan()` function inside the script is **optional**.
+  For simple cases, the loop can live directly in `plan.py`
+  by calling `call("./plot.py", "run", ...)` for each case there
+  (as shown in the [Call tutorial](../getting_started/call.md)).
+  Conversely, a function invoked via `call()` may itself call `call()` again,
+  so highly complex workflows are not limited to two stages.
+  They can chain arbitrarily many levels of dynamic planning.
+- In most cases, the loop in `plan()` is not the best design choice,
+  as it typically hides key information about the overall workflow.
+  Such loops are often better expressed in the top-level `plan.py` file.
+  The fact that the old script interface imposed this anti-pattern is
+  one of the reasons it was deprecated in favor of the new `call()` interface.
+
+### Gotchas
+
+- The first argument of `call()` must be a relative path containing a separator,
+  so write `"./plot.py"`, not `"plot.py"`.
+- In `run()`, the `out` argument is always a list, even when a single output path
+  was passed to `call()`. Use `out[0]` where the old `run()` could use `out` directly.
+- Replace `script(..., optional=True)` with `call(..., optional=True)`;
+  the value is forwarded to the run steps automatically.
+- The `step_info=...` argument of `script()` is no longer needed:
+  because `plan()` registers the run steps directly, their information is available
+  without writing an intermediate JSON file.
+
 ## Abandoned Features
 
 The following were practically unused and have been removed:

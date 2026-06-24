@@ -5,6 +5,8 @@
     The script interface for calling user Python scripts from `plan.py` has been deprecated
     in favor of the new [Call](../getting_started/call.md) interface.
     You are encouraged to migrate your `plan.py` files to the new API.
+    See [Migrating from the script interface to `call()`](../migration/from_3x_to_40.md#optional-migration-from-script-to-call)
+    for a step-by-step guide.
 
 StepUp Core implements a simple *script protocol*
 for defining scripts that combine planning and execution in a single source file.
