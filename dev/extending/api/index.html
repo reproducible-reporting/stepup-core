@@ -1979,6 +1979,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#path-coercion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path coercion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#affix-handling" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2435,6 +2446,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#path-coercion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path coercion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#affix-handling" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2624,6 +2646,22 @@ The <a href="../../reference/stepup.core.path/"><code>stepup.core.path</code></a
 for working with such paths in custom API functions.
 Refer to the <a href="../../reference/stepup.core.path/">reference page</a> for the full signatures.
 The sections below explain when they can be used.</p>
+<h3 id="path-coercion">Path coercion<a class="headerlink" href="#path-coercion" title="Permanent link">&para;</a></h3>
+<p>While <code>path.Path</code> is used internally, all end-user API functions in <code>stepup.core.api</code>
+also accept <code>os.PathLike</code> objects (i.e. <code>pathlib.Path</code>) as path arguments.
+To facilitate the conversion, the module <code>stepup.core.path</code> provides the following:</p>
+<ul>
+<li><code>StrPath</code>: a type alias for <code>Union[str, os.PathLike]</code> that can be used in type hints.</li>
+<li><code>coerce_path()</code>:
+  converts a single path argument to <code>path.Path</code>.</li>
+<li><code>coerce_paths()</code>:
+  converts a single path argument or a collection of path arguments
+  to a list of <code>path.Path</code> objects.</li>
+<li><code>coerce_paths2()</code>:
+  converts a list of path arguments or lists thereof to a list of <code>path.Path</code> objects.</li>
+<li><code>coerce_str()</code>:
+  converts a single path argument to <code>str</code>, preserving any trailing slash.</li>
+</ul>
 <h3 id="affix-handling">Affix handling<a class="headerlink" href="#affix-handling" title="Permanent link">&para;</a></h3>
 <p>A leading <code>./</code> or a trailing <code>/</code> is significant in StepUp:</p>
 <ul>

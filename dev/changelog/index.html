@@ -5600,6 +5600,8 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   The amount stored per stream can be capped with the new
   <code>sb --max-output-size</code> option (<code>0</code> = unlimited, the default).
   These outputs can later be viewed with <code>stepup browse</code>.</li>
+<li>All functions in <code>stepup.core.api</code> now accept <code>os.PathLike</code> objects (i.e. <code>pathlib.Path</code>)
+  as path arguments, in addition to <code>str</code> and <code>path.Path</code>.</li>
 </ul>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
 <ul>
