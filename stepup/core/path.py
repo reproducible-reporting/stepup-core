@@ -46,24 +46,24 @@ StrPath = str | os.PathLike[str]
 
 
 def coerce_str(arg: StrPath) -> str:
-    """Coerce a path-like argument to a `str`."""
+    """Convert a path-like argument via `os.fspath`."""
     return os.fspath(arg)
 
 
 def coerce_path(arg: StrPath) -> Path:
-    """Coerce a path-like argument to a `path.Path` (a `str` subclass)."""
+    """Convert a path-like argument to a `path.Path` instance."""
     return Path(os.fspath(arg))
 
 
 def coerce_paths(args: StrPath | Collection[StrPath]) -> list[Path]:
-    """Coerce a path-like argument or collection thereof to a list of `path.Path`."""
+    """Convert a path-like argument or flat collection to `path.Path` instances."""
     if isinstance(args, (str, os.PathLike)):
         args = [args]
     return [Path(os.fspath(arg)) for arg in args]
 
 
 def coerce_paths2(args: Collection[StrPath] | Collection[Collection[StrPath]]) -> list[Path]:
-    """Coerce a path-like argument or collection thereof to a list of `path.Path`."""
+    """Convert a collection of paths or path sub-collections, flattening one level of nesting."""
     result = []
     for arg in args:
         if isinstance(arg, (str, os.PathLike)):

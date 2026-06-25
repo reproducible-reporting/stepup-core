@@ -148,14 +148,14 @@ To facilitate the conversion, the module `stepup.core.path` provides the followi
 
 - `StrPath`: a type alias for `Union[str, os.PathLike]` that can be used in type hints.
 - `coerce_path()`:
-  converts a single path argument to `path.Path`.
+    converts a single path argument to `path.Path`.
 - `coerce_paths()`:
-  converts a single path argument or a collection of path arguments
-  to a list of `path.Path` objects.
+    converts a single path argument or a collection of path arguments
+    to a list of `path.Path` objects.
 - `coerce_paths2()`:
-  converts a list of path arguments or lists thereof to a list of `path.Path` objects.
+    converts a list of path arguments or lists thereof to a list of `path.Path` objects.
 - `coerce_str()`:
-  converts a single path argument to `str`, preserving any trailing slash.
+    converts a single path argument to `str`, preserving any trailing slash.
 
 ### Affix handling
 

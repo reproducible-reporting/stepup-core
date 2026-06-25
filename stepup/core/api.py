@@ -183,11 +183,9 @@ def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
     """
     if len(patterns) == 0:
         raise ValueError("At least one path is required for glob.")
-    patterns = [coerce_str(pattern) for pattern in patterns]
-
     # Substitute environment variables
     with subs_env_vars() as subs_path:
-        su_patterns = [subs_path(pattern).normpath() for pattern in patterns]
+        su_patterns = [subs_path(coerce_str(pattern)).normpath() for pattern in patterns]
 
     # StepUp needs to know the patterns,
     # so it can identify new files matching the patterns in future runs.
@@ -439,8 +437,6 @@ def call(
     # Validate mutually exclusive flags.
     if optional and planning:
         raise ValueError("optional and planning are mutually exclusive")
-    if args_file is not None:
-        args_file = coerce_path(args_file)
 
     # Perform environment variable substitutions before building the command.
     # This is somewhat redundant with the substitutions performed in `_prepare_run_command()`.
@@ -449,6 +445,8 @@ def call(
         inp = [subs(inp_path).normpath() for inp_path in coerce_paths(inp)]
         out = [subs(out_path).normpath() for out_path in coerce_paths(out)]
         workdir = subs(coerce_path(workdir)).normpath()
+        if args_file is not None:
+            args_file = subs(coerce_path(args_file)).normpath()
     prefix, suffix = get_affixes(executable_)
     executable_ = apply_affixes(executable_.normpath(), prefix, suffix)
 
@@ -1060,7 +1058,7 @@ def loadns(
         A SimpleNamespace instance with the variables, which can be accessed as attributes.
     """
     # Process arguments
-    dir_out = Path.cwd() if dir_out is None else Path(coerce_path(dir_out))
+    dir_out = Path.cwd() if dir_out is None else coerce_path(dir_out)
     with subs_env_vars() as subs:
         paths_variables = [subs(coerce_path(path_var)).normpath() for path_var in paths_variables]
 
