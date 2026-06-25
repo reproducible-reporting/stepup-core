@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""The `Workflow` is a `Cascade` subclass with more concrete node implementations."""
+"""The `Workflow` is a `Trellis` subclass with more concrete node implementations."""
 
 import asyncio
 import json
@@ -31,7 +31,6 @@ from collections.abc import Collection, Iterator
 import attrs
 from path import Path
 
-from .cascade import Cascade, Node, Root
 from .enums import FileState, HashUpdateCause, Need, StepState
 from .exceptions import GraphError
 from .file import File
@@ -40,6 +39,7 @@ from .nglob import NGlobMulti, has_wildcards
 from .sqlite3 import UInt64, escape_like_pattern
 from .static_tree import StaticTree
 from .step import Step
+from .trellis import Node, Root, Trellis
 from .utils import string_to_bool
 
 __all__ = ("Workflow",)
@@ -112,7 +112,7 @@ class SupplyInfo:
 
 
 @attrs.define(eq=False)
-class Workflow(Cascade):
+class Workflow(Trellis):
     makedirs: bool = attrs.field(kw_only=True, default=True)
     """Whether to create parent directories of output files when they are supplied or created."""
 
@@ -223,7 +223,7 @@ class Workflow(Cascade):
 
     @staticmethod
     def default_node_classes() -> list[type[Node]]:
-        return [*Cascade.default_node_classes(), File, Step, StaticTree]
+        return [*Trellis.default_node_classes(), File, Step, StaticTree]
 
     #
     # Workflow introspection

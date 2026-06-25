@@ -24,23 +24,19 @@ import logging
 import os
 import pickle
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Self
+from typing import Self
 
 import attrs
 from path import Path
 
-from .cascade import Node
 from .enums import FileState, Need, StepState
 from .file import File, FileHash
 from .hash import StepHash
 from .nglob import NGlobMulti
 from .static_tree import StaticTree
 from .stepinfo import StepInfo
+from .trellis import Node
 from .utils import format_digest
-
-if TYPE_CHECKING:
-    from .workflow import Workflow
-
 
 __all__ = ("Step",)
 
@@ -239,10 +235,6 @@ def split_step_label(label: str) -> tuple[str, Path]:
 
 @attrs.define
 class Step(Node):
-    @property
-    def workflow(self) -> "Workflow":
-        return self.cascade
-
     #
     # Override from base class
     #
@@ -665,7 +657,7 @@ class Step(Node):
         )
         self.con.executemany("DELETE FROM amended_dep WHERE i = ?", ((row[0],) for row in rows))
         self.del_suppliers(
-            [self.cascade.node_classes[kind](self.workflow, i, label) for _, i, label, kind in rows]
+            [self.graph.node_classes[kind](self.graph, i, label) for _, i, label, kind in rows]
         )
 
         # Drop amended environment variables
@@ -687,14 +679,14 @@ class Step(Node):
         ideps_consumer = [(row[0],) for row in records_consumer]
         self.con.executemany("DELETE FROM amended_dep WHERE i = ?", ideps_consumer)
         for _, i, label, kind in records_consumer:
-            node = self.cascade.node_classes[kind](self.cascade, i, label)
+            node = self.graph.node_classes[kind](self.graph, i, label)
             node.del_suppliers([self])
             node.detach()
 
         # Detach steps created by this step
         sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'step'"
         for i, label in self.con.execute(sql, (self.i,)):
-            step = Step(self.workflow, i, label)
+            step = Step(self.graph, i, label)
             step.detach()
 
         # Detach static file definitions
@@ -704,13 +696,13 @@ class Step(Node):
         )
         data = (self.i, FileState.STATIC.value, FileState.MISSING.value)
         for i, label in self.con.execute(sql, data):
-            file = File(self.workflow, i, label)
+            file = File(self.graph, i, label)
             file.detach()
 
         # Detach static trees
         sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'st'"
         for i, label in self.con.execute(sql, (self.i,)):
-            st = StaticTree(self.workflow, i, label)
+            st = StaticTree(self.graph, i, label)
             st.detach()
 
         # Mark BUILT outputs OUTDATED.
@@ -720,7 +712,7 @@ class Step(Node):
         )
         data = (self.i, FileState.BUILT.value)
         for i, label in self.con.execute(sql, data):
-            file = File(self.workflow, i, label)
+            file = File(self.graph, i, label)
             file.mark_outdated()
 
         # Drop any output stored by a previous run.

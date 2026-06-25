@@ -21,7 +21,7 @@
 
 import attrs
 
-from .cascade import Node
+from .trellis import Node
 
 __all__ = ("StaticTree",)
 

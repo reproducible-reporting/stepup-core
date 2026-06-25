@@ -31,13 +31,13 @@ import attrs
 from .exceptions import CyclicError, GraphError
 from .sqlite3 import wipe_database
 
-__all__ = ("Cascade", "Node", "Root")
+__all__ = ("Node", "Root", "Trellis")
 
 
 logger = logging.getLogger(__name__)
 
 
-CASCADE_SCHEMA = """
+TRELLIS_SCHEMA = """
 PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
 PRAGMA application_id={application_id};
@@ -140,17 +140,17 @@ class Node:
     Subclasses may override the following:
 
     - `key_prefix` to control the formatting of the key string.
-    - `schema` to extend the cascade schema.
+    - `schema` to extend the trellis schema.
     - `create_label` to override the user-provided label of a node.
-    - `initialize` to create or update rows for new nodes outside the default Cascade tables.
-    - `validate` to check if the necessary rows outside the default Cascade tables are made.
+    - `initialize` to create or update rows for new nodes outside the default Trellis tables.
+    - `validate` to check if the necessary rows outside the default Trellis tables are made.
     - `format_properties` to define the properties of the node.
     - `give_up` is called when a detached node must be cleaned up because it loses a product node.
     - `clean` to decide if a detached node can be removed and to release resources.
     """
 
-    cascade: "Cascade" = attrs.field(repr=False)
-    """The Cascade object that contains the node."""
+    graph: "Trellis" = attrs.field(repr=False)
+    """The Trellis object that contains the node."""
 
     i: int = attrs.field()
     """The identifier of the node in the database."""
@@ -165,7 +165,7 @@ class Node:
     @property
     def con(self) -> sqlite3.Connection:
         """The SQLite database."""
-        return self.cascade.con
+        return self.graph.con
 
     @classmethod
     def kind(cls) -> str:
@@ -233,7 +233,7 @@ class Node:
         if row is None:
             return None
         i, kind, label = row
-        return self.cascade._node_classes[kind](self.cascade, i, label)
+        return self.graph._node_classes[kind](self.graph, i, label)
 
     def creator_detached(self) -> tuple[Self, bool] | tuple[None, None]:
         """Return the creator of the node.
@@ -253,7 +253,7 @@ class Node:
         if row is None:
             return None, None
         i, kind, label, detached = row
-        return self.cascade._node_classes[kind](self.cascade, i, label), detached
+        return self.graph._node_classes[kind](self.graph, i, label), detached
 
     def products(self, node_type: type[NodeType] = Self) -> Iterator[NodeType]:
         """Iterate over (a subset of) products of this node."""
@@ -263,7 +263,7 @@ class Node:
             query += " AND kind = ?"
             data.append(node_type.kind())
         for i, kind, label in self.con.execute(query, data):
-            yield self.cascade.node_classes[kind](self.cascade, i, label)
+            yield self.graph.node_classes[kind](self.graph, i, label)
 
     def products_str(self, node_type: type[NodeType] = Self) -> Iterator[str]:
         """Iterate over (a subset of) products of this node, formatted as strings."""
@@ -296,8 +296,8 @@ class Node:
             data.append(node_type.kind())
         if not include_detached:
             sql += " AND NOT detached"
-        for i, kind, label in self.cascade.con.execute(sql, data):
-            yield self.cascade.node_classes[kind](self.cascade, i, label)
+        for i, kind, label in self.graph.con.execute(sql, data):
+            yield self.graph.node_classes[kind](self.graph, i, label)
 
     def suppliers(
         self, node_type: type[NodeType] = Self, include_detached: bool = False
@@ -326,7 +326,7 @@ class Node:
             sql += " AND kind = ?"
             data.append(node_type.kind())
         sql += " ORDER BY kind, label"
-        for kind, label, detached, idep in self.cascade.con.execute(sql, data):
+        for kind, label, detached, idep in self.graph.con.execute(sql, data):
             node_str = f"{kind}:{label}"
             if detached:
                 node_str = f"({node_str})"
@@ -389,7 +389,7 @@ class Node:
             raise TypeError(f"Argument new_creator must be a Node, got {type(new_creator)}")
         if new_creator.is_detached():
             raise ValueError("New creator node must not be detached.")
-        self.cascade._check_creator(type(self), new_creator)
+        self.graph._check_creator(type(self), new_creator)
         old_creator, old_creator_detached = self.creator_detached()
         self.con.execute(
             "UPDATE node SET creator = ?, detached = FALSE WHERE i = ?", (new_creator.i, self.i)
@@ -415,7 +415,7 @@ class Node:
         idep
             The identifier in the dependency table.
         """
-        self.cascade._check_supplier(supplier, self)
+        self.graph._check_supplier(supplier, self)
         # Check whether the new edge would introduce a cyclic dependency.
         self.con.execute(DROP_CONSUMERS)
         self.con.execute(INITIAL_CONSUMERS)
@@ -455,7 +455,7 @@ class Root(Node):
 
     (Indirect) products of the root node are considered active nodes in the graph.
     Nodes that are not connected (indirectly) to the root node are considered detached,
-    and will be removed when the Cascade.clean method is called.
+    and will be removed when the Trellis.clean method is called.
     """
 
     def clean(self):
@@ -516,7 +516,7 @@ class ConnectionWrapper:
 
 
 @attrs.define(eq=False)
-class Cascade:
+class Trellis:
     """Base class for provenance and denpendency graphs.
 
     Subclasses should implement at least the following:
@@ -599,7 +599,7 @@ class Cascade:
     @classmethod
     def schema(cls) -> str:
         """Return the SQL schema for the database. (Does not include node-specific schemas.)"""
-        return CASCADE_SCHEMA
+        return TRELLIS_SCHEMA
 
     def __attrs_post_init__(self):
         """Initialize or check the initial database.
@@ -638,9 +638,9 @@ class Cascade:
     def check_consistency(self):
         """Check whether the graph satisfies all constraints."""
         if self._root.creator() != self._root:
-            raise GraphError("Invalid cascade: root node does not create itself")
+            raise GraphError("Invalid trellis: root node does not create itself")
         if self._root.is_detached():
-            raise GraphError("Invalid cascade: root node cannot be detached")
+            raise GraphError("Invalid trellis: root node cannot be detached")
         sql = (
             "SELECT node.i, node.kind, node.label, node.creator, node.detached, cnode.detached "
             "FROM node LEFT JOIN node AS cnode ON node.creator = cnode.i"

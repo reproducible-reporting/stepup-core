@@ -21,17 +21,17 @@
 
 import pytest
 
-from stepup.core.cascade import CASCADE_SCHEMA
 from stepup.core.enums import Need, StepState
 from stepup.core.sqlite3 import connect
 from stepup.core.step import RECURSIVE_CHECK_WITH_PRODUCTS, STEP_SCHEMA, truncate_output
+from stepup.core.trellis import TRELLIS_SCHEMA
 
 
 @pytest.fixture
 def con():
-    """In-memory SQLite connection with cascade + step schemas and a root node."""
+    """In-memory SQLite connection with trellis + step schemas and a root node."""
     c = connect(":memory:")
-    c.executescript(CASCADE_SCHEMA.format(application_id=0, schema_version=0))
+    c.executescript(TRELLIS_SCHEMA.format(application_id=0, schema_version=0))
     c.executescript(STEP_SCHEMA)
     # Root node has a self-referential creator.
     c.execute("INSERT INTO node (i, kind, label, creator, detached) VALUES (1, 'root', '', 1, 0)")

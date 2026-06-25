@@ -22,20 +22,15 @@
 import logging
 import os
 from collections.abc import Iterator
-from typing import TYPE_CHECKING
 
 import attrs
 from path import Path
 
-from .cascade import Node
 from .enums import FileState
 from .hash import FileHash
 from .sqlite3 import UInt64
+from .trellis import Node
 from .utils import format_digest
-
-if TYPE_CHECKING:
-    from .workflow import Workflow
-
 
 __all__ = ("File",)
 
@@ -70,10 +65,6 @@ CREATE INDEX IF NOT EXISTS file_state ON file(state);
 @attrs.define
 class File(Node):
     """A concrete file on the filesystem (may also be a directory)."""
-
-    @property
-    def workflow(self) -> "Workflow":
-        return self.cascade
 
     #
     # Override from base class
@@ -153,11 +144,11 @@ class File(Node):
         """
         state = self.get_state()
         if state == FileState.VOLATILE:
-            self.workflow.to_be_deleted.append((self.path, None))
+            self.graph.to_be_deleted.append((self.path, None))
         elif state in (FileState.BUILT, FileState.OUTDATED):
             file_hash = self.get_hash()
             if file_hash.digest != b"u":
-                self.workflow.to_be_deleted.append((self.path, file_hash))
+                self.graph.to_be_deleted.append((self.path, file_hash))
 
     def give_up(self):
         """Clean up a detached node because it loses a product node."""

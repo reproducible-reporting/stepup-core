@@ -2062,7 +2062,7 @@ def test_clean_cascades_satellite_rows(wfs: Workflow):
     """Cleaning a node deletes all its satellite rows via ON DELETE CASCADE.
 
     No explicit per-table DELETE is issued in `Step.clean()` / `File.clean()` anymore;
-    the cascade fires when `Cascade.clean()` deletes the node row.
+    the cascade fires when `Trellis.clean()` deletes the node row.
     """
     # Foreign-key enforcement must be active on the connection or the cascades never fire.
     assert wfs.con.execute("PRAGMA foreign_keys").fetchone()[0] == 1

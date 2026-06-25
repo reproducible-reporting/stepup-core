@@ -21,7 +21,6 @@
 
 import pytest
 
-from stepup.core.cascade import CASCADE_SCHEMA
 from stepup.core.enums import FileState, Need, StepState
 from stepup.core.file import FILE_SCHEMA
 from stepup.core.scheduler import (
@@ -45,13 +44,14 @@ from stepup.core.scheduler import (
 )
 from stepup.core.sqlite3 import connect
 from stepup.core.step import STEP_SCHEMA
+from stepup.core.trellis import TRELLIS_SCHEMA
 
 
 @pytest.fixture
 def con():
-    """In-memory SQLite connection with cascade + step + file schemas and a root node."""
+    """In-memory SQLite connection with trellis + step + file schemas and a root node."""
     c = connect(":memory:")
-    c.executescript(CASCADE_SCHEMA.format(application_id=0, schema_version=0))
+    c.executescript(TRELLIS_SCHEMA.format(application_id=0, schema_version=0))
     c.executescript(STEP_SCHEMA)
     c.executescript(FILE_SCHEMA)
     # available_resource is normally a temp table created by Scheduler.set_available_resources.

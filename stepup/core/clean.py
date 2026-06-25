@@ -27,13 +27,13 @@ from collections.abc import Callable
 from path import Path
 from rich.console import Console
 
-from .cascade import DROP_CONSUMERS, INITIAL_CONSUMERS, RECURSE_CONSUMERS
 from .config import ConfigLoader
 from .constants import GRAPH_DB
 from .enums import FileState
 from .hash import FileHash
 from .path import translate, translate_back
 from .sqlite3 import copy_db_in_memory, escape_like_pattern
+from .trellis import DROP_CONSUMERS, INITIAL_CONSUMERS, RECURSE_CONSUMERS
 
 
 def clean_subcommand(subparsers, loader: ConfigLoader) -> Callable:

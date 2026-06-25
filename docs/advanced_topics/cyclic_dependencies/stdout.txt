@@ -1,4 +1,4 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post46)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post50)
    STARTUP │ (Re)initialized boot script
      PHASE │ build
      START │ ./plan.py
@@ -16,13 +16,13 @@ Traceback (most recent call last):
   File "./plan.py", line 5, in <module>
     copy("b.txt", "a.txt")
     ~~~~^^^^^^^^^^^^^^^^^^
-  File "stepup/core/api.py", line 844, in copy
+  File "stepup/core/api.py", line 853, in copy
     return step(
         "cp -p ${inp} ${out}",
     ...<4 lines>...
         shell=False,
     )
-  File "stepup/core/api.py", line 331, in step
+  File "stepup/core/api.py", line 332, in step
     to_check = RPC_CLIENT.call.step(
         _get_step_i(),
     ...<8 lines>...
@@ -51,9 +51,9 @@ Traceback (most recent call last):
   File "stepup/core/workflow.py", line 816, in define_step
     file.add_supplier(step)
     ~~~~~~~~~~~~~~~~~^^^^^^
-  File "stepup/core/file.py", line 283, in add_supplier
+  File "stepup/core/file.py", line 277, in add_supplier
     idep = super().add_supplier(supplier)
-  File "stepup/core/cascade.py", line 426, in add_supplier
+  File "stepup/core/trellis.py", line 426, in add_supplier
     raise CyclicError("New relation introduces a cyclic dependency")
 stepup.core.exceptions.CyclicError: New relation introduces a cyclic dependency
 ────────────────────────────────────────────────────────────────────────────────

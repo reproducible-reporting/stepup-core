@@ -174,10 +174,10 @@ StepUp runs as two process types:
 The entry point `stepup build` (in `tui.py`) is what users run.
 It spawns the director and connects to it.
 
-### Workflow Graph (`cascade.py`, `workflow.py`)
+### Workflow Graph (`trellis.py`, `workflow.py`)
 
 The core data structure is a combined **provenance** and **dependency** graph stored in SQLite.
-`Cascade` (in `cascade.py`) is the abstract base implementing the graph, leveraging recursive SQL.
+`Trellis` (in `trellis.py`) is the abstract base implementing the graph, leveraging recursive SQL.
 `Workflow` (in `workflow.py`) extends it with concrete node types:
 
 - **`File`** (`file.py`):
@@ -192,7 +192,7 @@ The `DBLock` in `utils.py` serializes writes.
 
 #### Database schema versioning
 
-The schema version is `Cascade.schema_version` (in `cascade.py`), written to the database via
+The schema version is `Trellis.schema_version` (in `trellis.py`), written to the database via
 `PRAGMA user_version`. On a version mismatch, the database is **wiped and recreated** from
 scratch (`wipe_database`) — there is no `ALTER TABLE` migration path.
 

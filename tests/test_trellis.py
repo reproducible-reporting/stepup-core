@@ -17,7 +17,7 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""Unit tests for stepup.core.cascade."""
+"""Unit tests for stepup.core.trellis."""
 
 import sqlite3
 from collections.abc import Iterator
@@ -25,14 +25,14 @@ from collections.abc import Iterator
 import attrs
 import pytest
 
-from stepup.core.cascade import Cascade, Node, Root
 from stepup.core.exceptions import CyclicError, GraphError
+from stepup.core.trellis import Node, Root, Trellis
 
 
 @pytest.fixture
-def cascade():
+def trellis():
     con = sqlite3.Connection(":memory:")
-    return Cascade(con)
+    return Trellis(con)
 
 
 FROM_SCRATCH_FORMAT_STR = """\
@@ -40,44 +40,44 @@ root:
 """
 
 
-def test_from_scratch(cascade):
-    assert cascade.root.i == 1
-    assert cascade.root.creator() == cascade.root
-    assert cascade.root.creator_detached() == (cascade.root, False)
+def test_from_scratch(trellis):
+    assert trellis.root.i == 1
+    assert trellis.root.creator() == trellis.root
+    assert trellis.root.creator_detached() == (trellis.root, False)
     with pytest.raises(attrs.exceptions.FrozenInstanceError):
-        cascade.root.i = 3
-    assert cascade.format_str() == FROM_SCRATCH_FORMAT_STR
-    assert list(cascade.nodes()) == [Root(cascade, 1, "")]
+        trellis.root.i = 3
+    assert trellis.format_str() == FROM_SCRATCH_FORMAT_STR
+    assert list(trellis.nodes()) == [Root(trellis, 1, "")]
 
 
-def test_supply_missing_nodes(cascade):
-    fake3 = Node(cascade, 3, "fake3")
-    fake4 = Node(cascade, 4, "fake3")
+def test_supply_missing_nodes(trellis):
+    fake3 = Node(trellis, 3, "fake3")
+    fake4 = Node(trellis, 4, "fake3")
     with pytest.raises(GraphError):
-        fake3.add_supplier(cascade.root)
+        fake3.add_supplier(trellis.root)
     with pytest.raises(GraphError):
-        cascade.root.add_supplier(fake4)
+        trellis.root.add_supplier(fake4)
     with pytest.raises(GraphError):
         fake3.add_supplier(fake4)
 
 
-def test_no_node_class(cascade):
+def test_no_node_class(trellis):
     with pytest.raises(TypeError):
-        cascade.create(int, cascade.root, "bla")
+        trellis.create(int, trellis.root, "bla")
 
 
-def test_check_consistency_root1(cascade):
+def test_check_consistency_root1(trellis):
     # Manually set creator field of root node to None
-    cascade.con.execute("UPDATE node SET creator = NULL WHERE i = 1")
+    trellis.con.execute("UPDATE node SET creator = NULL WHERE i = 1")
     with pytest.raises(GraphError):
-        cascade.check_consistency()
+        trellis.check_consistency()
 
 
-def test_check_consistency_root2(cascade):
+def test_check_consistency_root2(trellis):
     # Manually set root to detached
-    cascade.con.execute("UPDATE node SET detached = TRUE WHERE i = 1")
+    trellis.con.execute("UPDATE node SET detached = TRUE WHERE i = 1")
     with pytest.raises(GraphError):
-        cascade.check_consistency()
+        trellis.check_consistency()
 
 
 FOO_SCHEMA = """
@@ -142,10 +142,10 @@ class Foo(Node):
 
 
 @attrs.define(eq=False)
-class LogCascade(Cascade):
+class LogTrellis(Trellis):
     @staticmethod
     def default_node_classes() -> list[type[Node]]:
-        return [*Cascade.default_node_classes(), Foo]
+        return [*Trellis.default_node_classes(), Foo]
 
     @property
     def application_id(self) -> int:
@@ -159,7 +159,7 @@ class LogCascade(Cascade):
 @pytest.fixture
 def lc():
     con = sqlite3.Connection(":memory:")
-    return LogCascade(con)
+    return LogTrellis(con)
 
 
 SINGLETON1_FORMAT_STR = """\
@@ -301,7 +301,7 @@ f:three
 
 
 def test_chain(lc):
-    # Prepare cascade object for testing
+    # Prepare trellis object for testing
     # root +-> foo0 --> foo4
     #      +-> foo1
     #      +-> foo2 --> foo3
@@ -601,13 +601,13 @@ def test_walk_consumers(lc):
 def test_load_existing(path_tmp):
     con1 = sqlite3.Connection(path_tmp / "lc.db")
     with con1:
-        lc = LogCascade(con1)
+        lc = LogTrellis(con1)
         graph = lc.format_str()
     con1.close()
 
     con2 = sqlite3.Connection(path_tmp / "lc.db")
     with con2:
-        lc = LogCascade(con2)
+        lc = LogTrellis(con2)
         assert lc.format_str() == graph
     con2.close()
 
