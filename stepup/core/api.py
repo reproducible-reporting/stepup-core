@@ -26,6 +26,12 @@ This module should not be imported by other stepup.core modules, safe for some n
 - `stepup.core.interact`
 - `stepup.core.extapi`
 - Inside some functions, e.g. `driver()` in `stepup.core.call`.
+
+All path arguments accept either a `str` or any `os.PathLike` object (such as a `pathlib.Path`).
+Note that `pathlib` normalizes away leading `./` and trailing `/` affixes at construction time.
+For arguments where these affixes are significant
+(the `dst` of `copy`, local executables, and the path variants of `getenv`),
+pass a `str` or a `path.Path` to preserve them.
 """
 
 import contextlib
@@ -46,7 +52,18 @@ from .cattrs import json_converter, yaml_converter
 from .enums import Need
 from .extapi import subs_env_vars
 from .nglob import NGlobMulti
-from .path import apply_affixes, get_affixes, make_path_out, translate, translate_back
+from .path import (
+    StrPath,
+    apply_affixes,
+    coerce_path,
+    coerce_paths,
+    coerce_paths2,
+    coerce_str,
+    get_affixes,
+    make_path_out,
+    translate,
+    translate_back,
+)
 from .rpc import DummySyncRPCClient, SocketSyncRPCClient
 from .step import FileHash
 from .stepinfo import StepInfo
@@ -77,7 +94,7 @@ __all__ = (
 #
 
 
-def static(*paths: str | Iterable[str]):
+def static(*paths: StrPath | Iterable[StrPath]):
     """Declare static paths.
 
     Parameters
@@ -105,14 +122,7 @@ def static(*paths: str | Iterable[str]):
     at the time this function is called, not when the step is executed.
     """
     # Turn paths into one big list.
-    _paths = paths
-    paths = []
-    for path in _paths:
-        if isinstance(path, str):
-            paths.append(path)
-        elif isinstance(path, Iterable):
-            paths.extend(path)
-    del _paths
+    paths = coerce_paths2(paths)
 
     # Avoid empty RPC calls.
     if len(paths) > 0:
@@ -135,7 +145,7 @@ def static(*paths: str | Iterable[str]):
             _confirm_deferred(to_check)
 
 
-def glob(*patterns: str, **subs: str) -> NGlobMulti:
+def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
     """Declare static files through glob patterns and return the matches.
 
     All matched files are declared static with the director,
@@ -173,6 +183,7 @@ def glob(*patterns: str, **subs: str) -> NGlobMulti:
     """
     if len(patterns) == 0:
         raise ValueError("At least one path is required for glob.")
+    patterns = [coerce_str(pattern) for pattern in patterns]
 
     # Substitute environment variables
     with subs_env_vars() as subs_path:
@@ -208,13 +219,13 @@ def glob(*patterns: str, **subs: str) -> NGlobMulti:
 
 
 def step(
-    command: str,
+    command: StrPath,
     *,
-    inp: Collection[str] | str = (),
+    inp: Collection[StrPath] | StrPath = (),
     env: Collection[str] | str = (),
-    out: Collection[str] | str = (),
-    vol: Collection[str] | str = (),
-    workdir: str = ".",
+    out: Collection[StrPath] | StrPath = (),
+    vol: Collection[StrPath] | StrPath = (),
+    workdir: StrPath = ".",
     need: Need = Need.DEFAULT,
     resources: dict[str, int] | str | None = None,
     shell: bool = False,
@@ -280,15 +291,16 @@ def step(
     Relative paths in `inp`, `out`, and `vol` are relative to the working directory of the new step.
     """
     # Pre-process the arguments for the Director process.
-    inp_paths = string_to_list(inp)
+    command = coerce_str(command)
+    inp_paths = coerce_paths(inp)
     env_vars = string_to_list(env)
-    out_paths = string_to_list(out)
-    vol_paths = string_to_list(vol)
+    out_paths = coerce_paths(out)
+    vol_paths = coerce_paths(vol)
     with subs_env_vars() as subs:
         su_inp_paths = [subs(inp_path).normpath() for inp_path in inp_paths]
         su_out_paths = [subs(out_path).normpath() for out_path in out_paths]
         su_vol_paths = [subs(vol_path).normpath() for vol_path in vol_paths]
-        su_workdir = subs(workdir).normpath()
+        su_workdir = subs(coerce_path(workdir)).normpath()
     _check_no_directories(su_inp_paths)
     _check_no_directories(su_out_paths)
     _check_no_directories(su_vol_paths)
@@ -350,18 +362,18 @@ def step(
 
 
 def call(
-    executable_: str,
+    executable_: StrPath,
     function_: str,
     *,
-    inp: Collection[str] | str = (),
+    inp: Collection[StrPath] | StrPath = (),
     env: Collection[str] | str = (),
-    out: Collection[str] | str = (),
-    vol: Collection[str] | str = (),
-    workdir: str = ".",
+    out: Collection[StrPath] | StrPath = (),
+    vol: Collection[StrPath] | StrPath = (),
+    workdir: StrPath = ".",
     optional: bool = False,
     planning: bool = False,
     resources: dict[str, int] | str | None = None,
-    args_file: str | None = None,
+    args_file: StrPath | None = None,
     **kwargs,
 ) -> StepInfo:
     """Register a step that calls a named function in an executable.
@@ -427,14 +439,16 @@ def call(
     # Validate mutually exclusive flags.
     if optional and planning:
         raise ValueError("optional and planning are mutually exclusive")
+    if args_file is not None:
+        args_file = coerce_path(args_file)
 
     # Perform environment variable substitutions before building the command.
     # This is somewhat redundant with the substitutions performed in `_prepare_run_command()`.
     with subs_env_vars() as subs:
-        executable_ = subs(executable_)
-        inp = [subs(inp_path).normpath() for inp_path in string_to_list(inp)]
-        out = [subs(out_path).normpath() for out_path in string_to_list(out)]
-        workdir = subs(workdir).normpath()
+        executable_ = subs(coerce_str(executable_))
+        inp = [subs(inp_path).normpath() for inp_path in coerce_paths(inp)]
+        out = [subs(out_path).normpath() for out_path in coerce_paths(out)]
+        workdir = subs(coerce_path(workdir)).normpath()
     prefix, suffix = get_affixes(executable_)
     executable_ = apply_affixes(executable_.normpath(), prefix, suffix)
 
@@ -514,10 +528,10 @@ AMEND_HISTORY = {
 
 def amend(
     *,
-    inp: Collection[str] | str = (),
+    inp: Collection[StrPath] | StrPath = (),
     env: Collection[str] | str = (),
-    out: Collection[str] | str = (),
-    vol: Collection[str] | str = (),
+    out: Collection[StrPath] | StrPath = (),
+    vol: Collection[StrPath] | StrPath = (),
 ):
     """Declare additional inputs, outputs, and environment dependencies from within a running step.
 
@@ -559,10 +573,10 @@ def amend(
     Repeated calls are safe: items already amended in prior calls are silently skipped.
     """
     # Pre-process the arguments for the Director process.
-    inp_paths = string_to_list(inp)
+    inp_paths = coerce_paths(inp)
     env_vars = string_to_list(env)
-    out_paths = string_to_list(out)
-    vol_paths = string_to_list(vol)
+    out_paths = coerce_paths(out)
+    vol_paths = coerce_paths(vol)
     if all(len(collection) == 0 for collection in [inp_paths, env_vars, out_paths, vol_paths]):
         return
     env_vars = set(env_vars)
@@ -632,9 +646,9 @@ def getinfo() -> StepInfo:
     return step_info
 
 
-def graph(prefix: str):
+def graph(prefix: StrPath):
     """Write the workflow graph files in text and dot formats."""
-    return RPC_CLIENT.call.graph(prefix)
+    return RPC_CLIENT.call.graph(coerce_path(prefix))
 
 
 #
@@ -643,7 +657,7 @@ def graph(prefix: str):
 
 
 def _prepare_run_command(
-    command: str, inp: Collection[str] | str, shell: bool, need_relative_exe: bool
+    command: StrPath, inp: Collection[StrPath] | StrPath, shell: bool, need_relative_exe: bool
 ) -> tuple[str, list[str]]:
     """Prepare command for execution and auto-add local executable as input.
 
@@ -667,6 +681,7 @@ def _prepare_run_command(
     inp
         The updated list of input files, including the auto-added executable if applicable.
     """
+    command = coerce_str(command)
     try:
         parts = shlex.split(command)
     except ValueError:
@@ -676,7 +691,7 @@ def _prepare_run_command(
     # Pre-substitute ${inp} with only the user-specified inputs.
     # This prevents the auto-added executable from appearing in the ${inp} expansion.
     # For example, this avoids duplicating the script in commands like `./script.sh ${inp}`.
-    inp = string_to_list(inp)
+    inp = coerce_paths(inp)
     with subs_env_vars() as subs:
         su_inp = [subs(path_inp).normpath() for path_inp in inp]
     command = CaseSensitiveTemplate(command).safe_substitute(inp=shlex.join(su_inp))
@@ -694,13 +709,13 @@ def _prepare_run_command(
 
 
 def run(
-    command: str,
+    command: StrPath,
     *,
-    inp: Collection[str] | str = (),
+    inp: Collection[StrPath] | StrPath = (),
     env: Collection[str] | str = (),
-    out: Collection[str] | str = (),
-    vol: Collection[str] | str = (),
-    workdir: str = ".",
+    out: Collection[StrPath] | StrPath = (),
+    vol: Collection[StrPath] | StrPath = (),
+    workdir: StrPath = ".",
     optional: bool = False,
     shell: bool = False,
     resources: dict[str, int] | str | None = None,
@@ -758,13 +773,13 @@ def run(
 
 
 def plan(
-    command: str,
+    command: StrPath,
     *,
-    inp: Collection[str] | str = (),
+    inp: Collection[StrPath] | StrPath = (),
     env: Collection[str] | str = (),
-    out: Collection[str] | str = (),
-    vol: Collection[str] | str = (),
-    workdir: str = ".",
+    out: Collection[StrPath] | StrPath = (),
+    vol: Collection[StrPath] | StrPath = (),
+    workdir: StrPath = ".",
     resources: dict[str, int] | str | None = None,
 ) -> StepInfo:
     """Run a planning script.
@@ -813,8 +828,8 @@ def plan(
 
 
 def copy(
-    src: str,
-    dst: str,
+    src: StrPath,
+    dst: StrPath,
     *,
     optional: bool = False,
     resources: dict[str, int] | str | None = None,
@@ -829,6 +844,8 @@ def copy(
         This can be a file or a directory. Environment variables are substituted.
         If `dst` denotes a directory, it must have a trailing slash
         and `src` will be copied inside it with its original name.
+        Note that the trailing slash is not supported by `pathlib.Path`.
+        It is recommended to use a string or `path.Path` for `dst` in this case.
     optional, resources
         See [`step()`][stepup.core.api.step] for more information.
 
@@ -845,8 +862,8 @@ def copy(
     at the time this function is called, not when the copy is actually made.
     """
     with subs_env_vars() as subs:
-        src = subs(src).normpath()
-        dst = subs(dst)
+        src = subs(coerce_path(src)).normpath()
+        dst = subs(coerce_path(dst))
     prefix, suffix = get_affixes(dst)
     dst = apply_affixes(dst.normpath(), prefix, suffix)
     dst = make_path_out(src, dst, None)
@@ -862,7 +879,7 @@ def copy(
 
 def getenv(
     name: str,
-    default: str | None = None,
+    default: StrPath | None = None,
     *,
     path: bool = False,
     back: bool = False,
@@ -901,6 +918,8 @@ def getenv(
         All path variables are normalized.
     """
     path = path or back or multi
+    if default is not None:
+        default = coerce_str(default)
     value = os.getenv(name, default)
     # Do not amend environment variables set for the step by the executor.
     # See stepup.core.executor.StepExecutor.run
@@ -936,14 +955,14 @@ def getenv(
 
 
 def script(
-    executable: str,
+    executable: StrPath,
     *,
-    step_info: str | None = None,
-    inp: Collection[str] | str = (),
+    step_info: StrPath | None = None,
+    inp: Collection[StrPath] | StrPath = (),
     env: Collection[str] | str = (),
-    out: Collection[str] | str = (),
-    vol: Collection[str] | str = (),
-    workdir: str = ".",
+    out: Collection[StrPath] | StrPath = (),
+    vol: Collection[StrPath] | StrPath = (),
+    workdir: StrPath = ".",
     optional: bool = False,
     resources: dict[str, int] | str | None = None,
 ) -> StepInfo:
@@ -987,19 +1006,20 @@ def script(
     """
     # Substitute environment variables in the executable path and normalize it.
     with subs_env_vars() as subs:
-        executable = subs(executable)
+        executable = subs(coerce_str(executable))
     prefix, suffix = get_affixes(executable)
     executable = apply_affixes(executable.normpath(), prefix, suffix)
 
     # Start building the command and the step inputs.
     command = format_command(executable) + " plan"
-    out = string_to_list(out)
+    out = coerce_paths(out)
     if step_info is not None:
+        step_info = coerce_path(step_info)
         command += " --step-info=" + shlex.quote(step_info)
         out.append(step_info)
     if optional:
         command += " --optional"
-    inp = string_to_list(inp)
+    inp = coerce_paths(inp)
     inp.append(executable)
     step_kwargs = {
         "inp": inp,
@@ -1015,7 +1035,7 @@ def script(
 
 
 def loadns(
-    *paths_variables: str, dir_out: str | None = None, do_amend: bool = True
+    *paths_variables: StrPath, dir_out: StrPath | None = None, do_amend: bool = True
 ) -> SimpleNamespace:
     """Load variable from Python, JSON, TOML or YAML files and put them in a namespace.
 
@@ -1040,10 +1060,9 @@ def loadns(
         A SimpleNamespace instance with the variables, which can be accessed as attributes.
     """
     # Process arguments
-    if dir_out is None:
-        dir_out = Path.cwd()
+    dir_out = Path.cwd() if dir_out is None else Path(coerce_path(dir_out))
     with subs_env_vars() as subs:
-        paths_variables = [subs(path_var).normpath() for path_var in paths_variables]
+        paths_variables = [subs(coerce_path(path_var)).normpath() for path_var in paths_variables]
 
     # Build a dictionary of variables
     variables = {}
@@ -1082,7 +1101,7 @@ def loadns(
     return SimpleNamespace(**variables)
 
 
-def dumpns(path: str, data: dict | SimpleNamespace, *, do_amend: bool = True) -> None:
+def dumpns(path: StrPath, data: dict | SimpleNamespace, *, do_amend: bool = True) -> None:
     """Write variables to a JSON or YAML file.
 
     Parameters
@@ -1103,7 +1122,7 @@ def dumpns(path: str, data: dict | SimpleNamespace, *, do_amend: bool = True) ->
         When the file extension is not `.json`, `.yaml`, or `.yml`.
     """
     with subs_env_vars() as subs:
-        path = subs(path).normpath()
+        path = subs(coerce_path(path)).normpath()
     if do_amend:
         amend(out=path)
     if isinstance(data, SimpleNamespace):
@@ -1123,7 +1142,7 @@ def dumpns(path: str, data: dict | SimpleNamespace, *, do_amend: bool = True) ->
 
 
 def render_jinja(
-    *args: str | dict,
+    *args: StrPath | dict,
     mode: str = "auto",
     optional: bool = False,
     resources: dict[str, int] | str | None = None,
@@ -1170,20 +1189,22 @@ def render_jinja(
             "the template, at least one file or dict with variables, and the destination."
         )
     path_template = args[0]
-    if not isinstance(path_template, str):
-        raise TypeError("The template argument must be a string.")
+    if not isinstance(path_template, (str, os.PathLike)):
+        raise TypeError("The template argument must be a path.")
+    path_template = coerce_path(path_template)
     dest = args[-1]
-    if not isinstance(dest, str):
-        raise TypeError("The destination argument must be a string.")
+    if not isinstance(dest, (str, os.PathLike)):
+        raise TypeError("The destination argument must be a path.")
+    dest = coerce_path(dest)
     variables = {}
     paths_variables = []
     for arg in args[1:-1]:
-        if isinstance(arg, str):
-            paths_variables.append(arg)
-        elif isinstance(arg, dict):
+        if isinstance(arg, dict):
             variables.update(arg)
+        elif isinstance(arg, (str, os.PathLike)):
+            paths_variables.append(coerce_path(arg))
         else:
-            raise TypeError("The variables arguments must be strings (paths) or dictionaries.")
+            raise TypeError("The variables arguments must be paths or dictionaries.")
 
     # Parse other arguments.
     if mode not in ["auto", "plain", "latex"]:

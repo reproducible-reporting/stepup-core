@@ -24,7 +24,53 @@ from collections.abc import Collection
 
 from path import Path
 
-__all__ = ("apply_affixes", "get_affixes", "make_path_out", "translate", "translate_back")
+__all__ = (
+    "StrPath",
+    "apply_affixes",
+    "coerce_path",
+    "coerce_paths",
+    "coerce_paths2",
+    "coerce_str",
+    "get_affixes",
+    "make_path_out",
+    "translate",
+    "translate_back",
+)
+
+
+# A path-like argument accepted by the user-facing API: either a `str`
+# or any `os.PathLike` (such as a `pathlib.Path`).
+StrPath = str | os.PathLike[str]
+
+# All coercion functions wrap `os.fspath` to facilitate future refactorings of the code.
+
+
+def coerce_str(arg: StrPath) -> str:
+    """Coerce a path-like argument to a `str`."""
+    return os.fspath(arg)
+
+
+def coerce_path(arg: StrPath) -> Path:
+    """Coerce a path-like argument to a `path.Path` (a `str` subclass)."""
+    return Path(os.fspath(arg))
+
+
+def coerce_paths(args: StrPath | Collection[StrPath]) -> list[Path]:
+    """Coerce a path-like argument or collection thereof to a list of `path.Path`."""
+    if isinstance(args, (str, os.PathLike)):
+        args = [args]
+    return [Path(os.fspath(arg)) for arg in args]
+
+
+def coerce_paths2(args: Collection[StrPath] | Collection[Collection[StrPath]]) -> list[Path]:
+    """Coerce a path-like argument or collection thereof to a list of `path.Path`."""
+    result = []
+    for arg in args:
+        if isinstance(arg, (str, os.PathLike)):
+            result.append(Path(os.fspath(arg)))
+        else:
+            result.extend(Path(os.fspath(a)) for a in arg)
+    return result
 
 
 def get_affixes(path: str) -> tuple[str, str]:

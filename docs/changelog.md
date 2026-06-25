@@ -49,6 +49,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   The amount stored per stream can be capped with the new
   `sb --max-output-size` option (`0` = unlimited, the default).
   These outputs can later be viewed with `stepup browse`.
+- All functions in `stepup.core.api` now accept `os.PathLike` objects (i.e. `pathlib.Path`)
+  as path arguments, in addition to `str` and `path.Path`.
 
 ### Changed
 

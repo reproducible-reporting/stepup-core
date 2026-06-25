@@ -19,10 +19,16 @@
 # --
 """Tests for SteUp Core API."""
 
+import pathlib
+
 import pytest
 from path import Path
 
-from stepup.core.api import get_rpc_client, getenv, loadns
+from stepup.core.api import (
+    get_rpc_client,
+    getenv,
+    loadns,
+)
 from stepup.core.rpc import DummySyncRPCClient
 
 
@@ -160,3 +166,19 @@ def test_get_rpc_client_explicit_none(monkeypatch):
 def test_get_rpc_client_invalid_socket():
     with pytest.raises(RuntimeError, match="director process"):
         get_rpc_client(socket="_invalid_socket_for_director_process_")
+
+
+def test_getenv_pathlib_default(monkeypatch):
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    monkeypatch.delenv("SFDDFHT", raising=False)
+    value = getenv("SFDDFHT", default=pathlib.PurePath("sub/asdf"), path=True)
+    assert isinstance(value, Path)
+    assert value == Path("sub/asdf")
+
+
+def test_loadns_pathlib(path_tmp):
+    path_foo = path_tmp / "foo.json"
+    with open(path_foo, "w") as fh:
+        print('{"a": 10}', file=fh)
+    ns = loadns(pathlib.Path(path_foo))
+    assert ns.a == 10

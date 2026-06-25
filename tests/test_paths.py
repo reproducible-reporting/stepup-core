@@ -19,16 +19,83 @@
 # --
 """Tests for stepup.core.path."""
 
+import pathlib
+
 import pytest
 from path import Path
 
 from stepup.core.path import (
     apply_affixes,
+    coerce_path,
+    coerce_paths,
+    coerce_paths2,
+    coerce_str,
     get_affixes,
     make_path_out,
     translate,
     translate_back,
 )
+
+
+def test_coerce_path():
+    for arg in "sub/asdf", Path("sub/asdf"), pathlib.PurePath("sub/asdf"):
+        result = coerce_path(arg)
+        assert isinstance(result, Path)
+        assert result == Path("sub/asdf")
+
+
+def test_coerce_path_affixes():
+    # A trailing slash in a str is preserved, but pathlib strips it at construction.
+    assert coerce_path("dir/") == "dir/"
+    assert coerce_path(pathlib.PurePath("dir/")) == "dir"
+
+
+def test_coerce_paths():
+    # A single path-like argument.
+    for arg in "sub/asdf", Path("sub/asdf"), pathlib.PurePath("sub/asdf"):
+        result = coerce_paths(arg)
+        assert result == [Path("sub/asdf")]
+        assert all(isinstance(item, Path) for item in result)
+    # A mixed collection of path-like arguments.
+    result = coerce_paths(["a/b", Path("c/d"), pathlib.PurePath("e/f")])
+    assert result == [Path("a/b"), Path("c/d"), Path("e/f")]
+    assert all(isinstance(item, Path) for item in result)
+    # An empty collection.
+    assert coerce_paths(()) == []
+
+
+@pytest.mark.parametrize(
+    ("args", "expected"),
+    [
+        (
+            [
+                "a/b",
+                [Path("c/d"), pathlib.PurePath("e/f")],
+                ("g/h",),
+                [],
+            ],
+            [Path("a/b"), Path("c/d"), Path("e/f"), Path("g/h")],
+        ),
+        ([], []),
+    ],
+)
+def test_coerce_paths2(args, expected):
+    result = coerce_paths2(args)
+    assert result == expected
+    assert all(isinstance(item, Path) for item in result)
+
+
+@pytest.mark.parametrize(
+    ("arg", "expected"),
+    [
+        ("sub/asdf", "sub/asdf"),
+        (Path("sub/asdf"), "sub/asdf"),
+        (pathlib.PurePath("sub/asdf"), "sub/asdf"),
+    ],
+)
+def test_coerce_str(arg, expected):
+    # os.fspath semantics: str is returned unchanged; os.PathLike is converted to str.
+    assert coerce_str(arg) == expected
 
 
 @pytest.mark.parametrize(
