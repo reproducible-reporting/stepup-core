@@ -44,13 +44,18 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: 3.x
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
 
       # Prepare the environment for building docs.
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v6
       - name: Install development version
-        run: pip install -e .[dev]
+        run: uv pip install --system -e .[dev]
 
       # Update the site using to the gh-pages branch with mike.
       - name: Get the docs branch

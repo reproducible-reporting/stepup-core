@@ -5,35 +5,45 @@ If you would like to contribute, please read [CONTRIBUTING.md](https://github.co
 ## Development Environment
 
 If you break your development environment, you can discard it
-by running `git clean -dfX` and repeating the instructions below.
+by running `git clean -dfX` in the project root and repeating the instructions below.
 
-A local installation for testing and development can be installed
+We use [uv](https://docs.astral.sh/uv/) to manage the development environment.
+Install it by following the [uv installation instructions](https://docs.astral.sh/uv/getting-started/installation/).
+
+A local installation for testing and development can be set up
 using the following commands:
 
 ```bash
 git clone git@github.com:reproducible-reporting/stepup-core.git
 cd stepup-core
+uv sync --extra dev
 pre-commit install
-python -m venv venv
 ```
+
+`uv sync` creates a virtual environment in `.venv`
+and installs StepUp Core in editable mode together with its development dependencies.
 
 Put the following lines in `.envrc`:
 
 ```bash
-source venv/bin/activate
+source .venv/bin/activate
 export XDG_CACHE_HOME="${VIRTUAL_ENV}/cache"
 export STEPUP_DEBUG="1"
 export STEPUP_BUILD_DURATION="0"
 export STEPUP_SYNC_RPC_TIMEOUT="30"
 ```
 
-Finally, run the following commands:
+Finally, activate the environment:
 
 ```bash
 direnv allow
-pip install -U pip
-pip install -e .[dev]
 ```
+
+Alternatively, you can prefix commands with `uv run` (e.g. `uv run pytest`)
+instead of activating the virtual environment.
+
+Note that `uv.lock` is not committed to the repo.
+For development and CI, the latest versions of dependencies are used instead of some locked versions.
 
 ## Tests
 
@@ -116,6 +126,6 @@ These instructions assume you are running on Linux and have the `perf` userspace
   This file can be analyzed with tools like [SnakeViz](https://jiffyclub.github.io/snakeviz/):
 
     ```bash
-    pip install snakeviz
+    uv pip install snakeviz
     snakeviz .stepup/director.prof
     ```

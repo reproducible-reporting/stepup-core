@@ -28,18 +28,25 @@ jobs:
         python-version: ['3.11', '3.13']
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            .github/requirements-old.txt
       - name: Install oldest versions of supported dependencies
         if: ${{ matrix.python-version == '3.11'}}
-        run: pip install -r .github/requirements-old.txt
+        run: uv pip install --system -r .github/requirements-old.txt
       - name: Setup Graphviz
         uses: ts-graphviz/setup-graphviz@v2
       - name: Install latest commit version and matplotlib
-        run: pip install -e . matplotlib
+        run: uv pip install --system -e . matplotlib
       - name: Run a simple example
         run: |
           cd docs

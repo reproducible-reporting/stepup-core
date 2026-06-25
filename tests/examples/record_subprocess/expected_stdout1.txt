@@ -5,7 +5,7 @@
         1/2 |      START │ ./wrap.py
         2/2 |    SUCCESS │ ./wrap.py
 ───────────────────────────────── Subprocesses ─────────────────────────────────
-GREETING=hello ${PWD}/venv/bin/python -c 'import os; open("out.txt", "w").write(os.environ["GREETING"])'
+GREETING=hello echo ${GREETING} > out.txt
 ────────────────────────────────────────────────────────────────────────────────
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch

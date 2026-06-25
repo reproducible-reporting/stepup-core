@@ -13,8 +13,7 @@ seq, cmd, workdir, env, returncode = rows[0]
 
 # The sequence starts at 0 and the command is stored as a plain shell command line.
 assert seq == 0, seq
-assert " -c " in cmd, cmd
-assert "out.txt" in cmd, cmd
+assert cmd == "echo ${GREETING} > out.txt", cmd
 
 # The workdir is stored relative to STEPUP_ROOT, and the run succeeded.
 assert workdir == ".", workdir

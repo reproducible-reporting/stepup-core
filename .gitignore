@@ -9,6 +9,7 @@ venv/
 .ruff_cache
 .pytest_cache
 notes.md
+uv.lock
 
 # Python and packaging
 __pycache__
