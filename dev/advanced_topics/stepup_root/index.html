@@ -15,10 +15,10 @@
         <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/stepup_root/">
       
       
-        <link rel="prev" href="../manual_cleaning/">
+        <link rel="prev" href="../here_and_root/">
       
       
-        <link rel="next" href="../step_info/">
+        <link rel="next" href="../render_jinja/">
       
       
         
@@ -1152,6 +1152,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../amending_static_inputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Amending Static Inputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../variable_substitution/" class="md-nav__link">
         
   
@@ -1196,6 +1224,44 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The STEPUP_ROOT variable
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
     </li>
   
 
@@ -1264,34 +1330,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../amending_static_inputs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Amending Static Inputs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../manual_cleaning/" class="md-nav__link">
         
   
@@ -1308,44 +1346,6 @@
   
 
       </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The STEPUP_ROOT variable
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
     </li>
   
 
@@ -1634,14 +1634,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
+      <a href="../../reference/stepup.core.path/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.stepinfo
+    stepup.core.path
   
 
     
@@ -1662,14 +1662,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.utils/" class="md-nav__link">
+      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.nglob
+    stepup.core.stepinfo
   
 
     
@@ -1884,14 +1884,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../extending/command/" class="md-nav__link">
+      <a href="../../extending/console_scripts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Command Dispatch
+    Console Scripts
   
 
     
@@ -2237,13 +2237,18 @@ It should contain the absolute path of the top-level directory
 where you would normally call the <code>stepup</code> command.
 (The top-level directory contains the <code>.stepup</code> subdirectory and the top-level <code>plan.py</code>.)</p>
 <p>With <code>STEPUP_ROOT</code> set, it is no longer necessary to change to the top-level directory
-before running <code>stepup build</code>.
+before running <code>sb</code>.
 Also, <code>stepup clean</code> arguments will be interpreted correctly in subdirectories.</p>
+<p>Despite the similar name, <code>STEPUP_ROOT</code> is unrelated to the <code>${ROOT}</code> substitution variable.
+<code>STEPUP_ROOT</code> is an <strong>absolute</strong> path that you set to tell the <code>stepup</code> command where the
+project lives, whereas <code>${ROOT}</code> is a <strong>relative</strong> path that StepUp defines for a running step.
+See <a href="../here_and_root/">HERE and ROOT Variables</a> for the latter.</p>
 <p>You can manually set <code>STEPUP_ROOT</code> in the top-level directory as follows:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">STEPUP_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PWD</span><span class="si">}</span><span class="s2">&quot;</span>
 </span></code></pre></div>
 <p>However, this can be tedious, as it has to be set each time you open a new terminal window.
-It is much easier to set such variables using <a href="https://direnv.net/">direnv</a>.
+It is much easier to set such variables using <a href="https://direnv.net/">direnv</a>,
+a tool that automatically loads and unloads environment variables as you enter and leave a directory.
 Once direnv is configured on your system,
 you can create an <code>.envrc</code> file with the above <code>export</code> line in the top-level directory.
 Each time you change to the project directory or any of its subdirectories,

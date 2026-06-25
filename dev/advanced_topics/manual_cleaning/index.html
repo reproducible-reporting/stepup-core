@@ -15,10 +15,10 @@
         <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/manual_cleaning/">
       
       
-        <link rel="prev" href="../amending_static_inputs/">
+        <link rel="prev" href="../cyclic_dependencies/">
       
       
-        <link rel="next" href="../stepup_root/">
+        <link rel="next" href="../step_info/">
       
       
         
@@ -1152,6 +1152,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../amending_static_inputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Amending Static Inputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../variable_substitution/" class="md-nav__link">
         
   
@@ -1208,6 +1236,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../stepup_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The STEPUP_ROOT variable
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../render_jinja/" class="md-nav__link">
         
   
@@ -1244,34 +1300,6 @@
     
   
     Cyclic dependencies
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../amending_static_inputs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Amending Static Inputs
   
 
     
@@ -1366,34 +1394,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../stepup_root/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The STEPUP_ROOT variable
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1682,14 +1682,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
+      <a href="../../reference/stepup.core.path/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.stepinfo
+    stepup.core.path
   
 
     
@@ -1710,14 +1710,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.utils/" class="md-nav__link">
+      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.nglob
+    stepup.core.stepinfo
   
 
     
@@ -1932,14 +1932,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../extending/command/" class="md-nav__link">
+      <a href="../../extending/console_scripts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Command Dispatch
+    Console Scripts
   
 
     
@@ -2352,7 +2352,7 @@ This check can be disabled with the <code>--unsafe</code> option.</p>
 <p>The <code>stepup clean</code> tool only removes files or directories.
 It never changes StepUp&rsquo;s workflow database.
 Hence, removed files remain in StepUp&rsquo;s workflow as detached nodes,
-until one runs <code>stepup build</code> (with <code>--clean</code> or <code>STEPUP_CLEAN=1</code>)
+until one runs <code>sb</code> (with <code>--clean</code> or <code>STEPUP_CLEAN=1</code>)
 to trigger automatic cleaning.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -2363,7 +2363,7 @@ to trigger automatic cleaning.</p>
 <li>
 <p>The <a href="../static_named_glob/">Static Named Glob</a> tutorial provides a good test case
   for experimenting with <code>stepup clean</code>.
-  For this example, run <code>stepup build</code> without any arguments.
+  For this example, run <code>sb</code> without any arguments.
   Then open a second terminal in the same directory and run
   <code>stepup clean ch3/sec3_1_applications.txt --all</code>.
   You will see that the following files have been deleted:</p>

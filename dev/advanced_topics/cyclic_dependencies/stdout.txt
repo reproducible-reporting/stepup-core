@@ -1,4 +1,4 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post46)
    STARTUP │ (Re)initialized boot script
      PHASE │ build
      START │ ./plan.py
@@ -16,13 +16,13 @@ Traceback (most recent call last):
   File "./plan.py", line 5, in <module>
     copy("b.txt", "a.txt")
     ~~~~^^^^^^^^^^^^^^^^^^
-  File "stepup/core/api.py", line 849, in copy
+  File "stepup/core/api.py", line 844, in copy
     return step(
         "cp -p ${inp} ${out}",
     ...<4 lines>...
         shell=False,
     )
-  File "stepup/core/api.py", line 342, in step
+  File "stepup/core/api.py", line 331, in step
     to_check = RPC_CLIENT.call.step(
         _get_step_i(),
     ...<8 lines>...
@@ -33,12 +33,12 @@ Traceback (most recent call last):
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "stepup/core/rpc.py", line 74, in _handle_error
     raise RPCError(f"An exception was raised in the server during the call {fmt_call}: \n\n{body}")
-stepup.core.exceptions.RPCError: An exception was raised in the server during the call step(3, 'cp -p b.txt a.txt', [Path('b.txt')], [], [Path('a.txt')], [], Path('./'), 32, {}, False):
+stepup.core.exceptions.RPCError: An exception was raised in the server during the call step(3, 'cp -p b.txt a.txt', [Path('b.txt')], [], [Path('a.txt')], [], Path('.'), 32, {}, False):
 Traceback (most recent call last):
   File "stepup/core/rpc.py", line 210, in _handle_request
     result = await result
              ^^^^^^^^^^^^
-  File "stepup/core/director.py", line 500, in step
+  File "stepup/core/director.py", line 510, in step
     return self.workflow.define_step(
            ~~~~~~~~~~~~~~~~~~~~~~~~~^
         creator,
@@ -48,10 +48,10 @@ Traceback (most recent call last):
         ^^^^^^^^^^^^^^^^^^
     )
     ^
-  File "stepup/core/workflow.py", line 819, in define_step
+  File "stepup/core/workflow.py", line 816, in define_step
     file.add_supplier(step)
     ~~~~~~~~~~~~~~~~~^^^^^^
-  File "stepup/core/file.py", line 282, in add_supplier
+  File "stepup/core/file.py", line 283, in add_supplier
     idep = super().add_supplier(supplier)
   File "stepup/core/cascade.py", line 426, in add_supplier
     raise CyclicError("New relation introduces a cyclic dependency")
@@ -64,7 +64,6 @@ stepup.core.exceptions.CyclicError: New relation introduces a cyclic dependency
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                creator is not RUNNING or SUCCEEDED
 Command               cp -p a.txt b.txt
-Working directory     ./
 Inputs       AWAITED  (a.txt)
 Outputs      AWAITED  b.txt
 ────────────────────────────────────────────────────────────────────────────────

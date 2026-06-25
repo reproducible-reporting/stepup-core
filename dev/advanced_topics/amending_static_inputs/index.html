@@ -15,10 +15,10 @@
         <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/amending_static_inputs/">
       
       
-        <link rel="prev" href="../cyclic_dependencies/">
+        <link rel="prev" href="../amending_steps/">
       
       
-        <link rel="next" href="../manual_cleaning/">
+        <link rel="next" href="../variable_substitution/">
       
       
         
@@ -1149,118 +1149,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../variable_substitution/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Variable Substitution
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../here_and_root/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    HERE and ROOT Variables
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../render_jinja/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Rendering Files with Jinja
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../cyclic_dependencies/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Cyclic dependencies
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -1350,14 +1238,42 @@
   
   
     <li class="md-nav__item">
-      <a href="../manual_cleaning/" class="md-nav__link">
+      <a href="../variable_substitution/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Manual Cleaning
+    Variable Substitution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../here_and_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HERE and ROOT Variables
   
 
     
@@ -1386,6 +1302,90 @@
     
   
     The STEPUP_ROOT variable
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../render_jinja/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rendering Files with Jinja
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cyclic_dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cyclic dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../manual_cleaning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manual Cleaning
   
 
     
@@ -1682,14 +1682,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
+      <a href="../../reference/stepup.core.path/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.stepinfo
+    stepup.core.path
   
 
     
@@ -1710,14 +1710,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.utils/" class="md-nav__link">
+      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.nglob
+    stepup.core.stepinfo
   
 
     
@@ -1932,14 +1932,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../extending/command/" class="md-nav__link">
+      <a href="../../extending/console_scripts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Command Dispatch
+    Console Scripts
   
 
     
@@ -2298,6 +2298,8 @@
 
 
 <h1 id="amending-static-inputs">Amending Static Inputs<a class="headerlink" href="#amending-static-inputs" title="Permanent link">&para;</a></h1>
+<p>This page covers a special case of <a href="../amending_steps/">Amending Steps</a>:
+amending a file as input that the same script also declares as static.</p>
 <p>Occasionally, it may be convenient to declare a static file and then use it as input in the same script.
 As of StepUp 1.2.0, this is allowed and no longer treated as a cyclic dependency.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
@@ -2318,10 +2320,10 @@ For a more elaborate example, take a look at the
 that is used to run all tutorial examples.</p>
 <p>Make <code>plan.py</code> executable and run it as follows:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>stepup<span class="w"> </span>build<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>sb<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should get the following terminal output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post46)
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>     PHASE │ build
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>     START │ ./plan.py

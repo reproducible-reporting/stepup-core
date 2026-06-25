@@ -3,8 +3,8 @@ git clean -qdfX .
 export COLUMNS=80
 unset STEPUP_ROOT
 unset STEPUP_DEBUG
-stepup build --no-progress -j 1 | sed -f ../../clean_stdout.sed > stdout1.txt
-stepup build --no-progress -j 1 | sed -f ../../clean_stdout.sed > stdout2.txt
+sb --no-progress -j 1 | sed -f ../../clean_stdout.sed > stdout1.txt
+sb --no-progress -j 1 | sed -f ../../clean_stdout.sed > stdout2.txt
 
 # Some more variables need to be unset to get output from ./plan.py
 unset STEPUP_DIRECTOR_SOCKET

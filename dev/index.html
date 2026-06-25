@@ -364,6 +364,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#stepup-in-the-wild" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        StepUp in the Wild
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#why-was-stepup-created" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1239,6 +1250,34 @@
   
   
     <li class="md-nav__item">
+      <a href="advanced_topics/amending_static_inputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Amending Static Inputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="advanced_topics/variable_substitution/" class="md-nav__link">
         
   
@@ -1275,6 +1314,34 @@
     
   
     HERE and ROOT Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="advanced_topics/stepup_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The STEPUP_ROOT variable
   
 
     
@@ -1351,34 +1418,6 @@
   
   
     <li class="md-nav__item">
-      <a href="advanced_topics/amending_static_inputs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Amending Static Inputs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="advanced_topics/manual_cleaning/" class="md-nav__link">
         
   
@@ -1387,34 +1426,6 @@
     
   
     Manual Cleaning
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="advanced_topics/stepup_root/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The STEPUP_ROOT variable
   
 
     
@@ -1711,14 +1722,14 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/stepup.core.stepinfo/" class="md-nav__link">
+      <a href="reference/stepup.core.path/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.stepinfo
+    stepup.core.path
   
 
     
@@ -1739,14 +1750,14 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/stepup.core.utils/" class="md-nav__link">
+      <a href="reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.nglob
+    stepup.core.stepinfo
   
 
     
@@ -1961,14 +1972,14 @@
   
   
     <li class="md-nav__item">
-      <a href="extending/command/" class="md-nav__link">
+      <a href="extending/console_scripts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Command Dispatch
+    Console Scripts
   
 
     
@@ -2302,6 +2313,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#stepup-in-the-wild" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        StepUp in the Wild
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#why-was-stepup-created" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2378,6 +2400,12 @@ Currently, there are:</p>
 <h2 id="quick-visual-impression-of-stepup">Quick Visual Impression of StepUp<a class="headerlink" href="#quick-visual-impression-of-stepup" title="Permanent link">&para;</a></h2>
 <script src="https://asciinema.org/a/718833.js" id="asciicast-718833" async="true"></script>
 
+<h2 id="stepup-in-the-wild">StepUp in the Wild<a class="headerlink" href="#stepup-in-the-wild" title="Permanent link">&para;</a></h2>
+<p>A real-world example of StepUp is the
+<a href="https://github.com/molmod/acid">AutoCorrelation Integral Drill (ACID) dataset</a>.
+This project uses a StepUp workflow to regenerate a 43 GB collection of 15360 synthetic
+time series used to benchmark algorithms that compute the autocorrelation integral.
+The workflows generate the dataset, package and upload it to Zenodo, and validate the results.</p>
 <h2 id="why-was-stepup-created">Why Was StepUp Created?<a class="headerlink" href="#why-was-stepup-created" title="Permanent link">&para;</a></h2>
 <p>StepUp is a <a href="https://en.wikipedia.org/wiki/Greenfield_project">greenfield project</a>
 inspired by similar tools, such as
@@ -2389,7 +2417,7 @@ of the build workflow as one and the same thing.
 This may sound abstract,
 so let&rsquo;s break it down by reviewing how build tools work and have evolved over time.</p>
 <p>Traditional build tools run programs in parallel using a fixed workflow as input:
-you must define in advance this workflow by writing all steps and
+you must define this workflow in advance by writing all steps and
 their dependencies in a text file, such as a <code>Makefile</code>.
 In practice, these workflow definitions are rarely written manually.
 Instead, they are often generated by other tools,
@@ -2426,7 +2454,7 @@ and addressed this problem with an elaborate generator rule.)</p>
 The <code>stepup</code> command starts a background process that can receive build steps
 from any step in the build process, via Remote Procedure Calls (RPCs).
 It uses this information to extend its workflow,
-which are internally represented by partial directed acyclic graphs.
+which is internally represented as a partial directed acyclic graph.
 This process is bootstrapped by an initial <code>plan.py</code> script containing the first RPC calls.
 Each build step can use intermediate results to add new information to the workflow.
 Steps can even be added rather late in the build, if this is necessary to correctly define them.</p>
@@ -2438,19 +2466,33 @@ while &ldquo;Step&rdquo; reflects how StepUp defines operations as individual <e
 <h2 id="other-noteworthy-features">Other Noteworthy Features<a class="headerlink" href="#other-noteworthy-features" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
-<p><strong>Python Scripting:</strong>
+<p>🐍 <strong>Python Scripting:</strong>
   Build scripts are written in Python (in so-called <code>plan.py</code> files),
   instead of introducing a new domain-specific language (DSL).</p>
 </li>
 <li>
-<p><strong>Partial Directed Acyclic Graph (PDAG) Execution:</strong>
+<p>🕸️ <strong>Partial Directed Acyclic Graph (PDAG) Execution:</strong>
   StepUp supports PDAG execution, similar to <a href="https://gittup.org/tup">tup</a>.
   This means it can start steps even when the full workflow is not yet known.
   For example, at startup, it will begin executing steps
   before having complete knowledge of the entire build graph.</p>
 </li>
 <li>
-<p><strong>Background Processes:</strong>
+<p>🔄 <strong>Dynamic Workflows:</strong>
+  While a step is running, it can inform StepUp that it needs <em>additional inputs</em>,
+  in which case the step will be rescheduled for later execution
+  (after the additional inputs have become available).
+  Similarly, a step can define additional outputs during its execution.</p>
+</li>
+<li>
+<p>🗓️ <strong>Advanced Scheduling:</strong>
+  StepUp can schedule steps in parallel to prioritize steps that are on the critical path of the workflow.
+  In addition, one can define resources and resource limits for steps,
+  which StepUp will respect when scheduling.
+  For instance, this can be used to limit the number of steps using a GPU that can run in parallel.</p>
+</li>
+<li>
+<p>👁️ <strong>Watching File Changes:</strong>
   StepUp always runs background processes (a director and a step executor) to execute steps,
   and a terminal frontend to control or interrupt the build.
   The director starts with a <em>build phase</em> to execute steps in parallel until the build is complete.
@@ -2459,34 +2501,24 @@ while &ldquo;Step&rdquo; reflects how StepUp defines operations as individual <e
   This allows efficient edit-build iterations to incrementally build and refine a project.</p>
 </li>
 <li>
-<p><strong>Input Declaration:</strong>
+<p>🧹 <strong>Automatic Cleanup:</strong>
+  Old outputs are <em>automatically removed</em>
+  when the steps creating those files are removed from the workflow.
+  This cleanup is only performed after a completely successful build.</p>
+</li>
+<li>
+<p>⏳ <strong>Progress Bar:</strong>
+  The StepUp terminal user interface provides easy-to-follow <em>progress</em> information.</p>
+</li>
+<li>
+<p>📥 <strong>Input Declaration:</strong>
   A file must either be declared <em>static</em> (user-provided) or <em>built</em> (created by a step)
   before it can be used as input for steps.
   Static declarations are uncommon in other build tools and
   allow StepUp to correctly execute steps with partial knowledge of the workflow.</p>
 </li>
 <li>
-<p><strong>Automatic Cleanup:</strong>
-  Old outputs are <em>automatically removed</em>
-  when the steps creating those files are removed from the workflow.
-  This cleanup is only performed after a completely successful build.</p>
-</li>
-<li>
-<p><strong>Pattern Matching:</strong>
-  Rich pattern-matching rules make it easy to multiplex a step over multiple similar inputs.</p>
-</li>
-<li>
-<p><strong>Optional Outputs:</strong>
-  Steps <em>do not need to have output files</em>.
-  They will be rerun if inputs have changed since the last run.</p>
-</li>
-<li>
-<p><strong>Environment Variable Dependencies:</strong>
-  Steps can have environment variable as dependencies,
-  so that they are flagged for re-execution after the variables change.</p>
-</li>
-<li>
-<p><strong>File Hashing:</strong>
+<p>🔑 <strong>File Hashing:</strong>
   If a step&rsquo;s input files have changed, a <em>file hash</em> is used to determine whether the file
   is different from a previous run before the step is re-run.
   This prevents unnecessary step executions in two common scenarios:</p>
@@ -2496,23 +2528,41 @@ while &ldquo;Step&rdquo; reflects how StepUp defines operations as individual <e
 </ul>
 </li>
 <li>
-<p><strong>Progress Bar:</strong>
-  The StepUp terminal user interface provides easy-to-follow <em>progress</em> information.</p>
+<p>🌱 <strong>Environment Variable Dependencies:</strong>
+  Steps can have environment variables as dependencies,
+  so that they are flagged for re-execution after the variables change.</p>
 </li>
 <li>
-<p><strong>Dynamic Workflows:</strong>
-  While a step is running, it can inform StepUp that it needs <em>additional inputs</em>,
-  in which case the step will be rescheduled for later execution
-  (after the additional inputs have become available).
-  Similarly, a step can define additional outputs during its execution.</p>
+<p>🧩 <strong>Pattern Matching:</strong>
+  Rich pattern-matching rules make it easy to multiplex a step over multiple similar inputs.</p>
+</li>
+<li>
+<p>📤 <strong>Optional Outputs:</strong>
+  Steps <em>do not need to have output files</em>.
+  They will be rerun if inputs have changed since the last run.</p>
 </li>
 </ul>
 <h2 id="when-to-use-stepup">When to Use StepUp?<a class="headerlink" href="#when-to-use-stepup" title="Permanent link">&para;</a></h2>
+<p>Many build and workflow tools overlap with StepUp, so whether it fits depends on what you need.
+StepUp sits between the two categories, and is a good fit if you want either:</p>
 <ul>
-<li>The software compilation assumptions of other build tools get in the way.</li>
-<li>You want to define the workflow in a language you already know: Python.</li>
-<li>Writing out all dependencies upfront is difficult or impossible.</li>
-<li>You enjoy living on the edge.</li>
+<li>a <strong>build tool</strong> with features more typical of workflow tools —
+  dynamic workflows, advanced scheduling, file hashing, rich metadata, or automatic cleanup; or</li>
+<li>a <strong>workflow tool</strong> with features more typical of build tools —
+  complex dependencies, pattern matching, or incremental building.</li>
+</ul>
+<p>A few use cases are out of scope by design:</p>
+<ul>
+<li><strong>Very short steps (a few milliseconds each).</strong>
+  The overhead of scheduling, file hashing, and process execution adds up.
+  Workflow tools built on long-running pilot processes or threads are faster here,
+  but risk carrying side effects from one step to the next,
+  whereas StepUp prioritizes robustness and correctness.</li>
+<li><strong>Huge graphs (hundreds of thousands of steps or more).</strong>
+  StepUp&rsquo;s SQLite storage overhead becomes significant.
+  A pure in-memory graph (with specialized data structures)
+  can handle larger workflows more efficiently,
+  at the cost of giving up the crash recovery that SQLite provides.</li>
 </ul>
 
 

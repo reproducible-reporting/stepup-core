@@ -3,6 +3,6 @@ git clean -qdfX .
 export COLUMNS=80
 unset STEPUP_ROOT
 unset STEPUP_DEBUG
-stepup build --no-progress -j 1 | sed -f ../../clean_stdout.sed | sed -e 's|/home/.*/stepup-core/||' > stdout.txt
+sb --no-progress -j 1 | sed -f ../../clean_stdout.sed | sed -e 's|/home/.*/stepup-core/||' > stdout.txt
 
 # INP: plan.py

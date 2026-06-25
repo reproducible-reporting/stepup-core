@@ -18,7 +18,7 @@
         <link rel="prev" href="../variable_substitution/">
       
       
-        <link rel="next" href="../render_jinja/">
+        <link rel="next" href="../stepup_root/">
       
       
         
@@ -1152,6 +1152,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../amending_static_inputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Amending Static Inputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../variable_substitution/" class="md-nav__link">
         
   
@@ -1277,6 +1305,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../stepup_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The STEPUP_ROOT variable
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../render_jinja/" class="md-nav__link">
         
   
@@ -1333,34 +1389,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../amending_static_inputs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Amending Static Inputs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../manual_cleaning/" class="md-nav__link">
         
   
@@ -1369,34 +1397,6 @@
     
   
     Manual Cleaning
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../stepup_root/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The STEPUP_ROOT variable
   
 
     
@@ -1693,14 +1693,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
+      <a href="../../reference/stepup.core.path/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.stepinfo
+    stepup.core.path
   
 
     
@@ -1721,14 +1721,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.utils/" class="md-nav__link">
+      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.nglob
+    stepup.core.stepinfo
   
 
     
@@ -1943,14 +1943,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../extending/command/" class="md-nav__link">
+      <a href="../../extending/console_scripts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Command Dispatch
+    Console Scripts
   
 
     
@@ -2326,12 +2326,13 @@ including <code>${HERE}</code> and <code>${ROOT}</code>, which can be relevant f
 but these are only useful to StepUp itself, not to end users.)</p>
 <p>The two variables are defined as follows:</p>
 <ul>
-<li><code>${HERE}</code> contains the relative path from the directory where StepUp was started
-  to the current working directory of the step.</li>
-<li><code>${ROOT}</code> contains the opposite: the relative directory from the current working directory
-  to the directory where StepUp was started.</li>
+<li><code>${HERE}</code> is the relative path from the directory where StepUp was started
+  to the step&rsquo;s working directory.</li>
+<li><code>${ROOT}</code> is the relative path in the opposite direction:
+  from the step&rsquo;s working directory back to where StepUp was started.</li>
 </ul>
-<p>Hence, <code>${HERE}/${ROOT}</code> and <code>${ROOT}/${HERE}</code> normalize to the current directory: <code>./</code>.</p>
+<p>The two are therefore inverse paths,
+so <code>${HERE}/${ROOT}</code> and <code>${ROOT}/${HERE}</code> both normalize to the current directory <code>./</code>.</p>
 <p>These variables can be useful in the following cases:</p>
 <ul>
 <li>For out-of-source builds, where you want to replicate the directory structure of the source material.
@@ -2361,18 +2362,18 @@ and the following <code>source/sub/plan.py</code>:</p>
 </span></code></pre></div>
 <p>Make the scripts executable and run everything as follows:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py<span class="w"> </span>sub/plan.py
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>stepup<span class="w"> </span>build<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>sb<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should get the following terminal output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post46)
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>        0/0 |    STARTUP │ (Re)initialized boot script
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        0/1 |      PHASE │ build
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        0/1 |      START │ ./plan.py
 </span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        1/2 |    SUCCESS │ ./plan.py
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        1/2 |      START │ ./plan.py  # wd=sub/
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        2/3 |    SUCCESS │ ./plan.py  # wd=sub/
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        2/3 |      START │ cp -p example.txt ../../public/sub/example.txt  # wd=sub/
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        3/3 |    SUCCESS │ cp -p example.txt ../../public/sub/example.txt  # wd=sub/
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        1/2 |      START │ ./plan.py  # wd=sub
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        2/3 |    SUCCESS │ ./plan.py  # wd=sub
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        2/3 |      START │ cp -p example.txt ../../public/sub/example.txt  # wd=sub
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        3/3 |    SUCCESS │ cp -p example.txt ../../public/sub/example.txt  # wd=sub
 </span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
 </span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        3/3 |   DIRECTOR │ See you!
 </span></code></pre></div>
@@ -2397,11 +2398,11 @@ Any variables present in the environment variable will also be substituted once.
 <li>
 <p>Modify the scripts <code>plan.py</code> and <code>sub/plan.py</code> to utilize a <code>DST</code> variable as explained above.
   To achieve this, define <code>DST</code> externally, for instance,
-  by starting StepUp as <code>DST='../public/${HERE}' stepup build -j 1</code>.</p>
+  by starting StepUp as <code>DST='../public/${HERE}' sb -j 1</code>.</p>
 </li>
 <li>
 <p>As a follow-up to the previous point, run StepUp with a different <code>DST</code> value.
-  For example: <code>DST='../out/${HERE}' stepup build -j 1</code>.
+  For example: <code>DST='../out/${HERE}' sb -j 1</code>.
   You will see that all old output files get cleaned up after the new output is created.</p>
 </li>
 </ul>

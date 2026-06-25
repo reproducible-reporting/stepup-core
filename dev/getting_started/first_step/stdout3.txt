@@ -1,1 +1,1 @@
-step(-1, 'echo Hello World', [], [], [], [], Path('./'), 32, {}, False)
+step(-1, 'echo Hello World', [], [], [], [], Path('.'), 32, {}, False)

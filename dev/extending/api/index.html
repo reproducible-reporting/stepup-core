@@ -18,7 +18,7 @@
         <link rel="prev" href="../introduction/">
       
       
-        <link rel="next" href="../command/">
+        <link rel="next" href="../console_scripts/">
       
       
         
@@ -1150,6 +1150,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Amending Static Inputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../advanced_topics/variable_substitution/" class="md-nav__link">
         
   
@@ -1186,6 +1214,34 @@
     
   
     HERE and ROOT Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/stepup_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The STEPUP_ROOT variable
   
 
     
@@ -1262,34 +1318,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Amending Static Inputs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../advanced_topics/manual_cleaning/" class="md-nav__link">
         
   
@@ -1298,34 +1326,6 @@
     
   
     Manual Cleaning
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../advanced_topics/stepup_root/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The STEPUP_ROOT variable
   
 
     
@@ -1622,14 +1622,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
+      <a href="../../reference/stepup.core.path/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.stepinfo
+    stepup.core.path
   
 
     
@@ -1650,14 +1650,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.utils/" class="md-nav__link">
+      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.nglob
+    stepup.core.stepinfo
   
 
     
@@ -1906,6 +1906,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#command-dispatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command Dispatch
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#extension-utilities" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1955,6 +1966,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#path-manipulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path manipulation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Path manipulation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#affix-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Affix handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-path-construction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output path construction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#director-relative-translation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Director-relative translation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1971,14 +2032,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../command/" class="md-nav__link">
+      <a href="../console_scripts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Command Dispatch
+    Console Scripts
   
 
     
@@ -2301,6 +2362,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#command-dispatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command Dispatch
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#extension-utilities" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2350,6 +2422,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#path-manipulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path manipulation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Path manipulation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#affix-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Affix handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-path-construction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output path construction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#director-relative-translation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Director-relative translation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2377,25 +2499,79 @@
 
 <h1 id="custom-api-functions">Custom API Functions<a class="headerlink" href="#custom-api-functions" title="Permanent link">&para;</a></h1>
 <p>This is the most common way to extend StepUp Core.
-It is essentially the same as writing functions
-as those explained in the <a href="../../getting_started/no_rules/">No Rules</a> tutorial.
-The only difference is that you can include such functions in a Python package,
-and call it a StepUp extension, which makes it easier to share and reuse these functions.</p>
+It is essentially the same as writing helper functions
+explained in the <a href="../../getting_started/no_rules/">No Rules</a> tutorial.
+The main difference is that the functions are bundled in a Python package,
+which makes it easier to share and reuse these functions.</p>
+<p>The following modules of StepUp Core facilitate the implementation of such new API functions:</p>
+<ul>
+<li>
+<p><a href="../../reference/stepup.core.api/"><code>stepup.core.api</code></a> provides
+  Basic (and Composite) API functions.</p>
+<p>For example, the <a class="autorefs autorefs-internal" title="stepup.core.api.run(command, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, shell=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.run"><code>run()</code></a> function,
+also used by end users to define new steps in their <code>plan.py</code> files,
+is convenient for extension developers.
+It can be used to write a specialized function to submit a step for a specific software package,
+with some extra logic to handle the software package&rsquo;s specific requirements.</p>
+</li>
+<li>
+<p><a href="../../reference/stepup.core.extapi/"><code>stepup.core.extapi</code></a> contains some low-level utilities,
+  which are useful for implementing new API functions.
+  (These are also used internally by StepUp Core to implement the API functions in <code>stepup.core.api</code>.)</p>
+</li>
+<li>
+<p><a href="../../reference/stepup.core.path/"><code>stepup.core.path</code></a>
+  offers higher-level path manipulation utilities
+  (see <a href="#path-manipulation">Path manipulation</a> below).</p>
+</li>
+</ul>
 <p>A few things to keep in mind:</p>
 <ul>
 <li>API functions that (indirectly) call the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function
-  should always return the resulting <code>StepInfo</code> object.</li>
+  should always return the resulting <a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo"><code>StepInfo</code></a> object.</li>
 <li>Keep the computational cost of the API function low.
   They should only be used to plan the execution of a step
   and not perform any of the actual work.</li>
-<li>If the step runs a Python script or program, make sure you set <code>shell=False</code> in the <code>step()</code> call.
+<li>If the step runs a Python script or program, make sure you keep <code>shell=False</code> in the <code>step()</code> call.
   StepUp will then run it in-process via the forkserver when available,
-  without spawning a new Python interpreter.
-  See <a href="../command/">Command Dispatch</a> for details.</li>
+  without spawning a new Python interpreter.</li>
 </ul>
+<h2 id="command-dispatch">Command Dispatch<a class="headerlink" href="#command-dispatch" title="Permanent link">&para;</a></h2>
+<p>When a step executes, StepUp&rsquo;s executor automatically selects how to run the command.
+The dispatch logic depends on the <code>shell</code> flag passed to <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a>
+and the form of the command string:</p>
+<ul>
+<li>
+<p><strong>Shell mode</strong> (<code>shell=True</code>):
+  The full command string is passed to a shell.
+  Shell features such as pipes and redirections are available.</p>
+</li>
+<li>
+<p><strong>Python script</strong> (<code>shell=False</code> and the first word ends in <code>.py</code>):
+  The script is executed via a Python wrapper that auto-detects local imports
+  and amends them as step inputs.</p>
+</li>
+<li>
+<p><strong>Python entry point</strong> (<code>shell=False</code>, no slashes in the first word,
+  and the command matches a <code>console_scripts</code> entry point in the current Python environment):
+  The entry point function is called in-process via the forkserver when available,
+  avoiding the overhead of spawning a new Python interpreter.
+  If the executable belongs to a different Python environment, a warning is printed
+  and execution falls back to a direct execution.</p>
+</li>
+<li>
+<p><strong>Direct execution</strong> (all other cases):
+  The command is executed directly without a shell.
+  This is the fastest and safest mode for non-Python commands.</p>
+</li>
+</ul>
+<p>Extension developers should keep this dispatch logic in mind and
+prefer <code>shell=False</code>:
+either rely on the Python entry point mechanism to benefit from the forkserver,
+or execute external commands directly.</p>
 <h2 id="extension-utilities">Extension utilities<a class="headerlink" href="#extension-utilities" title="Permanent link">&para;</a></h2>
-<p>The <a href="../../reference/stepup.core.extapi/"><code>stepup.core.extapi</code></a> module provides utilities
-specifically for extension developers.</p>
+<p>The <a href="../../reference/stepup.core.extapi/"><code>stepup.core.extapi</code></a> module provides
+some reusable low-level functions for extension developers.</p>
 <h3 id="environment-variable-substitution">Environment variable substitution<a class="headerlink" href="#environment-variable-substitution" title="Permanent link">&para;</a></h3>
 <p>Use <a class="autorefs autorefs-internal" title="stepup.core.extapi.subs_env_vars()" href="../../reference/stepup.core.extapi/#stepup.core.extapi.subs_env_vars"><code>subs_env_vars()</code></a> in any custom API function that
 accepts path arguments that may contain shell variable references (e.g. <code>${MYDIR}/file.txt</code>).
@@ -2413,18 +2589,19 @@ variables were used, amending the current step&rsquo;s environment dependencies 
 <p><a class="autorefs autorefs-internal" title="stepup.core.extapi.filter_dependencies(paths)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.filter_dependencies"><code>filter_dependencies()</code></a> filters a collection of
 file paths according to the <code>${STEPUP_PATH_FILTER}</code> environment variable.
 It is useful when a step dynamically discovers which local files it depends on at runtime,
-and needs to report only the relevant subset back to the director.
-<a class="autorefs autorefs-internal" title="stepup.core.extapi.get_local_import_paths(script_path=None)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.get_local_import_paths"><code>get_local_import_paths()</code></a> builds on this to
-return all Python modules currently loaded in <code>sys.modules</code> that pass the filter —
-useful for scripts that need to amend their Python-import dependencies.</p>
+and needs to report only the relevant subset back to the director.</p>
+<p><a class="autorefs autorefs-internal" title="stepup.core.extapi.get_local_import_paths(script_path=None)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.get_local_import_paths"><code>get_local_import_paths()</code></a> builds on this to
+return all Python modules currently loaded in <code>sys.modules</code> that pass the filter,
+which is useful for scripts that need to amend their Python-import dependencies.</p>
 <h3 id="recording-subprocesses">Recording subprocesses<a class="headerlink" href="#recording-subprocesses" title="Permanent link">&para;</a></h3>
-<p>A wrapper step often runs an external tool as a subprocess
-(e.g. a <code>compile-typst</code> step that internally calls the <code>typst</code> binary).
-From the director&rsquo;s perspective, the exact subprocess invocation is invisible:
-only the wrapper&rsquo;s own command is recorded in the workflow.
-<a class="autorefs autorefs-internal" title="stepup.core.extapi.run_subprocess(cmd, *, workdir='.', env=None, stdout=None, stderr=None, check=True, shell=False)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.run_subprocess"><code>run_subprocess()</code></a> makes the invocation transparent by
-running the command and recording its command line, working directory, environment overlay
-and return code in the workflow database, for a future archival export:</p>
+<p>A common pattern in extension modules is to wrap an external tool in a Python script
+that also handles the communication with StepUp&rsquo;s director process.
+When the wrapper runs the external tool as a subprocess with Python&rsquo;s built-in <code>subprocess</code> module,
+this subprocess is not visible to StepUp&rsquo;s director process.</p>
+<p>To make calls to such external tools transparent,
+one can execute them with <a class="autorefs autorefs-internal" title="stepup.core.extapi.run_subprocess(cmd, *, workdir='.', env=None, stdout=None, stderr=None, check=True, shell=False)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.run_subprocess"><code>run_subprocess()</code></a>,
+which also registers the invocation as metadata in the workflow database.</p>
+<p>For example, the following function wraps the <code>typst</code> command-line tool:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.extapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_subprocess</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
@@ -2437,19 +2614,43 @@ With the option <code>shell=True</code>, the command is run via a shell, which a
 like pipes and redirections.
 The string is stored and displayed verbatim and you are responsible for proper quoting.
 This gives you the opportunity to prepare a convenient human-readable command string.</p>
-<p>The recorded metadata is <strong>informative for archival and debugging, not authoritative</strong>.
-The <code>env</code> argument is an <strong>overlay</strong>: it is merged over <code>os.environ</code> for execution
-(so it adds variables without dropping <code>PATH</code> and the rest),
-and only the overlay — not the full resolved environment — is stored.
-By default a non-zero return code raises <code>subprocess.CalledProcessError</code>,
-but the invocation is recorded first, so failures are archived too.</p>
 <p>Wrappers that need streaming output or <code>Popen</code>-style pipe interaction
 run the subprocess themselves and record it afterwards with
 <a class="autorefs autorefs-internal" title="stepup.core.extapi.record_subprocess(cmd, returncode, *, workdir='.', env=None, shell=False)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.record_subprocess"><code>record_subprocess()</code></a>.</p>
-<p>Only Python wrapper steps can record subprocesses;
-shell steps and direct-exec steps cannot.
-Outside a running step (for example in tests), both functions degrade gracefully:
-<code>record_subprocess()</code> becomes a no-op and <code>run_subprocess()</code> still runs the command.</p>
+<h2 id="path-manipulation">Path manipulation<a class="headerlink" href="#path-manipulation" title="Permanent link">&para;</a></h2>
+<p>StepUp uses the <a href="https://pypi.org/project/path/"><code>path</code></a> library instead of the
+built-in <code>pathlib</code>, because some path affixes carry meaning that <code>pathlib</code> would discard.
+The <a href="../../reference/stepup.core.path/"><code>stepup.core.path</code></a> module collects a few helpers
+for working with such paths in custom API functions.
+Refer to the <a href="../../reference/stepup.core.path/">reference page</a> for the full signatures.
+The sections below explain when they can be used.</p>
+<h3 id="affix-handling">Affix handling<a class="headerlink" href="#affix-handling" title="Permanent link">&para;</a></h3>
+<p>A leading <code>./</code> or a trailing <code>/</code> is significant in StepUp:</p>
+<ul>
+<li>a trailing <code>/</code> marks a directory destination,</li>
+<li>a local executable must contain at least one slash (e.g. <code>./script.sh</code>), and</li>
+<li>static-tree paths are always stored with a trailing slash.</li>
+</ul>
+<p>While the <a href="https://pypi.org/project/path/"><code>path</code></a> library can handle these affixes,
+it does not always preserve them when manipulating paths.
+Use <a class="autorefs autorefs-internal" title="get_affixes(path)" href="../../reference/stepup.core.path/#stepup.core.path.get_affixes"><code>get_affixes()</code></a>
+to extract them before transforming a path and
+<a class="autorefs autorefs-internal" title="apply_affixes(path, leading, trailing)" href="../../reference/stepup.core.path/#stepup.core.path.apply_affixes"><code>apply_affixes()</code></a> to restore them afterwards.</p>
+<h3 id="output-path-construction">Output path construction<a class="headerlink" href="#output-path-construction" title="Permanent link">&para;</a></h3>
+<p><a class="autorefs autorefs-internal" title="make_path_out(path_in, dest, ext, other_exts=())" href="../../reference/stepup.core.path/#stepup.core.path.make_path_out"><code>make_path_out()</code></a> derives an output path from an input
+path, an optional destination, and an optional new extension.
+The destination may be omitted (only the extension changes), a directory (trailing <code>/</code>),
+or an explicit file.
+This is the reusable mechanism behind the <code>dst</code> argument of
+<a class="autorefs autorefs-internal" title="stepup.core.api.copy(src, dst, *, optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.copy"><code>copy()</code></a>, and it is handy whenever an API function turns one input
+file into a derived output.</p>
+<h3 id="director-relative-translation">Director-relative translation<a class="headerlink" href="#director-relative-translation" title="Permanent link">&para;</a></h3>
+<p>Steps run in their own working directory, while the director tracks paths relative to the
+project root (<code>STEPUP_ROOT</code> / <code>HERE</code>).
+<a class="autorefs autorefs-internal" title="translate(path, workdir='.')" href="../../reference/stepup.core.path/#stepup.core.path.translate"><code>translate()</code></a> converts a path from a step&rsquo;s working directory
+into a director-relative path, and <a class="autorefs autorefs-internal" title="translate_back(path, workdir='.')" href="../../reference/stepup.core.path/#stepup.core.path.translate_back"><code>translate_back()</code></a>
+does the reverse.
+Use them when an API function exchanges paths with the director on the user&rsquo;s behalf.</p>
 
 
 

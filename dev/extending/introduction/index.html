@@ -1150,6 +1150,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Amending Static Inputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../advanced_topics/variable_substitution/" class="md-nav__link">
         
   
@@ -1186,6 +1214,34 @@
     
   
     HERE and ROOT Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/stepup_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The STEPUP_ROOT variable
   
 
     
@@ -1262,34 +1318,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Amending Static Inputs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../advanced_topics/manual_cleaning/" class="md-nav__link">
         
   
@@ -1298,34 +1326,6 @@
     
   
     Manual Cleaning
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../advanced_topics/stepup_root/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The STEPUP_ROOT variable
   
 
     
@@ -1622,14 +1622,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
+      <a href="../../reference/stepup.core.path/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.stepinfo
+    stepup.core.path
   
 
     
@@ -1650,14 +1650,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.utils/" class="md-nav__link">
+      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.nglob
+    stepup.core.stepinfo
   
 
     
@@ -1884,14 +1884,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../command/" class="md-nav__link">
+      <a href="../console_scripts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Command Dispatch
+    Console Scripts
   
 
     
@@ -2231,42 +2231,29 @@
 
 
 <h1 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h1>
-<p>StepUp Core can be easily extended to support domain-specific build features,
-which are not part of the core functionality.
-This is done by creating a new Python package that implements the desired features
-and registers them with StepUp Core.
-Currently, there are two such extensions:</p>
+<p>StepUp Core supports domain-specific build features
+through extension packages that live outside the core.
+An extension is a regular Python package
+that implements the desired features and registers them with StepUp Core,
+optionally reusing the shared <code>stepup</code> namespace.
+Two such extensions exist today:</p>
 <ul>
 <li><a href="https://reproducible-reporting.github.io/stepup-reprep/">StepUp RepRep</a></li>
 <li><a href="https://reproducible-reporting.github.io/stepup-queue/">StepUp Queue</a></li>
 </ul>
-<p>This section discusses how to create a new extension package for StepUp Core.
-In short, you can create a new Python package, optionally using the same <code>stepup</code> namespace.
-There are two types of components you can implement in such an extension package:</p>
+<p>This section explains how to write your own extension.
+A package can implement three types of components:</p>
 <ol>
 <li>
-<p><strong>API functions</strong> to send new steps (and other information) to the StepUp director process.</p>
-<blockquote>
-<p>These are typically making use of the
-<a href="../../reference/stepup.core.api/">Basic (and Composite) API functions</a>
-in the <code>stepup.core.api</code> module.
-An example of this is the <a class="autorefs autorefs-internal" title="stepup.core.api.run(command, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, shell=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.run"><code>run()</code></a> function,
-which is used to execute commands.</p>
-<p>Extension developers should also consult the
-<a href="../../reference/stepup.core.extapi/"><code>stepup.core.extapi</code></a> module,
-which provides utilities for building custom API functions,
-such as <a class="autorefs autorefs-internal" title="stepup.core.extapi.subs_env_vars()" href="../../reference/stepup.core.extapi/#stepup.core.extapi.subs_env_vars"><code>subs_env_vars()</code></a> for environment variable
-substitution and <a class="autorefs autorefs-internal" title="stepup.core.extapi.filter_dependencies(paths)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.filter_dependencies"><code>filter_dependencies()</code></a>
-for step dependency filtering.</p>
-<p>The module <a href="../../reference/stepup.core.utils/"><code>stepup.core.utils</code></a> also provides
-some convenience functions for extension developers.</p>
-</blockquote>
+<p><a href="../api/">Custom <strong>API functions</strong></a> that send new steps (and other information)
+   to the StepUp director process.</p>
 </li>
 <li>
-<p><strong>A tool</strong>, which appears as a new subcommand in the StepUp CLI.</p>
-<blockquote>
-<p>An example tool in StepUp Core is <code>stepup clean</code>.</p>
-</blockquote>
+<p><a href="../console_scripts/"><strong>Console scripts</strong></a>, e.g. wrappers of external tools,
+   intended to run as a step in a workflow.</p>
+</li>
+<li>
+<p><a href="../tool/">Custom <strong>tools</strong></a>, which appear as new subcommands in the StepUp CLI.</p>
 </li>
 </ol>
 

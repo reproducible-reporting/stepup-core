@@ -1150,6 +1150,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Amending Static Inputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../advanced_topics/variable_substitution/" class="md-nav__link">
         
   
@@ -1186,6 +1214,34 @@
     
   
     HERE and ROOT Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/stepup_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The STEPUP_ROOT variable
   
 
     
@@ -1262,34 +1318,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Amending Static Inputs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../advanced_topics/manual_cleaning/" class="md-nav__link">
         
   
@@ -1298,34 +1326,6 @@
     
   
     Manual Cleaning
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../advanced_topics/stepup_root/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The STEPUP_ROOT variable
   
 
     
@@ -1624,14 +1624,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../stepup.core.stepinfo/" class="md-nav__link">
+      <a href="../stepup.core.path/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.stepinfo
+    stepup.core.path
   
 
     
@@ -1652,14 +1652,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../stepup.core.utils/" class="md-nav__link">
+      <a href="../stepup.core.stepinfo/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.nglob
+    stepup.core.stepinfo
   
 
     
@@ -1818,10 +1818,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#settings-for-stepup-build" class="md-nav__link">
+  <a href="#settings-for-sb" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Settings for stepup build
+        Settings for sb
       
     </span>
   </a>
@@ -1987,14 +1987,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../extending/command/" class="md-nav__link">
+      <a href="../../extending/console_scripts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Command Dispatch
+    Console Scripts
   
 
     
@@ -2339,10 +2339,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#settings-for-stepup-build" class="md-nav__link">
+  <a href="#settings-for-sb" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Settings for stepup build
+        Settings for sb
       
     </span>
   </a>
@@ -2409,7 +2409,7 @@
 
 <h1 id="stepup-configuration">StepUp Configuration<a class="headerlink" href="#stepup-configuration" title="Permanent link">&para;</a></h1>
 <p>StepUp can be configured using configuration files, environment variables, and command-line options.
-When a <code>stepup</code> tool starts, e.g. <code>stepup build</code>,
+When a <code>stepup</code> tool starts, e.g. <code>sb</code>,
 it will load its settings in the following order, with later settings overriding earlier ones:</p>
 <ul>
 <li><code>/etc/stepup.toml</code> (system-wide configuration file)</li>
@@ -2506,7 +2506,7 @@ If not set, StepUp will look for this file in the current directory.
 This setting cannot be configured through config files.</p>
 </dd>
 </dl>
-<h2 id="settings-for-stepup-build">Settings for <code>stepup build</code><a class="headerlink" href="#settings-for-stepup-build" title="Permanent link">&para;</a></h2>
+<h2 id="settings-for-sb">Settings for <code>sb</code><a class="headerlink" href="#settings-for-sb" title="Permanent link">&para;</a></h2>
 <p>These settings are stored under the <code>[build]</code> section in config files
 (or <code>[tool.stepup.build]</code> in <code>pyproject.toml</code>).
 Each entry below lists the config file key, environment variable, and command-line option

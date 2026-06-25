@@ -1150,6 +1150,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Amending Static Inputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../advanced_topics/variable_substitution/" class="md-nav__link">
         
   
@@ -1186,6 +1214,34 @@
     
   
     HERE and ROOT Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/stepup_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The STEPUP_ROOT variable
   
 
     
@@ -1262,34 +1318,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Amending Static Inputs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../advanced_topics/manual_cleaning/" class="md-nav__link">
         
   
@@ -1298,34 +1326,6 @@
     
   
     Manual Cleaning
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../advanced_topics/stepup_root/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The STEPUP_ROOT variable
   
 
     
@@ -1870,14 +1870,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
+      <a href="../../reference/stepup.core.path/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.stepinfo
+    stepup.core.path
   
 
     
@@ -1898,14 +1898,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.utils/" class="md-nav__link">
+      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.nglob
+    stepup.core.stepinfo
   
 
     
@@ -2120,14 +2120,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../extending/command/" class="md-nav__link">
+      <a href="../../extending/console_scripts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Command Dispatch
+    Console Scripts
   
 
     
@@ -2841,7 +2841,7 @@ except for a few small differences:</p>
   When defining steps, you can then specify the required resources, e.g., <code>resources="gpu:1,cpu:4"</code>,
   and StepUp will ensure that the available resources are not over-committed.
   You can override the available resources with the
-  <code>--resources</code> command-line argument to <code>stepup build</code> if needed.</p>
+  <code>--resources</code> command-line argument to <code>sb</code> if needed.</p>
 <p>Note that the resource names are user-specified strings and StepUp does not implement
 pre-defined resource types, such as <code>gpu</code> or <code>cpu</code>.
 These resource definitions are only used to impose constraints when deciding which steps to run.
@@ -2855,7 +2855,7 @@ You could equally use <code>foo</code> and <code>bar</code> in this example and 
 </li>
 </ul>
 <h2 id="changed-command-line-arguments">Changed Command-Line Arguments<a class="headerlink" href="#changed-command-line-arguments" title="Permanent link">&para;</a></h2>
-<p>The <code>stepup build</code> command was changed to have <code>-j</code> and <code>--jobs</code> options
+<p>The <code>sb</code> command was changed to have <code>-j</code> and <code>--jobs</code> options
 instead of <code>-n</code> and <code>--num-workers</code>.</p>
 <h2 id="changed-environment-variable-names">Changed Environment Variable Names<a class="headerlink" href="#changed-environment-variable-names" title="Permanent link">&para;</a></h2>
 <p>The following environment variables have been renamed to have a <code>STEPUP_BUILD_</code> prefix instead of <code>STEPUP_</code>:</p>

@@ -469,6 +469,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#stepup-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1277,6 +1288,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Amending Static Inputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../advanced_topics/variable_substitution/" class="md-nav__link">
         
   
@@ -1313,6 +1352,34 @@
     
   
     HERE and ROOT Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/stepup_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The STEPUP_ROOT variable
   
 
     
@@ -1389,34 +1456,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Amending Static Inputs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../advanced_topics/manual_cleaning/" class="md-nav__link">
         
   
@@ -1425,34 +1464,6 @@
     
   
     Manual Cleaning
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../advanced_topics/stepup_root/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The STEPUP_ROOT variable
   
 
     
@@ -1749,14 +1760,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
+      <a href="../../reference/stepup.core.path/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.stepinfo
+    stepup.core.path
   
 
     
@@ -1777,14 +1788,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.utils/" class="md-nav__link">
+      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.nglob
+    stepup.core.stepinfo
   
 
     
@@ -1999,14 +2010,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../extending/command/" class="md-nav__link">
+      <a href="../../extending/console_scripts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Command Dispatch
+    Console Scripts
   
 
     
@@ -2340,6 +2351,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#stepup-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2441,7 +2463,7 @@ The following initial competencies are assumed:</p>
 <li>Editing text files.</li>
 </ul>
 <p>Note that the examples in the tutorials are all small and use StepUp
-in serial mode (<code>-n 1</code>) and non-interactively.
+in serial mode (<code>-j 1</code>) and non-interactively.
 We believe this offers the best learning experience.
 However, StepUp really shines in more complex use cases and when used interactively.
 Once you become familiar with StepUp,
@@ -2453,6 +2475,19 @@ within StepUp Core&rsquo;s source code.
 Each directory contains a script named <code>main.sh</code>,
 which simply runs the example in non-interactive mode,
 generating the outputs that are included in the documentation.</p>
+<h2 id="basic-usage">Basic usage<a class="headerlink" href="#basic-usage" title="Permanent link">&para;</a></h2>
+<p>To use StepUp, you need to create a <code>plan.py</code> file in the root of your project.
+This file defines the steps and files that make up your workflow.
+The tutorials in this section explain the basics of how to write a <code>plan.py</code> file.
+To execute the workflow, you run StepUp as follows:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>stepup<span class="w"> </span>build
+</span></code></pre></div>
+<p>or equivalently, the shorter form:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>sb
+</span></code></pre></div>
+<p>The <code>stepup</code> command provides several subcommands, of which <code>build</code> is the most important.
+Run <code>stepup --help</code> to see the full list of subcommands and their options.
+Each tool also accepts the <code>--help</code> option to see its own options, e.g. <code>stepup build --help</code>.</p>
 <h2 id="stepup-architecture">StepUp architecture<a class="headerlink" href="#stepup-architecture" title="Permanent link">&para;</a></h2>
 <p>The tutorials use terminology defined in the small architecture overview given below.
 This overview summarizes the internals of StepUp, omitting many details for the sake of clarity.

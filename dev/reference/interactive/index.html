@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/reference/interactive/">
       
       
-        <link rel="prev" href="../stepup.core.utils/">
+        <link rel="prev" href="../stepup.core.stepinfo/">
       
       
         <link rel="next" href="../returncode/">
@@ -1150,6 +1150,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Amending Static Inputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../advanced_topics/variable_substitution/" class="md-nav__link">
         
   
@@ -1186,6 +1214,34 @@
     
   
     HERE and ROOT Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/stepup_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The STEPUP_ROOT variable
   
 
     
@@ -1262,34 +1318,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Amending Static Inputs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../advanced_topics/manual_cleaning/" class="md-nav__link">
         
   
@@ -1298,34 +1326,6 @@
     
   
     Manual Cleaning
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../advanced_topics/stepup_root/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The STEPUP_ROOT variable
   
 
     
@@ -1624,14 +1624,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../stepup.core.stepinfo/" class="md-nav__link">
+      <a href="../stepup.core.path/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.stepinfo
+    stepup.core.path
   
 
     
@@ -1652,14 +1652,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../stepup.core.utils/" class="md-nav__link">
+      <a href="../stepup.core.stepinfo/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.nglob
+    stepup.core.stepinfo
   
 
     
@@ -1971,14 +1971,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../extending/command/" class="md-nav__link">
+      <a href="../../extending/console_scripts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Command Dispatch
+    Console Scripts
   
 
     
@@ -2380,7 +2380,7 @@
 <p class="admonition-title">Note</p>
 <p>Changes since StepUp 3.0.0:</p>
 <ul>
-<li>You have to start the StepUp workflow with <code>stepup build</code> instead of <code>stepup</code>.</li>
+<li>You have to start the StepUp workflow with <code>sb</code> instead of <code>stepup</code>.</li>
 </ul>
 <p>Changes since StepUp 2.0.0:</p>
 <ul>
@@ -2408,8 +2408,8 @@ If the key is not associated with a command, the following help message appears:
 <li><code>q = shutdown</code>:
   StepUp waits for all running steps to complete and will not start new jobs.
   As soon as no steps are running, StepUp exits.
-  If it takes to long for the steps to complete, you can press <code>q</code> again to kill them with <code>SIGINT</code>.
-  Pres <code>q</code> for a third time to kill the steps with <code>SIGKILL</code>. (nuclear option)</li>
+  If it takes too long for the steps to complete, you can press <code>q</code> again to kill them with <code>SIGINT</code>.
+  Press <code>q</code> for a third time to kill the steps with <code>SIGKILL</code>. (nuclear option)</li>
 <li><code>d = drain</code>:
   StepUp waits for all running steps to complete and will not start new jobs.
   As soon as no steps are running, StepUp transitions into the <em>watch phase</em>.</li>
@@ -2426,7 +2426,7 @@ except for <code>r</code> which only has an effect during the <em>watch phase</e
 <h2 id="interacting-with-a-background-stepup-process">Interacting With a Background StepUp Process<a class="headerlink" href="#interacting-with-a-background-stepup-process" title="Permanent link">&para;</a></h2>
 <p>You can run StepUp in the background in several ways:</p>
 <ul>
-<li>Just start it with <code>stepup build &gt; stepup.log &amp;</code>
+<li>Just start it with <code>sb &gt; stepup.log &amp;</code>
   and then use <code>tail -f stepup.log</code> to see the output.</li>
 <li>Run StepUp inside a <code>screen</code> or <code>tmux</code> session.</li>
 <li>Run StepUp in a Slurm/PBS/&hellip; batch job on a cluster.</li>
@@ -2450,12 +2450,12 @@ However, you can still interact with StepUp as follows:</p>
 </ol>
 <h2 id="interacting-with-stepup-from-within-an-ide">Interacting With StepUp From Within an IDE<a class="headerlink" href="#interacting-with-stepup-from-within-an-ide" title="Permanent link">&para;</a></h2>
 <p>If you don&rsquo;t want to switch to a terminal to restart StepUp while working in an IDE,
-you can run it in &ldquo;watch mode&rdquo; (<code>stepup build -w</code>) and configure your IDE
+you can run it in &ldquo;watch mode&rdquo; (<code>sb -w</code>) and configure your IDE
 to bind the following command to a keyboard shortcut:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>stepup<span class="w"> </span>run
 </span></code></pre></div>
 <p>This command must be executed in the top-level directory
-where a <code>stepup build</code> command is running in interactive mode.
+where a <code>sb</code> command is running in interactive mode.
 (You can also set the <code>STEPUP_ROOT</code> environment variable instead.)</p>
 <h3 id="configuration-of-a-task-in-vscode">Configuration of a Task in VSCode<a class="headerlink" href="#configuration-of-a-task-in-vscode" title="Permanent link">&para;</a></h3>
 <p>You can define a
@@ -2505,7 +2505,7 @@ The rest of the <code>command</code> field is the same as the command we used in
 </span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="p">]</span>
 </span></code></pre></div>
 <p>VSCode will automatically save the file when you run the task with this keybinding.</p>
-<p>Instead of this shortcut, you can also use <code>stepup build -W</code>,
+<p>Instead of this shortcut, you can also use <code>sb -W</code>,
 which will automatically rerun the build as soon as you delete, save or add a relevant file.</p>
 
 

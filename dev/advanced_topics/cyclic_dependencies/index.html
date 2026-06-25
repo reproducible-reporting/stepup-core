@@ -18,7 +18,7 @@
         <link rel="prev" href="../render_jinja/">
       
       
-        <link rel="next" href="../amending_static_inputs/">
+        <link rel="next" href="../manual_cleaning/">
       
       
         
@@ -1152,6 +1152,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../amending_static_inputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Amending Static Inputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../variable_substitution/" class="md-nav__link">
         
   
@@ -1188,6 +1216,34 @@
     
   
     HERE and ROOT Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stepup_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The STEPUP_ROOT variable
   
 
     
@@ -1322,34 +1378,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../amending_static_inputs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Amending Static Inputs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../manual_cleaning/" class="md-nav__link">
         
   
@@ -1358,34 +1386,6 @@
     
   
     Manual Cleaning
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../stepup_root/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The STEPUP_ROOT variable
   
 
     
@@ -1682,14 +1682,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
+      <a href="../../reference/stepup.core.path/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.stepinfo
+    stepup.core.path
   
 
     
@@ -1710,14 +1710,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.utils/" class="md-nav__link">
+      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.nglob
+    stepup.core.stepinfo
   
 
     
@@ -1932,14 +1932,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../extending/command/" class="md-nav__link">
+      <a href="../../extending/console_scripts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Command Dispatch
+    Console Scripts
   
 
     
@@ -2299,8 +2299,9 @@
 
 <h1 id="cyclic-dependencies">Cyclic dependencies<a class="headerlink" href="#cyclic-dependencies" title="Permanent link">&para;</a></h1>
 <p>Cyclic dependencies are defined in StepUp as closed loops in the dependency graph.
-Formally, such a loop is defined as a set of edges that can be followed from supplier to consumer,
-such that one arrives back at the starting point.
+Formally, such a loop is defined as a set of <code>supplier ➜ consumer</code> edges
+(as introduced under <a href="../../getting_started/introduction/#edges">Edges</a>)
+that can be followed such that one arrives back at the starting point.
 If you construct cyclic dependencies in a <code>plan.py</code>, an error message is generated.</p>
 <p>The <a href="../../reference/stepup.core.api/">stepup.core.api</a> enforces acyclic dependencies
 in the provenance graph and cannot be introduced accidentally by the user.</p>
@@ -2314,10 +2315,10 @@ in the provenance graph and cannot be introduced accidentally by the user.</p>
 </span></code></pre></div>
 <p>Make the plan executable and give it a try as follows:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>stepup<span class="w"> </span>build<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>sb<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You will get the following terminal output showing that this plan won&rsquo;t work.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post46)
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>     PHASE │ build
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>     START │ ./plan.py
@@ -2335,13 +2336,13 @@ in the provenance graph and cannot be introduced accidentally by the user.</p>
 </span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>  File &quot;./plan.py&quot;, line 5, in &lt;module&gt;
 </span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    copy(&quot;b.txt&quot;, &quot;a.txt&quot;)
 </span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    ~~~~^^^^^^^^^^^^^^^^^^
-</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>  File &quot;stepup/core/api.py&quot;, line 849, in copy
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>  File &quot;stepup/core/api.py&quot;, line 844, in copy
 </span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>    return step(
 </span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>        &quot;cp -p ${inp} ${out}&quot;,
 </span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>    ...&lt;4 lines&gt;...
 </span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>        shell=False,
 </span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    )
-</span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>  File &quot;stepup/core/api.py&quot;, line 342, in step
+</span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>  File &quot;stepup/core/api.py&quot;, line 331, in step
 </span><span id="__span-2-26"><a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>    to_check = RPC_CLIENT.call.step(
 </span><span id="__span-2-27"><a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>        _get_step_i(),
 </span><span id="__span-2-28"><a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>    ...&lt;8 lines&gt;...
@@ -2352,12 +2353,12 @@ in the provenance graph and cannot be introduced accidentally by the user.</p>
 </span><span id="__span-2-33"><a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
 </span><span id="__span-2-34"><a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>  File &quot;stepup/core/rpc.py&quot;, line 74, in _handle_error
 </span><span id="__span-2-35"><a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>    raise RPCError(f&quot;An exception was raised in the server during the call {fmt_call}: \n\n{body}&quot;)
-</span><span id="__span-2-36"><a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>stepup.core.exceptions.RPCError: An exception was raised in the server during the call step(3, &#39;cp -p b.txt a.txt&#39;, [Path(&#39;b.txt&#39;)], [], [Path(&#39;a.txt&#39;)], [], Path(&#39;./&#39;), 32, {}, False):
+</span><span id="__span-2-36"><a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>stepup.core.exceptions.RPCError: An exception was raised in the server during the call step(3, &#39;cp -p b.txt a.txt&#39;, [Path(&#39;b.txt&#39;)], [], [Path(&#39;a.txt&#39;)], [], Path(&#39;.&#39;), 32, {}, False):
 </span><span id="__span-2-37"><a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>Traceback (most recent call last):
 </span><span id="__span-2-38"><a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a>  File &quot;stepup/core/rpc.py&quot;, line 210, in _handle_request
 </span><span id="__span-2-39"><a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>    result = await result
 </span><span id="__span-2-40"><a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a>             ^^^^^^^^^^^^
-</span><span id="__span-2-41"><a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a>  File &quot;stepup/core/director.py&quot;, line 500, in step
+</span><span id="__span-2-41"><a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a>  File &quot;stepup/core/director.py&quot;, line 510, in step
 </span><span id="__span-2-42"><a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a>    return self.workflow.define_step(
 </span><span id="__span-2-43"><a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a>           ~~~~~~~~~~~~~~~~~~~~~~~~~^
 </span><span id="__span-2-44"><a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a>        creator,
@@ -2367,10 +2368,10 @@ in the provenance graph and cannot be introduced accidentally by the user.</p>
 </span><span id="__span-2-48"><a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a>        ^^^^^^^^^^^^^^^^^^
 </span><span id="__span-2-49"><a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a>    )
 </span><span id="__span-2-50"><a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a>    ^
-</span><span id="__span-2-51"><a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a>  File &quot;stepup/core/workflow.py&quot;, line 819, in define_step
+</span><span id="__span-2-51"><a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a>  File &quot;stepup/core/workflow.py&quot;, line 816, in define_step
 </span><span id="__span-2-52"><a id="__codelineno-2-52" name="__codelineno-2-52" href="#__codelineno-2-52"></a>    file.add_supplier(step)
 </span><span id="__span-2-53"><a id="__codelineno-2-53" name="__codelineno-2-53" href="#__codelineno-2-53"></a>    ~~~~~~~~~~~~~~~~~^^^^^^
-</span><span id="__span-2-54"><a id="__codelineno-2-54" name="__codelineno-2-54" href="#__codelineno-2-54"></a>  File &quot;stepup/core/file.py&quot;, line 282, in add_supplier
+</span><span id="__span-2-54"><a id="__codelineno-2-54" name="__codelineno-2-54" href="#__codelineno-2-54"></a>  File &quot;stepup/core/file.py&quot;, line 283, in add_supplier
 </span><span id="__span-2-55"><a id="__codelineno-2-55" name="__codelineno-2-55" href="#__codelineno-2-55"></a>    idep = super().add_supplier(supplier)
 </span><span id="__span-2-56"><a id="__codelineno-2-56" name="__codelineno-2-56" href="#__codelineno-2-56"></a>  File &quot;stepup/core/cascade.py&quot;, line 426, in add_supplier
 </span><span id="__span-2-57"><a id="__codelineno-2-57" name="__codelineno-2-57" href="#__codelineno-2-57"></a>    raise CyclicError(&quot;New relation introduces a cyclic dependency&quot;)
@@ -2383,13 +2384,12 @@ in the provenance graph and cannot be introduced accidentally by the user.</p>
 </span><span id="__span-2-64"><a id="__codelineno-2-64" name="__codelineno-2-64" href="#__codelineno-2-64"></a>───────────────────────────────── PENDING Step ─────────────────────────────────
 </span><span id="__span-2-65"><a id="__codelineno-2-65" name="__codelineno-2-65" href="#__codelineno-2-65"></a>Reason                creator is not RUNNING or SUCCEEDED
 </span><span id="__span-2-66"><a id="__codelineno-2-66" name="__codelineno-2-66" href="#__codelineno-2-66"></a>Command               cp -p a.txt b.txt
-</span><span id="__span-2-67"><a id="__codelineno-2-67" name="__codelineno-2-67" href="#__codelineno-2-67"></a>Working directory     ./
-</span><span id="__span-2-68"><a id="__codelineno-2-68" name="__codelineno-2-68" href="#__codelineno-2-68"></a>Inputs       AWAITED  (a.txt)
-</span><span id="__span-2-69"><a id="__codelineno-2-69" name="__codelineno-2-69" href="#__codelineno-2-69"></a>Outputs      AWAITED  b.txt
-</span><span id="__span-2-70"><a id="__codelineno-2-70" name="__codelineno-2-70" href="#__codelineno-2-70"></a>────────────────────────────────────────────────────────────────────────────────
-</span><span id="__span-2-71"><a id="__codelineno-2-71" name="__codelineno-2-71" href="#__codelineno-2-71"></a>   WARNING │ Skipping file cleanup due to incomplete build
-</span><span id="__span-2-72"><a id="__codelineno-2-72" name="__codelineno-2-72" href="#__codelineno-2-72"></a>   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-</span><span id="__span-2-73"><a id="__codelineno-2-73" name="__codelineno-2-73" href="#__codelineno-2-73"></a>  DIRECTOR │ See you!
+</span><span id="__span-2-67"><a id="__codelineno-2-67" name="__codelineno-2-67" href="#__codelineno-2-67"></a>Inputs       AWAITED  (a.txt)
+</span><span id="__span-2-68"><a id="__codelineno-2-68" name="__codelineno-2-68" href="#__codelineno-2-68"></a>Outputs      AWAITED  b.txt
+</span><span id="__span-2-69"><a id="__codelineno-2-69" name="__codelineno-2-69" href="#__codelineno-2-69"></a>────────────────────────────────────────────────────────────────────────────────
+</span><span id="__span-2-70"><a id="__codelineno-2-70" name="__codelineno-2-70" href="#__codelineno-2-70"></a>   WARNING │ Skipping file cleanup due to incomplete build
+</span><span id="__span-2-71"><a id="__codelineno-2-71" name="__codelineno-2-71" href="#__codelineno-2-71"></a>   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+</span><span id="__span-2-72"><a id="__codelineno-2-72" name="__codelineno-2-72" href="#__codelineno-2-72"></a>  DIRECTOR │ See you!
 </span></code></pre></div>
 
 

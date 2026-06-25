@@ -547,6 +547,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#filenames-with-spaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filenames with Spaces
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#try-the-following" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1271,6 +1282,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Amending Static Inputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../advanced_topics/variable_substitution/" class="md-nav__link">
         
   
@@ -1307,6 +1346,34 @@
     
   
     HERE and ROOT Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/stepup_root/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The STEPUP_ROOT variable
   
 
     
@@ -1383,34 +1450,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Amending Static Inputs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../advanced_topics/manual_cleaning/" class="md-nav__link">
         
   
@@ -1419,34 +1458,6 @@
     
   
     Manual Cleaning
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../advanced_topics/stepup_root/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    The STEPUP_ROOT variable
   
 
     
@@ -1743,14 +1754,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
+      <a href="../../reference/stepup.core.path/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.stepinfo
+    stepup.core.path
   
 
     
@@ -1771,14 +1782,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/stepup.core.utils/" class="md-nav__link">
+      <a href="../../reference/stepup.core.stepinfo/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    stepup.core.nglob
+    stepup.core.stepinfo
   
 
     
@@ -1993,14 +2004,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../extending/command/" class="md-nav__link">
+      <a href="../../extending/console_scripts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Command Dispatch
+    Console Scripts
   
 
     
@@ -2384,6 +2395,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#filenames-with-spaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filenames with Spaces
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#try-the-following" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2449,15 +2471,15 @@ For the sake of simplicity, a minimal workflow will be defined that does very li
 It does capture standard output and error, as shown below.</p>
 <h3 id="running-stepup">Running StepUp<a class="headerlink" href="#running-stepup" title="Permanent link">&para;</a></h3>
 <p>In the same directory, run:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>stepup<span class="w"> </span>build<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>sb<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <ul>
 <li>The <code>build</code> subcommand starts the StepUp terminal user interface and
   the director process in the background, which will begin executing steps defined in <code>plan.py</code>.</li>
-<li>The option <code>-n 1</code> limits parallel execution to a single step at a time.</li>
+<li>The option <code>-j 1</code> limits parallel execution to a single step at a time.</li>
 </ul>
 <p>You should see the following output, with colors if your virtual terminal supports them:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post46)
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>     PHASE │ build
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>     START │ ./plan.py
@@ -2488,10 +2510,10 @@ It does capture standard output and error, as shown below.</p>
 </ul>
 <h3 id="re-running-stepup">Re-running StepUp<a class="headerlink" href="#re-running-stepup" title="Permanent link">&para;</a></h3>
 <p>Now repeat the execution of StepUp with:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>stepup<span class="w"> </span>build<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>sb<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You will see a slightly different output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post30)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post46)
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>   STARTUP │ Making failed steps pending
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>   STARTUP │ Watching directories for 1 files from initial database
 </span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>   STARTUP │ Making steps pending that use changed environment variables
@@ -2520,10 +2542,25 @@ It is primarily intended for developers of StepUp extensions.
 For most end users, <code>run()</code> is more convenient and should be preferred.</p>
 <p>For example, with <code>run()</code>, if the program is a local script in your workflow, e.g. <code>./script.py</code>,
 StepUp will automatically track it as a dependency of the step and rerun it when it changes.</p>
+<h2 id="filenames-with-spaces">Filenames with Spaces<a class="headerlink" href="#filenames-with-spaces" title="Permanent link">&para;</a></h2>
+<p>A filename that contains spaces must therefore be quoted,
+so that it is treated as a single argument instead of several:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;cat &#39;my notes.txt&#39;&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;my notes.txt&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>The <code>inp</code>, <code>out</code>, <code>vol</code> and <code>env</code> keyword arguments are plain lists of strings,
+not command lines, so the filenames in them never need quoting:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;convert &#39;in file.png&#39; &#39;out file.pdf&#39;&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;in file.png&quot;</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">&quot;out file.pdf&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>That said, spaces in filenames are best avoided altogether.
+They add no value and create avoidable friction:
+every command that references such a file has to quote it,
+which makes the <code>plan.py</code> scripts harder to read and easier to get wrong.
+Stick to names that combine letters, digits, hyphens and underscores,
+and reserve spaces for the contents of files rather than their names.</p>
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
-<p>Change the arguments of the <code>echo</code> command in <code>plan.py</code> and run <code>stepup build -j 1</code> again.
+<p>Change the arguments of the <code>echo</code> command in <code>plan.py</code> and run <code>sb -j 1</code> again.
   As expected, StepUp detects the change and repeats the <code>plan.py</code> and <code>echo</code> steps.</p>
 </li>
 <li>
@@ -2533,7 +2570,7 @@ StepUp will automatically track it as a dependency of the step and rerun it when
   The terminal output shows the commands that would normally be sent to the StepUp director
   process when <code>plan.py</code> is executed by <code>stepup</code>.
   You should get the following screen output.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>step(-1, &#39;echo Hello World&#39;, [], [], [], [], Path(&#39;./&#39;), 32, {}, False)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>step(-1, &#39;echo Hello World&#39;, [], [], [], [], Path(&#39;.&#39;), 32, {}, False)
 </span></code></pre></div>
 <p>This output contains internal details of StepUp,
 which can be useful for debugging purposes.</p>
