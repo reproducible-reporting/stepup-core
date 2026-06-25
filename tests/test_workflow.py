@@ -1976,14 +1976,14 @@ def test_step_output_truncated_on_store(wfp: Workflow):
 
 
 def test_step_output_give_up_no_fk_error(wfp: Workflow):
-    """give_up() removes stored output (clean() runs before node deletion, no FK error)."""
+    """give_up() removes stored output via ON DELETE CASCADE when the node row is deleted."""
     plan = wfp.find(Step, "./plan.py")
     wfp.define_step(plan, "echo hi")
     step = wfp.find(Step, "echo hi")
     step.store_output("stdout", "data\n", 0)
     step.store_output("stderr", "oops\n", 0)
-    # clean() deletes step_output rows before give_up() deletes the node row. With no
-    # ON DELETE CASCADE, a leftover row would trigger a foreign-key error here.
+    # give_up() deletes the node row, and the step_output rows are removed automatically
+    # by the ON DELETE CASCADE foreign key.
     step.give_up()
     assert step.get_output("stdout") == ""
     assert step.get_output("stderr") == ""
@@ -2040,7 +2040,65 @@ def test_step_subprocess_give_up_no_fk_error(wfp: Workflow):
     wfp.define_step(plan, "echo hi")
     step = wfp.find(Step, "echo hi")
     step.record_subprocess("echo hi", ".", None, 0)
-    # clean() deletes step_subprocess rows before give_up() deletes the node row. With no
-    # ON DELETE CASCADE, a leftover row would trigger a foreign-key error here.
+    # give_up() deletes the node row, and the step_subprocess rows are removed automatically
+    # by the ON DELETE CASCADE foreign key.
     step.give_up()
     assert list(step.iter_subprocesses()) == []
+
+
+# Satellite tables whose rows hang off a node and are removed by ON DELETE CASCADE.
+SATELLITE_NODE_TABLES = (
+    "step",
+    "env_var",
+    "step_hash",
+    "step_resource",
+    "step_output",
+    "step_subprocess",
+    "nglob_multi",
+)
+
+
+def test_clean_cascades_satellite_rows(wfs: Workflow):
+    """Cleaning a node deletes all its satellite rows via ON DELETE CASCADE.
+
+    No explicit per-table DELETE is issued in `Step.clean()` / `File.clean()` anymore;
+    the cascade fires when `Cascade.clean()` deletes the node row.
+    """
+    # Foreign-key enforcement must be active on the connection or the cascades never fire.
+    assert wfs.con.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+
+    # Build a step that owns a row in every satellite table, plus an output file.
+    declare_static(wfs, wfs.root, ["inp.txt"])
+    wfs.define_step(
+        wfs.root,
+        "do something",
+        inp_paths=["inp.txt"],
+        env_vars=["SOME_VAR"],
+        out_paths=["out.txt"],
+        resources={"cpu": 2},
+    )
+    step = wfs.find(Step, "do something")
+    out_file = wfs.find(File, "out.txt")
+    step.set_hash(StepHash(b"inp", None, b"out", None))
+    step.store_output("stdout", "hello\n", 0)
+    step.record_subprocess("do something", ".", None, 0)
+    wfs.register_nglob(step, NGlobMulti.from_patterns(["*.txt"]))
+    step_i = step.i
+    out_i = out_file.i
+
+    # Sanity check: a row exists in each satellite table and the output file table.
+    for table in SATELLITE_NODE_TABLES:
+        count = wfs.con.execute(f"SELECT count(*) FROM {table} WHERE node = ?", (step_i,))
+        assert count.fetchone()[0] >= 1, f"expected a row in {table}"
+    assert wfs.con.execute("SELECT count(*) FROM file WHERE node = ?", (out_i,)).fetchone()[0] == 1
+
+    # Detach and clean: the step and its output file node are removed, cascading their rows.
+    step.detach()
+    wfs.clean()
+
+    assert wfs.con.execute("SELECT count(*) FROM node WHERE i = ?", (step_i,)).fetchone()[0] == 0
+    assert wfs.con.execute("SELECT count(*) FROM node WHERE i = ?", (out_i,)).fetchone()[0] == 0
+    for table in SATELLITE_NODE_TABLES:
+        count = wfs.con.execute(f"SELECT count(*) FROM {table} WHERE node = ?", (step_i,))
+        assert count.fetchone()[0] == 0, f"orphan row left in {table}"
+    assert wfs.con.execute("SELECT count(*) FROM file WHERE node = ?", (out_i,)).fetchone()[0] == 0

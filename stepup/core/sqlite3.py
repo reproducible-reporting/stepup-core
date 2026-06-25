@@ -62,10 +62,15 @@ def connect(path: str | os.PathLike[str], **kwargs) -> sqlite3.Connection:
       which allows us to use the custom UINT64 type for file inodes.
     - The `cached_statements` parameter is set to a large value to improve
       performance when executing many similar statements.
+    - Foreign key enforcement is enabled, which is required for the `ON DELETE CASCADE`
+      cleanup of satellite rows. This is a per-connection setting (not stored in the
+      database file), so it must be set on every connection.
     """
     my_kwargs = {"cached_statements": 1024, "detect_types": sqlite3.PARSE_DECLTYPES}
     my_kwargs.update(kwargs)
-    return sqlite3.connect(path, **my_kwargs)
+    con = sqlite3.connect(path, **my_kwargs)
+    con.execute("PRAGMA foreign_keys = ON")
+    return con
 
 
 @contextlib.contextmanager

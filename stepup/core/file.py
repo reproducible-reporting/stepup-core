@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS file (
   mtime REAL NOT NULL CHECK(mtime >= 0),
   size INTEGER NOT NULL CHECK(size >= 0),
   inode UINT64 NOT NULL,
-  FOREIGN KEY (node) REFERENCES node(i),
+  FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE,
   CHECK (
     state IN ({FileState.MISSING.value}, {FileState.AWAITED.value}, {FileState.VOLATILE.value}) OR
     (digest != X'75' AND mtime != 0 AND inode != 0) OR
@@ -146,7 +146,11 @@ class File(Node):
             yield "digest", format_digest(file_hash.digest)
 
     def clean(self):
-        """Perform a cleanup right before the detached node is removed from the graph."""
+        """Perform a cleanup right before the detached node is removed from the graph.
+
+        The row in the file table is removed automatically by `ON DELETE CASCADE`
+        when the node row is deleted; here we only queue the on-disk file for deletion.
+        """
         state = self.get_state()
         if state == FileState.VOLATILE:
             self.workflow.to_be_deleted.append((self.path, None))
@@ -154,7 +158,6 @@ class File(Node):
             file_hash = self.get_hash()
             if file_hash.digest != b"u":
                 self.workflow.to_be_deleted.append((self.path, file_hash))
-        self.con.execute("DELETE FROM file WHERE node = ?", (self.i,))
 
     def give_up(self):
         """Clean up a detached node because it loses a product node."""

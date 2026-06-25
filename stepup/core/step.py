@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS step (
     -- metadata of this step and its suppliers.
 
     -- Indices for efficient querying
-    FOREIGN KEY (node) REFERENCES node(i)
+    FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS step_state ON step(state);
 CREATE INDEX IF NOT EXISTS step_implied_need ON step(_implied_need);
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS nglob_multi (
     i INTEGER PRIMARY KEY,
     node INTEGER NOT NULL,
     data BLOB NOT NULL,
-    FOREIGN KEY (node) REFERENCES node(i)
+    FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS nglob_multi_node ON nglob_multi(node);
 
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS env_var (
     value TEXT,
     amended INTEGER NOT NULL CHECK(amended IN (0, 1)),
     PRIMARY KEY (node, name)
-    FOREIGN KEY (node) REFERENCES node(i)
+    FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS env_var_node ON env_var(node);
 
@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS step_hash (
     inp_info BLOB,
     out_digest BLOB NOT NULL,
     out_info BLOB,
-    FOREIGN KEY (node) REFERENCES node(i)
+    FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS step_resource (
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS step_resource (
     name  TEXT    NOT NULL CHECK(name <> ''),
     units INTEGER NOT NULL CHECK(units > 0),
     PRIMARY KEY (node, name),
-    FOREIGN KEY (node) REFERENCES node(i)
+    FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS step_resource_name ON step_resource(name);
 
@@ -132,9 +132,9 @@ CREATE TABLE IF NOT EXISTS step_output (
     kind    TEXT    NOT NULL,  -- 'stdout' or 'stderr' (extensible)
     content TEXT    NOT NULL,
     PRIMARY KEY (node, kind),
-    -- No ON DELETE CASCADE on purpose: rows are removed explicitly in Step.clean()
-    -- *before* the node row is deleted, matching step_hash / env_var.
-    FOREIGN KEY (node) REFERENCES node(i)
+    -- ON DELETE CASCADE removes these rows when the node row is deleted, matching the
+    -- other satellite tables (step_hash / env_var / step_resource / step_subprocess).
+    FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 ) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS step_subprocess (
@@ -146,10 +146,10 @@ CREATE TABLE IF NOT EXISTS step_subprocess (
     returncode INTEGER NOT NULL,
     shell      INTEGER NOT NULL DEFAULT 0,    -- 1 if cmd was run via a shell
     PRIMARY KEY (node, seq),
-    -- No ON DELETE CASCADE on purpose: rows are removed explicitly in Step.clean()
-    -- and Step.clean_before_run() *before* the node row is deleted, matching
-    -- step_hash / env_var / step_resource / step_output.
-    FOREIGN KEY (node) REFERENCES node(i)
+    -- ON DELETE CASCADE removes these rows when the node row is deleted, matching the
+    -- other satellite tables (step_hash / env_var / step_resource / step_output).
+    -- Step.clean_before_run() still clears them explicitly between runs of a surviving step.
+    FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 ) WITHOUT ROWID;
 """
 
@@ -331,17 +331,15 @@ class Step(Node):
                 yield "explained", "yes"
 
     def clean(self):
-        """Perform a cleanup right before the detached node is removed from the graph."""
+        """Perform a cleanup right before the detached node is removed from the graph.
+
+        The satellite rows (step, env_var, nglob_multi, step_hash, step_resource,
+        step_output, step_subprocess) are removed automatically by `ON DELETE CASCADE`
+        when the node row is deleted, so only the dependency edges are handled here.
+        """
         self.del_suppliers()
         for consumer in self.consumers(include_detached=True):
             consumer.del_suppliers([self])
-        self.con.execute("DELETE FROM step WHERE node = ?", (self.i,))
-        self.con.execute("DELETE FROM env_var WHERE node = ?", (self.i,))
-        self.con.execute("DELETE FROM nglob_multi WHERE node = ?", (self.i,))
-        self.con.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))
-        self.con.execute("DELETE FROM step_resource WHERE node = ?", (self.i,))
-        self.delete_outputs()
-        self.delete_subprocesses()
 
     def give_up(self):
         """Clean up a detached node because it loses a product node.
