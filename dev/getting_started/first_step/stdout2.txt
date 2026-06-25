@@ -1,4 +1,4 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post46)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post54)
    STARTUP │ Making failed steps pending
    STARTUP │ Watching directories for 1 files from initial database
    STARTUP │ Making steps pending that use changed environment variables

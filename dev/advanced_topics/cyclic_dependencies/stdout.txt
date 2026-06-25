@@ -1,4 +1,4 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post50)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post54)
    STARTUP │ (Re)initialized boot script
      PHASE │ build
      START │ ./plan.py
@@ -16,39 +16,39 @@ Traceback (most recent call last):
   File "./plan.py", line 5, in <module>
     copy("b.txt", "a.txt")
     ~~~~^^^^^^^^^^^^^^^^^^
-  File "stepup/core/api.py", line 853, in copy
+  File "stepup/core/api.py", line 888, in copy
     return step(
         "cp -p ${inp} ${out}",
     ...<4 lines>...
         shell=False,
     )
-  File "stepup/core/api.py", line 332, in step
+  File "stepup/core/api.py", line 412, in step
     to_check = RPC_CLIENT.call.step(
         _get_step_i(),
-    ...<8 lines>...
-        shell,
+    ...<9 lines>...
+        env_overrides,
     )
   File "stepup/core/rpc.py", line 543, in __call__
     _handle_error(body, name, args, kwargs)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "stepup/core/rpc.py", line 74, in _handle_error
     raise RPCError(f"An exception was raised in the server during the call {fmt_call}: \n\n{body}")
-stepup.core.exceptions.RPCError: An exception was raised in the server during the call step(3, 'cp -p b.txt a.txt', [Path('b.txt')], [], [Path('a.txt')], [], Path('.'), 32, {}, False):
+stepup.core.exceptions.RPCError: An exception was raised in the server during the call step(3, 'cp -p b.txt a.txt', [Path('b.txt')], [], [Path('a.txt')], [], Path('.'), 32, {}, False, {}):
 Traceback (most recent call last):
   File "stepup/core/rpc.py", line 210, in _handle_request
     result = await result
              ^^^^^^^^^^^^
-  File "stepup/core/director.py", line 510, in step
+  File "stepup/core/director.py", line 511, in step
     return self.workflow.define_step(
            ~~~~~~~~~~~~~~~~~~~~~~~~~^
         creator,
         ^^^^^^^^
-    ...<8 lines>...
-        subshell=subshell,
-        ^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+        env_overrides=env_overrides,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     )
     ^
-  File "stepup/core/workflow.py", line 816, in define_step
+  File "stepup/core/workflow.py", line 827, in define_step
     file.add_supplier(step)
     ~~~~~~~~~~~~~~~~~^^^^^^
   File "stepup/core/file.py", line 277, in add_supplier

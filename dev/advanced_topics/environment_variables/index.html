@@ -2362,7 +2362,7 @@ Environment variables cannot be modified while StepUp is running.</p>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nv">MYVAR</span><span class="o">=</span>foo<span class="w"> </span>sb<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You will see the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post46)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post54)
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>        0/0 |    STARTUP │ (Re)initialized boot script
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>        0/1 |      PHASE │ build
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        0/1 |      START │ ./plan.py
@@ -2395,11 +2395,30 @@ as discussed in the <a href="../../getting_started/dependencies/">tutorial on de
 you can also inject environment variables into the command of a step.
 For example:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;hello&quot;</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">run</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MESSAGE=</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2"> &quot;</span> <span class="o">+</span> <span class="s2">&quot;echo $</span><span class="si">{MESSAGE}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">run</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MESSAGE=</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2"> &quot;</span> <span class="o">+</span> <span class="s2">&quot;echo $</span><span class="si">{MESSAGE}</span><span class="s2">&quot;</span><span class="p">)</span>
 </span></code></pre></div>
-<p>Note that this is a different mechanism and it practically serves a different purpose.
-In this case, there is no point in add the argument <code>env="MESSAGE"</code>,
+<p>Note that this is conceptually very different and it practically serves a different purpose.
+It just sets the value of the variable before the echo command is executed.
+Now, it would be incorrect to add the argument <code>env="MESSAGE"</code> to the <code>run()</code> call,
 because this step will not be sensitive to the value of <code>MESSAGE</code> defined outside StepUp.</p>
+<p>Note that this syntax for setting variables in a command is supported by StepUp
+with both <code>shell=True</code> and <code>shell=False</code>, but the implementation is very different:</p>
+<ul>
+<li>
+<p>With <code>shell=True</code>, the variable is set by the shell before the command is executed.
+  This is completely opaque to StepUp, which just sees the command as a string.</p>
+<p>Because StepUp does not know which variables are set, it will not check their validity.</p>
+</li>
+<li>
+<p>With <code>shell=False</code>, a normal Python subprocess call as such would fail.
+  StepUp extracts the variable assignment from the command, and stores it in the workflow database.
+  When the executor runs the command, it passes the variables into the <code>env=...</code> argument
+  of the subprocess call.</p>
+<p>In this case, StepUp will raise an error if the variable included in the command
+also appears in the <code>env</code> argument of the <code>run()</code> call, because now the mistake can be detected
+unambiguously.</p>
+</li>
+</ul>
 
 
 

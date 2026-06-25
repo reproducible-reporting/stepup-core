@@ -2549,7 +2549,7 @@ with some extra logic to handle the software package&rsquo;s specific requiremen
 </ul>
 <p>A few things to keep in mind:</p>
 <ul>
-<li>API functions that (indirectly) call the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function
+<li>API functions that (indirectly) call the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False, _add_exe=False, _need_relative_exe=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function
   should always return the resulting <a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo"><code>StepInfo</code></a> object.</li>
 <li>Keep the computational cost of the API function low.
   They should only be used to plan the execution of a step
@@ -2560,7 +2560,7 @@ with some extra logic to handle the software package&rsquo;s specific requiremen
 </ul>
 <h2 id="command-dispatch">Command Dispatch<a class="headerlink" href="#command-dispatch" title="Permanent link">&para;</a></h2>
 <p>When a step executes, StepUp&rsquo;s executor automatically selects how to run the command.
-The dispatch logic depends on the <code>shell</code> flag passed to <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a>
+The dispatch logic depends on the <code>shell</code> flag passed to <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False, _add_exe=False, _need_relative_exe=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a>
 and the form of the command string:</p>
 <ul>
 <li>
@@ -2621,7 +2621,7 @@ that also handles the communication with StepUp&rsquo;s director process.
 When the wrapper runs the external tool as a subprocess with Python&rsquo;s built-in <code>subprocess</code> module,
 this subprocess is not visible to StepUp&rsquo;s director process.</p>
 <p>To make calls to such external tools transparent,
-one can execute them with <a class="autorefs autorefs-internal" title="stepup.core.extapi.run_subprocess(cmd, *, workdir='.', env=None, stdout=None, stderr=None, check=True, shell=False)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.run_subprocess"><code>run_subprocess()</code></a>,
+one can execute them with <a class="autorefs autorefs-internal" title="stepup.core.extapi.run_subprocess(cmd, *, workdir='.', stdout=None, stderr=None, check=True, shell=False)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.run_subprocess"><code>run_subprocess()</code></a>,
 which also registers the invocation as metadata in the workflow database.</p>
 <p>For example, the following function wraps the <code>typst</code> command-line tool:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
@@ -2638,7 +2638,7 @@ The string is stored and displayed verbatim and you are responsible for proper q
 This gives you the opportunity to prepare a convenient human-readable command string.</p>
 <p>Wrappers that need streaming output or <code>Popen</code>-style pipe interaction
 run the subprocess themselves and record it afterwards with
-<a class="autorefs autorefs-internal" title="stepup.core.extapi.record_subprocess(cmd, returncode, *, workdir='.', env=None, shell=False)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.record_subprocess"><code>record_subprocess()</code></a>.</p>
+<a class="autorefs autorefs-internal" title="stepup.core.extapi.record_subprocess(cmd, returncode, *, workdir='.', env_overrides=None, shell=False)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.record_subprocess"><code>record_subprocess()</code></a>.</p>
 <h2 id="path-manipulation">Path manipulation<a class="headerlink" href="#path-manipulation" title="Permanent link">&para;</a></h2>
 <p>StepUp uses the <a href="https://pypi.org/project/path/"><code>path</code></a> library instead of the
 built-in <code>pathlib</code>, because some path affixes carry meaning that <code>pathlib</code> would discard.
@@ -2653,14 +2653,14 @@ To facilitate the conversion, the module <code>stepup.core.path</code> provides 
 <ul>
 <li><code>StrPath</code>: a type alias for <code>Union[str, os.PathLike]</code> that can be used in type hints.</li>
 <li><code>coerce_path()</code>:
-  converts a single path argument to <code>path.Path</code>.</li>
+    converts a single path argument to <code>path.Path</code>.</li>
 <li><code>coerce_paths()</code>:
-  converts a single path argument or a collection of path arguments
-  to a list of <code>path.Path</code> objects.</li>
+    converts a single path argument or a collection of path arguments
+    to a list of <code>path.Path</code> objects.</li>
 <li><code>coerce_paths2()</code>:
-  converts a list of path arguments or lists thereof to a list of <code>path.Path</code> objects.</li>
+    converts a list of path arguments or lists thereof to a list of <code>path.Path</code> objects.</li>
 <li><code>coerce_str()</code>:
-  converts a single path argument to <code>str</code>, preserving any trailing slash.</li>
+    converts a single path argument to <code>str</code>, preserving any trailing slash.</li>
 </ul>
 <h3 id="affix-handling">Affix handling<a class="headerlink" href="#affix-handling" title="Permanent link">&para;</a></h3>
 <p>A leading <code>./</code> or a trailing <code>/</code> is significant in StepUp:</p>
