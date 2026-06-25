@@ -30,6 +30,7 @@ This module should not be imported by other stepup.core modules, safe for some n
 
 import contextlib
 import json
+import keyword
 import os
 import shlex
 import sys
@@ -417,6 +418,8 @@ def call(
     ValueError
         When `executable_` does not contain a path separator or is absolute.
     ValueError
+        When `function_` is not a valid Python function name.
+    ValueError
         When the inline JSON string exceeds 128 KiB (use `args_file` instead).
     ValueError
         When `args_file` has an unrecognized extension.
@@ -444,6 +447,12 @@ def call(
     # Validate the executable is not absolute.
     if os.path.isabs(executable_):
         raise ValueError(f"executable_ must not be an absolute path, got: {executable_!r}")
+
+    # Validate the function name. A valid Python identifier that is not a reserved
+    # keyword can never contain shell metacharacters, so it is safe to interpolate
+    # unquoted into the command below.
+    if not (function_.isidentifier() and not keyword.iskeyword(function_)):
+        raise ValueError(f"function_ must be a valid Python function name, got: {function_!r}")
 
     # Build the forwarded kwargs dict (inp and out are included when not empty).
     forwarded = kwargs.copy()
