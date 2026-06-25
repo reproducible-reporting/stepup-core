@@ -29,7 +29,7 @@ Make the plan executable and run it with StepUp as follows:
 
 ```bash
 chmod +x plan.py
-stepup build -j 1
+sb -j 1
 ```
 
 You should get the following output:
@@ -43,12 +43,12 @@ The file `numbered.txt` will contain a copy of the limerick with line numbers.
 
 ## Try the Following
 
-- Replace `gloom` by `boom` in `limerick.txt` and run `stepup build -j 1` again.
+- Replace `gloom` by `boom` in `limerick.txt` and run `sb -j 1` again.
   The line numbering is repeated, but the step `./plan.py` is skipped as it did not change.
 
-- Change the order of `static()` and `run()` in `plan.py` and run `stepup build -j 1` again.
+- Change the order of `static()` and `run()` in `plan.py` and run `sb -j 1` again.
   This has no apparent effect, but the step is only started after the director
   is informed that the file `limerick.txt` is static.
 
-- Comment out the `static()` function call and run `stepup build -j 1` again.
+- Comment out the `static()` function call and run `sb -j 1` again.
   StepUp will refuse to execute the line numbering step and will show a warning explaining why.

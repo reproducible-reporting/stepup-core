@@ -18,7 +18,7 @@ to demonstrate the interactive use of StepUp.
 Running StepUp as follows will not exit the terminal user interface:
 
 ```bash
-stepup build -w
+sb -w
 ```
 
 After the line `PHASE │ watch` appears, StepUp just waits for changes to the (static) files.

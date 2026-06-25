@@ -26,6 +26,7 @@ import sys
 import tempfile
 import termios
 import threading
+from collections.abc import Callable
 from decimal import Decimal
 from functools import partial
 
@@ -390,7 +391,7 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
     return resources_action.default
 
 
-def build_subcommand(subparsers, loader: ConfigLoader) -> callable:
+def build_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     """Define command-line arguments for the build tool.
 
     Parameters
@@ -405,7 +406,7 @@ def build_subcommand(subparsers, loader: ConfigLoader) -> callable:
     return partial(build_tool, default_resources=default_resources)
 
 
-def boot_subcommand(subparsers, loader: ConfigLoader) -> callable:
+def boot_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     """Define command-line arguments for the deprecated `boot` alias of `build`.
 
     Parameters

@@ -30,7 +30,7 @@ Then make the plan executable and launch StepUp:
 
 ```bash
 chmod +x plan.py
-stepup build -j 1
+sb -j 1
 ```
 
 This will show the following output:

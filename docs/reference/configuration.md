@@ -1,7 +1,7 @@
 # StepUp Configuration
 
 StepUp can be configured using configuration files, environment variables, and command-line options.
-When a `stepup` tool starts, e.g. `stepup build`,
+When a `stepup` tool starts, e.g. `sb`,
 it will load its settings in the following order, with later settings overriding earlier ones:
 
 - `/etc/stepup.toml` (system-wide configuration file)
@@ -99,7 +99,7 @@ separated by slashes, where applicable.
     If not set, StepUp will look for this file in the current directory.
     This setting cannot be configured through config files.
 
-## Settings for `stepup build`
+## Settings for `sb`
 
 These settings are stored under the `[build]` section in config files
 (or `[tool.stepup.build]` in `pyproject.toml`).

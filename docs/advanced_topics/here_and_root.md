@@ -7,12 +7,13 @@ but these are only useful to StepUp itself, not to end users.)
 
 The two variables are defined as follows:
 
-- `${HERE}` contains the relative path from the directory where StepUp was started
-  to the current working directory of the step.
-- `${ROOT}` contains the opposite: the relative directory from the current working directory
-  to the directory where StepUp was started.
+- `${HERE}` is the relative path from the directory where StepUp was started
+  to the step's working directory.
+- `${ROOT}` is the relative path in the opposite direction:
+  from the step's working directory back to where StepUp was started.
 
-Hence, `${HERE}/${ROOT}` and `${ROOT}/${HERE}` normalize to the current directory: `./`.
+The two are therefore inverse paths,
+so `${HERE}/${ROOT}` and `${ROOT}/${HERE}` both normalize to the current directory `./`.
 
 These variables can be useful in the following cases:
 
@@ -46,7 +47,7 @@ Make the scripts executable and run everything as follows:
 
 ```bash
 chmod +x plan.py sub/plan.py
-stepup build -j 1
+sb -j 1
 ```
 
 You should get the following terminal output:
@@ -83,8 +84,8 @@ Any variables present in the environment variable will also be substituted once.
 
 - Modify the scripts `plan.py` and `sub/plan.py` to utilize a `DST` variable as explained above.
   To achieve this, define `DST` externally, for instance,
-  by starting StepUp as `DST='../public/${HERE}' stepup build -j 1`.
+  by starting StepUp as `DST='../public/${HERE}' sb -j 1`.
 
 - As a follow-up to the previous point, run StepUp with a different `DST` value.
-  For example: `DST='../out/${HERE}' stepup build -j 1`.
+  For example: `DST='../out/${HERE}' sb -j 1`.
   You will see that all old output files get cleaned up after the new output is created.

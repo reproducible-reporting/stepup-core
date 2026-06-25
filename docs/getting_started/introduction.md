@@ -9,7 +9,7 @@ The following initial competencies are assumed:
 - Editing text files.
 
 Note that the examples in the tutorials are all small and use StepUp
-in serial mode (`-n 1`) and non-interactively.
+in serial mode (`-j 1`) and non-interactively.
 We believe this offers the best learning experience.
 However, StepUp really shines in more complex use cases and when used interactively.
 Once you become familiar with StepUp,
@@ -23,6 +23,27 @@ within StepUp Core's source code.
 Each directory contains a script named `main.sh`,
 which simply runs the example in non-interactive mode,
 generating the outputs that are included in the documentation.
+
+## Basic usage
+
+To use StepUp, you need to create a `plan.py` file in the root of your project.
+This file defines the steps and files that make up your workflow.
+The tutorials in this section explain the basics of how to write a `plan.py` file.
+To execute the workflow, you run StepUp as follows:
+
+```bash
+stepup build
+```
+
+or equivalently, the shorter form:
+
+```bash
+sb
+```
+
+The `stepup` command provides several subcommands, of which `build` is the most important.
+Run `stepup --help` to see the full list of subcommands and their options.
+Each tool also accepts the `--help` option to see its own options, e.g. `stepup build --help`.
 
 ## StepUp architecture
 

@@ -12,7 +12,7 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
     This information is embedded in the comments of `main.sh` and the commands
 
     ```bash
-    stepup build -j 1 | sed -f ../../clean_stdout.sed > stdout.txt
+    sb -j 1 | sed -f ../../clean_stdout.sed > stdout.txt
     # INP: input
     # ROOT: root/ (optional)
     ```

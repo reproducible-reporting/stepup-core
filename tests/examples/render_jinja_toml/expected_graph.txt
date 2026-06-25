@@ -17,26 +17,26 @@ step:./plan.py
              creates   file:template.txt
              creates   file:trip1.toml
              creates   file:trip2.toml
-             creates   step:stepup render-jinja template.txt trip1.toml rendered-trip1.txt
-             creates   step:stepup render-jinja template.txt trip2.toml rendered-trip2.txt
+             creates   step:render-jinja template.txt trip1.toml rendered-trip1.txt
+             creates   step:render-jinja template.txt trip2.toml rendered-trip2.txt
 
 file:template.txt
                state = STATIC
           created by   step:./plan.py
-            supplies   step:stepup render-jinja template.txt trip1.toml rendered-trip1.txt
-            supplies   step:stepup render-jinja template.txt trip2.toml rendered-trip2.txt
+            supplies   step:render-jinja template.txt trip1.toml rendered-trip1.txt
+            supplies   step:render-jinja template.txt trip2.toml rendered-trip2.txt
 
 file:trip1.toml
                state = STATIC
           created by   step:./plan.py
-            supplies   step:stepup render-jinja template.txt trip1.toml rendered-trip1.txt
+            supplies   step:render-jinja template.txt trip1.toml rendered-trip1.txt
 
 file:trip2.toml
                state = STATIC
           created by   step:./plan.py
-            supplies   step:stepup render-jinja template.txt trip2.toml rendered-trip2.txt
+            supplies   step:render-jinja template.txt trip2.toml rendered-trip2.txt
 
-step:stepup render-jinja template.txt trip1.toml rendered-trip1.txt
+step:render-jinja template.txt trip1.toml rendered-trip1.txt
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
@@ -48,10 +48,10 @@ step:stepup render-jinja template.txt trip1.toml rendered-trip1.txt
 
 file:rendered-trip1.txt
                state = BUILT
-          created by   step:stepup render-jinja template.txt trip1.toml rendered-trip1.txt
-            consumes   step:stepup render-jinja template.txt trip1.toml rendered-trip1.txt
+          created by   step:render-jinja template.txt trip1.toml rendered-trip1.txt
+            consumes   step:render-jinja template.txt trip1.toml rendered-trip1.txt
 
-step:stepup render-jinja template.txt trip2.toml rendered-trip2.txt
+step:render-jinja template.txt trip2.toml rendered-trip2.txt
                state = SUCCEEDED
                 need = DEFAULT
              env_var = STEPUP_PATH_FILTER [amended]
@@ -63,5 +63,5 @@ step:stepup render-jinja template.txt trip2.toml rendered-trip2.txt
 
 file:rendered-trip2.txt
                state = BUILT
-          created by   step:stepup render-jinja template.txt trip2.toml rendered-trip2.txt
-            consumes   step:stepup render-jinja template.txt trip2.toml rendered-trip2.txt
+          created by   step:render-jinja template.txt trip2.toml rendered-trip2.txt
+            consumes   step:render-jinja template.txt trip2.toml rendered-trip2.txt

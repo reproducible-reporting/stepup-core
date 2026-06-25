@@ -93,13 +93,13 @@ nav:
     - advanced_topics/environment_variables.md
     - advanced_topics/volatile_outputs.md
     - advanced_topics/amending_steps.md
+    - advanced_topics/amending_static_inputs.md
     - advanced_topics/variable_substitution.md
     - advanced_topics/here_and_root.md
+    - advanced_topics/stepup_root.md
     - advanced_topics/render_jinja.md
     - advanced_topics/cyclic_dependencies.md
-    - advanced_topics/amending_static_inputs.md
     - advanced_topics/manual_cleaning.md
-    - advanced_topics/stepup_root.md
     - advanced_topics/step_info.md
   - Migration:
     - migration/from_3x_to_40.md
@@ -108,15 +108,15 @@ nav:
     - reference/stepup.core.call.md
     - reference/stepup.core.extapi.md
     - reference/stepup.core.nglob.md
+    - reference/stepup.core.path.md
     - reference/stepup.core.stepinfo.md
-    - reference/stepup.core.utils.md
     - reference/interactive.md
     - reference/returncode.md
     - reference/configuration.md
   - Extending StepUp:
     - extending/introduction.md
     - extending/api.md
-    - extending/command.md
+    - extending/console_scripts.md
     - extending/tool.md
   - changelog.md
   - development.md

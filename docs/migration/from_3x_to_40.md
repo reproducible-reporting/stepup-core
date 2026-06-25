@@ -188,7 +188,7 @@ The advantages of the new `plan()` function are:
   When defining steps, you can then specify the required resources, e.g., `resources="gpu:1,cpu:4"`,
   and StepUp will ensure that the available resources are not over-committed.
   You can override the available resources with the
-  `--resources` command-line argument to `stepup build` if needed.
+  `--resources` command-line argument to `sb` if needed.
 
     Note that the resource names are user-specified strings and StepUp does not implement
     pre-defined resource types, such as `gpu` or `cpu`.
@@ -202,7 +202,7 @@ The advantages of the new `plan()` function are:
 
 ## Changed Command-Line Arguments
 
-The `stepup build` command was changed to have `-j` and `--jobs` options
+The `sb` command was changed to have `-j` and `--jobs` options
 instead of `-n` and `--num-workers`.
 
 ## Changed Environment Variable Names

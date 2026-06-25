@@ -55,7 +55,7 @@ Set the environment variable and run StepUp with four parallel jobs:
 ```bash
 export STEPUP_RESOURCES="cpu:2,gpu:1"
 chmod +x plan.py
-stepup build -j 4
+sb -j 4
 ```
 
 You should get the following output:
@@ -70,7 +70,7 @@ because it needs 2 CPUs and 1 GPU at the same time.
 
 ## Try the Following
 
-- Run `stepup build -j 4` again without making changes.
+- Run `sb -j 4` again without making changes.
   Skipping steps requires hash computations, which are done by a dedicated hashing subprocess
   and are never subject to resource restrictions.
 

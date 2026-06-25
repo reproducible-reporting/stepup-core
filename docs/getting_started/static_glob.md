@@ -27,7 +27,7 @@ Make the plan executable and run it non-interactively:
 
 ```bash
 chmod +x plan.py
-stepup build -j 1
+sb -j 1
 ```
 
 This should produce the following output:

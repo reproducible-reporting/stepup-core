@@ -19,7 +19,7 @@ To test for a specific flag in Bash, use the bitwise AND operator `&`:
 
 ```bash
 #!/usr/bin/env bash
-stepup build
+sb
 RET=$?
 if [ $(($RET & 2)) -gt 0 ]; then
     echo "At least one step failed"

@@ -22,6 +22,7 @@
 import argparse
 import os
 import sqlite3
+from collections.abc import Callable
 
 from path import Path
 from rich.console import Console
@@ -31,11 +32,11 @@ from .config import ConfigLoader
 from .constants import GRAPH_DB
 from .enums import FileState
 from .hash import FileHash
+from .path import translate, translate_back
 from .sqlite3 import copy_db_in_memory, escape_like_pattern
-from .utils import translate, translate_back
 
 
-def clean_subcommand(subparsers, loader: ConfigLoader) -> callable:
+def clean_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     """Define command-line arguments for the clean tool.
 
     Parameters

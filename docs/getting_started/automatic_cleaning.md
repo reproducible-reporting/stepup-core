@@ -10,7 +10,7 @@ Sometimes, it can be helpful to postpone the cleanup
 until you are sure that the output files are no longer needed.
 This can be done in one of three ways:
 
-1. Add the `--no-clean` option to the `stepup build` command.
+1. Add the `--no-clean` option to the `sb` command.
    This will prevent StepUp from removing any output files.
 2. Set the environment variable `STEPUP_CLEAN=0`.
    This can be overridden again by the `--clean` command-line option,

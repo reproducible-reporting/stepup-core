@@ -1,12 +1,10 @@
 # Static Tree
 
 In the previous tutorial, static files were declared explicitly with the `static()` function.
-Explicitly declaring each static file separately is tedious when dealing with many such files.
-To simplify matters, StepUp provides several methods to declare static files in bulk.
-
-To simplify this process, StepUp allows declaring an entire directory as static.
-You can achieve this simply by passing the directory path to the `static()` function.
-In this tutorial, we will see how to use this method to declare static files.
+Declaring each file separately becomes tedious when there are many of them.
+To declare static files in bulk, you can pass a directory path to the `static()` function,
+which marks the entire directory tree as static.
+This tutorial shows how to use this method.
 
 ## Example
 
@@ -23,7 +21,7 @@ Make the plan executable and run it non-interactively:
 
 ```bash
 chmod +x plan.py
-stepup build -j 1
+sb -j 1
 ```
 
 This should produce the following output:

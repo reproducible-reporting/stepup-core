@@ -2,10 +2,10 @@
         0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ stepup render-jinja template.tex variables.py rendered.tex
-        1/1 |       FAIL │ stepup render-jinja template.tex variables.py rendered.tex
+        1/2 |      START │ render-jinja template.tex variables.py rendered.tex
+        1/1 |       FAIL │ render-jinja template.tex variables.py rendered.tex
 ──────────────────────────────── Failed command ────────────────────────────────
-stepup render-jinja template.tex variables.py rendered.tex  # exit=1
+render-jinja template.tex variables.py rendered.tex  # exit=1
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────

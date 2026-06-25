@@ -76,7 +76,7 @@ Make the scripts executable and fire up StepUp to see how it deals with the amen
 
 ```bash
 chmod +x step.py plan.py
-stepup build -j 1
+sb -j 1
 ```
 
 You should get the following terminal output:

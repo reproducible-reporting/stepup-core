@@ -16,7 +16,7 @@ Here, we provide guidance on how to handle these failing steps.
   (There is a similar file `.stepup/warning.log` for warnings.)
 
 - **External causes:**
-  If the source of the problem is unrelated to STATIC files known to StepUp,
+  If the source of the problem is unrelated to static files known to StepUp,
   fixing the problem will not result in a file change that StepUp can detect.
   Therefore, when you restart StepUp from scratch,
   it will rerun all previously failed steps.

@@ -417,7 +417,7 @@ class ConfigLoader:
         self._patches.append((section, action_map))
 
 
-def show_config_subcommand(subparsers, loader: ConfigLoader) -> callable:
+def show_config_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     """Define command-line arguments for the show-config tool.
 
     Parameters

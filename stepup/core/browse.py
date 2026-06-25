@@ -29,7 +29,7 @@ import pickle
 import stat
 import traceback
 import webbrowser
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -46,7 +46,7 @@ from .step import Step
 from .utils import format_subprocess
 
 
-def browse_subcommand(subparsers, loader: ConfigLoader) -> callable:
+def browse_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     """Define command-line arguments for the browse tool.
 
     Parameters

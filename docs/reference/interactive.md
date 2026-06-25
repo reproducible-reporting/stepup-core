@@ -4,7 +4,7 @@
 
     Changes since StepUp 3.0.0:
 
-    - You have to start the StepUp workflow with `stepup build` instead of `stepup`.
+    - You have to start the StepUp workflow with `sb` instead of `stepup`.
 
     Changes since StepUp 2.0.0:
 
@@ -35,8 +35,8 @@ These commands are defined as follows:
 - `q = shutdown`:
   StepUp waits for all running steps to complete and will not start new jobs.
   As soon as no steps are running, StepUp exits.
-  If it takes to long for the steps to complete, you can press `q` again to kill them with `SIGINT`.
-  Pres `q` for a third time to kill the steps with `SIGKILL`. (nuclear option)
+  If it takes too long for the steps to complete, you can press `q` again to kill them with `SIGINT`.
+  Press `q` for a third time to kill the steps with `SIGKILL`. (nuclear option)
 - `d = drain`:
   StepUp waits for all running steps to complete and will not start new jobs.
   As soon as no steps are running, StepUp transitions into the *watch phase*.
@@ -56,7 +56,7 @@ Note that the `SIGINT` signal (pressing `Ctrl+C`) are also supported to stop Ste
 
 You can run StepUp in the background in several ways:
 
-- Just start it with `stepup build > stepup.log &`
+- Just start it with `sb > stepup.log &`
   and then use `tail -f stepup.log` to see the output.
 - Run StepUp inside a `screen` or `tmux` session.
 - Run StepUp in a Slurm/PBS/... batch job on a cluster.
@@ -78,7 +78,7 @@ However, you can still interact with StepUp as follows:
 ## Interacting With StepUp From Within an IDE
 
 If you don't want to switch to a terminal to restart StepUp while working in an IDE,
-you can run it in "watch mode" (`stepup build -w`) and configure your IDE
+you can run it in "watch mode" (`sb -w`) and configure your IDE
 to bind the following command to a keyboard shortcut:
 
 ```bash
@@ -86,7 +86,7 @@ stepup run
 ```
 
 This command must be executed in the top-level directory
-where a `stepup build` command is running in interactive mode.
+where a `sb` command is running in interactive mode.
 (You can also set the `STEPUP_ROOT` environment variable instead.)
 
 ### Configuration of a Task in VSCode
@@ -147,5 +147,5 @@ The following `keybindings.json` file will bind `ctrl+'` to run the task:
 
 VSCode will automatically save the file when you run the task with this keybinding.
 
-Instead of this shortcut, you can also use `stepup build -W`,
+Instead of this shortcut, you can also use `sb -W`,
 which will automatically rerun the build as soon as you delete, save or add a relevant file.

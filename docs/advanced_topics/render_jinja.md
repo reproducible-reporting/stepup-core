@@ -34,7 +34,7 @@ Make the plan executable and run StepUp:
 
 ```bash
 chmod +x plan.py
-stepup build -j 1
+sb -j 1
 ```
 
 You should see the following output:
@@ -68,7 +68,12 @@ supports the following delimiters for Jinja templates:
 
 {% endraw %}
 
-The default is `mode="auto"`, which sets the delimiters automatically based on the file extension.
+The default is `mode="auto"`, which sets the delimiters automatically based on the file extension
+(`mode="latex"` for `.tex` templates and `mode="plain"` otherwise).
+Use `mode="latex"` when the template is LaTeX source:
+its `<<`, `<%` and `<#` delimiters do not clash with LaTeX's own `{`, `}` and `%` characters,
+which the default Jinja delimiters would.
+For all other templates, `mode="plain"` (the standard Jinja delimiters) is the natural choice.
 
 ## Try the Following
 

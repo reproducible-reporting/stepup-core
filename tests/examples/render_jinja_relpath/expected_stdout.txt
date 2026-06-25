@@ -6,8 +6,8 @@
         2/4 |    SUCCESS │ ./plan.py  # wd=static
         2/4 |      START │ cp -p static/preamble.inc.tex public/preamble.inc.tex
         3/4 |    SUCCESS │ cp -p static/preamble.inc.tex public/preamble.inc.tex
-        3/4 |      START │ stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
-        4/4 |    SUCCESS │ stepup render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
+        3/4 |      START │ render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
+        4/4 |    SUCCESS │ render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
         4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         4/4 |      PHASE │ watch
         4/4 |   DIRECTOR │ See you!

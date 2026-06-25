@@ -33,8 +33,9 @@ from collections.abc import Callable, Collection, Iterator
 
 from path import Path
 
+from .path import translate
 from .rpc import SocketSyncRPCClient
-from .utils import CaseSensitiveTemplate, translate
+from .utils import CaseSensitiveTemplate
 
 __all__ = (
     "filter_dependencies",

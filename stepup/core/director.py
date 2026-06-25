@@ -52,7 +52,7 @@ from .sqlite3 import connect
 from .startup import startup_from_db
 from .step import Step
 from .stepinfo import StepInfo
-from .utils import DBLock, check_plan
+from .utils import DBLock
 from .watcher import WATCHER_AVAILABLE, Watcher
 from .workflow import Workflow
 
@@ -308,7 +308,7 @@ async def serve(
         raise ValueError(f"Number of parallel tasks must be strictly positive, got {njob}")
     if do_watch_first and not do_watch:
         raise ValueError("do_watch_first cannot be set without do_watch.")
-    check_plan("plan.py")
+    _check_plan("plan.py")
 
     # Environment variables exported to step child processes (and forkserver children).
     # These are passed explicitly to the executor rather than set in `os.environ`,
@@ -382,6 +382,18 @@ async def serve(
         await rpc_server
         director_socket_path.remove_p()
     return builder.returncode
+
+
+def _check_plan(path_plan: str):
+    """Basic sanity checks for a plan.py file."""
+    if not Path(path_plan).is_file():
+        raise ValueError(f"Is not a file: {path_plan}")
+    if not os.access(path_plan, os.X_OK):
+        raise ValueError(f"File is not executable: {path_plan}")
+    with open(path_plan) as fh:
+        shebang = "#!/usr/bin/env python3"
+        if not fh.readline().rstrip() == shebang:
+            raise ValueError(f"First line of plan differs from '{shebang}': {path_plan}")
 
 
 @attrs.define

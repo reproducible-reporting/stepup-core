@@ -45,20 +45,11 @@ from .cattrs import json_converter, yaml_converter
 from .enums import Need
 from .extapi import subs_env_vars
 from .nglob import NGlobMulti
+from .path import apply_affixes, get_affixes, make_path_out, translate, translate_back
 from .rpc import DummySyncRPCClient, SocketSyncRPCClient
 from .step import FileHash
 from .stepinfo import StepInfo
-from .utils import (
-    CaseSensitiveTemplate,
-    apply_affixes,
-    format_command,
-    get_affixes,
-    make_path_out,
-    parse_resources,
-    string_to_list,
-    translate,
-    translate_back,
-)
+from .utils import CaseSensitiveTemplate, format_command, parse_resources, string_to_list
 
 __all__ = (
     "RPC_CLIENT",
@@ -1193,7 +1184,7 @@ def render_jinja(
     path_out = make_path_out(path_template, dest, None)
 
     # Create the command
-    args = ["stepup", "render-jinja", "${inp}", "${out}"]
+    args = ["render-jinja", "${inp}", "${out}"]
     if mode != "auto":
         args.append(f"--mode={mode}")
     if len(variables) > 0:

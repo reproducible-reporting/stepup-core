@@ -25,6 +25,7 @@ or to interact with StepUp running in the background on a remote server.
 """
 
 import argparse
+from collections.abc import Callable
 
 from rich import print  # noqa: A004
 
@@ -42,7 +43,7 @@ def shutdown_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.shutdown()
 
 
-def shutdown_subcommand(subparsers, loader: ConfigLoader) -> callable:
+def shutdown_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     subparsers.add_parser(
         "shutdown",
         help="Put the scheduler on hold, wait for running steps to complete and then exit StepUp. "
@@ -56,7 +57,7 @@ def drain_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.drain()
 
 
-def drain_subcommand(subparsers, loader: ConfigLoader) -> callable:
+def drain_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     subparsers.add_parser(
         "drain",
         help="Put the scheduler on hold. (No new steps are started.)",
@@ -71,7 +72,7 @@ def join_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.join(_rpc_timeout=-1)
 
 
-def join_subcommand(subparsers, loader: ConfigLoader) -> callable:
+def join_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     subparsers.add_parser(
         "join",
         help="Wait for the builder to become idle and stop the director.",
@@ -84,7 +85,7 @@ def graph_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.graph(args.prefix)
 
 
-def graph_subcommand(subparsers, loader: ConfigLoader) -> callable:
+def graph_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     parser = subparsers.add_parser(
         "graph",
         help="Write the workflow graph files in text and dot formats.",
@@ -120,7 +121,7 @@ def status_tool(args: argparse.Namespace):
         print(f"  {command}")
 
 
-def status_subcommand(subparsers, loader: ConfigLoader) -> callable:
+def status_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     subparsers.add_parser(
         "status",
         help="Print the status of the director.",
@@ -133,7 +134,7 @@ def run_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.run()
 
 
-def run_subcommand(subparsers, loader: ConfigLoader) -> callable:
+def run_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     subparsers.add_parser(
         "run",
         help="Exit the watch phase and start the build phase.",
@@ -146,7 +147,7 @@ def watch_update_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.watch_update(args.path, _rpc_timeout=-1)
 
 
-def watch_update_subcommand(subparsers, loader: ConfigLoader) -> callable:
+def watch_update_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     parser = subparsers.add_parser(
         "watch-update",
         help="Block until the watcher has observed an update of the file.",
@@ -163,7 +164,7 @@ def watch_delete_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.watch_delete(args.path, _rpc_timeout=-1)
 
 
-def watch_delete_subcommand(subparsers, loader: ConfigLoader) -> callable:
+def watch_delete_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     parser = subparsers.add_parser(
         "watch-delete",
         help="Block until the watcher has observed the deletion of the file.",
@@ -180,7 +181,7 @@ def wait_tool(args: argparse.Namespace):
     get_rpc_client(get_socket()).call.wait(_rpc_timeout=-1)
 
 
-def wait_subcommand(subparsers, loader: ConfigLoader) -> callable:
+def wait_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     subparsers.add_parser(
         "wait",
         help="Block until the builder has become idle.",

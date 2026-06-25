@@ -161,7 +161,7 @@ Make the Python scripts executable and run StepUp:
 
 ```bash
 chmod +x plan.py plot.py
-stepup build -j 1
+sb -j 1
 ```
 
 You should see output like:

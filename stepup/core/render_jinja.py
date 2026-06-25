@@ -34,16 +34,17 @@ import json
 import jinja2
 from path import Path
 
-from stepup.core.config import ConfigLoader
-
 from .extapi import get_local_import_paths
 
 __all__ = ("render_jinja",)
 
 
-def render_jinja_subcommand(subparsers, loader: ConfigLoader) -> callable:
-    """Define command-line arguments for the render-jinja tool."""
-    parser = subparsers.add_parser(name="render-jinja", help="Render a file with Jinja2.")
+def main() -> None:
+    """Command-line entry point for the `render-jinja` console script."""
+    parser = argparse.ArgumentParser(
+        prog="render-jinja",
+        description="Render a file with Jinja2.",
+    )
     parser.add_argument("path_in", type=Path, help="The input file")
     parser.add_argument(
         "paths_variables",
@@ -66,12 +67,8 @@ def render_jinja_subcommand(subparsers, loader: ConfigLoader) -> callable:
         "--json",
         help="Variables are given as a JSON string (overrules the variables files)",
     )
-    loader.patch_parser(parser, "render-jinja")
-    return render_jinja_tool
+    args = parser.parse_args()
 
-
-def render_jinja_tool(args: argparse.Namespace):
-    """Main program."""
     # Local import to delay activation synchronous connection to StepUp directory until needed.
     from stepup.core.api import amend, loadns  # noqa: PLC0415
 
@@ -150,3 +147,7 @@ def render_jinja(
     template = env.from_string(str_in)
     template.filename = path_template
     return template.render(**variables)
+
+
+if __name__ == "__main__":
+    main()

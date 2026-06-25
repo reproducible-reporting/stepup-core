@@ -21,7 +21,7 @@ which are used for visualization below.
 Now run StepUp with up to 2 steps in parallel:
 
 ```bash
-stepup build -j 2
+sb -j 2
 ```
 
 You will see the following output:
@@ -141,13 +141,13 @@ The web server will load the graph in memory and will only reload it when reques
 
 ## Try the Following
 
-- Run `stepup build -j 2` again. As expected, the steps are now skipped.
+- Run `sb -j 2` again. As expected, the steps are now skipped.
 
 - Modify the `grep` command to select the first line (matching `Monday`)
-  and run `stepup build -j 2` again.
+  and run `sb -j 2` again.
   The `echo` commands are skipped as they have not changed.
 
-- Change the order of the two steps in `plan.py` and run `stepup build -j 2`.
+- Change the order of the two steps in `plan.py` and run `sb -j 2`.
   The step `./plan.py` is executed because the file has changed,
   but the `echo` and `grep` steps are skipped.
   This shows that `plan.py` is nothing but a plan, and it does not execute the steps itself.

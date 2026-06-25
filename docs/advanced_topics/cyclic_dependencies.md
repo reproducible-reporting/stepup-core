@@ -1,8 +1,9 @@
 # Cyclic dependencies
 
 Cyclic dependencies are defined in StepUp as closed loops in the dependency graph.
-Formally, such a loop is defined as a set of edges that can be followed from supplier to consumer,
-such that one arrives back at the starting point.
+Formally, such a loop is defined as a set of `supplier ➜ consumer` edges
+(as introduced under [Edges](../getting_started/introduction.md#edges))
+that can be followed such that one arrives back at the starting point.
 If you construct cyclic dependencies in a `plan.py`, an error message is generated.
 
 The [stepup.core.api](../reference/stepup.core.api.md) enforces acyclic dependencies
@@ -20,7 +21,7 @@ Make the plan executable and give it a try as follows:
 
 ```bash
 chmod +x plan.py
-stepup build -j 1
+sb -j 1
 ```
 
 You will get the following terminal output showing that this plan won't work.

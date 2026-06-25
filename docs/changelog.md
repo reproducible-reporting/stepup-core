@@ -32,7 +32,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   which reduces startup overhead.
   This can be controlled with the `--fork-runpy` flag,
   which is enabled by default on Linux.
-- Added `--preload-modules` option to `stepup build` to specify a comma-separated list of Python
+- Added `--preload-modules` option to `sb` to specify a comma-separated list of Python
   modules to be pre-loaded into the forkserver.
   This only has an effect when `--fork-runpy` is active and can speed up workflows
   that repeatedly import large modules.
@@ -47,11 +47,17 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   so they can be inspected after the build.
   Output from subprocesses launched by a forked Python step is captured properly.
   The amount stored per stream can be capped with the new
-  `stepup build --max-output-size` option (`0` = unlimited, the default).
+  `sb --max-output-size` option (`0` = unlimited, the default).
   These outputs can later be viewed with `stepup browse`.
 
 ### Changed
 
+- The `render-jinja` feature is now a standalone Python console script instead of a `stepup`
+  subcommand (tool).
+  Steps created by [`render_jinja()`][stepup.core.api.render_jinja] now run `render-jinja ...`
+  instead of `stepup render-jinja ...`.
+  This matches the recommended pattern for extensions that do not need low-level access to
+  StepUp internals.
 - Redesigned `call()` interface:
   the old inp/out/pickle argument modes are replaced
   by explicit function dispatch and optional `args_file` support for file-based argument passing.
@@ -89,7 +95,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
       the tail time estimates are updated dynamically as the workflow progresses.
     - The `pool` feature has been removed and is now replaced by the more powerful `resources` feature.
     - The `optional` feature has become more robust.
-- The `--num-workers` / `-n` option of `stepup build` has been renamed to `--jobs` / `-j`,
+- The `--num-workers` / `-n` option of `sb` has been renamed to `--jobs` / `-j`,
   in line with the convention used by `make` and similar tools.
   The config-file key changes from `num_workers` to `jobs`,
   and the environment variable changes from `STEPUP_NUM_WORKERS` to `STEPUP_BUILD_JOBS`.
@@ -115,7 +121,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ### Deprecated
 
-- The `stepup boot` command has been deprecated in favor of `stepup build`.
+- The `stepup boot` command has been deprecated in favor of `sb`.
   The `boot` command will be removed in a future release.
   You can use the new `sb` entrypoint as a shortcut for `stepup build`.
 - The script interface for calling user Python scripts from `plan.py` has been deprecated
@@ -188,7 +194,7 @@ Improved scheduling of steps with amended inputs and safer `stepup clean` implem
       and/or executed in a terminal to remove the files.
     - Unless the `--all` option is used, only detached files are removed.
       (These are outputs of old steps that are no longer part of the workflow.
-      StepUp cleans these up automatically unless you run `stepup build --no-clean`.)
+      StepUp cleans these up automatically unless you run `stepup boot --no-clean`.)
     - By default, modified output files were never removed.
       Use the `--unsafe` option to override this safety mechanism.
 - Improved correctness and efficiency of scheduling of steps with amended inputs.
@@ -214,8 +220,8 @@ Minor bugfix release.
 
 ### Changed
 
-- All command-line options of `stepup build` now also have a corresponding environment variable.
-- More systematic command-line options for the `stepup build` command.
+- All command-line options of `stepup boot` now also have a corresponding environment variable.
+- More systematic command-line options for the `stepup boot` command.
   All boolean options now have both a positive and a negative form,
   e.g. `--watch` and `--no-watch`.
 
@@ -327,7 +333,7 @@ This is a minor bugfix release.
 
 ### Fixed
 
-- Make `stepup build` work on macOS, albeit without the `--watch` option.
+- Make `stepup boot` work on macOS, albeit without the `--watch` option.
   (The `--watch` option is implemented using the `asyncinotify` library, which is Linux only.)
 
 ## [3.0.2][] - 2025-05-18 {: #v3.0.2 }
@@ -405,7 +411,7 @@ and improved terminal user interface.
     - The `stepup` command now uses subcommands to run different tools within StepUp.
     The following tools have been implemented:
         - `stepup act`: Execute an action, mostly for debugging.
-        - `stepup build`: Equivalent to just `stepup` in StepUp 2.
+        - `stepup boot`: Equivalent to just `stepup` in StepUp 2.
         - `stepup clean`: Equivalent to `cleanup` in StepUp 2.`
         - `stepup drain`: No new steps are started, but running steps are allowed to finish.
         - `stepup join`: Wait for the runner to complete all steps and then shut down StepUp.

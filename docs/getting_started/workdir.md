@@ -7,7 +7,11 @@ they are assumed to be relative to the working directory.
 !!! warning
 
     StepUp assumes that the current working directory is not changed
-    between importing any `stepup` module and calling functions from `stepup.core.api`
+    between importing any `stepup` module and calling functions from `stepup.core.api`.
+    For example, calling `os.chdir()` inside a `plan.py` (or before a `static()` or `step()`
+    call) makes the relative paths you pass ambiguous,
+    because StepUp resolves them against the directory it recorded at import time.
+    Instead of changing directory, pass paths relative to the step's `workdir` argument.
 
 ## Example
 
@@ -24,7 +28,7 @@ Make the scripts executable and run everything as follows:
 ```bash
 chmod +x plan.py
 mkdir out/
-stepup build -j 1
+sb -j 1
 ```
 
 Expected Terminal Output:

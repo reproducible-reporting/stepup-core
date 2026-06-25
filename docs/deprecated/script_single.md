@@ -146,7 +146,7 @@ Finally, make the Python scripts executable and give StepUp a spin:
 
 ```bash
 chmod +x generate.py plan.py
-stepup build -j 1
+sb -j 1
 ```
 
 You should see the following output on screen:

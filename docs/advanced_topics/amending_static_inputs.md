@@ -1,5 +1,8 @@
 # Amending Static Inputs
 
+This page covers a special case of [Amending Steps](amending_steps.md):
+amending a file as input that the same script also declares as static.
+
 Occasionally, it may be convenient to declare a static file and then use it as input in the same script.
 As of StepUp 1.2.0, this is allowed and no longer treated as a cyclic dependency.
 
@@ -23,7 +26,7 @@ Make `plan.py` executable and run it as follows:
 
 ```bash
 chmod +x plan.py
-stepup build -j 1
+sb -j 1
 ```
 
 You should get the following terminal output:

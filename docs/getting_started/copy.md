@@ -19,7 +19,7 @@ Make it executable and run it with StepUp as follows:
 
 ```bash
 chmod +x plan.py
-stepup build -j 1
+sb -j 1
 ```
 
 You should get the following output:
