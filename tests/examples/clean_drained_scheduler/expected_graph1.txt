@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:cases.txt [amended]
             consumes   file:plan.py
@@ -35,7 +35,7 @@ file:work.py
 step:./work.py case1.txt
                state = FAILED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./plan.py
             consumes   file:cases.txt
             consumes   file:work.py

@@ -539,6 +539,9 @@ class RunningStep:
     need: Need = attrs.field()
     """The declared need of this step, used to set `STEPUP_STEP_NEED`."""
 
+    env_overrides: dict = attrs.field(factory=dict)
+    """Step-specific environment variable overrides applied to the child process."""
+
     stdout: str = attrs.field(init=False, default="")
     """The standard output captured from the command execution."""
 
@@ -627,8 +630,8 @@ class StepExecutor:
     mp_ctx: object = attrs.field(kw_only=True, default=None)
     """Forkserver multiprocessing context, or None to use plain subprocesses."""
 
-    step_env: dict = attrs.field(kw_only=True, factory=dict)
-    """Environment variables exported to step child processes, overriding `os.environ`."""
+    infra_env: dict = attrs.field(kw_only=True, factory=dict)
+    """Environment variables from the director for step child processes, overriding `os.environ`."""
 
     max_output_size: int = attrs.field(kw_only=True, default=0)
     """Maximum bytes of stdout/stderr stored per step stream in the DB; 0 = unlimited."""
@@ -637,9 +640,9 @@ class StepExecutor:
     """The set of `RunningStep` instances whose command is currently running."""
 
     @property
-    def child_env(self) -> dict:
-        """The base environment for step child processes: `os.environ` with `step_env` applied."""
-        return {**os.environ, **self.step_env}
+    def base_env(self) -> dict:
+        """The base environment for step child processes: `os.environ` with `infra_env` applied."""
+        return {**os.environ, **self.infra_env}
 
     #
     # Functions called by jobs
@@ -656,7 +659,7 @@ class StepExecutor:
         self,
         step: Step,
         inp_hashes: list[tuple[str, FileHash]],
-        env_vars: list[str],
+        env_deps: list[str],
         step_hash: StepHash,
     ):
         """Test if the inputs (hashes) have changed, which would invalidate the amended step info.
@@ -664,7 +667,7 @@ class StepExecutor:
         If the job can be validated, it is put back in the pending state,
         so that it can be re-queued when new inputs arrive.
         """
-        async with self.new_step(step, inp_hashes, env_vars, check_hash=False) as (rs, new_hash):
+        async with self.new_step(step, inp_hashes, env_deps, check_hash=False) as (rs, new_hash):
             if not (new_hash is None or step_hash.inp_digest == new_hash.inp_digest):
                 await self.outdated_amended(rs, step_hash, new_hash)
                 # Inputs have changed, so discard amended info
@@ -684,11 +687,11 @@ class StepExecutor:
         self,
         step: Step,
         inp_hashes: list[tuple[str, FileHash]],
-        env_vars: list[str],
+        env_deps: list[str],
         step_hash: StepHash,
     ):
         """Try skipping a step."""
-        async with self.new_step(step, inp_hashes, env_vars) as (rs, new_hash):
+        async with self.new_step(step, inp_hashes, env_deps) as (rs, new_hash):
             if new_hash is None:
                 # Failed to create the new step due to unexpected input changes.
                 return
@@ -717,10 +720,10 @@ class StepExecutor:
             await self.reporter.update_step_counts(step_counts)
 
     async def execute_job(
-        self, step: Step, inp_hashes: list[tuple[str, FileHash]], env_vars: list[str]
+        self, step: Step, inp_hashes: list[tuple[str, FileHash]], env_deps: list[str]
     ):
         """Execute a step (no skipping)."""
-        async with self.new_step(step, inp_hashes, env_vars) as (rs, new_hash):
+        async with self.new_step(step, inp_hashes, env_deps) as (rs, new_hash):
             if new_hash is None:
                 # Failed to create the new step due to unexpected input changes.
                 return
@@ -783,7 +786,7 @@ class StepExecutor:
         self,
         step: Step,
         inp_hashes: list[tuple[str, FileHash]],
-        env_vars: list[str],
+        env_deps: list[str],
         *,
         check_hash: bool = True,
     ) -> AsyncGenerator[tuple[RunningStep, StepHash | None], None]:
@@ -798,8 +801,10 @@ class StepExecutor:
             `None` if, unexpectedly, some inputs are missing or have changed.
         """
         command, workdir = split_step_label(step.label)
-        rs = RunningStep(step.i, command, step.get_subshell(), workdir, step.get_need())
-        new_step_hash = await self.compute_inp_step_hash(rs, inp_hashes, env_vars, check_hash)
+        rs = RunningStep(
+            step.i, command, step.get_subshell(), workdir, step.get_need(), step.get_env_overrides()
+        )
+        new_step_hash = await self.compute_inp_step_hash(rs, inp_hashes, env_deps, check_hash)
         if new_step_hash is None and check_hash:
             # The hashes of the input files on disk differ from those in the database,
             # or some inputs were deleted. This breaks the workflow, so flag the step as failed.
@@ -823,7 +828,7 @@ class StepExecutor:
         returncode, stdout, stderr, _, _ = await _spawn_subprocess(
             [sys.executable, "-c", "from stepup.core.hasher import hasher_tool; hasher_tool()"],
             shell=False,
-            env=self.child_env,
+            env=self.base_env,
             cwd=Path.cwd(),
             stdin_data=pickle.dumps(task),
             rs=None,
@@ -836,11 +841,11 @@ class StepExecutor:
         self,
         rs: RunningStep,
         inp_hashes: list[tuple[str, FileHash]],
-        env_vars: list[str],
+        env_deps: list[str],
         check_hash: bool = True,
     ) -> StepHash | None:
         """Compute the input part of a step hash and apply it to `rs`."""
-        child_env = self.child_env
+        base_env = self.base_env
         task = HashTask(
             mode="inp",
             step_key=rs.description,
@@ -848,7 +853,8 @@ class StepExecutor:
             subshell=rs.subshell,
             check_hash=check_hash,
             inp_hashes=inp_hashes,
-            env_var_values=[(name, child_env.get(name)) for name in env_vars],
+            env_values={name: base_env.get(name) for name in env_deps},
+            env_overrides=rs.env_overrides,
         )
         result = await self._run_hash(task)
         rs.merge_hash_result(result)
@@ -878,9 +884,9 @@ class StepExecutor:
                 for path, file_state, file_hash in step.inp_paths(yield_state=True, yield_hash=True)
                 if file_state in (FileState.BUILT, FileState.STATIC)
             ]
-            env_vars = list(step.env_vars())
+            env_deps = list(step.env_deps())
             out_hashes = list(step.out_paths(yield_hash=True))
-        child_env = self.child_env
+        base_env = self.base_env
         task = HashTask(
             mode="full",
             step_key=rs.description,
@@ -888,7 +894,8 @@ class StepExecutor:
             subshell=rs.subshell,
             check_hash=True,
             inp_hashes=inp_hashes,
-            env_var_values=[(name, child_env.get(name)) for name in env_vars],
+            env_values={name: base_env.get(name) for name in env_deps},
+            env_overrides=rs.env_overrides,
             out_hashes=out_hashes,
         )
         result = await self._run_hash(task)
@@ -900,7 +907,9 @@ class StepExecutor:
         await self.reporter("START", rs.description)
         await self.reporter.start_step(rs.description, rs.i)
 
-        env = self.child_env
+        env = self.base_env
+        # Apply step-specific overrides first, so the reserved variables below always win.
+        env.update(rs.env_overrides)
         # For internal use in command:
         env["STEPUP_STEP_I"] = str(rs.i)
         # Client code may use the following:

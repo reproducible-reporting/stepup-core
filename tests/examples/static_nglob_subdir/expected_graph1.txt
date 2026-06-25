@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:sub/plan.py
@@ -24,7 +24,7 @@ file:sub/plan.py
 step:./plan.py  # wd=sub
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
                  ngm = ['sub/inp${*idx}.txt'] {'idx': '?'}
           created by   step:./plan.py
             consumes   file:sub/plan.py

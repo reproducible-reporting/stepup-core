@@ -25,9 +25,11 @@ import pytest
 from path import Path
 
 from stepup.core.api import (
+    _extract_env_overrides,
     get_rpc_client,
     getenv,
     loadns,
+    step,
 )
 from stepup.core.rpc import DummySyncRPCClient
 
@@ -182,3 +184,43 @@ def test_loadns_pathlib(path_tmp):
         print('{"a": 10}', file=fh)
     ns = loadns(pathlib.Path(path_foo))
     assert ns.a == 10
+
+
+@pytest.mark.parametrize(
+    ("command", "env_overrides", "remaining"),
+    [
+        # No assignments.
+        ("./script.py arg", None, "./script.py arg"),
+        ("echo hello", None, "echo hello"),
+        ("", None, ""),
+        # A single assignment.
+        ("FOO=bar ./script.py", {"FOO": "bar"}, "./script.py"),
+        # Multiple assignments.
+        ("A=1 B=2 ./run.sh", {"A": "1", "B": "2"}, "./run.sh"),
+        # Quoted value with spaces.
+        ('GREETING="hello world" ./show.py', {"GREETING": "hello world"}, "./show.py"),
+        ("X='a b' ./show.py", {"X": "a b"}, "./show.py"),
+        # Value containing an equals sign.
+        ("KEY=a=b ./run.sh", {"KEY": "a=b"}, "./run.sh"),
+        # Empty value.
+        ("EMPTY= ./run.sh", {"EMPTY": ""}, "./run.sh"),
+        # A non-leading assignment is not extracted.
+        ("./cmd FOO=bar", None, "./cmd FOO=bar"),
+        # The remaining placeholders are preserved verbatim.
+        ("FOO=bar ./script.py ${inp} ${out}", {"FOO": "bar"}, "./script.py ${inp} ${out}"),
+        # Lowercase command word that is not an assignment.
+        ("9NOTVAR=1 ./run.sh", None, "9NOTVAR=1 ./run.sh"),
+    ],
+)
+def test_extract_env_overrides(command, env_overrides, remaining):
+    assert _extract_env_overrides(command) == (env_overrides, remaining)
+
+
+def test_step_env_overrides_overlap_with_env():
+    with pytest.raises(ValueError, match="env dependency and a env_overrides override"):
+        step("FOO=bar ./script.py", env=["FOO"])
+
+
+def test_step_env_overrides_reserved_name():
+    with pytest.raises(ValueError, match="set by StepUp cannot be overridden"):
+        step("STEPUP_STEP_I=1 ./script.py")

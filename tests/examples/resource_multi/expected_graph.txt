@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   step:echo A; mv s.free s.used; mv t1.free t1.used; sleep 1; mv s.used s.free; mv t1.used t1.free

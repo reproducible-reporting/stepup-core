@@ -593,6 +593,8 @@ class Trellis:
         # - Added ON DELETE CASCADE to the satellite tables (file, step, env_var, step_hash,
         #   step_resource, step_output, step_subprocess, nglob_multi) so their rows are
         #   removed automatically when a node row is deleted.
+        # - Added a env_overrides column to the step table, storing a JSON dict of step-specific
+        #   environment variable overrides. These also participate in the step's inp_digest.
 
         return 5
 

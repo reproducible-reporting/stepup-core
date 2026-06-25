@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:args.yaml
@@ -38,7 +38,7 @@ file:args.yaml
 step:./work.py run --inp=args.yaml
                state = SUCCEEDED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./plan.py
             consumes   file:args.yaml
             consumes   file:data.txt

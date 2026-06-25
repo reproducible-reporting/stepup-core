@@ -1,4 +1,4 @@
-        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post46)
+        0/0 |   DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post54)
         0/0 |    STARTUP │ (Re)initialized boot script
         0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py

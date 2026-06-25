@@ -60,8 +60,11 @@ class HashTask:
     inp_hashes: list[tuple[str, FileHash]] = attrs.field(factory=list)
     """The input paths and their previously known file hashes."""
 
-    env_var_values: list[tuple[str, str | None]] = attrs.field(factory=list)
+    env_values: dict[str, str | None] = attrs.field(factory=dict)
     """The (already resolved) environment variable names and values used by the step."""
+
+    env_overrides: dict[str, str] = attrs.field(factory=dict)
+    """The step-specific environment variable overrides (name -> value)."""
 
     out_hashes: list[tuple[str, FileHash]] = attrs.field(factory=list)
     """The output paths and their previously known file hashes."""
@@ -123,8 +126,9 @@ def _compute_inp(task: HashTask, result: HashResult) -> StepHash | None:
         task.step_key,
         task.extended,
         all_inp_hashes,
-        task.env_var_values,
+        task.env_values,
         task.subshell,
+        task.env_overrides,
     )
     result.inp_digest = step_hash.inp_digest
     return step_hash

@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:template.tex
@@ -30,7 +30,7 @@ file:variables.py
 step:render-jinja template.tex variables.py rendered.tex
                state = FAILED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./plan.py
             consumes   file:template.tex
             consumes   file:variables.py

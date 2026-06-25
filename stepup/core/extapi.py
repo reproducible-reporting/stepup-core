@@ -66,7 +66,7 @@ def subs_env_vars() -> Iterator[Callable[[str | None], Path | None]]:
     """
     from stepup.core.api import amend  # noqa: PLC0415
 
-    env_vars = set()
+    used_env = set()
 
     def subs(path: str | None) -> Path | None:
         if path is None:
@@ -83,11 +83,11 @@ def subs_env_vars() -> Iterator[Callable[[str | None], Path | None]]:
                 if value is None:
                     raise ValueError(f"Undefined shell variable: {name}")
                 mapping[name] = value
-                env_vars.add(name)
+                used_env.add(name)
         return Path(path if len(mapping) == 0 else template.substitute(mapping))
 
     yield subs
-    amend(env=env_vars)
+    amend(env=used_env)
 
 
 def record_subprocess(
@@ -95,7 +95,7 @@ def record_subprocess(
     returncode: int,
     *,
     workdir: str = ".",
-    env: dict[str, str] | None = None,
+    env_overrides: dict[str, str] | None = None,
     shell: bool = False,
 ) -> None:
     """Record a subprocess invocation (already run by the caller) for archival purposes.
@@ -122,7 +122,7 @@ def record_subprocess(
     workdir
         The working directory of the subprocess, relative to the step's own working directory.
         It is translated to be relative to `STEPUP_ROOT` for storage.
-    env
+    env_overrides
         The environment **overlay** that the caller applied on top of the inherited
         environment (only the variables it explicitly set), or `None`. Only this overlay
         is stored, not the full resolved environment.
@@ -134,14 +134,15 @@ def record_subprocess(
 
     if isinstance(RPC_CLIENT, SocketSyncRPCClient):
         step_i = _get_step_i()
-        RPC_CLIENT.call.record_subprocess(step_i, cmd, translate(workdir), env, returncode, shell)
+        RPC_CLIENT.call.record_subprocess(
+            step_i, cmd, translate(workdir), env_overrides, returncode, shell
+        )
 
 
 def run_subprocess(
     cmd: str,
     *,
     workdir: str = ".",
-    env: dict[str, str] | None = None,
     stdout=None,
     stderr=None,
     check: bool = True,
@@ -159,15 +160,12 @@ def run_subprocess(
         When `shell=False` (the default), `cmd` is split with `shlex.split` and executed
         directly (no shell), so shell features (pipes, redirections, ...) are not available.
         When `shell=True`, `cmd` is passed as-is to the system shell, which enables shell features.
+        As an exception, leading `VAR=value` assignments are extracted and applied
+        to the subprocess environment, even when `shell=False`.
         In either case, the caller is then responsible for proper quoting.
     workdir
         The working directory of the subprocess, relative to the step's own working directory.
         It is passed to `subprocess.run` as `cwd`.
-    env
-        An environment **overlay**, merged over `os.environ` for execution
-        (so passing `env={"FOO": "bar"}` adds `FOO` without dropping `PATH` and the rest).
-        Only this overlay is recorded, not the full resolved environment.
-        When `None`, the environment is inherited unchanged and nothing is recorded for it.
     stdout, stderr
         Passed through to `subprocess.run`. When left at their default (`None`), output
         goes wherever the step process's own file descriptors point.
@@ -189,7 +187,15 @@ def run_subprocess(
     subprocess.CalledProcessError
         When `check` is `True` and the subprocess exits with a non-zero return code.
     """
-    run_env = None if env is None else {**os.environ, **env}
+    if not shell:
+        from stepup.core.api import _extract_env_overrides  # noqa: PLC0415
+
+        env_overrides, cmd = _extract_env_overrides(cmd)
+    else:
+        env_overrides = None
+    run_env = dict(os.environ)
+    if env_overrides is not None:
+        run_env.update(env_overrides)
     # Flush so already-buffered parent output is written before the subprocess (which inherits
     # our file descriptors when stdout/stderr are None) can write to the same streams.
     sys.stdout.flush()
@@ -203,7 +209,7 @@ def run_subprocess(
         cp = subprocess.run(
             argv, cwd=workdir, env=run_env, stdout=stdout, stderr=stderr, check=False
         )
-    record_subprocess(cmd, cp.returncode, workdir=workdir, env=env, shell=shell)
+    record_subprocess(cmd, cp.returncode, workdir=workdir, env_overrides=env_overrides, shell=shell)
     if check and cp.returncode != 0:
         raise subprocess.CalledProcessError(cp.returncode, cmd, cp.stdout, cp.stderr)
     return cp

@@ -537,7 +537,7 @@ class Scheduler:
         # Get the current step hash, which is used to determine whether the step can be skipped.
         step_hash = step.get_hash()
         # Get a list of environment variables used, as these are needed to compute the new hash.
-        env_vars = list(step.env_vars())
+        env_deps = list(step.env_deps())
 
         if amended_inputs_ready or step_hash is None:
             # All (amended) inputs are ready, or the job is not skippable.
@@ -545,12 +545,12 @@ class Scheduler:
             # and skip the job if not.
             # In all other cases, the job will be executed without skipping,
             # and the step hash will be updated after completion.
-            return RunJob(step, inp_hashes, env_vars, step_hash)
+            return RunJob(step, inp_hashes, env_deps, step_hash)
         # If the initial inputs are ready, but the amended inputs are not,
         # and there is a step hash, we need to validate the amended inputs first.
         # If they are not available, and if the existing inputs have changed,
         # they may also no longer be needed.
-        return ValidateAmendedJob(step, inp_hashes, env_vars, step_hash)
+        return ValidateAmendedJob(step, inp_hashes, env_deps, step_hash)
 
     async def job_completed(self, job):
         """Handle a completed job, which does not do anything for the moment."""

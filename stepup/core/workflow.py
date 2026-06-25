@@ -38,7 +38,7 @@ from .hash import FileHash, fmt_digest
 from .nglob import NGlobMulti, has_wildcards
 from .sqlite3 import UInt64, escape_like_pattern
 from .static_tree import StaticTree
-from .step import Step
+from .step import RESERVED_ENV_VARS, Step
 from .trellis import Node, Root, Trellis
 from .utils import string_to_bool
 
@@ -711,7 +711,7 @@ class Workflow(Trellis):
         command: str,
         *,
         inp_paths: Collection[str] = (),
-        env_vars: Collection[str] = (),
+        env_deps: Collection[str] = (),
         out_paths: Collection[str] = (),
         vol_paths: Collection[str] = (),
         workdir: str = ".",
@@ -719,6 +719,7 @@ class Workflow(Trellis):
         resources: dict[str, int] | None = None,
         safe: bool = False,
         subshell: bool = False,
+        env_overrides: dict[str, str] | None = None,
     ) -> list[tuple[File, FileState]]:
         """Define a new step.
 
@@ -731,7 +732,7 @@ class Workflow(Trellis):
             The command to execute.
         inp_paths
             Input paths.
-        env_vars
+        env_deps
             The environment variables used by the step.
         out_paths
             Output paths.
@@ -744,6 +745,9 @@ class Workflow(Trellis):
             The need of the step, see enums.Need for details.
         resources
             The resources required by the step, e.g. {"cpu": 2, "gpu": 1}.
+        env_overrides
+            Step-specific environment variable overrides, e.g. {"OMP_NUM_THREADS": "4"}.
+            These keys must not overlap with `env_deps`.
         safe
             The initial value for the `safe` field of the step.
             This is an internal field, not controlled by the end user.
@@ -764,24 +768,36 @@ class Workflow(Trellis):
 
         # Normalize arguments
         inp_paths = sorted(set(inp_paths))
-        env_vars = sorted(set(env_vars))
+        env_deps = sorted(set(env_deps))
         out_paths = sorted(set(out_paths))
         vol_paths = sorted(set(vol_paths))
         if any(inp_path.endswith(os.sep) for inp_path in inp_paths):
             raise GraphError("Directory inputs are not supported.")
+        if env_overrides is not None and not set(env_deps).isdisjoint(env_overrides):
+            raise GraphError(
+                "Variable(s) cannot be both an env dependency and a env_overrides override: "
+                + ", ".join(sorted(set(env_deps) & set(env_overrides)))
+            )
+        if env_overrides is not None:
+            reserved = set(env_overrides) & RESERVED_ENV_VARS
+            if reserved:
+                raise GraphError(
+                    "Variable(s) set by StepUp cannot be overridden: " + ", ".join(sorted(reserved))
+                )
 
         # If a matching detached step is found, reuse it, instead of creating a new one.
         old_deferred = self._recreate_step(
             command,
             workdir,
             inp_paths,
-            env_vars,
+            env_deps,
             out_paths,
             vol_paths,
             need,
             resources,
             creator,
             subshell,
+            env_overrides,
         )
         if old_deferred is not None:
             return self._build_to_check(old_deferred)
@@ -797,6 +813,7 @@ class Workflow(Trellis):
             subshell=subshell,
         )
         step.set_resources(resources)
+        step.set_env_overrides(env_overrides)
 
         # Keep track of all missing files that match a static tree and need to be confirmed.
         deferred = set()
@@ -808,7 +825,7 @@ class Workflow(Trellis):
             deferred.update(self.supply_file(step, inp_path).deferred)
 
         # Process vars
-        step.add_env_vars(env_vars)
+        step.add_env_deps(env_deps)
 
         # Create out_paths
         for out_path in out_paths:
@@ -829,13 +846,14 @@ class Workflow(Trellis):
         command: str,
         workdir: str,
         inp_paths: list[str],
-        env_vars: list[str],
+        env_deps: list[str],
         out_paths: list[str],
         vol_paths: list[str],
         need: Need,
         resources: dict[str, int] | None,
         creator: Node,
         subshell: bool = False,
+        env_overrides: dict[str, str] | None = None,
     ) -> set[Node] | None:
         """Recreate a step if it was detached and the step arguments are compatible.
 
@@ -856,8 +874,8 @@ class Workflow(Trellis):
         )
         if old_inp_paths != inp_paths:
             return None
-        old_env_vars = sorted(old_step.env_vars(amended=False))
-        if old_env_vars != env_vars:
+        old_env_vars = sorted(old_step.env_deps(amended=False))
+        if old_env_vars != env_deps:
             return None
         old_out_paths = sorted(
             item[0] for item in old_step.out_paths(amended=False, yield_detached=True)
@@ -879,9 +897,10 @@ class Workflow(Trellis):
             (need.value, int(subshell), old_step.i),
         )
 
-        # Restore the step and its products (recursively), and set resources.
+        # Restore the step and its products (recursively), and set resources and overrides.
         old_step.recycle(creator)
         old_step.set_resources(resources)
+        old_step.set_env_overrides(env_overrides)
 
         # If inputs of the recreated steps are AWAITED or OUTDATED, these steps must be rescheduled.
         for i, label in self.con.execute(RECURSE_OUTDATED_STEPS, (old_step.i,)):
@@ -904,7 +923,7 @@ class Workflow(Trellis):
         step: Step,
         *,
         inp_paths: Collection[str] = (),
-        env_vars: Collection[str] = (),
+        env_deps: Collection[str] = (),
         out_paths: Collection[str] = (),
         vol_paths: Collection[str] = (),
     ) -> tuple[bool, list[tuple[File, FileState]]]:
@@ -916,7 +935,7 @@ class Workflow(Trellis):
             The step specifying the additional info.
         inp_paths
             Additional input paths.
-        env_vars
+        env_deps
             Additional environment variables that the step is using.
         out_paths
             Additional output paths.
@@ -964,7 +983,7 @@ class Workflow(Trellis):
             deferred.update(info.deferred)
 
         # Process vars
-        step.amend_env_vars(env_vars)
+        step.amend_env_deps(env_deps)
 
         # Create out_paths
         for out_path in out_paths:

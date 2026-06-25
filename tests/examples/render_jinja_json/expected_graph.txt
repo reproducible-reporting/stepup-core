@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
                  ngm = ['trip*.json'] {}
           created by   root:
             consumes   file:plan.py
@@ -39,7 +39,7 @@ file:trip2.json
 step:render-jinja template.txt trip1.json rendered-trip1.txt
                state = SUCCEEDED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./plan.py
             consumes   file:template.txt
             consumes   file:trip1.json
@@ -54,7 +54,7 @@ file:rendered-trip1.txt
 step:render-jinja template.txt trip2.json rendered-trip2.txt
                state = SUCCEEDED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./plan.py
             consumes   file:template.txt
             consumes   file:trip2.json

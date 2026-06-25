@@ -53,9 +53,27 @@ For example:
 
 ```python
 msg = "hello"
-run(f"MESSAGE={msg} " + "echo ${MESSAGE}", shell=True)
+run(f"MESSAGE={msg} " + "echo ${MESSAGE}")
 ```
 
-Note that this is a different mechanism and it practically serves a different purpose.
-In this case, there is no point in add the argument `env="MESSAGE"`,
+Note that this is conceptually very different and it practically serves a different purpose.
+It just sets the value of the variable before the echo command is executed.
+Now, it would be incorrect to add the argument `env="MESSAGE"` to the `run()` call,
 because this step will not be sensitive to the value of `MESSAGE` defined outside StepUp.
+
+Note that this syntax for setting variables in a command is supported by StepUp
+with both `shell=True` and `shell=False`, but the implementation is very different:
+
+- With `shell=True`, the variable is set by the shell before the command is executed.
+  This is completely opaque to StepUp, which just sees the command as a string.
+
+    Because StepUp does not know which variables are set, it will not check their validity.
+
+- With `shell=False`, a normal Python subprocess call as such would fail.
+  StepUp extracts the variable assignment from the command, and stores it in the workflow database.
+  When the executor runs the command, it passes the variables into the `env=...` argument
+  of the subprocess call.
+
+    In this case, StepUp will raise an error if the variable included in the command
+    also appears in the `env` argument of the `run()` call, because now the mistake can be detected
+    unambiguously.

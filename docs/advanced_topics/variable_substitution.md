@@ -3,9 +3,9 @@
 StepUp does not substitute environment variables in the command (first argument)
 of the [`step()`][stepup.core.api.step] function.
 As discussed in the tutorial on [environment variables](environment_variables.md),
-the executing shell takes care of such substitutions.
+an executing shell (with `shell=True`) could perform such substitutions.
 
-However, environment variables in all path-like arguments
+Environment variables in all path-like arguments
 (e.g. `workdir`, `inp`, `out` and `vol`)
 of functions that take such arguments
 ([`step()`][stepup.core.api.step], [`amend()`][stepup.core.api.amend] etc.)

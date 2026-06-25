@@ -242,7 +242,8 @@ class InpInfo:
     """Details of ingredients used to compute the inp_digest of a StepHash."""
 
     inp_hashes: dict[str, FileHash] = attrs.field(factory=dict)
-    env_var_values: dict[str, str | None] = attrs.field(factory=dict)
+    env_values: dict[str, str | None] = attrs.field(factory=dict)
+    env_overrides: dict[str, str] = attrs.field(factory=dict)
 
 
 @attrs.define
@@ -267,10 +268,12 @@ class StepHash:
         step_key: str,
         extended: bool,
         inp_hashes: list[tuple[str, FileHash]],
-        env_var_values: list[tuple[str, str | None]],
+        env_values: dict[str, str | None],
         subshell: bool = False,
+        env_overrides: dict[str, str] | None = None,
     ):
         """Create a new step hash with input information only."""
+        env_overrides = {} if env_overrides is None else env_overrides
         hw = HashWords()
         hw.update(step_key)
         hw.update("__subshell__")
@@ -282,11 +285,19 @@ class StepHash:
             hw.update(file_hash.size.to_bytes(8))
             hw.update(file_hash.digest)
         hw.update("__env_vars__")
-        for env_var, value in sorted(env_var_values):
+        for env_var, value in sorted(env_values.items()):
             hw.update(env_var)
             hw.update(value)
+        # Only mix in env_overrides when present, so steps without overrides keep their digest.
+        if env_overrides:
+            hw.update("__setenv__")
+            for name, value in sorted(env_overrides.items()):
+                hw.update(name)
+                hw.update(value)
         inp_digest = hw.digest()
-        inp_info = InpInfo(dict(inp_hashes), dict(env_var_values)) if extended else None
+        inp_info = (
+            InpInfo(dict(inp_hashes), dict(env_values), dict(env_overrides)) if extended else None
+        )
         return cls(inp_digest, inp_info)
 
     def evolve_out(self, out_hashes):
@@ -382,7 +393,8 @@ def _compare_inp_info(
     chl: list[tuple[str, str]], sml: list[tuple[str, str]], old_info: InpInfo, new_info: InpInfo
 ):
     _explain_hash_changes("inp", chl, sml, old_info.inp_hashes, new_info.inp_hashes)
-    _explain_env_changes(chl, sml, old_info.env_var_values, new_info.env_var_values)
+    _explain_env_changes(chl, sml, old_info.env_values, new_info.env_values)
+    _explain_env_overrides_changes(chl, sml, old_info.env_overrides, new_info.env_overrides)
 
 
 def _compare_out_info(
@@ -416,11 +428,12 @@ def _explain_hash_changes(
             raise AssertionError("This should never happen.")
 
 
-def _explain_env_changes(
+def _explain_env_dict_changes(
     chl: list[tuple[str, str]],
     sml: list[tuple[str, str]],
-    old_env: dict[str, str],
-    new_env: dict[str, str],
+    old_env: dict[str, str | None],
+    new_env: dict[str, str | None],
+    label: str,
 ):
     for name in sorted(set(old_env) | set(new_env)):
         if name in old_env:
@@ -428,13 +441,31 @@ def _explain_env_changes(
             if name in new_env:
                 new_var = fmt_env_value(new_env[name])
                 if old_env[name] == new_env[name]:
-                    sml.append(("Same env var", f"{name} {old_var}"))
+                    sml.append((f"Same {label}", f"{name} {old_var}"))
                 else:
-                    chl.append(("Modified env var", f"{name} {old_var} ➜ {new_var}"))
+                    chl.append((f"Modified {label}", f"{name} {old_var} ➜ {new_var}"))
             else:
-                chl.append(("Deleted env var", f"{name} {old_var}"))
+                chl.append((f"Deleted {label}", f"{name} {old_var}"))
         elif name in new_env:
             new_var = fmt_env_value(new_env[name])
-            chl.append(("Added env var", f"{name} {new_var}"))
+            chl.append((f"Added {label}", f"{name} {new_var}"))
         else:
             raise AssertionError("This should never happen.")
+
+
+def _explain_env_changes(
+    chl: list[tuple[str, str]],
+    sml: list[tuple[str, str]],
+    old_env: dict[str, str | None],
+    new_env: dict[str, str | None],
+):
+    _explain_env_dict_changes(chl, sml, old_env, new_env, "env var")
+
+
+def _explain_env_overrides_changes(
+    chl: list[tuple[str, str]],
+    sml: list[tuple[str, str]],
+    old_setenv: dict[str, str],
+    new_setenv: dict[str, str],
+):
+    _explain_env_dict_changes(chl, sml, old_setenv, new_setenv, "env_overrides override")

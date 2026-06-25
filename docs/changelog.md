@@ -12,6 +12,12 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ### Added
 
+- A `run()` or `step()` command may now start with `VAR=value` assignments
+  (when `shell=False`), e.g. `run("OMP_NUM_THREADS=4 ./work.py")`.
+  These are applied as step-specific environment variable overrides when the step runs,
+  which is otherwise impossible without a shell.
+  The overrides are part of the step hash, so changing a value reruns the step.
+  A variable cannot be both an override and an `env` dependency.
 - New `stepup.core.extapi` module for StepUp extension developers,
   collecting utilities previously scattered across `stepup.core.api`
   (`subs_env_vars`, `get_rpc_client`) and `stepup.core.utils`

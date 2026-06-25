@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:helper.py
@@ -34,7 +34,7 @@ file:work.py
 step:./work.py plan --step-info=current_step_info.json
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./plan.py
             consumes   file:helper.py [amended]
             consumes   file:work.py
@@ -51,7 +51,7 @@ file:current_step_info.json
 step:./work.py run -- -5.0
                state = SUCCEEDED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./work.py plan --step-info=current_step_info.json
             consumes   file:helper.py [amended]
             consumes   file:work.py
@@ -66,7 +66,7 @@ file:data-5.0.txt
 step:./work.py run +7.0
                state = SUCCEEDED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./work.py plan --step-info=current_step_info.json
             consumes   file:helper.py [amended]
             consumes   file:work.py

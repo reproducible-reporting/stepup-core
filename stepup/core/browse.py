@@ -402,7 +402,7 @@ class GraphServer(BaseHTTPRequestHandler):
         # Format the state (if a file or a step)
         if kind == "step":
             sql_props = (
-                "SELECT state, need, duration, rescheduled_info, "
+                "SELECT state, need, duration, rescheduled_info, subshell, env_overrides,"
                 "_safe, _check_safe, _implied_need, _tail_time, _check_after "
                 "FROM step WHERE node = ?"
             )
@@ -411,6 +411,8 @@ class GraphServer(BaseHTTPRequestHandler):
                 need_id,
                 duration,
                 rescheduled_info,
+                subshell,
+                env_overrides,
                 safe,
                 check_safe,
                 implied_need_id,
@@ -418,6 +420,7 @@ class GraphServer(BaseHTTPRequestHandler):
                 check_after,
             ) = self.con.execute(sql_props, (node_i,)).fetchone()
             state = StepState(state_i)
+            yield f"<p><b>Subshell:</b> {'yes' if subshell else 'no'}</p>"
             yield f'<p><b>State:</b> <span class="{state.name.lower()}">{state.name}</span></p>'
             if rescheduled_info != "":
                 yield (
@@ -451,15 +454,21 @@ class GraphServer(BaseHTTPRequestHandler):
                 )
 
             sql_env = "SELECT name, amended FROM env_var WHERE node = ?"
-            env_vars = list(self.con.execute(sql_env, (node_i,)))
-            if len(env_vars) > 0:
+            env_deps = list(self.con.execute(sql_env, (node_i,)))
+            if len(env_deps) > 0:
                 yield "<h3>Uses Environment Variables</h3>"
-                for env_var, amended in env_vars:
+                for env_var, amended in env_deps:
                     line = f"<p>{env_var}"
                     if amended:
                         line += " [amended]"
                     line += "</p>"
                     yield line
+
+            if env_overrides is not None:
+                env_overrides = json.loads(env_overrides)
+                yield "<h3>Overrides Environment Variables</h3>"
+                block = "\n".join(f"{name}={value}" for name, value in env_overrides.items())
+                yield f"<pre>{block}</pre>"
 
             sql_res = "SELECT name, units FROM step_resource WHERE node = ? ORDER BY name"
             resources = list(self.con.execute(sql_res, (node_i,)))
@@ -486,7 +495,7 @@ class GraphServer(BaseHTTPRequestHandler):
                 yield f"<pre>{html.escape(out_content)}</pre>"
 
             sql_sub = (
-                "SELECT cmd, workdir, env, returncode, shell FROM step_subprocess "
+                "SELECT cmd, workdir, env_overrides, returncode, shell FROM step_subprocess "
                 "WHERE node = ? ORDER BY seq"
             )
             subs = list(self.con.execute(sql_sub, (node_i,)))
@@ -496,11 +505,11 @@ class GraphServer(BaseHTTPRequestHandler):
                     format_subprocess(
                         cmd,
                         workdir,
-                        None if env_json is None else json.loads(env_json),
+                        None if env_overrides is None else json.loads(env_overrides),
                         returncode,
                         shell=bool(shell_int),
                     )
-                    for cmd, workdir, env_json, returncode, shell_int in subs
+                    for cmd, workdir, env_overrides, returncode, shell_int in subs
                 ]
                 yield f"<pre>{html.escape(chr(10).join(lines))}</pre>"
 

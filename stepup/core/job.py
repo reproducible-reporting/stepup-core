@@ -43,7 +43,7 @@ class Job:
     inp_hashes: list[tuple[str, "FileHash"]] = attrs.field()
     """The input hashes of the step, as a list of tuples (name, hash)."""
 
-    env_vars: list[str] = attrs.field()
+    env_deps: list[str] = attrs.field()
     """The names of (externally defined) environment variables that are used by the step."""
 
     step_hash: "StepHash" = attrs.field()
@@ -82,7 +82,7 @@ class ValidateAmendedJob(Job):
 
     def coro(self, executor: "StepExecutor"):
         return executor.validate_amended_job(
-            self.step, self.inp_hashes, self.env_vars, self.step_hash
+            self.step, self.inp_hashes, self.env_deps, self.step_hash
         )
 
 
@@ -101,5 +101,5 @@ class RunJob(Job):
 
     def coro(self, executor: "StepExecutor"):
         if self.step_hash is None:
-            return executor.execute_job(self.step, self.inp_hashes, self.env_vars)
-        return executor.try_skip_job(self.step, self.inp_hashes, self.env_vars, self.step_hash)
+            return executor.execute_job(self.step, self.inp_hashes, self.env_deps)
+        return executor.try_skip_job(self.step, self.inp_hashes, self.env_deps, self.step_hash)

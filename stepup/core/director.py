@@ -314,7 +314,7 @@ async def serve(
     # These are passed explicitly to the executor rather than set in `os.environ`,
     # so that running the director in-process (e.g. in the test suite) does not
     # pollute the calling process's environment.
-    step_env = {
+    infra_env = {
         "STEPUP_DIRECTOR_SOCKET": str(director_socket_path),
         "STEPUP_ROOT": str(Path.cwd()),
         "STEPUP_LOG_LEVEL": logging.getLevelName(logging.root.level),
@@ -345,7 +345,7 @@ async def serve(
         explain_rerun=explain_rerun,
         do_remove_outdated=do_clean,
         mp_ctx=mp_ctx,
-        step_env=step_env,
+        infra_env=infra_env,
         max_output_size=max_output_size,
     )
     stop_event = asyncio.Event()
@@ -486,13 +486,14 @@ class DirectorHandler:
         creator_i: int,
         command: str,
         inp_paths: list[str],
-        env_vars: list[str],
+        env_deps: list[str],
         out_paths: list[str],
         vol_paths: list[str],
         workdir: str,
         need: int,
         resources: dict[str, int],
         subshell: bool = False,
+        env_overrides: dict[str, str] | None = None,
     ) -> list[tuple[str, FileHash]]:
         """Create a step in the workflow.
 
@@ -511,13 +512,14 @@ class DirectorHandler:
                 creator,
                 command,
                 inp_paths=inp_paths,
-                env_vars=env_vars,
+                env_deps=env_deps,
                 out_paths=out_paths,
                 vol_paths=vol_paths,
                 workdir=workdir,
                 need=Need(need),
                 resources=resources,
                 subshell=subshell,
+                env_overrides=env_overrides,
             )
 
     @allow_rpc
@@ -525,7 +527,7 @@ class DirectorHandler:
         self,
         step_i: int,
         inp_paths: list[str],
-        env_vars: set[str],
+        env_deps: set[str],
         out_paths: list[str],
         vol_paths: list[str],
     ) -> tuple[bool, list[tuple[str, FileHash]]]:
@@ -550,7 +552,7 @@ class DirectorHandler:
             return self.workflow.amend_step(
                 step,
                 inp_paths=inp_paths,
-                env_vars=env_vars,
+                env_deps=env_deps,
                 out_paths=out_paths,
                 vol_paths=vol_paths,
             )
@@ -568,7 +570,7 @@ class DirectorHandler:
         step_i: int,
         cmd: str,
         workdir: str,
-        env: dict[str, str] | None,
+        env_overrides: dict[str, str] | None,
         returncode: int,
         shell: bool = False,
     ):
@@ -581,7 +583,7 @@ class DirectorHandler:
         """
         async with self.dblock:
             step = self.workflow.node(Step, step_i)
-            step.record_subprocess(cmd, workdir, env, returncode, shell)
+            step.record_subprocess(cmd, workdir, env_overrides, returncode, shell)
 
     @allow_rpc
     async def getinfo(self, step_i: int) -> StepInfo:

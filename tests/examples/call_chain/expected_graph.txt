@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:data.txt
@@ -36,7 +36,7 @@ file:second.py
 step:./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./plan.py
             consumes   file:data.txt
             consumes   file:first.py
@@ -53,7 +53,7 @@ file:intermediate.txt
 step:./second.py finalize '{"inp": ["intermediate.txt"], "out": ["final.txt"]}'
                state = SUCCEEDED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
             consumes   file:intermediate.txt
             consumes   file:second.py

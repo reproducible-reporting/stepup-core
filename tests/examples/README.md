@@ -75,6 +75,32 @@ When writing new examples, the following conventions ensure that they are proper
     - `stepup clean ...` — removes StepUp-managed outputs; its output is captured in
       `current_cleanup.txt` and compared against `expected_cleanup.txt`.
 
+- **Simulating file changes between phases** without modifying tracked source files:
+  use numbered variants (e.g. `plan1.py`, `plan2.py`) as the committed source files
+  and copy them to the working name (`plan.py`) at the appropriate point in `main.sh`.
+  Add the working name to `.gitignore` so it is not accidentally committed.
+  This pattern applies to any file that needs to differ between phases, not just `plan.py`.
+
+  ```bash
+  cp plan1.py plan.py        # first phase
+  sb -j 1 -w & # > current_stdout1.txt &
+  stepup wait
+  ...
+
+  cp plan2.py plan.py        # second phase — triggers a rerun
+  stepup watch-update plan.py
+  stepup run
+  stepup wait
+  ```
+
+  The `.gitignore` for such an example should include the generated working name:
+
+  ```text
+  .stepup/
+  current_*
+  plan.py
+  ```
+
 - After `stepup join`, wait for the background `stepup build` process and capture its exit code:
 
   ```bash

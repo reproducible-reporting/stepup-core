@@ -91,7 +91,7 @@ def test_run_subprocess_records_success(monkeypatch):
     cmd = shlex.join([sys.executable, "-c", ""])
     cp = run_subprocess(cmd)
     assert cp.returncode == 0
-    assert recorded == [(cmd, 0, {"workdir": ".", "env": None, "shell": False})]
+    assert recorded == [(cmd, 0, {"workdir": ".", "env_overrides": None, "shell": False})]
 
 
 def test_run_subprocess_check_records_before_raise(monkeypatch):
@@ -112,20 +112,21 @@ def test_run_subprocess_no_check(monkeypatch):
 
 
 def test_run_subprocess_env_overlay(monkeypatch):
-    """env is an overlay merged over os.environ; only the overlay is recorded."""
+    """env_overrides is an overlay merged over os.environ; only the overlay is recorded."""
     recorded = []
     monkeypatch.setattr(
-        extapi, "record_subprocess", lambda cmd, rc, **kw: recorded.append(kw["env"])
+        extapi, "record_subprocess", lambda cmd, rc, **kw: recorded.append(kw["env_overrides"])
     )
     monkeypatch.setenv("PRE_EXISTING", "yes")
     cmd = shlex.join(
         [
+            "OVERLAY=added",
             sys.executable,
             "-c",
             "import os; print(os.environ.get('OVERLAY'), os.environ.get('PRE_EXISTING'))",
         ]
     )
-    cp = run_subprocess(cmd, env={"OVERLAY": "added"}, stdout=subprocess.PIPE)
+    cp = run_subprocess(cmd, stdout=subprocess.PIPE)
     out = cp.stdout.decode()
     # The overlay variable and a pre-existing variable are both visible to the subprocess.
     assert out.split() == ["added", "yes"]
@@ -166,7 +167,7 @@ def test_run_subprocess_shell_true(monkeypatch):
     )
     cp = run_subprocess("echo hello", shell=True, stdout=subprocess.PIPE)
     assert cp.returncode == 0
-    assert recorded == [("echo hello", 0, {"workdir": ".", "env": None, "shell": True})]
+    assert recorded == [("echo hello", 0, {"workdir": ".", "env_overrides": None, "shell": True})]
 
 
 def test_run_subprocess_shell_false_splits(monkeypatch):

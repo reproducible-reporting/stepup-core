@@ -100,8 +100,8 @@ class Builder:
     mp_ctx: object = attrs.field(kw_only=True, default=None)
     """Multiprocessing forkserver context, or None to use plain subprocesses."""
 
-    step_env: dict = attrs.field(kw_only=True, factory=dict)
-    """Environment variables exported to step child processes, overriding `os.environ`."""
+    infra_env: dict = attrs.field(kw_only=True, factory=dict)
+    """Environment variables from the director for step child processes, overriding `os.environ`."""
 
     max_output_size: int = attrs.field(kw_only=True, default=0)
     """Maximum bytes of stdout/stderr stored per step stream in the DB; 0 = unlimited."""
@@ -119,7 +119,7 @@ class Builder:
             self.show_perf,
             self.explain_rerun,
             mp_ctx=self.mp_ctx,
-            step_env=self.step_env,
+            infra_env=self.infra_env,
             max_output_size=self.max_output_size,
         )
 

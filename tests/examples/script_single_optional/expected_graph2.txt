@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:generate.py
@@ -26,7 +26,7 @@ file:generate.py
 step:./generate.py plan --optional
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./plan.py
             consumes   file:generate.py
              creates   step:./generate.py run
@@ -34,7 +34,7 @@ step:./generate.py plan --optional
 step:./generate.py run
                state = SUCCEEDED
                 need = DEFAULT (implied by consumers > OPTIONAL)
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./generate.py plan --optional
             consumes   file:generate.py
              creates   file:runout.txt

@@ -38,10 +38,17 @@ from .stepinfo import StepInfo
 from .trellis import Node
 from .utils import format_digest
 
-__all__ = ("Step",)
+__all__ = ("RESERVED_ENV_VARS", "Step", "split_step_label", "truncate_output")
 
 
 logger = logging.getLogger(__name__)
+
+
+# Environment variables that StepUp sets for each step (see StepExecutor.run).
+# These are managed by StepUp and must not be amended as env dependencies or set as overrides.
+RESERVED_ENV_VARS = frozenset(
+    {"HERE", "ROOT", "STEPUP_STEP_I", "STEPUP_STEP_INP_DIGEST", "STEPUP_STEP_NEED"}
+)
 
 
 STEP_SCHEMA = """
@@ -60,6 +67,9 @@ CREATE TABLE IF NOT EXISTS step (
     -- or an empty string if it was not rescheduled.
     subshell INTEGER NOT NULL CHECK(subshell IN (0, 1)),
     -- Whether the step command is executed via a subshell (shell=True).
+    env_overrides TEXT,
+    -- JSON-encoded dict[str, str] of step-specific environment variable overrides, or NULL.
+    -- Applied to the child process environment when the step runs.
 
     -- Metadata
     _safe INTEGER NOT NULL CHECK(_safe IN (0, 1)),
@@ -138,7 +148,7 @@ CREATE TABLE IF NOT EXISTS step_subprocess (
     seq        INTEGER NOT NULL,        -- order of invocation within the step
     cmd        TEXT    NOT NULL,        -- shell command line
     workdir    TEXT    NOT NULL DEFAULT './',  -- relative to STEPUP_ROOT
-    env        TEXT,                    -- JSON-encoded dict[str, str] overlay, or NULL
+    env_overrides TEXT,                 -- JSON-encoded dict[str, str] overlay, or NULL
     returncode INTEGER NOT NULL,
     shell      INTEGER NOT NULL DEFAULT 0,    -- 1 if cmd was run via a shell
     PRIMARY KEY (node, seq),
@@ -267,7 +277,7 @@ class Step(Node):
         """Create extra information in the database about this node."""
         self.con.execute(
             "INSERT OR REPLACE INTO step "
-            "VALUES(:node, :state, :need, 1.0, '', :subshell, "
+            "VALUES(:node, :state, :need, 1.0, '', :subshell, NULL, "
             ":safe, :check_safe, :implied_need, 1.0, :check_need)",
             {
                 "node": self.i,
@@ -301,9 +311,14 @@ class Step(Node):
             yield "need", f"{implied_need.name} (implied by consumers > {need.name})"
 
         sql = "SELECT name, amended FROM env_var WHERE node = ?"
-        label = "env_var"
+        label = "using_env"
         for env_var, amended in self.con.execute(sql, (self.i,)):
             yield label, f"{env_var} [amended]" if amended else env_var
+            label = ""
+
+        label = "env_overrides"
+        for name, value in sorted(self.get_env_overrides().items()):
+            yield label, f"{name}={value}"
             label = ""
 
         for row in self.con.execute("SELECT data FROM nglob_multi WHERE node = ?", (self.i,)):
@@ -370,6 +385,18 @@ class Step(Node):
         row = self.con.execute("SELECT subshell FROM step WHERE node = ?", (self.i,)).fetchone()
         return bool(row[0])
 
+    def get_env_overrides(self) -> dict[str, str]:
+        """Return the step-specific environment variable overrides."""
+        row = self.con.execute(
+            "SELECT env_overrides FROM step WHERE node = ?", (self.i,)
+        ).fetchone()
+        return {} if row[0] is None else json.loads(row[0])
+
+    def set_env_overrides(self, env_overrides: dict[str, str] | None):
+        """Set the step-specific environment variable overrides."""
+        value = None if not env_overrides else json.dumps(env_overrides)
+        self.con.execute("UPDATE step SET env_overrides = ? WHERE node = ?", (value, self.i))
+
     def get_need(self) -> Need:
         """Return the declared need of this step."""
         row = self.con.execute("SELECT need FROM step WHERE node = ?", (self.i,)).fetchone()
@@ -422,7 +449,7 @@ class Step(Node):
             command,
             workdir,
             self.inp_paths(amended=False),
-            self.env_vars(amended=False),
+            self.env_deps(amended=False),
             self.out_paths(amended=False),
             self.vol_paths(amended=False),
         )
@@ -431,12 +458,15 @@ class Step(Node):
     # Env vars
     #
 
-    def add_env_vars(self, env_vars):
-        rows = [(self.i, name, os.getenv(name)) for name in env_vars]
+    def add_env_deps(self, env_deps):
+        rows = [(self.i, name, os.getenv(name)) for name in env_deps]
         self.con.executemany("INSERT OR REPLACE INTO env_var VALUES (?, ?, ?, 0)", rows)
 
-    def amend_env_vars(self, env_vars):
-        rows = [(self.i, name, os.getenv(name)) for name in env_vars]
+    def amend_env_deps(self, env_deps):
+        # Ignore variables that this step overrides via env_overrides: their value is fixed by the
+        # step, so they are not external dependencies that can change between runs.
+        env_overrides = self.get_env_overrides()
+        rows = [(self.i, name, os.getenv(name)) for name in env_deps if name not in env_overrides]
         self.con.executemany("INSERT OR IGNORE INTO env_var VALUES (?, ?, ?, 1)", rows)
 
     #
@@ -597,7 +627,7 @@ class Step(Node):
             "product", False, yield_hash, False, False, None, (FileState.MISSING,)
         )
 
-    def env_vars(self, *, amended: bool | None = None, yield_amended: bool = False):
+    def env_deps(self, *, amended: bool | None = None, yield_amended: bool = False):
         """Iterate over used environment variable names (not values)."""
         if yield_amended:
             sql = "SELECT name, amended FROM env_var WHERE node = ?"
@@ -818,15 +848,15 @@ class Step(Node):
         self,
         cmd: str,
         workdir: str,
-        env: dict[str, str] | None,
+        env_overrides: dict[str, str] | None,
         returncode: int,
         shell: bool = False,
     ) -> None:
         """Record a subprocess invocation made by this (wrapper) step.
 
         The recorded metadata is informative for archival and debugging, not authoritative.
-        The `env` overlay holds only the variables the wrapper explicitly set on top of the
-        inherited environment, not the full resolved environment.
+        The `env_overrides` overlay holds only the variables the wrapper explicitly set
+        on top of the inherited environment, not the full resolved environment.
 
         Parameters
         ----------
@@ -834,7 +864,7 @@ class Step(Node):
             The command line, as a single shell-quoted string, stored verbatim.
         workdir
             The working directory of the subprocess, relative to `STEPUP_ROOT`.
-        env
+        env_overrides
             The environment overlay (variables set on top of the inherited environment),
             or `None` when no overlay was applied.
         returncode
@@ -855,7 +885,7 @@ class Step(Node):
                 seq,
                 cmd,
                 workdir,
-                None if env is None else json.dumps(env),
+                None if env_overrides is None else json.dumps(env_overrides),
                 returncode,
                 int(shell),
             ),
@@ -867,20 +897,21 @@ class Step(Node):
         Yields
         ------
         record
-            A tuple `(seq, cmd, workdir, env, returncode, shell)` where `cmd` is the stored
-            command line, `env` is the decoded overlay dict (or `None`), and `shell` indicates
-            whether `cmd` was executed via a shell.
+            A tuple `(seq, cmd, workdir, env_overrides, returncode, shell)`
+            where `cmd` is the stored command line,
+            `env_overrides` is the decoded overlay dict (or `None`),
+            and `shell` indicates whether `cmd` was executed via a shell.
         """
         sql = (
-            "SELECT seq, cmd, workdir, env, returncode, shell FROM step_subprocess "
+            "SELECT seq, cmd, workdir, env_overrides, returncode, shell FROM step_subprocess "
             "WHERE node = ? ORDER BY seq"
         )
-        for seq, cmd, workdir, env, returncode, shell in self.con.execute(sql, (self.i,)):
+        for seq, cmd, workdir, env_overrides, returncode, shell in self.con.execute(sql, (self.i,)):
             yield (
                 seq,
                 cmd,
                 workdir,
-                None if env is None else json.loads(env),
+                None if env_overrides is None else json.loads(env_overrides),
                 returncode,
                 bool(shell),
             )

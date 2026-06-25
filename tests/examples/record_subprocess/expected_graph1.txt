@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:wrap.py
@@ -24,13 +24,6 @@ file:wrap.py
 step:./wrap.py
                state = SUCCEEDED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./plan.py
             consumes   file:wrap.py
-             creates   file:out.txt
-            supplies   file:out.txt
-
-file:out.txt
-               state = BUILT
-          created by   step:./wrap.py
-            consumes   step:./wrap.py

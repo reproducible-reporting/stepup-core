@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   root:
             consumes   file:plan.py
@@ -31,7 +31,7 @@ file:outer.py
 step:./outer.py foo
                state = SUCCEEDED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   step:./plan.py
             consumes   file:outer.py
@@ -40,7 +40,7 @@ step:./outer.py foo
 step:./inner.py
                state = SUCCEEDED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
            explained = yes
           created by   step:./outer.py foo
             consumes   file:inner.py

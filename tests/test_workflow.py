@@ -320,8 +320,8 @@ def test_simple_example(wfs: Workflow):
         out_hashes = [("bar.txt", fake_hash("bar.txt"))]
         wfs.update_file_hashes(out_hashes, HashUpdateCause.SUCCEEDED)
         inp_hashes = [("foo.txt", foo.get_hash())]
-        env_vars_values = [("A", "B")]
-        step_hash = StepHash.from_inp(step.key(), True, inp_hashes, env_vars_values)
+        env_values = {"A": "B"}
+        step_hash = StepHash.from_inp(step.key(), True, inp_hashes, env_values)
         step_hash = step_hash.evolve_out(out_hashes)
         step.completed(step_hash)
         assert wfs.format_str() == TEST_SIMPLE_EXAMPLE_GRAPH3
@@ -331,7 +331,7 @@ def test_simple_example(wfs: Workflow):
     # Check hashes
     step_hash2 = step.get_hash()
     assert step_hash2.inp_info.inp_hashes == dict(inp_hashes)
-    assert step_hash2.inp_info.env_var_values == dict(env_vars_values)
+    assert step_hash2.inp_info.env_values == env_values
     assert step_hash2.out_info.out_hashes == dict(out_hashes)
 
     # Verify things that should not be allowed
@@ -628,10 +628,10 @@ def test_define_pending_step_skip_extra(wfp: Workflow):
     # Prepare jobs for normal run
     plan = wfp.find(Step, "./plan.py")
     declare_static(wfp, plan, ["ainp", "ainp2"])
-    wfp.define_step(plan, "foo > log", env_vars=["VAR"], out_paths=["log"])
+    wfp.define_step(plan, "foo > log", env_deps=["VAR"], out_paths=["log"])
     foo = wfp.find(Step, "foo > log")
     assert foo.get_state() == StepState.PENDING
-    wfp.define_step(foo, "bar > spam", inp_paths=["log"], env_vars=["X"], vol_paths=["spam"])
+    wfp.define_step(foo, "bar > spam", inp_paths=["log"], env_deps=["X"], vol_paths=["spam"])
     bar = wfp.find(Step, "bar > spam")
     assert bar.get_state() == StepState.PENDING
     plan.completed(StepHash(b"plan_ok", None, b"zzz", None))
@@ -1255,22 +1255,60 @@ def test_clean_multiple_suppliers(wfp: Workflow):
 
 def test_env_vars(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.define_step(plan, "prog1", env_vars=["name", "other"])
+    wfp.define_step(plan, "prog1", env_deps=["name", "other"])
     step = wfp.find(Step, "prog1")
-    assert set(step.env_vars(amended=False)) == {"name", "other"}
-    assert set(step.env_vars(amended=True)) == set()
-    assert set(step.env_vars()) == {"name", "other"}
+    assert set(step.env_deps(amended=False)) == {"name", "other"}
+    assert set(step.env_deps(amended=True)) == set()
+    assert set(step.env_deps()) == {"name", "other"}
 
 
 def test_amended_env_vars(wfp: Workflow):
     plan = wfp.find(Step, "./plan.py")
-    wfp.define_step(plan, "prog1", env_vars=["egg"])
+    wfp.define_step(plan, "prog1", env_deps=["egg"])
     step = wfp.find(Step, "prog1")
-    wfp.amend_step(step, env_vars=["foo", "egg"])
-    wfp.amend_step(step, env_vars=["foo", "bar"])
-    assert set(step.env_vars(amended=False)) == {"egg"}
-    assert set(step.env_vars(amended=True)) == {"bar", "foo"}
-    assert set(step.env_vars()) == {"bar", "egg", "foo"}
+    wfp.amend_step(step, env_deps=["foo", "egg"])
+    wfp.amend_step(step, env_deps=["foo", "bar"])
+    assert set(step.env_deps(amended=False)) == {"egg"}
+    assert set(step.env_deps(amended=True)) == {"bar", "foo"}
+    assert set(step.env_deps()) == {"bar", "egg", "foo"}
+
+
+def test_setenv_store_and_update(wfp: Workflow):
+    plan = wfp.find(Step, "./plan.py")
+    wfp.define_step(plan, "prog1", env_overrides={"FOO": "bar", "BAZ": "1"})
+    step = wfp.find(Step, "prog1")
+    assert step.get_env_overrides() == {"FOO": "bar", "BAZ": "1"}
+    # setset_env_overrides_setenv replaces the overrides (used on detached-step reuse).
+    step.set_env_overrides({"FOO": "spam"})
+    assert step.get_env_overrides() == {"FOO": "spam"}
+    step.set_env_overrides(None)
+    assert step.get_env_overrides() == {}
+
+
+def test_setenv_amend_ignored(wfp: Workflow):
+    plan = wfp.find(Step, "./plan.py")
+    wfp.define_step(plan, "prog1", env_overrides={"FOO": "bar"})
+    step = wfp.find(Step, "prog1")
+    # A variable overridden via env_overrides is not tracked as an amended dependency.
+    wfp.amend_step(step, env_deps=["FOO", "EGG"])
+    assert set(step.env_deps(amended=True)) == {"EGG"}
+    assert set(step.env_deps()) == {"EGG"}
+
+
+def test_setenv_overlap_raises(wfp: Workflow):
+    plan = wfp.find(Step, "./plan.py")
+    with pytest.raises(GraphError):
+        wfp.define_step(plan, "prog1", env_deps=["FOO"], env_overrides={"FOO": "bar"})
+
+
+def test_setenv_affects_inp_digest():
+    base = StepHash.from_inp("key", False, [], {}, False).inp_digest
+    one = StepHash.from_inp("key", False, [], {}, False, {"A": "1"}).inp_digest
+    two = StepHash.from_inp("key", False, [], {}, False, {"A": "2"}).inp_digest
+    # An empty override leaves the digest unchanged; different values give different digests.
+    assert StepHash.from_inp("key", False, [], {}, False, {}).inp_digest == base
+    assert one != base
+    assert one != two
 
 
 def test_acyclic_amend_static(wfp: Workflow):
@@ -1564,9 +1602,9 @@ def test_skip_amend_detached_inputs(wfp: Workflow):
     (foo1,) = declare_static(wfp, plan, ["foo"])
 
     # Simulate running the step, which amends a few things.
-    wfp.amend_step(step, inp_paths=["foo"], env_vars=["AAA"], vol_paths=["bbb"])
+    wfp.amend_step(step, inp_paths=["foo"], env_deps=["AAA"], vol_paths=["bbb"])
     assert set(step.inp_paths(yield_detached=True, yield_amended=True)) == {("foo", False, True)}
-    assert set(step.env_vars(yield_amended=True)) == {("AAA", True)}
+    assert set(step.env_deps(yield_amended=True)) == {("AAA", True)}
     assert set(step.out_paths(yield_detached=True, yield_amended=True)) == {
         ("bar", False, False),
     }
@@ -1583,7 +1621,7 @@ def test_skip_amend_detached_inputs(wfp: Workflow):
     assert foo1.is_detached()
     # Amended info is not removed
     assert set(step.inp_paths(yield_detached=True, yield_amended=True)) == {("foo", True, True)}
-    assert set(step.env_vars(yield_amended=True)) == {("AAA", True)}
+    assert set(step.env_deps(yield_amended=True)) == {("AAA", True)}
     assert set(step.out_paths(yield_detached=True, yield_amended=True)) == {
         ("bar", False, False),
     }
@@ -2073,7 +2111,7 @@ def test_clean_cascades_satellite_rows(wfs: Workflow):
         wfs.root,
         "do something",
         inp_paths=["inp.txt"],
-        env_vars=["SOME_VAR"],
+        env_deps=["SOME_VAR"],
         out_paths=["out.txt"],
         resources={"cpu": 2},
     )

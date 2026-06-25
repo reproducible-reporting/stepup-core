@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:README NOW.txt
@@ -46,7 +46,7 @@ file:white space leaves a lot of room for mistakes.txt
 step:'./script is cool.py' plan
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./plan.py
             consumes   file:script is cool.py
              creates   step:'./script is cool.py' run
@@ -54,7 +54,7 @@ step:'./script is cool.py' plan
 step:'./script is cool.py' run
                state = SUCCEEDED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:'./script is cool.py' plan
             consumes   file:README NOW.txt
             consumes   file:script is cool.py

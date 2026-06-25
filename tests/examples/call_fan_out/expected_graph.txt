@@ -10,7 +10,7 @@ file:plan.py
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   root:
             consumes   file:plan.py
              creates   file:input_a.txt
@@ -48,7 +48,7 @@ file:work.py
 step:./work.py plan '{}'
                state = SUCCEEDED
                 need = PLAN
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./plan.py
             consumes   file:input_a.txt [amended]
             consumes   file:input_b.txt [amended]
@@ -61,7 +61,7 @@ step:./work.py plan '{}'
 step:./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
                state = SUCCEEDED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./work.py plan '{}'
             consumes   file:input_a.txt
             consumes   file:work.py
@@ -76,7 +76,7 @@ file:output_a.txt
 step:./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
                state = SUCCEEDED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./work.py plan '{}'
             consumes   file:input_b.txt
             consumes   file:work.py
@@ -91,7 +91,7 @@ file:output_b.txt
 step:./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
                state = SUCCEEDED
                 need = DEFAULT
-             env_var = STEPUP_PATH_FILTER [amended]
+           using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./work.py plan '{}'
             consumes   file:input_c.txt
             consumes   file:work.py
