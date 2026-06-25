@@ -1,0 +1,13 @@
+.stepup
+current_*
+head_ignored.txt
+head_x.txt
+head_y.txt
+head_z.txt
+tail_ignored.txt
+tail_x.txt
+tail_y.txt
+tail_z.txt
+paste_x.txt
+paste_y.txt
+paste_z.txt

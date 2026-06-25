@@ -1,0 +1,37 @@
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/1 |      PHASE │ build
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ ./demovars.py
+        2/3 |    SUCCESS │ ./demovars.py
+        2/3 |      START │ ./printvars.py
+        3/3 |    SUCCESS │ ./printvars.py
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
+        3/3 |      PHASE │ watch
+        3/3 |    UPDATED │ variables.json
+        2/3 |      PHASE │ build
+        2/3 |     NOSKIP │ ./demovars.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest ccd0130b ➜ 021ba5a6, out_digest e3b0c442 ➜ (unset)
+Modified inp hash    variables.json (digest 718135f7 ➜ f74499a3, size 35 ➜ 67)
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        demovars.py
+Same env var         STEPUP_PATH_FILTER (unset)
+────────────────────────────────────────────────────────────────────────────────
+        1/2 |      START │ ./demovars.py
+        2/3 |    SUCCESS │ ./demovars.py
+        2/3 |     NOSKIP │ ./printvars.py
+──────────────────────────── Changes causing rerun ─────────────────────────────
+Modified step hash   explained, inp_digest bf899786 ➜ 97902349, out_digest 268581fb ➜ (unset)
+Added env var        ENV_VAR_TEST_STEPUP_DFTHYH ='BBBB'
+────────────────────────────── Remained the same ───────────────────────────────
+Same inp hash        printvars.py
+Same env var         ENV_VAR_TEST_STEPUP_AWDFTD ='AAAA'
+Same env var         STEPUP_PATH_FILTER (unset)
+────────────────────────────────────────────────────────────────────────────────
+        2/3 |      START │ ./printvars.py
+        3/3 |    SUCCESS │ ./printvars.py
+        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
+        3/3 |    WARNING │ Check logs: .stepup/warning.log
+        3/3 |      PHASE │ watch
+        3/3 |   DIRECTOR │ See you!
