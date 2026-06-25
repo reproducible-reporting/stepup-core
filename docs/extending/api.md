@@ -28,7 +28,7 @@ The following modules of StepUp Core facilitate the implementation of such new A
 A few things to keep in mind:
 
 - API functions that (indirectly) call the [`step()`][stepup.core.api.step] function
-  should always return the resulting [`StepInfo`][stepup.core.api.StepInfo] object.
+  should always return the resulting [`StepInfo`][stepup.core.stepinfo.StepInfo] object.
 - Keep the computational cost of the API function low.
   They should only be used to plan the execution of a step
   and not perform any of the actual work.
