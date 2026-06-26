@@ -21,7 +21,7 @@ def main():
 
     root = Path(root)
     path_graph = root / ".stepup/" / "graph.db"
-    con = connect(f"file:{path_graph}?mode=ro", uri=True)
+    con = connect(path_graph, read_only=True)
     out = []
     vol = [path_graph]
     for path, state_i in con.execute(SQL):

@@ -5681,8 +5681,11 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   as it was no longer needed after the introduction of the forkserver.</li>
 <li>Worker subprocesses have been replaced by asyncio tasks running inside the director.
   File hashing is offloaded to a dedicated subprocess (<code>_stepup_hasher</code> or a forkserver child).</li>
+<li>Strict database sessions management and transaction correctness has been implemented
+  to avoid database corruption, e.g. due to race conditions.</li>
 <li>The <em>run phase</em> has been renamed to <em>build phase</em> throughout the documentation and source code.</li>
 <li>The Runner has been renamed to Builder.</li>
+<li>The Cascade has been renamed to Trellis.</li>
 </ul>
 </li>
 </ul>

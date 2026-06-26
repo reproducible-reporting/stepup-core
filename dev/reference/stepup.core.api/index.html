@@ -4937,7 +4937,7 @@ All path variables are normalized.</p>
 </span><span id="__span-0-938"><a id="__codelineno-0-938" name="__codelineno-0-938"></a>        <span class="n">default</span> <span class="o">=</span> <span class="n">coerce_str</span><span class="p">(</span><span class="n">default</span><span class="p">)</span>
 </span><span id="__span-0-939"><a id="__codelineno-0-939" name="__codelineno-0-939"></a>    <span class="n">value</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span>
 </span><span id="__span-0-940"><a id="__codelineno-0-940" name="__codelineno-0-940"></a>    <span class="c1"># Do not amend environment variables set for the step by the executor.</span>
-</span><span id="__span-0-941"><a id="__codelineno-0-941" name="__codelineno-0-941"></a>    <span class="c1"># See stepup.core.executor.StepExecutor.run</span>
+</span><span id="__span-0-941"><a id="__codelineno-0-941" name="__codelineno-0-941"></a>    <span class="c1"># See stepup.core.executor.Executor.run</span>
 </span><span id="__span-0-942"><a id="__codelineno-0-942" name="__codelineno-0-942"></a>    <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">RESERVED_ENV_VARS</span><span class="p">:</span>
 </span><span id="__span-0-943"><a id="__codelineno-0-943" name="__codelineno-0-943"></a>        <span class="n">amend</span><span class="p">(</span><span class="n">env</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
 </span><span id="__span-0-944"><a id="__codelineno-0-944" name="__codelineno-0-944"></a>
