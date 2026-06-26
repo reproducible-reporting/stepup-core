@@ -19,20 +19,16 @@
 # --
 """Small utilities used throughout."""
 
-import asyncio
 import logging
 import re
 import shlex
-import sqlite3
 import string
 from collections.abc import Collection
 
-import attrs
 from path import Path
 
 __all__ = (
     "CaseSensitiveTemplate",
-    "DBLock",
     "format_command",
     "format_digest",
     "format_subprocess",
@@ -145,24 +141,6 @@ def parse_resources(s: str) -> dict[str, int]:
             raise ValueError(f"Resource value cannot be negative: {item}")
         result[name] = value
     return result
-
-
-@attrs.define
-class DBLock:
-    """Exclusive asyncio lock for SQLite database access."""
-
-    _con: sqlite3.Connection = attrs.field()
-    _lock: asyncio.Lock = attrs.field(factory=asyncio.Lock)
-
-    async def __aenter__(self):
-        await self._lock.acquire()
-
-    async def __aexit__(self, exc_type, exc, tb):
-        if exc is None:
-            self._con.commit()
-        else:
-            self._con.rollback()
-        self._lock.release()
 
 
 def string_to_list(arg: Collection[str] | str) -> list[str]:

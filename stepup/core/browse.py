@@ -79,14 +79,18 @@ def browse_tool(args: argparse.Namespace):
     GraphServer.path_db = path_db
     # Standard library HTTP server.
     server = HTTPServer(("localhost", args.port), GraphServer)
-    url = f"http://localhost:{args.port}"
-    print(f"Server started {url}")
-    print("Press Ctrl+C to stop the server.")
-    if not webbrowser.open(url):
-        print("Warning: could not open a browser. Open the URL above manually.")
-    with contextlib.suppress(KeyboardInterrupt):
-        server.serve_forever()
-    server.server_close()
+    try:
+        url = f"http://localhost:{args.port}"
+        print(f"Server started {url}")
+        print("Press Ctrl+C to stop the server.")
+        if not webbrowser.open(url):
+            print("Warning: could not open a browser. Open the URL above manually.")
+        with contextlib.suppress(KeyboardInterrupt):
+            server.serve_forever()
+    finally:
+        if GraphServer.con is not None:
+            GraphServer.con.close()
+        server.server_close()
 
 
 HTML_TEMPLATE = """\
@@ -308,12 +312,7 @@ class GraphServer(BaseHTTPRequestHandler):
             print("Loading database...")
             if self.con is not None:
                 self.con.close()
-            self.con = connect(":memory:")
-            src = connect(self.path_db)
-            try:
-                src.backup(self.con)
-            finally:
-                src.close()
+            self.con = connect(self.path_db, read_only=True)
         args.pop("reload", None)
 
         # Prepare the Jinja2 environment.

@@ -938,7 +938,7 @@ def getenv(
         default = coerce_str(default)
     value = os.getenv(name, default)
     # Do not amend environment variables set for the step by the executor.
-    # See stepup.core.executor.StepExecutor.run
+    # See stepup.core.executor.Executor.run
     if name not in RESERVED_ENV_VARS:
         amend(env=name)
 

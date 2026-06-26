@@ -19,17 +19,15 @@
 # --
 """StepUp's abstract implementation of the provenance and dependency graphs."""
 
-import inspect
 import logging
 import sqlite3
-import sys
 from collections.abc import Iterable, Iterator
 from typing import Self, TypeVar
 
 import attrs
 
 from .exceptions import CyclicError, GraphError
-from .sqlite3 import wipe_database
+from .sqlite3 import DBSession
 
 __all__ = ("Node", "Root", "Trellis")
 
@@ -38,11 +36,8 @@ logger = logging.getLogger(__name__)
 
 
 TRELLIS_SCHEMA = """
-PRAGMA journal_mode=WAL;
-PRAGMA foreign_keys=ON;
 PRAGMA application_id={application_id};
 PRAGMA user_version={schema_version};
-PRAGMA synchronous=OFF;
 
 CREATE TABLE IF NOT EXISTS node (
     i INTEGER PRIMARY KEY,
@@ -163,9 +158,9 @@ class Node:
     """
 
     @property
-    def con(self) -> sqlite3.Connection:
+    def db(self) -> DBSession:
         """The SQLite database."""
-        return self.graph.con
+        return self.graph.db
 
     @classmethod
     def kind(cls) -> str:
@@ -216,16 +211,16 @@ class Node:
 
     def is_alive(self) -> bool:
         """True when the node is still present in the database."""
-        return self.con.execute("SELECT 1 FROM node WHERE i = ?", (self.i,)).fetchone() is not None
+        return self.db.execute("SELECT 1 FROM node WHERE i = ?", (self.i,)).fetchone() is not None
 
     def is_detached(self) -> bool:
         """True when the node or its creator (recursively) lost its creator node."""
-        row = self.con.execute("SELECT detached FROM node WHERE i = ?", (self.i,)).fetchone()
+        row = self.db.execute("SELECT detached FROM node WHERE i = ?", (self.i,)).fetchone()
         return bool(row[0])
 
     def creator(self) -> Self | None:
         """Return the creator of the node."""
-        row = self.con.execute(
+        row = self.db.execute(
             "SELECT node.i, node.kind, node.label "
             "FROM node WHERE node.i = (SELECT creator FROM node WHERE i = ?)",
             (self.i,),
@@ -245,7 +240,7 @@ class Node:
         detached
             Whether the creator node is detached.
         """
-        row = self.con.execute(
+        row = self.db.execute(
             "SELECT i, kind, label, detached "
             "FROM node WHERE i = (SELECT creator FROM node WHERE i = ?)",
             (self.i,),
@@ -262,7 +257,7 @@ class Node:
         if node_type is not Self:
             query += " AND kind = ?"
             data.append(node_type.kind())
-        for i, kind, label in self.con.execute(query, data):
+        for i, kind, label in self.db.execute(query, data):
             yield self.graph.node_classes[kind](self.graph, i, label)
 
     def products_str(self, node_type: type[NodeType] = Self) -> Iterator[str]:
@@ -273,7 +268,7 @@ class Node:
             sql += " AND kind = ?"
             data.append(node_type.kind())
         sql += " ORDER BY kind, label"
-        for kind, label, detached in self.con.execute(sql, data):
+        for kind, label, detached in self.db.execute(sql, data):
             node_str = f"{kind}:{label}"
             if detached:
                 node_str = f"({node_str})"
@@ -296,7 +291,7 @@ class Node:
             data.append(node_type.kind())
         if not include_detached:
             sql += " AND NOT detached"
-        for i, kind, label in self.graph.con.execute(sql, data):
+        for i, kind, label in self.db.execute(sql, data):
             yield self.graph.node_classes[kind](self.graph, i, label)
 
     def suppliers(
@@ -326,7 +321,7 @@ class Node:
             sql += " AND kind = ?"
             data.append(node_type.kind())
         sql += " ORDER BY kind, label"
-        for kind, label, detached, idep in self.graph.con.execute(sql, data):
+        for kind, label, detached, idep in self.db.execute(sql, data):
             node_str = f"{kind}:{label}"
             if detached:
                 node_str = f"({node_str})"
@@ -358,18 +353,18 @@ class Node:
         ValueError
             If the node is not found in the database.
         """
-        row = self.con.execute(
+        row = self.db.execute(
             "SELECT creator, detached FROM node WHERE i = ?", (self.i,)
         ).fetchone()
         if row is None:
             raise ValueError(f"Node id not in database: {self.i}")
         creator_i, detached = row
         if creator_i is not None:
-            self.con.execute(
+            self.db.execute(
                 "UPDATE node SET creator = NULL, detached = TRUE WHERE i = ?", (self.i,)
             )
             if not detached:
-                self.con.execute(RECURSIVELY_SET_DETACHED, (self.i, True))
+                self.db.execute(RECURSIVELY_SET_DETACHED, (self.i, True))
 
     def recycle(self, new_creator: Self):
         """Reconnect the node to a new creator node, preserving its properties.
@@ -391,7 +386,7 @@ class Node:
             raise ValueError("New creator node must not be detached.")
         self.graph._check_creator(type(self), new_creator)
         old_creator, old_creator_detached = self.creator_detached()
-        self.con.execute(
+        self.db.execute(
             "UPDATE node SET creator = ?, detached = FALSE WHERE i = ?", (new_creator.i, self.i)
         )
         # Clean up the old creator if it exists.
@@ -400,7 +395,7 @@ class Node:
                 raise GraphError("Old creator of detached node is not detached.")
             old_creator.give_up()
         # Propagate the detached=FALSE property to all product nodes.
-        self.con.execute(RECURSIVELY_SET_DETACHED, (self.i, False))
+        self.db.execute(RECURSIVELY_SET_DETACHED, (self.i, False))
 
     def add_supplier(self, supplier: Self) -> int:
         """Add a supplier-consumer relation.
@@ -417,17 +412,17 @@ class Node:
         """
         self.graph._check_supplier(supplier, self)
         # Check whether the new edge would introduce a cyclic dependency.
-        self.con.execute(DROP_CONSUMERS)
-        self.con.execute(INITIAL_CONSUMERS)
+        self.db.execute(DROP_CONSUMERS)
+        self.db.execute(INITIAL_CONSUMERS)
         try:
-            self.con.execute("INSERT INTO temp.initial_consumer VALUES(?)", (self.i,))
-            cur = self.con.execute(RECURSE_CONSUMERS + SELECT_CYCLIC, (supplier.i,))
+            self.db.execute("INSERT INTO temp.initial_consumer VALUES(?)", (self.i,))
+            cur = self.db.execute(RECURSE_CONSUMERS + SELECT_CYCLIC, (supplier.i,))
             if cur.fetchone()[0] > 0:
                 raise CyclicError("New relation introduces a cyclic dependency")
         finally:
-            self.con.execute(DROP_CONSUMERS)
+            self.db.execute(DROP_CONSUMERS)
         try:
-            cur = self.con.execute(
+            cur = self.db.execute(
                 "INSERT INTO dependency(supplier, consumer) VALUES(?, ?)",
                 (supplier.i, self.i),
             )
@@ -441,9 +436,9 @@ class Node:
         Without arguments, all suppliers of the current node are deleted.
         """
         if suppliers is None:
-            self.con.execute("DELETE FROM dependency WHERE consumer = ?", (self.i,))
+            self.db.execute("DELETE FROM dependency WHERE consumer = ?", (self.i,))
         else:
-            self.con.executemany(
+            self.db.executemany(
                 "DELETE FROM dependency WHERE supplier = ? AND consumer = ?",
                 ((supplier.i, self.i) for supplier in suppliers),
             )
@@ -467,54 +462,6 @@ class Root(Node):
         raise AssertionError("Root node cannot be detached because that would mean it is detached.")
 
 
-@attrs.define
-class ConnectionWrapper:
-    """Wrapper for SQLite connection that prints from where execute is called."""
-
-    _con: sqlite3.Connection = attrs.field()
-    """SQLite connection where the graph is stored."""
-
-    _explain: bool = attrs.field(default=False)
-    """If set to `True`, each query plan is printed to stderr."""
-
-    def _print_caller(self, name: str):
-        frame = inspect.currentframe().f_back.f_back
-        module = frame.f_globals.get("__name__", "Unknown Module")
-        lineno = frame.f_lineno
-        print(f"sqlite3 {name} called from {module}:{lineno}", file=sys.stderr)
-
-    def execute(self, sql: str, data: tuple = ()):
-        self._print_caller("execute")
-        if self._explain:
-            print(sql, file=sys.stderr)
-            print(f"  {data}", file=sys.stderr)
-            nodes = {}
-            # Local imports to avoid dependency for production usage.
-            from anytree import Node as TreeNode  # noqa: PLC0415
-            from anytree import RenderTree  # noqa: PLC0415
-
-            for step in self._con.execute(f"EXPLAIN QUERY PLAN {sql}", data):
-                node_id, parent_id, _, detail = step
-                nodes[node_id] = TreeNode(f"({node_id}) {detail}", parent=nodes.get(parent_id))
-            root_nodes = [node for node in nodes.values() if node.parent is None]
-            for root in root_nodes:
-                for pre, _, node in RenderTree(root):
-                    print(f"{pre}{node.name}", file=sys.stderr)
-            print("#" * 80, file=sys.stderr)
-            print(file=sys.stderr)
-        return self._con.execute(sql, data)
-
-    def executemany(self, sql: str, data: list[tuple]):
-        self._print_caller("executemany")
-        return self._con.executemany(sql, data)
-
-    def __enter__(self):
-        return self._con.__enter__()
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self._con.__exit__(exc_type, exc_value, traceback)
-
-
 @attrs.define(eq=False)
 class Trellis:
     """Base class for provenance and denpendency graphs.
@@ -524,13 +471,8 @@ class Trellis:
     - Override `default_node_classes` to define the types of nodes that are supported.
     """
 
-    # SQLite database
-    _con: sqlite3.Connection = attrs.field()
-    _con_wrapper: ConnectionWrapper = attrs.field(init=False)
-
-    @_con_wrapper.default
-    def _default_con_wrapper(self) -> ConnectionWrapper:
-        return ConnectionWrapper(self._con, True)
+    # The database lock managing the SQLite connection where the graph is stored.
+    db: DBSession = attrs.field()
 
     # The types of nodes that are supported.
     _node_classes: dict[type[Node], str] = attrs.field(init=False)
@@ -603,7 +545,7 @@ class Trellis:
         """Return the SQL schema for the database. (Does not include node-specific schemas.)"""
         return TRELLIS_SCHEMA
 
-    def __attrs_post_init__(self):
+    async def initialize(self):
         """Initialize or check the initial database.
 
         Returns
@@ -611,31 +553,15 @@ class Trellis:
         initialized
             True when the database was (re)initialized from scratch.
         """
-        empty = self._con.execute("SELECT count(*) FROM sqlite_master").fetchone()[0] == 0
-        if not empty:
-            rows = self._con.execute("PRAGMA application_id").fetchone()
-            if len(rows) != 1 or rows[0] != self.application_id:
-                raise ValueError("Invalid database application ID")
-            schema_version = self._con.execute("PRAGMA user_version").fetchone()[0]
-            if schema_version != self.schema_version:
-                wipe_database(self._con)
-                empty = True
-        self._con.executescript(
-            self.schema().format(
-                application_id=self.application_id,
-                schema_version=self.schema_version,
-            )
-        )
-        for node_class in self._node_classes.values():
-            node_schema = node_class.schema()
-            if node_schema is not None:
-                self._con.executescript(node_schema)
-        if empty:
-            self._con.execute("VACUUM")
-            self._root = self.create(Root, None)
-        else:
-            self._root = self.find(Root, "")
-            self.check_consistency()
+        schema_blobs = [self.schema()]
+        schema_blobs.extend(node_class.schema() for node_class in self._node_classes.values())
+        empty = await self.db.initialize(self.application_id, self.schema_version, schema_blobs)
+        async with self.db:
+            if empty:
+                self._root = self.create(Root, None)
+            else:
+                self._root = self.find(Root, "")
+                self.check_consistency()
 
     def check_consistency(self):
         """Check whether the graph satisfies all constraints."""
@@ -647,7 +573,7 @@ class Trellis:
             "SELECT node.i, node.kind, node.label, node.creator, node.detached, cnode.detached "
             "FROM node LEFT JOIN node AS cnode ON node.creator = cnode.i"
         )
-        for row in self.con.execute(sql):
+        for row in self.db.execute(sql):
             i, kind, label, creator_i, detached, creator_detached = row
             if i > 1 and creator_i == i:
                 node = self._node_classes[kind](self, i, label)
@@ -668,12 +594,6 @@ class Trellis:
     #
 
     @property
-    def con(self) -> sqlite3.Connection:
-        """Access the connection to the SQLite database."""
-        # return self._con_wrapper
-        return self._con
-
-    @property
     def root(self) -> Root:
         return self._root
 
@@ -681,7 +601,7 @@ class Trellis:
         """Return the node for the given node class and label or index."""
         sql = "SELECT i FROM node WHERE kind = ? AND label = ?"
         data = (node_type.kind(), label)
-        row = self._con.execute(sql, data).fetchone()
+        row = self.db.execute(sql, data).fetchone()
         return None if row is None else node_type(self, row[0], label)
 
     def find_detached(
@@ -690,7 +610,7 @@ class Trellis:
         """Return the node and detached flag for the given node class and label."""
         sql = "SELECT i, detached FROM node WHERE kind = ? AND label = ?"
         data = (node_type.kind(), label)
-        row = self._con.execute(sql, data).fetchone()
+        row = self.db.execute(sql, data).fetchone()
         if row is None:
             return None, None
         i, detached = row
@@ -700,7 +620,7 @@ class Trellis:
         """Return the node for the given node class and label or index."""
         sql = "SELECT kind, label FROM node WHERE i = ?"
         data = (i,)
-        row = self._con.execute(sql, data).fetchone()
+        row = self.db.execute(sql, data).fetchone()
         if row is None:
             return None
         kind, label = row
@@ -722,21 +642,21 @@ class Trellis:
             data.append(node_type.kind())
         if not include_detached:
             query += f" {words.pop(0)} NOT detached"
-        for i, kind, label in self._con.execute(query, data):
+        for i, kind, label in self.db.execute(query, data):
             yield self._node_classes[kind](self, i, label)
 
     def walk_consumers(self, initial_is: Iterable[int]) -> Iterator[int]:
         """Iterate over all identifiers of indirect consumers of this node."""
-        self.con.execute(DROP_CONSUMERS)
-        self.con.execute(INITIAL_CONSUMERS)
+        self.db.execute(DROP_CONSUMERS)
+        self.db.execute(INITIAL_CONSUMERS)
         try:
-            self.con.executemany(
+            self.db.executemany(
                 "INSERT OR IGNORE INTO temp.initial_consumer VALUES(?)", ((i,) for i in initial_is)
             )
-            for row in self.con.execute(RECURSE_CONSUMERS + SELECT_WALK):
+            for row in self.db.execute(RECURSE_CONSUMERS + SELECT_WALK):
                 yield row[0]
         finally:
-            self.con.execute(DROP_CONSUMERS)
+            self.db.execute(DROP_CONSUMERS)
 
     #
     # Formatting
@@ -745,7 +665,7 @@ class Trellis:
     def format_str(self) -> str:
         """Return a multi-line string representation of the graph."""
         lines = []
-        cur = self._con.execute(
+        cur = self.db.execute(
             "SELECT node.i, node.kind, node.label, node.detached, "
             "cnode.i, cnode.kind, cnode.label, cnode.detached "
             "FROM node LEFT JOIN node as cnode ON node.creator = cnode.i"
@@ -775,7 +695,7 @@ class Trellis:
 
     def _check_creator(self, node_type: type[Node], creator: Node | None) -> None:
         """Validate the creator before a node is created. Override in subclasses."""
-        if node_type is Root and self._con.execute("SELECT count(*) FROM node").fetchone()[0] > 0:
+        if node_type is Root and self.db.execute("SELECT count(*) FROM node").fetchone()[0] > 0:
             raise GraphError("Only one root node is allowed and it must be the first node.")
 
     def _check_supplier(self, supplier: Node, consumer: Node) -> None:
@@ -828,7 +748,7 @@ class Trellis:
             else:
                 creator_i = creator.i
                 detached = creator.is_detached()
-            self._con.execute(
+            self.db.execute(
                 "UPDATE node SET creator = ?, detached = ? WHERE i = ?",
                 (creator_i, detached, node.i),
             )
@@ -845,13 +765,13 @@ class Trellis:
         else:
             detached = True if creator is None else creator.is_detached()
             # Add new node
-            cur = self._con.execute(
+            cur = self.db.execute(
                 "INSERT INTO node (kind, label, creator, detached) VALUES (?, ?, ?, ?)",
                 (node_type.kind(), label, None if creator is None else creator.i, detached),
             )
             node_i = cur.lastrowid
             if node_type is Root:
-                self._con.execute(
+                self.db.execute(
                     "UPDATE node SET creator = ?, detached = FALSE WHERE i = ?", (node_i, node_i)
                 )
             node = node_type(self, node_i, label)
@@ -871,9 +791,9 @@ class Trellis:
                 "NOT EXISTS (SELECT 1 FROM node AS cnode WHERE node.i = cnode.creator) AND "
                 "NOT EXISTS (SELECT 1 FROM dependency WHERE node.i = dependency.supplier)"
             )
-            for i, kind, label in self._con.execute(query):
+            for i, kind, label in self.db.execute(query):
                 node = self._node_classes[kind](self, i, label)
                 cleaned_some = True
                 node.del_suppliers()
                 node.clean()
-                self._con.execute("DELETE FROM node where i = ?", (i,))
+                self.db.execute("DELETE FROM node where i = ?", (i,))

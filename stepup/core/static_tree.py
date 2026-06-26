@@ -47,4 +47,4 @@ class StaticTree(Node):
             product.detach()
         self.detach()
         self.clean()
-        self.con.execute("DELETE FROM node WHERE i = ?", (self.i,))
+        self.db.execute("DELETE FROM node WHERE i = ?", (self.i,))

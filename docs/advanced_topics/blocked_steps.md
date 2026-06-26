@@ -30,7 +30,7 @@ Blocking a step has some consequences:
 
 - A blocked step remains in the `PENDING` state,
   meaning that outdated output files are not cleaned up automatically.
-- At the end of the *build phase*, all currently blocked steps are listed as a reminder.
+- At the end of the **build phase**, all currently blocked steps are listed as a reminder.
 - Subsequent steps, which use outputs of blocked or pending steps, also remain pending.
 
 ## Example

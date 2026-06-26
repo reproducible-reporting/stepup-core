@@ -17,29 +17,16 @@
 # along with this program; if not, see <http://www.gnu.org/licenses/>
 #
 # --
-"""Unit tests for stepup.core.director."""
+"""Tests for stepup.core.sqlite3."""
 
-from decimal import Decimal
-from unittest.mock import patch
+import pytest
 
-from stepup.core.director import interpret_jobs
-
-
-def test_interpret_jobs_integer():
-    assert interpret_jobs(Decimal("4")) == 4
+from stepup.core.sqlite3 import DBSession
 
 
-def test_interpret_jobs_fraction_affinity():
-    with patch("os.sched_getaffinity", return_value=set(range(8)), create=True):
-        result = interpret_jobs(Decimal("1.5"))
-    assert result == 12
-
-
-def test_interpret_jobs_fraction_cpu_count():
-    with (
-        patch("stepup.core.director.os") as mock_os,
-    ):
-        del mock_os.sched_getaffinity
-        mock_os.cpu_count.return_value = 8
-        result = interpret_jobs(Decimal("1.5"))
-    assert result == 12
+async def test_detect_nested_dblock_in_same_task():
+    with DBSession.open(":memory:") as db:
+        async with db:
+            with pytest.raises(RuntimeError):
+                async with db:
+                    pass

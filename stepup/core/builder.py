@@ -19,7 +19,7 @@
 # --
 """The `Builder` drives the build by pulling runnable jobs and sending them to the executor.
 
-Each *build phase* starts when the `resume` event is set,
+Each **build phase** starts when the `resume` event is set,
 executes all currently runnable jobs via `job_loop`,
 and ends with `finalize`, which reverts optional steps,
 reports pending/failed steps, removes outdated outputs,
@@ -38,12 +38,12 @@ from path import Path
 
 from .asyncio import wait_for_events
 from .enums import FileState, Need, ReturnCode, StepState
-from .executor import StepExecutor
+from .executor import Executor
 from .hash import FileHash
 from .job import Job
 from .reporter import ReporterClient
 from .scheduler import Scheduler
-from .utils import DBLock
+from .sqlite3 import DBSession
 from .watcher import Watcher
 from .workflow import Workflow
 
@@ -70,7 +70,7 @@ class Builder:
     workflow: Workflow = attrs.field(kw_only=True)
     """The workflow which generated the jobs and which gets updated as a result of the jobs."""
 
-    dblock: DBLock = attrs.field(kw_only=True)
+    db: DBSession = attrs.field(kw_only=True)
     """Lock for workflow database access."""
 
     reporter: ReporterClient = attrs.field(kw_only=True)
@@ -106,15 +106,15 @@ class Builder:
     max_output_size: int = attrs.field(kw_only=True, default=0)
     """Maximum bytes of stdout/stderr stored per step stream in the DB; 0 = unlimited."""
 
-    executor: StepExecutor = attrs.field(init=False)
+    executor: Executor = attrs.field(init=False)
     """The executor that runs the steps as asyncio tasks in this process."""
 
     @executor.default
     def _executor_default(self):
-        return StepExecutor(
+        return Executor(
             self.scheduler,
             self.workflow,
-            self.dblock,
+            self.db,
             self.reporter,
             self.show_perf,
             self.explain_rerun,
@@ -150,7 +150,7 @@ class Builder:
 
     async def job_loop(self):
         """Run all runnable jobs until there are non left or the scheduler is on hold."""
-        async with self.dblock:
+        async with self.db:
             step_counts = self.workflow.get_step_counts()
         await self.reporter.update_step_counts(step_counts)
         await self.reporter("PHASE", "build")
@@ -183,20 +183,19 @@ class Builder:
 
     async def finalize(self):
         """Final steps after the builder has executed a bunch of jobs."""
-        await revert_optional(self.dblock, self.workflow, self.reporter)
+        await revert_optional(self.db, self.workflow, self.reporter)
         self.returncode = await report_completion(
-            self.dblock, self.workflow, self.scheduler, self.reporter
+            self.db, self.workflow, self.scheduler, self.reporter
         )
         if self.returncode.value != 0:
             await self.reporter("WARNING", "Skipping file cleanup due to incomplete build")
         elif not self.do_remove_outdated:
             await self.reporter("WARNING", "Skipping file cleanup at user's request (--no-clean)")
         else:
-            async with self.dblock:
+            async with self.db:
                 self.workflow.clean()
-            await remove_outdated_outputs(self.workflow, self.dblock, self.reporter)
-        async with self.dblock:
-            self.workflow.con.execute("VACUUM")
+            await remove_outdated_outputs(self.workflow, self.db, self.reporter)
+        async with self.db:
             step_counts = self.workflow.get_step_counts()
         await self.reporter.update_step_counts(step_counts)
         await self.reporter.check_logs()
@@ -290,18 +289,18 @@ DROP TABLE IF EXISTS optional_to_be_deleted
 """
 
 
-async def revert_optional(dblock: DBLock, workflow: Workflow, reporter: ReporterClient):
+async def revert_optional(db: DBSession, workflow: Workflow, reporter: ReporterClient):
     """Revert optional steps that have previously been executed to pending again."""
-    async with dblock:
-        con = workflow.con
+    async with db:
+        db = workflow.db
         # Get the optional steps that are not pending, and mark them pending again.
-        con.execute(DROP_TEMP_TABLE_STEP)
-        con.execute(DROP_TEMP_TABLE_FILE)
-        con.execute(CREATE_TEMP_TABLE_STEP)
-        con.execute(CREATE_TEMP_TABLE_FILE)
-        cur = con.execute(UPDATE_OPTIONAL_STEPS)
+        db.execute(DROP_TEMP_TABLE_STEP)
+        db.execute(DROP_TEMP_TABLE_FILE)
+        db.execute(CREATE_TEMP_TABLE_STEP)
+        db.execute(CREATE_TEMP_TABLE_FILE)
+        cur = db.execute(UPDATE_OPTIONAL_STEPS)
         nstep = cur.rowcount
-        cur = con.execute(SELECT_OPTIONAL_TO_BE_DELETED)
+        cur = db.execute(SELECT_OPTIONAL_TO_BE_DELETED)
         to_be_deleted = [
             (row[0], None if row[1] == FileState.VOLATILE.value else FileHash(*row[2:]))
             for row in cur
@@ -309,9 +308,9 @@ async def revert_optional(dblock: DBLock, workflow: Workflow, reporter: Reporter
         if len(to_be_deleted) > 0:
             # Mark the files for deletion and reset their state in the database.
             workflow.to_be_deleted.extend(to_be_deleted)
-            con.execute(UPDATE_OPTIONAL_TO_BE_DELETED)
-        con.execute(DROP_TEMP_TABLE_STEP)
-        con.execute(DROP_TEMP_TABLE_FILE)
+            db.execute(UPDATE_OPTIONAL_TO_BE_DELETED)
+        db.execute(DROP_TEMP_TABLE_STEP)
+        db.execute(DROP_TEMP_TABLE_FILE)
     # Report the reverted steps and the files that are marked for deletion.
     if nstep > 0 or len(to_be_deleted) > 0:
         await reporter(
@@ -322,11 +321,11 @@ async def revert_optional(dblock: DBLock, workflow: Workflow, reporter: Reporter
 
 
 async def report_completion(
-    dblock: DBLock, workflow: Workflow, scheduler: Scheduler, reporter: ReporterClient
+    db: DBSession, workflow: Workflow, scheduler: Scheduler, reporter: ReporterClient
 ) -> ReturnCode:
     """Report parts of the workflow that could not be executed."""
     returncode = ReturnCode(0)
-    async with dblock:
+    async with db:
         steps_failed = list(workflow.steps(StepState.FAILED))
     nfailed = len(steps_failed)
     if nfailed > 0:
@@ -338,14 +337,14 @@ async def report_completion(
         await reporter("WARNING", "Scheduler is put on hold. Not reporting pending steps.")
         return returncode
 
-    async with dblock:
+    async with db:
         step_records = scheduler.get_pending_step_records()
     npending = len(step_records)
     if npending > 0:
         pending_pages = []
-        async with dblock:
+        async with db:
             for step, reason in step_records:
-                command, workdir = step.get_command_workdir()
+                command, workdir = step.command_workdir
 
                 reason_text = {
                     "runnable": "runnable but not executed (builder was interrupted)",
@@ -391,7 +390,7 @@ async def report_completion(
                     prefix = "       "
 
                 prefix = "Resource"
-                resources = workflow.con.execute(
+                resources = workflow.db.execute(
                     "SELECT name, units FROM step_resource WHERE node = ?",
                     (step.i,),
                 )
@@ -404,7 +403,7 @@ async def report_completion(
         if npending > 0:
             returncode |= ReturnCode.PENDING
             descr = f"{npending} step(s) remained pending ..."
-            async with dblock:
+            async with db:
                 # Insert pages with detached and missing inputs in front.
                 detached_page = "\n".join(
                     f"{file_state.name:>20s}  {path}"
@@ -422,7 +421,7 @@ async def report_completion(
     return returncode
 
 
-async def remove_outdated_outputs(workflow: Workflow, dblock: DBLock, reporter: ReporterClient):
+async def remove_outdated_outputs(workflow: Workflow, db: DBSession, reporter: ReporterClient):
     """Remove outdated outputs from the file system and reset their state in the database."""
     await reporter(
         "DIRECTOR",
@@ -448,8 +447,8 @@ async def remove_outdated_outputs(workflow: Workflow, dblock: DBLock, reporter: 
                 parents.append(parent)
 
     # Reset the state of the deleted files in the database, if they are still present.
-    async with dblock:
-        workflow.con.executemany(
+    async with db:
+        workflow.db.executemany(
             """
             WITH node_tmp AS (SELECT i FROM node WHERE label = ?)
             UPDATE file

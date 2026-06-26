@@ -19,14 +19,14 @@
 # --
 """In-process execution of steps.
 
-The `StepExecutor` runs each step directly inside the director's event loop as an asyncio task.
+The `Executor` runs each step directly inside the director's event loop as an asyncio task.
 Commands run as asyncio subprocesses (shell / direct exec) or in a forkserver child (Python
 scripts and console-script entry points).
 
 File hashing is delegated to a separate process via `stepup.core.hasher`.
 
-A single `StepExecutor` instance serves all concurrent steps.
-A per-step mutable state lives in a `RunningStep` created for each job.
+A single `Executor` instance serves all concurrent steps.
+A per-step mutable state lives in a `Run` created for each job.
 """
 
 import asyncio
@@ -54,18 +54,19 @@ import attrs
 from path import Path
 
 from .asyncio import await_fd_readable
-from .enums import FileState, HashUpdateCause, Need, StepState
+from .enums import FileState, HashUpdateCause, StepState
 from .exceptions import RPCError
 from .extapi import get_local_import_paths
 from .hash import FileHash, StepHash, compare_step_hashes
 from .hasher import HashResult, HashTask, hash_fork_entry
 from .reporter import ReporterClient
 from .scheduler import Scheduler
-from .step import Step, split_step_label
-from .utils import DBLock, format_subprocess
+from .sqlite3 import DBSession
+from .step import Step
+from .utils import format_subprocess
 from .workflow import Workflow
 
-__all__ = ("RunningStep", "StepExecutor")
+__all__ = ("Executor", "Run")
 
 
 logger = logging.getLogger(__name__)
@@ -356,24 +357,24 @@ async def _wait_proc(proc):
     proc.join()
 
 
-async def run_in_forkserver(mp_ctx, target, args: tuple, rs: "RunningStep | None" = None):
+async def run_in_forkserver(mp_ctx, target, args: tuple, run: "Run | None" = None):
     """Run `target(*args, conn)` in a forkserver child and return the object it sends back.
 
-    The child's pid is recorded on `rs` (when given) so a running step can be interrupted.
+    The child's pid is recorded on `run` (when given) so a running step can be interrupted.
     """
     parent_conn, child_conn = mp_ctx.Pipe(duplex=False)
     proc = mp_ctx.Process(target=target, args=(*args, child_conn))
     proc.start()
     child_conn.close()
-    if rs is not None:
-        rs.pid = proc.pid
+    if run is not None:
+        run.pid = proc.pid
     try:
         result = await _recv_conn(parent_conn)
     finally:
         await _wait_proc(proc)
         parent_conn.close()
-        if rs is not None:
-            rs.pid = None
+        if run is not None:
+            run.pid = None
     if isinstance(result, BaseException):
         raise result
     return result
@@ -417,11 +418,11 @@ def _communicate_wait4(
 
 
 async def _spawn_subprocess(
-    cmd, *, shell: bool, env: dict, cwd: Path, stdin_data: bytes | None, rs: "RunningStep | None"
+    cmd, *, shell: bool, env: dict, cwd: Path, stdin_data: bytes | None, run: "Run | None"
 ) -> tuple[int, bytes, bytes, float, float]:
     """Run `cmd` as a subprocess and return (returncode, stdout, stderr, utime, stime).
 
-    The process is created synchronously so that `rs.proc` can be set immediately for interrupts.
+    The process is created synchronously so that `run.proc` can be set immediately for interrupts.
     Blocking I/O and the `os.wait4` reap are offloaded to a thread-pool executor
     so the event loop stays responsive.
 
@@ -439,16 +440,16 @@ async def _spawn_subprocess(
         env=env,
         cwd=cwd,
     )
-    if rs is not None:
-        rs.proc = proc
+    if run is not None:
+        run.proc = proc
     try:
         loop = asyncio.get_running_loop()
         stdout, stderr, utime, stime = await loop.run_in_executor(
             None, _communicate_wait4, proc, stdin_data
         )
     finally:
-        if rs is not None:
-            rs.proc = None
+        if run is not None:
+            run.proc = None
     return proc.returncode, stdout, stderr, utime, stime
 
 
@@ -462,7 +463,7 @@ async def _run_subprocess(
     shell: bool,
     env: dict,
     cwd: Path,
-    rs: "RunningStep",
+    run: "Run",
     stdin_data: bytes | None = None,
 ) -> tuple[int, str, str, float, float]:
     """Run `cmd` as a subprocess with or without a shell.
@@ -475,7 +476,7 @@ async def _run_subprocess(
     if message is not None:
         return 1, "", message + "\n", 0.0, 0.0
     rc, out, err, utime, stime = await _spawn_subprocess(
-        cmd, shell=shell, env=env, cwd=cwd, stdin_data=stdin_data, rs=rs
+        cmd, shell=shell, env=env, cwd=cwd, stdin_data=stdin_data, run=run
     )
     err = _decode(err)
     if rc != 0:
@@ -484,7 +485,7 @@ async def _run_subprocess(
 
 
 async def _runpy(
-    script: str, args: list[str], env: dict, cwd: Path, mp_ctx, rs: "RunningStep"
+    script: str, args: list[str], env: dict, cwd: Path, mp_ctx, run: "Run"
 ) -> tuple[int, str, str, float, float]:
     """Run a Python script, amending its local imports as inputs."""
     message = check_executable(cwd / Path(script), shebang="#!/usr/bin/env python3")
@@ -492,23 +493,23 @@ async def _runpy(
         return 1, "", message + "\n", 0.0, 0.0
     if mp_ctx is not None:
         return await run_in_forkserver(
-            mp_ctx, _forkserver_entry, (script, args, env, str(cwd), None), rs
+            mp_ctx, _forkserver_entry, (script, args, env, str(cwd), None), run
         )
     wrapper = PYCODE_WRAPPER.format(argv=repr([script, *args]), script=repr(script))
     return await _run_subprocess(
-        [sys.executable, "-"], shell=False, env=env, cwd=cwd, rs=rs, stdin_data=wrapper.encode()
+        [sys.executable, "-"], shell=False, env=env, cwd=cwd, run=run, stdin_data=wrapper.encode()
     )
 
 
 async def _runpyep(
-    cmd: str, args: list[str], ep_value: str, env: dict, cwd: Path, mp_ctx, rs: "RunningStep"
+    cmd: str, args: list[str], ep_value: str, env: dict, cwd: Path, mp_ctx, run: "Run"
 ) -> tuple[int, str, str, float, float]:
     """Run a Python console_script entry point, using the forkserver when available."""
     if mp_ctx is not None:
         return await run_in_forkserver(
-            mp_ctx, _forkserver_entry, (cmd, args, env, str(cwd), ep_value), rs
+            mp_ctx, _forkserver_entry, (cmd, args, env, str(cwd), ep_value), run
         )
-    return await _run_subprocess([cmd, *args], shell=False, env=env, cwd=cwd, rs=rs)
+    return await _run_subprocess([cmd, *args], shell=False, env=env, cwd=cwd, run=run)
 
 
 #
@@ -517,30 +518,15 @@ async def _runpyep(
 
 
 @attrs.define(eq=False)
-class RunningStep:
-    """Mutable state for a single step while it is being processed.
+class Run:
+    """Mutable state for a single step while it is being executed or skipped.
 
     Instances use identity-based equality and hashing so they can be tracked in a set
     of currently running steps.
     """
 
-    i: int = attrs.field()
-    """The index from the node table for the step, used to set `STEPUP_STEP_I`."""
-
-    command: str = attrs.field()
-    """The raw command to be executed for the step."""
-
-    subshell: bool = attrs.field()
-    """Whether the command is executed via a subshell."""
-
-    workdir: Path = attrs.field()
-    """The working directory where the command will be executed."""
-
-    need: Need = attrs.field()
-    """The declared need of this step, used to set `STEPUP_STEP_NEED`."""
-
-    env_overrides: dict = attrs.field(factory=dict)
-    """Step-specific environment variable overrides applied to the child process."""
+    step: Step = attrs.field()
+    """The step being executed."""
 
     stdout: str = attrs.field(init=False, default="")
     """The standard output captured from the command execution."""
@@ -580,11 +566,6 @@ class RunningStep:
     subprocesses: list = attrs.field(init=False, factory=list)
     """Recorded subprocess invocations: `(seq, cmd, workdir, env, returncode)` tuples."""
 
-    @property
-    def description(self):
-        """The command, optionally annotated with the working directory."""
-        return self.command if self.workdir == "." else f"{self.command}  # wd={self.workdir}"
-
     def merge_hash_result(self, result: "HashResult") -> None:
         """Apply the fields of a `HashResult` onto this running step.
 
@@ -602,7 +583,7 @@ class RunningStep:
 
 
 @attrs.define
-class StepExecutor:
+class Executor:
     """Run steps in the director process as asyncio tasks.
 
     One shared instance serves all concurrent steps. The methods `validate_amended_job`,
@@ -615,7 +596,7 @@ class StepExecutor:
     workflow: Workflow = attrs.field()
     """The workflow that the executor is interacting with."""
 
-    dblock: DBLock = attrs.field()
+    db: DBSession = attrs.field()
     """Lock for workflow database access."""
 
     reporter: ReporterClient = attrs.field()
@@ -637,7 +618,7 @@ class StepExecutor:
     """Maximum bytes of stdout/stderr stored per step stream in the DB; 0 = unlimited."""
 
     running: set = attrs.field(init=False, factory=set)
-    """The set of `RunningStep` instances whose command is currently running."""
+    """The set of `Run` instances whose command is currently running."""
 
     @property
     def base_env(self) -> dict:
@@ -650,7 +631,7 @@ class StepExecutor:
 
     async def _reset_step_to_pending(self, step: Step) -> None:
         """Discard a step's stored hash and transition it back to PENDING for re-execution."""
-        async with self.dblock:
+        async with self.db:
             step.clean_before_run()
             step.delete_hash()
             step.set_state(StepState.PENDING)
@@ -667,9 +648,9 @@ class StepExecutor:
         If the job can be validated, it is put back in the pending state,
         so that it can be re-queued when new inputs arrive.
         """
-        async with self.new_step(step, inp_hashes, env_deps, check_hash=False) as (rs, new_hash):
+        async with self.new_step(step, inp_hashes, env_deps, check_hash=False) as (run, new_hash):
             if not (new_hash is None or step_hash.inp_digest == new_hash.inp_digest):
-                await self.outdated_amended(rs, step_hash, new_hash)
+                await self.outdated_amended(run, step_hash, new_hash)
                 # Inputs have changed, so discard amended info
                 await self._reset_step_to_pending(step)
                 return
@@ -678,7 +659,7 @@ class StepExecutor:
             # - No inputs have changed, or.
             # - Failed to create the new step due to unexpected input changes.
             # In both cases, the step is not invalidated and just made pending again.
-            async with self.dblock:
+            async with self.db:
                 step.set_state(StepState.PENDING)
                 step_counts = self.workflow.get_step_counts()
             await self.reporter.update_step_counts(step_counts)
@@ -691,29 +672,29 @@ class StepExecutor:
         step_hash: StepHash,
     ):
         """Try skipping a step."""
-        async with self.new_step(step, inp_hashes, env_deps) as (rs, new_hash):
+        async with self.new_step(step, inp_hashes, env_deps) as (run, new_hash):
             if new_hash is None:
                 # Failed to create the new step due to unexpected input changes.
                 return
 
             if step_hash.inp_digest != new_hash.inp_digest:
                 # The inputs have changed, so must run.
-                await self.noskip(rs, step_hash, new_hash)
+                await self.noskip(run, step_hash, new_hash)
                 await self._reset_step_to_pending(step)
                 return
 
             # Compute the output part of the step hash.
-            new_hash, new_out_hashes = await self.compute_out_step_hash(step, rs, new_hash)
+            new_hash, new_out_hashes = await self.compute_out_step_hash(run, new_hash)
 
             if step_hash.out_digest != new_hash.out_digest:
                 # The outputs have changed, so must run.
-                await self.noskip(rs, step_hash, new_hash)
+                await self.noskip(run, step_hash, new_hash)
                 await self._reset_step_to_pending(step)
                 return
 
             # All checks passed: no need to run the step, just simulate the products.
-            await self.skip(rs, step_hash)
-            async with self.dblock:
+            await self.skip(run, step_hash)
+            async with self.db:
                 self.workflow.update_file_hashes(new_out_hashes, HashUpdateCause.SUCCEEDED)
                 step.completed(new_hash)
                 step_counts = self.workflow.get_step_counts()
@@ -723,29 +704,29 @@ class StepExecutor:
         self, step: Step, inp_hashes: list[tuple[str, FileHash]], env_deps: list[str]
     ):
         """Execute a step (no skipping)."""
-        async with self.new_step(step, inp_hashes, env_deps) as (rs, new_hash):
+        async with self.new_step(step, inp_hashes, env_deps) as (run, new_hash):
             if new_hash is None:
                 # Failed to create the new step due to unexpected input changes.
                 return
 
             # Run the step
-            async with self.dblock:
+            async with self.db:
                 step.clean_before_run()
                 step_counts = self.workflow.get_step_counts()
             await self.reporter.update_step_counts(step_counts)
-            await self.run(rs)
+            await self.run(run)
 
             # Recompute the step hash (inputs and outputs).
             # Hashes are always updated, even for failed commands,
             # so outputs can be removed safely if they are no longer needed.
-            new_hash, new_inp_hashes, new_out_hashes = await self.compute_full_step_hash(step, rs)
+            new_hash, new_inp_hashes, new_out_hashes = await self.compute_full_step_hash(run)
 
-            success = rs.success
+            success = run.success
 
-            async with self.dblock:
+            async with self.db:
                 rescheduled_info = step.get_rescheduled_info()
                 if rescheduled_info != "":
-                    self.rescheduled(rs, rescheduled_info)
+                    self.rescheduled(run, rescheduled_info)
                     success = False
                 self.workflow.update_file_hashes(
                     new_out_hashes,
@@ -756,18 +737,18 @@ class StepExecutor:
                 step.completed(new_hash)
                 # Persist the captured output in the same transaction as completed(),
                 # so a crash cannot leave a completed step without its output (or vice
-                # versa). rs.stdout/rs.stderr stay untruncated; store_output truncates a
+                # versa). run.stdout/run.stderr stay untruncated; store_output truncates a
                 # copy internally, so report() below still forwards the full text to the TUI.
-                step.store_output("stdout", rs.stdout, self.max_output_size)
-                step.store_output("stderr", rs.stderr, self.max_output_size)
+                step.store_output("stdout", run.stdout, self.max_output_size)
+                step.store_output("stderr", run.stderr, self.max_output_size)
                 # Read recorded subprocesses in the same transaction, so report() can show
                 # them without a separate DB access (the child has finished writing rows).
-                rs.subprocesses = list(step.iter_subprocesses())
+                run.subprocesses = list(step.iter_subprocesses())
                 step_counts = self.workflow.get_step_counts()
             await self.reporter.update_step_counts(step_counts)
 
             # Report the result of running the step
-            await self.report(rs)
+            await self.report(run)
 
             if len(new_inp_hashes) > 0:
                 # Changes to inputs are suspect and can break everything.
@@ -789,37 +770,34 @@ class StepExecutor:
         env_deps: list[str],
         *,
         check_hash: bool = True,
-    ) -> AsyncGenerator[tuple[RunningStep, StepHash | None], None]:
-        """Set up a fresh `RunningStep` and compute the input part of its step hash.
+    ) -> AsyncGenerator[tuple[Run, StepHash | None], None]:
+        """Set up a fresh `Run` and compute the input part of its step hash.
 
         Yields
         ------
-        rs
+        run
             The per-step state object.
         new_step_hash
             The new hash of the step, with the input part already computed, if available.
             `None` if, unexpectedly, some inputs are missing or have changed.
         """
-        command, workdir = split_step_label(step.label)
-        rs = RunningStep(
-            step.i, command, step.get_subshell(), workdir, step.get_need(), step.get_env_overrides()
-        )
-        new_step_hash = await self.compute_inp_step_hash(rs, inp_hashes, env_deps, check_hash)
+        run = Run(step)
+        new_step_hash = await self.compute_inp_step_hash(run, inp_hashes, env_deps, check_hash)
         if new_step_hash is None and check_hash:
             # The hashes of the input files on disk differ from those in the database,
             # or some inputs were deleted. This breaks the workflow, so flag the step as failed.
-            async with self.dblock:
+            async with self.db:
                 step.completed(None)
                 step_counts = self.workflow.get_step_counts()
             await self.reporter.update_step_counts(step_counts)
-            await self.report(rs)
+            await self.report(run)
             self.scheduler.on_hold = True
             await self.reporter(
                 "ERROR", "The scheduler has been put on hold due to unexpected input changes."
             )
-            yield rs, None
+            yield run, None
         else:
-            yield rs, new_step_hash
+            yield run, new_step_hash
 
     async def _run_hash(self, task: HashTask) -> HashResult:
         """Compute (part of) a step hash in a forkserver child or a subprocess."""
@@ -831,7 +809,7 @@ class StepExecutor:
             env=self.base_env,
             cwd=Path.cwd(),
             stdin_data=pickle.dumps(task),
-            rs=None,
+            run=None,
         )
         if returncode != 0:
             raise RPCError(f"The hashes tool failed: {_decode(stderr)}")
@@ -839,124 +817,137 @@ class StepExecutor:
 
     async def compute_inp_step_hash(
         self,
-        rs: RunningStep,
+        run: Run,
         inp_hashes: list[tuple[str, FileHash]],
         env_deps: list[str],
         check_hash: bool = True,
     ) -> StepHash | None:
-        """Compute the input part of a step hash and apply it to `rs`."""
+        """Compute the input part of a step hash and apply it to `run`."""
         base_env = self.base_env
+        async with self.db:
+            subshell = run.step.get_subshell()
+            env_overrides = run.step.get_env_overrides()
         task = HashTask(
             mode="inp",
-            step_key=rs.description,
+            step_key=run.step.label,
             extended=self.explain_rerun,
-            subshell=rs.subshell,
+            subshell=subshell,
             check_hash=check_hash,
             inp_hashes=inp_hashes,
             env_values={name: base_env.get(name) for name in env_deps},
-            env_overrides=rs.env_overrides,
+            env_overrides=env_overrides,
         )
         result = await self._run_hash(task)
-        rs.merge_hash_result(result)
+        run.merge_hash_result(result)
         return result.step_hash
 
     async def compute_out_step_hash(
-        self, step: Step, rs: RunningStep, step_hash: StepHash
+        self, run: Run, step_hash: StepHash
     ) -> tuple[StepHash, list[tuple[str, FileHash]]]:
-        """Compute the output part of a step hash and apply it to `rs`."""
-        async with self.dblock:
-            out_hashes = list(step.out_paths(yield_hash=True))
+        """Compute the output part of a step hash and apply it to `run`."""
+        async with self.db:
+            out_hashes = list(run.step.out_paths(yield_hash=True))
         task = HashTask(mode="out", step_hash=step_hash, out_hashes=out_hashes)
         result = await self._run_hash(task)
-        rs.merge_hash_result(result)
+        run.merge_hash_result(result)
         return result.step_hash, result.new_out_hashes
 
     async def compute_full_step_hash(
-        self, step: Step, rs: RunningStep
+        self, run: Run
     ) -> tuple[StepHash, list[tuple[str, FileHash]], list[tuple[str, FileHash]]]:
-        """Compute a new step hash with updated input and output file hashes, applied to `rs`."""
-        async with self.dblock:
+        """Compute a new step hash with updated input and output file hashes, applied to `run`."""
+        async with self.db:
             # Some inputs may be amended and still unavailable,
             # for which checking hashes is too early.
             # Therefore, only check the hashes of built and static files.
+            subshell = run.step.get_subshell()
             inp_hashes = [
                 (path, file_hash)
-                for path, file_state, file_hash in step.inp_paths(yield_state=True, yield_hash=True)
+                for path, file_state, file_hash in run.step.inp_paths(
+                    yield_state=True, yield_hash=True
+                )
                 if file_state in (FileState.BUILT, FileState.STATIC)
             ]
-            env_deps = list(step.env_deps())
-            out_hashes = list(step.out_paths(yield_hash=True))
+            env_deps = list(run.step.env_deps())
+            env_overrides = run.step.get_env_overrides()
+            out_hashes = list(run.step.out_paths(yield_hash=True))
         base_env = self.base_env
         task = HashTask(
             mode="full",
-            step_key=rs.description,
+            step_key=run.step.label,
             extended=self.explain_rerun,
-            subshell=rs.subshell,
+            subshell=subshell,
             check_hash=True,
             inp_hashes=inp_hashes,
             env_values={name: base_env.get(name) for name in env_deps},
-            env_overrides=rs.env_overrides,
+            env_overrides=env_overrides,
             out_hashes=out_hashes,
         )
         result = await self._run_hash(task)
-        rs.merge_hash_result(result)
+        run.merge_hash_result(result)
         return result.step_hash, result.new_inp_hashes, result.new_out_hashes
 
-    async def run(self, rs: RunningStep):
-        """Run the command of the step described by `rs`."""
-        await self.reporter("START", rs.description)
-        await self.reporter.start_step(rs.description, rs.i)
+    async def run(self, run: Run):
+        """Run the command of the step described by `run`."""
+        command, workdir = run.step.command_workdir
+        async with self.db:
+            subshell = run.step.get_subshell()
+            need = run.step.get_need()
+            env_overrides = run.step.get_env_overrides()
+
+        await self.reporter("START", run.step.label)
+        await self.reporter.start_step(run.step.label, run.step.i)
 
         env = self.base_env
         # Apply step-specific overrides first, so the reserved variables below always win.
-        env.update(rs.env_overrides)
+        env.update(env_overrides)
         # For internal use in command:
-        env["STEPUP_STEP_I"] = str(rs.i)
+        env["STEPUP_STEP_I"] = str(run.step.i)
         # Client code may use the following:
-        env["STEPUP_STEP_INP_DIGEST"] = rs.inp_digest.hex()
-        env["STEPUP_STEP_NEED"] = rs.need.name
-        env["ROOT"] = str(Path.cwd().relpath(rs.workdir))
-        env["HERE"] = str(Path(rs.workdir).relpath())
+        env["STEPUP_STEP_INP_DIGEST"] = run.inp_digest.hex()
+        env["STEPUP_STEP_NEED"] = need.name
+        env["ROOT"] = str(Path.cwd().relpath(workdir))
+        env["HERE"] = str(Path(workdir).relpath())
         # Note: the variables defined here should be listed in stepup.core.api.getenv
 
         if self.show_perf:
             pt_initial = perf_counter()
 
-        self.running.add(rs)
+        self.running.add(run)
         utime = 0.0
         stime = 0.0
         try:
-            parts = shlex.split(rs.command)
+            parts = shlex.split(command)
             if not parts:
-                raise ValueError(f"Empty command: {rs.command!r}")
-            if rs.subshell:
+                raise ValueError(f"Empty command: {command!r}")
+            if subshell:
                 returncode, stdout, stderr, utime, stime = await _run_subprocess(
-                    rs.command, shell=True, env=env, cwd=rs.workdir, rs=rs
+                    command, shell=True, env=env, cwd=workdir, run=run
                 )
             elif parts[0].endswith(".py"):
                 returncode, stdout, stderr, utime, stime = await _runpy(
-                    parts[0], parts[1:], env, rs.workdir, self.mp_ctx, rs
+                    parts[0], parts[1:], env, workdir, self.mp_ctx, run
                 )
             else:
                 ep_value = _detect_python_entrypoint(parts[0])
                 if ep_value is not None:
                     returncode, stdout, stderr, utime, stime = await _runpyep(
-                        parts[0], parts[1:], ep_value, env, rs.workdir, self.mp_ctx, rs
+                        parts[0], parts[1:], ep_value, env, workdir, self.mp_ctx, run
                     )
                 else:
                     returncode, stdout, stderr, utime, stime = await _run_subprocess(
-                        parts, shell=False, env=env, cwd=rs.workdir, rs=rs
+                        parts, shell=False, env=env, cwd=workdir, run=run
                     )
         except BaseException as exc:  # noqa: BLE001
             returncode = exc.code if isinstance(exc, SystemExit) else 1
             stdout = ""
             stderr = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
         finally:
-            self.running.discard(rs)
+            self.running.discard(run)
 
-        rs.returncode = returncode
-        rs.stdout = stdout
-        rs.stderr = stderr
+        run.returncode = returncode
+        run.stdout = stdout
+        run.stderr = stderr
 
         if self.show_perf:
             wtime = perf_counter() - pt_initial
@@ -966,15 +957,15 @@ class StepExecutor:
                 f"Total CPU time [s]:  {utime + stime:9.4f}",
                 f"Wall time [s]:       {wtime:9.4f}",
             ]
-            rs.perf_info = "\n".join(ru_lines)
-        if rs.returncode != 0:
-            rs.success = False
+            run.perf_info = "\n".join(ru_lines)
+        if run.returncode != 0:
+            run.success = False
 
     def interrupt(self, sig: int):
         """Send a signal to all currently running step commands."""
-        for rs in list(self.running):
-            proc = rs.proc
-            pid = rs.pid
+        for run in list(self.running):
+            proc = run.proc
+            pid = run.pid
             if proc is not None:
                 with contextlib.suppress(ProcessLookupError):
                     logger.info("Interrupting subprocess %r with signal %d", proc.pid, sig)
@@ -984,58 +975,59 @@ class StepExecutor:
                     logger.info("Interrupting forkserver child %d with signal %d", pid, sig)
                     os.kill(pid, sig)
 
-    def rescheduled(self, rs: RunningStep, rescheduled_info: str):
-        rs.rescheduled_info = rescheduled_info
+    def rescheduled(self, run: Run, rescheduled_info: str):
+        run.rescheduled_info = rescheduled_info
         # Erase other error info to keep the screen output concise.
-        rs.success = True
-        rs.stderr = ""
+        run.success = True
+        run.stderr = ""
 
-    async def report(self, rs: RunningStep):
+    async def report(self, run: Run):
+        command, workdir = run.step.command_workdir
         pages = []
-        if not rs.success:
+        if not run.success:
             # Format command for display (can be copied and pasted into a shell); a non-zero
             # return code is appended as a trailing `# exit=N` comment by format_subprocess.
+            async with self.db:
+                subshell = run.step.get_subshell()
             pages.append(
                 (
                     "Failed command",
-                    format_subprocess(
-                        rs.command, str(rs.workdir), None, rs.returncode, shell=rs.subshell
-                    ),
+                    format_subprocess(command, str(workdir), None, run.returncode, shell=subshell),
                 )
             )
-        if len(rs.perf_info) > 0:
-            pages.append(("Performance details", rs.perf_info))
-        if rs.rescheduled_info != "":
-            pages.append(("Rescheduling due to unavailable amended inputs", rs.rescheduled_info))
+        if len(run.perf_info) > 0:
+            pages.append(("Performance details", run.perf_info))
+        if run.rescheduled_info != "":
+            pages.append(("Rescheduling due to unavailable amended inputs", run.rescheduled_info))
         else:
-            if len(rs.inp_messages) > 0:
-                rs.inp_messages.sort()
-                pages.append(("Invalid inputs", "\n".join(rs.inp_messages)))
-            if len(rs.out_missing) > 0:
-                rs.out_missing.sort()
-                pages.append(("Expected outputs not created", "\n".join(rs.out_missing)))
-        stdout = rs.stdout.rstrip()
+            if len(run.inp_messages) > 0:
+                run.inp_messages.sort()
+                pages.append(("Invalid inputs", "\n".join(run.inp_messages)))
+            if len(run.out_missing) > 0:
+                run.out_missing.sort()
+                pages.append(("Expected outputs not created", "\n".join(run.out_missing)))
+        stdout = run.stdout.rstrip()
         if len(stdout) > 0:
             pages.append(("Standard output", stdout))
-        stderr = rs.stderr.rstrip()
+        stderr = run.stderr.rstrip()
         if len(stderr) > 0:
             pages.append(("Standard error", stderr))
-        if len(rs.subprocesses) > 0:
+        if len(run.subprocesses) > 0:
             page = "\n".join(
                 format_subprocess(cmd, workdir, env, returncode, shell=shell)
-                for _seq, cmd, workdir, env, returncode, shell in rs.subprocesses
+                for _seq, cmd, workdir, env, returncode, shell in run.subprocesses
             )
             pages.append(("Subprocesses", page))
-        if rs.rescheduled_info != "":
+        if run.rescheduled_info != "":
             action = "RESCHEDULE"
-        elif rs.success:
+        elif run.success:
             action = "SUCCESS"
         else:
             action = "FAIL"
-        await self.reporter.stop_step(rs.i)
-        await self.reporter(action, rs.description, pages)
+        await self.reporter.stop_step(run.step.i)
+        await self.reporter(action, run.step.label, pages)
 
-    async def skip(self, rs: RunningStep, step_hash: StepHash):
+    async def skip(self, run: Run, step_hash: StepHash):
         pages = []
         if self.explain_rerun:
             page_change, page_same = compare_step_hashes(step_hash, step_hash)
@@ -1045,24 +1037,24 @@ class StepExecutor:
                 )
             if len(page_same) > 0:
                 pages.append(("No changes observed", page_same))
-        await self.reporter("SKIP", rs.description, pages)
+        await self.reporter("SKIP", run.step.label, pages)
 
-    async def noskip(self, rs: RunningStep, old_hash: StepHash, new_hash: StepHash):
+    async def noskip(self, run: Run, old_hash: StepHash, new_hash: StepHash):
         if self.explain_rerun:
             pages = []
-            if len(rs.out_missing) > 0:
-                pages.append(("Missing output files", "\n".join(rs.out_missing)))
+            if len(run.out_missing) > 0:
+                pages.append(("Missing output files", "\n".join(run.out_missing)))
             page_change, page_same = compare_step_hashes(old_hash, new_hash)
             if len(page_change) > 0:
                 pages.append(("Changes causing rerun", page_change))
             if len(page_same) > 0:
                 pages.append(("Remained the same", page_same))
-            await self.reporter("NOSKIP", rs.description, pages)
+            await self.reporter("NOSKIP", run.step.label, pages)
 
-    async def outdated_amended(self, rs: RunningStep, old_hash: StepHash, new_hash: StepHash):
+    async def outdated_amended(self, run: Run, old_hash: StepHash, new_hash: StepHash):
         if self.explain_rerun:
             page_change, page_same = compare_step_hashes(old_hash, new_hash)
             pages = [("Outdated amended step information", page_change)]
             if len(page_same) > 0:
                 pages.append(("Remained the same (or missing)", page_same))
-            await self.reporter("DROPAMEND", rs.description, pages)
+            await self.reporter("DROPAMEND", run.step.label, pages)

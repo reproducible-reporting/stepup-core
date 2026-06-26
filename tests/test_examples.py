@@ -264,7 +264,6 @@ EXAMPLES_REQUIRES_FORK_RUNPY = {"preload_modules"}
         for name in EXAMPLES
     ],
 )
-@pytest.mark.asyncio
 async def test_example(name: str, path_tmp: Path):
     await run_example(Path("tests/examples") / name, path_tmp, OVERWRITE_EXPECTED)
 
@@ -293,6 +292,5 @@ def test_examples_list_has_no_extra():
         "static",
     ],
 )
-@pytest.mark.asyncio
 async def test_plan(name: str, path_tmp: Path):
     await run_plan(Path("tests/examples") / name, path_tmp)

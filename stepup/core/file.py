@@ -98,14 +98,14 @@ class File(Node):
         # it should copy that state
         if state == FileState.AWAITED:
             sql = "SELECT state, digest, mode, mtime, size, inode FROM file WHERE node = ?"
-            row = self.con.execute(sql, (self.i,)).fetchone()
+            row = self.db.execute(sql, (self.i,)).fetchone()
             if row is not None and row[0] in (FileState.BUILT.value, FileState.OUTDATED.value):
                 state = FileState(row[0])
                 digest, mode, mtime, size, inode = row[1:]
         if digest == b"u" and state in (FileState.STATIC, FileState.BUILT, FileState.OUTDATED):
             raise ValueError(f"Cannot create a {state.name} file without a hash: {self.path}")
         # Add/update row in the file table.
-        self.con.execute(
+        self.db.execute(
             "INSERT INTO file VALUES(:node, :state, :digest, :mode, :mtime, :size, :inode) "
             "ON CONFLICT DO UPDATE SET state = :state, digest = :digest, mode = :mode, "
             "mtime = :mtime, size = :size, inode = :inode WHERE node = :node",
@@ -125,7 +125,7 @@ class File(Node):
 
     def validate(self):
         """Validate extra information about this node is present in the database."""
-        row = self.con.execute("SELECT 1 FROM file WHERE node = ?", (self.i,)).fetchone()
+        row = self.db.execute("SELECT 1 FROM file WHERE node = ?", (self.i,)).fetchone()
         if row is None:
             raise ValueError(f"File node {self.key()} has no row in the file table.")
 
@@ -163,7 +163,7 @@ class File(Node):
         return Path(self.label)
 
     def get_state(self) -> FileState:
-        row = self.con.execute("SELECT state FROM file WHERE node = ?", (self.i,)).fetchone()
+        row = self.db.execute("SELECT state FROM file WHERE node = ?", (self.i,)).fetchone()
         return FileState(row[0])
 
     def set_state(self, state: FileState):
@@ -177,11 +177,11 @@ class File(Node):
         else:
             # All other states can have a valid hash, so only update the state.
             sql = "UPDATE file SET state = ? WHERE node = ?"
-        self.con.execute(sql, (state.value, self.i))
+        self.db.execute(sql, (state.value, self.i))
 
     def get_hash(self) -> FileHash:
         sql = "SELECT digest, mode, mtime, size, inode FROM file WHERE node = ?"
-        row = self.con.execute(sql, (self.i,)).fetchone()
+        row = self.db.execute(sql, (self.i,)).fetchone()
         return FileHash(*row)
 
     #

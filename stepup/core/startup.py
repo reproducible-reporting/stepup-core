@@ -29,8 +29,8 @@ from .builder import Builder
 from .enums import FileState, HashUpdateCause, StepState
 from .hash import FileHash, fmt_env_value, fmt_file_hash_diff
 from .reporter import ReporterClient
+from .sqlite3 import DBSession
 from .step import Step
-from .utils import DBLock
 from .workflow import Workflow
 
 __all__ = ("startup_from_db",)
@@ -41,25 +41,23 @@ logger = logging.getLogger(__name__)
 
 async def startup_from_db(
     workflow: Workflow,
-    dblock: DBLock,
+    db: DBSession,
     reporter: ReporterClient,
     builder: Builder,
 ):
     """Initialize internal datastructures by loading relevant parts from the database."""
-    con = workflow.con
-
     await reporter("STARTUP", "Making failed steps pending")
     # Make steps pending if they are RUNNING, CHECKING, or FAILED.
     # RUNNING/CHECKING are uncommon, but can happen if the director crashes.
-    async with dblock:
+    async with db:
         # Steps that were running are considered failed.
-        con.execute(
+        db.execute(
             "UPDATE step SET state = ? WHERE state = ?",
             (StepState.FAILED.value, StepState.RUNNING.value),
         )
         # Steps that were being hash-checked go back to pending directly
         # (no output was produced, so no FAILED intermediate is needed).
-        con.execute(
+        db.execute(
             "UPDATE step SET state = ? WHERE state = ?",
             (StepState.PENDING.value, StepState.CHECKING.value),
         )
@@ -68,11 +66,11 @@ async def startup_from_db(
             step.mark_pending()
 
     # Populate dir queue
-    await populate_dir_queue(workflow, dblock, reporter)
+    await populate_dir_queue(workflow, db, reporter)
 
     # Check for changes in environment variables used by steps.
-    async with dblock:
-        env_var_uses = con.execute(
+    async with db:
+        env_var_uses = db.execute(
             "SELECT node, label, name, value FROM env_var JOIN node ON env_var.node = node.i"
         ).fetchall()
     if len(env_var_uses) > 0:
@@ -88,16 +86,16 @@ async def startup_from_db(
                         "UPDATED", f"{name} {fmt_env_value(value)} ➜ {fmt_env_value(new_value)}"
                     )
                     seen.add(name)
-        async with dblock:
+        async with db:
             for step in to_mark_pending:
                 step.mark_pending()
 
     # Check for file changes and new glob matches
     await reporter("STARTUP", "Scanning initial database for changed files")
-    deleted, old_added = await scan_file_changes(workflow, dblock, reporter)
+    deleted, old_added = await scan_file_changes(workflow, db, reporter)
     await reporter("STARTUP", "Scanning initial database for new nglob matches")
-    new_added = await scan_nglob_changes(workflow, dblock, reporter)
-    async with dblock:
+    new_added = await scan_nglob_changes(workflow, db, reporter)
+    async with db:
         workflow.process_nglob_changes(deleted, old_added | new_added)
 
     # Wrap up by making necessary steps pending and starting the builder.
@@ -105,13 +103,13 @@ async def startup_from_db(
     builder.resume.set()
 
 
-async def populate_dir_queue(workflow: Workflow, dblock: DBLock, reporter: ReporterClient):
+async def populate_dir_queue(workflow: Workflow, db: DBSession, reporter: ReporterClient):
     sql = (
         "SELECT label FROM node JOIN file ON node.i = file.node WHERE kind = 'file' AND "
         f"file.state != {FileState.VOLATILE.value}"
     )
-    async with dblock:
-        rows = workflow.con.execute(sql).fetchall()
+    async with db:
+        rows = db.execute(sql).fetchall()
     if len(rows) > 0:
         await reporter(
             "STARTUP", f"Watching directories for {len(rows)} files from initial database"
@@ -124,7 +122,7 @@ async def populate_dir_queue(workflow: Workflow, dblock: DBLock, reporter: Repor
 
 
 async def scan_file_changes(
-    workflow: Workflow, dblock: DBLock, reporter: ReporterClient
+    workflow: Workflow, db: DBSession, reporter: ReporterClient
 ) -> tuple[set[str], set[str]]:
     """Check all files in the workflow for changes."""
     sql = (
@@ -132,9 +130,8 @@ async def scan_file_changes(
         "FROM node JOIN file ON node.i = file.node AND state NOT IN (?, ?) AND NOT detached"
     )
     data = (FileState.AWAITED.value, FileState.VOLATILE.value)
-    con = workflow.con
-    async with dblock:
-        rows = con.execute(sql, data).fetchall()
+    async with db:
+        rows = db.execute(sql, data).fetchall()
     if len(rows) == 0:
         return None
 
@@ -158,17 +155,17 @@ async def scan_file_changes(
             changed_hashes.append((path, new_file_hash))
 
     logger.info("Updating file hashes %s", changed_hashes)
-    async with dblock:
+    async with db:
         workflow.update_file_hashes(changed_hashes, HashUpdateCause.EXTERNAL)
     return deleted, added
 
 
 async def scan_nglob_changes(
-    workflow: Workflow, dblock: DBLock, reporter: ReporterClient
+    workflow: Workflow, db: DBSession, reporter: ReporterClient
 ) -> set[str]:
     """Look for new matches in nglobs used by some jobs."""
     # Load all nglob_multis
-    async with dblock:
+    async with db:
         nglob_multis = list(workflow.nglob_multis())
 
     # Collect potentially relevant paths
@@ -180,19 +177,18 @@ async def scan_nglob_changes(
                     paths.add(path)
 
     # Select the new ones, i.e. not present in the workflow (detached or missing)
-    con = workflow.con
-    async with dblock:
-        con.execute("DROP TABLE IF EXISTS temp.glob")
-        con.execute("CREATE TABLE temp.glob (path TEXT)")
-        con.executemany("INSERT INTO temp.glob VALUES (?)", ((path,) for path in paths))
-        rows = con.execute(
+    async with db:
+        db.execute("DROP TABLE IF EXISTS temp.glob")
+        db.execute("CREATE TABLE temp.glob (path TEXT)")
+        db.executemany("INSERT INTO temp.glob VALUES (?)", ((path,) for path in paths))
+        rows = db.execute(
             "SELECT path FROM temp.glob WHERE NOT EXISTS "
             "(SELECT 1 FROM node JOIN file ON node.i = file.node "
             "WHERE label = path AND "
             "NOT detached AND state != ?)",
             (FileState.MISSING.value,),
         ).fetchall()
-        con.execute("DROP TABLE IF EXISTS temp.glob")
+        db.execute("DROP TABLE IF EXISTS temp.glob")
     new_paths = [row[0] for row in rows]
     new_paths.sort()
     for new_path in new_paths:

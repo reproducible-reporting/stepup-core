@@ -38,13 +38,13 @@ from .stepinfo import StepInfo
 from .trellis import Node
 from .utils import format_digest
 
-__all__ = ("RESERVED_ENV_VARS", "Step", "split_step_label", "truncate_output")
+__all__ = ("RESERVED_ENV_VARS", "Step", "truncate_output")
 
 
 logger = logging.getLogger(__name__)
 
 
-# Environment variables that StepUp sets for each step (see StepExecutor.run).
+# Environment variables that StepUp sets for each step (see Executor.run).
 # These are managed by StepUp and must not be amended as env dependencies or set as overrides.
 RESERVED_ENV_VARS = frozenset(
     {"HERE", "ROOT", "STEPUP_STEP_I", "STEPUP_STEP_INP_DIGEST", "STEPUP_STEP_NEED"}
@@ -237,12 +237,6 @@ UPDATE step SET _check_after = 1 FROM (
 """
 
 
-def split_step_label(label: str) -> tuple[str, Path]:
-    """Split a step label into command and workdir."""
-    parts = label.split("  # wd=", maxsplit=1)
-    return parts[0], Path(parts[1] if len(parts) == 2 else ".")
-
-
 @attrs.define
 class Step(Node):
     #
@@ -275,7 +269,7 @@ class Step(Node):
         **kwargs,  # workdir is consumed by create_label, not used here
     ):
         """Create extra information in the database about this node."""
-        self.con.execute(
+        self.db.execute(
             "INSERT OR REPLACE INTO step "
             "VALUES(:node, :state, :need, 1.0, '', :subshell, NULL, "
             ":safe, :check_safe, :implied_need, 1.0, :check_need)",
@@ -293,14 +287,14 @@ class Step(Node):
 
     def validate(self):
         """Validate extra information about this node is present in the database."""
-        row = self.con.execute("SELECT 1 FROM step WHERE node = ?", (self.i,)).fetchone()
+        row = self.db.execute("SELECT 1 FROM step WHERE node = ?", (self.i,)).fetchone()
         if row is None:
             raise ValueError(f"Step node {self.key()} has no row in the file table.")
 
     def format_properties(self) -> Iterator[tuple[str, str]]:
         """Iterate over key-value pairs that represent the properties of the node."""
         sql = "SELECT state, need, _implied_need FROM step WHERE node = ?"
-        state_id, need_id, implied_need_id = self.con.execute(sql, (self.i,)).fetchone()
+        state_id, need_id, implied_need_id = self.db.execute(sql, (self.i,)).fetchone()
         state = StepState(state_id)
         yield "state", state.name
         need = Need(need_id)
@@ -312,7 +306,7 @@ class Step(Node):
 
         sql = "SELECT name, amended FROM env_var WHERE node = ?"
         label = "using_env"
-        for env_var, amended in self.con.execute(sql, (self.i,)):
+        for env_var, amended in self.db.execute(sql, (self.i,)):
             yield label, f"{env_var} [amended]" if amended else env_var
             label = ""
 
@@ -321,11 +315,11 @@ class Step(Node):
             yield label, f"{name}={value}"
             label = ""
 
-        for row in self.con.execute("SELECT data FROM nglob_multi WHERE node = ?", (self.i,)):
+        for row in self.db.execute("SELECT data FROM nglob_multi WHERE node = ?", (self.i,)):
             ngm = pickle.loads(row[0])
             yield "ngm", f"{[ngs.pattern for ngs in ngm.nglob_singles]} {ngm.subs}"
 
-        for row in self.con.execute(
+        for row in self.db.execute(
             "SELECT name, units FROM step_resource WHERE node = ?", (self.i,)
         ):
             yield "resource", f"{row[0]}: {row[1]} units"
@@ -359,7 +353,7 @@ class Step(Node):
             product.detach()
         self.detach()
         self.clean()
-        self.con.execute("DELETE FROM node WHERE i = ?", (self.i,))
+        self.db.execute("DELETE FROM node WHERE i = ?", (self.i,))
 
     #
     # Getters and setters
@@ -373,41 +367,41 @@ class Step(Node):
         # TODO: make more efficient with executemany
         sql = "SELECT 1 FROM amended_dep WHERE i = ?"
         for idep, node_str in super()._dependencies_str(node_type, do_suppliers):
-            amended = self.con.execute(sql, (idep,)).fetchone() is not None
+            amended = self.db.execute(sql, (idep,)).fetchone() is not None
             yield idep, f"{node_str} [amended]" if amended else node_str
 
-    def get_command_workdir(self) -> tuple[str, Path]:
-        """Return the command and workdir of this step."""
-        return split_step_label(self.label)
+    @property
+    def command_workdir(self) -> tuple[str, Path]:
+        """The command and working directory of this step."""
+        parts = self.label.split("  # wd=", maxsplit=1)
+        return parts[0], Path(parts[1] if len(parts) == 2 else ".")
 
     def get_subshell(self) -> bool:
         """Return whether this step runs the command via a subshell."""
-        row = self.con.execute("SELECT subshell FROM step WHERE node = ?", (self.i,)).fetchone()
+        row = self.db.execute("SELECT subshell FROM step WHERE node = ?", (self.i,)).fetchone()
         return bool(row[0])
 
     def get_env_overrides(self) -> dict[str, str]:
         """Return the step-specific environment variable overrides."""
-        row = self.con.execute(
-            "SELECT env_overrides FROM step WHERE node = ?", (self.i,)
-        ).fetchone()
+        row = self.db.execute("SELECT env_overrides FROM step WHERE node = ?", (self.i,)).fetchone()
         return {} if row[0] is None else json.loads(row[0])
 
     def set_env_overrides(self, env_overrides: dict[str, str] | None):
         """Set the step-specific environment variable overrides."""
         value = None if not env_overrides else json.dumps(env_overrides)
-        self.con.execute("UPDATE step SET env_overrides = ? WHERE node = ?", (value, self.i))
+        self.db.execute("UPDATE step SET env_overrides = ? WHERE node = ?", (value, self.i))
 
     def get_need(self) -> Need:
         """Return the declared need of this step."""
-        row = self.con.execute("SELECT need FROM step WHERE node = ?", (self.i,)).fetchone()
+        row = self.db.execute("SELECT need FROM step WHERE node = ?", (self.i,)).fetchone()
         return Need(row[0])
 
     def get_state(self) -> StepState:
-        row = self.con.execute("SELECT state FROM step WHERE node = ?", (self.i,)).fetchone()
+        row = self.db.execute("SELECT state FROM step WHERE node = ?", (self.i,)).fetchone()
         return StepState(row[0])
 
     def set_state(self, state: StepState):
-        self.con.execute(
+        self.db.execute(
             "UPDATE step SET state = ?, _check_safe = 1 WHERE node = ?", (state.value, self.i)
         )
         if state in (StepState.SUCCEEDED, StepState.FAILED):
@@ -415,10 +409,10 @@ class Step(Node):
 
     def get_rescheduled_info(self) -> str:
         sql = "SELECT rescheduled_info FROM step WHERE node = ?"
-        return self.con.execute(sql, (self.i,)).fetchone()[0]
+        return self.db.execute(sql, (self.i,)).fetchone()[0]
 
     def add_rescheduled_info(self, info: str):
-        self.con.execute(
+        self.db.execute(
             "UPDATE step SET rescheduled_info = CASE rescheduled_info"
             " WHEN '' THEN :info ELSE (rescheduled_info || '\n' || :info) END"
             " WHERE node = :i",
@@ -426,10 +420,10 @@ class Step(Node):
         )
 
     def clear_rescheduled_info(self):
-        self.con.execute("UPDATE step SET rescheduled_info = '' WHERE node = ?", (self.i,))
+        self.db.execute("UPDATE step SET rescheduled_info = '' WHERE node = ?", (self.i,))
 
     def set_duration(self, duration: float):
-        self.con.execute(
+        self.db.execute(
             "UPDATE step SET duration = ?, _check_after = 1 WHERE node = ?",
             (duration, self.i),
         )
@@ -444,7 +438,7 @@ class Step(Node):
         Amended information is not included for consistency with
         the information that is available when defining a step.
         """
-        command, workdir = self.get_command_workdir()
+        command, workdir = self.command_workdir
         return StepInfo(
             command,
             workdir,
@@ -460,14 +454,14 @@ class Step(Node):
 
     def add_env_deps(self, env_deps):
         rows = [(self.i, name, os.getenv(name)) for name in env_deps]
-        self.con.executemany("INSERT OR REPLACE INTO env_var VALUES (?, ?, ?, 0)", rows)
+        self.db.executemany("INSERT OR REPLACE INTO env_var VALUES (?, ?, ?, 0)", rows)
 
     def amend_env_deps(self, env_deps):
         # Ignore variables that this step overrides via env_overrides: their value is fixed by the
         # step, so they are not external dependencies that can change between runs.
         env_overrides = self.get_env_overrides()
         rows = [(self.i, name, os.getenv(name)) for name in env_deps if name not in env_overrides]
-        self.con.executemany("INSERT OR IGNORE INTO env_var VALUES (?, ?, ?, 1)", rows)
+        self.db.executemany("INSERT OR IGNORE INTO env_var VALUES (?, ?, ?, 1)", rows)
 
     #
     # Iterators
@@ -546,7 +540,7 @@ class Step(Node):
             where += f" AND ({' OR '.join(where_states)})"
 
         sql += f" SELECT {', '.join(fields)} FROM relevant {join} {where}"
-        for row in self.con.execute(sql, data):
+        for row in self.db.execute(sql, data):
             record = [row[0]]
             i = 1
             if yield_state:
@@ -638,7 +632,7 @@ class Step(Node):
             if not amended:
                 sql += " NOT"
             sql += " amended = 1"
-        for row in self.con.execute(sql, (self.i,)):
+        for row in self.db.execute(sql, (self.i,)):
             if yield_amended:
                 yield row[0], bool(row[1])
             else:
@@ -646,7 +640,7 @@ class Step(Node):
 
     def nglob_multis(self) -> Iterator[NGlobMulti]:
         """Iterate of nglob_multis used by this step."""
-        for row in self.con.execute("SELECT data FROM nglob_multi WHERE node = ?", (self.i,)):
+        for row in self.db.execute("SELECT data FROM nglob_multi WHERE node = ?", (self.i,)):
             yield pickle.loads(row[0])
 
     #
@@ -678,27 +672,27 @@ class Step(Node):
         """
         # Drop amended suppliers.
         rows = list(
-            self.con.execute(
+            self.db.execute(
                 "SELECT dependency.i, node.i, node.label, node.kind FROM dependency "
                 "JOIN node ON node.i = supplier "
                 "JOIN amended_dep ON amended_dep.i = dependency.i WHERE consumer = ?",
                 (self.i,),
             )
         )
-        self.con.executemany("DELETE FROM amended_dep WHERE i = ?", ((row[0],) for row in rows))
+        self.db.executemany("DELETE FROM amended_dep WHERE i = ?", ((row[0],) for row in rows))
         self.del_suppliers(
             [self.graph.node_classes[kind](self.graph, i, label) for _, i, label, kind in rows]
         )
 
         # Drop amended environment variables
-        self.con.execute("DELETE FROM env_var WHERE node = ? AND amended = 1", (self.i,))
+        self.db.execute("DELETE FROM env_var WHERE node = ? AND amended = 1", (self.i,))
 
         # Drop nglob_multis
-        self.con.execute("DELETE FROM nglob_multi WHERE node = ?", (self.i,))
+        self.db.execute("DELETE FROM nglob_multi WHERE node = ?", (self.i,))
 
         # Drop amended consumers and detach the corresponding consumer nodes.
         records_consumer = list(
-            self.con.execute(
+            self.db.execute(
                 "SELECT dependency.i, consumer, label, kind FROM dependency "
                 "JOIN amended_dep ON amended_dep.i = dependency.i "
                 "JOIN node ON consumer = node.i "
@@ -707,7 +701,7 @@ class Step(Node):
             )
         )
         ideps_consumer = [(row[0],) for row in records_consumer]
-        self.con.executemany("DELETE FROM amended_dep WHERE i = ?", ideps_consumer)
+        self.db.executemany("DELETE FROM amended_dep WHERE i = ?", ideps_consumer)
         for _, i, label, kind in records_consumer:
             node = self.graph.node_classes[kind](self.graph, i, label)
             node.del_suppliers([self])
@@ -715,7 +709,7 @@ class Step(Node):
 
         # Detach steps created by this step
         sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'step'"
-        for i, label in self.con.execute(sql, (self.i,)):
+        for i, label in self.db.execute(sql, (self.i,)):
             step = Step(self.graph, i, label)
             step.detach()
 
@@ -725,13 +719,13 @@ class Step(Node):
             "WHERE creator = ? AND state in (?, ?)"
         )
         data = (self.i, FileState.STATIC.value, FileState.MISSING.value)
-        for i, label in self.con.execute(sql, data):
+        for i, label in self.db.execute(sql, data):
             file = File(self.graph, i, label)
             file.detach()
 
         # Detach static trees
         sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'st'"
-        for i, label in self.con.execute(sql, (self.i,)):
+        for i, label in self.db.execute(sql, (self.i,)):
             st = StaticTree(self.graph, i, label)
             st.detach()
 
@@ -741,7 +735,7 @@ class Step(Node):
             "WHERE creator = ? AND state = ?"
         )
         data = (self.i, FileState.BUILT.value)
-        for i, label in self.con.execute(sql, data):
+        for i, label in self.db.execute(sql, data):
             file = File(self.graph, i, label)
             file.mark_outdated()
 
@@ -790,7 +784,7 @@ class Step(Node):
 
     def get_hash(self) -> StepHash | None:
         sql = "SELECT inp_digest, inp_info, out_digest, out_info FROM step_hash WHERE node = ?"
-        row = self.con.execute(sql, (self.i,)).fetchone()
+        row = self.db.execute(sql, (self.i,)).fetchone()
         if row is None:
             return None
         return StepHash(row[0], pickle.loads(row[1]), row[2], pickle.loads(row[3]))
@@ -803,10 +797,10 @@ class Step(Node):
             step_hash.out_digest,
             pickle.dumps(step_hash.out_info),
         )
-        self.con.execute("INSERT OR REPLACE INTO step_hash VALUES (?, ?, ?, ?, ?)", data)
+        self.db.execute("INSERT OR REPLACE INTO step_hash VALUES (?, ?, ?, ?, ?)", data)
 
     def delete_hash(self):
-        self.con.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))
+        self.db.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))
 
     def store_output(self, kind: str, content: str, max_size: int) -> None:
         """Persist captured output of one stream for this step.
@@ -827,9 +821,9 @@ class Step(Node):
         """
         # Delete the existing row for this kind first: INSERT OR REPLACE cannot
         # remove a row whose content is now empty, so an explicit DELETE is needed.
-        self.con.execute("DELETE FROM step_output WHERE node = ? AND kind = ?", (self.i, kind))
+        self.db.execute("DELETE FROM step_output WHERE node = ? AND kind = ?", (self.i, kind))
         if content:
-            self.con.execute(
+            self.db.execute(
                 "INSERT INTO step_output VALUES (?, ?, ?)",
                 (self.i, kind, truncate_output(content, max_size)),
             )
@@ -837,12 +831,12 @@ class Step(Node):
     def get_output(self, kind: str) -> str:
         """Return the stored output for one stream, or an empty string if absent."""
         sql = "SELECT content FROM step_output WHERE node = ? AND kind = ?"
-        row = self.con.execute(sql, (self.i, kind)).fetchone()
+        row = self.db.execute(sql, (self.i, kind)).fetchone()
         return row[0] if row else ""
 
     def delete_outputs(self) -> None:
         """Remove all stored output rows for this step."""
-        self.con.execute("DELETE FROM step_output WHERE node = ?", (self.i,))
+        self.db.execute("DELETE FROM step_output WHERE node = ?", (self.i,))
 
     def record_subprocess(
         self,
@@ -872,13 +866,13 @@ class Step(Node):
         shell
             Whether `cmd` was executed via a shell (`subprocess.run(..., shell=True)`).
         """
-        # The per-step sequence number is assigned here, under the director's DBLock,
+        # The per-step sequence number is assigned here, under the director's DBSession,
         # so concurrent steps cannot collide and a re-run (which clears the rows first)
         # restarts the numbering at 0.
-        (seq,) = self.con.execute(
+        (seq,) = self.db.execute(
             "SELECT COALESCE(MAX(seq) + 1, 0) FROM step_subprocess WHERE node = ?", (self.i,)
         ).fetchone()
-        self.con.execute(
+        self.db.execute(
             "INSERT INTO step_subprocess VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
                 self.i,
@@ -906,7 +900,7 @@ class Step(Node):
             "SELECT seq, cmd, workdir, env_overrides, returncode, shell FROM step_subprocess "
             "WHERE node = ? ORDER BY seq"
         )
-        for seq, cmd, workdir, env_overrides, returncode, shell in self.con.execute(sql, (self.i,)):
+        for seq, cmd, workdir, env_overrides, returncode, shell in self.db.execute(sql, (self.i,)):
             yield (
                 seq,
                 cmd,
@@ -918,18 +912,18 @@ class Step(Node):
 
     def delete_subprocesses(self) -> None:
         """Remove all recorded subprocess rows for this step."""
-        self.con.execute("DELETE FROM step_subprocess WHERE node = ?", (self.i,))
+        self.db.execute("DELETE FROM step_subprocess WHERE node = ?", (self.i,))
 
     def set_resources(self, resources: dict[str, int] | None):
-        self.con.execute("DELETE FROM step_resource WHERE node = ?", (self.i,))
+        self.db.execute("DELETE FROM step_resource WHERE node = ?", (self.i,))
         if resources is None:
             return
         rows = [(self.i, name, units) for name, units in resources.items()]
-        self.con.executemany("INSERT INTO step_resource VALUES (?, ?, ?)", rows)
+        self.db.executemany("INSERT INTO step_resource VALUES (?, ?, ?)", rows)
 
     def register_nglob(self, nglob_multi):
         data = (self.i, pickle.dumps(nglob_multi))
-        self.con.execute("INSERT INTO nglob_multi(node, data) VALUES (?, ?)", data)
+        self.db.execute("INSERT INTO nglob_multi(node, data) VALUES (?, ?)", data)
 
     #
     # Watch phase
@@ -974,7 +968,7 @@ class Step(Node):
         super().detach()
         self._check_with_products()
         # Supplier steps of the detached subtree lost a consumer, so their metadata is stale.
-        self.con.execute(RECURSIVE_CHECK_AFTER_SUPPLIERS, (self.i,))
+        self.db.execute(RECURSIVE_CHECK_AFTER_SUPPLIERS, (self.i,))
 
     def recycle(self, new_creator: Node):
         """Reconnect the node to a new creator node, preserving its properties."""
@@ -983,7 +977,7 @@ class Step(Node):
 
     def _check_with_products(self):
         """Flag if the _check_safe and _check_after fields of this step and its products."""
-        self.con.execute(RECURSIVE_CHECK_WITH_PRODUCTS, (self.i,))
+        self.db.execute(RECURSIVE_CHECK_WITH_PRODUCTS, (self.i,))
 
     def add_supplier(self, supplier: Node) -> int:
         """Add a supplier-consumer relation."""
@@ -999,4 +993,4 @@ class Step(Node):
     def _check_simple(self):
         """Flag if the _check_after field."""
         # Only _check_after is relevant
-        self.con.execute("UPDATE step SET _check_after = 1 WHERE node = ?", (self.i,))
+        self.db.execute("UPDATE step SET _check_after = 1 WHERE node = ?", (self.i,))

@@ -26,8 +26,9 @@ import attrs
 from .enums import FileState, Need, StepState
 from .hash import FileHash
 from .job import Job, RunJob, ValidateAmendedJob
+from .sqlite3 import DBSession
 from .step import Step
-from .utils import DBLock, parse_resources
+from .utils import parse_resources
 from .workflow import Workflow
 
 logger = logging.getLogger(__name__)
@@ -365,7 +366,7 @@ class Scheduler:
     workflow: Workflow = attrs.field()
     """The workflow that the scheduler is responsible for."""
 
-    dblock: DBLock = attrs.field(kw_only=True)
+    db: DBSession = attrs.field(kw_only=True)
     """Lock for workflow database access."""
 
     use_duration: bool = attrs.field(kw_only=True, default=False)
@@ -379,15 +380,14 @@ class Scheduler:
     #
 
     async def set_available_resources(self, resources: str | None):
-        async with self.dblock:
-            con = self.workflow.con
-            con.execute(
+        async with self.db:
+            self.workflow.db.execute(
                 "CREATE TEMPORARY TABLE IF NOT EXISTS available_resource "
                 "(name TEXT PRIMARY KEY, units INTEGER NOT NULL)"
             )
-            con.execute("DELETE FROM available_resource")
+            self.workflow.db.execute("DELETE FROM available_resource")
             if resources is not None:
-                con.executemany(
+                self.workflow.db.executemany(
                     "INSERT INTO available_resource VALUES (?, ?)",
                     parse_resources(resources).items(),
                 )
@@ -406,7 +406,7 @@ class Scheduler:
         # changes to the database are correlated.
         # Allowing database changes in between would result
         # in potential race conditions and inconsistencies.
-        async with self.dblock:
+        async with self.db:
             # A) Perform metadata updates for all steps whose changes have not been propagated
             #    into the metadata columns yet.
 
@@ -441,45 +441,45 @@ class Scheduler:
 
     def _update_meta_safe(self):
         """Update the "safe" metadata fields where needed."""
-        con = self.workflow.con
-        cur = con.execute(RECURSIVE_UPDATE_SAFE)
+        db = self.workflow.db
+        cur = db.execute(RECURSIVE_UPDATE_SAFE)
         logger.debug(f"Updated {cur.rowcount} _safe metadata field(s) for steps")
-        cur = con.execute("UPDATE step SET _check_safe = 0 WHERE _check_safe = 1")
+        cur = db.execute("UPDATE step SET _check_safe = 0 WHERE _check_safe = 1")
         logger.debug(f"Updated {cur.rowcount} _check_safe metadata field(s) for steps")
 
     def _update_meta_after(self):
         """Update the "after" metadata fields where needed."""
-        con = self.workflow.con
+        db = self.workflow.db
         # Not using executescript to preserve atomicity of the transaction.
-        con.execute(INIT_CHECK_AFTER)
-        con.execute(EMPTY_CHECK_AFTER)
-        con.execute(PRUNE_DETACHED_CHECK_AFTER)
-        con.execute(PRUNE_REDUNDANT_CHECK_AFTER)
-        ncheck = con.execute("SELECT COUNT(*) FROM check_after").fetchone()[0]
+        db.execute(INIT_CHECK_AFTER)
+        db.execute(EMPTY_CHECK_AFTER)
+        db.execute(PRUNE_DETACHED_CHECK_AFTER)
+        db.execute(PRUNE_REDUNDANT_CHECK_AFTER)
+        ncheck = db.execute("SELECT COUNT(*) FROM check_after").fetchone()[0]
         first = True
         while ncheck > 0:
             logger.debug(f"Found {ncheck} suppliers to update (first={first})")
-            # for row in con.execute("SELECT i FROM check_after"):
+            # for row in db.execute("SELECT i FROM check_after"):
             #     logger.debug("  Step %s", row[0])
             # The first iteration is different: irrespective of having changed metadata fields of
             # the initial _check_after steps, we need to propagate at least once.
-            con.execute(DROP_UPDATE_CHECK_AFTER)
-            con.execute(INIT_UPDATE_CHECK_AFTER)
-            con.execute(SELECT_UPDATE_CHECK_AFTER, {"first": first})
-            # for row in con.execute("SELECT * FROM update_after"):
+            db.execute(DROP_UPDATE_CHECK_AFTER)
+            db.execute(INIT_UPDATE_CHECK_AFTER)
+            db.execute(SELECT_UPDATE_CHECK_AFTER, {"first": first})
+            # for row in db.execute("SELECT * FROM update_after"):
             #     logger.debug("  Updating step %s", str(row))
-            con.execute(APPLY_UPDATE_CHECK_AFTER)
-            con.execute(EMPTY_CHECK_AFTER)
-            con.execute(PROPAGATE_UPDATE_CHECK_AFTER)
-            ncheck = con.execute("SELECT COUNT(*) FROM check_after").fetchone()[0]
+            db.execute(APPLY_UPDATE_CHECK_AFTER)
+            db.execute(EMPTY_CHECK_AFTER)
+            db.execute(PROPAGATE_UPDATE_CHECK_AFTER)
+            ncheck = db.execute("SELECT COUNT(*) FROM check_after").fetchone()[0]
             first = False
         logger.debug("Finished updating 'after' metadata fields")
-        con.execute(DROP_CHECK_AFTER)
-        cur = con.execute("UPDATE step SET _check_after = 0 WHERE _check_after = 1")
+        db.execute(DROP_CHECK_AFTER)
+        cur = db.execute("UPDATE step SET _check_after = 0 WHERE _check_after = 1")
         logger.debug(f"Updated {cur.rowcount} _check_after metadata field(s) for steps")
 
     def _get_step(self, sql: str) -> Step | None:
-        row = self.workflow.con.execute(sql).fetchone()
+        row = self.workflow.db.execute(sql).fetchone()
         if row is None:
             return None
         i, label = row
@@ -489,8 +489,8 @@ class Scheduler:
         """Derive a Job instance for a step that is ready to be queued."""
         amended_inputs_ready = True
         inp_hashes = []
-        con = self.workflow.con
-        cur = con.execute(SELECT_INPUTS, (step.i,))
+        db = self.workflow.db
+        cur = db.execute(SELECT_INPUTS, (step.i,))
         for path, detached, fs_value, is_amended, digest, mode, mtime, size, inode in cur:
             # All exception cases handled in this loop should have been filtered out
             # by the SELECT_INPUTS query.
@@ -555,19 +555,19 @@ class Scheduler:
     async def job_completed(self, job):
         """Handle a completed job, which does not do anything for the moment."""
         if self.use_duration:
-            async with self.dblock:
+            async with self.db:
                 job.step.set_duration(job.duration())
         logger.info("Done %s", job.name)
 
     #
-    # Information gathering (must be wrapped in dblock by caller)
+    # Information gathering (must be wrapped in db by caller)
     #
 
     def get_resource_counts(self) -> dict[str, dict[str, int]]:
         """Return used and available resource counts."""
-        con = self.workflow.con
+        db = self.workflow.db
         result = {}
-        for row in con.execute(SELECT_RESOURCE_COUNTS):
+        for row in db.execute(SELECT_RESOURCE_COUNTS):
             name, used, available = row
             result[name] = {"used": used, "available": available}
         return result
@@ -590,7 +590,7 @@ class Scheduler:
             - `unsafe`: the step's creator is not RUNNING or SUCCEEDED
         """
         results = []
-        cur = self.workflow.con.execute(SELECT_PENDING_REASONS)
+        cur = self.workflow.db.execute(SELECT_PENDING_REASONS)
         for i, label, safe, rescheduled, unavailable_inputs, resource_issue in cur:
             step = Step(self.workflow, i, label)
             if not safe:

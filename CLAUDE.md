@@ -158,10 +158,10 @@ StepUp runs as two process types:
   It exposes an RPC server over a Unix socket (`.stepup/sockets/director`).
   Manages `Builder`, `Watcher`, and `Scheduler`.
   Steps run *inside* the director's event loop as asyncio tasks.
-- **StepExecutor** (`executor.py`):
+- **Executor** (`executor.py`):
   Runs each step as an asyncio task. Commands run as asyncio subprocesses (shell / direct
   exec) or in a forkserver child (Python scripts and console-script entry points).
-  A single `StepExecutor` instance serves all concurrent steps; `--jobs` is the
+  A single `Executor` instance serves all concurrent steps; `--jobs` is the
   concurrency limit. Step child processes call back into the director over its RPC socket
   (e.g. `amend()`, `step()`).
 - **Hashing** (`hasher.py`):
@@ -188,7 +188,7 @@ The core data structure is a combined **provenance** and **dependency** graph st
   Static tree node, used for inputs that are automatically declared as static (e.g., source files).
 
 All graph mutations happen inside SQLite transactions.
-The `DBLock` in `utils.py` serializes writes.
+The `DBSession` in `utils.py` serializes writes.
 
 #### Database schema versioning
 
@@ -248,8 +248,8 @@ circular dependencies at module load time.
 1. `Scheduler` (`scheduler.py`) picks the highest-priority runnable step
    from the `Workflow` and creates a corresponding `Job` instance.
 2. `Builder` (`builder.py`) requests a runnable job from the scheduler and, up to the
-   concurrency limit, starts it as an asyncio task on the shared `StepExecutor`.
-3. `StepExecutor` (`executor.py`) runs the step's command (subprocess or forkserver child),
+   concurrency limit, starts it as an asyncio task on the shared `Executor`.
+3. `Executor` (`executor.py`) runs the step's command (subprocess or forkserver child),
    which may produce more RPC calls back to the director.
 4. The executor computes file hashes in a separate process and updates
    `FileState` and `StepState` in the workflow.

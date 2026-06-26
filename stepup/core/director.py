@@ -48,11 +48,10 @@ from .nglob import NGlobMulti
 from .reporter import ReporterClient
 from .rpc import allow_rpc, serve_socket_rpc
 from .scheduler import Scheduler
-from .sqlite3 import connect
+from .sqlite3 import DBSession
 from .startup import startup_from_db
 from .step import Step
 from .stepinfo import StepInfo
-from .utils import DBLock
 from .watcher import WATCHER_AVAILABLE, Watcher
 from .workflow import Workflow
 
@@ -71,10 +70,15 @@ def main():
         if args.preload_modules:
             preload.extend(m.strip() for m in args.preload_modules.split(",") if m.strip())
         mp_ctx.set_forkserver_preload(preload)
-    asyncio.run(async_main(args, mp_ctx))
+    with DBSession.open(GRAPH_DB) as db:
+        asyncio.run(async_main(args, db, mp_ctx))
 
 
-async def async_main(args: argparse.Namespace, mp_ctx=None):
+async def async_main(
+    args: argparse.Namespace,
+    db: DBSession,
+    mp_ctx: multiprocessing.context.BaseContext | None = None,
+):
     logging.basicConfig(
         format="%(asctime)s  %(levelname)8s  %(name)24s  ::  %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
@@ -113,6 +117,7 @@ async def async_main(args: argparse.Namespace, mp_ctx=None):
                 args.watch_first,
                 args.resources,
                 args.max_output_size,
+                db,
                 mp_ctx=mp_ctx,
             )
         except Exception as exc:
@@ -261,7 +266,8 @@ async def serve(
     do_watch: bool,
     do_watch_first: bool,
     available_resources: str | None,
-    max_output_size: int = 0,
+    max_output_size: int,
+    db: DBSession,
     mp_ctx=None,
 ) -> ReturnCode:
     """Server program.
@@ -321,25 +327,20 @@ async def serve(
     }
 
     # Create basic components
-    con = connect(GRAPH_DB)
-    dblock = DBLock(con)
     dir_queue = asyncio.Queue() if do_watch else None
-    workflow = Workflow(con, dir_queue=dir_queue)
-    scheduler = Scheduler(
-        workflow,
-        dblock=dblock,
-        use_duration=use_duration,
-    )
+    workflow = Workflow(db, dir_queue=dir_queue)
+    await workflow.initialize()
+    scheduler = Scheduler(workflow, db=db, use_duration=use_duration)
     if available_resources is not None:
         await reporter("DIRECTOR", f"Setting available resources: {available_resources}")
     await scheduler.set_available_resources(available_resources)
-    watcher = Watcher(workflow, dblock, reporter, dir_queue) if do_watch else None
+    watcher = Watcher(workflow, db, reporter, dir_queue) if do_watch else None
     builder = Builder(
         njob=njob,
         watcher=watcher,
         scheduler=scheduler,
         workflow=workflow,
-        dblock=dblock,
+        db=db,
         reporter=reporter,
         show_perf=show_perf,
         explain_rerun=explain_rerun,
@@ -350,7 +351,7 @@ async def serve(
     )
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(
-        scheduler, workflow, dblock, reporter, builder, watcher, stop_event
+        scheduler, workflow, db, reporter, builder, watcher, stop_event
     )
 
     # Initialize the workflow
@@ -359,14 +360,17 @@ async def serve(
         await reporter("STARTUP", "(Re)initialized boot script")
         builder.resume.set()
     else:
-        await startup_from_db(workflow, dblock, reporter, builder)
+        await startup_from_db(workflow, db, reporter, builder)
 
     # Start tasks and wait for them to complete
     exit_event = asyncio.Event()
     rpc_server = asyncio.create_task(
         serve_socket_rpc(director_handler, director_socket_path, exit_event)
     )
-    coroutines = [builder.loop(stop_event)]
+    coroutines = [
+        builder.loop(stop_event),
+        db.database_maintenance_loop(stop_event),
+    ]
     if watcher is not None:
         coroutines.append(watcher.loop(stop_event))
         if do_watch_first:
@@ -400,7 +404,7 @@ def _check_plan(path_plan: str):
 class DirectorHandler:
     scheduler: Scheduler = attrs.field()
     workflow: Workflow = attrs.field()
-    dblock: DBLock = attrs.field()
+    db: DBSession = attrs.field()
     reporter: ReporterClient = attrs.field()
     builder: Builder = attrs.field()
     watcher: Watcher | None = attrs.field()
@@ -419,7 +423,7 @@ class DirectorHandler:
         initialized
             Whether the boot script was (re)initialized.
         """
-        async with self.dblock:
+        async with self.db:
             return self.workflow.initialize_boot()
 
     @allow_rpc
@@ -436,7 +440,7 @@ class DirectorHandler:
         we can reasonably safely assume that the file contents have not changed.
         In this case, the hash calculation is skipped and the old hash is reused.
         """
-        async with self.dblock:
+        async with self.db:
             creator = self.workflow.node(Step, creator_i)
             return self.workflow.declare_missing(creator, paths)
 
@@ -447,7 +451,7 @@ class DirectorHandler:
         """Register a glob patterns to be watched."""
         ngm = NGlobMulti.from_patterns(patterns, subs)
         ngm.extend(paths)
-        async with self.dblock:
+        async with self.db:
             creator = self.workflow.node(Step, creator_i)
             self.workflow.register_nglob(creator, ngm)
 
@@ -461,7 +465,7 @@ class DirectorHandler:
             A list of (path, file_hash) tuples to check and make static if valid.
         """
         to_check = []
-        async with self.dblock:
+        async with self.db:
             creator = self.workflow.node(Step, creator_i)
             for path in paths:
                 to_check.extend(self.workflow.register_static_tree(creator, path))
@@ -477,7 +481,7 @@ class DirectorHandler:
             A list of (path, file_hash) tuples that have been updated and confirmed
             on the client side.
         """
-        async with self.dblock:
+        async with self.db:
             self.workflow.update_file_hashes(checked, HashUpdateCause.CONFIRMED)
 
     @allow_rpc
@@ -506,7 +510,7 @@ class DirectorHandler:
         to_check
             A list of (path, file_hash) tuples to check and make static if valid.
         """
-        async with self.dblock:
+        async with self.db:
             creator = self.workflow.node(Step, creator_i)
             return self.workflow.define_step(
                 creator,
@@ -547,7 +551,7 @@ class DirectorHandler:
             If some of the static tree matches cannot be confirmed,
             the caller has to change `keep_going` to `False`.
         """
-        async with self.dblock:
+        async with self.db:
             step = self.workflow.node(Step, step_i)
             return self.workflow.amend_step(
                 step,
@@ -560,7 +564,7 @@ class DirectorHandler:
     @allow_rpc
     async def reschedule_step(self, step_i: int, reason: str):
         """Reschedule a step for the given reason."""
-        async with self.dblock:
+        async with self.db:
             step = self.workflow.node(Step, step_i)
             step.add_rescheduled_info(reason)
 
@@ -581,7 +585,7 @@ class DirectorHandler:
         This is an RPC wrapper for `Step.record_subprocess`.
         The recorded metadata is informative for archival and debugging, not authoritative.
         """
-        async with self.dblock:
+        async with self.db:
             step = self.workflow.node(Step, step_i)
             step.record_subprocess(cmd, workdir, env_overrides, returncode, shell)
 
@@ -591,7 +595,7 @@ class DirectorHandler:
 
         For the sake of consistency, amended step arguments are not included.
         """
-        async with self.dblock:
+        async with self.db:
             step = self.workflow.node(Step, step_i)
             return step.get_step_info()
 
@@ -646,7 +650,7 @@ class DirectorHandler:
     @allow_rpc
     async def graph(self, prefix: str):
         """Write out the graph in text format."""
-        async with self.dblock:
+        async with self.db:
             with open(f"{prefix}.txt", "w") as fh:
                 print(self.workflow.format_str(), file=fh)
             with open(f"{prefix}_provenance.dot", "w") as fh:
@@ -662,7 +666,7 @@ class DirectorHandler:
         -------
         status
             A dictionary with the number of steps in each state and the running steps"""
-        async with self.dblock:
+        async with self.db:
             return {
                 "step_counts": self.workflow.get_step_counts(),
                 "file_counts": self.workflow.get_file_counts(),
@@ -683,7 +687,7 @@ class DirectorHandler:
         """
         if self.watcher is None or not self.watcher.active.is_set():
             return
-        async with self.dblock:
+        async with self.db:
             # Make all failed steps pending again for rerun
             for step in self.workflow.steps(StepState.FAILED):
                 step.mark_pending()

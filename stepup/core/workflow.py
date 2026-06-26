@@ -142,7 +142,7 @@ class Workflow(Trellis):
         data = (FileState.BUILT.value, FileState.OUTDATED.value, FileState.STATIC.value)
         files = []
         file_hashes = []
-        for i, file_state_value, path in self.con.execute(sql, data):
+        for i, file_state_value, path in self.db.execute(sql, data):
             file_state = FileState(file_state_value)
             if strict:
                 raise GraphError(f"{file_state.name} file without hash: {path}")
@@ -164,7 +164,7 @@ class Workflow(Trellis):
         )
         data = (StepState.SUCCEEDED.value, FileState.BUILT.value, FileState.VOLATILE.value)
         to_mark_pending = set()
-        for file_state_value, flabel, si, slabel in self.con.execute(sql, data):
+        for file_state_value, flabel, si, slabel in self.db.execute(sql, data):
             file_state = FileState(file_state_value)
             if strict:
                 raise GraphError(
@@ -181,7 +181,7 @@ class Workflow(Trellis):
             "WHERE step.state = ? AND step.rescheduled_info != '' AND NOT node.detached"
         )
         data = (StepState.SUCCEEDED.value,)
-        for si, slabel in self.con.execute(sql, data):
+        for si, slabel in self.db.execute(sql, data):
             if strict:
                 raise GraphError(f"Rescheduled succeeded step: step={slabel}")
             logger.error("Rescheduled succeeded step: step=%s", slabel)
@@ -236,7 +236,7 @@ class Workflow(Trellis):
             "  node [penwidth=0 colorscheme=set39 style=filled fillcolor=5]",
             f"  edge [color=dimgray arrowhead={arrowhead}]",
         ]
-        for i, kind, label in self._con.execute(node_sql):
+        for i, kind, label in self.db.execute(node_sql):
             if label == "":
                 label = kind
             label = json.dumps(textwrap.fill(label, 20))
@@ -249,7 +249,7 @@ class Workflow(Trellis):
             else:
                 props = " shape=hexagon fillcolor=6"
             lines.append(f"  {i} [label={label}{props}]")
-        for i, j in self.con.execute(edge_sql):
+        for i, j in self.db.execute(edge_sql):
             lines.append(f"  {i} -> {j}")
         lines.append("}")
         return "\n".join(lines)
@@ -278,7 +278,7 @@ class Workflow(Trellis):
             "SELECT file.state, count(*) FROM node JOIN file ON node.i = file.node "
             "WHERE NOT node.detached GROUP BY file.state"
         )
-        return {FileState(value): count for value, count in self.con.execute(sql)}
+        return {FileState(value): count for value, count in self.db.execute(sql)}
 
     def get_step_counts(self) -> dict[StepState, int]:
         """Return counters for StepState."""
@@ -286,14 +286,14 @@ class Workflow(Trellis):
             "SELECT step.state, count(*) FROM node JOIN step ON node.i = step.node "
             "WHERE NOT node.detached GROUP BY step.state"
         )
-        return {StepState(value): count for value, count in self.con.execute(sql)}
+        return {StepState(value): count for value, count in self.db.execute(sql)}
 
     def steps(self, state: StepState) -> Iterator[Step]:
         sql = (
             "SELECT i, label FROM node JOIN step ON node.i = step.node "
             "WHERE state = ? AND NOT detached"
         )
-        for i, label in self.con.execute(sql, (state.value,)):
+        for i, label in self.db.execute(sql, (state.value,)):
             yield Step(self, i, label)
 
     def detached_inp_paths(self) -> Iterator[str, FileState]:
@@ -304,7 +304,7 @@ class Workflow(Trellis):
             "AND EXISTS (SELECT 1 FROM dependency JOIN node ON node.i = dependency.consumer "
             "WHERE supplier = file.node AND not node.detached)"
         )
-        for row in self.con.execute(sql):
+        for row in self.db.execute(sql):
             yield row[0], FileState(row[1])
 
     def missing_paths(self) -> Iterator[str]:
@@ -313,7 +313,7 @@ class Workflow(Trellis):
             "SELECT label FROM node JOIN file ON node.i = file.node "
             "WHERE state = ? AND NOT detached"
         )
-        for row in self.con.execute(sql, (FileState.MISSING.value,)):
+        for row in self.db.execute(sql, (FileState.MISSING.value,)):
             yield row[0]
 
     #
@@ -353,7 +353,7 @@ class Workflow(Trellis):
             "label = substr(?, 1, length(label))"
         )
         path = Path(path) / ""
-        for i, label in self.con.execute(sql, (path,)):
+        for i, label in self.db.execute(sql, (path,)):
             srs.append(StaticTree(self, i, label))
         if len(srs) > 1:
             raise GraphError(f"Multiple static trees match: {path}")
@@ -405,7 +405,7 @@ class Workflow(Trellis):
             if state == FileState.MISSING:
                 deferred.append(file)
         new_relation = (
-            self.con.execute(
+            self.db.execute(
                 "SELECT 1 FROM dependency WHERE supplier = ? AND consumer = ?", (file.i, node.i)
             ).fetchone()
             is None
@@ -513,11 +513,11 @@ class Workflow(Trellis):
             These must be sent back to the client where the hashes can be checked
             and which then calls `confirm_hashes` with the updated hashes.
         """
-        self.con.execute("DROP TABLE IF EXISTS temp.missing")
+        self.db.execute("DROP TABLE IF EXISTS temp.missing")
         try:
-            self.con.execute("CREATE TABLE temp.missing(node INTEGER PRIMARY KEY)")
+            self.db.execute("CREATE TABLE temp.missing(node INTEGER PRIMARY KEY)")
             sql = "INSERT INTO temp.missing VALUES (?)"
-            self.con.executemany(sql, ((file.i,) for file in deferred))
+            self.db.executemany(sql, ((file.i,) for file in deferred))
             sql = (
                 "SELECT label, digest, mode, mtime, size, inode "
                 "FROM temp.missing "
@@ -526,10 +526,10 @@ class Workflow(Trellis):
             )
             return [
                 (path, FileHash(digest, mode, mtime, size, inode))
-                for path, digest, mode, mtime, size, inode in self.con.execute(sql)
+                for path, digest, mode, mtime, size, inode in self.db.execute(sql)
             ]
         finally:
-            self.con.execute("DROP TABLE IF EXISTS temp.missing")
+            self.db.execute("DROP TABLE IF EXISTS temp.missing")
 
     def get_file_hashes(self, paths: Collection[str]) -> list[tuple[str, FileHash]]:
         """Get the hashes of existing files.
@@ -544,20 +544,20 @@ class Workflow(Trellis):
         file_hashes
             A list of `(path, file_hash)` tuples.
         """
-        self.con.execute("DROP TABLE IF EXISTS temp.paths")
+        self.db.execute("DROP TABLE IF EXISTS temp.paths")
         try:
-            self.con.execute("CREATE TABLE temp.paths(path TEXT PRIMARY KEY)")
-            self.con.executemany("INSERT INTO temp.paths VALUES (?)", ((path,) for path in paths))
+            self.db.execute("CREATE TABLE temp.paths(path TEXT PRIMARY KEY)")
+            self.db.executemany("INSERT INTO temp.paths VALUES (?)", ((path,) for path in paths))
             sql = (
                 "SELECT label, digest, mode, mtime, size, inode FROM node "
                 "JOIN file ON file.node = node.i JOIN temp.paths ON label = temp.paths.path"
             )
             return [
                 (path, FileHash(digest, mode, mtime, size, inode))
-                for path, digest, mode, mtime, size, inode in self.con.execute(sql)
+                for path, digest, mode, mtime, size, inode in self.db.execute(sql)
             ]
         finally:
-            self.con.execute("DROP TABLE IF EXISTS temp.paths")
+            self.db.execute("DROP TABLE IF EXISTS temp.paths")
 
     def update_file_hashes(
         self, file_hashes: Collection[tuple[str, FileHash]], cause: HashUpdateCause
@@ -578,10 +578,10 @@ class Workflow(Trellis):
 
         # Efficiently get corresponding node_index and state tuples.
         file_hashes = dict(file_hashes)
-        self.con.execute("DROP TABLE IF EXISTS temp.updated")
+        self.db.execute("DROP TABLE IF EXISTS temp.updated")
         try:
-            self.con.execute("CREATE TABLE temp.updated(path TEXT PRIMARY KEY) WITHOUT ROWID")
-            self.con.executemany(
+            self.db.execute("CREATE TABLE temp.updated(path TEXT PRIMARY KEY) WITHOUT ROWID")
+            self.db.executemany(
                 "INSERT INTO temp.updated VALUES (?)",
                 ((path,) for path in file_hashes),
             )
@@ -591,10 +591,10 @@ class Workflow(Trellis):
             )
             records = [
                 (i, path, file_hashes[path], FileState(value))
-                for i, path, value in self.con.execute(sql)
+                for i, path, value in self.db.execute(sql)
             ]
         finally:
-            self.con.execute("DROP TABLE IF EXISTS temp.updated")
+            self.db.execute("DROP TABLE IF EXISTS temp.updated")
 
         if len(records) != len(file_hashes):
             raise AssertionError(
@@ -681,7 +681,7 @@ class Workflow(Trellis):
                 f"Inconsistent number of file hash updates: "
                 f"expected={len(file_hashes)} actual={len(new_states_hashes)}"
             )
-        self.con.executemany(
+        self.db.executemany(
             "UPDATE file SET state = ?, digest = ?, mode = ?, mtime = ?, size = ?, inode = ? "
             "WHERE node = ?",
             (
@@ -891,7 +891,7 @@ class Workflow(Trellis):
         # We have a match!
 
         # Update the need, subshell values and _check_* flags.
-        self.con.execute(
+        self.db.execute(
             "UPDATE step SET need = ?, subshell = ?, _check_safe = 1, _check_after = 1 "
             "WHERE node = ?",
             (need.value, int(subshell), old_step.i),
@@ -903,7 +903,7 @@ class Workflow(Trellis):
         old_step.set_env_overrides(env_overrides)
 
         # If inputs of the recreated steps are AWAITED or OUTDATED, these steps must be rescheduled.
-        for i, label in self.con.execute(RECURSE_OUTDATED_STEPS, (old_step.i,)):
+        for i, label in self.db.execute(RECURSE_OUTDATED_STEPS, (old_step.i,)):
             step = Step(self, i, label)
             step.mark_pending()
 
@@ -912,7 +912,7 @@ class Workflow(Trellis):
         # in a follow-up call to `confirm_hashes`.
         deferred = {
             File(self, i, label)
-            for i, label in self.con.execute(RECURSE_DEFERRED_INPUTS, (old_step.i,))
+            for i, label in self.db.execute(RECURSE_DEFERRED_INPUTS, (old_step.i,))
         }
 
         logger.info("Reuse detached step: %s", old_step.label)
@@ -1003,7 +1003,7 @@ class Workflow(Trellis):
         return len(unavailable) == 0, self._build_to_check(deferred)
 
     def _amend_dep(self, idep):
-        self.con.execute("INSERT INTO amended_dep VALUES (?)", (idep,))
+        self.db.execute("INSERT INTO amended_dep VALUES (?)", (idep,))
 
     def register_nglob(self, step: Step, nglob_multi: NGlobMulti):
         if not isinstance(step, Step):
@@ -1039,7 +1039,7 @@ class Workflow(Trellis):
             raise GraphError(f"Static tree is a subdirectory of an existing static tree: {path}")
         sql = "SELECT 1 FROM node WHERE kind = 'st' AND NOT detached AND label LIKE ? ESCAPE '\\'"
         pattern = f"{escape_like_pattern(path)}%"
-        if self.con.execute(sql, (pattern,)).fetchone() is not None:
+        if self.db.execute(sql, (pattern,)).fetchone() is not None:
             raise GraphError(
                 f"Static tree is a parent directory of an existing static tree: {path}"
             )
@@ -1052,7 +1052,7 @@ class Workflow(Trellis):
             f"WHERE state != {FileState.MISSING.value} "
             "AND node.label LIKE ?"
         )
-        matching_paths = [path for (path,) in self._con.execute(sql, (pattern,))]
+        matching_paths = [path for (path,) in self.db.execute(sql, (pattern,))]
         return self.declare_missing(st, matching_paths)
 
     def clean(self):
@@ -1082,7 +1082,7 @@ class Workflow(Trellis):
             "node.label LIKE ? AND NOT detached"
         )
         pattern = f"{escape_like_pattern(parent)}%"
-        for (path,) in self.con.execute(sql, (pattern,)):
+        for (path,) in self.db.execute(sql, (pattern,)):
             yield path
 
     def nglob_multis(self, yield_step: bool = False) -> Iterator[NGlobMulti]:
@@ -1090,7 +1090,7 @@ class Workflow(Trellis):
             "SELECT node.i, label, kind, nglob_multi.i, data "
             "FROM node JOIN nglob_multi ON node.i = nglob_multi.node"
         )
-        for node_i, label, kind, ngm_i, data in self._con.execute(sql):
+        for node_i, label, kind, ngm_i, data in self.db.execute(sql):
             if kind != "step":
                 raise ValueError("Only steps can define nglob_multis")
             nglob_multi = pickle.loads(data)
@@ -1117,5 +1117,5 @@ class Workflow(Trellis):
             if evolved is not None:
                 step.delete_hash()
                 data = (pickle.dumps(evolved), i)
-                self.con.execute("UPDATE nglob_multi SET data = ? WHERE i = ?", data)
+                self.db.execute("UPDATE nglob_multi SET data = ? WHERE i = ?", data)
                 step.mark_pending()

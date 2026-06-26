@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 import attrs
 
 if TYPE_CHECKING:
-    from .executor import StepExecutor
+    from .executor import Executor
     from .file import FileHash
     from .step import Step, StepHash
 
@@ -57,7 +57,7 @@ class Job:
         """A human-readable name for the job."""
         raise NotImplementedError
 
-    def coro(self, executor: "StepExecutor"):
+    def coro(self, executor: "Executor"):
         """Return a coroutine, of which the builder will make an asyncio.Task."""
         raise NotImplementedError
 
@@ -80,7 +80,7 @@ class ValidateAmendedJob(Job):
     def name(self) -> str:
         return f"VALIDATE: {self.step.label}"
 
-    def coro(self, executor: "StepExecutor"):
+    def coro(self, executor: "Executor"):
         return executor.validate_amended_job(
             self.step, self.inp_hashes, self.env_deps, self.step_hash
         )
@@ -99,7 +99,7 @@ class RunJob(Job):
         prefix = "EXECUTE" if self.step_hash is None else "SKIP"
         return f"{prefix}: {self.step.label}"
 
-    def coro(self, executor: "StepExecutor"):
+    def coro(self, executor: "Executor"):
         if self.step_hash is None:
             return executor.execute_job(self.step, self.inp_hashes, self.env_deps)
         return executor.try_skip_job(self.step, self.inp_hashes, self.env_deps, self.step_hash)

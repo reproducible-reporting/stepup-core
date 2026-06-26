@@ -30,7 +30,7 @@ from .asyncio import stoppable_iterator, wait_for_events
 from .enums import Change, HashUpdateCause
 from .file import File, FileState
 from .reporter import ReporterClient
-from .utils import DBLock
+from .sqlite3 import DBSession
 from .workflow import Workflow
 
 WATCHER_AVAILABLE = sys.platform == "linux"
@@ -59,7 +59,7 @@ class Watcher:
     workflow: Workflow = attrs.field()
     """The workflow to report file events to."""
 
-    dblock: DBLock = attrs.field()
+    db: DBSession = attrs.field()
     """Lock for workflow database access.
 
     This is only used for workflow calls that may change the database.
@@ -151,20 +151,23 @@ class Watcher:
 
         # Process changes to static files picked up during the build phase.
         await self.reporter("PHASE", "watch")
-        while not change_queue.empty():
-            change, path = change_queue.get_nowait()
-            file = self.workflow.find(File, path)
-            if file is not None and file.get_state() == FileState.STATIC:
-                await self.record_change(change, path)
+        async with self.db:
+            while not change_queue.empty():
+                change, path = change_queue.get_nowait()
+                file = self.workflow.find(File, path)
+                if file is not None and file.get_state() == FileState.STATIC:
+                    await self.record_change(change, path)
 
         # Wait for new changes to show up.
+        # The lock needs to be in the loop, because this is a long-running operation.
         self.active.set()
         async for change, path in stoppable_iterator(change_queue.get, self.interrupt):
-            await self.record_change(change, path)
+            async with self.db:
+                await self.record_change(change, path)
 
         # Feed all updates to the workflow and clean up.
         self.active.clear()
-        async with self.dblock:
+        async with self.db:
             # Update the hashes of all files known to the workflow.
             old_hashes = self.workflow.get_file_hashes(self.updated | self.deleted)
             new_hashes = []

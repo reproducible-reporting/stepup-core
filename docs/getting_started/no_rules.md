@@ -1,6 +1,6 @@
 # No Rules
 
-Most other build tools introduce the concept of a *build rule*,
+Most other build tools introduce the concept of a **build rule**,
 to specify how a common build step can be applied to different inputs.
 StepUp does not need to introduce the concept of a build rule
 because Python functions and loops already provide similar facilities.

@@ -124,8 +124,11 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
       as it was no longer needed after the introduction of the forkserver.
     - Worker subprocesses have been replaced by asyncio tasks running inside the director.
       File hashing is offloaded to a dedicated subprocess (`_stepup_hasher` or a forkserver child).
+    - Strict database sessions management and transaction correctness has been implemented
+      to avoid database corruption, e.g. due to race conditions.
     - The *run phase* has been renamed to *build phase* throughout the documentation and source code.
     - The Runner has been renamed to Builder.
+    - The Cascade has been renamed to Trellis.
 
 ### Deprecated
 
