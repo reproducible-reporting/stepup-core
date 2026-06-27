@@ -563,9 +563,6 @@ class Run:
     pid: int | None = attrs.field(init=False, default=None)
     """The pid of the forkserver child currently running the command, if any."""
 
-    subprocesses: list = attrs.field(init=False, factory=list)
-    """Recorded subprocesses: `(cmd, workdir, env_overrides, returncode, shell)` tuples."""
-
     def merge_hash_result(self, result: "HashResult") -> None:
         """Apply the fields of a `HashResult` onto this running step.
 
@@ -741,9 +738,6 @@ class Executor:
                 # copy internally, so report() below still forwards the full text to the TUI.
                 step.store_output("stdout", run.stdout, self.max_output_size)
                 step.store_output("stderr", run.stderr, self.max_output_size)
-                # Read recorded subprocesses in the same transaction, so report() can show
-                # them without a separate DB access (the child has finished writing rows).
-                run.subprocesses = list(step.iter_subprocesses())
                 step_counts = self.workflow.get_step_counts()
             await self.reporter.update_step_counts(step_counts)
 
@@ -1012,12 +1006,6 @@ class Executor:
         stderr = run.stderr.rstrip()
         if len(stderr) > 0:
             pages.append(("Standard error", stderr))
-        if len(run.subprocesses) > 0:
-            page = "\n".join(
-                format_subprocess(cmd, workdir, env, returncode, shell=shell)
-                for cmd, workdir, env, returncode, shell in run.subprocesses
-            )
-            pages.append(("Subprocesses", page))
         if run.rescheduled_info != "":
             action = "RESCHEDULE"
         elif run.success:

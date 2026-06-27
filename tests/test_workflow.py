@@ -2191,62 +2191,53 @@ async def test_step_output_give_up_no_fk_error(wfp: Workflow):
 
 
 async def test_step_subprocess_roundtrip(wfp: Workflow):
-    """record_subprocess stores all fields; iter_subprocesses round-trips the public ones."""
+    """record_subprocess stores all fields; direct query round-trips the public ones."""
     async with wfp.db:
         step = wfp.find(Step, "./plan.py")
 
         # No records yet.
-        assert list(step.iter_subprocesses()) == []
+        query = "SELECT * FROM step_subprocess WHERE node = ? ORDER BY seq"
+        rows = wfp.db.execute(query, (step.i,)).fetchall()
+        assert rows == []
 
         # Record two invocations: one with an env overlay, a non-zero return code, and shell=False;
         # one with shell=True and a stdin string.
         step.record_subprocess("typst compile a.typ a.pdf", "sub", {"TR": "/x"}, 7, False)
         step.record_subprocess("echo hi | tr a b", ".", None, 0, True, "feed me\n")
 
-        # iter_subprocesses yields (cmd, workdir, env_overrides, returncode, shell) in seq order,
+        # Query yields (cmd, workdir, env_overrides, returncode, shell) in seq order,
         # with cmd stored verbatim and env decoded back to a dict.
-        assert list(step.iter_subprocesses()) == [
-            ("typst compile a.typ a.pdf", "sub", {"TR": "/x"}, 7, False),
-            ("echo hi | tr a b", ".", None, 0, True),
+        rows = wfp.db.execute(query, (step.i,)).fetchall()
+        assert rows == [
+            (3, 0, "typst compile a.typ a.pdf", "sub", '{"TR": "/x"}', 7, 0, None),
+            (3, 1, "echo hi | tr a b", ".", None, 0, 1, "feed me\n"),
         ]
-
-        # stdin is stored verbatim (None when not provided). It is kept for archival and is not
-        # surfaced through iter_subprocesses, so read it back from the table directly.
-        stdins = [
-            row[0]
-            for row in wfp.db.execute(
-                "SELECT stdin FROM step_subprocess WHERE node = ? ORDER BY seq", (step.i,)
-            )
-        ]
-        assert stdins == [None, "feed me\n"]
 
 
 async def test_step_subprocess_clean_restarts_seq(wfp: Workflow):
     """delete_subprocesses removes all rows and the seq numbering restarts at 0."""
-
-    def seqs():
-        return [
-            row[0]
-            for row in wfp.db.execute(
-                "SELECT seq FROM step_subprocess WHERE node = ? ORDER BY seq", (step.i,)
-            )
-        ]
-
     async with wfp.db:
         step = wfp.find(Step, "./plan.py")
         step.record_subprocess("a", ".", None, 0)
         step.record_subprocess("b", ".", None, 0)
-        # seq is assigned 0, 1 and iter_subprocesses yields the rows in that order (cmd is field 0).
-        assert [row[0] for row in step.iter_subprocesses()] == ["a", "b"]
-        assert seqs() == [0, 1]
+        # seq is assigned 0, 1 and query yields the rows in that order (cmd is field 0).
+        query = "SELECT * FROM step_subprocess WHERE node = ? ORDER BY seq"
+        rows = wfp.db.execute(query, (step.i,)).fetchall()
+        assert rows == [
+            (3, 0, "a", ".", None, 0, 0, None),
+            (3, 1, "b", ".", None, 0, 0, None),
+        ]
 
         step.delete_subprocesses()
-        assert list(step.iter_subprocesses()) == []
+        rows = wfp.db.execute(query, (step.i,)).fetchall()
+        assert rows == []
 
         # A fresh record after cleanup restarts the sequence at 0.
         step.record_subprocess("c", ".", None, 0)
-        assert [row[0] for row in step.iter_subprocesses()] == ["c"]
-        assert seqs() == [0]
+        rows = wfp.db.execute(query, (step.i,)).fetchall()
+        assert rows == [
+            (3, 0, "c", ".", None, 0, 0, None),
+        ]
 
 
 async def test_step_subprocess_clean_before_run(wfp: Workflow):
@@ -2256,9 +2247,12 @@ async def test_step_subprocess_clean_before_run(wfp: Workflow):
         wfp.define_step(plan, "echo hi")
         step = wfp.find(Step, "echo hi")
         step.record_subprocess("echo hi", ".", None, 0)
-        assert len(list(step.iter_subprocesses())) == 1
+        query = "SELECT * FROM step_subprocess WHERE node = ? ORDER BY seq"
+        rows = wfp.db.execute(query, (step.i,)).fetchall()
+        assert len(rows) == 1
         step.clean_before_run()
-        assert list(step.iter_subprocesses()) == []
+        rows = wfp.db.execute(query, (step.i,)).fetchall()
+        assert rows == []
 
 
 async def test_step_subprocess_give_up_no_fk_error(wfp: Workflow):
@@ -2271,7 +2265,9 @@ async def test_step_subprocess_give_up_no_fk_error(wfp: Workflow):
         # give_up() deletes the node row, and the step_subprocess rows are removed automatically
         # by the ON DELETE CASCADE foreign key.
         step.give_up()
-        assert list(step.iter_subprocesses()) == []
+        query = "SELECT * FROM step_subprocess WHERE node = ? ORDER BY seq"
+        rows = wfp.db.execute(query, (step.i,)).fetchall()
+        assert rows == []
 
 
 # Satellite tables whose rows hang off a node and are removed by ON DELETE CASCADE.

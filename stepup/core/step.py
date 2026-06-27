@@ -899,32 +899,6 @@ class Step(Node):
             ),
         )
 
-    def iter_subprocesses(
-        self,
-    ) -> Iterator[tuple[str, str, dict | None, int, bool]]:
-        """Iterate over recorded subprocess invocations, ordered by sequence number.
-
-        Yields
-        ------
-        record
-            A tuple `(cmd, workdir, env_overrides, returncode, shell)`
-            where `cmd` is the stored command line,
-            `env_overrides` is the decoded overlay dict (or `None`),
-            and `shell` indicates whether `cmd` was executed via a shell.
-        """
-        sql = (
-            "SELECT cmd, workdir, env_overrides, returncode, shell "
-            "FROM step_subprocess WHERE node = ? ORDER BY seq"
-        )
-        for cmd, workdir, env_overrides, returncode, shell in self.db.execute(sql, (self.i,)):
-            yield (
-                cmd,
-                workdir,
-                None if env_overrides is None else json.loads(env_overrides),
-                returncode,
-                bool(shell),
-            )
-
     def delete_subprocesses(self) -> None:
         """Remove all recorded subprocess rows for this step."""
         self.db.execute("DELETE FROM step_subprocess WHERE node = ?", (self.i,))
