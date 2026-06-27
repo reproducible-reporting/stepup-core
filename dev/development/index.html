@@ -2451,13 +2451,10 @@ and edit Markdown files in your IDE.</p>
 <p>Please use <a href="https://sembr.org/">Semantic Line Breaks</a>
 because it results in cleaner file diffs when editing documentation.</p>
 <h2 id="tutorial-example-outputs">Tutorial Example Outputs<a class="headerlink" href="#tutorial-example-outputs" title="Permanent link">&para;</a></h2>
-<p>If you wish to regenerate the output of the examples, run <code>stepup</code> in the <code>docs</code> directory:</p>
+<p>If you wish to regenerate the output of the examples, run <code>sb</code> in the <code>docs</code> directory:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">cd</span><span class="w"> </span>docs
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>stepup
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>sb
 </span></code></pre></div>
-<p>(Keep this running.)
-Then open the live preview in your browser: <a href="http://127.0.0.1:8000/">http://127.0.0.1:8000/</a>
-and edit Markdown files in your IDE.</p>
 <p>Note that some scripts use <a href="https://graphviz.org/">Graphviz</a> to generate diagrams,
 so you must have it installed on your system.</p>
 <h2 id="how-to-make-a-release">How to Make a Release<a class="headerlink" href="#how-to-make-a-release" title="Permanent link">&para;</a></h2>
@@ -2474,7 +2471,7 @@ These instructions assume you are running on Linux and have the <code>perf</code
 <ul>
 <li>
 <p>To profile with <a href="https://perfwiki.github.io/main/"><code>perf</code> on Linux</a>,
-  set the <code>STEPUP_PERF</code> environment variable to a frequency in Hz,
+  set the <code>STEPUP_BUILD_PERF</code> environment variable to a frequency in Hz,
   or pass the frequency with the <code>--perf</code> command-line option.</p>
 <p><code>perf</code>-based profiling requires a Linux system with the <code>perf</code> tool available,
 sufficient kernel permissions (for example, appropriate <code>perf_event_paranoid</code> settings
@@ -2489,7 +2486,7 @@ Use <code>perf script</code> to convert this file to a human-readable format:</p
 </li>
 <li>
 <p>To profile with <a href="https://github.com/sumerc/yappi">Yappi</a>,
-  set the <code>STEPUP_YAPPI</code> environment variable to <code>1</code> or <code>yes</code>,
+  set the <code>STEPUP_BUILD_YAPPI</code> environment variable to <code>1</code> or <code>yes</code>,
   or pass <code>--yappi</code> on the command line.
   This will result in a file <code>.stepup/director.prof</code> containing the profiling data.
   This file can be analyzed with tools like <a href="https://jiffyclub.github.io/snakeviz/">SnakeViz</a>:</p>
