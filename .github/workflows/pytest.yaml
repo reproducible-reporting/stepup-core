@@ -40,8 +40,10 @@ jobs:
         include:
           - python-version: '3.11'
             ubuntu-version: '24.04'
+            dependency-path: .github/requirements-old.txt
           - python-version: '3.14'
             ubuntu-version: '26.04'
+            dependency-path: pyproject.toml
     runs-on: ubuntu-${{ matrix.ubuntu-version }}
     steps:
       - uses: actions/checkout@v6
@@ -53,9 +55,7 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-          cache-dependency-glob: |
-            pyproject.toml
-            .github/requirements-old.txt
+          cache-dependency-glob: ${{ matrix.dependency-path }}
       - name: Install oldest versions of supported dependencies
         if: ${{ matrix.python-version == '3.11'}}
         run: uv pip install --system -r .github/requirements-old.txt
