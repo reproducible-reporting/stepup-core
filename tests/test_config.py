@@ -267,13 +267,12 @@ def test_patch_parser_env_count_action():
 
 
 def test_patch_parser_nargs_optional_env_overrides_const():
-    # Config/env set the const (value when flag is given bare), not the default.
-    # The feature stays disabled until --perf is passed.
+    # Env var sets both const and default, enabling the feature without --perf.
     p = argparse.ArgumentParser()
     p.add_argument("--perf", default=None, nargs="?", const="500")
     loader = ConfigLoader("app", environ={"APP_PERF": "1000"})
     loader.patch_parser(p, use_section=False)
-    assert p.parse_args([]).perf is None  # feature still disabled by default
+    assert p.parse_args([]).perf == "1000"  # feature enabled by default
     assert p.parse_args(["--perf"]).perf == "1000"  # bare flag uses overridden const
     assert p.parse_args(["--perf", "2000"]).perf == "2000"  # explicit CLI value still wins
 
@@ -285,7 +284,7 @@ def test_patch_parser_nargs_optional_file_overrides_const(path_tmp):
     p.add_argument("--perf", default=None, nargs="?", const="500")
     loader = ConfigLoader("app", config_paths=[cfg], environ={})
     loader.patch_parser(p, use_section=False)
-    assert p.parse_args([]).perf is None  # feature still disabled by default
+    assert p.parse_args([]).perf == "1000"  # feature enabled by default
     assert p.parse_args(["--perf"]).perf == "1000"  # bare flag uses overridden const
 
 

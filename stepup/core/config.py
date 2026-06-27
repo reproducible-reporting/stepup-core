@@ -398,6 +398,7 @@ class ConfigLoader:
             if value is not None:
                 if action.nargs == "?":
                     action.const = value
+                    action.default = value
                 else:
                     action.default = value
 

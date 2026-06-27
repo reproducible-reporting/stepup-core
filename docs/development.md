@@ -73,16 +73,12 @@ because it results in cleaner file diffs when editing documentation.
 
 ## Tutorial Example Outputs
 
-If you wish to regenerate the output of the examples, run `stepup` in the `docs` directory:
+If you wish to regenerate the output of the examples, run `sb` in the `docs` directory:
 
 ```bash
 cd docs
-stepup
+sb
 ```
-
-(Keep this running.)
-Then open the live preview in your browser: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
-and edit Markdown files in your IDE.
 
 Note that some scripts use [Graphviz](https://graphviz.org/) to generate diagrams,
 so you must have it installed on your system.
@@ -101,7 +97,7 @@ the Linux `perf` profiler and the Yappi profiler.
 These instructions assume you are running on Linux and have the `perf` userspace tool and/or Yappi installed.
 
 - To profile with [`perf` on Linux](https://perfwiki.github.io/main/),
-  set the `STEPUP_PERF` environment variable to a frequency in Hz,
+  set the `STEPUP_BUILD_PERF` environment variable to a frequency in Hz,
   or pass the frequency with the `--perf` command-line option.
 
     `perf`-based profiling requires a Linux system with the `perf` tool available,
@@ -120,7 +116,7 @@ These instructions assume you are running on Linux and have the `perf` userspace
     The resulting `perf.txt` file can be analyzed with tools like [Speedscope](https://www.speedscope.app/).
 
 - To profile with [Yappi](https://github.com/sumerc/yappi),
-  set the `STEPUP_YAPPI` environment variable to `1` or `yes`,
+  set the `STEPUP_BUILD_YAPPI` environment variable to `1` or `yes`,
   or pass `--yappi` on the command line.
   This will result in a file `.stepup/director.prof` containing the profiling data.
   This file can be analyzed with tools like [SnakeViz](https://jiffyclub.github.io/snakeviz/):
