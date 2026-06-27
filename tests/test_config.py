@@ -41,21 +41,27 @@ def loader() -> ConfigLoader:
 
 @pytest.fixture
 def parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser("stepup")
     p.add_argument("--jobs", dest="jobs", type=Decimal, default=Decimal("1.2"))
     p.add_argument("--debug", action="store_true", default=False)
     p.add_argument("--label", default=None)
     p.add_argument("--search-paths", dest="search_paths", default=None)
     p.add_argument("--resources", default="")
-    p.add_argument("--root", default="here")
     return p
 
 
 @pytest.fixture
 def plugin_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser("plugin")
     p.add_argument("--quality", default=None)
     p.add_argument("--num-jobs", dest="num_jobs", type=int, default=1)
+    return p
+
+
+@pytest.fixture
+def render_jinja_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser("render-jinja")
+    p.add_argument("--mode", choices=["auto", "plain", "latex"], default="auto")
     return p
 
 
@@ -156,7 +162,7 @@ def test_patch_parser_from_file(path_tmp, parser, loader):
     cfg = path_tmp / "stepup.toml"
     cfg.write_bytes(b"jobs = 8\n")
     loader._configs = [(cfg, loader._load_file(cfg))]
-    loader.patch_parser(parser)
+    loader.patch_parser(parser, use_section=False)
     assert parser.parse_args([]).jobs == 8
 
 
@@ -166,7 +172,7 @@ def test_patch_parser_later_file_wins(path_tmp, parser):
     b = path_tmp / "b.toml"
     b.write_bytes(b"jobs = 8\n")
     loader = ConfigLoader("stepup", config_paths=[a, b], environ={})
-    loader.patch_parser(parser)
+    loader.patch_parser(parser, use_section=False)
     assert parser.parse_args([]).jobs == 8
 
 
@@ -174,16 +180,8 @@ def test_patch_parser_cli_still_wins(path_tmp, parser):
     cfg = path_tmp / "stepup.toml"
     cfg.write_bytes(b"jobs = 8\n")
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
-    loader.patch_parser(parser)
+    loader.patch_parser(parser, use_section=False)
     assert parser.parse_args(["--jobs", "16"]).jobs == 16
-
-
-def test_patch_parser_skip_file_config(path_tmp, parser):
-    cfg = path_tmp / "stepup.toml"
-    cfg.write_bytes(b'root = "/tmp"\n')
-    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
-    with pytest.raises(ValueError, match="Unsupported config key"):
-        loader.patch_parser(parser, skip_file_config={"root"})
 
 
 def test_patch_parser_unsupported_config_key(path_tmp, parser):
@@ -191,7 +189,7 @@ def test_patch_parser_unsupported_config_key(path_tmp, parser):
     cfg.write_bytes(b"unsupported_key = 42\n")
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
     with pytest.raises(ValueError, match="Unsupported config key"):
-        loader.patch_parser(parser)
+        loader.patch_parser(parser, use_section=False)
 
 
 # ---------------------------------------------------------------------------
@@ -203,7 +201,7 @@ def test_patch_parser_section(path_tmp, plugin_parser):
     cfg = path_tmp / "stepup.toml"
     cfg.write_bytes(b'jobs = 8\n[plugin]\nquality = "high"\nnum_jobs = 4\n')
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
-    loader.patch_parser(plugin_parser, "plugin")
+    loader.patch_parser(plugin_parser)
     ns = plugin_parser.parse_args([])
     assert ns.quality == "high"
     assert ns.num_jobs == 4
@@ -213,24 +211,16 @@ def test_patch_parser_no_section_uses_top_level(path_tmp, parser):
     cfg = path_tmp / "stepup.toml"
     cfg.write_bytes(b"jobs = 8\n")
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
-    loader.patch_parser(parser)
+    loader.patch_parser(parser, use_section=False)
     assert parser.parse_args([]).jobs == Decimal("8")
     assert isinstance(parser.parse_args([]).jobs, Decimal)
-
-
-def test_patch_parser_dotted_section(path_tmp, plugin_parser):
-    cfg = path_tmp / "stepup.toml"
-    cfg.write_bytes(b'[plugins.my_plugin]\nquality = "draft"\n')
-    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
-    loader.patch_parser(plugin_parser, "plugins.my_plugin")
-    assert plugin_parser.parse_args([]).quality == "draft"
 
 
 def test_patch_parser_missing_section_leaves_defaults(path_tmp, plugin_parser):
     cfg = path_tmp / "stepup.toml"
     cfg.write_bytes(b"jobs = 8\n")
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
-    loader.patch_parser(plugin_parser, "nonexistent")
+    loader.patch_parser(plugin_parser)
     ns = plugin_parser.parse_args([])
     assert ns.quality is None
     assert ns.num_jobs == 1
@@ -243,20 +233,20 @@ def test_patch_parser_missing_section_leaves_defaults(path_tmp, plugin_parser):
 
 def test_patch_parser_env_basic(parser):
     loader = ConfigLoader("stepup", environ={"STEPUP_JOBS": "12"})
-    loader.patch_parser(parser)
+    loader.patch_parser(parser, use_section=False)
     assert parser.parse_args([]).jobs == 12
     assert isinstance(parser.parse_args([]).jobs, Decimal)
 
 
 def test_patch_parser_env_bool_flag_true(parser):
     loader = ConfigLoader("stepup", environ={"STEPUP_DEBUG": "yes"})
-    loader.patch_parser(parser)
+    loader.patch_parser(parser, use_section=False)
     assert parser.parse_args([]).debug is True
 
 
 def test_patch_parser_env_bool_flag_false(parser):
     loader = ConfigLoader("stepup", environ={"STEPUP_DEBUG": "0"})
-    loader.patch_parser(parser)
+    loader.patch_parser(parser, use_section=False)
     assert parser.parse_args([]).debug is False
 
 
@@ -264,7 +254,7 @@ def test_patch_parser_env_bool_optional_action():
     p = argparse.ArgumentParser()
     p.add_argument("--clean", action=argparse.BooleanOptionalAction, default=True)
     loader = ConfigLoader("app", environ={"APP_CLEAN": "no"})
-    loader.patch_parser(p)
+    loader.patch_parser(p, use_section=False)
     assert p.parse_args([]).clean is False
 
 
@@ -272,7 +262,7 @@ def test_patch_parser_env_count_action():
     p = argparse.ArgumentParser()
     p.add_argument("--verbose", "-v", action="count", default=0)
     loader = ConfigLoader("app", environ={"APP_VERBOSE": "2"})
-    loader.patch_parser(p)
+    loader.patch_parser(p, use_section=False)
     assert p.parse_args(["-v"]).verbose == 3  # 2 (injected) + 1 (from -v)
 
 
@@ -282,7 +272,7 @@ def test_patch_parser_nargs_optional_env_overrides_const():
     p = argparse.ArgumentParser()
     p.add_argument("--perf", default=None, nargs="?", const="500")
     loader = ConfigLoader("app", environ={"APP_PERF": "1000"})
-    loader.patch_parser(p)
+    loader.patch_parser(p, use_section=False)
     assert p.parse_args([]).perf is None  # feature still disabled by default
     assert p.parse_args(["--perf"]).perf == "1000"  # bare flag uses overridden const
     assert p.parse_args(["--perf", "2000"]).perf == "2000"  # explicit CLI value still wins
@@ -294,7 +284,7 @@ def test_patch_parser_nargs_optional_file_overrides_const(path_tmp):
     p = argparse.ArgumentParser()
     p.add_argument("--perf", default=None, nargs="?", const="500")
     loader = ConfigLoader("app", config_paths=[cfg], environ={})
-    loader.patch_parser(p)
+    loader.patch_parser(p, use_section=False)
     assert p.parse_args([]).perf is None  # feature still disabled by default
     assert p.parse_args(["--perf"]).perf == "1000"  # bare flag uses overridden const
 
@@ -303,42 +293,36 @@ def test_patch_parser_env_overrides_file(path_tmp, parser):
     cfg = path_tmp / "stepup.toml"
     cfg.write_bytes(b"jobs = 2\n")
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={"STEPUP_JOBS": "8"})
-    loader.patch_parser(parser)
+    loader.patch_parser(parser, use_section=False)
     assert parser.parse_args([]).jobs == 8
     assert isinstance(parser.parse_args([]).jobs, Decimal)
 
 
 def test_patch_parser_env_unknown_vars_ignored(parser):
     loader = ConfigLoader("stepup", environ={"STEPUP_UNKNOWN": "x", "OTHER": "y"})
-    loader.patch_parser(parser)
+    loader.patch_parser(parser, use_section=False)
     assert parser.parse_args([]).jobs == Decimal("1.2")  # unchanged default
     assert isinstance(parser.parse_args([]).jobs, Decimal)
 
 
-def test_patch_parser_env_with_section(parser):
-    loader = ConfigLoader("stepup", environ={"STEPUP_BUILD_JOBS": "12"})
-    loader.patch_parser(parser, "build")
+def test_patch_parser_env_type(parser):
+    loader = ConfigLoader("stepup", environ={"STEPUP_JOBS": "12"})
+    loader.patch_parser(parser, use_section=False)
     assert parser.parse_args([]).jobs == 12
     assert isinstance(parser.parse_args([]).jobs, Decimal)
 
 
-def test_patch_parser_env_section_prefix_required(parser):
+def test_patch_parser_env_section_prefix_required(plugin_parser):
     # The un-prefixed name is NOT matched when a section is given.
-    loader = ConfigLoader("stepup", environ={"STEPUP_JOBS": "12"})
-    loader.patch_parser(parser, "build")
-    assert parser.parse_args([]).jobs == Decimal("1.2")  # unchanged
+    loader = ConfigLoader("stepup", environ={"STEPUP_NUM_JOBS": "2"})
+    loader.patch_parser(plugin_parser)
+    assert plugin_parser.parse_args([]).num_jobs == 1  # unchanged
 
 
-def test_patch_parser_env_dotted_section(plugin_parser):
-    loader = ConfigLoader("stepup", environ={"STEPUP_PLUGINS_MY_PLUGIN_QUALITY": "high"})
-    loader.patch_parser(plugin_parser, "plugins.my_plugin")
-    assert plugin_parser.parse_args([]).quality == "high"
-
-
-def test_patch_parser_env_hyphen_section(plugin_parser):
-    loader = ConfigLoader("stepup", environ={"STEPUP_RENDER_JINJA_QUALITY": "high"})
-    loader.patch_parser(plugin_parser, "render-jinja")
-    assert plugin_parser.parse_args([]).quality == "high"
+def test_patch_parser_env_hyphen_section(render_jinja_parser):
+    loader = ConfigLoader("stepup", environ={"STEPUP_RENDER_JINJA_MODE": "plain"})
+    loader.patch_parser(render_jinja_parser)
+    assert render_jinja_parser.parse_args([]).mode == "plain"
 
 
 # ---------------------------------------------------------------------------
@@ -354,7 +338,9 @@ def test_patch_parser_merge_handler_file_plus_env(path_tmp, parser):
         config_paths=[cfg],
         environ={"STEPUP_SEARCH_PATHS": "/home/user/lib"},
     )
-    loader.patch_parser(parser, merge_handlers={"search_paths": lambda a, b: f"{a}:{b}"})
+    loader.patch_parser(
+        parser, use_section=False, merge_handlers={"search_paths": lambda a, b: f"{a}:{b}"}
+    )
     assert parser.parse_args([]).search_paths == "/usr/share:/home/user/lib"
 
 
@@ -364,13 +350,17 @@ def test_patch_parser_merge_handler_two_files(path_tmp, parser):
     b = path_tmp / "b.toml"
     b.write_bytes(b'search_paths = "/opt"\n')
     loader = ConfigLoader("stepup", config_paths=[a, b], environ={})
-    loader.patch_parser(parser, merge_handlers={"search_paths": lambda a, b: f"{a}:{b}"})
+    loader.patch_parser(
+        parser, use_section=False, merge_handlers={"search_paths": lambda a, b: f"{a}:{b}"}
+    )
     assert parser.parse_args([]).search_paths == "/usr/share:/opt"
 
 
 def test_patch_parser_merge_handler_only_env(parser):
     loader = ConfigLoader("stepup", environ={"STEPUP_SEARCH_PATHS": "/home/user/lib"})
-    loader.patch_parser(parser, merge_handlers={"search_paths": lambda a, b: f"{a}:{b}"})
+    loader.patch_parser(
+        parser, use_section=False, merge_handlers={"search_paths": lambda a, b: f"{a}:{b}"}
+    )
     # No file value, so handler is not invoked; env value used directly.
     assert parser.parse_args([]).search_paths == "/home/user/lib"
 
@@ -379,7 +369,9 @@ def test_patch_parser_merge_handler_only_file(path_tmp, parser):
     cfg = path_tmp / "stepup.toml"
     cfg.write_bytes(b'search_paths = "/usr/share"\n')
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
-    loader.patch_parser(parser, merge_handlers={"search_paths": lambda a, b: f"{a}:{b}"})
+    loader.patch_parser(
+        parser, use_section=False, merge_handlers={"search_paths": lambda a, b: f"{a}:{b}"}
+    )
     # No env value, so handler is not invoked; file value used directly.
     assert parser.parse_args([]).search_paths == "/usr/share"
 
@@ -393,8 +385,8 @@ def test_patch_parser_section_isolates_parsers(path_tmp, parser, plugin_parser):
     cfg = path_tmp / "stepup.toml"
     cfg.write_bytes(b'jobs = "1.1"\n[plugin]\nquality = "high"\n')
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
-    loader.patch_parser(parser)
-    loader.patch_parser(plugin_parser, "plugin")
+    loader.patch_parser(parser, use_section=False)
+    loader.patch_parser(plugin_parser)
     assert parser.parse_args([]).jobs == Decimal("1.1")
     assert isinstance(parser.parse_args([]).jobs, Decimal)
     assert plugin_parser.parse_args([]).quality == "high"
@@ -411,7 +403,7 @@ def test_patch_parser_choices_valid_from_file(path_tmp):
     cfg = path_tmp / "app.toml"
     cfg.write_bytes(b'mode = "slow"\n')
     loader = ConfigLoader("app", config_paths=[cfg], environ={})
-    loader.patch_parser(p)
+    loader.patch_parser(p, use_section=False)
     assert p.parse_args([]).mode == "slow"
 
 
@@ -422,14 +414,14 @@ def test_patch_parser_choices_invalid_from_file(path_tmp):
     cfg.write_bytes(b'mode = "turbo"\n')
     loader = ConfigLoader("app", config_paths=[cfg], environ={})
     with pytest.raises(ValueError, match=r"'turbo'.*mode.*in .*app\.toml"):
-        loader.patch_parser(p)
+        loader.patch_parser(p, use_section=False)
 
 
 def test_patch_parser_choices_valid_from_env():
     p = argparse.ArgumentParser()
     p.add_argument("--mode", choices=["fast", "slow"], default="fast")
     loader = ConfigLoader("app", environ={"APP_MODE": "slow"})
-    loader.patch_parser(p)
+    loader.patch_parser(p, use_section=False)
     assert p.parse_args([]).mode == "slow"
 
 
@@ -438,7 +430,7 @@ def test_patch_parser_choices_invalid_from_env():
     p.add_argument("--mode", choices=["fast", "slow"], default="fast")
     loader = ConfigLoader("app", environ={"APP_MODE": "turbo"})
     with pytest.raises(ValueError, match=r"'turbo'.*mode.*from APP_MODE"):
-        loader.patch_parser(p)
+        loader.patch_parser(p, use_section=False)
 
 
 # ---------------------------------------------------------------------------
@@ -447,7 +439,7 @@ def test_patch_parser_choices_invalid_from_env():
 
 
 def test_patches_recorded_no_section(parser, loader):
-    loader.patch_parser(parser)
+    loader.patch_parser(parser, use_section=False)
     assert len(loader._patches) == 1
     section, actions = loader._patches[0]
     assert section is None
@@ -455,15 +447,16 @@ def test_patches_recorded_no_section(parser, loader):
 
 
 def test_patches_recorded_with_section(parser, loader):
-    loader.patch_parser(parser, "build")
+    parser.prog = "build"
+    loader.patch_parser(parser, use_section=True)
     section, actions = loader._patches[0]
     assert section == "build"
     assert "jobs" in actions
 
 
 def test_patches_accumulate_across_calls(parser, plugin_parser, loader):
-    loader.patch_parser(parser)
-    loader.patch_parser(plugin_parser, "plugin")
+    loader.patch_parser(parser, use_section=False)
+    loader.patch_parser(plugin_parser)
     assert len(loader._patches) == 2
     assert loader._patches[0][0] is None
     assert loader._patches[1][0] == "plugin"
@@ -474,7 +467,7 @@ def test_patches_not_recorded_on_error(path_tmp, parser):
     cfg.write_bytes(b"unknown_key = 1\n")
     loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
     with pytest.raises(ValueError):
-        loader.patch_parser(parser)
+        loader.patch_parser(parser, use_section=False)
     assert loader._patches == []
 
 
@@ -492,22 +485,22 @@ def test_env_to_toml_map_no_section():
     loader = ConfigLoader("stepup", environ={"STEPUP_JOBS": "8"})
     p = argparse.ArgumentParser()
     p.add_argument("--jobs", dest="jobs", type=int)
-    loader.patch_parser(p)
+    loader.patch_parser(p, use_section=False)
     result = loader.env_to_toml_map()
     assert result == {"STEPUP_JOBS": [(None, "jobs", 8)]}
 
 
 def test_env_to_toml_map_with_section():
     loader = ConfigLoader("stepup", environ={"STEPUP_BUILD_JOBS": "8"})
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser("build")
     p.add_argument("--jobs", dest="jobs", type=int)
-    loader.patch_parser(p, "build")
+    loader.patch_parser(p)
     result = loader.env_to_toml_map()
     assert result == {"STEPUP_BUILD_JOBS": [("build", "jobs", 8)]}
 
 
 def test_env_to_toml_map_unset_var_excluded(parser, loader):
-    loader.patch_parser(parser)
+    loader.patch_parser(parser, use_section=False)
     assert loader.env_to_toml_map() == {}
 
 
@@ -516,12 +509,12 @@ def test_env_to_toml_map_multiple_sections():
         "stepup",
         environ={"STEPUP_JOBS": "4", "STEPUP_BUILD_LABEL": "prod"},
     )
-    p_main = argparse.ArgumentParser()
+    p_main = argparse.ArgumentParser("stepup")
     p_main.add_argument("--jobs", dest="jobs", type=int)
-    p_build = argparse.ArgumentParser()
+    p_build = argparse.ArgumentParser("build")
     p_build.add_argument("--label")
-    loader.patch_parser(p_main)
-    loader.patch_parser(p_build, "build")
+    loader.patch_parser(p_main, use_section=False)
+    loader.patch_parser(p_build)
     result = loader.env_to_toml_map()
     assert result == {
         "STEPUP_JOBS": [(None, "jobs", 4)],
@@ -546,7 +539,9 @@ def test_full_integration(path_tmp, parser):
         config_paths=[etc_cfg, pyproject],
         environ={"STEPUP_DEBUG": "yes", "STEPUP_SEARCH_PATHS": "/home/user/lib"},
     )
-    loader.patch_parser(parser, merge_handlers={"search_paths": lambda a, b: f"{a}:{b}"})
+    loader.patch_parser(
+        parser, use_section=False, merge_handlers={"search_paths": lambda a, b: f"{a}:{b}"}
+    )
 
     ns = parser.parse_args(["--label", "cli"])
 

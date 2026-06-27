@@ -21,6 +21,7 @@
 
 import argparse
 import asyncio
+import os
 import subprocess
 import sys
 import tempfile
@@ -57,9 +58,10 @@ def build_tool(args: argparse.Namespace, default_resources: str):
 async def async_build(args: argparse.Namespace, default_resources: str):
     if WATCHER_AVAILABLE and args.watch_first:
         args.watch = True
-    if args.root.absolute() != Path.cwd():
-        print("Changing to", args.root)
-        args.root.cd()
+    stepup_root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
+    if stepup_root.absolute() != Path.cwd():
+        print("Changing to", stepup_root)
+        stepup_root.cd()
 
     # Sanity check before creating a subdirectory.
     if not Path("plan.py").is_file():
@@ -280,6 +282,7 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
     """
     parser = subparsers.add_parser(
         name,
+        prog=name,
         help=help_text,
     )
     parser.add_argument(
@@ -387,7 +390,7 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         "This produces a .stepup/director.prof file that can be analyzed with "
         "tools like SnakeViz.",
     )
-    loader.patch_parser(parser, "build", {"resources": merge_resources})
+    loader.patch_parser(parser, merge_handlers={"resources": merge_resources})
     return resources_action.default
 
 

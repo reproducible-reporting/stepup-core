@@ -86,7 +86,7 @@ def clean_subcommand(subparsers, loader: ConfigLoader) -> Callable:
         help="Also remove output files that have been modified "
         "after their creation in the workflow.",
     )
-    loader.patch_parser(parser, "clean")
+    loader.patch_parser(parser)
     return clean_tool
 
 

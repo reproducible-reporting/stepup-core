@@ -64,7 +64,7 @@ def browse_subcommand(subparsers, loader: ConfigLoader) -> Callable:
         default=8000,
         help="Port to bind the server to (default: 8000).",
     )
-    loader.patch_parser(parser, "browse")
+    loader.patch_parser(parser)
     return browse_tool
 
 

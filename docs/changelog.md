@@ -34,6 +34,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 - In addition to environment variables and command-line arguments,
   StepUp can now also be configured through configuration files.
   See [Configuration files](reference/configuration.md) for details.
+- The `stepup show-config` command shows the current configuration,
+  as the result of merging all config files and environment variables.
 - StepUp can use a forkserver for Python step execution and file hashing,
   which reduces startup overhead.
   This can be controlled with the `--fork-runpy` flag,

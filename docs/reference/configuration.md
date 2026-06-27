@@ -44,12 +44,6 @@ Some environment variables affect StepUp's internals even when it is just import
 These can only be set via environment variables,
 and cannot be configured through config files or command-line options.
 
-`STEPUP_SYNC_RPC_TIMEOUT`
-
-:   The timeout in seconds for the synchronous RPC server.
-    The default is 300 seconds.
-    Set this to a smaller value if you want to detect deadlocks more quickly.
-
 `STEPUP_PATH_FILTER`
 
 :   A colon-separated list of filters
@@ -73,6 +67,17 @@ and cannot be configured through config files or command-line options.
       but you don't want to include them in the dependency graph for performance reasons.
       (This is done by default for the `venv` virtual environment.)
 
+`STEPUP_ROOT`
+
+:   The root directory containing the top-level `plan.py` file.
+    If not set, StepUp will look for this file in the current directory.
+
+`STEPUP_SYNC_RPC_TIMEOUT`
+
+:   The timeout in seconds for the synchronous RPC server.
+    The default is 300 seconds.
+    Set this to a smaller value if you want to detect deadlocks more quickly.
+
 ## Settings for all subcommands
 
 Each entry below lists the config file key, environment variable, and command-line option
@@ -92,12 +97,6 @@ separated by slashes, where applicable.
 :   The log level for the log files in `~/.stepup/`.
     Possible values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, and `CRITICAL`.
     The default is `WARNING`.
-
-`STEPUP_ROOT` / `--root`
-
-:   The root directory containing the top-level `plan.py` file.
-    If not set, StepUp will look for this file in the current directory.
-    This setting cannot be configured through config files.
 
 ## Settings for `sb`
 

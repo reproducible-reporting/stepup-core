@@ -94,7 +94,7 @@ def graph_subcommand(subparsers, loader: ConfigLoader) -> Callable:
         "prefix",
         help="Prefix for the output files. The files will be named <prefix>.txt and <prefix>.dot.",
     )
-    loader.patch_parser(parser, "graph")
+    loader.patch_parser(parser)
     return graph_tool
 
 

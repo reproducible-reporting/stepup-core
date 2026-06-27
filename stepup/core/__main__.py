@@ -77,13 +77,7 @@ def build_parser() -> tuple[argparse.ArgumentParser, list[callable]]:
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level. [default=%(default)s]",
     )
-    parser.add_argument(
-        "--root",
-        type=Path,
-        default=Path(os.getenv("STEPUP_ROOT", os.getcwd())),
-        help="Directory containing top-level plan.py [default=%(default)s]",
-    )
-    loader.patch_parser(parser, skip_file_config={"root"})
+    loader.patch_parser(parser, use_section=False)
 
     # Load tool entry points
     subparsers = parser.add_subparsers(dest="tool", required=False)

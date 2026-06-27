@@ -49,10 +49,10 @@ loader = ConfigLoader(
 )
 
 # Main parser — top-level config keys, env vars: STEPUP_<DEST>
-loader.patch_parser(main_parser)
+loader.patch_parser(main_parser, use_section=False)
 
 # Tool subparser — named section, env vars: STEPUP_MYTOOL_<DEST>
-loader.patch_parser(mytool_parser, "mytool", {"paths": merge_paths})
+loader.patch_parser(mytool_parser, merge_handlers={"paths": merge_paths})
 ```
 """
 
@@ -318,9 +318,9 @@ class ConfigLoader:
     def patch_parser(
         self,
         parser: argparse.ArgumentParser,
-        section: str | None = None,
+        *,
+        use_section: bool = True,
         merge_handlers: dict[str, Callable[[Any, Any], Any]] | None = None,
-        skip_file_config: set[str] | None = None,
     ) -> None:
         """Inject config defaults and env-var overrides into an argparse parser.
 
@@ -335,20 +335,19 @@ class ConfigLoader:
         parser
             Argparse parser to patch.
             Argument defaults are mutated in place.
-        section
-            Dotted key path into each config dict, e.g. `"build"` or `"some.other"`.
-            `None` uses the top-level dict.
-            Configs that do not contain the section are silently skipped.
+        use_section
+            Set to `False` for the top-level parser.
+            If `True`, the parser's `prog` is used as section name for config files
+            (e.g., `"stepup.build."`) and env vars (e.g., `"STEPUP_BUILD_"`).
+            If `False`, the top-level config section (e.g., `"stepup"`) and
+            env vars are used (e.g., `"STEPUP_"`).
         merge_handlers
             Per-dest callables `fn(accumulated, incoming) -> merged` called
             when both an accumulated value and a new value are available.
             Without a handler the incoming value replaces the accumulated one.
-        skip_file_config
-            Dest names to skip when applying defaults read from files.
-            Useful for arguments that are set explicitly on the command line or by other means.
         """
         handlers = merge_handlers or {}
-        section_parts = section.split(".") if section else []
+        section = parser.prog if use_section else None
 
         def get_location_error_msg(path, loc):
             if loc == "":
@@ -362,32 +361,28 @@ class ConfigLoader:
             loc = f"tool.{self._prefix.lower()}" if path.name == "pyproject.toml" else ""
             if not isinstance(data, dict):
                 raise TypeError(get_location_error_msg(path, loc))
-            for part in section_parts:
-                data = data.get(part, {})
+            if section is not None:
+                data = data.get(section, {})
                 if not isinstance(data, dict):
                     raise TypeError(get_location_error_msg(path, loc))
-                loc += f".{part}" if loc else part
+                loc += f".{section}" if loc else section
             data = {k: v for k, v in data.items() if not isinstance(v, dict)}
             config_views.append((path, data))
 
-        skip_file_config = skip_file_config or set()
         action_map = self._actions(parser)
         for dest, action in action_map.items():
             value = None
 
             # Apply file configs in priority order.
-            # Keys in skip_file_config are intentionally not popped, so they
-            # remain in data and get flagged as unsupported by the check below.
-            if dest not in skip_file_config:
-                for path, data in config_views:
-                    incoming = data.pop(dest, None)
-                    if incoming is not None:
-                        try:
-                            incoming = self._coerce_type(incoming, action)
-                        except (ValueError, TypeError) as exc:
-                            raise type(exc)(f"{exc} (in {path})") from exc
-                        handler = None if value is None else handlers.get(dest)
-                        value = incoming if handler is None else handler(value, incoming)
+            for path, data in config_views:
+                incoming = data.pop(dest, None)
+                if incoming is not None:
+                    try:
+                        incoming = self._coerce_type(incoming, action)
+                    except (ValueError, TypeError) as exc:
+                        raise type(exc)(f"{exc} (in {path})") from exc
+                    handler = None if value is None else handlers.get(dest)
+                    value = incoming if handler is None else handler(value, incoming)
 
             # Overlay environment variable (highest priority).
             env_key = self._env_key(section, dest)
