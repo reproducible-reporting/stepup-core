@@ -198,7 +198,7 @@ def run_subprocess(
         Standard input fed to the subprocess, or `None`.
         A `str` is encoded with the default UTF-8 codec before being passed to the subprocess.
         `bytes` are fed verbatim (no encoding).
-        When `None` (the default), the subprocess inherits the step process's standard input.
+        When `None` (the default), the subprocess's standard input will be `/dev/null`.
         The value is forwarded to `record_subprocess`, which stores `bytes` as a short summary
         (byte length and a truncated SHA-256) rather than raw binary.
     stdout, stderr
@@ -231,40 +231,32 @@ def run_subprocess(
     run_env = dict(os.environ)
     if env_overrides is not None:
         run_env.update(env_overrides)
+    # Build a dict of keyword arguments to pass to `subprocess.run`.
+    run_kwargs = {
+        "cwd": workdir,
+        "env": run_env,
+        "stdout": stdout,
+        "stderr": stderr,
+        "check": False,
+        "shell": shell,
+    }
     # The subprocess runs in bytes mode (no text=True), so feed bytes directly and encode
     # str. input=None is the no-op default, so it can always be passed.
     if stdin is None:
-        stdin_bytes = None
+        run_kwargs["stdin"] = subprocess.DEVNULL
     elif isinstance(stdin, bytes):
-        stdin_bytes = stdin
+        run_kwargs["input"] = stdin
     else:
-        stdin_bytes = stdin.encode()
+        run_kwargs["input"] = stdin.encode()
     # Flush so already-buffered parent output is written before the subprocess (which inherits
     # our file descriptors when stdout/stderr are None) can write to the same streams.
     sys.stdout.flush()
     sys.stderr.flush()
     if shell:
-        cp = subprocess.run(
-            cmd,
-            cwd=workdir,
-            env=run_env,
-            input=stdin_bytes,
-            stdout=stdout,
-            stderr=stderr,
-            check=False,
-            shell=True,
-        )
+        cp = subprocess.run(cmd, **run_kwargs)  # noqa: PLW1510
     else:
         argv = shlex.split(cmd)
-        cp = subprocess.run(
-            argv,
-            cwd=workdir,
-            env=run_env,
-            input=stdin_bytes,
-            stdout=stdout,
-            stderr=stderr,
-            check=False,
-        )
+        cp = subprocess.run(argv, **run_kwargs)  # noqa: PLW1510
     record_subprocess(
         cmd, cp.returncode, workdir=workdir, env_overrides=env_overrides, shell=shell, stdin=stdin
     )
