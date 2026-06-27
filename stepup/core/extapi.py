@@ -171,8 +171,8 @@ def run_subprocess(
     *,
     workdir: str = ".",
     stdin: str | bytes | None = None,
-    stdout=None,
-    stderr=None,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
     check: bool = True,
     shell: bool = False,
 ) -> subprocess.CompletedProcess:
@@ -202,8 +202,11 @@ def run_subprocess(
         The value is forwarded to `record_subprocess`, which stores `bytes` as a short summary
         (byte length and a truncated SHA-256) rather than raw binary.
     stdout, stderr
-        Passed through to `subprocess.run`. When left at their default (`None`), output
-        goes wherever the step process's own file descriptors point.
+        Passed through to `subprocess.run`.
+        By default both are `subprocess.PIPE`, so the output is captured and available as
+        `bytes` on the returned `CompletedProcess.stdout` and `CompletedProcess.stderr`.
+        Pass `None` to let output flow through to the step's own file descriptors
+        (visible in the TUI and stored in the step's captured output).
     check
         When `True`, a `subprocess.CalledProcessError` is raised on a non-zero exit code.
         The invocation is recorded **before** this check, so a failing subprocess is still archived.

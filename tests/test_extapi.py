@@ -97,6 +97,8 @@ def test_run_subprocess_records_success(monkeypatch):
     cmd = shlex.join([sys.executable, "-c", ""])
     cp = run_subprocess(cmd)
     assert cp.returncode == 0
+    assert cp.stdout == b""
+    assert cp.stderr == b""
     assert recorded == [
         (cmd, 0, {"workdir": ".", "env_overrides": None, "shell": False, "stdin": None})
     ]
@@ -134,7 +136,7 @@ def test_run_subprocess_env_overlay(monkeypatch):
             "import os; print(os.environ.get('OVERLAY'), os.environ.get('PRE_EXISTING'))",
         ]
     )
-    cp = run_subprocess(cmd, stdout=subprocess.PIPE)
+    cp = run_subprocess(cmd)
     out = cp.stdout.decode()
     # The overlay variable and a pre-existing variable are both visible to the subprocess.
     assert out.split() == ["added", "yes"]
@@ -173,7 +175,7 @@ def test_run_subprocess_shell_true(monkeypatch):
     monkeypatch.setattr(
         extapi, "record_subprocess", lambda cmd, rc, **kw: recorded.append((cmd, rc, kw))
     )
-    cp = run_subprocess("echo hello", shell=True, stdout=subprocess.PIPE)
+    cp = run_subprocess("echo hello", shell=True)
     assert cp.returncode == 0
     assert recorded == [
         ("echo hello", 0, {"workdir": ".", "env_overrides": None, "shell": True, "stdin": None})
@@ -185,7 +187,7 @@ def test_run_subprocess_shell_false_splits(monkeypatch):
     monkeypatch.setattr(extapi, "record_subprocess", lambda *a, **k: None)
     # The argument "hello world" contains a space; shlex.split must keep it as one argv element.
     cmd = shlex.join([sys.executable, "-c", "import sys; print(sys.argv[1])", "hello world"])
-    cp = run_subprocess(cmd, shell=False, stdout=subprocess.PIPE)
+    cp = run_subprocess(cmd, shell=False)
     assert cp.returncode == 0
     assert cp.stdout.decode().strip() == "hello world"
 
@@ -197,7 +199,7 @@ def test_run_subprocess_stdin(monkeypatch):
         extapi, "record_subprocess", lambda cmd, rc, **kw: recorded.append(kw["stdin"])
     )
     cmd = shlex.join([sys.executable, "-c", "import sys; sys.stdout.write(sys.stdin.read())"])
-    cp = run_subprocess(cmd, stdin="hello stdin", stdout=subprocess.PIPE)
+    cp = run_subprocess(cmd, stdin="hello stdin")
     assert cp.stdout.decode() == "hello stdin"
     assert recorded == ["hello stdin"]
 
@@ -211,7 +213,7 @@ def test_run_subprocess_stdin_bytes(monkeypatch):
     cmd = shlex.join(
         [sys.executable, "-c", "import sys; sys.stdout.buffer.write(sys.stdin.buffer.read())"]
     )
-    cp = run_subprocess(cmd, stdin=b"\x00\x01\x02hello", stdout=subprocess.PIPE)
+    cp = run_subprocess(cmd, stdin=b"\x00\x01\x02hello")
     assert cp.stdout == b"\x00\x01\x02hello"
     assert recorded == [b"\x00\x01\x02hello"]
 
