@@ -515,36 +515,25 @@ class Trellis:
         # Schema 4 became outdated due to:
         # - the use of PARSE_DECLTYPES instead of PARSE_COLNAMES,
         #   which requires using UINT64 for file inodes.
-        # - Directory file nodes are no longer supported.
-        # - Renamed "orphan" to "detached".
-        # - Added "_safe" and "_check_safe" fields to step table.
-        # - Added "need", "_implied_need", "_tail_time" and "_check_after" fields to step table.
-        # - Removed the "dirty" field from the step table.
-        #   (The rescheduled_info is used instaed.)
-        # - The QUEUED step state has been removed.
+        # - Directory file nodes are no longer part of the graph. They are implicit.
+        # - Deferred globs have been removed in favor of static trees.
         # - Switch from Blake2B to SHA-256 hashes
-        # - Added "subshell" field to step table (replaces the actions concept with a shell flag).
-        # - Step labels no longer carry an action-name prefix; they store the raw command line.
-        #   This changes all inp_digest values in step_hash, invalidating all cached step results.
-        # - Added CHECKING step state (value 25): steps being hash-checked for possible skipping
+        # - Renamed "orphan" to "detached".
+        # - Extended the step table with many new fields to support the new scheduling algorithm,
+        #   and removed some old fields that are no longer needed.
+        # - Step labels no longer carry an action-name prefix.
+        #   They store the raw command line.
+        # - The QUEUED step state has been removed.
+        # - Added CHECKING step state: steps being hash-checked for possible skipping
         #   without consuming named resource slots.
-        #   The STEP_SCHEMA CHECK constraint was updated from <= 24 to <= 25.
         # - Added a step_output table to store the stdout/stderr of steps.
         # - Added a step_subprocess table to record subprocess invocations of wrapper steps.
-        #   The cmd column stores a plain shell command line (not a JSON argv list).
-        # - Added shell column to step_subprocess (records whether cmd was run via a shell).
-        # - Added stdin column to step_subprocess
-        #   (records the standard input fed to the subprocess).
         # - Added ON DELETE CASCADE to the satellite tables (file, step, env_var, step_hash,
         #   step_resource, step_output, step_subprocess, nglob_multi) so their rows are
         #   removed automatically when a node row is deleted.
-        # - Added a env_overrides column to the step table, storing a JSON dict of step-specific
-        #   environment variable overrides. These also participate in the step's inp_digest.
-        # - Index tuning (no column changes):
-        #   * Dropped dependency_supplier_consumer (duplicate of the UNIQUE(supplier, consumer)
-        #     auto-index) and env_var_node (duplicate of the env_var PRIMARY KEY prefix).
-        #   * Widened node_creator to node_creator_kind on (creator, kind).
-        #   * Added partial indexes step_check_safe and step_check_after on the scheduler flags.
+        # - Indexes were tuned.
+        # - The auto_vacuum mode was set to INCREMENTAL,
+        #   which is paired with a database vacuum worker to reclaim space from deleted nodes.
 
         return 5
 

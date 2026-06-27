@@ -10,29 +10,16 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+(no changes yet)
+
+## [4.0.0rc1][] - 2026-04-27 {: #v4.0.0rc1 }
+
+This is release candidate 1 for the upcoming StepUp 4.0 release.
+
 ### Added
 
-- A `run()` or `step()` command may now start with `VAR=value` assignments
-  (when `shell=False`), e.g. `run("OMP_NUM_THREADS=4 ./work.py")`.
-  These are applied as step-specific environment variable overrides when the step runs,
-  which is otherwise impossible without a shell.
-  The overrides are part of the step hash, so changing a value reruns the step.
-  A variable cannot be both an override and an `env` dependency.
-- New `stepup.core.extapi` module for StepUp extension developers,
-  collecting utilities previously scattered across `stepup.core.api`
-  (`subs_env_vars`, `get_rpc_client`) and `stepup.core.utils`
-  (`filter_dependencies`, `get_local_import_paths`).
-  See [stepup.core.extapi](reference/stepup.core.extapi.md) for the full reference
-  and [Custom API Functions](extending/api.md) for usage guidance.
-- Extension wrapper steps can now record the exact subprocess invocations they make,
-  using `run_subprocess` and `record_subprocess` in `stepup.core.extapi`.
-  The command line, working directory, environment overlay and return code are stored in a
-  new `step_subprocess` table for a future archival export.
-  Recorded invocations are shown in a `Subprocesses` section of the terminal output when a
-  step completes (and in `stepup browse`), formatted as shell-pasteable command lines.
-  See [Custom API Functions](extending/api.md) for usage guidance.
-- In addition to environment variables and command-line arguments,
-  StepUp can now also be configured through configuration files.
+- StepUp can now also be configured through configuration files,
+  in addition to environment variables and command-line arguments.
   See [Configuration files](reference/configuration.md) for details.
 - The `stepup show-config` command shows the current configuration,
   as the result of merging all config files and environment variables.
@@ -44,13 +31,6 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   modules to be pre-loaded into the forkserver.
   This only has an effect when `--fork-runpy` is active and can speed up workflows
   that repeatedly import large modules.
-- When the first word of a `run()` command is a bare command name matching a `console_scripts`
-  entry point from the current Python environment, StepUp now automatically selects the
-  `runpyep` action.
-  When the forkserver is enabled (`--fork-runpy`), the entry point function is called
-  in-process rather than spawning a new subprocess, reducing overhead.
-  If the entry point belongs to a different Python environment, a warning is logged and
-  the command falls back to direct subprocess execution (`runexec` action).
 - StepUp now stores the captured stdout and stderr of each step in the workflow database,
   so they can be inspected after the build.
   Output from subprocesses launched by a forked Python step is captured properly.
@@ -59,69 +39,100 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
   These outputs can later be viewed with `stepup browse`.
 - All functions in `stepup.core.api` now accept `os.PathLike` objects (i.e. `pathlib.Path`)
   as path arguments, in addition to `str` and `path.Path`.
+- When the first word of a `run()` command is a bare command name matching a `console_scripts`
+  entry point from the current Python environment, StepUp now automatically selects the
+  `runpyep` action.
+  When the forkserver is enabled (`--fork-runpy`), the entry point function is called
+  in-process rather than spawning a new subprocess, reducing overhead.
+  If the entry point belongs to a different Python environment, a warning is logged and
+  the command falls back to direct subprocess execution (`runexec` action).
+- A `run()` or `step()` command may now start with `VAR=value` assignments
+  (when `shell=False`), e.g. `run("OMP_NUM_THREADS=4 ./work.py")`.
+  These are applied as step-specific environment variable overrides when the step runs,
+  which is otherwise impossible without a shell.
+  The overrides are part of the step hash, so changing a value reruns the step.
+  A variable cannot be both an override and an `env` dependency.
+- New `stepup.core.extapi` module for StepUp extension developers,
+  collecting utilities previously scattered across `stepup.core.api` and `stepup.core.utils`.
+  See [stepup.core.extapi](reference/stepup.core.extapi.md) for the full reference
+  and [Custom API Functions](extending/api.md) for usage guidance.
+- Extension wrapper steps can now record the exact subprocess invocations they make,
+  using `run_subprocess` and `record_subprocess` in `stepup.core.extapi`.
+  The command line, working directory, environment overlay and return code are stored in a
+  new `step_subprocess` table for a future archival export.
+  Recorded invocations are shown in `stepup browse`, formatted as shell-pasteable command lines.
+  See [Custom API Functions](extending/api.md) for implementation guidance.
 
 ### Changed
 
-- The `render-jinja` feature is now a standalone Python console script instead of a `stepup`
-  subcommand (tool).
-  Steps created by [`render_jinja()`][stepup.core.api.render_jinja] now run `render-jinja ...`
-  instead of `stepup render-jinja ...`.
-  This matches the recommended pattern for extensions that do not need low-level access to
-  StepUp internals.
+- `stepup boot` has been renamed to `stepup build`
+  and can be called conveniently with the `sb` shortcut.
+  The `boot` command will be removed in a future release.
+- The `--num-workers` / `-n` option of `sb` has been renamed to `--jobs` / `-j`,
+  in line with the convention used by `make` and similar tools.
+  The config-file key changes from `num_workers` to `jobs`,
+  and the environment variable changes from `STEPUP_NUM_WORKERS` to `STEPUP_BUILD_JOBS`.
+- The `runsh()` and `runpy()` functions have been replaced by the more flexible `run()` function.
+  The new implementation is more efficient and automatically tracks local scripts as dependencies.
+- The `plan()` function has been made maximally similar to `run()`,
+  and now accepts arbitrary local Python scripts,
+  not just a directory that must contain a `plan.py` script.
 - Redesigned `call()` interface:
   the old inp/out/pickle argument modes are replaced
   by explicit function dispatch and optional `args_file` support for file-based argument passing.
   See [Function Calls](getting_started/call.md) for details.
-- The database schema version has been incremented to 5 because:
-    - UINT64 type is used for inodes in the SQLite storage
-    - Directories are no longer stored in the database
-      (except for static trees, which are stored as special nodes in the graph.)
-    - Deferred globs have been retired and replaced by static trees.
-      (More on that below.)
-    - A new metadata update mechanism has been implemented for steps,
-      which introduced several new columns to the `step` table:
-      `_safe`, `_check_safe`, `need`, `_implied_need`, `_tail_time`, `_check_after`.
-    - The `dirty` column has been removed from the `step` table.
-      The information represented by this column is now inferred from `rescheduled_info`.
-    - The `pool` table was replaced by a `step_resource` table.
-    - The step state `QUEUED` has been removed, as it is no longer needed.
-    - A `step_output` table was added to store the stdout/stderr of steps.
+- The scheduler has been replaced by a new and more efficient implementation.
+  This change also comes with several improved features:
+    - Steps are prioritized using the *tail time*, which results in the shortest overall
+      execution time of the workflow.
+      This is also known as critical path scheduling.
+      Since StepUp assumes no full knowledge of the workflow,
+      the tail time estimates are updated dynamically as the workflow progresses.
+    - The `pool` feature has been removed and
+      is now replaced by the more powerful `resources` feature.
+    - The `optional` feature has become more robust.
 - The "deferred glob" has been replaced by a simpler "static tree" concept.
   Files in a static tree become static only when they are used as inputs.
   This allows for huge static data directories, of which only some are used,
   without having to glob the entire directory recursively.
   To declare a static tree directory, just pass it as an argument to the `static()` function.
   It will treat all directory arguments are static trees.
-- The `runsh()` and `runpy()` functions have been replaced by the more flexible `run()` function.
-  The new implementation is more efficient and automatically tracks local scripts as dependencies.
-- The `plan()` function has been made maximally similar to `run()`,
-  and now accepts arbitrary local Python scripts,
-  not just a directory that must contain a `plan.py` script.
-- The scheduler has been replaced by a new and more efficient implementation.
-  This change also comes with several improved features:
-    - Steps are prioritized using the *tail time*, which results in the shortest overall
-      execution time of the workflow.
-      Since StepUp assumes no full knowledge of the workflow,
-      the tail time estimates are updated dynamically as the workflow progresses.
-    - The `pool` feature has been removed and is now replaced by the more powerful `resources` feature.
-    - The `optional` feature has become more robust.
-- The `--num-workers` / `-n` option of `sb` has been renamed to `--jobs` / `-j`,
-  in line with the convention used by `make` and similar tools.
-  The config-file key changes from `num_workers` to `jobs`,
-  and the environment variable changes from `STEPUP_NUM_WORKERS` to `STEPUP_BUILD_JOBS`.
+- The `render-jinja` feature is now a standalone Python console script instead of a `stepup`
+  subcommand (tool).
+  Steps created by [`render_jinja()`][stepup.core.api.render_jinja] now run `render-jinja ...`
+  instead of `stepup render-jinja ...`.
+  This matches the recommended pattern for extensions that do not need low-level access to
+  StepUp internals.
+- The database schema version has been incremented to 5 because:
+    - UINT64 type is used for inodes in the SQLite storage
+    - Directories are no longer stored in the database
+      (except for static trees, which are stored as special nodes in the graph.)
+    - the Blake2B hash has been replaced by the more common SHA-256
+    - Deferred globs have been retired and replaced by static trees.
+    - The `step` table and all its satellite tables have been redesigned
+      to support the new scheduling algorithm.
+    - Step labels no longer carry an action-name prefix.
+      They store the raw command line.
+    - The step state `QUEUED` has been removed, as it is no longer needed.
+    - A new step state `CHECKING` has been added
+      for steps that are being hash-checked for possible skipping.
+    - `step_output` and `step_subprocess` tables were added.
+    - SQLite's `ON DELETE CASCADE` feature is now used for all satellite tables of the `step` table.
+    - Indexes were tuned.
+    - The auto_vacuum mode was set to INCREMENTAL,
+      which is paired with a database vacuum worker to reclaim space from deleted nodes.
 - Several environment variables have been renamed for consistency.
   See [Configuration files](reference/configuration.md) for details.
 - Documentation has been updated to reflect the API changes and to clarify some other points:
     - All tutorials have been updated to reflect the new API and workflow.
     - A [migration guide](migration/from_3x_to_40.md) has been added
       to help users migrate from StepUp 3 to StepUp 4.
-- The `stepup browse` command has become easier to use:
-  It opens a browser window automatically.
-- Updates of internals:
+- The `stepup browse` command has become easier to use (opens a browser window automatically)
+  and shows more details of the steps.
+- Updates of many internals, including:
     - Renamed "orphan" and related names to "detached", which is more intuitive.
       The new terminology is applied more consistently with consistent distinction between
       "detach" (verb, state change) and "detached" (state).
-    - Replaced the Blake2B hash by the more common SHA-256.
     - The "action" abstraction layer introduced in StepUp 3 has been completely removed,
       as it was no longer needed after the introduction of the forkserver.
     - Worker subprocesses have been replaced by asyncio tasks running inside the director.
@@ -129,21 +140,19 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
     - Strict database sessions management and transaction correctness has been implemented
       to avoid database corruption, e.g. due to race conditions.
     - The *run phase* has been renamed to *build phase* throughout the documentation and source code.
-    - The Runner has been renamed to Builder.
-    - The Cascade has been renamed to Trellis.
+    - Runner has been renamed to Builder.
+    - Cascade has been renamed to Trellis.
 
 ### Deprecated
 
-- The `stepup boot` command has been deprecated in favor of `sb`.
-  The `boot` command will be removed in a future release.
-  You can use the new `sb` entrypoint as a shortcut for `stepup build`.
+- The `stepup boot` command has been deprecated in favor of `sb` or alternatively `stepup build`.
 - The script interface for calling user Python scripts from `plan.py` has been deprecated
   in favor of the new [Call](getting_started/call.md) interface.
   You are encouraged to migrate your `plan.py` files to the new API.
 
 ### Removed
 
-- StepUp no longer keeps track directories.
+- StepUp no longer tracks directories.
   They are either assumed to be present (for static files) or created transparently when needed.
   This has some consequences:
     - The `mkdir()` command has been removed.
@@ -154,6 +163,8 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
       It also handles renaming and moving of directories.
     - The cleanup script (`stepup clean`) and the automatic cleanup at the end of a successful run
       will remove empty directories after having removed outdated output files they contained.
+    - StepUp now limits its insistence on path affixes (like trailing slashes)
+      to only those cases where it is absolutely necessary to avoid ambiguity.
 - The `glob()` function no longer accepts `_defer` and `_required` keyword arguments.
 
 ## [3.2.3][] - 2026-04-16 {: #v3.2.3 }
@@ -916,6 +927,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
+[4.0.0rc1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc1
 [3.2.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.3
 [3.2.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.2
 [3.2.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.1
