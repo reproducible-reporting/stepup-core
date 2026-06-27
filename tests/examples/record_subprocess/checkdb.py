@@ -13,7 +13,10 @@ seq, cmd, workdir, env_overrides, returncode = rows[0]
 
 # The sequence starts at 0 and the command is stored as a plain shell command line.
 assert seq == 0, seq
-assert cmd == "awk 'BEGIN { print ENVIRON[\"GREETING\"] }'", cmd
+cmd_ref = """
+python -c 'import os, sys; print(os.environ["GREETING"]); print(sys.stdin.read(), file=sys.stderr)'
+""".strip()
+assert cmd == cmd_ref, cmd
 
 # The workdir is stored relative to STEPUP_ROOT, and the run succeeded.
 assert workdir == ".", workdir

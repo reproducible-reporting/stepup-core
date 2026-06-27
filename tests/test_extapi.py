@@ -20,6 +20,7 @@
 """Tests for stepup.core.extapi."""
 
 import contextlib
+import hashlib
 import shlex
 import subprocess
 import sys
@@ -27,7 +28,12 @@ import sys
 import pytest
 
 from stepup.core import api, extapi
-from stepup.core.extapi import filter_dependencies, record_subprocess, run_subprocess
+from stepup.core.extapi import (
+    _summarize_binary_stdin,
+    filter_dependencies,
+    record_subprocess,
+    run_subprocess,
+)
 
 
 def test_filter_dependencies(monkeypatch, path_tmp):
@@ -91,7 +97,9 @@ def test_run_subprocess_records_success(monkeypatch):
     cmd = shlex.join([sys.executable, "-c", ""])
     cp = run_subprocess(cmd)
     assert cp.returncode == 0
-    assert recorded == [(cmd, 0, {"workdir": ".", "env_overrides": None, "shell": False})]
+    assert recorded == [
+        (cmd, 0, {"workdir": ".", "env_overrides": None, "shell": False, "stdin": None})
+    ]
 
 
 def test_run_subprocess_check_records_before_raise(monkeypatch):
@@ -167,7 +175,9 @@ def test_run_subprocess_shell_true(monkeypatch):
     )
     cp = run_subprocess("echo hello", shell=True, stdout=subprocess.PIPE)
     assert cp.returncode == 0
-    assert recorded == [("echo hello", 0, {"workdir": ".", "env_overrides": None, "shell": True})]
+    assert recorded == [
+        ("echo hello", 0, {"workdir": ".", "env_overrides": None, "shell": True, "stdin": None})
+    ]
 
 
 def test_run_subprocess_shell_false_splits(monkeypatch):
@@ -178,3 +188,42 @@ def test_run_subprocess_shell_false_splits(monkeypatch):
     cp = run_subprocess(cmd, shell=False, stdout=subprocess.PIPE)
     assert cp.returncode == 0
     assert cp.stdout.decode().strip() == "hello world"
+
+
+def test_run_subprocess_stdin(monkeypatch):
+    """stdin is fed to the subprocess and forwarded to record_subprocess."""
+    recorded = []
+    monkeypatch.setattr(
+        extapi, "record_subprocess", lambda cmd, rc, **kw: recorded.append(kw["stdin"])
+    )
+    cmd = shlex.join([sys.executable, "-c", "import sys; sys.stdout.write(sys.stdin.read())"])
+    cp = run_subprocess(cmd, stdin="hello stdin", stdout=subprocess.PIPE)
+    assert cp.stdout.decode() == "hello stdin"
+    assert recorded == ["hello stdin"]
+
+
+def test_run_subprocess_stdin_bytes(monkeypatch):
+    """Binary stdin is passed verbatim to the subprocess and forwarded raw to record_subprocess."""
+    recorded = []
+    monkeypatch.setattr(
+        extapi, "record_subprocess", lambda cmd, rc, **kw: recorded.append(kw["stdin"])
+    )
+    cmd = shlex.join(
+        [sys.executable, "-c", "import sys; sys.stdout.buffer.write(sys.stdin.buffer.read())"]
+    )
+    cp = run_subprocess(cmd, stdin=b"\x00\x01\x02hello", stdout=subprocess.PIPE)
+    assert cp.stdout == b"\x00\x01\x02hello"
+    assert recorded == [b"\x00\x01\x02hello"]
+
+
+def test_summarize_binary_stdin():
+    """_summarize_binary_stdin passes through None and str, and summarizes bytes."""
+    assert _summarize_binary_stdin(None) is None
+    s = "hello"
+    assert _summarize_binary_stdin(s) is s
+    data = b"\x00\x01\x02hi"
+    result = _summarize_binary_stdin(data)
+    expected_digest = hashlib.sha256(data).hexdigest()[:16]
+    assert result == f"<{len(data)} bytes of binary stdin, sha256={expected_digest}>"
+    assert result.startswith(f"<{len(data)} bytes of binary stdin, sha256=")
+    assert result.endswith(">")

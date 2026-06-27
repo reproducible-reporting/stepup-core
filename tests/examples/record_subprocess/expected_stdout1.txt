@@ -6,8 +6,8 @@
         2/2 |    SUCCESS │ ./wrap.py
 ─────────────────────────────── Standard output ────────────────────────────────
 hello
-───────────────────────────────── Subprocesses ─────────────────────────────────
-GREETING=hello awk 'BEGIN { print ENVIRON["GREETING"] }'
+──────────────────────────────── Standard error ────────────────────────────────
+(stripped)
 ────────────────────────────────────────────────────────────────────────────────
         2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
         2/2 |      PHASE │ watch

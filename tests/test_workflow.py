@@ -2191,7 +2191,7 @@ async def test_step_output_give_up_no_fk_error(wfp: Workflow):
 
 
 async def test_step_subprocess_roundtrip(wfp: Workflow):
-    """record_subprocess / iter_subprocesses round-trip cmd, workdir, env, returncode, shell."""
+    """record_subprocess stores all fields; iter_subprocesses round-trips the public ones."""
     async with wfp.db:
         step = wfp.find(Step, "./plan.py")
 
@@ -2199,31 +2199,54 @@ async def test_step_subprocess_roundtrip(wfp: Workflow):
         assert list(step.iter_subprocesses()) == []
 
         # Record two invocations: one with an env overlay, a non-zero return code, and shell=False;
-        # one without an overlay and shell=True.
+        # one with shell=True and a stdin string.
         step.record_subprocess("typst compile a.typ a.pdf", "sub", {"TR": "/x"}, 7, False)
-        step.record_subprocess("echo hi | tr a b", ".", None, 0, True)
+        step.record_subprocess("echo hi | tr a b", ".", None, 0, True, "feed me\n")
 
-        # They round-trip in seq order, with cmd stored verbatim and env decoded back to a dict.
+        # iter_subprocesses yields (cmd, workdir, env_overrides, returncode, shell) in seq order,
+        # with cmd stored verbatim and env decoded back to a dict.
         assert list(step.iter_subprocesses()) == [
-            (0, "typst compile a.typ a.pdf", "sub", {"TR": "/x"}, 7, False),
-            (1, "echo hi | tr a b", ".", None, 0, True),
+            ("typst compile a.typ a.pdf", "sub", {"TR": "/x"}, 7, False),
+            ("echo hi | tr a b", ".", None, 0, True),
         ]
+
+        # stdin is stored verbatim (None when not provided). It is kept for archival and is not
+        # surfaced through iter_subprocesses, so read it back from the table directly.
+        stdins = [
+            row[0]
+            for row in wfp.db.execute(
+                "SELECT stdin FROM step_subprocess WHERE node = ? ORDER BY seq", (step.i,)
+            )
+        ]
+        assert stdins == [None, "feed me\n"]
 
 
 async def test_step_subprocess_clean_restarts_seq(wfp: Workflow):
     """delete_subprocesses removes all rows and the seq numbering restarts at 0."""
+
+    def seqs():
+        return [
+            row[0]
+            for row in wfp.db.execute(
+                "SELECT seq FROM step_subprocess WHERE node = ? ORDER BY seq", (step.i,)
+            )
+        ]
+
     async with wfp.db:
         step = wfp.find(Step, "./plan.py")
         step.record_subprocess("a", ".", None, 0)
         step.record_subprocess("b", ".", None, 0)
-        assert [row[0] for row in step.iter_subprocesses()] == [0, 1]
+        # seq is assigned 0, 1 and iter_subprocesses yields the rows in that order (cmd is field 0).
+        assert [row[0] for row in step.iter_subprocesses()] == ["a", "b"]
+        assert seqs() == [0, 1]
 
         step.delete_subprocesses()
         assert list(step.iter_subprocesses()) == []
 
         # A fresh record after cleanup restarts the sequence at 0.
         step.record_subprocess("c", ".", None, 0)
-        assert [row[0] for row in step.iter_subprocesses()] == [0]
+        assert [row[0] for row in step.iter_subprocesses()] == ["c"]
+        assert seqs() == [0]
 
 
 async def test_step_subprocess_clean_before_run(wfp: Workflow):

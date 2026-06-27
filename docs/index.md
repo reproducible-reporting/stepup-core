@@ -118,6 +118,14 @@ while "Step" reflects how StepUp defines operations as individual *steps*.
   which StepUp will respect when scheduling.
   For instance, this can be used to limit the number of steps using a GPU that can run in parallel.
 
+- 🌐 **Graph Visualization Webserver:**
+  The `stepup browse` command launches a small local web server
+  and opens your browser to interactively explore the build graph.
+  It serves a snapshot of the workflow database,
+  letting you inspect every node (files and steps), their states,
+  and the dependencies connecting them.
+  This makes it easy to understand and debug how a workflow is wired together.
+
 - 👁️ **Watching File Changes:**
   StepUp always runs background processes (a director and a step executor) to execute steps,
   and a terminal frontend to control or interrupt the build.

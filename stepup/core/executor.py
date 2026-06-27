@@ -564,7 +564,7 @@ class Run:
     """The pid of the forkserver child currently running the command, if any."""
 
     subprocesses: list = attrs.field(init=False, factory=list)
-    """Recorded subprocess invocations: `(seq, cmd, workdir, env, returncode)` tuples."""
+    """Recorded subprocesses: `(cmd, workdir, env_overrides, returncode, shell)` tuples."""
 
     def merge_hash_result(self, result: "HashResult") -> None:
         """Apply the fields of a `HashResult` onto this running step.
@@ -1015,7 +1015,7 @@ class Executor:
         if len(run.subprocesses) > 0:
             page = "\n".join(
                 format_subprocess(cmd, workdir, env, returncode, shell=shell)
-                for _seq, cmd, workdir, env, returncode, shell in run.subprocesses
+                for cmd, workdir, env, returncode, shell in run.subprocesses
             )
             pages.append(("Subprocesses", page))
         if run.rescheduled_info != "":

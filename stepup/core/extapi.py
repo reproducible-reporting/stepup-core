@@ -25,6 +25,7 @@ filter step dependencies, or implement custom API functions that handle environm
 """
 
 import contextlib
+import hashlib
 import os
 import shlex
 import subprocess
@@ -44,6 +45,20 @@ __all__ = (
     "run_subprocess",
     "subs_env_vars",
 )
+
+
+def _summarize_binary_stdin(stdin: str | bytes | None) -> str | None:
+    """Return a text representation of `stdin` suitable for the archival record.
+
+    `str` and `None` pass through unchanged. `bytes` are summarized into a short,
+    human-readable placeholder (byte length and a truncated SHA-256), because the
+    archival `stdin` column is `TEXT` and a raw binary blob is neither valid UTF-8
+    nor meaningful to a human inspecting the database.
+    """
+    if isinstance(stdin, bytes):
+        digest = hashlib.sha256(stdin).hexdigest()[:16]
+        return f"<{len(stdin)} bytes of binary stdin, sha256={digest}>"
+    return stdin
 
 
 @contextlib.contextmanager
@@ -97,6 +112,7 @@ def record_subprocess(
     workdir: str = ".",
     env_overrides: dict[str, str] | None = None,
     shell: bool = False,
+    stdin: str | bytes | None = None,
 ) -> None:
     """Record a subprocess invocation (already run by the caller) for archival purposes.
 
@@ -129,13 +145,24 @@ def record_subprocess(
     shell
         Whether `cmd` was executed via a shell (i.e. `subprocess.run(..., shell=True)`).
         This is stored and used when formatting the invocation for display.
+    stdin
+        The standard input that was fed to the subprocess, or `None`.
+        A `str` is stored verbatim. `bytes` (e.g. a pickle blob) are not stored raw;
+        they are recorded as a short summary (byte length and a truncated SHA-256),
+        since the archival record is `TEXT` and informative rather than authoritative.
     """
     from stepup.core.api import RPC_CLIENT, _get_step_i  # noqa: PLC0415
 
     if isinstance(RPC_CLIENT, SocketSyncRPCClient):
         step_i = _get_step_i()
         RPC_CLIENT.call.record_subprocess(
-            step_i, cmd, translate(workdir), env_overrides, returncode, shell
+            step_i,
+            cmd,
+            translate(workdir),
+            env_overrides,
+            returncode,
+            shell,
+            _summarize_binary_stdin(stdin),
         )
 
 
@@ -143,6 +170,7 @@ def run_subprocess(
     cmd: str,
     *,
     workdir: str = ".",
+    stdin: str | bytes | None = None,
     stdout=None,
     stderr=None,
     check: bool = True,
@@ -166,6 +194,13 @@ def run_subprocess(
     workdir
         The working directory of the subprocess, relative to the step's own working directory.
         It is passed to `subprocess.run` as `cwd`.
+    stdin
+        Standard input fed to the subprocess, or `None`.
+        A `str` is encoded with the default UTF-8 codec before being passed to the subprocess.
+        `bytes` are fed verbatim (no encoding).
+        When `None` (the default), the subprocess inherits the step process's standard input.
+        The value is forwarded to `record_subprocess`, which stores `bytes` as a short summary
+        (byte length and a truncated SHA-256) rather than raw binary.
     stdout, stderr
         Passed through to `subprocess.run`. When left at their default (`None`), output
         goes wherever the step process's own file descriptors point.
@@ -196,20 +231,43 @@ def run_subprocess(
     run_env = dict(os.environ)
     if env_overrides is not None:
         run_env.update(env_overrides)
+    # The subprocess runs in bytes mode (no text=True), so feed bytes directly and encode
+    # str. input=None is the no-op default, so it can always be passed.
+    if stdin is None:
+        stdin_bytes = None
+    elif isinstance(stdin, bytes):
+        stdin_bytes = stdin
+    else:
+        stdin_bytes = stdin.encode()
     # Flush so already-buffered parent output is written before the subprocess (which inherits
     # our file descriptors when stdout/stderr are None) can write to the same streams.
     sys.stdout.flush()
     sys.stderr.flush()
     if shell:
         cp = subprocess.run(
-            cmd, cwd=workdir, env=run_env, stdout=stdout, stderr=stderr, check=False, shell=True
+            cmd,
+            cwd=workdir,
+            env=run_env,
+            input=stdin_bytes,
+            stdout=stdout,
+            stderr=stderr,
+            check=False,
+            shell=True,
         )
     else:
         argv = shlex.split(cmd)
         cp = subprocess.run(
-            argv, cwd=workdir, env=run_env, stdout=stdout, stderr=stderr, check=False
+            argv,
+            cwd=workdir,
+            env=run_env,
+            input=stdin_bytes,
+            stdout=stdout,
+            stderr=stderr,
+            check=False,
         )
-    record_subprocess(cmd, cp.returncode, workdir=workdir, env_overrides=env_overrides, shell=shell)
+    record_subprocess(
+        cmd, cp.returncode, workdir=workdir, env_overrides=env_overrides, shell=shell, stdin=stdin
+    )
     if check and cp.returncode != 0:
         raise subprocess.CalledProcessError(cp.returncode, cmd, cp.stdout, cp.stderr)
     return cp

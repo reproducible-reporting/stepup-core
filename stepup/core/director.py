@@ -577,6 +577,7 @@ class DirectorHandler:
         env_overrides: dict[str, str] | None,
         returncode: int,
         shell: bool = False,
+        stdin: str | None = None,
     ):
         """Record a subprocess invocation made by a wrapper step.
 
@@ -587,7 +588,7 @@ class DirectorHandler:
         """
         async with self.db:
             step = self.workflow.node(Step, step_i)
-            step.record_subprocess(cmd, workdir, env_overrides, returncode, shell)
+            step.record_subprocess(cmd, workdir, env_overrides, returncode, shell, stdin)
 
     @allow_rpc
     async def getinfo(self, step_i: int) -> StepInfo:

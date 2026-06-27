@@ -532,6 +532,8 @@ class Trellis:
         # - Added a step_subprocess table to record subprocess invocations of wrapper steps.
         #   The cmd column stores a plain shell command line (not a JSON argv list).
         # - Added shell column to step_subprocess (records whether cmd was run via a shell).
+        # - Added stdin column to step_subprocess
+        #   (records the standard input fed to the subprocess).
         # - Added ON DELETE CASCADE to the satellite tables (file, step, env_var, step_hash,
         #   step_resource, step_output, step_subprocess, nglob_multi) so their rows are
         #   removed automatically when a node row is deleted.

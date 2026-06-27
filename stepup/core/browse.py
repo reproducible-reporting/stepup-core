@@ -146,6 +146,9 @@ HTML_TEMPLATE = """\
     hr {
       border: 1px solid var(--heading-color);
     }
+    .indent {
+      margin-left: 10px;
+    }
     p {
       margin-left: 10px;
       margin-top: 5px;
@@ -490,27 +493,28 @@ class GraphServer(BaseHTTPRequestHandler):
                 if first:
                     yield "<h3>Output</h3>"
                     first = False
-                yield f"<p>{out_kind.capitalize()}</p>"
+                yield f"<p>{out_kind}:</p>"
                 yield f"<pre>{html.escape(out_content)}</pre>"
 
             sql_sub = (
-                "SELECT cmd, workdir, env_overrides, returncode, shell FROM step_subprocess "
+                "SELECT cmd, workdir, env_overrides, returncode, shell, stdin FROM step_subprocess "
                 "WHERE node = ? ORDER BY seq"
             )
             subs = list(self.con.execute(sql_sub, (node_i,)))
             if len(subs) > 0:
                 yield "<h3>Subprocesses</h3>"
-                lines = [
-                    format_subprocess(
+                for cmd, workdir, env_overrides, returncode, shell_int, stdin in subs:
+                    line = format_subprocess(
                         cmd,
                         workdir,
                         None if env_overrides is None else json.loads(env_overrides),
                         returncode,
                         shell=bool(shell_int),
                     )
-                    for cmd, workdir, env_overrides, returncode, shell_int in subs
-                ]
-                yield f"<pre>{html.escape(chr(10).join(lines))}</pre>"
+                    yield f"<pre>{html.escape(line)}</pre>"
+                    if stdin is not None:
+                        yield '<div class="indent"><p>with stdin:</p>'
+                        yield f"<pre>{html.escape(stdin)}</pre></div>"
 
         elif kind == "file":
             (state_i, digest, mode, mtime, size, inode) = self.con.execute(

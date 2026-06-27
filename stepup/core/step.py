@@ -151,6 +151,7 @@ CREATE TABLE IF NOT EXISTS step_subprocess (
     env_overrides TEXT,                 -- JSON-encoded dict[str, str] overlay, or NULL
     returncode INTEGER NOT NULL,
     shell      INTEGER NOT NULL DEFAULT 0,    -- 1 if cmd was run via a shell
+    stdin      TEXT,                          -- standard input fed to the subprocess, or NULL
     PRIMARY KEY (node, seq),
     -- ON DELETE CASCADE removes these rows when the node row is deleted, matching the
     -- other satellite tables (step_hash / env_var / step_resource / step_output).
@@ -845,6 +846,7 @@ class Step(Node):
         env_overrides: dict[str, str] | None,
         returncode: int,
         shell: bool = False,
+        stdin: str | None = None,
     ) -> None:
         """Record a subprocess invocation made by this (wrapper) step.
 
@@ -865,6 +867,9 @@ class Step(Node):
             The exit code of the subprocess.
         shell
             Whether `cmd` was executed via a shell (`subprocess.run(..., shell=True)`).
+        stdin
+            The standard input fed to the subprocess as a string, or `None` when no input
+            was provided. Stored verbatim.
         """
         # The per-step sequence number is assigned here, under the director's DBSession,
         # so concurrent steps cannot collide and a re-run (which clears the rows first)
@@ -873,7 +878,9 @@ class Step(Node):
             "SELECT COALESCE(MAX(seq) + 1, 0) FROM step_subprocess WHERE node = ?", (self.i,)
         ).fetchone()
         self.db.execute(
-            "INSERT INTO step_subprocess VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO step_subprocess "
+            "(node, seq, cmd, workdir, env_overrides, returncode, shell, stdin) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 self.i,
                 seq,
@@ -882,27 +889,29 @@ class Step(Node):
                 None if env_overrides is None else json.dumps(env_overrides),
                 returncode,
                 int(shell),
+                stdin,
             ),
         )
 
-    def iter_subprocesses(self) -> Iterator[tuple[int, str, str, dict | None, int, bool]]:
+    def iter_subprocesses(
+        self,
+    ) -> Iterator[tuple[str, str, dict | None, int, bool]]:
         """Iterate over recorded subprocess invocations, ordered by sequence number.
 
         Yields
         ------
         record
-            A tuple `(seq, cmd, workdir, env_overrides, returncode, shell)`
+            A tuple `(cmd, workdir, env_overrides, returncode, shell)`
             where `cmd` is the stored command line,
             `env_overrides` is the decoded overlay dict (or `None`),
             and `shell` indicates whether `cmd` was executed via a shell.
         """
         sql = (
-            "SELECT seq, cmd, workdir, env_overrides, returncode, shell FROM step_subprocess "
-            "WHERE node = ? ORDER BY seq"
+            "SELECT cmd, workdir, env_overrides, returncode, shell "
+            "FROM step_subprocess WHERE node = ? ORDER BY seq"
         )
-        for seq, cmd, workdir, env_overrides, returncode, shell in self.db.execute(sql, (self.i,)):
+        for cmd, workdir, env_overrides, returncode, shell in self.db.execute(sql, (self.i,)):
             yield (
-                seq,
                 cmd,
                 workdir,
                 None if env_overrides is None else json.loads(env_overrides),
