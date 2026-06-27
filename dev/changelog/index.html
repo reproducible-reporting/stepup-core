@@ -2003,7 +2003,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v4.0.0rc1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.0.0rc1 - 2026-04-27
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.0.0rc1 - 2026-04-27">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3897,7 +3908,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v4.0.0rc1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.0.0rc1 - 2026-04-27
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.0.0rc1 - 2026-04-27">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -5561,30 +5583,16 @@
 and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-based Versioning</a>.
 (Changes to features documented as &ldquo;experimental&rdquo; will not increment macro and meso version numbers.)</p>
 <h2 id="unreleased"><a href="https://github.com/reproducible-reporting/stepup-core">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<p>(no changes yet)</p>
+<h2 id="v4.0.0rc1"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc1">4.0.0rc1</a> - 2026-04-27<a class="headerlink" href="#v4.0.0rc1" title="Permanent link">&para;</a></h2>
+<p>This is release candidate 1 for the upcoming StepUp 4.0 release.</p>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
 <ul>
-<li>A <code>run()</code> or <code>step()</code> command may now start with <code>VAR=value</code> assignments
-  (when <code>shell=False</code>), e.g. <code>run("OMP_NUM_THREADS=4 ./work.py")</code>.
-  These are applied as step-specific environment variable overrides when the step runs,
-  which is otherwise impossible without a shell.
-  The overrides are part of the step hash, so changing a value reruns the step.
-  A variable cannot be both an override and an <code>env</code> dependency.</li>
-<li>New <code>stepup.core.extapi</code> module for StepUp extension developers,
-  collecting utilities previously scattered across <code>stepup.core.api</code>
-  (<code>subs_env_vars</code>, <code>get_rpc_client</code>) and <code>stepup.core.utils</code>
-  (<code>filter_dependencies</code>, <code>get_local_import_paths</code>).
-  See <a href="../reference/stepup.core.extapi/">stepup.core.extapi</a> for the full reference
-  and <a href="../extending/api/">Custom API Functions</a> for usage guidance.</li>
-<li>Extension wrapper steps can now record the exact subprocess invocations they make,
-  using <code>run_subprocess</code> and <code>record_subprocess</code> in <code>stepup.core.extapi</code>.
-  The command line, working directory, environment overlay and return code are stored in a
-  new <code>step_subprocess</code> table for a future archival export.
-  Recorded invocations are shown in a <code>Subprocesses</code> section of the terminal output when a
-  step completes (and in <code>stepup browse</code>), formatted as shell-pasteable command lines.
-  See <a href="../extending/api/">Custom API Functions</a> for usage guidance.</li>
-<li>In addition to environment variables and command-line arguments,
-  StepUp can now also be configured through configuration files.
+<li>StepUp can now also be configured through configuration files,
+  in addition to environment variables and command-line arguments.
   See <a href="../reference/configuration/">Configuration files</a> for details.</li>
+<li>The <code>stepup show-config</code> command shows the current configuration,
+  as the result of merging all config files and environment variables.</li>
 <li>StepUp can use a forkserver for Python step execution and file hashing,
   which reduces startup overhead.
   This can be controlled with the <code>--fork-runpy</code> flag,
@@ -5593,13 +5601,6 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   modules to be pre-loaded into the forkserver.
   This only has an effect when <code>--fork-runpy</code> is active and can speed up workflows
   that repeatedly import large modules.</li>
-<li>When the first word of a <code>run()</code> command is a bare command name matching a <code>console_scripts</code>
-  entry point from the current Python environment, StepUp now automatically selects the
-  <code>runpyep</code> action.
-  When the forkserver is enabled (<code>--fork-runpy</code>), the entry point function is called
-  in-process rather than spawning a new subprocess, reducing overhead.
-  If the entry point belongs to a different Python environment, a warning is logged and
-  the command falls back to direct subprocess execution (<code>runexec</code> action).</li>
 <li>StepUp now stores the captured stdout and stderr of each step in the workflow database,
   so they can be inspected after the build.
   Output from subprocesses launched by a forked Python step is captured properly.
@@ -5608,33 +5609,58 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   These outputs can later be viewed with <code>stepup browse</code>.</li>
 <li>All functions in <code>stepup.core.api</code> now accept <code>os.PathLike</code> objects (i.e. <code>pathlib.Path</code>)
   as path arguments, in addition to <code>str</code> and <code>path.Path</code>.</li>
+<li>When the first word of a <code>run()</code> command is a bare command name matching a <code>console_scripts</code>
+  entry point from the current Python environment, StepUp now automatically selects the
+  <code>runpyep</code> action.
+  When the forkserver is enabled (<code>--fork-runpy</code>), the entry point function is called
+  in-process rather than spawning a new subprocess, reducing overhead.
+  If the entry point belongs to a different Python environment, a warning is logged and
+  the command falls back to direct subprocess execution (<code>runexec</code> action).</li>
+<li>A <code>run()</code> or <code>step()</code> command may now start with <code>VAR=value</code> assignments
+  (when <code>shell=False</code>), e.g. <code>run("OMP_NUM_THREADS=4 ./work.py")</code>.
+  These are applied as step-specific environment variable overrides when the step runs,
+  which is otherwise impossible without a shell.
+  The overrides are part of the step hash, so changing a value reruns the step.
+  A variable cannot be both an override and an <code>env</code> dependency.</li>
+<li>New <code>stepup.core.extapi</code> module for StepUp extension developers,
+  collecting utilities previously scattered across <code>stepup.core.api</code> and <code>stepup.core.utils</code>.
+  See <a href="../reference/stepup.core.extapi/">stepup.core.extapi</a> for the full reference
+  and <a href="../extending/api/">Custom API Functions</a> for usage guidance.</li>
+<li>Extension wrapper steps can now record the exact subprocess invocations they make,
+  using <code>run_subprocess</code> and <code>record_subprocess</code> in <code>stepup.core.extapi</code>.
+  The command line, working directory, environment overlay and return code are stored in a
+  new <code>step_subprocess</code> table for a future archival export.
+  Recorded invocations are shown in <code>stepup browse</code>, formatted as shell-pasteable command lines.
+  See <a href="../extending/api/">Custom API Functions</a> for implementation guidance.</li>
 </ul>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
 <ul>
-<li>The <code>render-jinja</code> feature is now a standalone Python console script instead of a <code>stepup</code>
-  subcommand (tool).
-  Steps created by <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a> now run <code>render-jinja ...</code>
-  instead of <code>stepup render-jinja ...</code>.
-  This matches the recommended pattern for extensions that do not need low-level access to
-  StepUp internals.</li>
+<li><code>stepup boot</code> has been renamed to <code>stepup build</code>
+  and can be called conveniently with the <code>sb</code> shortcut.
+  The <code>boot</code> command will be removed in a future release.</li>
+<li>The <code>--num-workers</code> / <code>-n</code> option of <code>sb</code> has been renamed to <code>--jobs</code> / <code>-j</code>,
+  in line with the convention used by <code>make</code> and similar tools.
+  The config-file key changes from <code>num_workers</code> to <code>jobs</code>,
+  and the environment variable changes from <code>STEPUP_NUM_WORKERS</code> to <code>STEPUP_BUILD_JOBS</code>.</li>
+<li>The <code>runsh()</code> and <code>runpy()</code> functions have been replaced by the more flexible <code>run()</code> function.
+  The new implementation is more efficient and automatically tracks local scripts as dependencies.</li>
+<li>The <code>plan()</code> function has been made maximally similar to <code>run()</code>,
+  and now accepts arbitrary local Python scripts,
+  not just a directory that must contain a <code>plan.py</code> script.</li>
 <li>Redesigned <code>call()</code> interface:
   the old inp/out/pickle argument modes are replaced
   by explicit function dispatch and optional <code>args_file</code> support for file-based argument passing.
   See <a href="../getting_started/call/">Function Calls</a> for details.</li>
-<li>The database schema version has been incremented to 5 because:<ul>
-<li>UINT64 type is used for inodes in the SQLite storage</li>
-<li>Directories are no longer stored in the database
-  (except for static trees, which are stored as special nodes in the graph.)</li>
-<li>Deferred globs have been retired and replaced by static trees.
-  (More on that below.)</li>
-<li>A new metadata update mechanism has been implemented for steps,
-  which introduced several new columns to the <code>step</code> table:
-  <code>_safe</code>, <code>_check_safe</code>, <code>need</code>, <code>_implied_need</code>, <code>_tail_time</code>, <code>_check_after</code>.</li>
-<li>The <code>dirty</code> column has been removed from the <code>step</code> table.
-  The information represented by this column is now inferred from <code>rescheduled_info</code>.</li>
-<li>The <code>pool</code> table was replaced by a <code>step_resource</code> table.</li>
-<li>The step state <code>QUEUED</code> has been removed, as it is no longer needed.</li>
-<li>A <code>step_output</code> table was added to store the stdout/stderr of steps.</li>
+<li>The scheduler has been replaced by a new and more efficient implementation.
+  This change also comes with several improved features:<ul>
+<li>Steps are prioritized using the <em>tail time</em>, which results in the shortest overall
+  execution time of the workflow.
+  This is also known as critical path scheduling.
+  Since StepUp assumes no full knowledge of the workflow,
+  the tail time estimates are updated dynamically as the workflow progresses.</li>
+<li>The <code>pool</code> feature has been removed and
+  is now replaced by the more powerful <code>resources</code> feature.</li>
+<li>The <code>optional</code> feature has become more robust.</li>
 </ul>
 </li>
 <li>The &ldquo;deferred glob&rdquo; has been replaced by a simpler &ldquo;static tree&rdquo; concept.
@@ -5643,25 +5669,32 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   without having to glob the entire directory recursively.
   To declare a static tree directory, just pass it as an argument to the <code>static()</code> function.
   It will treat all directory arguments are static trees.</li>
-<li>The <code>runsh()</code> and <code>runpy()</code> functions have been replaced by the more flexible <code>run()</code> function.
-  The new implementation is more efficient and automatically tracks local scripts as dependencies.</li>
-<li>The <code>plan()</code> function has been made maximally similar to <code>run()</code>,
-  and now accepts arbitrary local Python scripts,
-  not just a directory that must contain a <code>plan.py</code> script.</li>
-<li>The scheduler has been replaced by a new and more efficient implementation.
-  This change also comes with several improved features:<ul>
-<li>Steps are prioritized using the <em>tail time</em>, which results in the shortest overall
-  execution time of the workflow.
-  Since StepUp assumes no full knowledge of the workflow,
-  the tail time estimates are updated dynamically as the workflow progresses.</li>
-<li>The <code>pool</code> feature has been removed and is now replaced by the more powerful <code>resources</code> feature.</li>
-<li>The <code>optional</code> feature has become more robust.</li>
+<li>The <code>render-jinja</code> feature is now a standalone Python console script instead of a <code>stepup</code>
+  subcommand (tool).
+  Steps created by <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a> now run <code>render-jinja ...</code>
+  instead of <code>stepup render-jinja ...</code>.
+  This matches the recommended pattern for extensions that do not need low-level access to
+  StepUp internals.</li>
+<li>The database schema version has been incremented to 5 because:<ul>
+<li>UINT64 type is used for inodes in the SQLite storage</li>
+<li>Directories are no longer stored in the database
+  (except for static trees, which are stored as special nodes in the graph.)</li>
+<li>the Blake2B hash has been replaced by the more common SHA-256</li>
+<li>Deferred globs have been retired and replaced by static trees.</li>
+<li>The <code>step</code> table and all its satellite tables have been redesigned
+  to support the new scheduling algorithm.</li>
+<li>Step labels no longer carry an action-name prefix.
+  They store the raw command line.</li>
+<li>The step state <code>QUEUED</code> has been removed, as it is no longer needed.</li>
+<li>A new step state <code>CHECKING</code> has been added
+  for steps that are being hash-checked for possible skipping.</li>
+<li><code>step_output</code> and <code>step_subprocess</code> tables were added.</li>
+<li>SQLite&rsquo;s <code>ON DELETE CASCADE</code> feature is now used for all satellite tables of the <code>step</code> table.</li>
+<li>Indexes were tuned.</li>
+<li>The auto_vacuum mode was set to INCREMENTAL,
+  which is paired with a database vacuum worker to reclaim space from deleted nodes.</li>
 </ul>
 </li>
-<li>The <code>--num-workers</code> / <code>-n</code> option of <code>sb</code> has been renamed to <code>--jobs</code> / <code>-j</code>,
-  in line with the convention used by <code>make</code> and similar tools.
-  The config-file key changes from <code>num_workers</code> to <code>jobs</code>,
-  and the environment variable changes from <code>STEPUP_NUM_WORKERS</code> to <code>STEPUP_BUILD_JOBS</code>.</li>
 <li>Several environment variables have been renamed for consistency.
   See <a href="../reference/configuration/">Configuration files</a> for details.</li>
 <li>Documentation has been updated to reflect the API changes and to clarify some other points:<ul>
@@ -5670,13 +5703,12 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   to help users migrate from StepUp 3 to StepUp 4.</li>
 </ul>
 </li>
-<li>The <code>stepup browse</code> command has become easier to use:
-  It opens a browser window automatically.</li>
-<li>Updates of internals:<ul>
+<li>The <code>stepup browse</code> command has become easier to use (opens a browser window automatically)
+  and shows more details of the steps.</li>
+<li>Updates of many internals, including:<ul>
 <li>Renamed &ldquo;orphan&rdquo; and related names to &ldquo;detached&rdquo;, which is more intuitive.
   The new terminology is applied more consistently with consistent distinction between
   &ldquo;detach&rdquo; (verb, state change) and &ldquo;detached&rdquo; (state).</li>
-<li>Replaced the Blake2B hash by the more common SHA-256.</li>
 <li>The &ldquo;action&rdquo; abstraction layer introduced in StepUp 3 has been completely removed,
   as it was no longer needed after the introduction of the forkserver.</li>
 <li>Worker subprocesses have been replaced by asyncio tasks running inside the director.
@@ -5684,23 +5716,21 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>Strict database sessions management and transaction correctness has been implemented
   to avoid database corruption, e.g. due to race conditions.</li>
 <li>The <em>run phase</em> has been renamed to <em>build phase</em> throughout the documentation and source code.</li>
-<li>The Runner has been renamed to Builder.</li>
-<li>The Cascade has been renamed to Trellis.</li>
+<li>Runner has been renamed to Builder.</li>
+<li>Cascade has been renamed to Trellis.</li>
 </ul>
 </li>
 </ul>
 <h3 id="deprecated">Deprecated<a class="headerlink" href="#deprecated" title="Permanent link">&para;</a></h3>
 <ul>
-<li>The <code>stepup boot</code> command has been deprecated in favor of <code>sb</code>.
-  The <code>boot</code> command will be removed in a future release.
-  You can use the new <code>sb</code> entrypoint as a shortcut for <code>stepup build</code>.</li>
+<li>The <code>stepup boot</code> command has been deprecated in favor of <code>sb</code> or alternatively <code>stepup build</code>.</li>
 <li>The script interface for calling user Python scripts from <code>plan.py</code> has been deprecated
   in favor of the new <a href="../getting_started/call/">Call</a> interface.
   You are encouraged to migrate your <code>plan.py</code> files to the new API.</li>
 </ul>
 <h3 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h3>
 <ul>
-<li>StepUp no longer keeps track directories.
+<li>StepUp no longer tracks directories.
   They are either assumed to be present (for static files) or created transparently when needed.
   This has some consequences:<ul>
 <li>The <code>mkdir()</code> command has been removed.</li>
@@ -5711,6 +5741,8 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   It also handles renaming and moving of directories.</li>
 <li>The cleanup script (<code>stepup clean</code>) and the automatic cleanup at the end of a successful run
   will remove empty directories after having removed outdated output files they contained.</li>
+<li>StepUp now limits its insistence on path affixes (like trailing slashes)
+  to only those cases where it is absolutely necessary to avoid ambiguity.</li>
 </ul>
 </li>
 <li>The <code>glob()</code> function no longer accepts <code>_defer</code> and <code>_required</code> keyword arguments.</li>
