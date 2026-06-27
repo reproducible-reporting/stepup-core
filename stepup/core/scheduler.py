@@ -444,7 +444,7 @@ class Scheduler:
         db = self.workflow.db
         cur = db.execute(RECURSIVE_UPDATE_SAFE)
         logger.debug(f"Updated {cur.rowcount} _safe metadata field(s) for steps")
-        cur = db.execute("UPDATE step SET _check_safe = 0 WHERE _check_safe = 1")
+        cur = db.execute("UPDATE step SET _check_safe = 0 WHERE _check_safe")
         logger.debug(f"Updated {cur.rowcount} _check_safe metadata field(s) for steps")
 
     def _update_meta_after(self):
@@ -475,7 +475,7 @@ class Scheduler:
             first = False
         logger.debug("Finished updating 'after' metadata fields")
         db.execute(DROP_CHECK_AFTER)
-        cur = db.execute("UPDATE step SET _check_after = 0 WHERE _check_after = 1")
+        cur = db.execute("UPDATE step SET _check_after = 0 WHERE _check_after")
         logger.debug(f"Updated {cur.rowcount} _check_after metadata field(s) for steps")
 
     def _get_step(self, sql: str) -> Step | None:

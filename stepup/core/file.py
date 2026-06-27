@@ -58,7 +58,6 @@ CREATE TABLE IF NOT EXISTS file (
     (digest = X'75' AND mode = 0 AND mtime = 0 AND size = 0 AND inode = 0)
   )
 ) WITHOUT ROWID;
-CREATE INDEX IF NOT EXISTS file_state ON file(state);
 """
 
 

@@ -91,6 +91,11 @@ CREATE TABLE IF NOT EXISTS step (
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS step_state ON step(state);
 CREATE INDEX IF NOT EXISTS step_implied_need ON step(_implied_need);
+-- Partial indexes over the scheduler's "to recompute" flags. They contain only the few
+-- flagged rows, so locating them each scheduling tick (see Scheduler._update_meta_*) is an
+-- index scan proportional to the flagged count instead of a full scan of the step table.
+CREATE INDEX IF NOT EXISTS step_check_safe ON step(node) WHERE _check_safe;
+CREATE INDEX IF NOT EXISTS step_check_after ON step(node) WHERE _check_after;
 
 CREATE TABLE IF NOT EXISTS nglob_multi (
     i INTEGER PRIMARY KEY,
@@ -111,9 +116,10 @@ CREATE TABLE IF NOT EXISTS env_var (
     value TEXT,
     amended INTEGER NOT NULL CHECK(amended IN (0, 1)),
     PRIMARY KEY (node, name)
+    -- The PRIMARY KEY above already indexes lookups by node (leftmost column),
+    -- so no separate index on (node) is needed.
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 ) WITHOUT ROWID;
-CREATE INDEX IF NOT EXISTS env_var_node ON env_var(node);
 
 CREATE TABLE IF NOT EXISTS step_hash (
     node INTEGER PRIMARY KEY,

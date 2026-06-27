@@ -57,9 +57,9 @@ CREATE TABLE IF NOT EXISTS node (
     -- * To keep metadata about detached nodes in case they are recycled later.
     FOREIGN KEY (creator) REFERENCES node(i)
 );
-CREATE INDEX IF NOT EXISTS node_kind ON node (kind);
-CREATE INDEX IF NOT EXISTS node_creator ON node (creator);
+CREATE INDEX IF NOT EXISTS node_creator_kind ON node (creator, kind);
 CREATE UNIQUE INDEX IF NOT EXISTS node_kind_label ON node (kind, label);
+CREATE INDEX IF NOT EXISTS node_detached ON node (i) WHERE detached;
 
 CREATE TABLE IF NOT EXISTS dependency (
     i INTEGER PRIMARY KEY,
@@ -69,7 +69,8 @@ CREATE TABLE IF NOT EXISTS dependency (
     FOREIGN KEY (supplier) REFERENCES node(i),
     FOREIGN KEY (consumer) REFERENCES node(i)
 );
-CREATE INDEX IF NOT EXISTS dependency_supplier_consumer ON dependency(supplier, consumer);
+-- An index on (supplier, consumer) is already provided by the UNIQUE(supplier, consumer)
+-- constraint above (sqlite_autoindex_dependency_1), so only the reverse direction is added here.
 CREATE INDEX IF NOT EXISTS dependency_consumer_supplier ON dependency(consumer, supplier);
 """
 
@@ -539,6 +540,11 @@ class Trellis:
         #   removed automatically when a node row is deleted.
         # - Added a env_overrides column to the step table, storing a JSON dict of step-specific
         #   environment variable overrides. These also participate in the step's inp_digest.
+        # - Index tuning (no column changes):
+        #   * Dropped dependency_supplier_consumer (duplicate of the UNIQUE(supplier, consumer)
+        #     auto-index) and env_var_node (duplicate of the env_var PRIMARY KEY prefix).
+        #   * Widened node_creator to node_creator_kind on (creator, kind).
+        #   * Added partial indexes step_check_safe and step_check_after on the scheduler flags.
 
         return 5
 
