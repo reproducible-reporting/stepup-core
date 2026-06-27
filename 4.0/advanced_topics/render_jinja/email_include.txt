@@ -1,0 +1,9 @@
+{% raw %}
+Hi {{ name }},
+
+I hope you're having a {{ mood }} day.
+
+Cheers,
+
+Spammer
+{% endraw %}

@@ -1,0 +1,11 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post54)
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./generate.py run '{"r": 3.2, "out": ["logmap_3.200.txt"]}'
+   SUCCESS │ ./generate.py run '{"r": 3.2, "out": ["logmap_3.200.txt"]}'
+     START │ ./plot.py run '{"inp": ["matplotlibrc", "logmap_3.200.txt"], "out": ["plot_logmap.png"]}'
+   SUCCESS │ ./plot.py run '{"inp": ["matplotlibrc", "logmap_3.200.txt"], "out": ["plot_logmap.png"]}'
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ See you!

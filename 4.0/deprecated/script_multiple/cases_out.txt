@@ -1,0 +1,2 @@
+./plot.py run plot_ebbr
+./plot.py run plot_ebos

@@ -1,0 +1,14 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post54)
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ echo Monday frown > story.txt; echo Coffee smile >> story.txt
+   SUCCESS │ echo Monday frown > story.txt; echo Coffee smile >> story.txt
+     START │ grep Coffee story.txt
+   SUCCESS │ grep Coffee story.txt
+─────────────────────────────── Standard output ────────────────────────────────
+Coffee smile
+────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ See you!

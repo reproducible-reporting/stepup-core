@@ -1,0 +1,15 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post54)
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./plot.py plan '{"airport": "ebbr"}'
+   SUCCESS │ ./plot.py plan '{"airport": "ebbr"}'
+     START │ ./plot.py plan '{"airport": "ebos"}'
+   SUCCESS │ ./plot.py plan '{"airport": "ebos"}'
+     START │ ./plot.py run '{"airport": "ebbr", "inp": ["matplotlibrc", "ebbr.csv"], "out": ["plot_ebbr.png"]}'
+   SUCCESS │ ./plot.py run '{"airport": "ebbr", "inp": ["matplotlibrc", "ebbr.csv"], "out": ["plot_ebbr.png"]}'
+     START │ ./plot.py run '{"airport": "ebos", "inp": ["matplotlibrc", "ebos.csv"], "out": ["plot_ebos.png"]}'
+   SUCCESS │ ./plot.py run '{"airport": "ebos", "inp": ["matplotlibrc", "ebos.csv"], "out": ["plot_ebos.png"]}'
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ See you!

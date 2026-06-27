@@ -1,0 +1,4 @@
+MYNUM=None
+
+Read from stdin:
+This is src_foo

@@ -1,0 +1,11 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post54)
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ tr '[:lower:]' '[:upper:]' < lower1.txt > upper1.txt
+   SUCCESS │ tr '[:lower:]' '[:upper:]' < lower1.txt > upper1.txt
+     START │ tr '[:lower:]' '[:upper:]' < lower2.txt > upper2.txt
+   SUCCESS │ tr '[:lower:]' '[:upper:]' < lower2.txt > upper2.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ See you!

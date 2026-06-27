@@ -1,0 +1,36 @@
+root:
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+              digest = 6616daa2 6f143752 291e1e69 8ede0bb0 65bd3f2d 6ab32fb0 7734f66e 8ff00037
+          created by   root:
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = RUNNING
+                need = PLAN
+          created by   root:
+            consumes   file:plan.py
+             creates   step:echo Monday frown > story.txt; echo Coffee smile >> story.txt
+             creates   step:grep Coffee story.txt
+
+step:echo Monday frown > story.txt; echo Coffee smile >> story.txt
+               state = PENDING
+                need = DEFAULT
+          created by   step:./plan.py
+             creates   file:story.txt
+            supplies   file:story.txt
+
+file:story.txt
+               state = AWAITED
+          created by   step:echo Monday frown > story.txt; echo Coffee smile >> story.txt
+            consumes   step:echo Monday frown > story.txt; echo Coffee smile >> story.txt
+            supplies   step:grep Coffee story.txt
+
+step:grep Coffee story.txt
+               state = PENDING
+                need = DEFAULT
+          created by   step:./plan.py
+            consumes   file:story.txt

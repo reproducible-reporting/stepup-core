@@ -1,0 +1,14 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post54)
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./work.py 3
+   SUCCESS │ ./work.py 3
+─────────────────────────────── Standard output ────────────────────────────────
+Repetition helps to get the message across.
+Repetition helps to get the message across.
+Repetition helps to get the message across.
+────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ See you!
