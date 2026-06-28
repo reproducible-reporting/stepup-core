@@ -32,6 +32,6 @@ as described under [Command Dispatch](api.md#command-dispatch).
 
 StepUp Core uses this same pattern itself.
 For example, [`render_jinja()`][stepup.core.api.render_jinja]
-creates a step whose command starts with `render-jinja ...`,
-which the step executor runs in-process because `render-jinja` is itself a `console_scripts`
+creates a step whose command starts with `sc-render-jinja ...`,
+which the step executor runs in-process because `sc-render-jinja` is itself a `console_scripts`
 entry point.

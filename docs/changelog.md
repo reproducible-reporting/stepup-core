@@ -100,9 +100,9 @@ This is release candidate 2 for the upcoming StepUp 4.0 release.
   without having to glob the entire directory recursively.
   To declare a static tree directory, just pass it as an argument to the `static()` function.
   It will treat all directory arguments are static trees.
-- The `render-jinja` feature is now a standalone Python console script instead of a `stepup`
-  subcommand (tool).
-  Steps created by [`render_jinja()`][stepup.core.api.render_jinja] now run `render-jinja ...`
+- The `render-jinja` feature is now a standalone Python console script, `sc-render-jinja`
+  instead of a `stepup` subcommand (tool).
+  Steps created by [`render_jinja()`][stepup.core.api.render_jinja] now run `sc-render-jinja ...`
   instead of `stepup render-jinja ...`.
   This matches the recommended pattern for extensions that do not need low-level access to
   StepUp internals.

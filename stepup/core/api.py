@@ -1230,7 +1230,7 @@ def render_jinja(
     path_out = make_path_out(path_template, dest, None)
 
     # Create the command
-    args = ["render-jinja", "${inp}", "${out}"]
+    args = ["sc-render-jinja", "${inp}", "${out}"]
     if mode != "auto":
         args.append(f"--mode={mode}")
     if len(variables) > 0:

@@ -64,7 +64,7 @@ Changelog = "https://reproducible-reporting.github.io/stepup-core/changelog/"
 stepup = "stepup.core.__main__:main"
 sb = "stepup.core.__main__:sb_main"
 _stepup_hasher = "stepup.core.hasher:hasher_tool"
-render-jinja = "stepup.core.render_jinja:main"
+sc-render-jinja = "stepup.core.render_jinja:main"
 
 [project.entry-points."stepup.tools"]
 boot = "stepup.core.tui:boot_subcommand"

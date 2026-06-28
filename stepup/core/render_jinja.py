@@ -42,7 +42,7 @@ __all__ = ("render_jinja",)
 def main() -> None:
     """Command-line entry point for the `render-jinja` console script."""
     parser = argparse.ArgumentParser(
-        prog="render-jinja",
+        prog="sc-render-jinja",
         description="Render a file with Jinja2.",
     )
     parser.add_argument("path_in", type=Path, help="The input file")

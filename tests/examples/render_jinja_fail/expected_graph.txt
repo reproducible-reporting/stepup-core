@@ -15,19 +15,19 @@ step:./plan.py
             consumes   file:plan.py
              creates   file:template.tex
              creates   file:variables.py
-             creates   step:render-jinja template.tex variables.py rendered.tex
+             creates   step:sc-render-jinja template.tex variables.py rendered.tex
 
 file:template.tex
                state = STATIC
           created by   step:./plan.py
-            supplies   step:render-jinja template.tex variables.py rendered.tex
+            supplies   step:sc-render-jinja template.tex variables.py rendered.tex
 
 file:variables.py
                state = STATIC
           created by   step:./plan.py
-            supplies   step:render-jinja template.tex variables.py rendered.tex
+            supplies   step:sc-render-jinja template.tex variables.py rendered.tex
 
-step:render-jinja template.tex variables.py rendered.tex
+step:sc-render-jinja template.tex variables.py rendered.tex
                state = FAILED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
@@ -39,5 +39,5 @@ step:render-jinja template.tex variables.py rendered.tex
 
 file:rendered.tex
                state = OUTDATED
-          created by   step:render-jinja template.tex variables.py rendered.tex
-            consumes   step:render-jinja template.tex variables.py rendered.tex
+          created by   step:sc-render-jinja template.tex variables.py rendered.tex
+            consumes   step:sc-render-jinja template.tex variables.py rendered.tex

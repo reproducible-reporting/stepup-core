@@ -15,19 +15,19 @@ step:./plan.py
             consumes   file:plan.py
              creates   file:template.md
              creates   file:variables.py
-             creates   step:render-jinja template.md variables.py rendered.md
+             creates   step:sc-render-jinja template.md variables.py rendered.md
 
 file:template.md
                state = STATIC
           created by   step:./plan.py
-            supplies   step:render-jinja template.md variables.py rendered.md
+            supplies   step:sc-render-jinja template.md variables.py rendered.md
 
 file:variables.py
                state = STATIC
           created by   step:./plan.py
-            supplies   step:render-jinja template.md variables.py rendered.md
+            supplies   step:sc-render-jinja template.md variables.py rendered.md
 
-step:render-jinja template.md variables.py rendered.md
+step:sc-render-jinja template.md variables.py rendered.md
                state = SUCCEEDED
                 need = DEFAULT
            using_env = ENV_VAR_TEST_STEPUP_RENDER [amended]
@@ -40,5 +40,5 @@ step:render-jinja template.md variables.py rendered.md
 
 file:rendered.md
                state = BUILT
-          created by   step:render-jinja template.md variables.py rendered.md
-            consumes   step:render-jinja template.md variables.py rendered.md
+          created by   step:sc-render-jinja template.md variables.py rendered.md
+            consumes   step:sc-render-jinja template.md variables.py rendered.md
