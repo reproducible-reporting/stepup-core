@@ -171,10 +171,9 @@ def run_subprocess(
     *,
     workdir: str = ".",
     stdin: str | bytes | None = None,
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-    check: bool = True,
     shell: bool = False,
+    check: bool = True,
+    text: bool | None = None,
 ) -> subprocess.CompletedProcess:
     """Run a subprocess and record it for archival purposes.
 
@@ -196,24 +195,23 @@ def run_subprocess(
         It is passed to `subprocess.run` as `cwd`.
     stdin
         Standard input fed to the subprocess, or `None`.
-        A `str` is encoded with the default UTF-8 codec before being passed to the subprocess.
-        `bytes` are fed verbatim (no encoding).
-        When `None` (the default), the subprocess's standard input will be `/dev/null`.
+        A `str` is passed to `subprocess.run` as-is and implies `text=True`.
+        `bytes` are passed as-is as well and imply `text=False`.
+        Inconsistent combinations (e.g. `stdin` is `bytes` but `text=True`) raise a `ValueError`.
         The value is forwarded to `record_subprocess`, which stores `bytes` as a short summary
         (byte length and a truncated SHA-256) rather than raw binary.
-    stdout, stderr
-        Passed through to `subprocess.run`.
-        By default both are `subprocess.PIPE`, so the output is captured and available as
-        `bytes` on the returned `CompletedProcess.stdout` and `CompletedProcess.stderr`.
-        Pass `None` to let output flow through to the step's own file descriptors
-        (visible in the TUI and stored in the step's captured output).
-    check
-        When `True`, a `subprocess.CalledProcessError` is raised on a non-zero exit code.
-        The invocation is recorded **before** this check, so a failing subprocess is still archived.
     shell
         When `True`, execute `cmd` via the system shell (`subprocess.run(..., shell=True)`).
         Enables shell features such as pipes, redirections, and glob expansion.
         The flag is also recorded for display purposes.
+    check
+        When `True`, a `subprocess.CalledProcessError` is raised on a non-zero exit code.
+        The invocation is recorded **before** this check, so a failing subprocess is still archived.
+        In case of such a failure, the subprocess's standard output and error are printed
+        to the caller's standard output and error stream.
+    text
+        The default is to follow the type of `stdin` to run in text or binary mode.
+        If no `stdin` is provided, the default is text mode.
 
     Returns
     -------
@@ -238,23 +236,30 @@ def run_subprocess(
     run_kwargs = {
         "cwd": workdir,
         "env": run_env,
-        "stdout": stdout,
-        "stderr": stderr,
-        "check": False,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "check": False,  # handled below, so we can record the subprocess with returncode
         "shell": shell,
     }
-    # The subprocess runs in bytes mode (no text=True), so feed bytes directly and encode
-    # str. input=None is the no-op default, so it can always be passed.
     if stdin is None:
         run_kwargs["stdin"] = subprocess.DEVNULL
-    elif isinstance(stdin, bytes):
-        run_kwargs["input"] = stdin
     else:
-        run_kwargs["input"] = stdin.encode()
-    # Flush so already-buffered parent output is written before the subprocess (which inherits
-    # our file descriptors when stdout/stderr are None) can write to the same streams.
-    sys.stdout.flush()
-    sys.stderr.flush()
+        run_kwargs["input"] = stdin
+        if isinstance(stdin, str):
+            if text is None:
+                text = True
+            elif text is False:
+                raise ValueError("stdin must be bytes when text=False")
+        elif isinstance(stdin, bytes):
+            if text is None:
+                text = False
+            elif text is True:
+                raise ValueError("stdin must be str when text=True")
+        else:
+            raise TypeError("stdin must be str, bytes, or None")
+    if text is None:
+        text = True
+    run_kwargs["text"] = text
     if shell:
         cp = subprocess.run(cmd, **run_kwargs)  # noqa: PLW1510
     else:
@@ -264,6 +269,10 @@ def run_subprocess(
         cmd, cp.returncode, workdir=workdir, env_overrides=env_overrides, shell=shell, stdin=stdin
     )
     if check and cp.returncode != 0:
+        if cp.stdout:
+            sys.stdout.write(cp.stdout if text else cp.stdout.decode())
+        if cp.stderr:
+            sys.stderr.write(cp.stderr if text else cp.stderr.decode())
         raise subprocess.CalledProcessError(cp.returncode, cmd, cp.stdout, cp.stderr)
     return cp
 

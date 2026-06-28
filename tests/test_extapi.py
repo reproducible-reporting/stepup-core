@@ -97,8 +97,8 @@ def test_run_subprocess_records_success(monkeypatch):
     cmd = shlex.join([sys.executable, "-c", ""])
     cp = run_subprocess(cmd)
     assert cp.returncode == 0
-    assert cp.stdout == b""
-    assert cp.stderr == b""
+    assert cp.stdout == ""
+    assert cp.stderr == ""
     assert recorded == [
         (cmd, 0, {"workdir": ".", "env_overrides": None, "shell": False, "stdin": None})
     ]
@@ -137,7 +137,7 @@ def test_run_subprocess_env_overlay(monkeypatch):
         ]
     )
     cp = run_subprocess(cmd)
-    out = cp.stdout.decode()
+    out = cp.stdout
     # The overlay variable and a pre-existing variable are both visible to the subprocess.
     assert out.split() == ["added", "yes"]
     # Only the overlay (not the full resolved environment) is handed to record_subprocess.
@@ -189,7 +189,7 @@ def test_run_subprocess_shell_false_splits(monkeypatch):
     cmd = shlex.join([sys.executable, "-c", "import sys; print(sys.argv[1])", "hello world"])
     cp = run_subprocess(cmd, shell=False)
     assert cp.returncode == 0
-    assert cp.stdout.decode().strip() == "hello world"
+    assert cp.stdout.strip() == "hello world"
 
 
 def test_run_subprocess_stdin(monkeypatch):
@@ -200,7 +200,7 @@ def test_run_subprocess_stdin(monkeypatch):
     )
     cmd = shlex.join([sys.executable, "-c", "import sys; sys.stdout.write(sys.stdin.read())"])
     cp = run_subprocess(cmd, stdin="hello stdin")
-    assert cp.stdout.decode() == "hello stdin"
+    assert cp.stdout == "hello stdin"
     assert recorded == ["hello stdin"]
 
 
@@ -216,6 +216,63 @@ def test_run_subprocess_stdin_bytes(monkeypatch):
     cp = run_subprocess(cmd, stdin=b"\x00\x01\x02hello")
     assert cp.stdout == b"\x00\x01\x02hello"
     assert recorded == [b"\x00\x01\x02hello"]
+
+
+def test_run_subprocess_check_prints_stdout_stderr(monkeypatch, capsys):
+    """On failure, stdout and stderr from the subprocess are forwarded before raising."""
+    monkeypatch.setattr(extapi, "record_subprocess", lambda *a, **k: None)
+    cmd = shlex.join(
+        [
+            sys.executable,
+            "-c",
+            "import sys; print('out line'); print('err line', file=sys.stderr); sys.exit(3)",
+        ]
+    )
+    with pytest.raises(subprocess.CalledProcessError):
+        run_subprocess(cmd)
+    captured = capsys.readouterr()
+    assert "out line" in captured.out
+    assert "err line" in captured.err
+
+
+def test_run_subprocess_check_prints_stdout_stderr_binary(monkeypatch, capsys):
+    """In binary mode, stdout and stderr are decoded before being forwarded."""
+    monkeypatch.setattr(extapi, "record_subprocess", lambda *a, **k: None)
+    cmd = shlex.join(
+        [
+            sys.executable,
+            "-c",
+            "import sys; print('out line'); print('err line', file=sys.stderr); sys.exit(3)",
+        ]
+    )
+    with pytest.raises(subprocess.CalledProcessError):
+        run_subprocess(cmd, stdin=b"", text=False)
+    captured = capsys.readouterr()
+    assert "out line" in captured.out
+    assert "err line" in captured.err
+
+
+def test_run_subprocess_check_no_output_no_print(monkeypatch, capsys):
+    """When the failing subprocess produces no output, nothing is written to stdout/stderr."""
+    monkeypatch.setattr(extapi, "record_subprocess", lambda *a, **k: None)
+    cmd = shlex.join([sys.executable, "-c", "import sys; sys.exit(1)"])
+    with pytest.raises(subprocess.CalledProcessError):
+        run_subprocess(cmd)
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
+def test_run_subprocess_stdin_bytes_text_true_raises():
+    """Passing bytes stdin with text=True raises ValueError."""
+    with pytest.raises(ValueError, match="text=True"):
+        run_subprocess(shlex.join([sys.executable, "-c", ""]), stdin=b"data", text=True)
+
+
+def test_run_subprocess_stdin_str_text_false_raises():
+    """Passing str stdin with text=False raises ValueError."""
+    with pytest.raises(ValueError, match="text=False"):
+        run_subprocess(shlex.join([sys.executable, "-c", ""]), stdin="data", text=False)
 
 
 def test_summarize_binary_stdin():

@@ -6,4 +6,7 @@ from stepup.core.extapi import run_subprocess
 # Only the overlay is recorded, not the full resolved environment.
 code = 'import os, sys; print(os.environ["GREETING"]); print(sys.stdin.read(), file=sys.stderr)'
 command = f"GREETING=hello python -c '{code}'"
-run_subprocess(command, stdin="world", stdout=None, stderr=None)
+cp = run_subprocess(command, stdin="world")
+assert cp.returncode == 0
+assert cp.stdout.strip() == "hello"
+assert cp.stderr.strip() == "world"

@@ -127,13 +127,15 @@ like pipes and redirections.
 The string is stored and displayed verbatim and you are responsible for proper quoting.
 This gives you the opportunity to prepare a convenient human-readable command string.
 
-By default, `run_subprocess()` captures the subprocess's standard output and error into
-the returned `CompletedProcess` object (`cp.stdout` and `cp.stderr` as `bytes`).
-To let the output flow through to the step's own captured output (visible in the TUI),
-pass `stdout=None, stderr=None` explicitly.
+`run_subprocess()` captures the subprocess's standard output and error into
+the returned `CompletedProcess` object (`cp.stdout` and `cp.stderr`).
+
+When `check=True`, `run_subprocess()` raises a `subprocess.CalledProcessError` if the subprocess
+exits with a non-zero return code, after recording the invocation in the workflow database.
+In this case, it also writes out the subprocess's standard output and error.
 
 Wrappers that need streaming output or `Popen`-style pipe interaction
-run the subprocess themselves and record it afterwards with
+run the subprocess themselves using the built-in `subprocess` module and record it afterwards with
 [`record_subprocess()`][stepup.core.extapi.record_subprocess].
 
 ## Path manipulation

@@ -57,9 +57,12 @@ This is release candidate 1 for the upcoming StepUp 4.0 release.
   See [stepup.core.extapi](reference/stepup.core.extapi.md) for the full reference
   and [Custom API Functions](extending/api.md) for usage guidance.
 - Extension wrapper steps can now record the exact subprocess invocations they make,
-  using `run_subprocess` and `record_subprocess` in `stepup.core.extapi`.
+  using `run_subprocess` in `stepup.core.extapi`,
+  which executes the subprocess and records its invocation.
+  Alternatively, `record_subprocess()` can be used to record a subprocess that was already executed,
+  e.g. using the built-in `subprocess` module.
   The command line, working directory, environment overlay and return code are stored in a
-  new `step_subprocess` table for a future archival export.
+  new `step_subprocess` table for debugging and archival.
   Recorded invocations are shown in `stepup browse`, formatted as shell-pasteable command lines.
   See [Custom API Functions](extending/api.md) for implementation guidance.
 
