@@ -69,8 +69,17 @@ jobs:
       - name: Push gh-pages branch with development version of docs
         if: github.ref == 'refs/heads/main'
         run: git push origin gh-pages
+      - name: Check if stable release tag
+        id: stable_tag
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          if [[ "$GITHUB_REF" == refs/tags/v* && "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is_stable=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_stable=false" >> $GITHUB_OUTPUT
+          fi
       - name: Deploy gh-pages branch with stable version of docs
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.stable_tag.outputs.is_stable == 'true'
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
           MACRO_MESO=$(echo "${VERSION}" | cut -d. -f1,2)
