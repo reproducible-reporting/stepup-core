@@ -34,7 +34,7 @@ from collections.abc import Callable, Collection, Iterator
 
 from path import Path
 
-from .path import translate
+from .path import StrPath, coerce_str, translate
 from .rpc import SocketSyncRPCClient
 from .utils import CaseSensitiveTemplate
 
@@ -62,10 +62,10 @@ def _summarize_binary_stdin(stdin: str | bytes | None) -> str | None:
 
 
 @contextlib.contextmanager
-def subs_env_vars() -> Iterator[Callable[[str | None], Path | None]]:
+def subs_env_vars() -> Iterator[Callable[[StrPath | None], Path | None]]:
     """A context manager for substituting environment variables and tracking the used variables.
 
-    The context manager yields a function, `subs`, which takes a string with variables and
+    The context manager yields a function, `subs`, which takes a path or string with variables and
     returns the substituted form.
     All used variables are recorded and sent to the director with `amend(env=...)`.
     For example:
@@ -83,10 +83,10 @@ def subs_env_vars() -> Iterator[Callable[[str | None], Path | None]]:
 
     used_env = set()
 
-    def subs(path: str | None) -> Path | None:
+    def subs(path: StrPath | None) -> Path | None:
         if path is None:
             return None
-        template = CaseSensitiveTemplate(path)
+        template = CaseSensitiveTemplate(coerce_str(path))
         if not template.is_valid():
             raise ValueError("The path contains invalid shell variable identifiers.")
         mapping = {}
@@ -109,7 +109,7 @@ def record_subprocess(
     cmd: str,
     returncode: int,
     *,
-    workdir: str = ".",
+    workdir: StrPath = ".",
     env_overrides: dict[str, str] | None = None,
     shell: bool = False,
     stdin: str | bytes | None = None,
@@ -136,7 +136,8 @@ def record_subprocess(
     returncode
         The exit code of the subprocess.
     workdir
-        The working directory of the subprocess, relative to the step's own working directory.
+        The working directory of the subprocess as a path or string,
+        relative to the step's own working directory.
         It is translated to be relative to `STEPUP_ROOT` for storage.
     env_overrides
         The environment **overlay** that the caller applied on top of the inherited
@@ -169,7 +170,7 @@ def record_subprocess(
 def run_subprocess(
     cmd: str,
     *,
-    workdir: str = ".",
+    workdir: StrPath = ".",
     stdin: str | bytes | None = None,
     shell: bool = False,
     check: bool = True,
@@ -191,7 +192,8 @@ def run_subprocess(
         to the subprocess environment, even when `shell=False`.
         In either case, the caller is then responsible for proper quoting.
     workdir
-        The working directory of the subprocess, relative to the step's own working directory.
+        The working directory of the subprocess as a path or string,
+        relative to the step's own working directory.
         It is passed to `subprocess.run` as `cwd`.
     stdin
         Standard input fed to the subprocess, or `None`.
@@ -277,13 +279,13 @@ def run_subprocess(
     return cp
 
 
-def filter_dependencies(paths: Collection[str]) -> set[Path]:
+def filter_dependencies(paths: Collection[StrPath]) -> set[Path]:
     """Select path retained by the `${STEPUP_PATH_FILTER}`.
 
     Parameters
     ----------
     paths
-        A collection of paths to filter.
+        A collection of paths or strings to filter.
         Relative paths are assumed to be relative to the current working directory.
 
     Returns
@@ -329,7 +331,7 @@ def filter_dependencies(paths: Collection[str]) -> set[Path]:
     return result
 
 
-def get_local_import_paths(script_path: str | None = None) -> list[str]:
+def get_local_import_paths(script_path: StrPath | None = None) -> list[Path]:
     """Get all local files from `sys.modules`.
 
     Files are only included if they match the `${STEPUP_PATH_FILTER}` environment variable.

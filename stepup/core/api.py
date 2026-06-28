@@ -186,7 +186,7 @@ def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
         raise ValueError("At least one path is required for glob.")
     # Substitute environment variables
     with subs_env_vars() as subs_path:
-        su_patterns = [subs_path(coerce_str(pattern)).normpath() for pattern in patterns]
+        su_patterns = [subs_path(pattern).normpath() for pattern in patterns]
 
     # StepUp needs to know the patterns,
     # so it can identify new files matching the patterns in future runs.
@@ -360,8 +360,8 @@ def step(
         su_inp_paths = [subs(inp_path).normpath() for inp_path in inp_paths]
         su_out_paths = [subs(out_path).normpath() for out_path in out_paths]
         su_vol_paths = [subs(vol_path).normpath() for vol_path in vol_paths]
-        su_workdir = subs(coerce_path(workdir)).normpath()
-        su_exe = None if auto_exe is None else subs(coerce_path(auto_exe)).normpath()
+        su_workdir = subs(workdir).normpath()
+        su_exe = None if auto_exe is None else subs(auto_exe).normpath()
     # Substitute paths that are translated back to the current directory.
     # ${inp} expands to the user-specified inputs only, so an auto-added executable does not
     # appear in the expansion (e.g. avoiding a duplicate in `./script.sh ${inp}`).
@@ -510,12 +510,12 @@ def call(
     # Perform environment variable substitutions before building the command.
     # This is somewhat redundant with the substitutions performed in `step()`.
     with subs_env_vars() as subs:
-        executable_ = subs(coerce_str(executable_))
+        executable_ = subs(executable_)
         inp = [subs(inp_path).normpath() for inp_path in coerce_paths(inp)]
         out = [subs(out_path).normpath() for out_path in coerce_paths(out)]
-        workdir = subs(coerce_path(workdir)).normpath()
+        workdir = subs(workdir).normpath()
         if args_file is not None:
-            args_file = subs(coerce_path(args_file)).normpath()
+            args_file = subs(args_file).normpath()
     prefix, suffix = get_affixes(executable_)
     executable_ = apply_affixes(executable_.normpath(), prefix, suffix)
 
@@ -878,8 +878,8 @@ def copy(
     at the time this function is called, not when the copy is actually made.
     """
     with subs_env_vars() as subs:
-        src = subs(coerce_path(src)).normpath()
-        dst = subs(coerce_path(dst))
+        src = subs(src).normpath()
+        dst = subs(dst)
     prefix, suffix = get_affixes(dst)
     dst = apply_affixes(dst.normpath(), prefix, suffix)
     dst = make_path_out(src, dst, None)
@@ -1022,7 +1022,7 @@ def script(
     """
     # Substitute environment variables in the executable path and normalize it.
     with subs_env_vars() as subs:
-        executable = subs(coerce_str(executable))
+        executable = subs(executable)
     prefix, suffix = get_affixes(executable)
     executable = apply_affixes(executable.normpath(), prefix, suffix)
 
@@ -1078,7 +1078,7 @@ def loadns(
     # Process arguments
     dir_out = Path.cwd() if dir_out is None else coerce_path(dir_out)
     with subs_env_vars() as subs:
-        paths_variables = [subs(coerce_path(path_var)).normpath() for path_var in paths_variables]
+        paths_variables = [subs(path_var).normpath() for path_var in paths_variables]
 
     # Build a dictionary of variables
     variables = {}
@@ -1138,7 +1138,7 @@ def dumpns(path: StrPath, data: dict | SimpleNamespace, *, do_amend: bool = True
         When the file extension is not `.json`, `.yaml`, or `.yml`.
     """
     with subs_env_vars() as subs:
-        path = subs(coerce_path(path)).normpath()
+        path = subs(path).normpath()
     if do_amend:
         amend(out=path)
     if isinstance(data, SimpleNamespace):

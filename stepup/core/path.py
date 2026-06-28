@@ -73,7 +73,7 @@ def coerce_paths2(args: Collection[StrPath] | Collection[Collection[StrPath]]) -
     return result
 
 
-def get_affixes(path: str) -> tuple[str, str]:
+def get_affixes(path: StrPath) -> tuple[str, str]:
     """Get the leading `./` and trailing `/` of a path.
 
     Parameters
@@ -92,6 +92,7 @@ def get_affixes(path: str) -> tuple[str, str]:
     -----
     For the special case of the path `"./"`, the leading is `""` and the trailing is `"/"`.
     """
+    path = coerce_str(path)
     trailing = ""
     if path.endswith(os.sep):
         trailing = os.sep
@@ -100,7 +101,7 @@ def get_affixes(path: str) -> tuple[str, str]:
     return leading, trailing
 
 
-def apply_affixes(path: str, leading: str, trailing: str) -> str:
+def apply_affixes(path: StrPath, leading: str, trailing: str) -> Path:
     """Apply leading `./` and trailing `/` slashes to a path.
 
     Parameters
@@ -121,6 +122,7 @@ def apply_affixes(path: str, leading: str, trailing: str) -> str:
     ValueError
         If the trailing is given and not `""` or `"/"`.
     """
+    path = coerce_str(path)
     if leading != "":
         if leading != f".{os.sep}":
             raise ValueError(f"Leading affix must be one of '' or './', got '{leading}'")
@@ -133,11 +135,11 @@ def apply_affixes(path: str, leading: str, trailing: str) -> str:
         if path.endswith(os.sep):
             raise ValueError(f"Path already has a trailing slash: {path}")
         path = path + trailing
-    return path
+    return coerce_path(path)
 
 
 def make_path_out(
-    path_in: str, dest: str | None, ext: str | None, other_exts: Collection[str] = ()
+    path_in: StrPath, dest: StrPath | None, ext: str | None, other_exts: Collection[str] = ()
 ) -> Path:
     """Construct an output path given the input path, an out argument and the expected extension.
 
@@ -161,7 +163,9 @@ def make_path_out(
     path_out
         A properly formatted output path.
     """
-    path_in = Path(path_in)
+    path_in = coerce_path(path_in)
+    if dest is not None:
+        dest = coerce_str(dest)
     if dest is None or dest.endswith(os.sep):
         path_out = path_in
         if ext is not None:
@@ -181,7 +185,7 @@ def make_path_out(
     return path_out
 
 
-def translate(path: str, workdir: str = ".") -> Path:
+def translate(path: StrPath, workdir: StrPath = ".") -> Path:
     """Normalize the path and, if relative, make it relative to `self.root`.
 
     Parameters
@@ -196,9 +200,9 @@ def translate(path: str, workdir: str = ".") -> Path:
     translated_path
         A path that can be interpreted in the working directory of the StepUp director.
     """
-    path = Path(path).normpath()
+    path = coerce_path(path).normpath()
     if not path.isabs():
-        workdir = Path(workdir).normpath()
+        workdir = coerce_path(workdir).normpath()
         path = workdir / path
         if not workdir.isabs():
             root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
@@ -207,7 +211,7 @@ def translate(path: str, workdir: str = ".") -> Path:
     return path
 
 
-def translate_back(path: str, workdir: str = ".") -> Path:
+def translate_back(path: StrPath, workdir: StrPath = ".") -> Path:
     """If relative, make it relative to work directory, assuming it is relative to `self.root`.
 
     Parameters
@@ -222,8 +226,8 @@ def translate_back(path: str, workdir: str = ".") -> Path:
     back_translated_path
         A path that can be interpreted in the working directory.
     """
-    path = Path(path).normpath()
-    workdir = Path(workdir).normpath()
+    path = coerce_path(path).normpath()
+    workdir = coerce_path(workdir).normpath()
     if path.isabs():
         if workdir.isabs() and path.startswith(workdir):
             path = Path(path).relpath(workdir)
