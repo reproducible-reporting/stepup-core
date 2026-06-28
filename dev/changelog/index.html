@@ -2006,15 +2006,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#v4.0.0rc1" class="md-nav__link">
+  <a href="#v4.0.0rc2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4.0.0rc1 - 2026-04-27
+        4.0.0rc2 - 2026-04-28
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="4.0.0rc1 - 2026-04-27">
+    <nav class="md-nav" aria-label="4.0.0rc2 - 2026-04-28">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3911,15 +3911,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#v4.0.0rc1" class="md-nav__link">
+  <a href="#v4.0.0rc2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4.0.0rc1 - 2026-04-27
+        4.0.0rc2 - 2026-04-28
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="4.0.0rc1 - 2026-04-27">
+    <nav class="md-nav" aria-label="4.0.0rc2 - 2026-04-28">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -5584,8 +5584,8 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 (Changes to features documented as &ldquo;experimental&rdquo; will not increment macro and meso version numbers.)</p>
 <h2 id="unreleased"><a href="https://github.com/reproducible-reporting/stepup-core">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <p>(no changes yet)</p>
-<h2 id="v4.0.0rc1"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc1">4.0.0rc1</a> - 2026-04-27<a class="headerlink" href="#v4.0.0rc1" title="Permanent link">&para;</a></h2>
-<p>This is release candidate 1 for the upcoming StepUp 4.0 release.</p>
+<h2 id="v4.0.0rc2"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc2">4.0.0rc2</a> - 2026-04-28<a class="headerlink" href="#v4.0.0rc2" title="Permanent link">&para;</a></h2>
+<p>This is release candidate 2 for the upcoming StepUp 4.0 release.</p>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
 <ul>
 <li>StepUp can now also be configured through configuration files,
@@ -5627,9 +5627,12 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   See <a href="../reference/stepup.core.extapi/">stepup.core.extapi</a> for the full reference
   and <a href="../extending/api/">Custom API Functions</a> for usage guidance.</li>
 <li>Extension wrapper steps can now record the exact subprocess invocations they make,
-  using <code>run_subprocess</code> and <code>record_subprocess</code> in <code>stepup.core.extapi</code>.
+  using <code>run_subprocess</code> in <code>stepup.core.extapi</code>,
+  which executes the subprocess and records its invocation.
+  Alternatively, <code>record_subprocess()</code> can be used to record a subprocess that was already executed,
+  e.g. using the built-in <code>subprocess</code> module.
   The command line, working directory, environment overlay and return code are stored in a
-  new <code>step_subprocess</code> table for a future archival export.
+  new <code>step_subprocess</code> table for debugging and archival.
   Recorded invocations are shown in <code>stepup browse</code>, formatted as shell-pasteable command lines.
   See <a href="../extending/api/">Custom API Functions</a> for implementation guidance.</li>
 </ul>

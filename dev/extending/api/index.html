@@ -2621,7 +2621,7 @@ that also handles the communication with StepUp&rsquo;s director process.
 When the wrapper runs the external tool as a subprocess with Python&rsquo;s built-in <code>subprocess</code> module,
 this subprocess is not visible to StepUp&rsquo;s director process.</p>
 <p>To make calls to such external tools transparent,
-one can execute them with <a class="autorefs autorefs-internal" title="stepup.core.extapi.run_subprocess(cmd, *, workdir='.', stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, shell=False)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.run_subprocess"><code>run_subprocess()</code></a>,
+one can execute them with <a class="autorefs autorefs-internal" title="stepup.core.extapi.run_subprocess(cmd, *, workdir='.', stdin=None, shell=False, check=True, text=None)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.run_subprocess"><code>run_subprocess()</code></a>,
 which also registers the invocation as metadata in the workflow database.</p>
 <p>For example, the following function wraps the <code>typst</code> command-line tool:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
@@ -2636,12 +2636,13 @@ With the option <code>shell=True</code>, the command is run via a shell, which a
 like pipes and redirections.
 The string is stored and displayed verbatim and you are responsible for proper quoting.
 This gives you the opportunity to prepare a convenient human-readable command string.</p>
-<p>By default, <code>run_subprocess()</code> captures the subprocess&rsquo;s standard output and error into
-the returned <code>CompletedProcess</code> object (<code>cp.stdout</code> and <code>cp.stderr</code> as <code>bytes</code>).
-To let the output flow through to the step&rsquo;s own captured output (visible in the TUI),
-pass <code>stdout=None, stderr=None</code> explicitly.</p>
+<p><code>run_subprocess()</code> captures the subprocess&rsquo;s standard output and error into
+the returned <code>CompletedProcess</code> object (<code>cp.stdout</code> and <code>cp.stderr</code>).</p>
+<p>When <code>check=True</code>, <code>run_subprocess()</code> raises a <code>subprocess.CalledProcessError</code> if the subprocess
+exits with a non-zero return code, after recording the invocation in the workflow database.
+In this case, it also writes out the subprocess&rsquo;s standard output and error.</p>
 <p>Wrappers that need streaming output or <code>Popen</code>-style pipe interaction
-run the subprocess themselves and record it afterwards with
+run the subprocess themselves using the built-in <code>subprocess</code> module and record it afterwards with
 <a class="autorefs autorefs-internal" title="stepup.core.extapi.record_subprocess(cmd, returncode, *, workdir='.', env_overrides=None, shell=False, stdin=None)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.record_subprocess"><code>record_subprocess()</code></a>.</p>
 <h2 id="path-manipulation">Path manipulation<a class="headerlink" href="#path-manipulation" title="Permanent link">&para;</a></h2>
 <p>StepUp uses the <a href="https://pypi.org/project/path/"><code>path</code></a> library instead of the
