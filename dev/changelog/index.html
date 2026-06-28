@@ -5672,9 +5672,9 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   without having to glob the entire directory recursively.
   To declare a static tree directory, just pass it as an argument to the <code>static()</code> function.
   It will treat all directory arguments are static trees.</li>
-<li>The <code>render-jinja</code> feature is now a standalone Python console script instead of a <code>stepup</code>
-  subcommand (tool).
-  Steps created by <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a> now run <code>render-jinja ...</code>
+<li>The <code>render-jinja</code> feature is now a standalone Python console script, <code>sc-render-jinja</code>
+  instead of a <code>stepup</code> subcommand (tool).
+  Steps created by <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None)" href="../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a> now run <code>sc-render-jinja ...</code>
   instead of <code>stepup render-jinja ...</code>.
   This matches the recommended pattern for extensions that do not need low-level access to
   StepUp internals.</li>
