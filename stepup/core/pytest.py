@@ -94,6 +94,14 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
             path_cur = workdir / ("current" + fn_exp[8:])
             with open(path_cur) as fh:
                 cur = fh.read().rstrip()
+
+            # Print the current output for debugging purposes,
+            # before normalizing it for comparison with the expected output.
+            print()
+            print(f"########## {fn_exp} ##########")
+            print()
+            print(cur)
+
             # Normalize output before comparing:
             cur = cur.replace(Path.cwd(), "${PWD}")
             cur = cur.replace(workdir, "${CASE}")
@@ -118,10 +126,6 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
             )
 
             # Perform the comparison
-            print()
-            print(f"########## {fn_exp} ##########")
-            print()
-            print(cur)
             if overwrite_expected:
                 path_exp = srcdir / fn_exp
                 with open(path_exp, "w") as fh:
