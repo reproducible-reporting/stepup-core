@@ -84,12 +84,13 @@ async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
         with DBSession.open(GRAPH_DB) as db:
             director = asyncio.create_task(
                 serve(
-                    director_socket_path,
+                    director_socket_path=director_socket_path,
                     njob=1,
                     reporter=reporter,
                     do_clean=True,
                     use_duration=False,
                     explain_rerun=False,
+                    fix_epoch=True,
                     show_perf=False,
                     do_watch=True,
                     do_watch_first=False,

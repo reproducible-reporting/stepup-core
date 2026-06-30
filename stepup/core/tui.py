@@ -124,12 +124,14 @@ async def async_build(args: argparse.Namespace, default_resources: str):
             argv.append("--fork-runpy")
         if args.preload_modules:
             argv.append(f"--preload-modules={args.preload_modules}")
+        if not args.clean:
+            argv.append("--no-clean")
         if not args.duration:
             argv.append("--no-duration")
         if args.explain_rerun:
             argv.append("--explain-rerun")
-        if not args.clean:
-            argv.append("--no-clean")
+        if not args.fix_epoch:
+            argv.append("--no-fix-epoch")
         if args.show_perf > 1:
             argv.append("--show-perf")
         args.resources = merge_resources(default_resources, args.resources)
@@ -311,6 +313,14 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         help="Number of parallel jobs. "
         "When given as a real number with digits after the comma, "
         "it is multiplied with the number of available cores. [default=%(default)s]",
+    )
+    parser.add_argument(
+        "--fix-epoch",
+        default=True,
+        action=argparse.BooleanOptionalAction,
+        help="Set the SOURCE_DATE_EPOCH environment variable to 315532800. "
+        "This corresponds to 1980-01-01 00:00:00 UTC. "
+        "(If the variable is already set, it will be used as-is.) ",
     )
     parser.add_argument(
         "--fork-runpy",

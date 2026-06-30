@@ -65,6 +65,10 @@ This is release candidate 4 for the upcoming StepUp 4.0 release.
   new `step_subprocess` table for debugging and archival.
   Recorded invocations are shown in `stepup browse`, formatted as shell-pasteable command lines.
   See [Custom API Functions](extending/api.md) for implementation guidance.
+- Added a `--fix-epoch` option to `sb` (on by default)
+  to set the `SOURCE_DATE_EPOCH` environment variable to a fixed value for all step executions.
+  This is useful for ensuring reproducible builds.
+  See [Configuration files](reference/configuration.md) for details.
 
 ### Changed
 

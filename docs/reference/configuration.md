@@ -131,6 +131,16 @@ separated by slashes, where applicable.
 
 :   Set to `true` to explain for every step with recording info why it cannot be skipped.
 
+`fix_epoch` / `STEPUP_BUILD_FIX_EPOCH` / `--fix-epoch`, `--no-fix-epoch`
+
+:   If set to `true` (the default), the `SOURCE_DATE_EPOCH` environment variable
+    will be set to a fixed value of `315532800`
+    (corresponding to 1980-01-01 00:00:00 UTC) for all step executions.
+    This is useful for ensuring reproducible builds:
+    Many tools and libraries recognize `SOURCE_DATE_EPOCH` and
+    use it instead of the current time for timestamps in generated files.
+    If the variable is already set in the environment, it will be used as-is.
+
 `fork_runpy` / `STEPUP_BUILD_FORK_RUNPY` / `--fork-runpy`, `--no-fork-runpy`
 
 :   Set to `true` to use a forkserver for Python step execution and file hashing,

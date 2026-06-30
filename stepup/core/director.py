@@ -106,17 +106,18 @@ async def async_main(
         await reporter("DIRECTOR", f"Listening on {args.director_socket} (StepUp Core {version})")
         try:
             returncode = await serve(
-                args.director_socket,
-                njob,
-                reporter,
-                args.clean,
-                args.duration,
-                args.explain_rerun,
-                args.show_perf,
-                args.watch,
-                args.watch_first,
-                args.resources,
-                db,
+                director_socket_path=args.director_socket,
+                njob=args.jobs,
+                reporter=reporter,
+                do_clean=args.clean,
+                use_duration=args.duration,
+                explain_rerun=args.explain_rerun,
+                fix_epoch=args.fix_epoch,
+                show_perf=args.show_perf,
+                do_watch=args.watch,
+                do_watch_first=args.watch_first,
+                available_resources=args.resources,
+                db=db,
                 mp_ctx=mp_ctx,
             )
         except Exception as exc:
@@ -176,6 +177,14 @@ def parse_args() -> argparse.Namespace:
         help="Number of jobs running in parallel. "
         "When given as a real number with digits after the comma, "
         "it is multiplied with the number of available cores. [default=%(default)s]",
+    )
+    parser.add_argument(
+        "--fix-epoch",
+        default=True,
+        action=argparse.BooleanOptionalAction,
+        help="Set the SOURCE_DATE_EPOCH environment variable to 315532800. "
+        "This corresponds to 1980-01-01 00:00:00 UTC. "
+        "(If the variable is already set, it will be used as-is.) ",
     )
     parser.add_argument(
         "--fork-runpy",
@@ -249,12 +258,14 @@ def interpret_jobs(jobs: Decimal) -> int:
 
 
 async def serve(
+    *,
     director_socket_path: Path,
     njob: int,
     reporter: ReporterClient,
     do_clean: bool,
     use_duration: bool,
     explain_rerun: bool,
+    fix_epoch: bool,
     show_perf: bool,
     do_watch: bool,
     do_watch_first: bool,
@@ -314,6 +325,8 @@ async def serve(
         "STEPUP_ROOT": str(Path.cwd()),
         "STEPUP_LOG_LEVEL": logging.getLevelName(logging.root.level),
     }
+    if fix_epoch and "SOURCE_DATE_EPOCH" not in os.environ:
+        infra_env["SOURCE_DATE_EPOCH"] = "315532800"
 
     # Create basic components
     dir_queue = asyncio.Queue() if do_watch else None
