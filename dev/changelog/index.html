@@ -2006,15 +2006,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#v4.0.0rc4" class="md-nav__link">
+  <a href="#v4.0.0rc5" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4.0.0rc4 - 2026-04-28
+        4.0.0rc5 - 2026-04-30
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="4.0.0rc4 - 2026-04-28">
+    <nav class="md-nav" aria-label="4.0.0rc5 - 2026-04-30">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3911,15 +3911,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#v4.0.0rc4" class="md-nav__link">
+  <a href="#v4.0.0rc5" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4.0.0rc4 - 2026-04-28
+        4.0.0rc5 - 2026-04-30
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="4.0.0rc4 - 2026-04-28">
+    <nav class="md-nav" aria-label="4.0.0rc5 - 2026-04-30">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -5584,8 +5584,8 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 (Changes to features documented as &ldquo;experimental&rdquo; will not increment macro and meso version numbers.)</p>
 <h2 id="unreleased"><a href="https://github.com/reproducible-reporting/stepup-core">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <p>(no changes yet)</p>
-<h2 id="v4.0.0rc4"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc4">4.0.0rc4</a> - 2026-04-28<a class="headerlink" href="#v4.0.0rc4" title="Permanent link">&para;</a></h2>
-<p>This is release candidate 4 for the upcoming StepUp 4.0 release.</p>
+<h2 id="v4.0.0rc5"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc5">4.0.0rc5</a> - 2026-04-30<a class="headerlink" href="#v4.0.0rc5" title="Permanent link">&para;</a></h2>
+<p>This is release candidate 5 for the upcoming StepUp 4.0 release.</p>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
 <ul>
 <li>StepUp can now also be configured through configuration files,
@@ -5604,8 +5604,8 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 <li>StepUp now stores the captured stdout and stderr of each step in the workflow database,
   so they can be inspected after the build.
   Output from subprocesses launched by a forked Python step is captured properly.
-  The amount stored per stream can be capped with the new
-  <code>sb --max-output-size</code> option (<code>0</code> = unlimited, the default).
+  The amount stored per stream can be capped with the new <code>STEPUP_MAX_OUTPUT_SIZE</code>
+  environment variable (<code>0</code> = unlimited, the default).
   These outputs can later be viewed with <code>stepup browse</code>.</li>
 <li>All functions in <code>stepup.core.api</code> now accept <code>os.PathLike</code> objects (i.e. <code>pathlib.Path</code>)
   as path arguments, in addition to <code>str</code> and <code>path.Path</code>.</li>
@@ -5635,6 +5635,10 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   new <code>step_subprocess</code> table for debugging and archival.
   Recorded invocations are shown in <code>stepup browse</code>, formatted as shell-pasteable command lines.
   See <a href="../extending/api/">Custom API Functions</a> for implementation guidance.</li>
+<li>Added a <code>--fix-epoch</code> option to <code>sb</code> (on by default)
+  to set the <code>SOURCE_DATE_EPOCH</code> environment variable to a fixed value for all step executions.
+  This is useful for ensuring reproducible builds.
+  See <a href="../reference/configuration/">Configuration files</a> for details.</li>
 </ul>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
 <ul>

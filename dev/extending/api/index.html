@@ -2643,7 +2643,7 @@ exits with a non-zero return code, after recording the invocation in the workflo
 In this case, it also writes out the subprocess&rsquo;s standard output and error.</p>
 <p>Wrappers that need streaming output or <code>Popen</code>-style pipe interaction
 run the subprocess themselves using the built-in <code>subprocess</code> module and record it afterwards with
-<a class="autorefs autorefs-internal" title="stepup.core.extapi.record_subprocess(cmd, returncode, *, workdir='.', env_overrides=None, shell=False, stdin=None)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.record_subprocess"><code>record_subprocess()</code></a>.</p>
+<a class="autorefs autorefs-internal" title="stepup.core.extapi.record_subprocess(cmd, returncode, *, workdir='.', env_overrides=None, shell=False, stdin=None, stdout=None, stderr=None)" href="../../reference/stepup.core.extapi/#stepup.core.extapi.record_subprocess"><code>record_subprocess()</code></a>.</p>
 <h2 id="path-manipulation">Path manipulation<a class="headerlink" href="#path-manipulation" title="Permanent link">&para;</a></h2>
 <p>StepUp uses the <a href="https://pypi.org/project/path/"><code>path</code></a> library instead of the
 built-in <code>pathlib</code>, because some path affixes carry meaning that <code>pathlib</code> would discard.

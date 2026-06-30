@@ -2446,6 +2446,14 @@ including comments about the source of each setting.</p>
 These can only be set via environment variables,
 and cannot be configured through config files or command-line options.</p>
 <dl>
+<dt><code>STEPUP_MAX_OUTPUT_SIZE</code></dt>
+<dd>
+<p>The maximum size of standard output and standard error stored in the workflow database.
+The default is <code>0</code>, meaning unlimited (no truncation).
+This limit only affects what is persisted, not the terminal output.
+When a stream exceeds the limit, it is truncated on a UTF-8 character
+boundary and a <code>[output truncated at N bytes]</code> line is appended.</p>
+</dd>
 <dt><code>STEPUP_PATH_FILTER</code></dt>
 <dd>
 <p>A colon-separated list of filters
@@ -2529,19 +2537,21 @@ which can be undesirable in some cases, such as testing.</p>
 <dd>
 <p>Set to <code>true</code> to explain for every step with recording info why it cannot be skipped.</p>
 </dd>
+<dt><code>fix_epoch</code> / <code>STEPUP_BUILD_FIX_EPOCH</code> / <code>--fix-epoch</code>, <code>--no-fix-epoch</code></dt>
+<dd>
+<p>If set to <code>true</code> (the default), the <code>SOURCE_DATE_EPOCH</code> environment variable
+will be set to a fixed value of <code>315532800</code>
+(corresponding to 1980-01-01 00:00:00 UTC) for all step executions.
+This is useful for ensuring reproducible builds:
+Many tools and libraries recognize <code>SOURCE_DATE_EPOCH</code> and
+use it instead of the current time for timestamps in generated files.
+If the variable is already set in the environment, it will be used as-is.</p>
+</dd>
 <dt><code>fork_runpy</code> / <code>STEPUP_BUILD_FORK_RUNPY</code> / <code>--fork-runpy</code>, <code>--no-fork-runpy</code></dt>
 <dd>
 <p>Set to <code>true</code> to use a forkserver for Python step execution and file hashing,
 which reduces startup overhead.
 This is enabled by default on Linux.</p>
-</dd>
-<dt><code>max_output_size</code> / <code>STEPUP_BUILD_MAX_OUTPUT_SIZE</code> / <code>--max-output-size</code></dt>
-<dd>
-<p>The maximum number of bytes of standard output and standard error stored per step
-stream in the workflow database. The default is <code>0</code>, meaning unlimited (no truncation).
-The full output is always shown in the terminal user interface; this limit only affects
-what is persisted. When a stream exceeds the limit, it is truncated on a UTF-8 character
-boundary and a <code>[output truncated at N bytes]</code> line is appended.</p>
 </dd>
 <dt><code>preload_modules</code> / <code>STEPUP_BUILD_PRELOAD_MODULES</code> / <code>--preload-modules</code></dt>
 <dd>
