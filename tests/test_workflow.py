@@ -2141,53 +2141,45 @@ async def test_define_step_invalid_resources(wfp: Workflow, resources: dict):
 
 
 async def test_step_output_roundtrip(wfp: Workflow):
-    """store_output / get_output / delete_outputs round-trip each stream independently."""
+    """store_output / get_output / delete_outputs round-trip stdout and stderr together."""
     async with wfp.db:
         step = wfp.find(Step, "./plan.py")
 
-        # Empty content stores no row.
-        step.store_output("stdout", "", 0)
-        assert step.get_output("stdout") == ""
+        # Empty content stores nothing.
+        step.store_output("", "", 0)
+        assert step.get_output() == ("", "")
 
-        # Non-empty content round-trips, each stream independently.
-        step.store_output("stdout", "hello out\n", 0)
-        step.store_output("stderr", "hello err\n", 0)
-        assert step.get_output("stdout") == "hello out\n"
-        assert step.get_output("stderr") == "hello err\n"
+        # Non-empty content for both streams round-trips in one call.
+        step.store_output("hello out\n", "hello err\n", 0)
+        assert step.get_output() == ("hello out\n", "hello err\n")
 
-        # Re-storing empty content clears the stale row without touching the other stream.
-        step.store_output("stdout", "", 0)
-        assert step.get_output("stdout") == ""
-        assert step.get_output("stderr") == "hello err\n"
-
-        # delete_outputs removes all kinds at once.
-        step.store_output("stdout", "again\n", 0)
+        # delete_outputs clears both streams.
         step.delete_outputs()
-        assert step.get_output("stdout") == ""
-        assert step.get_output("stderr") == ""
+        assert step.get_output() == ("", "")
 
 
 async def test_step_output_truncated_on_store(wfp: Workflow):
-    """store_output applies the byte budget; get_output returns the truncated text."""
+    """store_output applies the byte budget independently per stream."""
     async with wfp.db:
         step = wfp.find(Step, "./plan.py")
-        step.store_output("stdout", "abcdefghij", 5)
-        assert step.get_output("stdout") == "abcde\n[output truncated at 5 bytes]\n"
+        step.store_output("abcdefghij", "klmnopqrst", 5)
+        assert step.get_output() == (
+            "abcde\n[output truncated at 5 bytes]\n",
+            "klmno\n[output truncated at 5 bytes]\n",
+        )
 
 
 async def test_step_output_give_up_no_fk_error(wfp: Workflow):
-    """give_up() removes stored output via ON DELETE CASCADE when the node row is deleted."""
+    """give_up() removes the step row (and implicitly its stdout/stderr columns)."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo hi")
         step = wfp.find(Step, "echo hi")
-        step.store_output("stdout", "data\n", 0)
-        step.store_output("stderr", "oops\n", 0)
-        # give_up() deletes the node row, and the step_output rows are removed automatically
-        # by the ON DELETE CASCADE foreign key.
+        step.store_output("data\n", "oops\n", 0)
+        step_i = step.i
         step.give_up()
-        assert step.get_output("stdout") == ""
-        assert step.get_output("stderr") == ""
+        # After give_up() deletes the node row, the step no longer exists in the database.
+        assert wfp.db.execute("SELECT 1 FROM step WHERE node = ?", (step_i,)).fetchone() is None
 
 
 async def test_step_subprocess_roundtrip(wfp: Workflow):
@@ -2201,16 +2193,38 @@ async def test_step_subprocess_roundtrip(wfp: Workflow):
         assert rows == []
 
         # Record two invocations: one with an env overlay, a non-zero return code, and shell=False;
-        # one with shell=True and a stdin string.
-        step.record_subprocess("typst compile a.typ a.pdf", "sub", {"TR": "/x"}, 7, False)
-        step.record_subprocess("echo hi | tr a b", ".", None, 0, True, "feed me\n")
+        # one with shell=True, a stdin string, and captured stdout/stderr.
+        step.record_subprocess(
+            "typst compile a.typ a.pdf",
+            "sub",
+            {"TR": "/x"},
+            7,
+            False,
+            "input\n",
+            "output\n",
+            "error\n",
+        )
+        step.record_subprocess(
+            "echo hi | tr a b", ".", None, 0, True, "feed me\n", "hi\n", "warning\n"
+        )
 
-        # Query yields (cmd, workdir, env_overrides, returncode, shell) in seq order,
-        # with cmd stored verbatim and env decoded back to a dict.
+        # Query yields (cmd, workdir, env_overrides, returncode, shell, stdin, stdout, stderr)
+        # in seq order, with cmd stored verbatim and env decoded back to a dict.
         rows = wfp.db.execute(query, (step.i,)).fetchall()
         assert rows == [
-            (3, 0, "typst compile a.typ a.pdf", "sub", '{"TR": "/x"}', 7, 0, None),
-            (3, 1, "echo hi | tr a b", ".", None, 0, 1, "feed me\n"),
+            (
+                3,
+                0,
+                "typst compile a.typ a.pdf",
+                "sub",
+                '{"TR": "/x"}',
+                7,
+                0,
+                "input\n",
+                "output\n",
+                "error\n",
+            ),
+            (3, 1, "echo hi | tr a b", ".", None, 0, 1, "feed me\n", "hi\n", "warning\n"),
         ]
 
 
@@ -2218,14 +2232,14 @@ async def test_step_subprocess_clean_restarts_seq(wfp: Workflow):
     """delete_subprocesses removes all rows and the seq numbering restarts at 0."""
     async with wfp.db:
         step = wfp.find(Step, "./plan.py")
-        step.record_subprocess("a", ".", None, 0)
-        step.record_subprocess("b", ".", None, 0)
+        step.record_subprocess("a", ".", None, 0, False, "in1", "out1", "err1")
+        step.record_subprocess("b", ".", None, 0, True, "in2", "out2", "err2")
         # seq is assigned 0, 1 and query yields the rows in that order (cmd is field 0).
         query = "SELECT * FROM step_subprocess WHERE node = ? ORDER BY seq"
         rows = wfp.db.execute(query, (step.i,)).fetchall()
         assert rows == [
-            (3, 0, "a", ".", None, 0, 0, None),
-            (3, 1, "b", ".", None, 0, 0, None),
+            (3, 0, "a", ".", None, 0, 0, "in1", "out1", "err1"),
+            (3, 1, "b", ".", None, 0, 1, "in2", "out2", "err2"),
         ]
 
         step.delete_subprocesses()
@@ -2233,10 +2247,10 @@ async def test_step_subprocess_clean_restarts_seq(wfp: Workflow):
         assert rows == []
 
         # A fresh record after cleanup restarts the sequence at 0.
-        step.record_subprocess("c", ".", None, 0)
+        step.record_subprocess("c", ".", None, 0, False, "in3", "out3", "err3")
         rows = wfp.db.execute(query, (step.i,)).fetchall()
         assert rows == [
-            (3, 0, "c", ".", None, 0, 0, None),
+            (3, 0, "c", ".", None, 0, 0, "in3", "out3", "err3"),
         ]
 
 
@@ -2246,7 +2260,7 @@ async def test_step_subprocess_clean_before_run(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo hi")
         step = wfp.find(Step, "echo hi")
-        step.record_subprocess("echo hi", ".", None, 0)
+        step.record_subprocess("echo hi", ".", None, 0, False, "in", "out", "err")
         query = "SELECT * FROM step_subprocess WHERE node = ? ORDER BY seq"
         rows = wfp.db.execute(query, (step.i,)).fetchall()
         assert len(rows) == 1
@@ -2261,7 +2275,7 @@ async def test_step_subprocess_give_up_no_fk_error(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo hi")
         step = wfp.find(Step, "echo hi")
-        step.record_subprocess("echo hi", ".", None, 0)
+        step.record_subprocess("echo hi", ".", None, 0, False, "in", "out", "err")
         # give_up() deletes the node row, and the step_subprocess rows are removed automatically
         # by the ON DELETE CASCADE foreign key.
         step.give_up()
@@ -2276,7 +2290,6 @@ SATELLITE_NODE_TABLES = (
     "env_var",
     "step_hash",
     "step_resource",
-    "step_output",
     "step_subprocess",
     "nglob_multi",
 )
@@ -2305,8 +2318,8 @@ async def test_clean_cascades_satellite_rows(wfs: Workflow):
         step = wfs.find(Step, "do something")
         out_file = wfs.find(File, "out.txt")
         step.set_hash(StepHash(b"inp", None, b"out", None))
-        step.store_output("stdout", "hello\n", 0)
-        step.record_subprocess("do something", ".", None, 0)
+        step.store_output("hello\n", "", 0)
+        step.record_subprocess("do something", ".", None, 0, False, "in", "out", "err")
         wfs.register_nglob(step, NGlobMulti.from_patterns(["*.txt"]))
         step_i = step.i
         out_i = out_file.i

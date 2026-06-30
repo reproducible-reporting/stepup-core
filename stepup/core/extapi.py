@@ -35,7 +35,7 @@ from collections.abc import Callable, Collection, Iterator
 from path import Path
 
 from .path import StrPath, coerce_str, translate
-from .rpc import SocketSyncRPCClient
+from .step import truncate_output
 from .utils import CaseSensitiveTemplate
 
 __all__ = (
@@ -47,18 +47,29 @@ __all__ = (
 )
 
 
-def _summarize_binary_stdin(stdin: str | bytes | None) -> str | None:
-    """Return a text representation of `stdin` suitable for the archival record.
+def _prepare_stream(data: str | bytes | None, max_size: int = 0) -> str:
+    """Return a text representation of `data` suitable for the archival record.
 
-    `str` and `None` pass through unchanged. `bytes` are summarized into a short,
+    `None` is returned unchanged.
+
+    `str` remains unchanged if `max_size` is `0` (unlimited)
+    or the string is shorter than `max_size`.
+    Otherwise, the string is truncated to `max_size` characters
+    and a note is appended to indicate that it was truncated.
+
+    `bytes` are summarized into a short,
     human-readable placeholder (byte length and a truncated SHA-256), because the
-    archival `stdin` column is `TEXT` and a raw binary blob is neither valid UTF-8
-    nor meaningful to a human inspecting the database.
+    archival columns (`stdin`, `stdout`, `stderr`) are `TEXT` and a raw binary blob
+    is neither valid UTF-8 nor meaningful to a human inspecting the database.
     """
-    if isinstance(stdin, bytes):
-        digest = hashlib.sha256(stdin).hexdigest()[:16]
-        return f"<{len(stdin)} bytes of binary stdin, sha256={digest}>"
-    return stdin
+    if data is None:
+        return ""
+    if isinstance(data, str):
+        return truncate_output(data, max_size)
+    if isinstance(data, bytes):
+        digest = hashlib.sha256(data).hexdigest()[:16]
+        return f"<{len(data)} bytes of binary data, sha256={digest}>"
+    raise TypeError(f"data must be str, bytes, or None, not {type(data).__name__}")
 
 
 @contextlib.contextmanager
@@ -113,6 +124,8 @@ def record_subprocess(
     env_overrides: dict[str, str] | None = None,
     shell: bool = False,
     stdin: str | bytes | None = None,
+    stdout: str | bytes | None = None,
+    stderr: str | bytes | None = None,
 ) -> None:
     """Record a subprocess invocation (already run by the caller) for archival purposes.
 
@@ -146,25 +159,30 @@ def record_subprocess(
     shell
         Whether `cmd` was executed via a shell (i.e. `subprocess.run(..., shell=True)`).
         This is stored and used when formatting the invocation for display.
-    stdin
-        The standard input that was fed to the subprocess, or `None`.
-        A `str` is stored verbatim. `bytes` (e.g. a pickle blob) are not stored raw;
-        they are recorded as a short summary (byte length and a truncated SHA-256),
-        since the archival record is `TEXT` and informative rather than authoritative.
+    stdin, stdout, stderr
+        The standard input/output/error of the subprocess, or `None` when not captured.
+        A `str` is stored verbatim (subject to the director's `--max-output-size` cap for
+        `stdout`/`stderr`). `bytes` (e.g. a pickle blob) are not stored raw; they are
+        recorded as a short summary (byte length and a truncated SHA-256), since the
+        archival record is `TEXT` and informative rather than authoritative.
     """
     from stepup.core.api import RPC_CLIENT, _get_step_i  # noqa: PLC0415
 
-    if isinstance(RPC_CLIENT, SocketSyncRPCClient):
-        step_i = _get_step_i()
-        RPC_CLIENT.call.record_subprocess(
-            step_i,
-            cmd,
-            translate(workdir),
-            env_overrides,
-            returncode,
-            shell,
-            _summarize_binary_stdin(stdin),
-        )
+    step_i = _get_step_i()
+    if step_i < 0:
+        return
+    max_output_size = int(os.getenv("STEPUP_MAX_OUTPUT_SIZE", "0"))
+    RPC_CLIENT.call.record_subprocess(
+        step_i,
+        cmd,
+        translate(workdir),
+        env_overrides,
+        returncode,
+        shell,
+        _prepare_stream(stdin, max_output_size),
+        _prepare_stream(stdout, max_output_size),
+        _prepare_stream(stderr, max_output_size),
+    )
 
 
 def run_subprocess(
@@ -179,7 +197,8 @@ def run_subprocess(
     """Run a subprocess and record it for archival purposes.
 
     This is the convenience wrapper for the case where an extension step wraps an executable.
-    The invocation and its return code are recorded via `record_subprocess`.
+    The invocation, its return code, and its captured stdout/stderr are recorded via
+    `record_subprocess` (subject to the `STEPUP_MAX_OUTPUT_SIZE` cap).
 
     Parameters
     ----------
@@ -268,7 +287,14 @@ def run_subprocess(
         argv = shlex.split(cmd)
         cp = subprocess.run(argv, **run_kwargs)  # noqa: PLW1510
     record_subprocess(
-        cmd, cp.returncode, workdir=workdir, env_overrides=env_overrides, shell=shell, stdin=stdin
+        cmd,
+        cp.returncode,
+        workdir=workdir,
+        env_overrides=env_overrides,
+        shell=shell,
+        stdin=stdin,
+        stdout=cp.stdout,
+        stderr=cp.stderr,
     )
     if check and cp.returncode != 0:
         if cp.stdout:

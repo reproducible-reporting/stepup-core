@@ -70,6 +70,10 @@ CREATE TABLE IF NOT EXISTS step (
     env_overrides TEXT,
     -- JSON-encoded dict[str, str] of step-specific environment variable overrides, or NULL.
     -- Applied to the child process environment when the step runs.
+    stdout TEXT NOT NULL DEFAULT '',
+    -- Captured standard output of the step's command.
+    stderr TEXT NOT NULL DEFAULT '',
+    -- Captured standard error of the step's command.
 
     -- Metadata
     _safe INTEGER NOT NULL CHECK(_safe IN (0, 1)),
@@ -139,16 +143,6 @@ CREATE TABLE IF NOT EXISTS step_resource (
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS step_resource_name ON step_resource(name);
 
-CREATE TABLE IF NOT EXISTS step_output (
-    node    INTEGER NOT NULL,
-    kind    TEXT    NOT NULL,  -- 'stdout' or 'stderr' (extensible)
-    content TEXT    NOT NULL,
-    PRIMARY KEY (node, kind),
-    -- ON DELETE CASCADE removes these rows when the node row is deleted, matching the
-    -- other satellite tables (step_hash / env_var / step_resource / step_subprocess).
-    FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
-) WITHOUT ROWID;
-
 CREATE TABLE IF NOT EXISTS step_subprocess (
     node       INTEGER NOT NULL,        -- step node
     seq        INTEGER NOT NULL,        -- order of invocation within the step
@@ -158,9 +152,11 @@ CREATE TABLE IF NOT EXISTS step_subprocess (
     returncode INTEGER NOT NULL,
     shell      INTEGER NOT NULL DEFAULT 0,    -- 1 if cmd was run via a shell
     stdin      TEXT,                          -- standard input fed to the subprocess, or NULL
+    stdout     TEXT,                          -- captured standard output, or NULL if not captured
+    stderr     TEXT,                          -- captured standard error, or NULL if not captured
     PRIMARY KEY (node, seq),
     -- ON DELETE CASCADE removes these rows when the node row is deleted, matching the
-    -- other satellite tables (step_hash / env_var / step_resource / step_output).
+    -- other satellite tables (step_hash / env_var / step_resource).
     -- Step.clean_before_run() still clears them explicitly between runs of a surviving step.
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 ) WITHOUT ROWID;
@@ -279,7 +275,7 @@ class Step(Node):
         self.db.execute(
             "INSERT OR REPLACE INTO step "
             "VALUES(:node, :state, :need, 1.0, '', :subshell, NULL, "
-            ":safe, :check_safe, :implied_need, 1.0, :check_need)",
+            "NULL, NULL, :safe, :check_safe, :implied_need, 1.0, :check_need)",
             {
                 "node": self.i,
                 "need": need.value,
@@ -342,7 +338,7 @@ class Step(Node):
         """Perform a cleanup right before the detached node is removed from the graph.
 
         The satellite rows (step, env_var, nglob_multi, step_hash, step_resource,
-        step_output, step_subprocess) are removed automatically by `ON DELETE CASCADE`
+        step_subprocess) are removed automatically by `ON DELETE CASCADE`
         when the node row is deleted, so only the dependency edges are handled here.
         """
         self.del_suppliers()
@@ -809,41 +805,37 @@ class Step(Node):
     def delete_hash(self):
         self.db.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))
 
-    def store_output(self, kind: str, content: str, max_size: int) -> None:
-        """Persist captured output of one stream for this step.
-
-        Any previously stored row for this `(node, kind)` pair is removed first,
-        so a stream that produced output on an earlier run but is empty now does not
-        leave a stale row.
+    def store_output(self, stdout: str, stderr: str, max_size: int) -> None:
+        """Persist captured stdout/stderr for this step in a single update.
 
         Parameters
         ----------
-        kind
-            The stream identifier, e.g. `'stdout'` or `'stderr'`.
-        content
-            The full captured text (untruncated).
+        stdout
+            The captured standard output of the step's command (untruncated).
+        stderr
+            The captured standard error of the step's command (untruncated).
         max_size
-            Maximum number of UTF-8 bytes to store, or `0` for unlimited.
+            Maximum number of UTF-8 bytes to store per stream, or `0` for unlimited.
             See `truncate_output`.
         """
-        # Delete the existing row for this kind first: INSERT OR REPLACE cannot
-        # remove a row whose content is now empty, so an explicit DELETE is needed.
-        self.db.execute("DELETE FROM step_output WHERE node = ? AND kind = ?", (self.i, kind))
-        if content:
-            self.db.execute(
-                "INSERT INTO step_output VALUES (?, ?, ?)",
-                (self.i, kind, truncate_output(content, max_size)),
-            )
+        self.db.execute(
+            "UPDATE step SET stdout = ?, stderr = ? WHERE node = ?",
+            (
+                truncate_output(stdout, max_size),
+                truncate_output(stderr, max_size),
+                self.i,
+            ),
+        )
 
-    def get_output(self, kind: str) -> str:
-        """Return the stored output for one stream, or an empty string if absent."""
-        sql = "SELECT content FROM step_output WHERE node = ? AND kind = ?"
-        row = self.db.execute(sql, (self.i, kind)).fetchone()
-        return row[0] if row else ""
+    def get_output(self) -> tuple[str, str]:
+        """Return the stored (stdout, stderr) for this step, as empty strings if absent."""
+        return self.db.execute(
+            "SELECT stdout, stderr FROM step WHERE node = ?", (self.i,)
+        ).fetchone()
 
     def delete_outputs(self) -> None:
-        """Remove all stored output rows for this step."""
-        self.db.execute("DELETE FROM step_output WHERE node = ?", (self.i,))
+        """Remove the stored stdout/stderr for this step."""
+        self.db.execute("UPDATE step SET stdout = '', stderr = '' WHERE node = ?", (self.i,))
 
     def record_subprocess(
         self,
@@ -851,8 +843,10 @@ class Step(Node):
         workdir: str,
         env_overrides: dict[str, str] | None,
         returncode: int,
-        shell: bool = False,
-        stdin: str | None = None,
+        shell: bool,
+        stdin: str,
+        stdout: str,
+        stderr: str,
     ) -> None:
         """Record a subprocess invocation made by this (wrapper) step.
 
@@ -874,8 +868,9 @@ class Step(Node):
         shell
             Whether `cmd` was executed via a shell (`subprocess.run(..., shell=True)`).
         stdin
-            The standard input fed to the subprocess as a string, or `None` when no input
-            was provided. Stored verbatim.
+            The standard input fed to the subprocess as a string.
+        stdout, stderr
+            The captured standard output/error of the subprocess as a string.
         """
         # The per-step sequence number is assigned here, under the director's DBSession,
         # so concurrent steps cannot collide and a re-run (which clears the rows first)
@@ -885,8 +880,8 @@ class Step(Node):
         ).fetchone()
         self.db.execute(
             "INSERT INTO step_subprocess "
-            "(node, seq, cmd, workdir, env_overrides, returncode, shell, stdin) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "(node, seq, cmd, workdir, env_overrides, returncode, shell, stdin, stdout, stderr) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 self.i,
                 seq,
@@ -896,6 +891,8 @@ class Step(Node):
                 returncode,
                 int(shell),
                 stdin,
+                stdout,
+                stderr,
             ),
         )
 

@@ -116,7 +116,6 @@ async def async_main(
                 args.watch,
                 args.watch_first,
                 args.resources,
-                args.max_output_size,
                 db,
                 mp_ctx=mp_ctx,
             )
@@ -205,12 +204,6 @@ def parse_args() -> argparse.Namespace:
         help="Add performance details after completed step.",
     )
     parser.add_argument(
-        "--max-output-size",
-        type=int,
-        default=0,
-        help="Maximum bytes of stdout/stderr stored per step stream; 0 = unlimited.",
-    )
-    parser.add_argument(
         "--resources",
         default=None,
         help="Available resources for steps, e.g. 'cpu:4,gpu:1,memgb:16'.",
@@ -266,7 +259,6 @@ async def serve(
     do_watch: bool,
     do_watch_first: bool,
     available_resources: str | None,
-    max_output_size: int,
     db: DBSession,
     mp_ctx=None,
 ) -> ReturnCode:
@@ -298,9 +290,6 @@ async def serve(
     available_resources
         A dictionary of named resources and their available quantities,
         e.g. `{"cpu": 4, "gpu": 1}`. Defaults to an empty dict.
-    max_output_size
-        The maximum number of bytes of stdout/stderr stored per step stream in the
-        workflow database. `0` (the default) means unlimited (no truncation).
     mp_ctx
         A `multiprocessing` forkserver context for Python step execution and file hashing,
         or `None` to use plain subprocesses.
@@ -347,7 +336,6 @@ async def serve(
         do_remove_outdated=do_clean,
         mp_ctx=mp_ctx,
         infra_env=infra_env,
-        max_output_size=max_output_size,
     )
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(
@@ -576,8 +564,10 @@ class DirectorHandler:
         workdir: str,
         env_overrides: dict[str, str] | None,
         returncode: int,
-        shell: bool = False,
-        stdin: str | None = None,
+        shell: bool,
+        stdin: str,
+        stdout: str,
+        stderr: str,
     ):
         """Record a subprocess invocation made by a wrapper step.
 
@@ -588,7 +578,16 @@ class DirectorHandler:
         """
         async with self.db:
             step = self.workflow.node(Step, step_i)
-            step.record_subprocess(cmd, workdir, env_overrides, returncode, shell, stdin)
+            step.record_subprocess(
+                cmd,
+                workdir,
+                env_overrides,
+                returncode,
+                shell,
+                stdin,
+                stdout,
+                stderr,
+            )
 
     @allow_rpc
     async def getinfo(self, step_i: int) -> StepInfo:

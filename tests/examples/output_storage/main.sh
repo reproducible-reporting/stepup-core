@@ -1,7 +1,8 @@
 #!/usr/bin/env -S bash -x
 source ../example.rc
 
-# Run the example. max_output_size = 64 comes from stepup.toml.
+# Run the example
+export STEPUP_MAX_OUTPUT_SIZE=64
 sb -j 1 -w & # > current_stdout1.txt &
 PID=$!
 

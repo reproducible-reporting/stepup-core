@@ -44,6 +44,14 @@ Some environment variables affect StepUp's internals even when it is just import
 These can only be set via environment variables,
 and cannot be configured through config files or command-line options.
 
+`STEPUP_MAX_OUTPUT_SIZE`
+
+:   The maximum size of standard output and standard error stored in the workflow database.
+    The default is `0`, meaning unlimited (no truncation).
+    This limit only affects what is persisted, not the terminal output.
+    When a stream exceeds the limit, it is truncated on a UTF-8 character
+    boundary and a `[output truncated at N bytes]` line is appended.
+
 `STEPUP_PATH_FILTER`
 
 :   A colon-separated list of filters
@@ -128,14 +136,6 @@ separated by slashes, where applicable.
 :   Set to `true` to use a forkserver for Python step execution and file hashing,
     which reduces startup overhead.
     This is enabled by default on Linux.
-
-`max_output_size` / `STEPUP_BUILD_MAX_OUTPUT_SIZE` / `--max-output-size`
-
-:   The maximum number of bytes of standard output and standard error stored per step
-    stream in the workflow database. The default is `0`, meaning unlimited (no truncation).
-    The full output is always shown in the terminal user interface; this limit only affects
-    what is persisted. When a stream exceeds the limit, it is truncated on a UTF-8 character
-    boundary and a `[output truncated at N bytes]` line is appended.
 
 `preload_modules` / `STEPUP_BUILD_PRELOAD_MODULES` / `--preload-modules`
 

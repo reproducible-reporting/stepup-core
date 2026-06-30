@@ -29,7 +29,7 @@ import pytest
 
 from stepup.core import api, extapi
 from stepup.core.extapi import (
-    _summarize_binary_stdin,
+    _prepare_stream,
     filter_dependencies,
     record_subprocess,
     run_subprocess,
@@ -100,7 +100,18 @@ def test_run_subprocess_records_success(monkeypatch):
     assert cp.stdout == ""
     assert cp.stderr == ""
     assert recorded == [
-        (cmd, 0, {"workdir": ".", "env_overrides": None, "shell": False, "stdin": None})
+        (
+            cmd,
+            0,
+            {
+                "workdir": ".",
+                "env_overrides": None,
+                "shell": False,
+                "stdin": None,
+                "stdout": "",
+                "stderr": "",
+            },
+        )
     ]
 
 
@@ -178,7 +189,18 @@ def test_run_subprocess_shell_true(monkeypatch):
     cp = run_subprocess("echo hello", shell=True)
     assert cp.returncode == 0
     assert recorded == [
-        ("echo hello", 0, {"workdir": ".", "env_overrides": None, "shell": True, "stdin": None})
+        (
+            "echo hello",
+            0,
+            {
+                "workdir": ".",
+                "env_overrides": None,
+                "shell": True,
+                "stdin": None,
+                "stdout": "hello\n",
+                "stderr": "",
+            },
+        )
     ]
 
 
@@ -216,6 +238,40 @@ def test_run_subprocess_stdin_bytes(monkeypatch):
     cp = run_subprocess(cmd, stdin=b"\x00\x01\x02hello")
     assert cp.stdout == b"\x00\x01\x02hello"
     assert recorded == [b"\x00\x01\x02hello"]
+
+
+def test_run_subprocess_stdout_stderr_recorded(monkeypatch):
+    """Captured stdout/stderr are forwarded to record_subprocess."""
+    recorded = []
+    monkeypatch.setattr(
+        extapi,
+        "record_subprocess",
+        lambda cmd, rc, **kw: recorded.append((kw["stdout"], kw["stderr"])),
+    )
+    cmd = shlex.join(
+        [sys.executable, "-c", "import sys; print('out'); print('err', file=sys.stderr)"]
+    )
+    cp = run_subprocess(cmd)
+    assert cp.stdout == "out\n"
+    assert cp.stderr == "err\n"
+    assert recorded == [("out\n", "err\n")]
+
+
+def test_run_subprocess_stdout_stderr_recorded_binary(monkeypatch):
+    """In binary mode, captured stdout/stderr bytes are forwarded raw to record_subprocess."""
+    recorded = []
+    monkeypatch.setattr(
+        extapi,
+        "record_subprocess",
+        lambda cmd, rc, **kw: recorded.append((kw["stdout"], kw["stderr"])),
+    )
+    cmd = shlex.join(
+        [sys.executable, "-c", "import sys; print('out'); print('err', file=sys.stderr)"]
+    )
+    cp = run_subprocess(cmd, stdin=b"", text=False)
+    assert cp.stdout == b"out\n"
+    assert cp.stderr == b"err\n"
+    assert recorded == [(b"out\n", b"err\n")]
 
 
 def test_run_subprocess_check_prints_stdout_stderr(monkeypatch, capsys):
@@ -275,14 +331,30 @@ def test_run_subprocess_stdin_str_text_false_raises():
         run_subprocess(shlex.join([sys.executable, "-c", ""]), stdin="data", text=False)
 
 
-def test_summarize_binary_stdin():
-    """_summarize_binary_stdin passes through None and str, and summarizes bytes."""
-    assert _summarize_binary_stdin(None) is None
+def test_prepare_stream_none():
+    """_prepare_stream passes through None."""
+    assert _prepare_stream(None) == ""
+
+
+def test_prepare_stream_str_unlimited():
+    """_prepare_stream passes through str when max_size is 0 (unlimited)."""
     s = "hello"
-    assert _summarize_binary_stdin(s) is s
+    assert _prepare_stream(s, max_size=0) == s
+
+
+def test_prepare_stream_str_truncated():
+    """_prepare_stream truncates str when it exceeds max_size."""
+    s = "hello world"
+    result = _prepare_stream(s, max_size=5)
+    # The result should be truncated and include a note about truncation
+    assert len(result) <= 5 + 50  # Some allowance for the truncation note
+
+
+def test_prepare_stream_bytes():
+    """_prepare_stream summarizes bytes into a short digest."""
     data = b"\x00\x01\x02hi"
-    result = _summarize_binary_stdin(data)
+    result = _prepare_stream(data)
     expected_digest = hashlib.sha256(data).hexdigest()[:16]
-    assert result == f"<{len(data)} bytes of binary stdin, sha256={expected_digest}>"
-    assert result.startswith(f"<{len(data)} bytes of binary stdin, sha256=")
+    assert result == f"<{len(data)} bytes of binary data, sha256={expected_digest}>"
+    assert result.startswith(f"<{len(data)} bytes of binary data, sha256=")
     assert result.endswith(">")

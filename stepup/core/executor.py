@@ -611,9 +611,6 @@ class Executor:
     infra_env: dict = attrs.field(kw_only=True, factory=dict)
     """Environment variables from the director for step child processes, overriding `os.environ`."""
 
-    max_output_size: int = attrs.field(kw_only=True, default=0)
-    """Maximum bytes of stdout/stderr stored per step stream in the DB; 0 = unlimited."""
-
     running: set = attrs.field(init=False, factory=set)
     """The set of `Run` instances whose command is currently running."""
 
@@ -736,8 +733,8 @@ class Executor:
                 # so a crash cannot leave a completed step without its output (or vice
                 # versa). run.stdout/run.stderr stay untruncated; store_output truncates a
                 # copy internally, so report() below still forwards the full text to the TUI.
-                step.store_output("stdout", run.stdout, self.max_output_size)
-                step.store_output("stderr", run.stderr, self.max_output_size)
+                max_output_size = int(os.getenv("STEPUP_MAX_OUTPUT_SIZE", "0"))
+                step.store_output(run.stdout, run.stderr, max_output_size)
                 step_counts = self.workflow.get_step_counts()
             await self.reporter.update_step_counts(step_counts)
 

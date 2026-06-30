@@ -34,8 +34,8 @@ This is release candidate 4 for the upcoming StepUp 4.0 release.
 - StepUp now stores the captured stdout and stderr of each step in the workflow database,
   so they can be inspected after the build.
   Output from subprocesses launched by a forked Python step is captured properly.
-  The amount stored per stream can be capped with the new
-  `sb --max-output-size` option (`0` = unlimited, the default).
+  The amount stored per stream can be capped with the new `STEPUP_MAX_OUTPUT_SIZE`
+  environment variable (`0` = unlimited, the default).
   These outputs can later be viewed with `stepup browse`.
 - All functions in `stepup.core.api` now accept `os.PathLike` objects (i.e. `pathlib.Path`)
   as path arguments, in addition to `str` and `path.Path`.

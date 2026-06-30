@@ -103,9 +103,6 @@ class Builder:
     infra_env: dict = attrs.field(kw_only=True, factory=dict)
     """Environment variables from the director for step child processes, overriding `os.environ`."""
 
-    max_output_size: int = attrs.field(kw_only=True, default=0)
-    """Maximum bytes of stdout/stderr stored per step stream in the DB; 0 = unlimited."""
-
     executor: Executor = attrs.field(init=False)
     """The executor that runs the steps as asyncio tasks in this process."""
 
@@ -120,7 +117,6 @@ class Builder:
             self.explain_rerun,
             mp_ctx=self.mp_ctx,
             infra_env=self.infra_env,
-            max_output_size=self.max_output_size,
         )
 
     async def loop(self, stop_event: asyncio.Event):

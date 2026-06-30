@@ -2,8 +2,10 @@
 import sqlite3
 
 con = sqlite3.connect(".stepup/graph.db")
-output = dict(con.execute("SELECT kind, content FROM step_output").fetchall())
+stdout, stderr = con.execute(
+    "SELECT stdout, stderr FROM step JOIN node ON node.i = step.node WHERE node.label = './work.py'"
+).fetchone()
 con.close()
-assert "python-stdout-line" in output.get("stdout", ""), output
-assert "subprocess-stdout-line" in output.get("stdout", ""), output
-assert "subprocess-stderr-line" in output.get("stderr", ""), output
+assert "python-stdout-line" in stdout, stdout
+assert "subprocess-stdout-line" in stdout, stdout
+assert "subprocess-stderr-line" in stderr, stderr

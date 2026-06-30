@@ -405,7 +405,7 @@ class GraphServer(BaseHTTPRequestHandler):
         if kind == "step":
             sql_props = (
                 "SELECT state, need, duration, rescheduled_info, subshell, env_overrides,"
-                "_safe, _check_safe, _implied_need, _tail_time, _check_after "
+                "stdout, stderr, _safe, _check_safe, _implied_need, _tail_time, _check_after "
                 "FROM step WHERE node = ?"
             )
             (
@@ -415,6 +415,8 @@ class GraphServer(BaseHTTPRequestHandler):
                 rescheduled_info,
                 subshell,
                 env_overrides,
+                stdout,
+                stderr,
                 safe,
                 check_safe,
                 implied_need_id,
@@ -487,23 +489,30 @@ class GraphServer(BaseHTTPRequestHandler):
                     ngm = pickle.loads(row[0])
                     yield f"<p>{[ngs.pattern for ngs in ngm.nglob_singles]} {ngm.subs}</p>"
 
-            sql_out = "SELECT kind, content FROM step_output WHERE node = ? ORDER BY kind"
-            first = True
-            for out_kind, out_content in self.con.execute(sql_out, (node_i,)):
-                if first:
-                    yield "<h3>Output</h3>"
-                    first = False
-                yield f"<p>{out_kind}:</p>"
-                yield f"<pre>{html.escape(out_content)}</pre>"
+            if stdout != "":
+                yield "<h3>Standard Output</h3>"
+                yield f"<pre>{html.escape(stdout)}</pre>"
+            if stderr != "":
+                yield "<h3>Standard Error</h3>"
+                yield f"<pre>{html.escape(stderr)}</pre>"
 
             sql_sub = (
-                "SELECT cmd, workdir, env_overrides, returncode, shell, stdin FROM step_subprocess "
-                "WHERE node = ? ORDER BY seq"
+                "SELECT cmd, workdir, env_overrides, returncode, shell, stdin, stdout, stderr "
+                "FROM step_subprocess WHERE node = ? ORDER BY seq"
             )
             subs = list(self.con.execute(sql_sub, (node_i,)))
             if len(subs) > 0:
                 yield "<h3>Subprocesses</h3>"
-                for cmd, workdir, env_overrides, returncode, shell_int, stdin in subs:
+                for (
+                    cmd,
+                    workdir,
+                    env_overrides,
+                    returncode,
+                    shell_int,
+                    stdin,
+                    stdout,
+                    stderr,
+                ) in subs:
                     line = format_subprocess(
                         cmd,
                         workdir,
@@ -512,9 +521,15 @@ class GraphServer(BaseHTTPRequestHandler):
                         shell=bool(shell_int),
                     )
                     yield f"<pre>{html.escape(line)}</pre>"
-                    if stdin is not None:
-                        yield '<div class="indent"><p>with stdin:</p>'
+                    if stdin != "":
+                        yield '<div class="indent"><p>stdin:</p>'
                         yield f"<pre>{html.escape(stdin)}</pre></div>"
+                    if stdout != "":
+                        yield '<div class="indent"><p>stdout:</p>'
+                        yield f"<pre>{html.escape(stdout)}</pre></div>"
+                    if stderr != "":
+                        yield '<div class="indent"><p>stderr:</p>'
+                        yield f"<pre>{html.escape(stderr)}</pre></div>"
 
         elif kind == "file":
             (state_i, digest, mode, mtime, size, inode) = self.con.execute(
