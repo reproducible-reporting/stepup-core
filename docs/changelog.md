@@ -12,9 +12,9 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no changes yet)
 
-## [4.0.0rc4][] - 2026-04-28 {: #v4.0.0rc4 }
+## [4.0.0rc5][] - 2026-04-30 {: #v4.0.0rc5 }
 
-This is release candidate 4 for the upcoming StepUp 4.0 release.
+This is release candidate 5 for the upcoming StepUp 4.0 release.
 
 ### Added
 
@@ -934,7 +934,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
-[4.0.0rc4]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc4
+[4.0.0rc5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc5
 [3.2.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.3
 [3.2.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.2
 [3.2.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.1
