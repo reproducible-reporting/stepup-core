@@ -157,4 +157,4 @@ and reserve spaces for the contents of files rather than their names.
 - For resource-intensive workflows, you can inspect the global resource usage
   at the end of the `.stepup/director.log` file.
   For a more detailed breakdown, consult the `--show-perf` option of the `sb` command,
-  as documented in the [Configuration](reference/configuration.md) section of the documentation.
+  as documented in the [Configuration](../reference/configuration.md) section of the documentation.
