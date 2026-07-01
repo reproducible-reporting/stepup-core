@@ -38,7 +38,7 @@ from .asyncio import stoppable_iterator, wait_for_path
 from .config import ConfigLoader
 from .constants import DIRECTOR_LOG, PERF_DATA, STEPUP_DIR
 from .director import interpret_jobs
-from .reporter import ReporterClient, ReporterHandler
+from .reporter import ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
 from .utils import parse_resources
 from .watcher import WATCHER_AVAILABLE
@@ -157,7 +157,7 @@ async def async_build(args: argparse.Namespace, default_resources: str):
                 if sys.stdin.isatty():
                     await wait_for_path(director_socket_path, stop_event)
                     task_keyboard = asyncio.create_task(
-                        keyboard(director_socket_path, reporter_socket_path, stop_event),
+                        keyboard(director_socket_path, reporter_handler, stop_event),
                         name="keyboard",
                     )
                     tasks.append(task_keyboard)
@@ -225,34 +225,35 @@ KEY_STROKE_HELP = """
 
 async def keyboard(
     director_socket_path: Path,
-    reporter_socket_path: Path,
+    reporter_handler: ReporterHandler,
     stop_event: asyncio.Event,
 ):
-    async with (
-        ReporterClient.socket(reporter_socket_path) as reporter,
-        AsyncReadChar() as readchar,
-    ):
+    async with AsyncReadChar() as readchar:
         async for ch in stoppable_iterator(readchar, stop_event):
             if ch in "qjdrg":
                 async with await AsyncRPCClient.socket(director_socket_path) as client:
                     if ch == "q":
-                        await reporter("KEYBOARD", "Shutting down")
+                        reporter_handler.report("KEYBOARD", "Shutting down", [])
                         await client.call.shutdown()
                     elif ch == "j":
-                        await reporter("KEYBOARD", "Waiting for all steps before shutdown.")
+                        reporter_handler.report(
+                            "KEYBOARD", "Waiting for all steps before shutdown.", []
+                        )
                         await client.call.join()
                     elif ch == "d":
-                        await reporter("KEYBOARD", "Putting the scheduler on hold.")
+                        reporter_handler.report("KEYBOARD", "Putting the scheduler on hold.", [])
                         await client.call.drain()
                     elif ch == "r":
-                        await reporter("KEYBOARD", "Restarting the builder.")
+                        reporter_handler.report("KEYBOARD", "Restarting the builder.", [])
                         await client.call.run()
                     elif ch == "g":
                         await client.call.graph("graph")
-                        await reporter("KEYBOARD", "Workflow graph written to graph.txt.")
+                        reporter_handler.report(
+                            "KEYBOARD", "Workflow graph written to graph.txt.", []
+                        )
             else:
                 pages = [("Keys", KEY_STROKE_HELP)]
-                await reporter("KEYBOARD", f"Unsupported key {ch}", pages)
+                reporter_handler.report("KEYBOARD", f"Unsupported key {ch}", pages)
 
 
 def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: str) -> str:
