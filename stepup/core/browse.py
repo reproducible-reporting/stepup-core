@@ -282,7 +282,7 @@ KIND_SYMBOLS = {
     "root": "⌂",
     "file": "🗏",
     "step": "⚙",
-    "dg": "🟄",
+    "st": "𐂷",
 }
 
 KIND_NAMES = {

@@ -671,6 +671,14 @@ class Workflow(Trellis):
                         raise AssertionError(f"Missing file confirmed as missing: {path}")
                     new_states_hashes.append((i, FileState.STATIC, new_fh))
                     completed.append((i, path))
+                elif old_state == FileState.STATIC:
+                    # Two steps can race to be the first to use the same static-tree file:
+                    # both get told to check and confirm it before either confirmation
+                    # is processed. The second confirmation to arrive is a harmless
+                    # duplicate of the first.
+                    if new_fh.is_unknown:
+                        raise AssertionError(f"Static file confirmed as missing: {path}")
+                    new_states_hashes.append((i, FileState.STATIC, new_fh))
                 else:
                     raise_unexpected(path, old_state, new_fh)
 

@@ -1596,6 +1596,35 @@ async def test_static_tree_recursive(wfp: Workflow):
         ]
 
 
+async def test_static_tree_race_condition(wfp: Workflow):
+    """Two steps race to be the first to use the same static-tree file as input.
+
+    Both `define_step` calls happen before either confirmation is processed, so both
+    are told to check and confirm the file. The second confirmation to arrive used to
+    crash with `Unexpected file hash update: cause=CONFIRMED ... state=FileState.STATIC`.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "data")
+        to_check_a = wfp.define_step(plan, "prog_a", inp_paths=["data/foo.txt"])
+        to_check_b = wfp.define_step(plan, "prog_b", inp_paths=["data/foo.txt"])
+        assert to_check_a == [("data/foo.txt", FileHash.unknown())]
+        assert to_check_b == [("data/foo.txt", FileHash.unknown())]
+
+        # Client A confirms first: MISSING -> STATIC.
+        wfp.update_file_hashes(
+            [("data/foo.txt", fake_hash("data/foo.txt"))], HashUpdateCause.CONFIRMED
+        )
+        foo = wfp.find(File, "data/foo.txt")
+        assert foo.get_state() == FileState.STATIC
+
+        # Client B's confirmation for the same path arrives second and must not crash.
+        wfp.update_file_hashes(
+            [("data/foo.txt", fake_hash("data/foo.txt"))], HashUpdateCause.CONFIRMED
+        )
+        assert foo.get_state() == FileState.STATIC
+
+
 async def test_define_step_reqdir_out_path(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
