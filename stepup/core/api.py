@@ -408,7 +408,6 @@ def call(
         Path to the script or binary to invoke.
         Must contain a path separator (e.g. `./script.py` or `sub/script.py`)
         and must not be an absolute path.
-        Environment variables in the path are substituted.
     function_
         Name of the function to invoke (first positional CLI argument).
     inp
@@ -464,17 +463,19 @@ def call(
     if optional and planning:
         raise ValueError("optional and planning are mutually exclusive")
 
+    # Normalize the executable, preserving any prefix/suffix for later re-application.
+    executable_ = coerce_path(executable_)
+    prefix, suffix = get_affixes(executable_)
+    executable_ = apply_affixes(executable_.normpath(), prefix, suffix)
+
     # Perform environment variable substitutions before building the command.
     # This is somewhat redundant with the substitutions performed in `step()`.
     with subs_env_vars() as subs:
-        executable_ = subs(executable_)
         inp = [subs(inp_path).normpath() for inp_path in coerce_paths(inp)]
         out = [subs(out_path).normpath() for out_path in coerce_paths(out)]
         workdir = subs(workdir).normpath()
         if args_file is not None:
             args_file = subs(args_file).normpath()
-    prefix, suffix = get_affixes(executable_)
-    executable_ = apply_affixes(executable_.normpath(), prefix, suffix)
 
     # Validate executable path format.
     if os.sep not in executable_:
@@ -1014,7 +1015,6 @@ def script(
         The path of a local executable that will be called with the argument `plan`.
         The file must be executable.
         The path of the script is assumed to be relative to this directory.
-        Environment variables in the path are substituted.
     step_info
         When given, the steps generated in the plan part of the executable are written
         to this `step_info` file. (See [stepup.core.stepinfo][] module for the file format.)
@@ -1035,9 +1035,8 @@ def script(
     - The optional argument never applies to the plan stage,
       and is passed on the the run stage.
     """
-    # Substitute environment variables in the executable path and normalize it.
-    with subs_env_vars() as subs:
-        executable = subs(executable)
+    # Normalize the executable, preserving any prefix/suffix for later re-application.
+    executable = coerce_path(executable)
     prefix, suffix = get_affixes(executable)
     executable = apply_affixes(executable.normpath(), prefix, suffix)
 

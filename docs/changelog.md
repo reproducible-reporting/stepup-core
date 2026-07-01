@@ -175,6 +175,7 @@ This is release candidate 5 for the upcoming StepUp 4.0 release.
 - The `${inp}` and `${out}` placeholders have been removed from the `run()` and `step()` functions.
   Use the `shq()` helper function instead, together with Python's built-in f-strings.
 - The `glob()` function no longer accepts `_defer` and `_required` keyword arguments.
+- Removed the environment variable substitution in the executable passed to `script()` and `call()`.
 
 ## [3.2.3][] - 2026-04-16 {: #v3.2.3 }
 
