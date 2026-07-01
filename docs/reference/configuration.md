@@ -141,7 +141,7 @@ separated by slashes, where applicable.
     use it instead of the current time for timestamps in generated files.
     If the variable is already set in the environment, it will be used as-is.
 
-`fork_runpy` / `STEPUP_BUILD_FORK_RUNPY` / `--fork-runpy`, `--no-fork-runpy`
+`forkserver` / `STEPUP_BUILD_FORKSERVER` / `--forkserver`, `--no-forkserver`
 
 :   Set to `true` to use a forkserver for Python step execution and file hashing,
     which reduces startup overhead.
@@ -150,7 +150,7 @@ separated by slashes, where applicable.
 `preload_modules` / `STEPUP_BUILD_PRELOAD_MODULES` / `--preload-modules`
 
 :   A comma-separated list of Python modules to pre-load into the forkserver.
-    Only has effect when `fork_runpy = true`.
+    Only has effect when `forkserver = true`.
     Use this to reduce per-step startup time when all (or most) steps import the same large modules.
     For example, `preload_modules = "numpy,scipy"` pre-loads NumPy and SciPy into the forkserver
     so that each Python step forked from it inherits them at zero import cost.

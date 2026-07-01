@@ -88,7 +88,7 @@ addopts = "-n auto --dist worksteal -W error -W ignore::ResourceWarning"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
-    "requires_fork_runpy: mark test that requires STEPUP_BUILD_FORK_RUNPY != 0",
+    "requires_forkserver: mark test that requires STEPUP_BUILD_FORKSERVER != 0",
 ]
 
 [tool.ruff]

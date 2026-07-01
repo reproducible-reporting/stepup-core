@@ -17,9 +17,9 @@ When writing new examples, the following conventions ensure that they are proper
   unregistered example is silently never run. If its `plan.py` should also be exercised
   standalone (without StepUp), add the name to the `test_plan` list as well.
 
-- CI runs the whole example suite twice, once with `STEPUP_BUILD_FORK_RUNPY=1` and once with
-  `STEPUP_BUILD_FORK_RUNPY=0`, so an example must pass under **both** the forkserver and the
-  plain-subprocess execution paths. Do not pin `fork_runpy` in a per-example `stepup.toml`
+- CI runs the whole example suite twice, once with `STEPUP_BUILD_FORKSERVER=1` and once with
+  `STEPUP_BUILD_FORKSERVER=0`, so an example must pass under **both** the forkserver and the
+  plain-subprocess execution paths. Do not pin `forkserver` in a per-example `stepup.toml`
   unless the example is specifically about one path.
 
 - To facilitate debugging, the shebang line runs bash in verbose mode: `#!/usr/bin/env -S bash -x`.

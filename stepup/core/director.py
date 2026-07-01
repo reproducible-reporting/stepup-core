@@ -76,7 +76,7 @@ class ServeResult:
 def main():
     args = parse_args()
     mp_ctx = None
-    if args.fork_runpy:
+    if args.forkserver:
         mp_ctx = multiprocessing.get_context("forkserver")
         preload = ["stepup.core.executor", "stepup.core.hasher"]
         if args.preload_modules:
@@ -202,7 +202,7 @@ def parse_args() -> argparse.Namespace:
         "(If the variable is already set, it will be used as-is.) ",
     )
     parser.add_argument(
-        "--fork-runpy",
+        "--forkserver",
         default=False,
         action=argparse.BooleanOptionalAction,
         help="Use a forkserver for Python step execution and file hashing "
@@ -212,7 +212,7 @@ def parse_args() -> argparse.Namespace:
         "--preload-modules",
         default=None,
         help="Comma-separated list of Python modules to pre-load into the forkserver. "
-        "Only has effect when --fork-runpy is active.",
+        "Only has effect when --forkserver is active.",
     )
     parser.add_argument(
         "--reporter",

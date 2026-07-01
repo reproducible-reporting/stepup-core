@@ -25,11 +25,11 @@ This is release candidate 5 for the upcoming StepUp 4.0 release.
   as the result of merging all config files and environment variables.
 - StepUp can use a forkserver for Python step execution and file hashing,
   which reduces startup overhead.
-  This can be controlled with the `--fork-runpy` flag,
+  This can be controlled with the `--forkserver` flag,
   which is enabled by default on Linux.
 - Added `--preload-modules` option to `sb` to specify a comma-separated list of Python
   modules to be pre-loaded into the forkserver.
-  This only has an effect when `--fork-runpy` is active and can speed up workflows
+  This only has an effect when `--forkserver` is active and can speed up workflows
   that repeatedly import large modules.
 - StepUp now stores the captured stdout and stderr of each step in the workflow database,
   so they can be inspected after the build.
@@ -42,7 +42,7 @@ This is release candidate 5 for the upcoming StepUp 4.0 release.
 - When the first word of a `run()` command is a bare command name matching a `console_scripts`
   entry point from the current Python environment, StepUp now automatically selects the
   `runpyep` action.
-  When the forkserver is enabled (`--fork-runpy`), the entry point function is called
+  When the forkserver is enabled (`--forkserver`), the entry point function is called
   in-process rather than spawning a new subprocess, reducing overhead.
   If the entry point belongs to a different Python environment, a warning is logged and
   the command falls back to direct subprocess execution (`runexec` action).

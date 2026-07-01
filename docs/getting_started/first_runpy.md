@@ -64,7 +64,7 @@ run("weasyprint document.html document.pdf", inp="document.html", out="document.
 
 StepUp will create a `runpyep` action for this command,
 which is similar to `runpy` but designed to run Python entry points.
-If the `--fork-runpy` option is enabled (the default on Linux),
+If the `--forkserver` option is enabled (the default on Linux),
 StepUp will run the command with the forkserver mechanism,
 which is significantly faster than a normal subprocess.
 
@@ -82,7 +82,7 @@ which always executes the command as a normal subprocess.
 - StepUp also provides a more sophisticated interface for running functions in (Python) scripts,
   which is described in the [Function Calls](./call.md) tutorial.
 
-- When `--fork-runpy` is active (the default on Linux), you can pre-load additional modules
+- When `--forkserver` is active (the default on Linux), you can pre-load additional modules
   into the forkserver with `--preload-modules` (or `preload_modules` in the config file).
   This further reduces per-step startup time for workflows that repeatedly import the same
   large packages such as NumPy or Matplotlib.

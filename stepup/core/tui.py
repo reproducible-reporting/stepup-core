@@ -120,8 +120,8 @@ async def async_build(args: argparse.Namespace, default_resources: str):
                 f"--log-level={args.log_level}",
             ]
         )
-        if args.fork_runpy:
-            argv.append("--fork-runpy")
+        if args.forkserver:
+            argv.append("--forkserver")
         if args.preload_modules:
             argv.append(f"--preload-modules={args.preload_modules}")
         if not args.clean:
@@ -311,7 +311,7 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         "(If the variable is already set, it will be used as-is.) ",
     )
     parser.add_argument(
-        "--fork-runpy",
+        "--forkserver",
         default=(sys.platform == "linux"),
         action=argparse.BooleanOptionalAction,
         help="Use a forkserver for Python step execution and file hashing "
@@ -321,7 +321,7 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         "--preload-modules",
         default=None,
         help="Comma-separated list of Python modules to pre-load into the forkserver. "
-        "Only has effect when --fork-runpy is active. [default: none]",
+        "Only has effect when --forkserver is active. [default: none]",
     )
     parser.add_argument(
         "--progress",

@@ -166,7 +166,7 @@ StepUp runs as two process types:
   (e.g. `amend()`, `step()`).
 - **Hashing** (`hasher.py`):
   File/step hashing — the only blocking work — is offloaded to a separate process: a
-  forkserver child when `--fork-runpy` is on, otherwise a `_stepup_hasher` subprocess.
+  forkserver child when `--forkserver` is on, otherwise a `_stepup_hasher` subprocess.
 - **TUI** (`tui.py`):
   Boots the director as a subprocess and connects to it via the reporter RPC socket.
   Renders progress to the terminal.
@@ -283,7 +283,7 @@ Used in the API for dynamic file discovery with consistency constraints across p
     - New examples are **not** auto-discovered: register each in the `@pytest.mark.parametrize`
       `name` list of `test_example` in `tests/test_examples.py` (and `test_plan` if the plan
       should run standalone), or it is silently never run.
-    - CI runs the example suite twice, with `STEPUP_BUILD_FORK_RUNPY=1` and `=0`, so examples
+    - CI runs the example suite twice, with `STEPUP_BUILD_FORKSERVER=1` and `=0`, so examples
       must pass under both the forkserver and plain-subprocess paths.
     - The "Standard error" page is replaced with `(stripped)` before comparison, so assert
       stderr text by grepping `.stepup/success.log` (full output) instead of `expected_stdout.txt`.

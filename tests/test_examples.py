@@ -253,14 +253,14 @@ EXAMPLES = [
 ]
 
 # Examples that can only run when StepUp uses the forkserver path.
-EXAMPLES_REQUIRES_FORK_RUNPY = {"preload_modules"}
+EXAMPLES_REQUIRES_FORKSERVER = {"preload_modules"}
 
 
 @pytest.mark.parametrize(
     "name",
     [
-        pytest.param(name, marks=pytest.mark.requires_fork_runpy)
-        if name in EXAMPLES_REQUIRES_FORK_RUNPY
+        pytest.param(name, marks=pytest.mark.requires_forkserver)
+        if name in EXAMPLES_REQUIRES_FORKSERVER
         else name
         for name in EXAMPLES
     ],

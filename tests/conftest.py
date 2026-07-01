@@ -45,12 +45,12 @@ pytest.register_assert_rewrite("stepup.core.pytest")
 
 
 def pytest_collection_modifyitems(items):
-    if os.environ.get("STEPUP_BUILD_FORK_RUNPY") == "0":
+    if os.environ.get("STEPUP_BUILD_FORKSERVER") == "0":
         skip = pytest.mark.skip(
-            reason="requires fork-based process execution (STEPUP_BUILD_FORK_RUNPY != 0)"
+            reason="requires fork-based process execution (STEPUP_BUILD_FORKSERVER != 0)"
         )
         for item in items:
-            if item.get_closest_marker("requires_fork_runpy"):
+            if item.get_closest_marker("requires_forkserver"):
                 item.add_marker(skip)
 
 

@@ -1,5 +1,5 @@
 [build]
 jobs = 1
 watch = true
-fork_runpy = true
+forkserver = true
 preload_modules = "numpy,matplotlib"
