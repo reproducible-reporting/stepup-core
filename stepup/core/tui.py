@@ -21,6 +21,7 @@
 
 import argparse
 import asyncio
+import contextlib
 import os
 import subprocess
 import sys
@@ -31,7 +32,6 @@ from collections.abc import Callable
 from decimal import Decimal
 from functools import partial
 
-import attrs
 from path import Path
 
 from .asyncio import stoppable_iterator, wait_for_path
@@ -177,45 +177,32 @@ async def async_build(args: argparse.Namespace, default_resources: str):
     sys.exit(returncode)
 
 
-@attrs.define
-class AsyncReadChar:
-    old_tcattr: list | None = attrs.field(init=False, default=None)
-    _loop = attrs.field(init=False)
-    _thread: threading.Thread = attrs.field(init=False)
-    _queue: asyncio.Queue = attrs.field(init=False, factory=asyncio.Queue)
+@contextlib.asynccontextmanager
+async def iter_keystrokes(stop_event: asyncio.Event):
+    """Yield keystrokes from stdin, one at a time, in raw mode, until `stop_event` is set.
 
-    async def __aenter__(self):
-        # Change stdin settings to read character by character.
-        fd = sys.stdin.fileno()
-        self.old_tcattr = termios.tcgetattr(fd)
-        new_tcattr = termios.tcgetattr(fd)
-        new_tcattr[3] &= ~(termios.ICANON | termios.ECHO)
-        termios.tcsetattr(fd, termios.TCSAFLUSH, new_tcattr)
-        self._loop = asyncio.get_running_loop()
-        self._thread = threading.Thread(target=self._stdio_loop, daemon=True)
-        self._thread.start()
-        return self
+    Reads happen in a background thread because putting stdin in non-blocking mode
+    (e.g. via `asyncio.StreamReader`) also affects stdout and stderr when they share the
+    same underlying open file description as stdin, which breaks `print` and `rich.print`
+    for large output.
+    """
+    fd = sys.stdin.fileno()
+    old_tcattr = termios.tcgetattr(fd)
+    new_tcattr = termios.tcgetattr(fd)
+    new_tcattr[3] &= ~(termios.ICANON | termios.ECHO)
+    termios.tcsetattr(fd, termios.TCSAFLUSH, new_tcattr)
+    loop = asyncio.get_running_loop()
+    queue = asyncio.Queue()
 
-    async def __aexit__(self, exc_type, exc_value, tb):
-        # Revert stdin settings
-        termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, self.old_tcattr)
-
-    async def __call__(self) -> str:
-        """Get one character from stdin."""
-        return await self._queue.get()
-
-    def _stdio_loop(self) -> str:
-        """Blocking read of single character at a time from sys.stdin.
-
-        Note that asyncio.StreamReader is not used because it puts stdin (and stdout and stderr)
-        in non-blocking mode, which is not compatible with print functions and rich.print.
-        (This problem is only noticeable when printing large amounts of data.
-
-        This method is intended to be running in a separate daemon thread.
-        """
+    def _stdin_loop():
         while True:
-            char = sys.stdin.read(1)
-            self._loop.call_soon_threadsafe(self._queue.put_nowait, char)
+            loop.call_soon_threadsafe(queue.put_nowait, sys.stdin.read(1))
+
+    threading.Thread(target=_stdin_loop, daemon=True).start()
+    try:
+        yield stoppable_iterator(queue.get, stop_event)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_tcattr)
 
 
 KEY_STROKE_HELP = """
@@ -228,8 +215,8 @@ async def keyboard(
     reporter_handler: ReporterHandler,
     stop_event: asyncio.Event,
 ):
-    async with AsyncReadChar() as readchar:
-        async for ch in stoppable_iterator(readchar, stop_event):
+    async with iter_keystrokes(stop_event) as keys:
+        async for ch in keys:
             if ch in "qjdrg":
                 async with await AsyncRPCClient.socket(director_socket_path) as client:
                     if ch == "q":
