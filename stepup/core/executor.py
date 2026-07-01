@@ -63,6 +63,7 @@ from .reporter import ReporterClient
 from .scheduler import Scheduler
 from .sqlite3 import DBSession
 from .step import Step
+from .usage import ChildOutcome, ResourceAccumulator, ResourceUsage
 from .utils import escape_command_display, format_subprocess
 from .workflow import Workflow
 
@@ -73,134 +74,49 @@ logger = logging.getLogger(__name__)
 
 
 #
-# Forkserver child entry point for Python step execution
+# Command launch classification
 #
 
 
-PYCODE_WRAPPER = """\
-import os
-import sys
-import runpy
-from path import Path
-from stepup.core.api import amend
-from stepup.core.extapi import get_local_import_paths
-sys.argv = {argv}
-try:
-    runpy.run_path({script}, run_name="__main__")
-finally:
-    amend(inp=get_local_import_paths(script_path=Path({script})))
-"""
+def _check_executable(executable: Path, shebang: str | None = None) -> str | None:
+    """Check if the executable looks fine.
 
+    Parameters
+    ----------
+    executable
+        The (working-directory-resolved) path to the executable to check.
+    shebang
+        The expected shebang line, if any.
 
-def _forkserver_entry(
-    cmd: str,
-    args: list[str],
-    env_snapshot: dict[str, str],
-    workdir: str,
-    ep_value: str | None,
-    result_conn,
-) -> None:
-    """Entry point for forkserver-launched Python executions.
-
-    This function runs in a forked child process and sends results back via `result_conn`.
-    When `ep_value` is `None`, `cmd` is a Python script path run via `runpy.run_path`,
-    with local imports auto-detected and amended as inputs.
-    When `ep_value` is a `module:attr` string, the corresponding console_script function
-    is imported and called directly without import tracking.
+    Returns
+    -------
+    message
+        `None` when the executable is acceptable, otherwise a human-readable error message.
     """
-    try:
-        os.environ.clear()
-        os.environ.update(env_snapshot)
-        stdout_buf = io.StringIO()
-        stderr_buf = io.StringIO()
-        returncode = 0
-        ru_self_start = resource.getrusage(resource.RUSAGE_SELF)
-        ru_children_start = resource.getrusage(resource.RUSAGE_CHILDREN)
-        ru_self_end = ru_self_start
-        ru_children_end = ru_children_start
-        os.chdir(workdir)
-        sys.stdout = stdout_buf
-        sys.stderr = stderr_buf
-        # Capture OS-level fd 1/2 output (subprocesses, C extensions) that the StringIO
-        # redirect above does NOT see. Save the originals first so we can restore them
-        # afterwards; restoring (rather than closing) also signals EOF to the drain threads.
-        saved_out_fd = os.dup(1)
-        saved_err_fd = os.dup(2)
-        r_out, w_out = os.pipe()
-        r_err, w_err = os.pipe()
-        os.dup2(w_out, 1)
-        os.close(w_out)
-        os.dup2(w_err, 2)
-        os.close(w_err)
-
-        os_stdout_chunks: list[bytes] = []
-        os_stderr_chunks: list[bytes] = []
-
-        def _drain(fd: int, chunks: list[bytes]) -> None:
-            # Blocks until EOF, i.e. until every writer of this pipe end has closed it.
-            # Same semantics as _communicate_wait4: a step that leaves a daemon holding
-            # the inherited fd open will keep this thread (and the join below) waiting.
-            with os.fdopen(fd, "rb") as f:
-                chunks.append(f.read())
-
-        drain_out = threading.Thread(target=_drain, args=(r_out, os_stdout_chunks), daemon=True)
-        drain_err = threading.Thread(target=_drain, args=(r_err, os_stderr_chunks), daemon=True)
-        drain_out.start()
-        drain_err.start()
-        sys.argv = [cmd, *args]
-        try:
-            if ep_value is None:
-                script_dir = str(Path(cmd).realpath().parent)
-                sys.path[0] = script_dir
-                runpy.run_path(cmd, run_name="__main__")
-            else:
-                module_name, attr_name = ep_value.split(":", 1)
-                func = getattr(importlib.import_module(module_name), attr_name)
-                func()
-        except SystemExit as exc:
-            returncode = exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
-        finally:
-            # Run atexit handlers before sending the result so that any amend() calls
-            # from atexit handlers are processed while the step is still RUNNING.
-            # There is no public API for this in CPython; _run_exitfuncs is a stable
-            # private implementation detail present in every CPython release since 2.0.
-            with contextlib.suppress(AttributeError):
-                atexit._run_exitfuncs()
-            if ep_value is None:
-                # Must be imported ONLY in the forked process:
-                # it opens a new connection to the director socket,
-                # which should happen in the forked process, not its parent.
-                from stepup.core.api import amend  # noqa: PLC0415
-
-                amend(inp=get_local_import_paths(script_path=Path(cmd)))
-        ru_self_end = resource.getrusage(resource.RUSAGE_SELF)
-        ru_children_end = resource.getrusage(resource.RUSAGE_CHILDREN)
-    except BaseException:  # noqa: BLE001
-        # All exceptions must be caught here, to be able to send the corresponding
-        # output and return code back to the director process.
-        # Otherwise, the parent process would just see a connection error.
-        traceback.print_exc(file=stderr_buf)
-        returncode = 1
-    # Restore the real fds 1/2. dup2 here closes the current fd 1/2 (the pipe write ends),
-    # which is what makes the drain threads see EOF — so this both restores stdout/stderr
-    # and unblocks the drains in one step. Done unconditionally (normal and error paths).
-    os.dup2(saved_out_fd, 1)
-    os.close(saved_out_fd)
-    os.dup2(saved_err_fd, 2)
-    os.close(saved_err_fd)
-    drain_out.join()
-    drain_err.join()
-    # Append OS-level output to the Python-level StringIO content. Decode tolerantly:
-    # subprocesses may emit invalid UTF-8.
-    stdout_buf.write(b"".join(os_stdout_chunks).decode("utf-8", "ignore"))
-    stderr_buf.write(b"".join(os_stderr_chunks).decode("utf-8", "ignore"))
-    utime = (ru_self_end.ru_utime - ru_self_start.ru_utime) + (
-        ru_children_end.ru_utime - ru_children_start.ru_utime
-    )
-    stime = (ru_self_end.ru_stime - ru_self_start.ru_stime) + (
-        ru_children_end.ru_stime - ru_children_start.ru_stime
-    )
-    result_conn.send((returncode, stdout_buf.getvalue(), stderr_buf.getvalue(), utime, stime))
+    # See https://en.wikipedia.org/wiki/Shebang_%28Unix%29
+    if not executable.is_file():
+        # The executable is probably in the PATH,
+        # i.e. not a custom script, so not checking
+        return None
+    # Check if the file is executable
+    if not executable.access(os.X_OK):
+        # This is not a script, so not checking the shebang.
+        return f"File is not executable: {executable}"
+    # Check if the file is binary.
+    # https://stackoverflow.com/a/7392391
+    with open(executable, "rb") as fh:
+        head = fh.read(1024)
+    printable_text_chars = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F})
+    # Check if the file is binary by translating non-text characters
+    if bool(head.translate(None, printable_text_chars)):
+        # This is unlikely to be a script, so not checking the shebang.
+        return None
+    if shebang is None:
+        if head[:3] != b"#!/":
+            return f"Script does not start with a shebang: {executable}"
+    elif not head.startswith(shebang.encode("utf-8")):
+        return f"Script does not start with the expected shebang ({shebang}): {executable}"
+    return None
 
 
 def _executable_uses_same_python(path_exec: str) -> bool:
@@ -301,94 +217,18 @@ def _detect_python_entrypoint(cmd: str) -> str | None:
     return ep_value
 
 
-def check_executable(executable: Path, shebang: str | None = None) -> str | None:
-    """Check if the executable looks fine.
-
-    Parameters
-    ----------
-    executable
-        The (working-directory-resolved) path to the executable to check.
-    shebang
-        The expected shebang line, if any.
-
-    Returns
-    -------
-    message
-        `None` when the executable is acceptable, otherwise a human-readable error message.
-    """
-    # See https://en.wikipedia.org/wiki/Shebang_%28Unix%29
-    if not executable.is_file():
-        # The executable is probably in the PATH,
-        # i.e. not a custom script, so not checking
-        return None
-    # Check if the file is executable
-    if not executable.access(os.X_OK):
-        # This is not a script, so not checking the shebang.
-        return f"File is not executable: {executable}"
-    # Check if the file is binary.
-    # https://stackoverflow.com/a/7392391
-    with open(executable, "rb") as fh:
-        head = fh.read(1024)
-    printable_text_chars = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F})
-    # Check if the file is binary by translating non-text characters
-    if bool(head.translate(None, printable_text_chars)):
-        # This is unlikely to be a script, so not checking the shebang.
-        return None
-    if shebang is None:
-        if head[:3] != b"#!/":
-            return f"Script does not start with a shebang: {executable}"
-    elif not head.startswith(shebang.encode("utf-8")):
-        return f"Script does not start with the expected shebang ({shebang}): {executable}"
-    return None
-
-
 #
-# Async process helpers
+# Generic async subprocess plumbing
 #
-
-
-async def _recv_conn(conn):
-    """Asynchronously receive one object from a multiprocessing connection."""
-    await await_fd_readable(conn.fileno())
-    return conn.recv()
-
-
-async def _wait_proc(proc):
-    """Asynchronously wait for a multiprocessing process to exit, then reap it."""
-    await await_fd_readable(proc.sentinel)
-    proc.join()
-
-
-async def run_in_forkserver(mp_ctx, target, args: tuple, run: "Run | None" = None):
-    """Run `target(*args, conn)` in a forkserver child and return the object it sends back.
-
-    The child's pid is recorded on `run` (when given) so a running step can be interrupted.
-    """
-    parent_conn, child_conn = mp_ctx.Pipe(duplex=False)
-    proc = mp_ctx.Process(target=target, args=(*args, child_conn))
-    proc.start()
-    child_conn.close()
-    if run is not None:
-        run.pid = proc.pid
-    try:
-        result = await _recv_conn(parent_conn)
-    finally:
-        await _wait_proc(proc)
-        parent_conn.close()
-        if run is not None:
-            run.pid = None
-    if isinstance(result, BaseException):
-        raise result
-    return result
 
 
 def _communicate_wait4(
     proc: subprocess.Popen, stdin_data: bytes | None
-) -> tuple[bytes, bytes, float, float]:
-    """Communicate with `proc` and return (stdout, stderr, utime, stime).
+) -> tuple[bytes, bytes, ResourceUsage]:
+    """Communicate with `proc` and return `(stdout, stderr, usage)`.
 
     Reads stdout and stderr concurrently in threads to avoid pipe-full deadlock,
-    then calls `os.wait4` to reap the child and capture its individual CPU usage.
+    then calls `os.wait4` to reap the child and capture its individual CPU and block-IO usage.
     """
     stdout_chunks: list[bytes] = []
     stderr_chunks: list[bytes] = []
@@ -416,13 +256,21 @@ def _communicate_wait4(
 
     _, status, rusage = os.wait4(proc.pid, 0)
     proc.returncode = os.waitstatus_to_exitcode(status)
-    return b"".join(stdout_chunks), b"".join(stderr_chunks), rusage.ru_utime, rusage.ru_stime
+    usage = ResourceUsage(
+        utime=rusage.ru_utime,
+        stime=rusage.ru_stime,
+        inblock=rusage.ru_inblock,
+        oublock=rusage.ru_oublock,
+    )
+    return b"".join(stdout_chunks), b"".join(stderr_chunks), usage
 
 
 async def _spawn_subprocess(
     cmd, *, shell: bool, env: dict, cwd: Path, stdin_data: bytes | None, run: "Run | None"
-) -> tuple[int, bytes, bytes, float, float]:
-    """Run `cmd` as a subprocess and return (returncode, stdout, stderr, utime, stime).
+) -> ChildOutcome:
+    """Run `cmd` as a subprocess and return a `ChildOutcome`.
+
+    `outcome.payload` is `(returncode, stdout, stderr)`, with `stdout`/`stderr` as raw bytes.
 
     The process is created synchronously so that `run.proc` can be set immediately for interrupts.
     Blocking I/O and the `os.wait4` reap are offloaded to a thread-pool executor
@@ -446,13 +294,13 @@ async def _spawn_subprocess(
         run.proc = proc
     try:
         loop = asyncio.get_running_loop()
-        stdout, stderr, utime, stime = await loop.run_in_executor(
+        stdout, stderr, usage = await loop.run_in_executor(
             None, _communicate_wait4, proc, stdin_data
         )
     finally:
         if run is not None:
             run.proc = None
-    return proc.returncode, stdout, stderr, utime, stime
+    return ChildOutcome(payload=(proc.returncode, stdout, stderr), usage=usage)
 
 
 def _decode(data: bytes) -> str:
@@ -467,34 +315,201 @@ async def _run_subprocess(
     cwd: Path,
     run: "Run",
     stdin_data: bytes | None = None,
-) -> tuple[int, str, str, float, float]:
+) -> ChildOutcome:
     """Run `cmd` as a subprocess with or without a shell.
 
-    Returns `(rc, stdout, stderr, utime, stime)`.
+    Returns a `ChildOutcome` whose `payload` is `(rc, stdout, stderr)`,
+    with `stdout`/`stderr` decoded to `str`.
     """
     first_arg = shlex.split(cmd)[0] if isinstance(cmd, str) else cmd[0]
     cmd_str = cmd if isinstance(cmd, str) else shlex.join(cmd)
-    message = check_executable(cwd / Path(first_arg))
+    message = _check_executable(cwd / Path(first_arg))
     if message is not None:
-        return 1, "", message + "\n", 0.0, 0.0
-    rc, out, err, utime, stime = await _spawn_subprocess(
+        return ChildOutcome(payload=(1, "", message + "\n"), usage=ResourceUsage())
+    outcome = await _spawn_subprocess(
         cmd, shell=shell, env=env, cwd=cwd, stdin_data=stdin_data, run=run
     )
+    rc, out, err = outcome.payload
     err = _decode(err)
     if rc != 0:
         err += f"Command failed with return code {rc}: {cmd_str}\n"
-    return rc, _decode(out), err, utime, stime
+    return ChildOutcome(payload=(rc, _decode(out), err), usage=outcome.usage)
+
+
+#
+# Python-specialized execution paths
+#
+
+
+async def _recv_conn(conn):
+    """Asynchronously receive one object from a multiprocessing connection."""
+    await await_fd_readable(conn.fileno())
+    return conn.recv()
+
+
+async def _wait_proc(proc):
+    """Asynchronously wait for a multiprocessing process to exit, then reap it."""
+    await await_fd_readable(proc.sentinel)
+    proc.join()
+
+
+async def _run_in_forkserver(mp_ctx, target, args: tuple, run: "Run | None" = None) -> ChildOutcome:
+    """Run `target(*args, conn)` in a forkserver child and return the `ChildOutcome` it sends back.
+
+    The child's pid is recorded on `run` (when given) so a running step can be interrupted.
+    """
+    parent_conn, child_conn = mp_ctx.Pipe(duplex=False)
+    proc = mp_ctx.Process(target=target, args=(*args, child_conn))
+    proc.start()
+    child_conn.close()
+    if run is not None:
+        run.pid = proc.pid
+    try:
+        outcome: ChildOutcome = await _recv_conn(parent_conn)
+    finally:
+        await _wait_proc(proc)
+        parent_conn.close()
+        if run is not None:
+            run.pid = None
+    if isinstance(outcome.payload, BaseException):
+        raise outcome.payload
+    return outcome
+
+
+PYCODE_WRAPPER = """\
+import os
+import sys
+import runpy
+from path import Path
+from stepup.core.api import amend
+from stepup.core.extapi import get_local_import_paths
+sys.argv = {argv}
+try:
+    runpy.run_path({script}, run_name="__main__")
+finally:
+    amend(inp=get_local_import_paths(script_path=Path({script})))
+"""
+
+
+def _forkserver_entry(
+    cmd: str,
+    args: list[str],
+    env_snapshot: dict[str, str],
+    workdir: str,
+    ep_value: str | None,
+    result_conn,
+) -> None:
+    """Entry point for forkserver-launched Python executions.
+
+    This function runs in a forked child process and sends a `ChildOutcome` back via
+    `result_conn`, whose `payload` is a `(returncode, stdout, stderr)` tuple.
+    When `ep_value` is `None`, `cmd` is a Python script path run via `runpy.run_path`,
+    with local imports auto-detected and amended as inputs.
+    When `ep_value` is a `module:attr` string, the corresponding console_script function
+    is imported and called directly without import tracking.
+    """
+    try:
+        os.environ.clear()
+        os.environ.update(env_snapshot)
+        stdout_buf = io.StringIO()
+        stderr_buf = io.StringIO()
+        returncode = 0
+        ru_self_start = resource.getrusage(resource.RUSAGE_SELF)
+        ru_children_start = resource.getrusage(resource.RUSAGE_CHILDREN)
+        ru_self_end = ru_self_start
+        ru_children_end = ru_children_start
+        os.chdir(workdir)
+        sys.stdout = stdout_buf
+        sys.stderr = stderr_buf
+        # Capture OS-level fd 1/2 output (subprocesses, C extensions) that the StringIO
+        # redirect above does NOT see. Save the originals first so we can restore them
+        # afterwards; restoring (rather than closing) also signals EOF to the drain threads.
+        saved_out_fd = os.dup(1)
+        saved_err_fd = os.dup(2)
+        r_out, w_out = os.pipe()
+        r_err, w_err = os.pipe()
+        os.dup2(w_out, 1)
+        os.close(w_out)
+        os.dup2(w_err, 2)
+        os.close(w_err)
+
+        os_stdout_chunks: list[bytes] = []
+        os_stderr_chunks: list[bytes] = []
+
+        def _drain(fd: int, chunks: list[bytes]) -> None:
+            # Blocks until EOF, i.e. until every writer of this pipe end has closed it.
+            # Same semantics as _communicate_wait4: a step that leaves a daemon holding
+            # the inherited fd open will keep this thread (and the join below) waiting.
+            with os.fdopen(fd, "rb") as f:
+                chunks.append(f.read())
+
+        drain_out = threading.Thread(target=_drain, args=(r_out, os_stdout_chunks), daemon=True)
+        drain_err = threading.Thread(target=_drain, args=(r_err, os_stderr_chunks), daemon=True)
+        drain_out.start()
+        drain_err.start()
+        sys.argv = [cmd, *args]
+        try:
+            if ep_value is None:
+                script_dir = str(Path(cmd).realpath().parent)
+                sys.path[0] = script_dir
+                runpy.run_path(cmd, run_name="__main__")
+            else:
+                module_name, attr_name = ep_value.split(":", 1)
+                func = getattr(importlib.import_module(module_name), attr_name)
+                func()
+        except SystemExit as exc:
+            returncode = exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
+        finally:
+            # Run atexit handlers before sending the result so that any amend() calls
+            # from atexit handlers are processed while the step is still RUNNING.
+            # There is no public API for this in CPython; _run_exitfuncs is a stable
+            # private implementation detail present in every CPython release since 2.0.
+            with contextlib.suppress(AttributeError):
+                atexit._run_exitfuncs()
+            if ep_value is None:
+                # Must be imported ONLY in the forked process:
+                # it opens a new connection to the director socket,
+                # which should happen in the forked process, not its parent.
+                from stepup.core.api import amend  # noqa: PLC0415
+
+                amend(inp=get_local_import_paths(script_path=Path(cmd)))
+        ru_self_end = resource.getrusage(resource.RUSAGE_SELF)
+        ru_children_end = resource.getrusage(resource.RUSAGE_CHILDREN)
+    except BaseException:  # noqa: BLE001
+        # All exceptions must be caught here, to be able to send the corresponding
+        # output and return code back to the director process.
+        # Otherwise, the parent process would just see a connection error.
+        traceback.print_exc(file=stderr_buf)
+        returncode = 1
+    # Restore the real fds 1/2. dup2 here closes the current fd 1/2 (the pipe write ends),
+    # which is what makes the drain threads see EOF — so this both restores stdout/stderr
+    # and unblocks the drains in one step. Done unconditionally (normal and error paths).
+    os.dup2(saved_out_fd, 1)
+    os.close(saved_out_fd)
+    os.dup2(saved_err_fd, 2)
+    os.close(saved_err_fd)
+    drain_out.join()
+    drain_err.join()
+    # Append OS-level output to the Python-level StringIO content. Decode tolerantly:
+    # subprocesses may emit invalid UTF-8.
+    stdout_buf.write(b"".join(os_stdout_chunks).decode("utf-8", "ignore"))
+    stderr_buf.write(b"".join(os_stderr_chunks).decode("utf-8", "ignore"))
+    usage = ResourceUsage.from_rusage_diff(
+        ru_self_start, ru_self_end, ru_children_start, ru_children_end
+    )
+    payload = (returncode, stdout_buf.getvalue(), stderr_buf.getvalue())
+    result_conn.send(ChildOutcome(payload=payload, usage=usage))
 
 
 async def _runpy(
     script: str, args: list[str], env: dict, cwd: Path, mp_ctx, run: "Run"
-) -> tuple[int, str, str, float, float]:
+) -> ChildOutcome:
     """Run a Python script, amending its local imports as inputs."""
-    message = check_executable(cwd / Path(script), shebang="#!/usr/bin/env python3")
+    message = _check_executable(cwd / Path(script), shebang="#!/usr/bin/env python3")
     if message is not None:
-        return 1, "", message + "\n", 0.0, 0.0
+        return ChildOutcome(payload=(1, "", message + "\n"), usage=ResourceUsage())
     if mp_ctx is not None:
-        return await run_in_forkserver(
+        return await _run_in_forkserver(
             mp_ctx, _forkserver_entry, (script, args, env, str(cwd), None), run
         )
     wrapper = PYCODE_WRAPPER.format(argv=repr([script, *args]), script=repr(script))
@@ -505,10 +520,10 @@ async def _runpy(
 
 async def _runpyep(
     cmd: str, args: list[str], ep_value: str, env: dict, cwd: Path, mp_ctx, run: "Run"
-) -> tuple[int, str, str, float, float]:
+) -> ChildOutcome:
     """Run a Python console_script entry point, using the forkserver when available."""
     if mp_ctx is not None:
-        return await run_in_forkserver(
+        return await _run_in_forkserver(
             mp_ctx, _forkserver_entry, (cmd, args, env, str(cwd), ep_value), run
         )
     return await _run_subprocess([cmd, *args], shell=False, env=env, cwd=cwd, run=run)
@@ -581,6 +596,11 @@ class Run:
             self.inp_digest = result.inp_digest
 
 
+#
+# The Executor, tying it all together
+#
+
+
 @attrs.define
 class Executor:
     """Run steps in the director process as asyncio tasks.
@@ -615,6 +635,12 @@ class Executor:
 
     running: set = attrs.field(init=False, factory=set)
     """The set of `Run` instances whose command is currently running."""
+
+    step_accumulator: ResourceAccumulator = attrs.field(init=False, factory=ResourceAccumulator)
+    """Running totals of CPU time and block-IO op counts for steps."""
+
+    hash_accumulator: ResourceAccumulator = attrs.field(init=False, factory=ResourceAccumulator)
+    """Running totals of CPU time and block-IO op counts for hashing."""
 
     @property
     def base_env(self) -> dict:
@@ -792,21 +818,33 @@ class Executor:
         else:
             yield run, new_step_hash
 
-    async def _run_hash(self, task: HashTask) -> HashResult:
-        """Compute (part of) a step hash in a forkserver child or a subprocess."""
-        if self.mp_ctx is not None:
-            return await run_in_forkserver(self.mp_ctx, hash_fork_entry, (task,))
-        returncode, stdout, stderr, _, _ = await _spawn_subprocess(
-            [sys.executable, "-c", "from stepup.core.hasher import hasher_tool; hasher_tool()"],
-            shell=False,
-            env=self.base_env,
-            cwd=Path.cwd(),
-            stdin_data=pickle.dumps(task),
-            run=None,
-        )
-        if returncode != 0:
-            raise RPCError(f"The hashes tool failed: {_decode(stderr)}")
-        return pickle.loads(stdout)
+    async def _run_hash(self, run: Run, task: HashTask) -> HashResult:
+        """Compute (part of) a step hash in a forkserver child or a subprocess.
+
+        `run` is added to `self.running` for the duration of the hash computation,
+        so its child is interruptible like a running step command.
+        """
+        self.running.add(run)
+        try:
+            if self.mp_ctx is not None:
+                outcome = await _run_in_forkserver(self.mp_ctx, hash_fork_entry, (task,), run)
+                self.hash_accumulator.add_usage(outcome.usage)
+                return outcome.payload
+            outcome = await _spawn_subprocess(
+                [sys.executable, "-c", "from stepup.core.hasher import hasher_tool; hasher_tool()"],
+                shell=False,
+                env=self.base_env,
+                cwd=Path.cwd(),
+                stdin_data=pickle.dumps(task),
+                run=run,
+            )
+            self.hash_accumulator.add_usage(outcome.usage)
+            returncode, stdout, stderr = outcome.payload
+            if returncode != 0:
+                raise RPCError(f"The hashes tool failed: {_decode(stderr)}")
+            return pickle.loads(stdout)
+        finally:
+            self.running.discard(run)
 
     async def compute_inp_step_hash(
         self,
@@ -830,7 +868,7 @@ class Executor:
             env_values={name: base_env.get(name) for name in env_deps},
             env_overrides=env_overrides,
         )
-        result = await self._run_hash(task)
+        result = await self._run_hash(run, task)
         run.merge_hash_result(result)
         return result.step_hash
 
@@ -841,7 +879,7 @@ class Executor:
         async with self.db:
             out_hashes = list(run.step.out_paths(yield_hash=True))
         task = HashTask(mode="out", step_hash=step_hash, out_hashes=out_hashes)
-        result = await self._run_hash(task)
+        result = await self._run_hash(run, task)
         run.merge_hash_result(result)
         return result.step_hash, result.new_out_hashes
 
@@ -876,7 +914,7 @@ class Executor:
             env_overrides=env_overrides,
             out_hashes=out_hashes,
         )
-        result = await self._run_hash(task)
+        result = await self._run_hash(run, task)
         run.merge_hash_result(result)
         return result.step_hash, result.new_inp_hashes, result.new_out_hashes
 
@@ -908,37 +946,34 @@ class Executor:
             pt_initial = perf_counter()
 
         self.running.add(run)
-        utime = 0.0
-        stime = 0.0
         try:
             parts = shlex.split(command)
             if not parts:
                 raise ValueError(f"Empty command: {command!r}")
             if subshell:
-                returncode, stdout, stderr, utime, stime = await _run_subprocess(
-                    command, shell=True, env=env, cwd=workdir, run=run
-                )
+                outcome = await _run_subprocess(command, shell=True, env=env, cwd=workdir, run=run)
             elif parts[0].endswith(".py"):
-                returncode, stdout, stderr, utime, stime = await _runpy(
-                    parts[0], parts[1:], env, workdir, self.mp_ctx, run
-                )
+                outcome = await _runpy(parts[0], parts[1:], env, workdir, self.mp_ctx, run)
             else:
                 ep_value = _detect_python_entrypoint(parts[0])
                 if ep_value is not None:
-                    returncode, stdout, stderr, utime, stime = await _runpyep(
+                    outcome = await _runpyep(
                         parts[0], parts[1:], ep_value, env, workdir, self.mp_ctx, run
                     )
                 else:
-                    returncode, stdout, stderr, utime, stime = await _run_subprocess(
+                    outcome = await _run_subprocess(
                         parts, shell=False, env=env, cwd=workdir, run=run
                     )
         except BaseException as exc:  # noqa: BLE001
             returncode = exc.code if isinstance(exc, SystemExit) else 1
-            stdout = ""
             stderr = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+            outcome = ChildOutcome(payload=(returncode, "", stderr), usage=ResourceUsage())
         finally:
             self.running.discard(run)
 
+        returncode, stdout, stderr = outcome.payload
+        usage = outcome.usage
+        self.step_accumulator.add_usage(usage)
         run.returncode = returncode
         run.stdout = stdout
         run.stderr = stderr
@@ -946,9 +981,9 @@ class Executor:
         if self.show_perf:
             wtime = perf_counter() - pt_initial
             ru_lines = [
-                f"User CPU time [s]:   {utime:9.4f}",
-                f"System CPU time [s]: {stime:9.4f}",
-                f"Total CPU time [s]:  {utime + stime:9.4f}",
+                f"User CPU time [s]:   {usage.utime:9.4f}",
+                f"System CPU time [s]: {usage.stime:9.4f}",
+                f"Total CPU time [s]:  {usage.utime + usage.stime:9.4f}",
                 f"Wall time [s]:       {wtime:9.4f}",
             ]
             run.perf_info = "\n".join(ru_lines)

@@ -69,6 +69,7 @@ This is release candidate 5 for the upcoming StepUp 4.0 release.
   to set the `SOURCE_DATE_EPOCH` environment variable to a fixed value for all step executions.
   This is useful for ensuring reproducible builds.
   See [Configuration files](reference/configuration.md) for details.
+- A resource usage report is shown ad the end of the file `.stepup/director.log`.
 
 ### Changed
 

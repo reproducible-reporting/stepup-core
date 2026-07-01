@@ -67,11 +67,15 @@ def test_parse_resources_invalid(s):
         "echo '\x01\x02'",
     ],
 )
-def test_escape_command_display_roundtrip(command):
+def test_escape_command_display_roundtrip(command, path_tmp):
     escaped = escape_command_display(command)
     assert "\n" not in escaped
-    original = subprocess.run(["bash", "-c", command], capture_output=True, check=False)
-    reproduced = subprocess.run(["bash", "-c", escaped], capture_output=True, check=False)
+    original = subprocess.run(
+        ["bash", "-c", command], capture_output=True, check=False, cwd=path_tmp
+    )
+    reproduced = subprocess.run(
+        ["bash", "-c", escaped], capture_output=True, check=False, cwd=path_tmp
+    )
     assert reproduced.stdout == original.stdout
     assert reproduced.returncode == original.returncode
 

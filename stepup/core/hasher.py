@@ -29,11 +29,13 @@ The caller applies the result to its own step state.
 """
 
 import pickle
+import resource
 import sys
 
 import attrs
 
 from .hash import FileHash, StepHash, fmt_file_hash_diff
+from .usage import ChildOutcome, ResourceUsage
 
 __all__ = ("HashResult", "HashTask", "compute_step_hash", "hash_fork_entry", "hasher_tool")
 
@@ -179,15 +181,21 @@ def compute_step_hash(task: HashTask) -> HashResult:
 def hash_fork_entry(task: HashTask, result_conn) -> None:
     """Entry point for forkserver-launched hashing (fork mode).
 
-    Runs in a forked child process, computes the hash and sends the `HashResult`
-    back to the parent through `result_conn`.
+    Runs in a forked child process, computes the hash and sends a `ChildOutcome` back to
+    the parent through `result_conn`, whose `payload` is a `HashResult` on success or the
+    raised exception on failure.
+
+    `RUSAGE_SELF` alone is sufficient here (no `RUSAGE_CHILDREN`):
+    `compute_step_hash` is a pure function that only reads files, it never spawns subprocesses.
     """
+    ru_start = resource.getrusage(resource.RUSAGE_SELF)
     try:
-        result = compute_step_hash(task)
+        payload = compute_step_hash(task)
     except BaseException as exc:  # noqa: BLE001
-        result_conn.send(exc)
-    else:
-        result_conn.send(result)
+        payload = exc
+    ru_end = resource.getrusage(resource.RUSAGE_SELF)
+    usage = ResourceUsage.from_rusage_diff(ru_start, ru_end)
+    result_conn.send(ChildOutcome(payload=payload, usage=usage))
 
 
 def hasher_tool() -> None:

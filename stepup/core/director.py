@@ -52,13 +52,25 @@ from .sqlite3 import DBSession
 from .startup import startup_from_db
 from .step import Step
 from .stepinfo import StepInfo
+from .usage import PssSampler, format_resource_usage
 from .watcher import WATCHER_AVAILABLE, Watcher
 from .workflow import Workflow
 
-__all__ = ("get_socket", "interpret_jobs", "serve")
+__all__ = ("ServeResult", "get_socket", "interpret_jobs", "serve")
 
 
 logger = logging.getLogger(__name__)
+
+
+@attrs.define(frozen=True)
+class ServeResult:
+    """The outcome of `serve()`: the build's return code and its resource-usage summary."""
+
+    returncode: ReturnCode = attrs.field()
+    """The exit code of the director process."""
+
+    resource_report: str = attrs.field()
+    """A snapshot of CPU/IO/memory usage collected during this `serve()` call."""
 
 
 def main():
@@ -104,8 +116,9 @@ async def async_main(
         await reporter.set_njob(njob)
         version = get_version("stepup")
         await reporter("DIRECTOR", f"Listening on {args.director_socket} (StepUp Core {version})")
+        serve_result: ServeResult | None = None
         try:
-            returncode = await serve(
+            serve_result = await serve(
                 director_socket_path=args.director_socket,
                 njob=args.jobs,
                 reporter=reporter,
@@ -132,7 +145,9 @@ async def async_main(
                 yappi.stop()
                 stats = yappi.get_func_stats()
                 stats.save(DIRECTOR_PROF, type="pstat")
-        sys.exit(returncode.value)
+            if serve_result is not None:
+                print(serve_result.resource_report, file=sys.stderr)
+        sys.exit(serve_result.returncode.value)
 
 
 def parse_args() -> argparse.Namespace:
@@ -272,7 +287,7 @@ async def serve(
     available_resources: str | None,
     db: DBSession,
     mp_ctx=None,
-) -> ReturnCode:
+) -> ServeResult:
     """Server program.
 
     Parameters
@@ -307,9 +322,12 @@ async def serve(
 
     Returns
     -------
-    returncode
-        The exit code of the director process.
+    result
+        The exit code of the director process, together with a resource-usage summary
+        collected over the lifetime of this call (wall time, CPU time, block-IO op counts,
+        and peak memory for the director and its step/hash child processes).
     """
+    time_start = time.perf_counter()
     if njob < 1:
         raise ValueError(f"Number of parallel tasks must be strictly positive, got {njob}")
     if do_watch_first and not do_watch:
@@ -350,6 +368,7 @@ async def serve(
         mp_ctx=mp_ctx,
         infra_env=infra_env,
     )
+    pss_sampler = PssSampler()
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(
         scheduler, workflow, db, reporter, builder, watcher, stop_event
@@ -371,6 +390,7 @@ async def serve(
     coroutines = [
         builder.loop(stop_event),
         db.database_maintenance_loop(stop_event),
+        pss_sampler.loop(stop_event),
     ]
     if watcher is not None:
         coroutines.append(watcher.loop(stop_event))
@@ -386,7 +406,16 @@ async def serve(
         exit_event.set()
         await rpc_server
         director_socket_path.remove_p()
-    return builder.returncode
+
+    return ServeResult(
+        returncode=builder.returncode,
+        resource_report=format_resource_usage(
+            time_start,
+            builder.executor.step_accumulator,
+            builder.executor.hash_accumulator,
+            pss_sampler,
+        ),
+    )
 
 
 def _check_plan(path_plan: str):
