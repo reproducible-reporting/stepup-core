@@ -281,6 +281,9 @@ def run_subprocess(
     if text is None:
         text = True
     run_kwargs["text"] = text
+    if text:
+        # Useful to deal with ill-behaved subprocesses like LaTeX.
+        run_kwargs["errors"] = "ignore"
     if shell:
         cp = subprocess.run(cmd, **run_kwargs)  # noqa: PLW1510
     else:
