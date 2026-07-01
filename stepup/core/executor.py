@@ -150,6 +150,8 @@ def _forkserver_entry(
         sys.argv = [cmd, *args]
         try:
             if ep_value is None:
+                script_dir = str(Path(cmd).realpath().parent)
+                sys.path[0] = script_dir
                 runpy.run_path(cmd, run_name="__main__")
             else:
                 module_name, attr_name = ep_value.split(":", 1)
@@ -221,7 +223,7 @@ def _executable_uses_same_python(path_exec: str) -> bool:
         `True` when the script's shebang resolves to the same interpreter as
         `sys._base_executable`, `False` for non-scripts or a different interpreter.
     """
-    base_exec = Path(sys._base_executable).resolve()
+    base_exec = Path(sys._base_executable).realpath()
     try:
         with open(path_exec, "rb") as f:
             head = f.read(256)
@@ -241,9 +243,9 @@ def _executable_uses_same_python(path_exec: str) -> bool:
         python_on_path = shutil.which(parts[1])
         if python_on_path is None:
             return False
-        shebang_python = Path(python_on_path).resolve()
+        shebang_python = Path(python_on_path).realpath()
     else:
-        shebang_python = Path(parts[0]).resolve()
+        shebang_python = Path(parts[0]).realpath()
     return shebang_python == base_exec
 
 

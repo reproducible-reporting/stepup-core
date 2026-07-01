@@ -220,6 +220,7 @@ EXAMPLES = [
     "static_tree_step",
     "static_tree_sub",
     "subdir",
+    "subdir_import",
     "subprocess_output",
     "translate_external",
     "wait_first",
