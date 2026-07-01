@@ -2427,25 +2427,29 @@
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">graph</span><span class="p">,</span> <span class="n">run</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;echo Monday frown &gt; $</span><span class="si">{out}</span><span class="s2">; echo Coffee smile &gt;&gt; $</span><span class="si">{out}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">&quot;story.txt&quot;</span><span class="p">)</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;grep Coffee $</span><span class="si">{inp}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;story.txt&quot;</span><span class="p">)</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">run</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;printf &quot;Monday frown\nCoffee smile\n&quot; &gt; story.txt&#39;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">&quot;story.txt&quot;</span><span class="p">)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;grep Coffee story.txt&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;story.txt&quot;</span><span class="p">)</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">graph</span><span class="p">(</span><span class="s2">&quot;graph&quot;</span><span class="p">)</span>
 </span></code></pre></div>
-<p>The placeholders <code>${inp}</code> and <code>${out}</code> are replaced by the <code>inp</code> and <code>out</code> keyword arguments.
-This substitution happens early, before the steps are sent to the director process.</p>
+<p>The command is sent to the director exactly as written: StepUp does not scan it for
+placeholders or perform any substitution on it.
+When the paths are known in advance, as in this example, you can simply type them into
+the command string. When they are computed dynamically (e.g. a list of paths, or a path
+built from other variables), use <a class="autorefs autorefs-internal" title="stepup.core.api.shq(paths)" href="../../reference/stepup.core.api/#stepup.core.api.shq"><code>shq()</code></a> to shell-quote and embed
+them, e.g. <code>run(f"grep Coffee {shq(inp)}", inp=inp)</code>.</p>
 <p>The <a class="autorefs autorefs-internal" title="stepup.core.api.graph(prefix)" href="../../reference/stepup.core.api/#stepup.core.api.graph"><code>graph()</code></a> function writes the graph in a few formats,
 which are used for visualization below.</p>
 <p>Now run StepUp with up to 2 steps in parallel:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>sb<span class="w"> </span>-j<span class="w"> </span><span class="m">2</span>
 </span></code></pre></div>
 <p>You will see the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post54)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc2.post0)
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>   STARTUP │ (Re)initialized boot script
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>     PHASE │ build
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>     START │ ./plan.py
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>   SUCCESS │ ./plan.py
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>     START │ echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>   SUCCESS │ echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>     START │ printf &quot;Monday frown\nCoffee smile\n&quot; &gt; story.txt
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>   SUCCESS │ printf &quot;Monday frown\nCoffee smile\n&quot; &gt; story.txt
 </span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>     START │ grep Coffee story.txt
 </span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>   SUCCESS │ grep Coffee story.txt
 </span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>─────────────────────────────── Standard output ────────────────────────────────
@@ -2468,7 +2472,7 @@ The file <code>graph.txt</code> is a detailed human-readable version of <code>.s
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
 </span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>file:plan.py
 </span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>               state = STATIC
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>              digest = 6616daa2 6f143752 291e1e69 8ede0bb0 65bd3f2d 6ab32fb0 7734f66e 8ff00037
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>              digest = 52f76e6e 44aa9a2f 2495d98a bc23e312 ac826bda eeaec4cf 28d9fe49 ec7603c9
 </span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>          created by   root:
 </span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>            supplies   step:./plan.py
 </span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
@@ -2477,10 +2481,10 @@ The file <code>graph.txt</code> is a detailed human-readable version of <code>.s
 </span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>                need = PLAN
 </span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>          created by   root:
 </span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>            consumes   file:plan.py
-</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>             creates   step:echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
-</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>             creates   step:grep Coffee story.txt
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>             creates   step:grep Coffee story.txt
+</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>             creates   step:printf &quot;Monday frown\nCoffee smile\n&quot; &gt; story.txt
 </span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>
-</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>step:echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
+</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>step:printf &quot;Monday frown\nCoffee smile\n&quot; &gt; story.txt
 </span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>               state = PENDING
 </span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>                need = DEFAULT
 </span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>          created by   step:./plan.py
@@ -2489,8 +2493,8 @@ The file <code>graph.txt</code> is a detailed human-readable version of <code>.s
 </span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>
 </span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>file:story.txt
 </span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>               state = AWAITED
-</span><span id="__span-3-28"><a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>          created by   step:echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
-</span><span id="__span-3-29"><a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>            consumes   step:echo Monday frown &gt; story.txt; echo Coffee smile &gt;&gt; story.txt
+</span><span id="__span-3-28"><a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>          created by   step:printf &quot;Monday frown\nCoffee smile\n&quot; &gt; story.txt
+</span><span id="__span-3-29"><a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>            consumes   step:printf &quot;Monday frown\nCoffee smile\n&quot; &gt; story.txt
 </span><span id="__span-3-30"><a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>            supplies   step:grep Coffee story.txt
 </span><span id="__span-3-31"><a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>
 </span><span id="__span-3-32"><a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>step:grep Coffee story.txt

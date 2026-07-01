@@ -2547,7 +2547,7 @@ Many tools and libraries recognize <code>SOURCE_DATE_EPOCH</code> and
 use it instead of the current time for timestamps in generated files.
 If the variable is already set in the environment, it will be used as-is.</p>
 </dd>
-<dt><code>fork_runpy</code> / <code>STEPUP_BUILD_FORK_RUNPY</code> / <code>--fork-runpy</code>, <code>--no-fork-runpy</code></dt>
+<dt><code>forkserver</code> / <code>STEPUP_BUILD_FORKSERVER</code> / <code>--forkserver</code>, <code>--no-forkserver</code></dt>
 <dd>
 <p>Set to <code>true</code> to use a forkserver for Python step execution and file hashing,
 which reduces startup overhead.
@@ -2556,7 +2556,7 @@ This is enabled by default on Linux.</p>
 <dt><code>preload_modules</code> / <code>STEPUP_BUILD_PRELOAD_MODULES</code> / <code>--preload-modules</code></dt>
 <dd>
 <p>A comma-separated list of Python modules to pre-load into the forkserver.
-Only has effect when <code>fork_runpy = true</code>.
+Only has effect when <code>forkserver = true</code>.
 Use this to reduce per-step startup time when all (or most) steps import the same large modules.
 For example, <code>preload_modules = "numpy,scipy"</code> pre-loads NumPy and SciPy into the forkserver
 so that each Python step forked from it inherits them at zero import cost.

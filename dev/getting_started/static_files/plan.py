@@ -2,4 +2,4 @@
 from stepup.core.api import run, static
 
 static("limerick.txt")
-run("nl ${inp} > ${out}", shell=True, inp="limerick.txt", out="numbered.txt")
+run("nl limerick.txt > numbered.txt", shell=True, inp="limerick.txt", out="numbered.txt")

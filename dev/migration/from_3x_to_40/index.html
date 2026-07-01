@@ -2708,6 +2708,11 @@ The new default, <code>run(..., shell=False)</code>, is much more general than t
 is a relative path (contains a path separator, <code>/</code>, and is not absolute).
 If it is local, StepUp will automatically add it as an input dependency to the step.
 In StepUp 3, one had to be explicitly include the script as an input, e.g.</p>
+<p>StepUp 4 drops the magic substitution of <code>${inp}</code> and <code>${out}</code> in the command string.
+Instead, you can use Python&rsquo;s f-string syntax and the <code>shq()</code> function insert paths in the command.
+This is a more general and robust approach than the old substitution mechanism.
+In simple cases, just repeating the input and output paths in the command string
+is recommended for readability, e.g. <code>run(f"cat hello.txt", inp="hello.txt")</code>.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># StepUp 3: you had to explicitly include the script as an input</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">runpy</span><span class="p">(</span><span class="s2">&quot;./analyze.py data.csv&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;analyze.py&quot;</span><span class="p">,</span> <span class="s2">&quot;data.csv&quot;</span><span class="p">])</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># or</span>
@@ -2715,35 +2720,36 @@ In StepUp 3, one had to be explicitly include the script as an input, e.g.</p>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># StepUp 4: the script becomes a dependency automatically</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./analyze.py data.csv&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;data.csv&quot;</span><span class="p">)</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1"># or</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./analyze.py $</span><span class="si">{inp}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;data.csv&quot;</span><span class="p">)</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1"># or, if the input path is stored in a variable:</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">inp</span> <span class="o">=</span> <span class="s2">&quot;data.csv&quot;</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">run</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;./analyze.py </span><span class="si">{</span><span class="n">shq</span><span class="p">(</span><span class="n">inp</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="n">inp</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="migrating-from-runsh">Migrating from <code>runsh()</code><a class="headerlink" href="#migrating-from-runsh" title="Permanent link">&para;</a></h3>
 <p>Most <code>runsh()</code> calls can be replaced with <code>run()</code> directly, without <code>shell=True</code>,
 because the command is a plain executable with arguments and does not rely on shell features:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># StepUp 3</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;./process.sh input.txt output.txt&quot;</span><span class="p">)</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;./process.sh input.txt output.txt&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;process.sh&quot;</span><span class="p">,</span> <span class="s2">&quot;input.txt&quot;</span><span class="p">],</span> <span class="n">out</span><span class="o">=</span><span class="s2">&quot;output.txt&quot;</span><span class="p">)</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># StepUp 4 — no shell=True needed for plain commands</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./process.sh input.txt output.txt&quot;</span><span class="p">)</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./process.sh input.txt output.txt&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;input.txt&quot;</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">&quot;output.txt&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Only add <code>shell=True</code> (to mimic the old <code>runsh()</code> behavior)
 when the command actually requires shell interpretation,
 such as pipes, redirections, globbing, or variable expansion:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># StepUp 3</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;grep -c foo input.txt &gt; count.txt&quot;</span><span class="p">)</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">runsh</span><span class="p">(</span><span class="s2">&quot;grep -c foo input.txt &gt; count.txt&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;input.txt&quot;</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">&quot;count.txt&quot;</span><span class="p">)</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># StepUp 4 — shell=True required for redirection</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;grep -c foo input.txt &gt; count.txt&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;grep -c foo input.txt &gt; count.txt&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;input.txt&quot;</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">&quot;count.txt&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="migrating-from-runpy">Migrating from <code>runpy()</code><a class="headerlink" href="#migrating-from-runpy" title="Permanent link">&para;</a></h3>
 <p>Replace <code>runpy()</code> with <code>run()</code>.
 The Python wrapper is selected automatically when the first word ends in <code>.py</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># StepUp 3</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">runpy</span><span class="p">(</span><span class="s2">&quot;./analyze.py --input data.csv&quot;</span><span class="p">)</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">runpy</span><span class="p">(</span><span class="s2">&quot;./analyze.py --input data.csv&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;analyze.py&quot;</span><span class="p">,</span> <span class="s2">&quot;data.csv&quot;</span><span class="p">])</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># StepUp 4</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./analyze.py --input data.csv&quot;</span><span class="p">)</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./analyze.py --input data.csv&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;data.csv&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="why-prefer-run-without-shelltrue">Why prefer <code>run()</code> without <code>shell=True</code><a class="headerlink" href="#why-prefer-run-without-shelltrue" title="Permanent link">&para;</a></h3>
 <p>Using <code>shell=True</code> (or the old <code>runsh()</code> for plain commands) has a few drawbacks

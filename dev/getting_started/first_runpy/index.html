@@ -2423,11 +2423,11 @@ These are Python programs that you can just run from the terminal.</p>
 StepUp automatically detects that they are <code>console_scripts</code> entry points
 (i.e. command-line programs installed by Python packages).
 Consider the following example:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;weasyprint $</span><span class="si">{inp}</span><span class="s2"> $</span><span class="si">{out}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;document.html&quot;</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">&quot;document.pdf&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;weasyprint document.html document.pdf&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;document.html&quot;</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="s2">&quot;document.pdf&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>StepUp will create a <code>runpyep</code> action for this command,
 which is similar to <code>runpy</code> but designed to run Python entry points.
-If the <code>--fork-runpy</code> option is enabled (the default on Linux),
+If the <code>--forkserver</code> option is enabled (the default on Linux),
 StepUp will run the command with the forkserver mechanism,
 which is significantly faster than a normal subprocess.</p>
 <p>Several sanity checks are performed to ensure that the command
@@ -2446,7 +2446,7 @@ which always executes the command as a normal subprocess.</p>
   which is described in the <a href="../call/">Function Calls</a> tutorial.</p>
 </li>
 <li>
-<p>When <code>--fork-runpy</code> is active (the default on Linux), you can pre-load additional modules
+<p>When <code>--forkserver</code> is active (the default on Linux), you can pre-load additional modules
   into the forkserver with <code>--preload-modules</code> (or <code>preload_modules</code> in the config file).
   This further reduces per-step startup time for workflows that repeatedly import the same
   large packages such as NumPy or Matplotlib.

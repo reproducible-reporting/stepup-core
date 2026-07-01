@@ -2328,7 +2328,7 @@ Some of these files will change with every run, e.g., because they contain times
 so they can be cleaned up when appropriate.
 However, there is no point in computing file hashes for them,
 as these files are not used as inputs later and may change for no good reason.
-One may pass a list of such files to the <code>vol</code> argument of the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False, _add_exe=False, _need_relative_exe=False)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function.</p>
+One may pass a list of such files to the <code>vol</code> argument of the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False, env_overrides=None)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/volatile_outputs"><code>docs/advanced_topics/volatile_outputs/</code></a></p>
 <p>Create the following <code>plan.py</code>, with a single step that produces a trivially volatile output:</p>

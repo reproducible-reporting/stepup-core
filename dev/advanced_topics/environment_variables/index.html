@@ -2376,9 +2376,11 @@ Environment variables cannot be modified while StepUp is running.</p>
 </span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>        2/2 |   DIRECTOR │ See you!
 </span></code></pre></div>
 <p>The variable substitution is performed in the step&rsquo;s execution environment.
-StepUp will not try to substitute <code>${MYVAR}</code> before starting the step.
-The special variables <code>${inp}</code> and <code>${out}</code> are exceptions to this rule,
-as discussed in the <a href="../../getting_started/dependencies/">tutorial on dependencies</a>.</p>
+StepUp will not try to substitute <code>${MYVAR}</code> before starting the step:
+the command is sent to the director exactly as written, with no substitution
+performed on it at all.
+See the <a href="../../getting_started/dependencies/">tutorial on dependencies</a> for how to embed
+<code>inp</code>/<code>out</code>/<code>vol</code> paths into a command with <code>shq()</code>.</p>
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
