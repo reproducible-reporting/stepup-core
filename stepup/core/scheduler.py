@@ -191,7 +191,7 @@ WHERE step.node = update_after.i
 # Propagate the updates to all (recursive) suppliers of the updated steps.
 PROPAGATE_UPDATE_CHECK_AFTER = """
 INSERT INTO check_after(i)
-SELECT supplier_step.node
+SELECT DISTINCT supplier_step.node
 FROM update_after
 JOIN dependency AS dep1 ON dep1.consumer = update_after.i
 JOIN dependency AS dep2 ON dep2.consumer = dep1.supplier

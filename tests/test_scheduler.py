@@ -510,6 +510,54 @@ def test_prune_redundant_stops_at_first_hit(con):
 
 
 # -----------------------------------------------------------------------
+# Tests for PROPAGATE_UPDATE_CHECK_AFTER
+# -----------------------------------------------------------------------
+
+
+def test_propagate_suppliers_fork_no_duplicates(con):
+    """Suppliers in fork pattern don't cause duplicate insertions.
+
+    Fork pattern using deps: E -> file_e -> C, D
+    When both C and D are in update_after, both depend on file_e which is
+    supplied by E. PROPAGATE_UPDATE_CHECK_AFTER should insert E once, not twice.
+
+    This is a regression test for: sqlite3.IntegrityError: UNIQUE constraint failed: check_after.i
+    """
+    # E (node 4) consumes file_f and supplies file_e
+    _insert_step(con, 4, 1, StepState.PENDING)
+    # file_e (node 5) is supplied by E
+    _insert_file(con, 5, 1)
+    # C (node 6) consumes file_e
+    _insert_step(con, 6, 1, StepState.PENDING)
+    # D (node 8) consumes file_e
+    _insert_step(con, 8, 1, StepState.PENDING)
+
+    # Two-hop dependencies: step -> file -> step
+    _add_dep(con, 4, 5)  # E -> file_e
+    _add_dep(con, 5, 6)  # file_e -> C
+    _add_dep(con, 5, 8)  # file_e -> D
+
+    # Create and populate update_after with C and D
+    con.execute("CREATE TEMPORARY TABLE IF NOT EXISTS update_after(i INTEGER PRIMARY KEY)")
+    con.execute("INSERT INTO update_after (i) VALUES (?)", (6,))  # C
+    con.execute("INSERT INTO update_after (i) VALUES (?)", (8,))  # D
+
+    # Create check_after table
+    con.execute(INIT_CHECK_AFTER)
+
+    # Run PROPAGATE_UPDATE_CHECK_AFTER - should not fail with UNIQUE constraint
+    con.execute(PROPAGATE_UPDATE_CHECK_AFTER)
+
+    # Verify E (node 4) is in check_after exactly once
+    result = con.execute("SELECT COUNT(*) FROM check_after WHERE i = 4").fetchone()
+    assert result[0] == 1
+
+    # Verify only E is in check_after
+    result = con.execute("SELECT COUNT(*) FROM check_after").fetchone()
+    assert result[0] == 1
+
+
+# -----------------------------------------------------------------------
 # Tests for SELECT_RUNNABLE_STEPS
 # -----------------------------------------------------------------------
 
