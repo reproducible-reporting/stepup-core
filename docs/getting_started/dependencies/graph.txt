@@ -4,7 +4,7 @@ root:
 
 file:plan.py
                state = STATIC
-              digest = 6616daa2 6f143752 291e1e69 8ede0bb0 65bd3f2d 6ab32fb0 7734f66e 8ff00037
+              digest = b10aa3b9 7fe131cb 9e77b686 0cc3e6e8 e5f554f9 6545097e b7bc5abc 9953bf03
           created by   root:
             supplies   step:./plan.py
 
@@ -13,10 +13,12 @@ step:./plan.py
                 need = PLAN
           created by   root:
             consumes   file:plan.py
-             creates   step:echo Monday frown > story.txt; echo Coffee smile >> story.txt
+             creates   step:echo "Monday frown
+Coffee smile" > story.txt
              creates   step:grep Coffee story.txt
 
-step:echo Monday frown > story.txt; echo Coffee smile >> story.txt
+step:echo "Monday frown
+Coffee smile" > story.txt
                state = PENDING
                 need = DEFAULT
           created by   step:./plan.py
@@ -25,8 +27,10 @@ step:echo Monday frown > story.txt; echo Coffee smile >> story.txt
 
 file:story.txt
                state = AWAITED
-          created by   step:echo Monday frown > story.txt; echo Coffee smile >> story.txt
-            consumes   step:echo Monday frown > story.txt; echo Coffee smile >> story.txt
+          created by   step:echo "Monday frown
+Coffee smile" > story.txt
+            consumes   step:echo "Monday frown
+Coffee smile" > story.txt
             supplies   step:grep Coffee story.txt
 
 step:grep Coffee story.txt

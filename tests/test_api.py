@@ -26,9 +26,11 @@ from path import Path
 
 from stepup.core.api import (
     _extract_env_overrides,
+    _prepare_run_command,
     get_rpc_client,
     getenv,
     loadns,
+    shq,
     step,
 )
 from stepup.core.rpc import DummySyncRPCClient
@@ -216,11 +218,59 @@ def test_extract_env_overrides(command, env_overrides, remaining):
     assert _extract_env_overrides(command) == (env_overrides, remaining)
 
 
+@pytest.mark.parametrize(
+    ("command", "exe"),
+    [
+        # A slash in the assignment value must not be mistaken for a relative executable.
+        ("MATPLOTLIBRC=../matplotlibrc python3 -W ignore script.py", None),
+        # The real relative executable after the assignment is still detected.
+        ("MATPLOTLIBRC=../matplotlibrc ./script.py", "./script.py"),
+    ],
+)
+def test_prepare_run_command_shell_env_assignment_with_slash_value(command, exe):
+    # Regression test: with shell=True, a leading `VAR=value` assignment must not be
+    # mistaken for a relative executable, even when `value` contains a `/`.
+    out_command, out_exe, env_overrides = _prepare_run_command(
+        command, shell=True, need_relative_exe=False
+    )
+    assert out_command == command
+    assert out_exe == exe
+    assert env_overrides is None
+
+
+@pytest.mark.parametrize("shell", [True, False])
+def test_prepare_run_command_unbalanced_quotes(shell):
+    # Regression test: unparsable shell-quoting must raise a clear ValueError,
+    # not propagate a bare shlex exception or silently fall back to whitespace-splitting.
+    with pytest.raises(ValueError, match="Cannot parse command to detect the executable"):
+        _prepare_run_command(
+            './script.py --title="Unbalanced', shell=shell, need_relative_exe=False
+        )
+
+
 def test_step_env_overrides_overlap_with_env():
     with pytest.raises(ValueError, match="env dependency and a env_overrides override"):
-        step("FOO=bar ./script.py", env=["FOO"])
+        step("./script.py", env=["FOO"], env_overrides={"FOO": "bar"})
 
 
 def test_step_env_overrides_reserved_name():
     with pytest.raises(ValueError, match="set by StepUp cannot be overridden"):
-        step("STEPUP_STEP_I=1 ./script.py")
+        step("./script.py", env_overrides={"STEPUP_STEP_I": "1"})
+
+
+def test_shq_single(monkeypatch):
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    assert shq("a.txt") == "a.txt"
+    assert shq("a b.txt") == "'a b.txt'"
+
+
+def test_shq_multi(monkeypatch):
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    assert shq(["a.txt", "b.txt"]) == "a.txt b.txt"
+    assert shq([]) == ""
+
+
+def test_shq_env_var(monkeypatch):
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    monkeypatch.setenv("MYVAR", "sub")
+    assert shq("${MYVAR}/a.txt") == "sub/a.txt"

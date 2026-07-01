@@ -68,7 +68,7 @@ from .path import (
 from .rpc import DummySyncRPCClient, SocketSyncRPCClient
 from .step import RESERVED_ENV_VARS, FileHash
 from .stepinfo import StepInfo
-from .utils import CaseSensitiveTemplate, format_command, parse_resources, string_to_list
+from .utils import format_command, parse_resources, string_to_list
 
 __all__ = (
     "RPC_CLIENT",
@@ -85,6 +85,7 @@ __all__ = (
     "render_jinja",
     "run",
     "script",
+    "shq",
     "static",
     "step",
 )
@@ -228,8 +229,7 @@ def step(
     need: Need = Need.DEFAULT,
     resources: dict[str, int] | str | None = None,
     shell: bool = False,
-    _add_exe: bool = False,
-    _need_relative_exe: bool = False,
+    env_overrides: dict[str, str] | None = None,
 ) -> StepInfo:
     """Add a step to the build graph.
 
@@ -237,16 +237,9 @@ def step(
     ----------
     command
         Command to execute (in the given working directory).
-        When `shell=False`, the command may start with one or more `VAR=value` assignments,
-        e.g. `OMP_NUM_THREADS=4 ./run.py`. These are stripped from the command and applied as
-        step-specific environment variable overrides when the step runs.
-        This is the only way to set environment variables for a step with `shell=False`,
-        as there is no shell to interpret such assignments.
-        Note that these overrides (the variable **values** for the child process)
-        are distinct from `env` (the variable **names** the step is sensitive to):
-        a variable may not appear in both, otherwise a `ValueError` is raised.
-        With `shell=True`, assignments are left in the command for the shell to interpret.
-        In that case, putting the same variables in `env` also invalid, but not detected by StepUp.
+        The command is sent to the director verbatim: no placeholder or environment-variable
+        substitution is performed on it. Use [`shq()`][stepup.core.api.shq] to embed `inp`,
+        `out`, or `vol` paths, e.g. `step(f"cat {shq(inp)} > {shq(out)}", inp=inp, out=out)`.
     inp
         File(s) required by the step.
         Relative paths are assumed to be relative to `workdir`.
@@ -283,12 +276,15 @@ def step(
         Resources not listed in `--resources` / `STEPUP_RESOURCES` are treated as unavailable.
         The required units must be strictly positive and default to 1 when not given,
         e.g. `"gpu"` is equivalent to `"gpu:1"`.
-    _add_exe
-        (Internal.) When `True`, if the first word of the command is a local relative
-        executable (it contains a slash and is not absolute), it is added as an input.
-    _need_relative_exe
-        (Internal.) When `True`, require the first word of the command to be such a local
-        relative executable, raising a `ValueError` otherwise.
+    env_overrides
+        Step-specific environment variable overrides for the child process,
+        e.g. `{"OMP_NUM_THREADS": "4"}`.
+        These overrides (the variable **values** for the child process)
+        are distinct from `env` (the variable **names** the step is sensitive to):
+        a variable may not appear in both, otherwise a `ValueError` is raised.
+        [`run()`][stepup.core.api.run] and [`plan()`][stepup.core.api.plan] populate this
+        automatically from leading `VAR=value` assignments in `command`;
+        callers of `step()` directly must pass this argument explicitly.
 
     Returns
     -------
@@ -302,19 +298,10 @@ def step(
     These substitutions are based on the state of `os.environ` in the calling script,
     at the time this function is called, not when the step is executed.
 
-    Before sending the step to the director, the variables `${inp}`, `${out}`, and `${vol}`
-    in the command are substituted by the space-separated list of `inp`, `out`, and
-    `vol`, respectively.
     Relative paths in `inp`, `out`, and `vol` are relative to the working directory of the new step.
     """
     # Pre-process the arguments for the Director process.
     command = coerce_str(command)
-    # Extract leading `VAR=value` assignments as step-specific environment overrides.
-    # Only meaningful for shell=False: with a shell, the shell interprets the assignments itself.
-    if shell:
-        env_overrides = {}
-    else:
-        env_overrides, command = _extract_env_overrides(command)
     inp_paths = coerce_paths(inp)
     env_deps = string_to_list(env)
     out_paths = coerce_paths(out)
@@ -338,41 +325,11 @@ def step(
                 "Variable(s) set by StepUp cannot be overridden: " + ", ".join(sorted(reserved))
             )
 
-    # Detect a local relative executable as the first word of the command.
-    auto_exe = None
-    if _add_exe:
-        try:
-            parts = shlex.split(command)
-        except ValueError:
-            parts = command.split()
-        if len(parts) == 0:
-            raise ValueError("The command must not be empty.")
-        exe = parts[0]
-        if os.sep in exe and not exe.startswith(os.sep):
-            auto_exe = exe
-        elif _need_relative_exe:
-            raise ValueError(
-                "The command must be a relative path to a local executable, "
-                f"containing at least one slash, e.g. './plan.py'. Got: {command}"
-            )
-
     with subs_env_vars() as subs:
         su_inp_paths = [subs(inp_path).normpath() for inp_path in inp_paths]
         su_out_paths = [subs(out_path).normpath() for out_path in out_paths]
         su_vol_paths = [subs(vol_path).normpath() for vol_path in vol_paths]
         su_workdir = subs(workdir).normpath()
-        su_exe = None if auto_exe is None else subs(auto_exe).normpath()
-    # Substitute paths that are translated back to the current directory.
-    # ${inp} expands to the user-specified inputs only, so an auto-added executable does not
-    # appear in the expansion (e.g. avoiding a duplicate in `./script.sh ${inp}`).
-    command = CaseSensitiveTemplate(command).safe_substitute(
-        inp=shlex.join(su_inp_paths),
-        out=shlex.join(su_out_paths),
-        vol=shlex.join(su_vol_paths),
-    )
-    # Add the local executable as an input dependency (after the ${inp} expansion above).
-    if su_exe is not None:
-        su_inp_paths = [su_exe, *su_inp_paths]
     _check_no_directories(su_inp_paths)
     _check_no_directories(su_out_paths)
     _check_no_directories(su_vol_paths)
@@ -718,6 +675,37 @@ def graph(prefix: StrPath):
     return RPC_CLIENT.call.graph(coerce_path(prefix))
 
 
+def shq(paths: StrPath | Iterable[StrPath]) -> str:
+    """Shell-quote and join one or more paths for embedding in a command string.
+
+    Parameters
+    ----------
+    paths
+        A single path or an iterable of paths.
+
+    Returns
+    -------
+    quoted
+        The paths, shell-quoted and space-separated,
+        ready to be embedded in a `command` passed to `step()`, `run()`, or `plan()`.
+
+    Notes
+    -----
+    Environment variables in `paths` are substituted immediately,
+    and the variables referenced are added to the calling step's `env_deps` list.
+    These substitutions are based on the state of `os.environ` in the calling script,
+    at the time this function is called, not when the step is executed.
+
+    A subset of a path list can be quoted independently,
+    e.g. `shq(inp[:3])` and `shq(inp[3:])` to spread `inp` over two different
+    command-line options.
+    """
+    su_paths = coerce_paths(paths)
+    with subs_env_vars() as subs:
+        su_paths = [subs(path).normpath() for path in su_paths]
+    return shlex.join(su_paths)
+
+
 #
 # Composite functions, created with the functions above.
 #
@@ -758,13 +746,25 @@ def run(
         - Otherwise: the command is executed directly without a shell.
           This is faster and safer than the shell mode.
 
-        When the first word contains a `/` and is not an absolute path (e.g. `./script.py`,
-        `subdir/tool`), it is automatically added as an input dependency.
+        When `shell=False`, the command may start with one or more `VAR=value` assignments,
+        e.g. `OMP_NUM_THREADS=4 ./run.py`. These are stripped from the command and applied as
+        step-specific environment variable overrides when the step runs (see `step()`'s
+        `env_overrides`). With `shell=True`, assignments are left in the command for the
+        shell to interpret.
+        Putting the same variable in both the shell prefix and env is invalid
+        and only detected with `shell=False`.
+
+        When the first word, after stripping any leading `VAR=value` assignments,
+        contains a `/` and is not an absolute path (e.g. `./script.py`, `subdir/tool`),
+        it is automatically added as an input dependency.
         Bare command names like `echo` or absolute paths like `/usr/bin/gcc` are not added.
 
         Python detection uses the `.py` file extension only,
         so it works even when the script does not yet exist (e.g. it is an output of another step).
         `shell=True` takes precedence and disables Python auto-detection.
+
+        Use [`shq()`][stepup.core.api.shq] to embed `inp`, `out`, or `vol` paths in the
+        command, e.g. `run(f"./script.py {shq(inp)}", inp=inp)`.
     inp, env, out, vol, workdir, optional, resources
         See [`step()`][stepup.core.api.step] for more information.
 
@@ -773,6 +773,11 @@ def run(
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
     """
+    command, exe, env_overrides = _prepare_run_command(
+        command, shell=shell, need_relative_exe=False
+    )
+    if exe is not None:
+        inp = [exe, *coerce_paths(inp)]
     return step(
         command,
         inp=inp,
@@ -783,7 +788,7 @@ def run(
         need=Need.OPTIONAL if optional else Need.DEFAULT,
         resources=resources,
         shell=shell,
-        _add_exe=True,
+        env_overrides=env_overrides,
     )
 
 
@@ -819,6 +824,15 @@ def plan(
 
         Bare command names like `echo` or absolute paths like `/usr/bin/gcc` are not allowed.
         The command must always be a relative path to a local executable script.
+
+        The command may start with one or more `VAR=value` assignments,
+        e.g. `OMP_NUM_THREADS=4 ./plan.py`. These are stripped from the command and applied as
+        step-specific environment variable overrides when the step runs (see `step()`'s
+        `env_overrides`).
+        Putting the same variable in both the shell prefix and env is invalid and raises an error.
+
+        Use [`shq()`][stepup.core.api.shq] to embed `inp`, `out`, or `vol` paths in the
+        command, e.g. `plan(f"./plan.py {shq(inp)}", inp=inp)`.
     inp, env, out, vol, workdir, resources
         See [`step()`][stepup.core.api.step] for more information.
 
@@ -828,6 +842,8 @@ def plan(
         Holds relevant information of the step, useful for defining follow-up steps.
     """
     # Note that we do not use `run()` here because we need to set `need=Need.PLAN`.
+    command, exe, env_overrides = _prepare_run_command(command, shell=False, need_relative_exe=True)
+    inp = [exe, *coerce_paths(inp)]
     return step(
         command,
         inp=inp,
@@ -838,8 +854,7 @@ def plan(
         need=Need.PLAN,
         resources=resources,
         shell=False,
-        _add_exe=True,
-        _need_relative_exe=True,
+        env_overrides=env_overrides,
     )
 
 
@@ -884,7 +899,7 @@ def copy(
     dst = apply_affixes(dst.normpath(), prefix, suffix)
     dst = make_path_out(src, dst, None)
     return step(
-        "cp -p ${inp} ${out}",
+        f"cp -p {shq(src)} {shq(dst)}",
         inp=src,
         out=dst,
         need=Need.OPTIONAL if optional else Need.DEFAULT,
@@ -1228,16 +1243,17 @@ def render_jinja(
     if len(paths_variables) == 0 and len(variables) == 0:
         raise ValueError("At least one file with variable definitions needed.")
     path_out = make_path_out(path_template, dest, None)
+    paths_inp = [path_template, *paths_variables]
 
     # Create the command
-    args = ["sc-render-jinja", "${inp}", "${out}"]
+    args = ["sc-render-jinja", shq(paths_inp), shq(path_out)]
     if mode != "auto":
         args.append(f"--mode={mode}")
     if len(variables) > 0:
         args.append("--json=" + shlex.quote(json.dumps(variables)))
     return step(
         " ".join(args),
-        inp=[path_template, *paths_variables],
+        inp=paths_inp,
         out=path_out,
         need=Need.OPTIONAL if optional else Need.DEFAULT,
         resources=resources,
@@ -1352,8 +1368,7 @@ def _extract_env_overrides(command: str) -> tuple[dict[str, str] | None, str]:
     env_overrides
         A dictionary with the extracted environment variable overrides.
     remaining
-        The command string with the leading assignments removed (preserved verbatim,
-        so placeholders such as `${inp}` remain intact).
+        The command string with the leading assignments removed, otherwise preserved verbatim.
     """
     env_overrides = {}
     pos = 0
@@ -1370,6 +1385,69 @@ def _extract_env_overrides(command: str) -> tuple[dict[str, str] | None, str]:
     if len(env_overrides) == 0:
         env_overrides = None
     return env_overrides, command[pos:].lstrip()
+
+
+def _prepare_run_command(
+    command: StrPath, *, shell: bool, need_relative_exe: bool
+) -> tuple[str, str | None, dict[str, str] | None]:
+    """Pre-process a `run()`/`plan()` command string.
+
+    Extracts leading `VAR=value` assignments (unless `shell`) and detects a local relative
+    executable as the first word following any such assignments.
+
+    Parameters
+    ----------
+    command
+        The raw command string.
+    shell
+        When `True`, leading `VAR=value` assignments are left in the command for the shell
+        to interpret, and no overrides are extracted. They are still skipped over when
+        looking for the executable, so their values are not mistaken for it.
+    need_relative_exe
+        When `True`, require the first word of the command to be a local relative executable
+        (it contains a path separator and is not absolute), raising a `ValueError` otherwise.
+        When `False`, a missing relative executable is silently ignored.
+
+    Raises
+    ------
+    ValueError
+        When the command is empty, when it cannot be split into words with `shlex`
+        (e.g. unbalanced quotes), or when `need_relative_exe` is `True` and the first
+        word is not a local relative executable.
+
+    Returns
+    -------
+    command
+        The command string with any leading assignments removed (when not `shell`).
+    exe
+        The local relative executable to add as an input, or `None`.
+    env_overrides
+        The extracted environment overrides, or `None`.
+    """
+    command = coerce_str(command)
+    env_overrides, remaining = _extract_env_overrides(command)
+    if shell:
+        # Leading assignments are left in the command for the shell to interpret.
+        # They are only stripped off here to find the real first word for exe detection.
+        env_overrides = None
+    else:
+        command = remaining
+    try:
+        parts = shlex.split(remaining)
+    except ValueError as exc:
+        raise ValueError(
+            f"Cannot parse command to detect the executable: {command} ({exc})"
+        ) from exc
+    exe = None
+    first = parts[0] if len(parts) > 0 else ""
+    if os.sep in first and not first.startswith(os.sep):
+        exe = first
+    elif need_relative_exe:
+        raise ValueError(
+            "The command must be a relative path to a local executable, "
+            f"containing at least one slash, e.g. './plan.py'. Got: {command}"
+        )
+    return command, exe, env_overrides
 
 
 def get_rpc_client(socket: str | None = None):

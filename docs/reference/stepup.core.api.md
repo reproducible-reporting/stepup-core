@@ -19,6 +19,8 @@ may undergo larger changes and are not intended to be API stable.
 
 ### ::: stepup.core.api.graph
 
+### ::: stepup.core.api.shq
+
 ## Composite API
 
 ### ::: stepup.core.api.run

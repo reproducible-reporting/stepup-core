@@ -6,7 +6,7 @@ import os
 
 from path import Path
 
-from stepup.core.api import run
+from stepup.core.api import run, shq
 
 run(
     "tr '[:lower:]' '[:upper:]' < example.txt > upper.txt",
@@ -16,4 +16,5 @@ run(
 )
 
 stepup_root = Path(os.environ["STEPUP_ROOT"]).relpath()
-run("cat ${inp}", inp=[f"{stepup_root}/plan.py"])
+inp_paths = [f"{stepup_root}/plan.py"]
+run(f"cat {shq(inp_paths)}", inp=inp_paths)

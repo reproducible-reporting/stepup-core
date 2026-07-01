@@ -12,8 +12,12 @@ The following `plan.py` defines two steps, with the second making use of the out
 {% include 'getting_started/dependencies/plan.py' %}
 ```
 
-The placeholders `${inp}` and `${out}` are replaced by the `inp` and `out` keyword arguments.
-This substitution happens early, before the steps are sent to the director process.
+The command is sent to the director exactly as written: StepUp does not scan it for
+placeholders or perform any substitution on it.
+When the paths are known in advance, as in this example, you can simply type them into
+the command string. When they are computed dynamically (e.g. a list of paths, or a path
+built from other variables), use [`shq()`][stepup.core.api.shq] to shell-quote and embed
+them, e.g. `run(f"grep Coffee {shq(inp)}", inp=inp)`.
 
 The [`graph()`][stepup.core.api.graph] function writes the graph in a few formats,
 which are used for visualization below.

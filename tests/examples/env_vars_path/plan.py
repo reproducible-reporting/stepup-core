@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
-from stepup.core.api import run, static
+from stepup.core.api import run, shq, static
 
 static("${ENV_VAR_TEST_STEPUP_PREFIX}.txt")
 # Note that `${ENV_VAR_TEST_STEPUP_PREFIX}.txt` is not in inp_paths for testing purposes.
+inp_paths = ["${ENV_VAR_TEST_STEPUP_PREFIX}.txt"]
+out_paths = ["${ENV_VAR_TEST_STEPUP_PREFIX}-stdout.txt"]
+vol_paths = ["${ENV_VAR_TEST_STEPUP_PREFIX}-stderr.txt"]
 run(
-    "grep variable ${inp} ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > ${out} 2> ${vol}",
+    f"grep variable {shq(inp_paths)} "
+    "${ENV_VAR_TEST_STEPUP_PREFIX}.txt"
+    f" > {shq(out_paths)} 2> {shq(vol_paths)}",
     shell=True,
-    inp=["${ENV_VAR_TEST_STEPUP_PREFIX}.txt"],
+    inp=inp_paths,
     env=["ENV_VAR_TEST_STEPUP_PREFIX"],
-    out=["${ENV_VAR_TEST_STEPUP_PREFIX}-stdout.txt"],
-    vol=["${ENV_VAR_TEST_STEPUP_PREFIX}-stderr.txt"],
+    out=out_paths,
+    vol=vol_paths,
 )

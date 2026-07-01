@@ -59,7 +59,7 @@ StepUp automatically detects that they are `console_scripts` entry points
 Consider the following example:
 
 ```python
-run("weasyprint ${inp} ${out}", inp="document.html", out="document.pdf")
+run("weasyprint document.html document.pdf", inp="document.html", out="document.pdf")
 ```
 
 StepUp will create a `runpyep` action for this command,

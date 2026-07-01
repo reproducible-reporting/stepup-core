@@ -1,10 +1,12 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post54)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc2.post0)
    STARTUP │ (Re)initialized boot script
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
-     START │ echo Monday frown > story.txt; echo Coffee smile >> story.txt
-   SUCCESS │ echo Monday frown > story.txt; echo Coffee smile >> story.txt
+     START │ echo "Monday frown
+Coffee smile" > story.txt
+   SUCCESS │ echo "Monday frown
+Coffee smile" > story.txt
      START │ grep Coffee story.txt
    SUCCESS │ grep Coffee story.txt
 ─────────────────────────────── Standard output ────────────────────────────────

@@ -33,9 +33,11 @@ You will see the following output:
 ```
 
 The variable substitution is performed in the step's execution environment.
-StepUp will not try to substitute `${MYVAR}` before starting the step.
-The special variables `${inp}` and `${out}` are exceptions to this rule,
-as discussed in the [tutorial on dependencies](../getting_started/dependencies.md).
+StepUp will not try to substitute `${MYVAR}` before starting the step:
+the command is sent to the director exactly as written, with no substitution
+performed on it at all.
+See the [tutorial on dependencies](../getting_started/dependencies.md) for how to embed
+`inp`/`out`/`vol` paths into a command with `shq()`.
 
 ## Try the Following
 

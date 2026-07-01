@@ -39,6 +39,12 @@ is a relative path (contains a path separator, `/`, and is not absolute).
 If it is local, StepUp will automatically add it as an input dependency to the step.
 In StepUp 3, one had to be explicitly include the script as an input, e.g.
 
+StepUp 4 drops the magic substitution of `${inp}` and `${out}` in the command string.
+Instead, you can use Python's f-string syntax and the `shq()` function insert paths in the command.
+This is a more general and robust approach than the old substitution mechanism.
+In simple cases, just repeating the input and output paths in the command string
+is recommended for readability, e.g. `run(f"cat hello.txt", inp="hello.txt")`.
+
 ```python
 # StepUp 3: you had to explicitly include the script as an input
 runpy("./analyze.py data.csv", inp=["analyze.py", "data.csv"])
@@ -47,8 +53,9 @@ runpy("./${inp}", inp=["analyze.py", "data.csv"])
 
 # StepUp 4: the script becomes a dependency automatically
 run("./analyze.py data.csv", inp="data.csv")
-# or
-run("./analyze.py ${inp}", inp="data.csv")
+# or, if the input path is stored in a variable:
+inp = "data.csv"
+run(f"./analyze.py {shq(inp)}", inp=inp)
 ```
 
 ### Migrating from `runsh()`
@@ -58,10 +65,10 @@ because the command is a plain executable with arguments and does not rely on sh
 
 ```python
 # StepUp 3
-runsh("./process.sh input.txt output.txt")
+runsh("./process.sh input.txt output.txt", inp=["process.sh", "input.txt"], out="output.txt")
 
 # StepUp 4 — no shell=True needed for plain commands
-run("./process.sh input.txt output.txt")
+run("./process.sh input.txt output.txt", inp="input.txt", out="output.txt")
 ```
 
 Only add `shell=True` (to mimic the old `runsh()` behavior)
@@ -70,10 +77,10 @@ such as pipes, redirections, globbing, or variable expansion:
 
 ```python
 # StepUp 3
-runsh("grep -c foo input.txt > count.txt")
+runsh("grep -c foo input.txt > count.txt", inp="input.txt", out="count.txt")
 
 # StepUp 4 — shell=True required for redirection
-run("grep -c foo input.txt > count.txt", shell=True)
+run("grep -c foo input.txt > count.txt", shell=True, inp="input.txt", out="count.txt")
 ```
 
 ### Migrating from `runpy()`
@@ -83,10 +90,10 @@ The Python wrapper is selected automatically when the first word ends in `.py`:
 
 ```python
 # StepUp 3
-runpy("./analyze.py --input data.csv")
+runpy("./analyze.py --input data.csv", inp=["analyze.py", "data.csv"])
 
 # StepUp 4
-run("./analyze.py --input data.csv")
+run("./analyze.py --input data.csv", inp="data.csv")
 ```
 
 ### Why prefer `run()` without `shell=True`

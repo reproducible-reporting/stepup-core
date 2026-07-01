@@ -172,6 +172,8 @@ This is release candidate 5 for the upcoming StepUp 4.0 release.
       will remove empty directories after having removed outdated output files they contained.
     - StepUp now limits its insistence on path affixes (like trailing slashes)
       to only those cases where it is absolutely necessary to avoid ambiguity.
+- The `${inp}` and `${out}` placeholders have been removed from the `run()` and `step()` functions.
+  Use the `shq()` helper function instead, together with Python's built-in f-strings.
 - The `glob()` function no longer accepts `_defer` and `_required` keyword arguments.
 
 ## [3.2.3][] - 2026-04-16 {: #v3.2.3 }
