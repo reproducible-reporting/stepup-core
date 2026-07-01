@@ -43,7 +43,7 @@ from .enums import FileState, Need, StepState
 from .hash import fmt_digest
 from .sqlite3 import connect
 from .step import Step
-from .utils import format_subprocess
+from .utils import escape_command_display, format_subprocess
 
 
 def browse_subcommand(subparsers, loader: ConfigLoader) -> Callable:
@@ -399,7 +399,8 @@ class GraphServer(BaseHTTPRequestHandler):
         node_prefix = "Detached " if detached else ""
         yield f"<h2>{node_prefix}Node {node_i}</h2>"
         yield f"<p><b>Kind:</b> {KIND_NAMES.get(kind, kind)}</p>"
-        yield f"<p><b>Label:</b> {label}</p>"
+        display_label = escape_command_display(label) if kind == "step" else label
+        yield f"<p><b>Label:</b> {html.escape(display_label)}</p>"
 
         # Format the state (if a file or a step)
         if kind == "step":
@@ -650,7 +651,8 @@ class GraphServer(BaseHTTPRequestHandler):
         amended: bool = False,
     ) -> str:
         sym = KIND_SYMBOLS.get(kind, f"?{kind}?")
-        node_str = f"{label}"
+        display_label = escape_command_display(label) if kind == "step" else label
+        node_str = html.escape(display_label)
         if i is not None:
             node_str = f'<a href="/node/?i={i}">{node_str}</a>'
         if len(label) == 0:

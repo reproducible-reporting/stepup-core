@@ -29,6 +29,7 @@ from path import Path
 
 __all__ = (
     "CaseSensitiveTemplate",
+    "escape_command_display",
     "format_command",
     "format_digest",
     "format_subprocess",
@@ -71,6 +72,70 @@ def format_command(executable: str) -> str:
     return shlex.quote(relative)
 
 
+_ANSI_C_ESCAPES = {
+    "\a": r"\a",
+    "\b": r"\b",
+    "\t": r"\t",
+    "\n": r"\n",
+    "\v": r"\v",
+    "\f": r"\f",
+    "\r": r"\r",
+    "\x1b": r"\e",
+}
+
+
+def escape_command_display(command: str) -> str:
+    """Rewrite control characters in a command line as `$'...'`-quoted escapes.
+
+    An embedded control character (e.g. a literal newline) is spliced in as a
+    `$'\\n'`-style ANSI-C-quoted escape, closing and reopening whichever quote is
+    currently open around it. This keeps the result on a single line and, because
+    adjacent shell tokens with no separator are concatenated, copy-pasting it into
+    a POSIX shell reproduces `command` byte for byte.
+
+    Parameters
+    ----------
+    command
+        A shell command line, as passed to `step()` or `run()`.
+
+    Returns
+    -------
+    escaped
+        A single-line, shell-pasteable version of `command`.
+
+    Notes
+    -----
+    This is a single-pass scanner that only tracks top-level single/double-quote
+    nesting and backslash escaping. It does not recurse into nested `$(...)` or
+    backtick command substitutions, so a control character embedded inside such a
+    substitution's own quotes may be spliced incorrectly. This only affects how the
+    command is displayed; the command is stored and executed verbatim.
+    """
+    pieces = []
+    quote = None  # None, "'", or '"'
+    escaped = False
+    for char in command:
+        if ord(char) < 0x20 or ord(char) == 0x7F:
+            token = _ANSI_C_ESCAPES.get(char, f"\\x{ord(char):02x}")
+            pieces.append(f"$'{token}'" if quote is None else f"{quote}$'{token}'{quote}")
+            escaped = False
+            continue
+        pieces.append(char)
+        if escaped:
+            escaped = False
+        elif quote == "'":
+            if char == "'":
+                quote = None
+        elif char == "\\":
+            escaped = True
+        elif quote == '"':
+            if char == '"':
+                quote = None
+        elif char in ("'", '"'):
+            quote = char
+    return "".join(pieces)
+
+
 def format_subprocess(
     cmd: str,
     workdir: str,
@@ -111,7 +176,7 @@ def format_subprocess(
     parts = []
     if env:
         parts.extend(f"{key}={shlex.quote(value)}" for key, value in env.items())
-    parts.append(cmd)
+    parts.append(escape_command_display(cmd))
     line = " ".join(parts)
     if workdir not in ("", "."):
         inner = f"({line})" if shell else line

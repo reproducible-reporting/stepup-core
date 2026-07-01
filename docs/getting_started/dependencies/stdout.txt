@@ -3,10 +3,8 @@
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
-     START │ echo "Monday frown
-Coffee smile" > story.txt
-   SUCCESS │ echo "Monday frown
-Coffee smile" > story.txt
+     START │ printf "Monday frown\nCoffee smile\n" > story.txt
+   SUCCESS │ printf "Monday frown\nCoffee smile\n" > story.txt
      START │ grep Coffee story.txt
    SUCCESS │ grep Coffee story.txt
 ─────────────────────────────── Standard output ────────────────────────────────

@@ -63,7 +63,7 @@ from .reporter import ReporterClient
 from .scheduler import Scheduler
 from .sqlite3 import DBSession
 from .step import Step
-from .utils import format_subprocess
+from .utils import escape_command_display, format_subprocess
 from .workflow import Workflow
 
 __all__ = ("Executor", "Run")
@@ -888,8 +888,9 @@ class Executor:
             need = run.step.get_need()
             env_overrides = run.step.get_env_overrides()
 
-        await self.reporter("START", run.step.label)
-        await self.reporter.start_step(run.step.label, run.step.i)
+        label = escape_command_display(run.step.label)
+        await self.reporter("START", label)
+        await self.reporter.start_step(label, run.step.i)
 
         env = self.base_env
         # Apply step-specific overrides first, so the reserved variables below always win.
@@ -1012,7 +1013,7 @@ class Executor:
         else:
             action = "FAIL"
         await self.reporter.stop_step(run.step.i)
-        await self.reporter(action, run.step.label, pages)
+        await self.reporter(action, escape_command_display(run.step.label), pages)
 
     async def skip(self, run: Run, step_hash: StepHash):
         pages = []
@@ -1024,7 +1025,7 @@ class Executor:
                 )
             if len(page_same) > 0:
                 pages.append(("No changes observed", page_same))
-        await self.reporter("SKIP", run.step.label, pages)
+        await self.reporter("SKIP", escape_command_display(run.step.label), pages)
 
     async def noskip(self, run: Run, old_hash: StepHash, new_hash: StepHash):
         if self.explain_rerun:
@@ -1036,7 +1037,7 @@ class Executor:
                 pages.append(("Changes causing rerun", page_change))
             if len(page_same) > 0:
                 pages.append(("Remained the same", page_same))
-            await self.reporter("NOSKIP", run.step.label, pages)
+            await self.reporter("NOSKIP", escape_command_display(run.step.label), pages)
 
     async def outdated_amended(self, run: Run, old_hash: StepHash, new_hash: StepHash):
         if self.explain_rerun:
@@ -1044,4 +1045,4 @@ class Executor:
             pages = [("Outdated amended step information", page_change)]
             if len(page_same) > 0:
                 pages.append(("Remained the same (or missing)", page_same))
-            await self.reporter("DROPAMEND", run.step.label, pages)
+            await self.reporter("DROPAMEND", escape_command_display(run.step.label), pages)
