@@ -166,6 +166,18 @@ def _executable_uses_same_python(path_exec: str) -> bool:
 
 
 @functools.cache
+def _console_script_entry_points():
+    """The `console_scripts` entry points of all installed distributions, scanned once.
+
+    Returns
+    -------
+    eps
+        An `EntryPoints` collection, cheap to filter further with `.select(name=...)`.
+    """
+    return entry_points(group="console_scripts")
+
+
+@functools.cache
 def _detect_python_entrypoint(cmd: str) -> str | None:
     """Detect if `cmd` is a console_script compatible with the current Python environment.
 
@@ -186,7 +198,7 @@ def _detect_python_entrypoint(cmd: str) -> str | None:
         When `cmd` is registered as a console_script but cannot be found on `PATH`,
         which indicates a broken installation.
     """
-    eps = list(entry_points(group="console_scripts", name=cmd))
+    eps = list(_console_script_entry_points().select(name=cmd))
     if not eps:
         return None
     ep_value = eps[0].value

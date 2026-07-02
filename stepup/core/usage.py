@@ -261,15 +261,17 @@ class PssSampler:
         """Background loop: sample immediately, then periodically until `stop_event` is set.
 
         An eager first sample ensures very short-lived builds still get one data point.
+        Each sample runs in a worker thread because it does blocking `/proc` file I/O,
+        which would otherwise stall the director's event loop for the sample's duration.
         """
-        self.sample_once()
+        await asyncio.to_thread(self.sample_once)
         while not stop_event.is_set():
             try:
                 with contextlib.suppress(asyncio.TimeoutError):
                     await asyncio.wait_for(stop_event.wait(), timeout=self.interval)
                 if stop_event.is_set():
                     break
-                self.sample_once()
+                await asyncio.to_thread(self.sample_once)
             except asyncio.CancelledError:
                 break
 
