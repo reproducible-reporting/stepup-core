@@ -2595,6 +2595,11 @@ are merged together, with the CLI option taking precedence over the environment 
 (like execution time) for each step in the terminal user interface.
 Set to <code>2</code> to show more detailed performance information.</p>
 </dd>
+<dt><code>sqllog</code> / <code>STEPUP_BUILD_SQLLOG</code> / <code>--sqllog</code>, <code>--no-sqllog</code></dt>
+<dd>
+<p>Set to <code>true</code> to enable SQLite debug logging.
+The recorded log is written to <code>.stepup/sqllog.json</code> when the director exits.</p>
+</dd>
 <dt><code>watch</code> / <code>STEPUP_BUILD_WATCH</code> / <code>--watch</code>, <code>-w</code>, <code>--no-watch</code></dt>
 <dd>
 <p>Set to <code>true</code> to enable watch mode.
