@@ -249,7 +249,7 @@ AND NOT node.detached
 CREATE_TEMP_TABLE_FILE = f"""
 -- Find all files that are outputs or volatile of optional steps.
 CREATE TEMP TABLE optional_to_be_deleted AS
-SELECT node.i, node.label, file.state, file.digest, file.mode, file.mtime, file.size, file.inode
+SELECT node.i, node.label, file.state, file.hash
 FROM file
 JOIN node ON file.node = node.i
 JOIN dependency ON dependency.consumer = node.i
@@ -266,12 +266,12 @@ AND step.state != {StepState.PENDING.value}
 """
 
 SELECT_OPTIONAL_TO_BE_DELETED = """
-SELECT label, state, digest, mode, mtime, size, inode FROM optional_to_be_deleted
+SELECT label, state, hash FROM optional_to_be_deleted
 """
 
 UPDATE_OPTIONAL_TO_BE_DELETED = f"""
 UPDATE file
-SET state = {FileState.AWAITED.value}, digest = X'75', mode = 0, mtime = 0, size = 0, inode = 0
+SET state = {FileState.AWAITED.value}, hash = NULL
 FROM optional_to_be_deleted
 WHERE file.node = optional_to_be_deleted.i
 """
@@ -298,7 +298,7 @@ async def revert_optional(db: DBSession, workflow: Workflow, reporter: ReporterC
         nstep = cur.rowcount
         cur = db.execute(SELECT_OPTIONAL_TO_BE_DELETED)
         to_be_deleted = [
-            (row[0], None if row[1] == FileState.VOLATILE.value else FileHash(*row[2:]))
+            (row[0], None if row[1] == FileState.VOLATILE.value else FileHash.from_json(row[2]))
             for row in cur
         ]
         if len(to_be_deleted) > 0:
@@ -448,10 +448,10 @@ async def remove_outdated_outputs(workflow: Workflow, db: DBSession, reporter: R
             """
             WITH node_tmp AS (SELECT i FROM node WHERE label = ?)
             UPDATE file
-            SET state = ?, digest = ?, mode = 0, mtime = 0, size = 0, inode = 0
+            SET state = ?, hash = NULL
             WHERE node IN node_tmp
             """,
-            [(path, FileState.AWAITED.value, b"u") for path, _ in workflow.to_be_deleted],
+            [(path, FileState.AWAITED.value) for path, _ in workflow.to_be_deleted],
         )
     workflow.to_be_deleted.clear()
 

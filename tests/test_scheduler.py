@@ -23,6 +23,7 @@ import pytest
 
 from stepup.core.enums import FileState, Need, StepState
 from stepup.core.file import FILE_SCHEMA
+from stepup.core.hash import FileHash
 from stepup.core.scheduler import (
     APPLY_UPDATE_CHECK_AFTER,
     DROP_CHECK_AFTER,
@@ -132,13 +133,12 @@ def _insert_input_file(con, node_id, creator_id, state, *, detached=False):
         (node_id, f"file_{node_id}.txt", creator_id, detached),
     )
     if state in (FileState.MISSING, FileState.AWAITED, FileState.VOLATILE):
-        digest, mode, mtime, size, inode = b"\x75", 0, 0.0, 0, 0
+        hash_value = None
     else:  # STATIC, BUILT, OUTDATED
-        digest, mode, mtime, size, inode = b"\x01\x02\x03", 0o100644, 1000.0, 100, 42
+        hash_value = FileHash(b"\x01\x02\x03", 0o100644, 1000.0, 100, 42).to_json()
     con.execute(
-        "INSERT INTO file (node, state, digest, mode, mtime, size, inode)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (node_id, state.value, digest, mode, mtime, size, inode),
+        "INSERT INTO file (node, state, hash) VALUES (?, ?, ?)",
+        (node_id, state.value, hash_value),
     )
 
 
@@ -808,7 +808,7 @@ def test_ordering_label_tiebreaker(con):
 def _get_inputs(con, consumer_id):
     """Run SELECT_INPUTS for the given consumer and return all rows as a list of dicts."""
     rows = con.execute(SELECT_INPUTS, (consumer_id,)).fetchall()
-    keys = ("label", "detached", "state", "amended", "digest", "mode", "mtime", "size", "inode")
+    keys = ("label", "detached", "state", "amended", "hash")
     return [dict(zip(keys, row, strict=True)) for row in rows]
 
 
@@ -830,11 +830,12 @@ def test_select_inputs_built_file(con):
     assert row["detached"] == 0
     assert row["state"] == FileState.BUILT.value
     assert row["amended"] == 0
-    assert row["digest"] == b"\x01\x02\x03"
-    assert row["mode"] == 0o100644
-    assert row["mtime"] == pytest.approx(1000.0)
-    assert row["size"] == 100
-    assert row["inode"] == 42
+    file_hash = FileHash.from_json(row["hash"])
+    assert file_hash.digest == b"\x01\x02\x03"
+    assert file_hash.mode == 0o100644
+    assert file_hash.mtime == pytest.approx(1000.0)
+    assert file_hash.size == 100
+    assert file_hash.inode == 42
 
 
 def test_select_inputs_static_file(con):
@@ -855,11 +856,7 @@ def test_select_inputs_awaited_file(con):
     rows = _get_inputs(con, 2)
     assert len(rows) == 1
     assert rows[0]["state"] == FileState.AWAITED.value
-    assert rows[0]["digest"] == b"\x75"
-    assert rows[0]["mode"] == 0
-    assert rows[0]["mtime"] == pytest.approx(0.0)
-    assert rows[0]["size"] == 0
-    assert rows[0]["inode"] == 0
+    assert rows[0]["hash"] is None
 
 
 def test_select_inputs_amended_flag_true(con):
@@ -1414,12 +1411,8 @@ def test_checking_in_chain_propagates_safe(con):
 
 
 def _insert_step_hash(con, node_id):
-    """Insert a minimal step_hash row so the step is considered checkable."""
-    con.execute(
-        "INSERT INTO step_hash (node, inp_digest, inp_info, out_digest, out_info)"
-        " VALUES (?, X'aabbcc', NULL, X'ddeeff', NULL)",
-        (node_id,),
-    )
+    """Set a minimal hash value so the step is considered checkable."""
+    con.execute("INSERT OR REPLACE INTO step_hash VALUES (?, '{}')", (node_id,))
 
 
 def _get_checkable_ids(con):

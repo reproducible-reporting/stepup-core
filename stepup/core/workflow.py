@@ -36,7 +36,7 @@ from .exceptions import GraphError
 from .file import File
 from .hash import FileHash, fmt_digest
 from .nglob import NGlobMulti, has_wildcards
-from .sqlite3 import UInt64, escape_like_pattern
+from .sqlite3 import escape_like_pattern
 from .static_tree import StaticTree
 from .step import RESERVED_ENV_VARS, Step
 from .trellis import Node, Root, Trellis
@@ -87,7 +87,7 @@ WHERE file.state IN ({FileState.AWAITED.value}, {FileState.OUTDATED.value})
 
 @attrs.define
 class SupplyInfo:
-    """Result of the `supply_file` method, for internal use only."""
+    """Result of the `supply_files` method, for internal use only."""
 
     file: Node = attrs.field()
     """A new or existing file."""
@@ -137,7 +137,7 @@ class Workflow(Trellis):
         # Verify that all BUILT, OUTDATED and STATIC files have a hash.
         sql = (
             "SELECT i, state, label FROM node JOIN file ON node.i = file.node "
-            "WHERE state IN (?, ?, ?) and digest = X'75'"
+            "WHERE state IN (?, ?, ?) and hash IS NULL"
         )
         data = (FileState.BUILT.value, FileState.OUTDATED.value, FileState.STATIC.value)
         files = []
@@ -361,8 +361,14 @@ class Workflow(Trellis):
             return srs[0]
         return None
 
-    def supply_file(self, node: Node, path: str, new: bool = True) -> SupplyInfo:
-        """Find an existing file or create a detached file, and make it a supplier of node.
+    def _resolve_supply_file(
+        self, node: Node, path: str, new: bool
+    ) -> tuple[File, bool, list[Node], bool]:
+        """Find or create the file for a path and resolve its relation to node.
+
+        This performs everything `supply_files` needs except inserting the
+        dependency edge, so the cyclic-dependency check can be batched
+        across multiple paths by the caller.
 
         Parameters
         ----------
@@ -376,8 +382,15 @@ class Workflow(Trellis):
 
         Returns
         -------
-        supply_info
-            Information about the supplied file object.
+        file
+            The existing or newly created file node.
+        available
+            See `SupplyInfo.available`.
+        deferred
+            See `SupplyInfo.deferred`.
+        new_relation
+            `True` when the (file, node) dependency edge does not exist yet
+            and still needs to be inserted by the caller.
 
         Raises
         ------
@@ -410,13 +423,55 @@ class Workflow(Trellis):
             ).fetchone()
             is None
         )
-        if new_relation:
-            new_idep = node.add_supplier(file)
-        elif new:
+        if not new_relation and new:
             raise GraphError(f"Supplying file already exists: {path}")
-        else:
-            new_idep = None
-        return SupplyInfo(file, available, deferred, new_idep)
+        return file, available, deferred, new_relation
+
+    def supply_files(
+        self, node: Node, paths: Collection[str], new: bool = True
+    ) -> list[SupplyInfo]:
+        """Find or create files for several paths and make them suppliers of node.
+
+        Since `node` is the consumer of every new edge in this batch,
+        the cyclic-dependency check is performed once for the whole batch
+        (via `Node.check_no_cycle_batch`) instead of once per path.
+        Note that if `paths` contains a duplicate, it is caught later than before:
+        as a `GraphError("Relation already exists")` from `add_supplier` instead of
+        `GraphError("Supplying file already exists")`.
+        This is unreachable in practice because callers already dedupe `paths`.
+
+        Parameters
+        ----------
+        node
+            The file or step node to supply to.
+        paths
+            The paths of the files that should supply to the node.
+        new
+            When `True` every (file, node) relationship must be new.
+            If not, a `GraphError` is raised.
+
+        Returns
+        -------
+        supply_infos
+            Information about each supplied file, in the same order as `paths`.
+
+        Raises
+        ------
+        GraphError
+            When a path is volatile.
+            When a path exists while it is expected to be new.
+        CyclicError
+            When adding the new relations would introduce a cyclic dependency.
+        """
+        resolved = [self._resolve_supply_file(node, path, new) for path in paths]
+        new_file_is = [file.i for file, _, _, new_relation in resolved if new_relation]
+        if new_file_is:
+            node.check_no_cycle_batch(new_file_is)
+        results = []
+        for file, available, deferred, new_relation in resolved:
+            new_idep = node.add_supplier(file, skip_cycle_check=True) if new_relation else None
+            results.append(SupplyInfo(file, available, deferred, new_idep))
+        return results
 
     def declare_file(
         self, creator: Node, path: str, file_state: FileState
@@ -519,14 +574,13 @@ class Workflow(Trellis):
             sql = "INSERT INTO temp.missing VALUES (?)"
             self.db.executemany(sql, ((file.i,) for file in deferred))
             sql = (
-                "SELECT label, digest, mode, mtime, size, inode "
+                "SELECT label, hash "
                 "FROM temp.missing "
                 "JOIN node ON node.i = temp.missing.node "
                 "JOIN file ON file.node = temp.missing.node"
             )
             return [
-                (path, FileHash(digest, mode, mtime, size, inode))
-                for path, digest, mode, mtime, size, inode in self.db.execute(sql)
+                (path, FileHash.from_json(hash_value)) for path, hash_value in self.db.execute(sql)
             ]
         finally:
             self.db.execute("DROP TABLE IF EXISTS temp.missing")
@@ -549,12 +603,11 @@ class Workflow(Trellis):
             self.db.execute("CREATE TABLE temp.paths(path TEXT PRIMARY KEY)")
             self.db.executemany("INSERT INTO temp.paths VALUES (?)", ((path,) for path in paths))
             sql = (
-                "SELECT label, digest, mode, mtime, size, inode FROM node "
+                "SELECT label, hash FROM node "
                 "JOIN file ON file.node = node.i JOIN temp.paths ON label = temp.paths.path"
             )
             return [
-                (path, FileHash(digest, mode, mtime, size, inode))
-                for path, digest, mode, mtime, size, inode in self.db.execute(sql)
+                (path, FileHash.from_json(hash_value)) for path, hash_value in self.db.execute(sql)
             ]
         finally:
             self.db.execute("DROP TABLE IF EXISTS temp.paths")
@@ -690,12 +743,8 @@ class Workflow(Trellis):
                 f"expected={len(file_hashes)} actual={len(new_states_hashes)}"
             )
         self.db.executemany(
-            "UPDATE file SET state = ?, digest = ?, mode = ?, mtime = ?, size = ?, inode = ? "
-            "WHERE node = ?",
-            (
-                (state.value, fh.digest, fh.mode, fh.mtime, fh.size, UInt64(fh.inode), i)
-                for i, state, fh in new_states_hashes
-            ),
+            "UPDATE file SET state = ?, hash = ? WHERE node = ?",
+            ((state.value, fh.to_json(), i) for i, state, fh in new_states_hashes),
         )
 
         # Call File methods to further update the workflow.
@@ -827,10 +876,10 @@ class Workflow(Trellis):
         deferred = set()
 
         # Supply inp_paths
-        for inp_path in inp_paths:
+        for info in self.supply_files(step, inp_paths):
             # We do not care about the unavailable files here,
             # because the step will only be executed when all inputs are available.
-            deferred.update(self.supply_file(step, inp_path).deferred)
+            deferred.update(info.deferred)
 
         # Process vars
         step.add_env_deps(env_deps)
@@ -982,8 +1031,8 @@ class Workflow(Trellis):
         deferred = set()
 
         # Process inp_paths
-        for inp_path in inp_paths:
-            info = self.supply_file(step, inp_path, new=False)
+        infos = self.supply_files(step, inp_paths, new=False)
+        for inp_path, info in zip(inp_paths, infos, strict=True):
             if not info.available:
                 unavailable.add(inp_path)
             if info.new_idep is not None:

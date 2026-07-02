@@ -40,7 +40,7 @@ from path import Path
 from .config import ConfigLoader
 from .constants import GRAPH_DB
 from .enums import FileState, Need, StepState
-from .hash import fmt_digest
+from .hash import FileHash, fmt_digest
 from .sqlite3 import connect
 from .step import Step
 from .utils import escape_command_display, format_subprocess
@@ -406,7 +406,7 @@ class GraphServer(BaseHTTPRequestHandler):
         if kind == "step":
             sql_props = (
                 "SELECT state, need, duration, rescheduled_info, subshell, env_overrides,"
-                "stdout, stderr, _safe, _check_safe, _implied_need, _tail_time, _check_after "
+                "_safe, _check_safe, _implied_need, _tail_time, _check_after "
                 "FROM step WHERE node = ?"
             )
             (
@@ -416,8 +416,6 @@ class GraphServer(BaseHTTPRequestHandler):
                 rescheduled_info,
                 subshell,
                 env_overrides,
-                stdout,
-                stderr,
                 safe,
                 check_safe,
                 implied_need_id,
@@ -490,6 +488,9 @@ class GraphServer(BaseHTTPRequestHandler):
                     ngm = pickle.loads(row[0])
                     yield f"<p>{[ngs.pattern for ngs in ngm.nglob_singles]} {ngm.subs}</p>"
 
+            sql_output = "SELECT stdout, stderr FROM step_output WHERE node = ?"
+            row = self.con.execute(sql_output, (node_i,)).fetchone()
+            stdout, stderr = ("", "") if row is None else row
             if stdout != "":
                 yield "<h3>Standard Output</h3>"
                 yield f"<pre>{html.escape(stdout)}</pre>"
@@ -499,7 +500,7 @@ class GraphServer(BaseHTTPRequestHandler):
 
             sql_sub = (
                 "SELECT cmd, workdir, env_overrides, returncode, shell, stdin, stdout, stderr "
-                "FROM step_subprocess WHERE node = ? ORDER BY seq"
+                "FROM step_subprocess WHERE node = ? ORDER BY rowid"
             )
             subs = list(self.con.execute(sql_sub, (node_i,)))
             if len(subs) > 0:
@@ -533,21 +534,22 @@ class GraphServer(BaseHTTPRequestHandler):
                         yield f"<pre>{html.escape(stderr)}</pre></div>"
 
         elif kind == "file":
-            (state_i, digest, mode, mtime, size, inode) = self.con.execute(
-                "SELECT state, digest, mode, mtime, size, inode FROM file WHERE node = ?",
+            (state_i, hash_value) = self.con.execute(
+                "SELECT state, hash FROM file WHERE node = ?",
                 (node_i,),
             ).fetchone()
             state = FileState(state_i)
+            file_hash = FileHash.from_json(hash_value)
             yield f'<p><b>State:</b> <span class="{state.name.lower()}">{state.name}</span></p>'
-            yield f"<p><b>Digest:</b> {fmt_digest(digest)}</p>"
-            if len(digest) > 1:
-                yield f"<p><b>Mode:</b> {stat.filemode(mode)}</p>"
+            yield f"<p><b>Digest:</b> {fmt_digest(file_hash.digest)}</p>"
+            if len(file_hash.digest) > 1:
+                yield f"<p><b>Mode:</b> {stat.filemode(file_hash.mode)}</p>"
                 yield (
                     "<p><b>Modified:</b> "
-                    f"{datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')}</p>"
+                    f"{datetime.fromtimestamp(file_hash.mtime).strftime('%Y-%m-%d %H:%M:%S')}</p>"
                 )
-                yield f"<p><b>Size:</b> {size}</p>"
-                yield f"<p><b>Inode:</b> {inode}</p>"
+                yield f"<p><b>Size:</b> {file_hash.size}</p>"
+                yield f"<p><b>Inode:</b> {file_hash.inode}</p>"
 
         # Format the creator
         creator = self.con.execute(

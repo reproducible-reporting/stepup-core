@@ -203,6 +203,19 @@ do not bump the version again within the same release cycle.
 Record each individual schema change as a comment line in the `schema_version` docstring,
 even when the number itself does not change.
 
+#### Triggers
+
+Invariant-preserving side effects (derived-column bookkeeping that would otherwise require
+a Python read-branch-write round trip on every mutation) are implemented as
+`AFTER INSERT/UPDATE/DELETE` triggers, colocated with the table they read from inside that
+node class's `*_SCHEMA` string
+(e.g. `step_clear_rescheduled` and the `step_dependency_check_after_*` pair in
+`STEP_SCHEMA`).
+Trigger names follow the same `<table>_<purpose>` convention as indexes, with no prefix.
+`WHEN` clauses that depend on enum values are generated via f-string interpolation against
+the enum (e.g. `{StepState.SUCCEEDED.value}`) rather than hardcoded literals,
+so they can never drift from `enums.py`.
+
 ### RPC Layer (`rpc.py`)
 
 Lightweight pickle-based RPC over asyncio streams or Unix sockets.

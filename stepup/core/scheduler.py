@@ -254,7 +254,7 @@ _ORDER_BY_PRIORITY = f"""ORDER BY
 
 # Select the highest priority PENDING step that can be hash-checked for possible skipping.
 # Unlike SELECT_RUNNABLE_STEPS, this query:
-# - requires a stored hash (step_hash table entry), because a hash is needed to check for skipping
+# - requires a stored hash (a row in step_hash), because a hash is needed to check for skipping
 # - does NOT check resource availability, as hash checking and skipping never needs named resources
 SELECT_CHECKABLE_STEPS = f"""
 SELECT
@@ -310,11 +310,7 @@ SELECT
     node.detached,
     file.state,
     EXISTS (SELECT 1 FROM amended_dep WHERE amended_dep.i = dep.i),
-    file.digest,
-    file.mode,
-    file.mtime,
-    file.size,
-    file.inode
+    file.hash
 FROM node JOIN dependency AS dep ON node.i = dep.supplier
 JOIN file ON file.node = node.i
 WHERE dep.consumer = ?
@@ -491,7 +487,7 @@ class Scheduler:
         inp_hashes = []
         db = self.workflow.db
         cur = db.execute(SELECT_INPUTS, (step.i,))
-        for path, detached, fs_value, is_amended, digest, mode, mtime, size, inode in cur:
+        for path, detached, fs_value, is_amended, hash_value in cur:
             # All exception cases handled in this loop should have been filtered out
             # by the SELECT_INPUTS query.
             # We keep them here as sanity checks, because they indicate a serious internal error.
@@ -508,7 +504,7 @@ class Scheduler:
             # Amended or not, just process ready inputs.
             if not detached and file_state in (FileState.BUILT, FileState.STATIC):
                 # Input is ready, collect its hash and look no further.
-                inp_hashes.append((path, FileHash(digest, mode, mtime, size, inode)))
+                inp_hashes.append((path, FileHash.from_json(hash_value)))
                 continue
 
             # Sanity checks

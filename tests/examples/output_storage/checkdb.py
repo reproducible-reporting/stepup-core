@@ -3,7 +3,7 @@
 import sqlite3
 
 con = sqlite3.connect(".stepup/graph.db")
-stdouts = [c for (c,) in con.execute("SELECT stdout FROM step WHERE stdout IS NOT NULL")]
+stdouts = [c for (c,) in con.execute("SELECT stdout FROM step_output")]
 con.close()
 
 sentinel = "[output truncated at 64 bytes]"

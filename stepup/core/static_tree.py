@@ -35,7 +35,7 @@ class StaticTree(Node):
         """Lower-case prefix of the key string representing a node."""
         return "st"
 
-    def add_supplier(self, supplier: Node) -> int:
+    def add_supplier(self, supplier: Node, skip_cycle_check: bool = False) -> int:
         raise NotImplementedError("A static tree does not use suppliers.")
 
     def give_up(self):

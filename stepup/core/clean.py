@@ -33,7 +33,6 @@ from .enums import FileState
 from .hash import FileHash
 from .path import translate, translate_back
 from .sqlite3 import connect, escape_like_pattern
-from .trellis import DROP_CONSUMERS, INITIAL_CONSUMERS, RECURSE_CONSUMERS
 
 
 def clean_subcommand(subparsers, loader: ConfigLoader) -> Callable:
@@ -227,14 +226,30 @@ def search_matching_paths(con: sqlite3.Connection, tr_paths: set[str]) -> set[st
     return tr_matching_paths
 
 
+INITIAL_CONSUMERS = "CREATE TABLE temp.initial_consumer (current INTEGER PRIMARY KEY) WITHOUT ROWID"
+
+RECURSE_CONSUMERS = """
+WITH RECURSIVE all_consumer(current) AS (
+    -- Initial: Set initial node
+    SELECT current
+    FROM temp.initial_consumer
+    UNION
+    -- Recursion: Follow edges by selecting consumers of current
+    SELECT consumer AS current
+    FROM dependency INNER JOIN all_consumer ON supplier = current
+)
+"""
+
 SELECT_OUTPUTS = f"""
-SELECT label, file.state, detached, digest, mode, mtime, size, inode
+SELECT label, file.state, detached, hash
 FROM all_consumer
 JOIN node ON node.i = all_consumer.current
 JOIN file ON file.node = all_consumer.current
 WHERE file.state in
 ({FileState.BUILT.value}, {FileState.OUTDATED.value}, {FileState.VOLATILE.value})
 """
+
+DROP_CONSUMERS = "DROP TABLE IF EXISTS temp.initial_consumer"
 
 
 def search_consuming_paths(
@@ -273,7 +288,7 @@ def search_consuming_paths(
         if detached_only:
             select_outputs += " AND detached"
         return [
-            (row[0], FileState(row[1]), bool(row[2]), FileHash(*row[3:]))
+            (row[0], FileState(row[1]), bool(row[2]), FileHash.from_json(row[3]))
             for row in con.execute(RECURSE_CONSUMERS + select_outputs)
         ]
     finally:

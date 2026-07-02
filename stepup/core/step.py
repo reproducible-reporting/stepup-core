@@ -51,7 +51,7 @@ RESERVED_ENV_VARS = frozenset(
 )
 
 
-STEP_SCHEMA = """
+STEP_SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS step (
     -- Main data
     node INTEGER PRIMARY KEY,
@@ -70,11 +70,6 @@ CREATE TABLE IF NOT EXISTS step (
     env_overrides TEXT,
     -- JSON-encoded dict[str, str] of step-specific environment variable overrides, or NULL.
     -- Applied to the child process environment when the step runs.
-    stdout TEXT NOT NULL DEFAULT '',
-    -- Captured standard output of the step's command.
-    stderr TEXT NOT NULL DEFAULT '',
-    -- Captured standard error of the step's command.
-
     -- Metadata
     _safe INTEGER NOT NULL CHECK(_safe IN (0, 1)),
     -- Whether this step is safe to run, meaning that all its (recursive) creators
@@ -100,6 +95,25 @@ CREATE INDEX IF NOT EXISTS step_implied_need ON step(_implied_need);
 -- index scan proportional to the flagged count instead of a full scan of the step table.
 CREATE INDEX IF NOT EXISTS step_check_safe ON step(node) WHERE _check_safe;
 CREATE INDEX IF NOT EXISTS step_check_after ON step(node) WHERE _check_after;
+
+-- Keep _check_after in sync with dependency-edge changes touching either endpoint.
+-- A no-op UPDATE (zero rows matched) is harmless when the other endpoint is not a step.
+CREATE TRIGGER IF NOT EXISTS step_dependency_check_after_ins AFTER INSERT ON dependency
+BEGIN
+    UPDATE step SET _check_after = 1 WHERE node IN (NEW.supplier, NEW.consumer);
+END;
+CREATE TRIGGER IF NOT EXISTS step_dependency_check_after_del AFTER DELETE ON dependency
+BEGIN
+    UPDATE step SET _check_after = 1 WHERE node IN (OLD.supplier, OLD.consumer);
+END;
+
+-- Clear rescheduled_info once a step reaches a completed state, so a stale reschedule
+-- note from a previous run does not keep gating schedulability after it settles again.
+CREATE TRIGGER IF NOT EXISTS step_clear_rescheduled AFTER UPDATE OF state ON step
+WHEN NEW.state IN ({StepState.SUCCEEDED.value}, {StepState.FAILED.value})
+BEGIN
+    UPDATE step SET rescheduled_info = '' WHERE node = NEW.node;
+END;
 
 CREATE TABLE IF NOT EXISTS nglob_multi (
     i INTEGER PRIMARY KEY,
@@ -127,10 +141,19 @@ CREATE TABLE IF NOT EXISTS env_var (
 
 CREATE TABLE IF NOT EXISTS step_hash (
     node INTEGER PRIMARY KEY,
-    inp_digest BLOB NOT NULL,
-    inp_info BLOB,
-    out_digest BLOB NOT NULL,
-    out_info BLOB,
+    hash TEXT NOT NULL,
+    -- JSON-encoded StepHash of the last successful run.
+    -- Absence of a row means no hash is stored (e.g. never run, or reset via Step.delete_hash).
+    FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE,
+    CHECK (json_valid(hash))
+);
+
+CREATE TABLE IF NOT EXISTS step_output (
+    node INTEGER PRIMARY KEY,
+    stdout TEXT NOT NULL DEFAULT '',
+    stderr TEXT NOT NULL DEFAULT '',
+    -- Captured standard output/error of the step's command.
+    -- Absence of a row means no output has been recorded for this run.
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 );
 
@@ -145,7 +168,6 @@ CREATE INDEX IF NOT EXISTS step_resource_name ON step_resource(name);
 
 CREATE TABLE IF NOT EXISTS step_subprocess (
     node       INTEGER NOT NULL,        -- step node
-    seq        INTEGER NOT NULL,        -- order of invocation within the step
     cmd        TEXT    NOT NULL,        -- shell command line
     workdir    TEXT    NOT NULL DEFAULT './',  -- relative to STEPUP_ROOT
     env_overrides TEXT,                 -- JSON-encoded dict[str, str] overlay, or NULL
@@ -154,12 +176,12 @@ CREATE TABLE IF NOT EXISTS step_subprocess (
     stdin      TEXT,                          -- standard input fed to the subprocess, or NULL
     stdout     TEXT,                          -- captured standard output, or NULL if not captured
     stderr     TEXT,                          -- captured standard error, or NULL if not captured
-    PRIMARY KEY (node, seq),
     -- ON DELETE CASCADE removes these rows when the node row is deleted, matching the
-    -- other satellite tables (step_hash / env_var / step_resource).
+    -- other satellite tables (env_var / step_hash / step_output / step_resource).
     -- Step.clean_before_run() still clears them explicitly between runs of a surviving step.
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
-) WITHOUT ROWID;
+);
+CREATE INDEX IF NOT EXISTS step_subprocess_node ON step_subprocess(node);
 """
 
 
@@ -271,11 +293,17 @@ class Step(Node):
         subshell: bool = False,
         **kwargs,  # workdir is consumed by create_label, not used here
     ):
-        """Create extra information in the database about this node."""
+        """Create extra information in the database about this node.
+
+        If a step with this node already exists (i.e. a detached step is being
+        recycled), its `step_hash`/`step_output` satellite rows are untouched by this
+        `INSERT OR REPLACE`, so a recycled step's stored hash remains available for
+        skip-checking after redeclaration instead of being discarded.
+        """
         self.db.execute(
             "INSERT OR REPLACE INTO step "
             "VALUES(:node, :state, :need, 1.0, '', :subshell, NULL, "
-            "NULL, NULL, :safe, :check_safe, :implied_need, 1.0, :check_need)",
+            ":safe, :check_safe, :implied_need, 1.0, :check_need)",
             {
                 "node": self.i,
                 "need": need.value,
@@ -337,8 +365,8 @@ class Step(Node):
     def clean(self):
         """Perform a cleanup right before the detached node is removed from the graph.
 
-        The satellite rows (step, env_var, nglob_multi, step_hash, step_resource,
-        step_subprocess) are removed automatically by `ON DELETE CASCADE`
+        The satellite rows (step, env_var, nglob_multi, step_hash, step_output,
+        step_resource, step_subprocess) are removed automatically by `ON DELETE CASCADE`
         when the node row is deleted, so only the dependency edges are handled here.
         """
         self.del_suppliers()
@@ -407,8 +435,6 @@ class Step(Node):
         self.db.execute(
             "UPDATE step SET state = ?, _check_safe = 1 WHERE node = ?", (state.value, self.i)
         )
-        if state in (StepState.SUCCEEDED, StepState.FAILED):
-            self.clear_rescheduled_info()
 
     def get_rescheduled_info(self) -> str:
         sql = "SELECT rescheduled_info FROM step WHERE node = ?"
@@ -508,7 +534,7 @@ class Step(Node):
             fields.append("state")
             join_file = True
         if yield_hash:
-            fields.extend(["digest", "mode", "mtime", "size", "inode"])
+            fields.append("hash")
             join_file = True
         if yield_detached:
             fields.append("detached")
@@ -550,8 +576,8 @@ class Step(Node):
                 record.append(FileState(row[i]))
                 i += 1
             if yield_hash:
-                record.append(FileHash(*row[i : i + 5]))
-                i += 5
+                record.append(FileHash.from_json(row[i]))
+                i += 1
             if yield_detached:
                 record.append(bool(row[i]))
                 i += 1
@@ -786,23 +812,18 @@ class Step(Node):
             self.set_hash(new_hash)
 
     def get_hash(self) -> StepHash | None:
-        sql = "SELECT inp_digest, inp_info, out_digest, out_info FROM step_hash WHERE node = ?"
-        row = self.db.execute(sql, (self.i,)).fetchone()
-        if row is None:
-            return None
-        return StepHash(row[0], pickle.loads(row[1]), row[2], pickle.loads(row[3]))
+        """Return the stored step hash, or `None` if none is stored."""
+        row = self.db.execute("SELECT hash FROM step_hash WHERE node = ?", (self.i,)).fetchone()
+        return None if row is None else StepHash.from_json(row[0])
 
     def set_hash(self, step_hash: StepHash):
-        data = (
-            self.i,
-            step_hash.inp_digest,
-            pickle.dumps(step_hash.inp_info),
-            step_hash.out_digest,
-            pickle.dumps(step_hash.out_info),
+        """Store the step hash."""
+        self.db.execute(
+            "INSERT OR REPLACE INTO step_hash VALUES (?, ?)", (self.i, step_hash.to_json())
         )
-        self.db.execute("INSERT OR REPLACE INTO step_hash VALUES (?, ?, ?, ?, ?)", data)
 
     def delete_hash(self):
+        """Clear the stored step hash, if any."""
         self.db.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))
 
     def store_output(self, stdout: str, stderr: str, max_size: int) -> None:
@@ -819,23 +840,24 @@ class Step(Node):
             See `truncate_output`.
         """
         self.db.execute(
-            "UPDATE step SET stdout = ?, stderr = ? WHERE node = ?",
+            "INSERT OR REPLACE INTO step_output VALUES (?, ?, ?)",
             (
+                self.i,
                 truncate_output(stdout, max_size),
                 truncate_output(stderr, max_size),
-                self.i,
             ),
         )
 
     def get_output(self) -> tuple[str, str]:
         """Return the stored (stdout, stderr) for this step, as empty strings if absent."""
-        return self.db.execute(
-            "SELECT stdout, stderr FROM step WHERE node = ?", (self.i,)
+        row = self.db.execute(
+            "SELECT stdout, stderr FROM step_output WHERE node = ?", (self.i,)
         ).fetchone()
+        return ("", "") if row is None else row
 
     def delete_outputs(self) -> None:
         """Remove the stored stdout/stderr for this step."""
-        self.db.execute("UPDATE step SET stdout = '', stderr = '' WHERE node = ?", (self.i,))
+        self.db.execute("DELETE FROM step_output WHERE node = ?", (self.i,))
 
     def record_subprocess(
         self,
@@ -872,19 +894,14 @@ class Step(Node):
         stdout, stderr
             The captured standard output/error of the subprocess as a string.
         """
-        # The per-step sequence number is assigned here, under the director's DBSession,
-        # so concurrent steps cannot collide and a re-run (which clears the rows first)
-        # restarts the numbering at 0.
-        (seq,) = self.db.execute(
-            "SELECT COALESCE(MAX(seq) + 1, 0) FROM step_subprocess WHERE node = ?", (self.i,)
-        ).fetchone()
+        # Invocation order is preserved by the table's rowid insertion order, so no
+        # separate sequence number needs to be looked up or assigned here.
         self.db.execute(
             "INSERT INTO step_subprocess "
-            "(node, seq, cmd, workdir, env_overrides, returncode, shell, stdin, stdout, stderr) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "(node, cmd, workdir, env_overrides, returncode, shell, stdin, stdout, stderr) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 self.i,
-                seq,
                 cmd,
                 workdir,
                 None if env_overrides is None else json.dumps(env_overrides),
@@ -964,19 +981,3 @@ class Step(Node):
     def _check_with_products(self):
         """Flag if the _check_safe and _check_after fields of this step and its products."""
         self.db.execute(RECURSIVE_CHECK_WITH_PRODUCTS, (self.i,))
-
-    def add_supplier(self, supplier: Node) -> int:
-        """Add a supplier-consumer relation."""
-        idep = super().add_supplier(supplier)
-        self._check_simple()
-        return idep
-
-    def del_suppliers(self, suppliers: list[Node] | None = None):
-        """Delete a supplier-consumer relation."""
-        super().del_suppliers(suppliers)
-        self._check_simple()
-
-    def _check_simple(self):
-        """Flag if the _check_after field."""
-        # Only _check_after is relevant
-        self.db.execute("UPDATE step SET _check_after = 1 WHERE node = ?", (self.i,))

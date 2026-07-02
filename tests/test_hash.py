@@ -78,3 +78,20 @@ def test_hash_symbolic_link_dir(path_tmp: Path):
     with pytest.raises(IOError):
         compute_file_digest(path_symlink)
     assert compute_file_digest(path_symlink, follow_symlinks=False) == sha256(b"sub").digest()
+
+
+def test_to_json_unknown():
+    assert FileHash.unknown().to_json() is None
+
+
+def test_from_json_none():
+    assert FileHash.from_json(None) == FileHash.unknown()
+
+
+def test_to_json_from_json_round_trip():
+    file_hash = FileHash(sha256(b"foo").digest(), 0o644, 1234.5, 100, 0x8000000000000001)
+    restored = FileHash.from_json(file_hash.to_json())
+    assert restored == file_hash
+    # `==` on FileHash ignores mtime and inode (eq=False), so check those explicitly too.
+    assert restored.mtime == file_hash.mtime
+    assert restored.inode == file_hash.inode

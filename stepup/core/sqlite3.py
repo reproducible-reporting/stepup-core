@@ -38,38 +38,12 @@ from .path import StrPath, coerce_path
 
 __all__ = (
     "DBSession",
-    "UInt64",
     "connect",
     "escape_like_pattern",
 )
 
 
 logger = logging.getLogger(__name__)
-
-
-class UInt64(int):
-    """A wrapper to tell SQLite this int should be treated as an unsigned 64-bit value."""
-
-    MAX_SIGNED_64 = 2**63 - 1
-    MAX_WRAPAROUND_64 = 2**64
-    MAX_UNSIGNED_64 = MAX_WRAPAROUND_64 - 1
-
-    @staticmethod
-    def adapt(val: Self) -> int:
-        if not (0 <= val <= UInt64.MAX_UNSIGNED_64):
-            raise ValueError(f"Value {val} out of UINT64 range")
-        return val - UInt64.MAX_WRAPAROUND_64 if val > UInt64.MAX_SIGNED_64 else val
-
-    @staticmethod
-    def convert(val: bytes) -> Self:
-        val = int(val)
-        if val < 0:
-            val += UInt64.MAX_WRAPAROUND_64
-        return UInt64(val)
-
-
-sqlite3.register_adapter(UInt64, UInt64.adapt)
-sqlite3.register_converter("UINT64", UInt64.convert)
 
 
 def escape_like_pattern(pattern: str) -> str:
@@ -125,8 +99,6 @@ def connect(path: StrPath, read_only: bool = False, **kwargs: Any) -> sqlite3.Co
     -----
     The following deviations from the default settings are used:
 
-    - Types can be detected from declared column types,
-      which allows us to use the custom UINT64 type for file inodes.
     - The `cached_statements` parameter is set to a large value to improve
       performance when executing many similar statements.
     - Foreign key enforcement is enabled, which is required for the `ON DELETE CASCADE`
@@ -141,7 +113,6 @@ def connect(path: StrPath, read_only: bool = False, **kwargs: Any) -> sqlite3.Co
     """
     kwargs = kwargs.copy()
     kwargs.setdefault("cached_statements", 1024)
-    kwargs.setdefault("detect_types", sqlite3.PARSE_DECLTYPES)
     path = coerce_path(path)
     if read_only:
         # Use URI mode to open the database in read-only mode.

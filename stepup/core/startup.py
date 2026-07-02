@@ -126,7 +126,7 @@ async def scan_file_changes(
 ) -> tuple[set[str], set[str]]:
     """Check all files in the workflow for changes."""
     sql = (
-        "SELECT label, state, digest, mode, mtime, size, inode "
+        "SELECT label, state, hash "
         "FROM node JOIN file ON node.i = file.node AND state NOT IN (?, ?) AND NOT detached"
     )
     data = (FileState.AWAITED.value, FileState.VOLATILE.value)
@@ -138,9 +138,9 @@ async def scan_file_changes(
     deleted = set()
     added = set()
     changed_hashes = []
-    for path, state, digest, mode, mtime, size, inode in rows:
+    for path, state, hash_value in rows:
         state = FileState(state)
-        old_file_hash = FileHash(digest, mode, mtime, size, inode)
+        old_file_hash = FileHash.from_json(hash_value)
         new_file_hash = old_file_hash.regen(path)
         if old_file_hash != new_file_hash:
             if new_file_hash.is_unknown:

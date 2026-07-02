@@ -88,13 +88,10 @@ WITH RECURSIVE all_products(current, kind, label) AS (
 UPDATE node SET detached = ? WHERE i IN (SELECT current FROM all_products)
 """
 
-INITIAL_CONSUMERS = "CREATE TABLE temp.initial_consumer (current INTEGER PRIMARY KEY) WITHOUT ROWID"
-
-RECURSE_CONSUMERS = """
+RECURSE_CONSUMERS_SINGLE = """
 WITH RECURSIVE all_consumer(current) AS (
     -- Initial: Set initial node
-    SELECT current
-    FROM temp.initial_consumer
+    SELECT ? AS current
     UNION
     -- Recursion: Follow edges by selecting consumers of current
     SELECT consumer AS current
@@ -102,17 +99,15 @@ WITH RECURSIVE all_consumer(current) AS (
 )
 """
 
-SELECT_CYCLIC = """
--- Final: Check if any of the (indirect) consumer matches the supplier in the new edge
-SELECT EXISTS (SELECT 1 FROM all_consumer WHERE current = ?)
-"""
-
 SELECT_WALK = """
 -- Final: Get all (indirect) consumers of a node.
 SELECT current FROM all_consumer
 """
 
-DROP_CONSUMERS = "DROP TABLE IF EXISTS temp.initial_consumer"
+SELECT_CYCLIC = """
+-- Final: Check if any of the (indirect) consumer matches the supplier in the new edge
+SELECT EXISTS (SELECT 1 FROM all_consumer WHERE current = ?)
+"""
 
 
 NodeType = TypeVar("NodeType")
@@ -398,30 +393,64 @@ class Node:
         # Propagate the detached=FALSE property to all product nodes.
         self.db.execute(RECURSIVELY_SET_DETACHED, (self.i, False))
 
-    def add_supplier(self, supplier: Self) -> int:
+    def check_no_cycle_batch(self, supplier_is: Iterable[int]) -> None:
+        """Verify that several new supplier edges can be added without introducing a cycle.
+
+        This computes the set of (indirect) consumers of this node once,
+        and checks all candidate supplier identifiers against it.
+        It must only be used when this node is the *consumer* of every candidate edge
+        in the batch, since adding such edges cannot change what this node can reach
+        going forward.
+
+        Parameters
+        ----------
+        supplier_is
+            Identifiers of candidate supplier nodes that would each become
+            a new supplier of this node.
+
+        Raises
+        ------
+        CyclicError
+            If any of the given identifiers is an (indirect) consumer of this node
+            (or is this node itself), which means the corresponding edge would
+            introduce a cyclic dependency.
+        """
+        cur = self.db.execute(RECURSE_CONSUMERS_SINGLE + SELECT_WALK, (self.i,))
+        consumer_is = {row[0] for row in cur}
+        if not consumer_is.isdisjoint(supplier_is):
+            raise CyclicError("New relation introduces a cyclic dependency")
+
+    def add_supplier(self, supplier: Self, skip_cycle_check: bool = False) -> int:
         """Add a supplier-consumer relation.
 
         Parameters
         ----------
         supplier
             Other node that supplies to this node.
+        skip_cycle_check
+            Skip the cyclic-dependency check.
+            Only set this to `True` when the caller has already verified,
+            e.g. via `check_no_cycle_batch`, that this edge cannot introduce a cycle.
 
         Returns
         -------
         idep
             The identifier in the dependency table.
+
+        Raises
+        ------
+        CyclicError
+            If `skip_cycle_check` is `False` and the new edge would introduce
+            a cyclic dependency.
+        GraphError
+            If the relation already exists.
         """
         self.graph._check_supplier(supplier, self)
-        # Check whether the new edge would introduce a cyclic dependency.
-        self.db.execute(DROP_CONSUMERS)
-        self.db.execute(INITIAL_CONSUMERS)
-        try:
-            self.db.execute("INSERT INTO temp.initial_consumer VALUES(?)", (self.i,))
-            cur = self.db.execute(RECURSE_CONSUMERS + SELECT_CYCLIC, (supplier.i,))
+        if not skip_cycle_check:
+            # Check whether the new edge would introduce a cyclic dependency.
+            cur = self.db.execute(RECURSE_CONSUMERS_SINGLE + SELECT_CYCLIC, (self.i, supplier.i))
             if cur.fetchone()[0] > 0:
                 raise CyclicError("New relation introduces a cyclic dependency")
-        finally:
-            self.db.execute(DROP_CONSUMERS)
         try:
             cur = self.db.execute(
                 "INSERT INTO dependency(supplier, consumer) VALUES(?, ?)",
@@ -513,8 +542,6 @@ class Trellis:
         # Schema 2 became outdated due to the worker actions.
         # Schema 3 became outdated due to a change in step table (dirty field).
         # Schema 4 became outdated due to:
-        # - the use of PARSE_DECLTYPES instead of PARSE_COLNAMES,
-        #   which requires using UINT64 for file inodes.
         # - Directory file nodes are no longer part of the graph. They are implicit.
         # - Deferred globs have been removed in favor of static trees.
         # - Switch from Blake2B to SHA-256 hashes
@@ -534,6 +561,28 @@ class Trellis:
         # - Indexes were tuned.
         # - The auto_vacuum mode was set to INCREMENTAL,
         #   which is paired with a database vacuum worker to reclaim space from deleted nodes.
+        # - Added several triggers, which all replace some corresponding Python logic:
+        #   - _dependency_check_after_ins/del triggers on the dependency table
+        #     (in STEP_SCHEMA) to flag step._check_after when a supplier/consumer
+        #     edge touching a step is inserted or deleted.
+        #   - Added a step_clear_rescheduled trigger to clear step.rescheduled_info when a step's
+        #     state moves to SUCCEEDED or FAILED.
+        #   - The file table's CHECK constraint no longer requires `hash IS NULL` for
+        #     MISSING/AWAITED/VOLATILE. The reverse is still checked.
+        #     A `file_clear_hash` AFTER UPDATE OF state trigger now nulls the hash for
+        #     those three states.
+        # - Merged the file table's separate digest/mode/mtime/size/inode columns into a
+        #   single nullable JSON `hash` column (NULL means "no hash", replacing the
+        #   digest == b"u" sentinel).
+        # - Dropped the vestigial, unreachable "directory hash" CHECK branch (digest == b"d")
+        # - Removed the now-unused UInt64 adapter/converter;
+        #   inodes are now stored as a plain JSON integer inside the hash blob.
+        # - Dropped the explicit `seq` column (and its `(node, seq)` primary key) from
+        #   step_subprocess in favor of the table's own rowid for ordering, and removed
+        #   `WITHOUT ROWID` accordingly. This avoids a `SELECT MAX(seq)` round trip before
+        #   every `Step.record_subprocess` insert.
+        # - Simplified storage of step hashes: now just a single JSON blob,
+        #   instead of four columns.
 
         return 5
 
@@ -641,19 +690,6 @@ class Trellis:
             query += f" {words.pop(0)} NOT detached"
         for i, kind, label in self.db.execute(query, data):
             yield self._node_classes[kind](self, i, label)
-
-    def walk_consumers(self, initial_is: Iterable[int]) -> Iterator[int]:
-        """Iterate over all identifiers of indirect consumers of this node."""
-        self.db.execute(DROP_CONSUMERS)
-        self.db.execute(INITIAL_CONSUMERS)
-        try:
-            self.db.executemany(
-                "INSERT OR IGNORE INTO temp.initial_consumer VALUES(?)", ((i,) for i in initial_is)
-            )
-            for row in self.db.execute(RECURSE_CONSUMERS + SELECT_WALK):
-                yield row[0]
-        finally:
-            self.db.execute(DROP_CONSUMERS)
 
     #
     # Formatting

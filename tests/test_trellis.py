@@ -612,21 +612,34 @@ async def test_cyclic3(lt):
             foo0.add_supplier(foo2)
 
 
-async def test_walk_consumers(lt):
+async def test_check_no_cycle_batch(lt):
     async with lt.db:
-        # foo0 --> foo1 --> foo2
-        #      --> foo3
         foo0 = lt.create(Foo, lt.root, "0", value=0)
         foo1 = lt.create(Foo, lt.root, "1", value=1)
         foo2 = lt.create(Foo, lt.root, "2", value=2)
         foo3 = lt.create(Foo, lt.root, "3", value=3)
-        foo1.add_supplier(foo0)
-        foo2.add_supplier(foo1)
-        foo3.add_supplier(foo0)
-        assert set(lt.walk_consumers([foo0.i])) == {foo0.i, foo1.i, foo2.i, foo3.i}
-        assert set(lt.walk_consumers([foo1.i])) == {foo1.i, foo2.i}
-        assert set(lt.walk_consumers([foo3.i])) == {foo3.i}
-        assert set(lt.walk_consumers([foo1.i, foo3.i])) == {foo1.i, foo3.i, foo2.i}
+        foo1.add_supplier(foo0)  # foo0 -> foo1
+        foo2.add_supplier(foo1)  # foo1 -> foo2 (foo0's indirect consumers: {foo0, foo1, foo2})
+        # foo3 is unrelated: not a consumer of foo0.
+        with pytest.raises(CyclicError):
+            # foo2 in the batch would close a cycle; the whole batch must be rejected
+            # before any edge is inserted.
+            foo0.check_no_cycle_batch([foo3.i, foo2.i])
+        assert list(foo0.suppliers()) == []
+        # An all-acyclic batch does not raise.
+        foo0.check_no_cycle_batch([foo3.i])
+
+
+async def test_add_supplier_skip_cycle_check(lt):
+    async with lt.db:
+        foo0 = lt.create(Foo, lt.root, "0", value=0)
+        foo1 = lt.create(Foo, lt.root, "1", value=1)
+        foo1.add_supplier(foo0)  # foo0 -> foo1
+        with pytest.raises(CyclicError):
+            foo0.add_supplier(foo1)  # would close a cycle
+        # skip_cycle_check=True bypasses the check, proving the flag is wired through.
+        foo0.add_supplier(foo1, skip_cycle_check=True)
+        assert list(foo0.suppliers()) == [foo1]
 
 
 async def test_load_existing(path_tmp):

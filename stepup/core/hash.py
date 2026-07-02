@@ -20,12 +20,15 @@
 """File and step hashing."""
 
 import hashlib
+import json
 import os
 import stat
 from typing import Self
 
 import attrs
 from path import Path
+
+from .cattrs import json_converter
 
 __all__ = (
     "FileHash",
@@ -236,6 +239,19 @@ class FileHash:
     def is_unknown(self):
         return self._digest == b"u"
 
+    def to_json(self) -> str | None:
+        """Serialize to the JSON representation stored in `file.hash`, or `None` if unknown."""
+        if self.is_unknown:
+            return None
+        return json.dumps(json_converter.unstructure(self))
+
+    @classmethod
+    def from_json(cls, value: str | None) -> Self:
+        """Deserialize from the JSON representation stored in `file.hash`."""
+        if value is None:
+            return cls.unknown()
+        return json_converter.structure(json.loads(value), cls)
+
 
 @attrs.define
 class InpInfo:
@@ -331,6 +347,17 @@ class StepHash:
 
     def reduced(self) -> Self:
         return StepHash(self._inp_digest, None, self._out_digest, None)
+
+    def to_json(self) -> str:
+        """Serialize to the JSON representation stored in `step.hash`."""
+        return json.dumps(json_converter.unstructure(self))
+
+    @classmethod
+    def from_json(cls, value: str | None) -> Self | None:
+        """Deserialize from the JSON representation stored in `step.hash`."""
+        if value is None:
+            return None
+        return json_converter.structure(json.loads(value), cls)
 
 
 def compare_step_hashes(old_hash: StepHash, new_hash: StepHash) -> tuple[str, str]:

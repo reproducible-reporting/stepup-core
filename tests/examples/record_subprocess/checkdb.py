@@ -6,17 +6,16 @@ import sqlite3
 con = sqlite3.connect(".stepup/graph.db")
 rows = list(
     con.execute(
-        "SELECT seq, cmd, workdir, env_overrides, returncode, stdout, stderr FROM step_subprocess"
+        "SELECT cmd, workdir, env_overrides, returncode, stdout, stderr FROM step_subprocess"
     )
 )
 con.close()
 
 # Exactly one subprocess was recorded by the wrapper step.
 assert len(rows) == 1, rows
-seq, cmd, workdir, env_overrides, returncode, stdout, stderr = rows[0]
+cmd, workdir, env_overrides, returncode, stdout, stderr = rows[0]
 
-# The sequence starts at 0 and the command is stored as a plain shell command line.
-assert seq == 0, seq
+# The command is stored as a plain shell command line.
 cmd_ref = """
 python -c 'import os, sys; print(os.environ["GREETING"]); print(sys.stdin.read(), file=sys.stderr)'
 """.strip()

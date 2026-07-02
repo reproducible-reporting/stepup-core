@@ -28,7 +28,6 @@ from path import Path
 
 from .enums import FileState
 from .hash import FileHash
-from .sqlite3 import UInt64
 from .trellis import Node
 from .utils import format_digest
 
@@ -42,22 +41,24 @@ FILE_SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS file (
   node INTEGER PRIMARY KEY,
   state INTEGER NOT NULL CHECK(state >= 11 AND state <= 16),
-  digest BLOB NOT NULL,
-  mode INTEGER NOT NULL CHECK(mode >= 0),
-  mtime REAL NOT NULL CHECK(mtime >= 0),
-  size INTEGER NOT NULL CHECK(size >= 0),
-  inode UINT64 NOT NULL,
+  hash TEXT,
   FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE,
   CHECK (
-    state IN ({FileState.MISSING.value}, {FileState.AWAITED.value}, {FileState.VOLATILE.value}) OR
-    (digest != X'75' AND mtime != 0 AND inode != 0) OR
-    (digest == X'64' AND mode != 0 AND mtime = 0 AND size = 0 AND inode = 0)
+    state NOT IN ({FileState.STATIC.value}, {FileState.BUILT.value}, {FileState.OUTDATED.value})
+    OR hash IS NOT NULL
   ),
-  CHECK (
-    state IN ({FileState.STATIC.value}, {FileState.BUILT.value}, {FileState.OUTDATED.value}) OR
-    (digest = X'75' AND mode = 0 AND mtime = 0 AND size = 0 AND inode = 0)
-  )
+  CHECK (hash IS NULL OR json_valid(hash))
 ) WITHOUT ROWID;
+
+-- A hash is only meaningful for a file whose content is known and trusted
+-- (STATIC/BUILT/OUTDATED); null it out whenever the state moves to MISSING, AWAITED or
+-- VOLATILE, so File.set_state does not have to special-case the reset itself.
+CREATE TRIGGER IF NOT EXISTS file_clear_hash AFTER UPDATE OF state ON file
+WHEN NEW.state IN ({FileState.MISSING.value}, {FileState.AWAITED.value}, {FileState.VOLATILE.value})
+     AND NEW.hash IS NOT NULL
+BEGIN
+    UPDATE file SET hash = NULL WHERE node = NEW.node;
+END;
 """
 
 
@@ -88,35 +89,26 @@ class File(Node):
 
     def initialize(self, state: FileState):  # type: ignore
         """Create extra information in the database about this node."""
-        digest = b"u"
-        mode = 0
-        mtime = 0.0
-        size = 0
-        inode = 0
+        file_hash = FileHash.unknown()
         # If the file was previously BUILT or OUTDATED, and created again as AWAITED,
         # it should copy that state
         if state == FileState.AWAITED:
-            sql = "SELECT state, digest, mode, mtime, size, inode FROM file WHERE node = ?"
+            sql = "SELECT state, hash FROM file WHERE node = ?"
             row = self.db.execute(sql, (self.i,)).fetchone()
             if row is not None and row[0] in (FileState.BUILT.value, FileState.OUTDATED.value):
                 state = FileState(row[0])
-                digest, mode, mtime, size, inode = row[1:]
-        if digest == b"u" and state in (FileState.STATIC, FileState.BUILT, FileState.OUTDATED):
+                file_hash = FileHash.from_json(row[1])
+        if file_hash.is_unknown and state in (
+            FileState.STATIC,
+            FileState.BUILT,
+            FileState.OUTDATED,
+        ):
             raise ValueError(f"Cannot create a {state.name} file without a hash: {self.path}")
         # Add/update row in the file table.
         self.db.execute(
-            "INSERT INTO file VALUES(:node, :state, :digest, :mode, :mtime, :size, :inode) "
-            "ON CONFLICT DO UPDATE SET state = :state, digest = :digest, mode = :mode, "
-            "mtime = :mtime, size = :size, inode = :inode WHERE node = :node",
-            {
-                "node": self.i,
-                "state": state.value,
-                "digest": digest,
-                "mode": mode,
-                "mtime": mtime,
-                "size": size,
-                "inode": UInt64(inode),
-            },
+            "INSERT INTO file VALUES(:node, :state, :hash) "
+            "ON CONFLICT DO UPDATE SET state = :state, hash = :hash WHERE node = :node",
+            {"node": self.i, "state": state.value, "hash": file_hash.to_json()},
         )
         # If the state is BUILT, mark it as OUTDATED to force a rebuild.
         if state == FileState.BUILT:
@@ -146,7 +138,7 @@ class File(Node):
             self.graph.to_be_deleted.append((self.path, None))
         elif state in (FileState.BUILT, FileState.OUTDATED):
             file_hash = self.get_hash()
-            if file_hash.digest != b"u":
+            if not file_hash.is_unknown:
                 self.graph.to_be_deleted.append((self.path, file_hash))
 
     def give_up(self):
@@ -166,22 +158,12 @@ class File(Node):
         return FileState(row[0])
 
     def set_state(self, state: FileState):
-        if state in (FileState.MISSING, FileState.AWAITED, FileState.VOLATILE):
-            # These states automatically reset the hash and other properties,
-            # as they represent a file that is not present or not trustworthy.
-            sql = (
-                "UPDATE file SET state = ?, digest = X'75', mode = 0, mtime = 0, "
-                "size = 0, inode = 0 WHERE node = ?"
-            )
-        else:
-            # All other states can have a valid hash, so only update the state.
-            sql = "UPDATE file SET state = ? WHERE node = ?"
-        self.db.execute(sql, (state.value, self.i))
+        self.db.execute("UPDATE file SET state = ? WHERE node = ?", (state.value, self.i))
 
     def get_hash(self) -> FileHash:
-        sql = "SELECT digest, mode, mtime, size, inode FROM file WHERE node = ?"
+        sql = "SELECT hash FROM file WHERE node = ?"
         row = self.db.execute(sql, (self.i,)).fetchone()
-        return FileHash(*row)
+        return FileHash.from_json(row[0])
 
     #
     # Build phase
@@ -263,31 +245,3 @@ class File(Node):
                 step.mark_pending()
         elif state != FileState.OUTDATED:
             raise ValueError(f"Cannot make file outdated when its state is {state}")
-
-    #
-    # Respond to graph modifications by flagging the necessary _check_* fields.
-    #
-
-    def add_supplier(self, supplier: Node) -> int:
-        """Add a supplier-consumer relation."""
-        # Local import to avoid cyclic imports.
-        from .step import Step  # noqa: PLC0415
-
-        idep = super().add_supplier(supplier)
-        if isinstance(supplier, Step):
-            supplier._check_simple()
-        return idep
-
-    def del_suppliers(self, suppliers: list[Node] | None = None):
-        """Delete a supplier-consumer relation."""
-        # Local import to avoid cyclic imports.
-        from .step import Step  # noqa: PLC0415
-
-        if suppliers is not None:
-            for supplier in suppliers:
-                if isinstance(supplier, Step):
-                    supplier._check_simple()
-        else:
-            for supplier in self.suppliers(Step):
-                supplier._check_simple()
-        super().del_suppliers(suppliers)
