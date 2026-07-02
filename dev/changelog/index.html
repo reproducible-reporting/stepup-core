@@ -2006,15 +2006,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#v4.0.0rc5" class="md-nav__link">
+  <a href="#v4.0.0rc6" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4.0.0rc5 - 2026-04-30
+        4.0.0rc6 - 2026-07-02
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="4.0.0rc5 - 2026-04-30">
+    <nav class="md-nav" aria-label="4.0.0rc6 - 2026-07-02">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3911,15 +3911,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#v4.0.0rc5" class="md-nav__link">
+  <a href="#v4.0.0rc6" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4.0.0rc5 - 2026-04-30
+        4.0.0rc6 - 2026-07-02
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="4.0.0rc5 - 2026-04-30">
+    <nav class="md-nav" aria-label="4.0.0rc6 - 2026-07-02">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -5584,8 +5584,8 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 (Changes to features documented as &ldquo;experimental&rdquo; will not increment macro and meso version numbers.)</p>
 <h2 id="unreleased"><a href="https://github.com/reproducible-reporting/stepup-core">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <p>(no changes yet)</p>
-<h2 id="v4.0.0rc5"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc5">4.0.0rc5</a> - 2026-04-30<a class="headerlink" href="#v4.0.0rc5" title="Permanent link">&para;</a></h2>
-<p>This is release candidate 5 for the upcoming StepUp 4.0 release.</p>
+<h2 id="v4.0.0rc6"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc6">4.0.0rc6</a> - 2026-07-02<a class="headerlink" href="#v4.0.0rc6" title="Permanent link">&para;</a></h2>
+<p>This is release candidate 6 for the upcoming StepUp 4.0 release.</p>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
 <ul>
 <li>StepUp can now also be configured through configuration files,
@@ -5639,7 +5639,8 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   to set the <code>SOURCE_DATE_EPOCH</code> environment variable to a fixed value for all step executions.
   This is useful for ensuring reproducible builds.
   See <a href="../reference/configuration/">Configuration files</a> for details.</li>
-<li>A resource usage report is shown ad the end of the file <code>.stepup/director.log</code>.</li>
+<li>A resource usage report is shown ad the end of the file <code>.stepup/director.log</code>.
+  Part of the analysis relies on Linux control groups, which are only available on this OS.</li>
 <li>An SQL debug log option, to check query plans and execution times.</li>
 </ul>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
@@ -5685,13 +5686,12 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   This matches the recommended pattern for extensions that do not need low-level access to
   StepUp internals.</li>
 <li>The database schema version has been incremented to 5 because:<ul>
-<li>UINT64 type is used for inodes in the SQLite storage</li>
 <li>Directories are no longer stored in the database
   (except for static trees, which are stored as special nodes in the graph.)</li>
-<li>the Blake2B hash has been replaced by the more common SHA-256</li>
 <li>Deferred globs have been retired and replaced by static trees.</li>
+<li>the Blake2B hash has been replaced by the more common SHA-256</li>
 <li>The <code>step</code> table and all its satellite tables have been redesigned
-  to support the new scheduling algorithm.</li>
+  to support and optimize the new scheduling algorithm.</li>
 <li>Step labels no longer carry an action-name prefix.
   They store the raw command line.</li>
 <li>The step state <code>QUEUED</code> has been removed, as it is no longer needed.</li>
@@ -5699,6 +5699,10 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   for steps that are being hash-checked for possible skipping.</li>
 <li><code>step_output</code> and <code>step_subprocess</code> tables were added.</li>
 <li>SQLite&rsquo;s <code>ON DELETE CASCADE</code> feature is now used for all satellite tables of the <code>step</code> table.</li>
+<li>SQLite triggers are used to replace some of the Python logic by lower-level database logic.</li>
+<li>All hashes are stored as human-readable JSON blobs</li>
+<li>Removed the now-unused UInt64 adapter/converter,
+  no longer needed because of the previous point.</li>
 <li>Indexes were tuned.</li>
 <li>The auto_vacuum mode was set to INCREMENTAL,
   which is paired with a database vacuum worker to reclaim space from deleted nodes.</li>
