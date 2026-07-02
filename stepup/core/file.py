@@ -64,7 +64,7 @@ END;
 
 @attrs.define
 class File(Node):
-    """A concrete file on the filesystem (may also be a directory)."""
+    """A concrete file on the filesystem."""
 
     #
     # Override from base class
