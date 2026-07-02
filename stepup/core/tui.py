@@ -393,6 +393,14 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         "to reduce startup overhead. [default: True on Linux, False elsewhere]",
     )
     parser.add_argument(
+        "--perf",
+        default=None,
+        nargs="?",
+        const="500",
+        help="Profile the director with perf, by default at a frequency of %(const)s Hz. "
+        "(Only supported on Linux with perf installed.)",
+    )
+    parser.add_argument(
         "--preload-modules",
         default=None,
         help="Comma-separated list of Python modules to pre-load into the forkserver. "
@@ -405,21 +413,6 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         help="Report progress information in the terminal user interface. "
         "(This can be useful to simplify and reduce the output.)",
     )
-    parser.add_argument(
-        "--perf",
-        default=None,
-        nargs="?",
-        const="500",
-        help="Profile the director with perf, by default at a frequency of %(const)s Hz. "
-        "(Only supported on Linux with perf installed.)",
-    )
-    parser.add_argument(
-        "--show-perf",
-        "-s",
-        default=0,
-        action="count",
-        help="Show the performance info on each line. Repeat for more detailed info.",
-    )
     resources_action = parser.add_argument(
         "--resources",
         "-r",
@@ -427,6 +420,13 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         default=None,
         help="Available resources for steps, e.g. 'cpu:4,gpu:1,memgb:16'. "
         "Merged with (not overriding) config files and STEPUP_BUILD_RESOURCES env var.",
+    )
+    parser.add_argument(
+        "--show-perf",
+        "-s",
+        default=0,
+        action="count",
+        help="Show the performance info on each line. Repeat for more detailed info.",
     )
     parser.add_argument(
         "--sqllog",
