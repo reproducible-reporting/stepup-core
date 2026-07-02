@@ -34,6 +34,7 @@ __all__ = (
     "FAIL_LOG",
     "GRAPH_DB",
     "PERF_DATA",
+    "SQLLOG_JSON",
     "STEPUP_DIR",
     "SUCCESS_LOG",
     "WARNING_LOG",
@@ -48,3 +49,4 @@ PERF_DATA = STEPUP_DIR / "perf.data"
 FAIL_LOG = STEPUP_DIR / "fail.log"
 WARNING_LOG = STEPUP_DIR / "warning.log"
 SUCCESS_LOG = STEPUP_DIR / "success.log"
+SQLLOG_JSON = STEPUP_DIR / "sqllog.json"

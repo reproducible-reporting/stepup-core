@@ -41,7 +41,7 @@ except ImportError:
 
 from .asyncio import wait_for_events
 from .builder import Builder
-from .constants import DIRECTOR_LOG, DIRECTOR_PROF, GRAPH_DB
+from .constants import DIRECTOR_LOG, DIRECTOR_PROF, GRAPH_DB, SQLLOG_JSON
 from .enums import HashUpdateCause, Need, ReturnCode, StepState
 from .hash import FileHash
 from .nglob import NGlobMulti
@@ -82,7 +82,7 @@ def main():
         if args.preload_modules:
             preload.extend(m.strip() for m in args.preload_modules.split(",") if m.strip())
         mp_ctx.set_forkserver_preload(preload)
-    with DBSession.open(GRAPH_DB) as db:
+    with DBSession.open(GRAPH_DB, path_sqllog=SQLLOG_JSON if args.sqllog else None) as db:
         asyncio.run(async_main(args, db, mp_ctx))
 
 
@@ -231,6 +231,13 @@ def parse_args() -> argparse.Namespace:
         "--resources",
         default=None,
         help="Available resources for steps, e.g. 'cpu:4,gpu:1,memgb:16'.",
+    )
+    parser.add_argument(
+        "--sqllog",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help=f"Enable SQLite debug logging and write the recorded log to {SQLLOG_JSON} "
+        "when the director exits.",
     )
     if WATCHER_AVAILABLE:
         parser.add_argument(

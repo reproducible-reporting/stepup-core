@@ -189,6 +189,11 @@ separated by slashes, where applicable.
     (like execution time) for each step in the terminal user interface.
     Set to `2` to show more detailed performance information.
 
+`sqllog` / `STEPUP_BUILD_SQLLOG` / `--sqllog`, `--no-sqllog`
+
+:   Set to `true` to enable SQLite debug logging.
+    The recorded log is written to `.stepup/sqllog.json` when the director exits.
+
 `watch` / `STEPUP_BUILD_WATCH` / `--watch`, `-w`, `--no-watch`
 
 :   Set to `true` to enable watch mode.

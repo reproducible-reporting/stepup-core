@@ -36,7 +36,7 @@ from path import Path
 
 from .asyncio import stoppable_iterator, wait_for_path
 from .config import ConfigLoader
-from .constants import DIRECTOR_LOG, PERF_DATA, STEPUP_DIR
+from .constants import DIRECTOR_LOG, PERF_DATA, SQLLOG_JSON, STEPUP_DIR
 from .director import interpret_jobs
 from .reporter import ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
@@ -144,6 +144,8 @@ async def async_build(args: argparse.Namespace, default_resources: str):
                 argv.append("--watch-first")
         if args.yappi:
             argv.append("--yappi")
+        if args.sqllog:
+            argv.append("--sqllog")
         returncode = 1  # Internal error unless it is overriden later by the director subprocess
         try:
             with open(DIRECTOR_LOG, "w") as log_file:
@@ -352,6 +354,13 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         default=None,
         help="Available resources for steps, e.g. 'cpu:4,gpu:1,memgb:16'. "
         "Merged with (not overriding) config files and STEPUP_BUILD_RESOURCES env var.",
+    )
+    parser.add_argument(
+        "--sqllog",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help=f"Enable SQLite debug logging and write the recorded log to {SQLLOG_JSON} "
+        "when the director exits.",
     )
     if WATCHER_AVAILABLE:
         parser.add_argument(

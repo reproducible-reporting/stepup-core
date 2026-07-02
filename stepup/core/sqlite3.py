@@ -21,16 +21,19 @@
 
 import asyncio
 import contextlib
+import json
 import logging
 import os
 import sqlite3
-from collections.abc import Iterable, Iterator
+import time
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any, Self
 
 import attrs
 
+from .cattrs import json_converter
 from .path import StrPath, coerce_path
 
 __all__ = (
@@ -72,6 +75,37 @@ sqlite3.register_converter("UINT64", UInt64.convert)
 def escape_like_pattern(pattern: str) -> str:
     """Escape a string for use in a LIKE pattern."""
     return pattern.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _format_query_plan(rows: Iterable[tuple[int, int, int, str]]) -> str:
+    """Format the rows returned by `EXPLAIN QUERY PLAN` as an indented tree.
+
+    Parameters
+    ----------
+    rows
+        Rows returned by `EXPLAIN QUERY PLAN`,
+        each a `(id, parent, notused, detail)` tuple.
+
+    Returns
+    -------
+    plan
+        A multiline string with one `detail` per line,
+        indented by four spaces per level of nesting,
+        following the `parent` links in `rows`.
+    """
+    children: dict[int, list[tuple[int, str]]] = {}
+    for id_, parent, _notused, detail in rows:
+        children.setdefault(parent, []).append((id_, detail))
+
+    lines: list[str] = []
+
+    def recurse(parent_id: int, depth: int) -> None:
+        for id_, detail in children.get(parent_id, []):
+            lines.append("    " * depth + detail)
+            recurse(id_, depth + 1)
+
+    recurse(0, 0)
+    return "\n".join(lines)
 
 
 def connect(path: StrPath, read_only: bool = False, **kwargs: Any) -> sqlite3.Connection:
@@ -128,19 +162,45 @@ def connect(path: StrPath, read_only: bool = False, **kwargs: Any) -> sqlite3.Co
 
 
 @attrs.define
+class QueryLog:
+    """Properties associated with a single SQL query for logging purposes.
+
+    The query itself is not stored here,
+    as it is the key in a dictionary mapping queries to their logs.
+    """
+
+    plan: str = attrs.field()
+    """The formatted query plan as returned by `EXPLAIN QUERY PLAN`."""
+
+    wtime: float = attrs.field()
+    """Wall-clock time taken to execute all occurrences of the query, in seconds."""
+
+    count: int = attrs.field()
+    """Number of times the query was executed."""
+
+
+@attrs.define
 class DBSession:
     """Manages SQLite lifetime (via sync context) and exclusive access (via async context)."""
 
-    # Store parameters for opening the connection,
-    # which is in itself kept private to the DBSession instance.
     db_path: str | os.PathLike[str] = attrs.field()
+    """Path to the SQLite database file.
+
+    The connection is opened and kept private when creating a DBSession instance.
+    """
+
     connect_kwargs: dict[str, Any] = attrs.field(factory=dict)
+    """Connection parameters to pass to `sqlite3`."""
+
+    record: bool = attrs.field(default=False)
+    """If True, record SQL debug information for later inspection with `write_log()`."""
 
     _con: sqlite3.Connection | None = attrs.field(init=False, default=None)
     _lock: asyncio.Lock = attrs.field(factory=asyncio.Lock, init=False)
     _cv: ContextVar[sqlite3.Connection | None] = attrs.field(
         factory=lambda: ContextVar("con_cv", default=None), init=False
     )
+    _log: dict[str, QueryLog] = attrs.field(factory=dict, init=False)
 
     #
     # Application lifecycle (Synchronous Context Manager)
@@ -159,13 +219,38 @@ class DBSession:
 
     @classmethod
     @contextmanager
-    def open(cls, db_path: str | os.PathLike[str], **connect_kwargs: Any) -> Iterator[Self]:
-        """Open a database connection and yield a DBSession instance for exclusive access."""
-        db = cls(db_path, connect_kwargs)
-        try:
+    def open(
+        cls,
+        db_path: str | os.PathLike[str],
+        *,
+        path_sqllog: StrPath | None = None,
+        **connect_kwargs: Any,
+    ) -> Iterator[Self]:
+        """Open a database connection and yield a DBSession instance for exclusive access.
+
+        Parameters
+        ----------
+        path_sqllog
+            When given, `record` is set to `True` and `write_log()` is called with this path
+            when the session is closed.
+        """
+        db = cls(db_path, connect_kwargs, record=path_sqllog is not None)
+        with contextlib.ExitStack() as stack:
+            stack.callback(db._close)
+            if path_sqllog is not None:
+                stack.callback(db.write_log, path_sqllog)
             yield db
-        finally:
-            db._close()
+
+    def write_log(self, path: StrPath) -> None:
+        """Write the recorded SQL debug log to a JSON file.
+
+        Parameters
+        ----------
+        path
+            The destination for the JSON log file.
+        """
+        with open(path, "w") as f:
+            json.dump(json_converter.unstructure(self._log), f)
 
     #
     # Transaction locking (Asynchronous Context Manager)
@@ -214,12 +299,45 @@ class DBSession:
     def execute(self, sql: str, args: Iterable[Any] = ()) -> sqlite3.Cursor:
         """Execute an SQL statement with the given arguments."""
         con = self._take_con()
-        return con.execute(sql, args)
+        if not isinstance(args, (Sequence, Mapping)):
+            args = tuple(args)
+        if self.record:
+            with self._update_log(sql, 1, args):
+                return con.execute(sql, args)
+        else:
+            return con.execute(sql, args)
 
     def executemany(self, sql: str, seq_of_args: Iterable[Iterable[Any]]) -> sqlite3.Cursor:
         """Execute an SQL statement against all parameter sequences or mappings."""
         con = self._take_con()
-        return con.executemany(sql, seq_of_args)
+        seq_of_args = [
+            args if isinstance(args, (Sequence, Mapping)) else tuple(args) for args in seq_of_args
+        ]
+        if len(seq_of_args) > 0 and self.record:
+            with self._update_log(sql, len(seq_of_args), seq_of_args[0]):
+                return con.executemany(sql, seq_of_args)
+        else:
+            return con.executemany(sql, seq_of_args)
+
+    @contextmanager
+    def _update_log(self, sql: str, count: int, args: Iterable[Any] = ()) -> Iterator[None]:
+        """Context manager to update the SQL debug log for a given query."""
+        item = self._log.get(sql)
+        if item is None:
+            con = self._take_con()
+            plan_rows = list(con.execute(f"EXPLAIN QUERY PLAN {sql}", args))
+            plan = _format_query_plan(plan_rows)
+            item = QueryLog(plan=plan, wtime=0.0, count=0)
+            self._log[sql] = item
+
+        start_time = time.perf_counter()
+        try:
+            yield
+        finally:
+            end_time = time.perf_counter()
+            wtime = end_time - start_time
+            item.wtime += wtime
+            item.count += count
 
     async def initialize(
         self, application_id: int, schema_version: int, schema_blobs: list[str]
