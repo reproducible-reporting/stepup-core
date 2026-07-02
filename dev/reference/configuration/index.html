@@ -2519,6 +2519,12 @@ The default is <code>WARNING</code>.</p>
 Each entry below lists the config file key, environment variable, and command-line option
 separated by slashes, where applicable.</p>
 <dl>
+<dt><code>cgroup_isolate</code> / <code>STEPUP_BUILD_CGROUP_ISOLATE</code> / <code>--cgroup-isolate</code>, <code>--no-cgroup-isolate</code></dt>
+<dd>
+<p>On by default on Linux.
+This setting controls whether StepUp will use cgroup isolation for measuring
+the peak memory usage of the director process and all its child processes.</p>
+</dd>
 <dt><code>clean</code> / <code>STEPUP_BUILD_CLEAN</code> / <code>--clean</code>, <code>--no-clean</code></dt>
 <dd>
 <p>Set to <code>false</code> to disable automatic cleaning of outdated output files.
@@ -2553,15 +2559,6 @@ If the variable is already set in the environment, it will be used as-is.</p>
 which reduces startup overhead.
 This is enabled by default on Linux.</p>
 </dd>
-<dt><code>preload_modules</code> / <code>STEPUP_BUILD_PRELOAD_MODULES</code> / <code>--preload-modules</code></dt>
-<dd>
-<p>A comma-separated list of Python modules to pre-load into the forkserver.
-Only has effect when <code>forkserver = true</code>.
-Use this to reduce per-step startup time when all (or most) steps import the same large modules.
-For example, <code>preload_modules = "numpy,scipy"</code> pre-loads NumPy and SciPy into the forkserver
-so that each Python step forked from it inherits them at zero import cost.
-By default, no additional modules are pre-loaded (only internal StepUp modules are pre-loaded).</p>
-</dd>
 <dt><code>jobs</code> / <code>STEPUP_BUILD_JOBS</code> / <code>--jobs</code>, <code>-j</code></dt>
 <dd>
 <p>The maximum number of steps to run concurrently.
@@ -2574,6 +2571,15 @@ The default is <code>1.2</code>.</p>
 with the <a href="https://perfwiki.github.io/main/">Linux perf profiler</a>.
 See the section on <a href="../../development/#profiling">Profiling</a>
 in the development documentation for more details.</p>
+</dd>
+<dt><code>preload_modules</code> / <code>STEPUP_BUILD_PRELOAD_MODULES</code> / <code>--preload-modules</code></dt>
+<dd>
+<p>A comma-separated list of Python modules to pre-load into the forkserver.
+Only has effect when <code>forkserver = true</code>.
+Use this to reduce per-step startup time when all (or most) steps import the same large modules.
+For example, <code>preload_modules = "numpy,scipy"</code> pre-loads NumPy and SciPy into the forkserver
+so that each Python step forked from it inherits them at zero import cost.
+By default, no additional modules are pre-loaded (only internal StepUp modules are pre-loaded).</p>
 </dd>
 <dt><code>progress</code> / <code>STEPUP_BUILD_PROGRESS</code> / <code>--progress</code>, <code>--no-progress</code></dt>
 <dd>
