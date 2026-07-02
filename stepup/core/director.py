@@ -52,7 +52,7 @@ from .sqlite3 import DBSession
 from .startup import startup_from_db
 from .step import Step
 from .stepinfo import StepInfo
-from .usage import PssSampler, format_resource_usage
+from .usage import CgroupMemorySampler, find_own_memory_cgroup, format_resource_usage
 from .watcher import WATCHER_AVAILABLE, Watcher
 from .workflow import Workflow
 
@@ -375,7 +375,8 @@ async def serve(
         mp_ctx=mp_ctx,
         infra_env=infra_env,
     )
-    pss_sampler = PssSampler()
+    cgroup_dir = find_own_memory_cgroup()
+    memory_sampler = None if cgroup_dir is None else CgroupMemorySampler(cgroup_dir)
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(
         scheduler, workflow, db, reporter, builder, watcher, stop_event
@@ -397,8 +398,9 @@ async def serve(
     coroutines = [
         builder.loop(stop_event),
         db.database_maintenance_loop(stop_event),
-        pss_sampler.loop(stop_event),
     ]
+    if memory_sampler is not None:
+        coroutines.append(memory_sampler.loop(stop_event))
     if watcher is not None:
         coroutines.append(watcher.loop(stop_event))
         if do_watch_first:
@@ -420,7 +422,7 @@ async def serve(
             time_start,
             builder.executor.step_accumulator,
             builder.executor.hash_accumulator,
-            pss_sampler,
+            memory_sampler,
         ),
     )
 

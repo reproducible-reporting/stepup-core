@@ -20,38 +20,19 @@
 """Unit tests for stepup.core.usage"""
 
 import os
-import subprocess
-import time
 from types import SimpleNamespace
 
 import pytest
 
+from stepup.core import usage
 from stepup.core.usage import (
-    PSS_AVAILABLE,
+    CgroupMemorySampler,
     ChildOutcome,
-    PssSampler,
     ResourceAccumulator,
     ResourceUsage,
-    _descendant_pids,
-    read_pss_kib,
+    find_own_memory_cgroup,
+    read_cgroup_memory_mib,
 )
-
-
-@pytest.mark.skipif(not PSS_AVAILABLE, reason="PSS is only available on Linux")
-def test_read_pss_kib_self():
-    pss_kib = read_pss_kib(os.getpid())
-    assert pss_kib is not None
-    assert pss_kib > 0
-
-
-def test_read_pss_kib_nonexistent_pid():
-    # A pid that is very unlikely to exist.
-    assert read_pss_kib(2**30 - 1) is None
-
-
-def test_read_pss_kib_not_available(monkeypatch):
-    monkeypatch.setattr("stepup.core.usage.PSS_AVAILABLE", False)
-    assert read_pss_kib(os.getpid()) is None
 
 
 def test_resource_accumulator_add():
@@ -65,21 +46,21 @@ def test_resource_accumulator_add():
 
 
 def test_resource_usage_defaults():
-    usage = ResourceUsage()
-    assert usage.utime == 0.0
-    assert usage.stime == 0.0
-    assert usage.inblock == 0
-    assert usage.oublock == 0
+    usage_ = ResourceUsage()
+    assert usage_.utime == 0.0
+    assert usage_.stime == 0.0
+    assert usage_.inblock == 0
+    assert usage_.oublock == 0
 
 
 def test_resource_usage_from_rusage_diff_self_only():
     ru_start = SimpleNamespace(ru_utime=1.0, ru_stime=2.0, ru_inblock=3, ru_oublock=4)
     ru_end = SimpleNamespace(ru_utime=1.5, ru_stime=2.25, ru_inblock=5, ru_oublock=9)
-    usage = ResourceUsage.from_rusage_diff(ru_start, ru_end)
-    assert usage.utime == pytest.approx(0.5)
-    assert usage.stime == pytest.approx(0.25)
-    assert usage.inblock == 2
-    assert usage.oublock == 5
+    usage_ = ResourceUsage.from_rusage_diff(ru_start, ru_end)
+    assert usage_.utime == pytest.approx(0.5)
+    assert usage_.stime == pytest.approx(0.25)
+    assert usage_.inblock == 2
+    assert usage_.oublock == 5
 
 
 def test_resource_usage_from_rusage_diff_self_and_children():
@@ -87,21 +68,21 @@ def test_resource_usage_from_rusage_diff_self_and_children():
     ru_self_end = SimpleNamespace(ru_utime=1.5, ru_stime=2.25, ru_inblock=5, ru_oublock=9)
     ru_children_start = SimpleNamespace(ru_utime=0.1, ru_stime=0.2, ru_inblock=1, ru_oublock=1)
     ru_children_end = SimpleNamespace(ru_utime=0.4, ru_stime=0.5, ru_inblock=4, ru_oublock=2)
-    usage = ResourceUsage.from_rusage_diff(
+    usage_ = ResourceUsage.from_rusage_diff(
         ru_self_start, ru_self_end, ru_children_start, ru_children_end
     )
     # self diff (0.5, 0.25, 2, 5) + children diff (0.3, 0.3, 3, 1)
-    assert usage.utime == pytest.approx(0.8)
-    assert usage.stime == pytest.approx(0.55)
-    assert usage.inblock == 5
-    assert usage.oublock == 6
+    assert usage_.utime == pytest.approx(0.8)
+    assert usage_.stime == pytest.approx(0.55)
+    assert usage_.inblock == 5
+    assert usage_.oublock == 6
 
 
 def test_child_outcome_fields():
-    usage = ResourceUsage(utime=1.0, stime=0.5, inblock=2, oublock=3)
-    outcome = ChildOutcome(payload=("ok", 42), usage=usage)
+    usage_ = ResourceUsage(utime=1.0, stime=0.5, inblock=2, oublock=3)
+    outcome = ChildOutcome(payload=("ok", 42), usage=usage_)
     assert outcome.payload == ("ok", 42)
-    assert outcome.usage is usage
+    assert outcome.usage is usage_
 
 
 def test_resource_accumulator_add_usage():
@@ -114,59 +95,96 @@ def test_resource_accumulator_add_usage():
     assert acc.oublock == 10
 
 
-def test_descendant_pids_excludes_self():
-    pids = _descendant_pids(os.getpid())
-    assert os.getpid() not in pids
+def test_find_own_memory_cgroup_success(tmp_path):
+    (tmp_path / "own").mkdir()
+    (tmp_path / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n")
+    (tmp_path / "own" / "memory.current").write_text("1048576")
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(usage, "_own_cgroup_path", lambda: "own")
+        assert find_own_memory_cgroup(cgroup_root=str(tmp_path)) == str(tmp_path / "own")
 
 
-def test_descendant_pids_nonexistent_pid():
-    # A pid that is very unlikely to exist: no children to walk, so an empty result.
-    assert _descendant_pids(2**30 - 1) == set()
+def test_find_own_memory_cgroup_not_linux(monkeypatch):
+    monkeypatch.setattr(usage.sys, "platform", "darwin")
+    assert find_own_memory_cgroup() is None
 
 
-@pytest.mark.skipif(not PSS_AVAILABLE, reason="/proc children walk is Linux-only")
-def test_descendant_pids_includes_grandchild_process():
-    # "sleep 5 & wait" forks a real grandchild instead of sh exec-replacing itself,
-    # so this confirms the walk recurses past direct children.
-    proc = subprocess.Popen(["sh", "-c", "sleep 5 & wait"])
-    try:
-        # The background "sleep" is forked asynchronously by the shell, so poll
-        # briefly instead of assuming it already exists right after Popen() returns.
-        deadline = time.monotonic() + 2.0
-        pids = _descendant_pids(os.getpid())
-        while len(pids) < 2 and time.monotonic() < deadline:
-            pids = _descendant_pids(os.getpid())
-        assert proc.pid in pids
-        assert len(pids) >= 2
-    finally:
-        proc.terminate()
-        proc.wait()
+def test_find_own_memory_cgroup_no_own_cgroup(monkeypatch, tmp_path):
+    monkeypatch.setattr(usage, "_own_cgroup_path", lambda: None)
+    assert find_own_memory_cgroup(cgroup_root=str(tmp_path)) is None
 
 
-@pytest.mark.skipif(not PSS_AVAILABLE, reason="PSS is only available on Linux")
-def test_pss_sampler_sample_once_tracks_peak():
-    # sample_once() only sums PSS over descendants, so a live child is needed
-    # for a sample to have anything readable.
-    proc = subprocess.Popen(["sleep", "2"])
-    try:
-        sampler = PssSampler()
-        assert sampler.nsamples == 0
-        assert sampler.peak_kib == 0
-        sampler.sample_once()
-        assert sampler.nsamples == 1
-        assert sampler.peak_kib > 0
-        peak_after_first = sampler.peak_kib
-        sampler.sample_once()
-        assert sampler.nsamples == 2
-        assert sampler.peak_kib >= peak_after_first
-    finally:
-        proc.terminate()
-        proc.wait()
+def test_find_own_memory_cgroup_no_cgroup_procs(tmp_path, monkeypatch):
+    (tmp_path / "own").mkdir()
+    monkeypatch.setattr(usage, "_own_cgroup_path", lambda: "own")
+    assert find_own_memory_cgroup(cgroup_root=str(tmp_path)) is None
 
 
-def test_pss_sampler_sample_once_noop_when_unavailable(monkeypatch):
-    monkeypatch.setattr("stepup.core.usage.PSS_AVAILABLE", False)
-    sampler = PssSampler()
+def test_find_own_memory_cgroup_not_alone(tmp_path, monkeypatch):
+    (tmp_path / "own").mkdir()
+    (tmp_path / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n{os.getpid() + 1}\n")
+    monkeypatch.setattr(usage, "_own_cgroup_path", lambda: "own")
+    assert find_own_memory_cgroup(cgroup_root=str(tmp_path)) is None
+
+
+def test_find_own_memory_cgroup_memory_not_readable(tmp_path, monkeypatch):
+    (tmp_path / "own").mkdir()
+    (tmp_path / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n")
+    monkeypatch.setattr(usage, "_own_cgroup_path", lambda: "own")
+    assert find_own_memory_cgroup(cgroup_root=str(tmp_path)) is None
+
+
+def test_read_cgroup_memory_current_mib(tmp_path):
+    (tmp_path / "memory.current").write_text("2097152")
+    assert read_cgroup_memory_mib(str(tmp_path), "current") == 2.0
+
+
+def test_read_cgroup_memory_current_mib_missing(tmp_path):
+    assert read_cgroup_memory_mib(str(tmp_path), "current") is None
+
+
+def test_read_cgroup_memory_current_mib_invalid(tmp_path):
+    (tmp_path / "memory.current").write_text("not-a-number")
+    assert read_cgroup_memory_mib(str(tmp_path), "current") is None
+
+
+def test_read_cgroup_memory_peak_mib(tmp_path):
+    (tmp_path / "memory.peak").write_text("3145728")
+    assert read_cgroup_memory_mib(str(tmp_path), "peak") == 3.0
+
+
+def test_read_cgroup_memory_peak_mib_missing(tmp_path):
+    assert read_cgroup_memory_mib(str(tmp_path), "peak") is None
+
+
+def test_cgroup_memory_sampler_noop_when_unavailable():
+    sampler = CgroupMemorySampler(cgroup_dir=None)
     sampler.sample_once()
-    assert sampler.nsamples == 0
-    assert sampler.peak_kib == 0
+    assert sampler.nsample == 0
+    assert sampler.peak_mib is None
+
+
+def test_cgroup_memory_sampler_tracks_peak(tmp_path):
+    (tmp_path / "memory.current").write_text("1048576")  # 1 MiB
+    sampler = CgroupMemorySampler(cgroup_dir=str(tmp_path))
+    sampler.sample_once()
+    assert sampler.nsample == 1
+    assert sampler.peak_mib == 1.0
+
+    (tmp_path / "memory.current").write_text("2097152")  # 2 MiB
+    sampler.sample_once()
+    assert sampler.nsample == 2
+    assert sampler.peak_mib == 2.0
+
+    (tmp_path / "memory.current").write_text("524288")  # 0.5 MiB: peak must not drop
+    sampler.sample_once()
+    assert sampler.nsample == 3
+    assert sampler.peak_mib == 2.0
+
+
+def test_cgroup_memory_sampler_uses_memory_peak_file(tmp_path):
+    (tmp_path / "memory.current").write_text("1048576")  # 1 MiB
+    (tmp_path / "memory.peak").write_text("5242880")  # 5 MiB kernel-tracked peak
+    sampler = CgroupMemorySampler(cgroup_dir=str(tmp_path))
+    sampler.sample_once()
+    assert sampler.peak_mib == 5.0

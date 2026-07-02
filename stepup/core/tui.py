@@ -23,6 +23,7 @@ import argparse
 import asyncio
 import contextlib
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -49,6 +50,66 @@ __all__ = ()
 def merge_resources(base: str | None, override: str | None) -> str:
     merged = {**parse_resources(base or ""), **parse_resources(override or "")}
     return ",".join(f"{k}:{v}" for k, v in merged.items())
+
+
+def cgroup_scope_prefix(cgroup_isolate: bool, reporter_handler: ReporterHandler) -> list[str]:
+    """Return an argv prefix that launches a command in its own `systemd-run --scope`.
+
+    The director cannot isolate itself into a dedicated cgroup after the fact
+    (see `stepup.core.usage.find_own_memory_cgroup()`):
+    A plain interactive invocation shares its ambient cgroup with the shell
+    and everything else in the session.
+    Cgroup v2 only exposes `memory.current`/`memory.peak` directly in a cgroup that nothing else
+    also lives in.
+    Launching the director itself as the sole process in a fresh `systemd-run --scope`
+    sidesteps that entirely: no cgroup needs to be created or modified,
+    since the fresh scope already is one, dedicated and empty.
+
+    This function follows a best-effort approach:
+    It returns `[]` (no wrapping) if this is disabled via `--no-cgroup-isolate`,
+    not on Linux, `systemd-run` isn't installed,
+    or a quick preflight probe shows it isn't usable (no systemd user session, policy denial, ...).
+    A warning is printed to the reporter if the cgroup isolation is requested on Linux
+    but is unavailable for any reason.
+
+    The TUI's own memory usage is not covered by this.
+    """
+    if not cgroup_isolate or sys.platform != "linux":
+        return []
+    systemd_run = shutil.which("systemd-run")
+    if systemd_run is None:
+        reporter_handler.report(
+            "WARNING", "systemd-run not available; not using cgroup isolation.", []
+        )
+        return []
+    prefix = [systemd_run, "--user", "--scope", "--quiet", "-p", "Delegate=yes", "--"]
+    try:
+        subprocess.run(
+            [*prefix, "true"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True,
+            timeout=3.0,
+        )
+    except subprocess.TimeoutExpired:
+        reporter_handler.report(
+            "WARNING", "systemd-run probe timed out; not using cgroup isolation.", []
+        )
+        return []
+    except subprocess.CalledProcessError:
+        reporter_handler.report(
+            "WARNING", "systemd-run probe failed; not using cgroup isolation.", []
+        )
+        return []
+    except OSError as exc:
+        reporter_handler.report(
+            "WARNING",
+            f"systemd-run probe failed with {type(exc).__name__}; not using cgroup isolation.",
+            [],
+        )
+        return []
+    return prefix
 
 
 def build_tool(args: argparse.Namespace, default_resources: str):
@@ -146,6 +207,9 @@ async def async_build(args: argparse.Namespace, default_resources: str):
             argv.append("--yappi")
         if args.sqllog:
             argv.append("--sqllog")
+        cgroup_argv = cgroup_scope_prefix(args.cgroup_isolate, reporter_handler)
+        if len(cgroup_argv) > 0:
+            argv = [*cgroup_argv, *argv]
         returncode = 1  # Internal error unless it is overriden later by the director subprocess
         try:
             with open(DIRECTOR_LOG, "w") as log_file:
@@ -275,6 +339,15 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         name,
         prog=name,
         help=help_text,
+    )
+    parser.add_argument(
+        "--cgroup-isolate",
+        default=True,
+        action=argparse.BooleanOptionalAction,
+        help="Launch the director in its own cgroup (Linux with systemd only, via "
+        "'systemd-run --user --scope'), so that peak memory usage of the director and "
+        "its children can be measured accurately. Falls back to not reporting memory "
+        "usage if unavailable or disabled here.",
     )
     parser.add_argument(
         "--clean",

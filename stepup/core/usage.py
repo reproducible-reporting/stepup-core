@@ -19,29 +19,34 @@
 # --
 """Resource-usage accounting for the director process and its children.
 
-Aggregates CPU time, block-IO operation counts, and peak PSS memory across the director
+Aggregates CPU time, block-IO operation counts, and peak cgroup memory across the director
 process, step-executed subprocess/forkserver children, and file-hashing subprocess/forkserver
 children, for a compact summary report printed at director shutdown.
 """
 
 import asyncio
 import contextlib
+import logging
 import os
 import resource
 import sys
 import time
 
 import attrs
+from path import Path
 
 __all__ = (
-    "PSS_AVAILABLE",
+    "CgroupMemorySampler",
     "ChildOutcome",
-    "PssSampler",
     "ResourceAccumulator",
     "ResourceUsage",
+    "find_own_memory_cgroup",
     "format_resource_usage",
-    "read_pss_kib",
+    "read_cgroup_memory_mib",
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 @attrs.define(frozen=True)
@@ -138,140 +143,169 @@ class ResourceAccumulator:
         self.add(usage.utime, usage.stime, usage.inblock, usage.oublock)
 
 
-def _child_pids(pid: int) -> list[int]:
-    """Return the immediate child pids of `pid`.
+def _own_cgroup_path() -> str | None:
+    """Return this process's cgroup v2 path, relative to the cgroup mount, or `None`.
 
-    Reads `/proc/{pid}/task/*/children`, which the kernel maintains per thread.
-    Returns an empty list if `pid` is gone or the kernel does not expose this file.
+    Parses `/proc/self/cgroup` for the unified-hierarchy line (`"0::/path"`).
+    Returns `None` on any other layout (e.g. a cgroup v1 system, where that file
+    has one line per legacy controller instead) or if the file cannot be read.
+
+    The kernel always writes `path` with a leading slash, but it is relative to
+    the cgroup v2 mount point, not an absolute filesystem path — that leading
+    slash is stripped here so callers can safely join it onto `cgroup_root`
+    (joining two `Path`s where the second looks absolute would otherwise
+    silently discard the first).
     """
-    children: list[int] = []
     try:
-        task_dir = f"/proc/{pid}/task"
-        tids = os.listdir(task_dir)
-    except OSError:
-        return children
-    for tid in tids:
-        try:
-            with open(f"{task_dir}/{tid}/children") as fh:
-                children.extend(int(child_pid) for child_pid in fh.read().split())
-        except OSError:
-            continue
-    return children
-
-
-def _descendant_pids(root_pid: int) -> set[int]:
-    """Return every pid reachable by recursively following its children, `root_pid` not included.
-
-    This is a best-effort snapshot: a process that forks a new child between the
-    moment this walk reads its children and the moment it recurses into them
-    will have that new child missed for the current sample.
-    """
-    pids = set()
-    frontier = [root_pid]
-    while frontier:
-        pid = frontier.pop()
-        for child_pid in _child_pids(pid):
-            if child_pid not in pids:
-                pids.add(child_pid)
-                frontier.append(child_pid)
-    return pids
-
-
-PSS_AVAILABLE = sys.platform == "linux"
-
-
-def read_pss_kib(pid: int) -> int | None:
-    """Read the proportional set size (PSS) of a process, in kibibytes.
-
-    PSS apportions shared pages fractionally across the processes sharing them,
-    so summing PSS over a set of concurrently alive processes gives a memory total
-    that does not double-count shared memory (unlike a plain sum of RSS values).
-
-    Parameters
-    ----------
-    pid
-        The process id to inspect.
-
-    Returns
-    -------
-    pss_kib
-        The PSS in kibibytes, or `None` if unavailable: not on Linux,
-        the process is gone, or its `/proc` entry is not readable.
-    """
-    if not PSS_AVAILABLE:
-        return None
-    try:
-        with open(f"/proc/{pid}/smaps_rollup") as fh:
+        with open("/proc/self/cgroup") as fh:
             for line in fh:
-                if line.startswith("Pss:"):
-                    return int(line.split()[1])
-    except (OSError, ValueError):
+                if line.startswith("0::"):
+                    return line[3:].strip().lstrip("/")
+    except OSError:
         return None
     return None
 
 
-@attrs.define
-class PssSampler:
-    """Periodically sample aggregate PSS memory across the director's full process tree.
+def find_own_memory_cgroup(cgroup_root: str = "/sys/fs/cgroup") -> str | None:
+    """Return this process's cgroup directory, if memory accounting is usable there.
 
-    Tracks the peak aggregate PSS observed across the director process and every
-    process descending from it (step/hash subprocess children, forkserver children,
-    and any further processes those in turn spawn), so that short-lived children
-    (which no longer exist in `/proc` once they complete) still contribute to the
-    peak, as long as they were alive during at least one sample.
+    Cgroup v2 memory accounting (`memory.current` / `memory.peak`) reflects every
+    process in a cgroup, so it only gives a meaningful total for "this process and
+    its descendants" if that cgroup does not also contain unrelated processes — which
+    is essentially never true for a plain interactive invocation (the shell, and
+    everything else in the session, share that cgroup too). This does not create or
+    modify any cgroup; it is on the caller (see `stepup.core.tui.cgroup_scope_prefix()`)
+    to arrange for this process to already be the sole occupant of its own cgroup, e.g.
+    by launching it via `systemd-run --scope`.
 
-    The descendant set is rediscovered from scratch on every sample by recursively
-    following `/proc/{pid}/task/*/children` starting at the director's own pid.
-    This needs no cooperation from the executor and naturally covers grandchildren
-    that a step's own command might spawn (e.g. a shell script forking children of
-    its own), unlike sampling only the pids directly tracked by `executor.running`.
-    Walking from the director's pid also avoids scanning all of `/proc`, which
-    matters on shared machines (e.g. multi-user login nodes) with many unrelated
-    processes.
+    This is best-effort: any failure (not Linux, not cgroup v2, memory accounting not
+    active for this cgroup, ...) is logged and reported by returning `None` rather than
+    raising, per this module's "no fallback" policy — callers should simply skip memory
+    sampling in that case.
+
+    Parameters
+    ----------
+    cgroup_root
+        The cgroup v2 mount point. Overridable so tests can point this at a fake
+        tree instead of the real `/sys/fs/cgroup`.
+
+    Returns
+    -------
+    cgroup_dir
+        The absolute path of this process's own cgroup, or `None` if cgroup memory
+        accounting is not usable there.
     """
+    if sys.platform != "linux":
+        logger.info("Cgroup memory accounting unavailable: not running on Linux.")
+        return None
+    # Try to get the cgroup path.
+    cgroup_root = Path(cgroup_root)
+    own_path = _own_cgroup_path()
+    if own_path is None:
+        logger.info("Cgroup memory accounting unavailable: not using cgroup v2.")
+        return None
+    # Verify that the director is alone in the cgroup.
+    own_dir = cgroup_root / own_path
+    try:
+        with open(own_dir / "cgroup.procs") as fh:
+            pids = [int(line) for line in fh if line.strip()]
+    except (OSError, ValueError):
+        logger.info("Cgroup memory accounting unavailable: failed to read cgroup.procs.")
+        return None
+    if pids != [os.getpid()]:
+        logger.info(
+            "Cgroup memory accounting unavailable: cgroup %s contains other processes: %s.",
+            own_path,
+            pids,
+        )
+        return None
+    # Verify that memory accounting is actually active for this cgroup.
+    if read_cgroup_memory_mib(own_dir, "current") is None:
+        logger.info(
+            "Cgroup memory accounting unavailable: memory.current not readable in %s.", own_dir
+        )
+        return None
+    logger.info("Cgroup memory accounting enabled: sampling memory.current/peak in %s.", own_dir)
+    return own_dir
+
+
+def read_cgroup_memory_mib(cgroup_dir: str, kind: str) -> float | None:
+    """Read a cgroup's memory usage, in mibibytes.
+
+    Parameters
+    ----------
+    cgroup_dir
+        Absolute path of the cgroup, as returned by `find_own_memory_cgroup()`.
+
+    Returns
+    -------
+    memory_mib
+        The memory usage in mibibytes, or `None` if unreadable.
+    """
+    try:
+        with open(Path(cgroup_dir) / f"memory.{kind}") as fh:
+            return int(fh.read()) / 1048576
+    except (OSError, ValueError):
+        return None
+
+
+@attrs.define
+class CgroupMemorySampler:
+    """Periodically sample aggregate cgroup memory across the director's process tree.
+
+    Tracks the peak aggregate memory observed across the director process and every
+    process descending from it (step/hash subprocess children, forkserver children,
+    and any further processes those in turn spawn). This relies on `cgroup_dir` being
+    a cgroup dedicated to that process tree (see `find_own_memory_cgroup()`), so that
+    `memory.current`/`memory.peak` are not polluted by unrelated processes and every
+    descendant is covered automatically, including short-lived ones and grandchildren
+    a step's own command might spawn, without any cooperation from the executor.
+
+    Note that the sampling loop is only needed for kernels older than 5.19,
+    where `memory.peak` is not available.
+    """
+
+    cgroup_dir: str | None = attrs.field()
+    """The dedicated cgroup to sample, or `None` if cgroup memory accounting is unavailable."""
 
     interval: float = attrs.field(default=1.0)
     """Sampling period [s]."""
 
-    peak_kib: int = attrs.field(init=False, default=0)
-    """The highest aggregate PSS observed so far, in kibibytes."""
+    peak_mib: float | None = attrs.field(init=False, default=None)
+    """The highest aggregate memory usage observed so far, in mibibytes."""
 
-    nsamples: int = attrs.field(init=False, default=0)
-    """The number of samples with at least one readable pid (0 means no peak is available)."""
+    nsample: int = attrs.field(init=False, default=0)
+    """The number of samples successfully read (0 means no peak is available)."""
 
     def sample_once(self) -> None:
-        """Take one sample and update `peak_kib` if it is a new maximum.
+        """Take one sample and update `peak_mib` if it is a new maximum.
 
-        Does nothing when `PSS_AVAILABLE` is `False`.
+        Does nothing when `cgroup_dir` is `None`.
         """
-        if not PSS_AVAILABLE:
+        if self.cgroup_dir is None:
             return
-        total = 0
-        any_read = False
-        for pid in _descendant_pids(os.getpid()):
-            pss_kib = read_pss_kib(pid)
-            if pss_kib is not None:
-                total += pss_kib
-                any_read = True
-        if any_read:
-            self.nsamples += 1
-            self.peak_kib = max(self.peak_kib, total)
+        current_mib = read_cgroup_memory_mib(self.cgroup_dir, "current")
+        peak_mib = read_cgroup_memory_mib(self.cgroup_dir, "peak")
+        best_mib = max((mib for mib in (current_mib, peak_mib) if mib is not None), default=None)
+        if best_mib is not None:
+            self.nsample += 1
+            self.peak_mib = best_mib if self.peak_mib is None else max(self.peak_mib, best_mib)
 
     async def loop(self, stop_event: asyncio.Event) -> None:
         """Background loop: sample immediately, then periodically until `stop_event` is set.
 
         An eager first sample ensures very short-lived builds still get one data point.
-        Each sample runs in a worker thread because it does blocking `/proc` file I/O,
-        which would otherwise stall the director's event loop for the sample's duration.
+        Unlike `/proc`-tree-walking, a sample here is just one or two small cgroup
+        pseudo-file reads, cheap enough to run directly on the event loop.
         """
-        await asyncio.to_thread(self.sample_once)
+        self.sample_once()
         while not stop_event.is_set():
             try:
                 with contextlib.suppress(asyncio.TimeoutError):
                     await asyncio.wait_for(stop_event.wait(), timeout=self.interval)
                 if stop_event.is_set():
                     break
-                await asyncio.to_thread(self.sample_once)
+                self.sample_once()
             except asyncio.CancelledError:
                 break
 
@@ -280,18 +314,16 @@ def format_resource_usage(
     time_start: float,
     step_accumulator: ResourceAccumulator,
     hash_accumulator: ResourceAccumulator,
-    pss_sampler: PssSampler,
+    memory_sampler: CgroupMemorySampler | None,
 ) -> str:
     """Format a resource usage report as a table-like multi-line string for stderr."""
-    ru_self = resource.getrusage(resource.RUSAGE_SELF)
-
     # `ru_maxrss` is reported in kilobytes on Linux, but in bytes on macOS.
-    director_maxrss_kib = (
-        ru_self.ru_maxrss if sys.platform == "linux" else ru_self.ru_maxrss // 1024
+    ru_self = resource.getrusage(resource.RUSAGE_SELF)
+    director_maxrss_mib = (
+        ru_self.ru_maxrss / 1024 if sys.platform == "linux" else ru_self.ru_maxrss / 1048576
     )
-    peak_aggregate_pss_kib = pss_sampler.peak_kib if pss_sampler.nsamples > 0 else None
 
-    return REPORT_TEMPLATE.format(
+    result = REPORT_TEMPLATE.format(
         wall_time=time.perf_counter() - time_start,
         director_utime=ru_self.ru_utime,
         director_stime=ru_self.ru_stime,
@@ -302,11 +334,15 @@ def format_resource_usage(
         director_block_io=f"{ru_self.ru_inblock} / {ru_self.ru_oublock}",
         step_block_io=f"{step_accumulator.inblock} / {step_accumulator.oublock}",
         hash_block_io=f"{hash_accumulator.inblock} / {hash_accumulator.oublock}",
-        director_mib=director_maxrss_kib / 1024.0,
-        aggregate_mib=(
-            peak_aggregate_pss_kib / 1024.0 if peak_aggregate_pss_kib is not None else float("nan")
-        ),
+        director_mib=director_maxrss_mib,
     )
+    if memory_sampler is not None:
+        memory_sampler.sample_once()
+        if memory_sampler.peak_mib is not None:
+            result += "\n" + CGROUP_PEAK_MEM.format(aggregate_mib=memory_sampler.peak_mib)
+            return result
+    result += "\n" + CGROUP_UNAVAILABLE
+    return result
 
 
 REPORT_TEMPLATE = """\
@@ -323,5 +359,10 @@ Director Blocked I/O ops (In / Out) {director_block_io:>24}
 Steps Blocked I/O ops (In / Out)    {step_block_io:>24}
 Hashing Blocked I/O ops (In / Out)  {hash_block_io:>24}
 ────────────────────────────────────────────────────────────
-Director Peak Memory (RSS)                     {director_mib:9.1f} MiB
-Children Peak Memory (PSS, sampled)            {aggregate_mib:9.1f} MiB"""
+Director Peak Memory (incl. shared libs)       {director_mib:9.1f} MiB"""
+
+CGROUP_PEAK_MEM = """\
+Director + Children Peak Memory (cgroup)       {aggregate_mib:9.1f} MiB"""
+
+CGROUP_UNAVAILABLE = """\
+Director + Children Peak Memory (cgroup)         unavailable"""
