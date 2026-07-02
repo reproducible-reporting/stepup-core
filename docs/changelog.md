@@ -12,9 +12,9 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 (no changes yet)
 
-## [4.0.0rc5][] - 2026-04-30 {: #v4.0.0rc5 }
+## [4.0.0rc6][] - 2026-07-02 {: #v4.0.0rc6 }
 
-This is release candidate 5 for the upcoming StepUp 4.0 release.
+This is release candidate 6 for the upcoming StepUp 4.0 release.
 
 ### Added
 
@@ -70,6 +70,7 @@ This is release candidate 5 for the upcoming StepUp 4.0 release.
   This is useful for ensuring reproducible builds.
   See [Configuration files](reference/configuration.md) for details.
 - A resource usage report is shown ad the end of the file `.stepup/director.log`.
+  Part of the analysis relies on Linux control groups, which are only available on this OS.
 - An SQL debug log option, to check query plans and execution times.
 
 ### Changed
@@ -113,13 +114,12 @@ This is release candidate 5 for the upcoming StepUp 4.0 release.
   This matches the recommended pattern for extensions that do not need low-level access to
   StepUp internals.
 - The database schema version has been incremented to 5 because:
-    - UINT64 type is used for inodes in the SQLite storage
     - Directories are no longer stored in the database
       (except for static trees, which are stored as special nodes in the graph.)
-    - the Blake2B hash has been replaced by the more common SHA-256
     - Deferred globs have been retired and replaced by static trees.
+    - the Blake2B hash has been replaced by the more common SHA-256
     - The `step` table and all its satellite tables have been redesigned
-      to support the new scheduling algorithm.
+      to support and optimize the new scheduling algorithm.
     - Step labels no longer carry an action-name prefix.
       They store the raw command line.
     - The step state `QUEUED` has been removed, as it is no longer needed.
@@ -127,6 +127,10 @@ This is release candidate 5 for the upcoming StepUp 4.0 release.
       for steps that are being hash-checked for possible skipping.
     - `step_output` and `step_subprocess` tables were added.
     - SQLite's `ON DELETE CASCADE` feature is now used for all satellite tables of the `step` table.
+    - SQLite triggers are used to replace some of the Python logic by lower-level database logic.
+    - All hashes are stored as human-readable JSON blobs
+    - Removed the now-unused UInt64 adapter/converter,
+      no longer needed because of the previous point.
     - Indexes were tuned.
     - The auto_vacuum mode was set to INCREMENTAL,
       which is paired with a database vacuum worker to reclaim space from deleted nodes.
@@ -939,7 +943,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
-[4.0.0rc5]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc5
+[4.0.0rc6]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc6
 [3.2.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.3
 [3.2.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.2
 [3.2.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.1
