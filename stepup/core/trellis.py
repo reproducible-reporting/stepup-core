@@ -583,6 +583,8 @@ class Trellis:
         #   every `Step.record_subprocess` insert.
         # - Simplified storage of step hashes: now just a single JSON blob,
         #   instead of four columns.
+        # - Added DEFAULT clauses in the step table so Step.initialize() no longer
+        #   needs to hardcode their initial values by column position.
 
         return 5
 

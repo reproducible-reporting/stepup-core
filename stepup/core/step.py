@@ -60,12 +60,12 @@ CREATE TABLE IF NOT EXISTS step (
     -- The state of the step, as defined in the StepState enum.
     need INTEGER NOT NULL CHECK(need >= 31 AND need <= 34),
     -- The need of the step, as defined in the Need enum.
-    duration REAL NOT NULL CHECK(duration >= 0),
+    duration REAL NOT NULL CHECK(duration >= 0) DEFAULT 1.0,
     -- An estimate of the wall time of the step in seconds.
-    rescheduled_info TEXT NOT NULL,
+    rescheduled_info TEXT NOT NULL DEFAULT '',
     -- Information about why this step was rescheduled,
     -- or an empty string if it was not rescheduled.
-    reschedule_count INTEGER NOT NULL CHECK(reschedule_count >= 0),
+    reschedule_count INTEGER NOT NULL CHECK(reschedule_count >= 0) DEFAULT 0,
     -- Number of consecutive reschedules since the last SUCCEEDED state.
     -- Reset to 0 only on SUCCEEDED (see step_reset_reschedule_count below);
     -- NOT reset by FAILED or by rescheduled_info being cleared via mark_pending().
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS step (
     -- Whether recent changes to this step imply updates of the _safe metadata field of others.
     _implied_need INTEGER NOT NULL CHECK(_implied_need >= 31 AND _implied_need <= 34),
     -- The need that is implied by consumers, as defined in the Need enum.
-    _tail_time REAL NOT NULL CHECK(_tail_time >= 0),
+    _tail_time REAL NOT NULL CHECK(_tail_time >= 0) DEFAULT 1.0,
     -- The tail_time of this step, defined as the total duration of the critical path from this step
     -- to the exit nodes of the workflow.
     _check_after INTEGER NOT NULL CHECK(_check_after IN (0, 1)),
@@ -315,8 +315,9 @@ class Step(Node):
         """
         self.db.execute(
             "INSERT OR REPLACE INTO step "
-            "VALUES(:node, :state, :need, 1.0, '', 0, :subshell, NULL, "
-            ":safe, :check_safe, :implied_need, 1.0, :check_need)",
+            "(node, state, need, subshell, _safe, _check_safe, _implied_need, _check_after) "
+            "VALUES(:node, :state, :need, :subshell, :safe, :check_safe, "
+            ":implied_need, :check_need)",
             {
                 "node": self.i,
                 "need": need.value,
