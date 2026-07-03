@@ -106,6 +106,7 @@ nav:
   - Reference:
     - reference/stepup.core.api.md
     - reference/stepup.core.call.md
+    - reference/stepup.core.exceptions.md
     - reference/stepup.core.extapi.md
     - reference/stepup.core.nglob.md
     - reference/stepup.core.path.md

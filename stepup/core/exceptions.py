@@ -30,3 +30,28 @@ class CyclicError(GraphError):
 
 class RPCError(Exception):
     """A remote procedure call could not be interpreted correctly."""
+
+
+class StepUpError(ValueError):
+    """Invalid argument passed to a StepUp user- or extension-facing API function."""
+
+
+class PathError(StepUpError):
+    """A path argument is invalid.
+
+    Raised when a path does not exist, has the wrong type
+    (e.g. a directory where a file is required),
+    or violates the leading `./` / trailing `/` affix contract.
+    """
+
+
+class EnvVarError(StepUpError):
+    """An environment variable referenced in a path or string could not be resolved."""
+
+
+class InputNotFoundError(Exception):
+    """Raised when amended inputs are not available yet."""
+
+
+class DeferredNotConfirmedError(Exception):
+    """Raised when static tree matches cannot be confirmed."""

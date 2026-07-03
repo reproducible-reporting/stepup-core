@@ -34,6 +34,7 @@ from collections.abc import Callable, Iterable, Iterator
 
 from path import Path
 
+from .exceptions import EnvVarError, StepUpError
 from .path import StrPath, coerce_str, translate
 from .step import truncate_output
 from .utils import CaseSensitiveTemplate
@@ -89,6 +90,12 @@ def subs_env_vars() -> Iterator[Callable[[StrPath | None], Path | None]]:
 
     This function may be used in other API functions to substitute environment variables in
     all relevant paths.
+
+    Raises
+    ------
+    EnvVarError
+        When a path contains invalid shell variable identifiers,
+        or references an environment variable that is not defined.
     """
     from stepup.core.api import amend  # noqa: PLC0415
 
@@ -99,7 +106,7 @@ def subs_env_vars() -> Iterator[Callable[[StrPath | None], Path | None]]:
             return None
         template = CaseSensitiveTemplate(coerce_str(path))
         if not template.is_valid():
-            raise ValueError("The path contains invalid shell variable identifiers.")
+            raise EnvVarError("The path contains invalid shell variable identifiers.")
         mapping = {}
         for name in template.get_identifiers():
             if name.startswith("*"):
@@ -107,7 +114,7 @@ def subs_env_vars() -> Iterator[Callable[[StrPath | None], Path | None]]:
             else:
                 value = os.getenv(name)
                 if value is None:
-                    raise ValueError(f"Undefined shell variable: {name}")
+                    raise EnvVarError(f"Undefined shell variable: {name}")
                 mapping[name] = value
                 used_env.add(name)
         return Path(path if len(mapping) == 0 else template.substitute(mapping))
@@ -218,7 +225,7 @@ def run_subprocess(
         Standard input fed to the subprocess, or `None`.
         A `str` is passed to `subprocess.run` as-is and implies `text=True`.
         `bytes` are passed as-is as well and imply `text=False`.
-        Inconsistent combinations (e.g. `stdin` is `bytes` but `text=True`) raise a `ValueError`.
+        Inconsistent combinations (e.g. `stdin` is `bytes` but `text=True`) raise a `TypeError`.
         The value is forwarded to `record_subprocess`, which stores `bytes` as a short summary
         (byte length and a truncated SHA-256) rather than raw binary.
     shell
@@ -270,12 +277,12 @@ def run_subprocess(
             if text is None:
                 text = True
             elif text is False:
-                raise ValueError("stdin must be bytes when text=False")
+                raise TypeError("stdin must be bytes when text=False")
         elif isinstance(stdin, bytes):
             if text is None:
                 text = False
             elif text is True:
-                raise ValueError("stdin must be str when text=True")
+                raise TypeError("stdin must be str when text=True")
         else:
             raise TypeError("stdin must be str, bytes, or None")
     if text is None:
@@ -321,6 +328,11 @@ def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
     -------
     filtered_paths
         A collection of paths relative to `${STEPUP_ROOT}` that were retained by the filter.
+
+    Raises
+    ------
+    StepUpError
+        When `${STEPUP_PATH_FILTER}` contains an item that does not start with `+` or `-`.
     """
     # The getenv function from StepUp amends the current step to depend on the variable,
     # to make sure that all steps using it get re-executed properly.
@@ -339,7 +351,7 @@ def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
         elif filter_item.startswith("-"):
             keep = False
         else:
-            raise ValueError(f"Invalid filter item: {filter_item}")
+            raise StepUpError(f"Invalid filter item: {filter_item}")
         prefix = Path(filter_item[1:])
         if not prefix.isabs():
             prefix = (stepup_root / prefix).realpath()

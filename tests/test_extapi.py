@@ -320,14 +320,14 @@ def test_run_subprocess_check_no_output_no_print(monkeypatch, capsys):
 
 
 def test_run_subprocess_stdin_bytes_text_true_raises():
-    """Passing bytes stdin with text=True raises ValueError."""
-    with pytest.raises(ValueError, match="text=True"):
+    """Passing bytes stdin with text=True raises TypeError."""
+    with pytest.raises(TypeError, match="text=True"):
         run_subprocess(shlex.join([sys.executable, "-c", ""]), stdin=b"data", text=True)
 
 
 def test_run_subprocess_stdin_str_text_false_raises():
-    """Passing str stdin with text=False raises ValueError."""
-    with pytest.raises(ValueError, match="text=False"):
+    """Passing str stdin with text=False raises TypeError."""
+    with pytest.raises(TypeError, match="text=False"):
         run_subprocess(shlex.join([sys.executable, "-c", ""]), stdin="data", text=False)
 
 

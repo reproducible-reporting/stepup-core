@@ -24,6 +24,8 @@ from collections.abc import Iterable
 
 from path import Path
 
+from .exceptions import PathError
+
 __all__ = (
     "StrPath",
     "apply_affixes",
@@ -115,25 +117,25 @@ def apply_affixes(path: StrPath, leading: str, trailing: str) -> Path:
 
     Raises
     ------
-    ValueError
+    PathError
         If the path already has leading or trailing slashes and the corresponding affix is not None.
-    ValueError
+    PathError
         If the leading is given and not one of `""` or `"./"`.
-    ValueError
+    PathError
         If the trailing is given and not `""` or `"/"`.
     """
     path = coerce_str(path)
     if leading != "":
         if leading != f".{os.sep}":
-            raise ValueError(f"Leading affix must be one of '' or './', got '{leading}'")
+            raise PathError(f"Leading affix must be one of '' or './', got '{leading}'")
         if path.startswith((os.sep, f".{os.sep}")):
-            raise ValueError(f"Path already has a leading slash: {path}")
+            raise PathError(f"Path already has a leading slash: {path}")
         path = leading + path
     if trailing != "":
         if trailing != os.sep:
-            raise ValueError(f"Trailing affix must be '' or '/', got '{trailing}'")
+            raise PathError(f"Trailing affix must be '' or '/', got '{trailing}'")
         if path.endswith(os.sep):
-            raise ValueError(f"Path already has a trailing slash: {path}")
+            raise PathError(f"Path already has a trailing slash: {path}")
         path = path + trailing
     return coerce_path(path)
 
@@ -162,6 +164,12 @@ def make_path_out(
     -------
     path_out
         A properly formatted output path.
+
+    Raises
+    ------
+    PathError
+        If the output path is equal to the input path,
+        or if the output path does not have the expected extension.
     """
     path_in = coerce_path(path_in)
     if dest is not None:
@@ -179,9 +187,9 @@ def make_path_out(
     else:
         path_out = Path(dest)
     if path_out == path_in:
-        raise ValueError(f"The output path cannot equal the input path: {path_out}")
+        raise PathError(f"The output path cannot equal the input path: {path_out}")
     if not (ext is None or path_out.suffix == ext or path_out.suffix in other_exts):
-        raise ValueError(f"The output path does not have extension '{ext}': {path_out}.")
+        raise PathError(f"The output path does not have extension '{ext}': {path_out}.")
     return path_out
 
 

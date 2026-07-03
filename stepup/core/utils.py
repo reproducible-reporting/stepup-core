@@ -27,6 +27,8 @@ from collections.abc import Iterable
 
 from path import Path
 
+from .exceptions import PathError, StepUpError
+
 __all__ = (
     "CaseSensitiveTemplate",
     "escape_command_display",
@@ -67,7 +69,7 @@ def format_command(executable: str) -> str:
     """Format a relative path to a local executable for execution in a shell."""
     executable = Path(executable)
     if executable.isabs():
-        raise ValueError(f"Executable is not a relative path: {executable}")
+        raise PathError(f"Executable is not a relative path: {executable}")
     relative = executable if executable.startswith(("./", "../")) else "." / executable
     return shlex.quote(relative)
 
@@ -189,7 +191,13 @@ def format_subprocess(
 
 
 def parse_resources(s: str) -> dict[str, int]:
-    """Parse a resources string like 'cpu:4,gpu:1,memgb:16' into a dict."""
+    """Parse a resources string like 'cpu:4,gpu:1,memgb:16' into a dict.
+
+    Raises
+    ------
+    StepUpError
+        If a resource name is empty or a resource value is negative.
+    """
     result = {}
     for item in s.split(","):
         item = item.strip()
@@ -198,12 +206,12 @@ def parse_resources(s: str) -> dict[str, int]:
         name, _, value = item.partition(":")
         name = name.strip()
         if not name:
-            raise ValueError(f"Resource name cannot be empty: {item}")
+            raise StepUpError(f"Resource name cannot be empty: {item}")
         if value == "":
             value = "1"
         value = int(value.strip())
         if value < 0:
-            raise ValueError(f"Resource value cannot be negative: {item}")
+            raise StepUpError(f"Resource value cannot be negative: {item}")
         result[name] = value
     return result
 
@@ -228,7 +236,7 @@ def string_to_bool(v: str | bool) -> bool:
 
     Raises
     ------
-    ValueError
+    StepUpError
         If the string cannot be interpreted as a boolean value.
     TypeError
         If the input is not a string or boolean.
@@ -251,5 +259,5 @@ def string_to_bool(v: str | bool) -> bool:
             return True
         if v.lower() in ("no", "false", "f", "n", "0"):
             return False
-        raise ValueError(f"Cannot interpret '{v}' as a boolean value.")
+        raise StepUpError(f"Cannot interpret '{v}' as a boolean value.")
     raise TypeError(f"Expected a boolean value or string. Got {type(v).__name__}")

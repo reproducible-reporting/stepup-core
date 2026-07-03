@@ -25,6 +25,12 @@ The following modules of StepUp Core facilitate the implementation of such new A
   offers higher-level path manipulation utilities
   (see [Path manipulation](#path-manipulation) below).
 
+- [`stepup.core.exceptions`](../reference/stepup.core.exceptions.md)
+  defines the exceptions raised by the functions above,
+  e.g. [`PathError`][stepup.core.exceptions.PathError]
+  and [`EnvVarError`][stepup.core.exceptions.EnvVarError],
+  so callers can catch them selectively instead of a generic `ValueError`.
+
 A few things to keep in mind:
 
 - API functions that (indirectly) call the [`step()`][stepup.core.api.step] function

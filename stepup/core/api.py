@@ -52,6 +52,13 @@ from path import Path
 
 from .cattrs import json_converter, yaml_converter
 from .enums import Need
+from .exceptions import (
+    DeferredNotConfirmedError,
+    EnvVarError,
+    InputNotFoundError,
+    PathError,
+    StepUpError,
+)
 from .extapi import subs_env_vars
 from .nglob import NGlobMulti
 from .path import (
@@ -113,9 +120,11 @@ def static(*paths: StrPath | Iterable[StrPath]) -> None:
 
     Raises
     ------
-    ValueError
-        When a path does not exist, when an environment variable in a path is
-        undefined, or when a path contains an invalid variable identifier.
+    PathError
+        When a path does not exist.
+    EnvVarError
+        When an environment variable in a path is undefined,
+        or when a path contains an invalid variable identifier.
 
     Notes
     -----
@@ -173,6 +182,11 @@ def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
         Use `ngm.single()` to assert and return exactly one matched path.
         Evaluates to `True` in a boolean context when at least one match exists.
 
+    Raises
+    ------
+    StepUpError
+        When no patterns are given.
+
     Notes
     -----
     Multiple patterns are matched *jointly*: only combinations of files whose
@@ -185,7 +199,7 @@ def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
     at the time this function is called, not when the step is executed.
     """
     if len(patterns) == 0:
-        raise ValueError("At least one path is required for glob.")
+        raise StepUpError("At least one path is required for glob.")
     # Substitute environment variables
     with subs_env_vars() as subs_path:
         su_patterns = [subs_path(pattern).normpath() for pattern in patterns]
@@ -282,7 +296,7 @@ def step(
         e.g. `{"OMP_NUM_THREADS": "4"}`.
         These overrides (the variable **values** for the child process)
         are distinct from `env` (the variable **names** the step is sensitive to):
-        a variable may not appear in both, otherwise a `ValueError` is raised.
+        a variable may not appear in both, otherwise a `StepUpError` is raised.
         [`run()`][stepup.core.api.run] and [`plan()`][stepup.core.api.plan] populate this
         automatically from leading `VAR=value` assignments in `command`;
         callers of `step()` directly must pass this argument explicitly.
@@ -291,6 +305,17 @@ def step(
     -------
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
+
+    Raises
+    ------
+    StepUpError
+        When `command` is empty, when an env override collides with an `env` dependency
+        or a reserved variable name, or when a resource quantity is not a strictly
+        positive integer.
+    PathError
+        When `inp`, `out`, or `vol` contain a directory.
+    DeferredNotConfirmedError
+        When the director reports that some files matching static trees do not exist on disk.
 
     Notes
     -----
@@ -310,19 +335,19 @@ def step(
 
     # Validate the command
     if len(command.strip()) == 0:
-        raise ValueError("The command must not be empty.")
+        raise StepUpError("The command must not be empty.")
 
     # Validate the environment overrides against the env dependencies and reserved names.
     if env_overrides is not None:
         overlap = set(env_deps) & set(env_overrides)
         if overlap:
-            raise ValueError(
+            raise StepUpError(
                 "Variable(s) cannot be both an env dependency and a env_overrides override: "
                 + ", ".join(sorted(overlap))
             )
         reserved = set(env_overrides) & RESERVED_ENV_VARS
         if reserved:
-            raise ValueError(
+            raise StepUpError(
                 "Variable(s) set by StepUp cannot be overridden: " + ", ".join(sorted(reserved))
             )
 
@@ -349,7 +374,7 @@ def step(
     # At this stage, we do not allow non-positive quantities of resources.
     for resource, quantity in resources.items():
         if not isinstance(quantity, int) or quantity <= 0:
-            raise ValueError(
+            raise StepUpError(
                 f"Invalid quantity for resource '{resource}': {quantity}. "
                 "Must be a strictly positive integer."
             )
@@ -449,20 +474,17 @@ def call(
 
     Raises
     ------
-    ValueError
-        When `optional` and `planning` are both `True`.
-    ValueError
+    StepUpError
+        When `optional` and `planning` are both `True`,
+        when `function_` is not a valid Python function name,
+        when the inline JSON string exceeds 128 KiB (use `args_file` instead),
+        or when `args_file` has an unrecognized extension.
+    PathError
         When `executable_` does not contain a path separator or is absolute.
-    ValueError
-        When `function_` is not a valid Python function name.
-    ValueError
-        When the inline JSON string exceeds 128 KiB (use `args_file` instead).
-    ValueError
-        When `args_file` has an unrecognized extension.
     """
     # Validate mutually exclusive flags.
     if optional and planning:
-        raise ValueError("optional and planning are mutually exclusive")
+        raise StepUpError("optional and planning are mutually exclusive")
 
     # Normalize the executable, preserving any prefix/suffix for later re-application.
     executable_ = coerce_path(executable_)
@@ -480,19 +502,19 @@ def call(
 
     # Validate executable path format.
     if os.sep not in executable_:
-        raise ValueError(
+        raise PathError(
             f"executable_ must contain a path separator (e.g. './script.py'), got: {executable_!r}"
         )
 
     # Validate the executable is not absolute.
     if os.path.isabs(executable_):
-        raise ValueError(f"executable_ must not be an absolute path, got: {executable_!r}")
+        raise PathError(f"executable_ must not be an absolute path, got: {executable_!r}")
 
     # Validate the function name. A valid Python identifier that is not a reserved
     # keyword can never contain shell metacharacters, so it is safe to interpolate
     # unquoted into the command below.
     if not (function_.isidentifier() and not keyword.iskeyword(function_)):
-        raise ValueError(f"function_ must be a valid Python function name, got: {function_!r}")
+        raise StepUpError(f"function_ must be a valid Python function name, got: {function_!r}")
 
     # Build the forwarded kwargs dict (inp and out are included when not empty).
     forwarded = kwargs.copy()
@@ -506,7 +528,7 @@ def call(
         unstructured = json_converter.unstructure(forwarded)
         json_str = json.dumps(unstructured)
         if len(json_str.encode()) > 128 * 1024:
-            raise ValueError(
+            raise StepUpError(
                 "serialized call arguments exceed 128 KiB; pass args_file= to use a file instead"
             )
         command = f"{shlex.quote(executable_)} {function_} {shlex.quote(json_str)}"
@@ -536,10 +558,6 @@ def call(
         need=need,
         resources=resources,
     )
-
-
-class InputNotFoundError(Exception):
-    """Raised when amended inputs are not available yet."""
 
 
 # A history used to avoid amending the same information twice.
@@ -582,6 +600,8 @@ def amend(
 
     Raises
     ------
+    PathError
+        When `inp`, `out`, or `vol` contain a directory.
     InputNotFoundError
         When amended inputs are not yet available.
         Let this exception propagate — do not catch it.
@@ -959,6 +979,12 @@ def getenv(
         If `multi` is set to `True`, this is a list of `Path` instances.
         Otherwise, the result is a string.
         All path variables are normalized.
+
+    Raises
+    ------
+    EnvVarError
+        When `path`, `back`, or `multi` is `True` and the environment variable is unset
+        and no `default` is given.
     """
     path = path or back or multi
     if default is not None:
@@ -986,7 +1012,7 @@ def getenv(
                     value.append(apply_affixes(item, prefix, suffix))
     elif path:
         if value is None:
-            raise ValueError(f"Undefined shell variable: {name}. Cannot create path.")
+            raise EnvVarError(f"Undefined shell variable: {name}. Cannot create path.")
         with subs_env_vars() as subs:
             value = subs(value)
         prefix, suffix = get_affixes(value)
@@ -1099,6 +1125,12 @@ def loadns(
     -------
     variables
         A SimpleNamespace instance with the variables, which can be accessed as attributes.
+
+    Raises
+    ------
+    StepUpError
+        When a file in `paths_variables` does not have a `.json`, `.toml`, `.yaml`,
+        `.yml`, or `.py` extension.
     """
     # Process arguments
     dir_out = Path.cwd() if dir_out is None else coerce_path(dir_out)
@@ -1134,7 +1166,7 @@ def loadns(
                     value = Path(value).relpath(dir_out)
                 variables[name] = value
         else:
-            raise ValueError(f"unsupported variable file format: {path_var}")
+            raise StepUpError(f"unsupported variable file format: {path_var}")
     if do_amend:
         amend(inp=paths_variables)
 
@@ -1159,7 +1191,7 @@ def dumpns(path: StrPath, data: dict[str, Any] | SimpleNamespace, *, do_amend: b
 
     Raises
     ------
-    ValueError
+    StepUpError
         When the file extension is not `.json`, `.yaml`, or `.yml`.
     """
     with subs_env_vars() as subs:
@@ -1179,7 +1211,7 @@ def dumpns(path: StrPath, data: dict[str, Any] | SimpleNamespace, *, do_amend: b
         with open(path_obj, "w") as fh:
             yaml.dump(unstructured, fh)
     else:
-        raise ValueError(f"dumpns: unsupported file format: {path_obj.suffix!r}")
+        raise StepUpError(f"dumpns: unsupported file format: {path_obj.suffix!r}")
 
 
 def render_jinja(
@@ -1219,13 +1251,19 @@ def render_jinja(
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
 
+    Raises
+    ------
+    StepUpError
+        When `mode` is not one of `'auto'`, `'plain'`, or `'latex'`,
+        or when no variables are given, neither as a file nor as a dictionary.
+
     Notes
     -----
     At least some variables must be given, either as a file containing variables or as a dictionary.
     """
     # Parse the positional arguments
     if len(args) < 3:
-        raise ValueError(
+        raise TypeError(
             "At least three positional arguments must be given: "
             "the template, at least one file or dict with variables, and the destination."
         )
@@ -1249,9 +1287,9 @@ def render_jinja(
 
     # Parse other arguments.
     if mode not in ["auto", "plain", "latex"]:
-        raise ValueError(f"Unsupported mode {mode!r}. Must be one of 'auto', 'plain', 'latex'")
+        raise StepUpError(f"Unsupported mode {mode!r}. Must be one of 'auto', 'plain', 'latex'")
     if len(paths_variables) == 0 and len(variables) == 0:
-        raise ValueError("At least one file with variable definitions needed.")
+        raise StepUpError("At least one file with variable definitions needed.")
     path_out = make_path_out(path_template, dest, None)
     paths_inp = [path_template, *paths_variables]
 
@@ -1273,10 +1311,6 @@ def render_jinja(
 #
 # Internal stuff
 #
-
-
-class DeferredNotConfirmedError(Exception):
-    """Raised when static tree matches cannot be confirmed."""
 
 
 def _confirm_static(to_check: Collection[tuple[str, FileHash]] | None):
@@ -1327,11 +1361,11 @@ def _check_inp_paths(
             file_paths.append(inp_path)
         if not allow_dirs:
             if inp_path.endswith(os.sep):
-                raise ValueError(f"Directory inputs are not supported: {inp_path}")
+                raise PathError(f"Directory inputs are not supported: {inp_path}")
             if is_dir:
-                raise ValueError(f"Directory inputs are not supported: {inp_path}")
+                raise PathError(f"Directory inputs are not supported: {inp_path}")
         if not inp_path.exists():
-            raise ValueError(f"Path does not exist: {inp_path}")
+            raise PathError(f"Path does not exist: {inp_path}")
     return file_paths, dir_paths
 
 
@@ -1339,7 +1373,7 @@ def _check_no_directories(paths: Iterable[Path]):
     """Check that the paths are not directories."""
     for path in paths:
         if path.endswith(os.sep):
-            raise ValueError(f"Directories are not allowed: {path}")
+            raise PathError(f"Directories are not allowed: {path}")
 
 
 # Matches a single leading `NAME=value` assignment in a command string, anchored at the scan
@@ -1415,15 +1449,15 @@ def _prepare_run_command(
         looking for the executable, so their values are not mistaken for it.
     need_relative_exe
         When `True`, require the first word of the command to be a local relative executable
-        (it contains a path separator and is not absolute), raising a `ValueError` otherwise.
+        (it contains a path separator and is not absolute), raising a `PathError` otherwise.
         When `False`, a missing relative executable is silently ignored.
 
     Raises
     ------
-    ValueError
-        When the command is empty, when it cannot be split into words with `shlex`
-        (e.g. unbalanced quotes), or when `need_relative_exe` is `True` and the first
-        word is not a local relative executable.
+    StepUpError
+        When the command cannot be split into words with `shlex` (e.g. unbalanced quotes).
+    PathError
+        When `need_relative_exe` is `True` and the first word is not a local relative executable.
 
     Returns
     -------
@@ -1445,7 +1479,7 @@ def _prepare_run_command(
     try:
         parts = shlex.split(remaining)
     except ValueError as exc:
-        raise ValueError(
+        raise StepUpError(
             f"Cannot parse command to detect the executable: {command} ({exc})"
         ) from exc
     exe = None
@@ -1453,7 +1487,7 @@ def _prepare_run_command(
     if os.sep in first and not first.startswith(os.sep):
         exe = first
     elif need_relative_exe:
-        raise ValueError(
+        raise PathError(
             "The command must be a relative path to a local executable, "
             f"containing at least one slash, e.g. './plan.py'. Got: {command}"
         )
