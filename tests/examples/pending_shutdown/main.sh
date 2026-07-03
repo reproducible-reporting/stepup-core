@@ -11,7 +11,7 @@ stepup graph current_graph
 
 # Wait for background processes, if any.
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
-[[ "${RETURNCODE}" -eq 4 ]] || exit 1
+[[ "${RETURNCODE}" -eq 16 ]] || exit 1
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1

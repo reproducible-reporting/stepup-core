@@ -7,6 +7,7 @@ It can be a sum of the following codes:
 - `2` = at least one step failed
 - `4` = at least one step remained pending
 - `8` = at least one step was still runnable
+- `16` = the scheduler was on hold (not reporting pending steps)
 
 A few example combinations are:
 

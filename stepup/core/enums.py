@@ -37,6 +37,9 @@ class ReturnCode(Flag):
     RUNNABLE = auto()
     """Some steps are runnable. Stopped early due to shutdown, drain, etc."""
 
+    ONHOLD = auto()
+    """The scheduler is on hold. Pending steps are not reported."""
+
 
 class FileState(Enum):
     """State of a file in the StepUp workflow.

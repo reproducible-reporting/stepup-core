@@ -16,6 +16,6 @@ grep "FAIL │ ./work.py" .stepup/fail.log || exit 1
 grep "ERROR │ The scheduler has been put on hold due to unexpected input changes." .stepup/fail.log || exit 1
 
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
-[[ "${RETURNCODE}" -eq 6 ]] || exit 1
+[[ "${RETURNCODE}" -eq 18 ]] || exit 1
 
 [[ ! -f never.txt ]] || exit 1

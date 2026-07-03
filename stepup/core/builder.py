@@ -329,7 +329,7 @@ async def report_completion(
         await reporter("WARNING", f"{nfailed} step(s) failed.")
 
     if scheduler.on_hold:
-        returncode |= ReturnCode.PENDING
+        returncode |= ReturnCode.ONHOLD
         await reporter("WARNING", "Scheduler is put on hold. Not reporting pending steps.")
         return returncode
 

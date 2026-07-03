@@ -141,6 +141,9 @@ This is release candidate 6 for the upcoming StepUp 4.0 release.
       which is paired with a database vacuum worker to reclaim space from deleted nodes.
 - Several environment variables have been renamed for consistency.
   See [Configuration files](reference/configuration.md) for details.
+- A new returncode was added to indicate that the scheduler was put on hold
+  and not reporting pending steps.
+  See [StepUp Return Codes](reference/returncode.md) for details.
 - Documentation has been updated to reflect the API changes and to clarify some other points:
     - All tutorials have been updated to reflect the new API and workflow.
     - A [migration guide](migration/from_3x_to_40.md) has been added
