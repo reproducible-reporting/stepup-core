@@ -95,7 +95,7 @@ def _parse_args(script_path: str) -> argparse.Namespace:
     return args
 
 
-def _dispatch(script_path: str, obj: Any, args: argparse.Namespace) -> None:
+def _dispatch(script_path: str, obj: dict[str, Any], args: argparse.Namespace) -> None:
     fn = obj.get(args.function)
     if fn is None or not callable(fn):
         raise AttributeError(f"{script_path} does not define a function '{args.function}'")
@@ -124,7 +124,9 @@ def _dispatch(script_path: str, obj: Any, args: argparse.Namespace) -> None:
         fn(**_structure_kwargs(filtered, hints, script_path))
 
 
-def _structure_kwargs(kwargs: dict, hints: dict, script_path: str) -> dict:
+def _structure_kwargs(
+    kwargs: dict[str, Any], hints: dict[str, Any], script_path: str
+) -> dict[str, Any]:
     result = {}
     for k, v in kwargs.items():
         ann = hints.get(k)
@@ -140,7 +142,7 @@ def _structure_kwargs(kwargs: dict, hints: dict, script_path: str) -> dict:
     return result
 
 
-def _print_list(script_path: str, ns: dict) -> None:
+def _print_list(script_path: str, ns: dict[str, Any]) -> None:
     if "__all__" in ns:
         registry = {name: fn for name, fn in ns.items() if name in ns["__all__"] and callable(fn)}
     else:

@@ -23,7 +23,7 @@ import logging
 import re
 import shlex
 import string
-from collections.abc import Collection
+from collections.abc import Iterable
 
 from path import Path
 
@@ -208,8 +208,8 @@ def parse_resources(s: str) -> dict[str, int]:
     return result
 
 
-def string_to_list(arg: Collection[str] | str) -> list[str]:
-    """Normalize a string or collection of strings to a list of strings."""
+def string_to_list(arg: Iterable[str] | str) -> list[str]:
+    """Normalize a string or iterable of strings to a list of strings."""
     return [arg] if isinstance(arg, str) else list(arg)
 
 

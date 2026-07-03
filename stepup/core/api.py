@@ -45,6 +45,7 @@ import tomllib
 from collections.abc import Collection, Iterable
 from runpy import run_path
 from types import SimpleNamespace
+from typing import Any
 
 import yaml
 from path import Path
@@ -96,7 +97,7 @@ __all__ = (
 #
 
 
-def static(*paths: StrPath | Iterable[StrPath]):
+def static(*paths: StrPath | Iterable[StrPath]) -> None:
     """Declare static paths.
 
     Parameters
@@ -221,10 +222,10 @@ def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
 def step(
     command: StrPath,
     *,
-    inp: Collection[StrPath] | StrPath = (),
-    env: Collection[str] | str = (),
-    out: Collection[StrPath] | StrPath = (),
-    vol: Collection[StrPath] | StrPath = (),
+    inp: Iterable[StrPath] | StrPath = (),
+    env: Iterable[str] | str = (),
+    out: Iterable[StrPath] | StrPath = (),
+    vol: Iterable[StrPath] | StrPath = (),
     workdir: StrPath = ".",
     need: Need = Need.DEFAULT,
     resources: dict[str, int] | str | None = None,
@@ -389,16 +390,16 @@ def call(
     executable_: StrPath,
     function_: str,
     *,
-    inp: Collection[StrPath] | StrPath = (),
-    env: Collection[str] | str = (),
-    out: Collection[StrPath] | StrPath = (),
-    vol: Collection[StrPath] | StrPath = (),
+    inp: Iterable[StrPath] | StrPath = (),
+    env: Iterable[str] | str = (),
+    out: Iterable[StrPath] | StrPath = (),
+    vol: Iterable[StrPath] | StrPath = (),
     workdir: StrPath = ".",
     optional: bool = False,
     planning: bool = False,
     resources: dict[str, int] | str | None = None,
     args_file: StrPath | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> StepInfo:
     """Register a step that calls a named function in an executable.
 
@@ -553,11 +554,11 @@ AMEND_HISTORY = {
 
 def amend(
     *,
-    inp: Collection[StrPath] | StrPath = (),
-    env: Collection[str] | str = (),
-    out: Collection[StrPath] | StrPath = (),
-    vol: Collection[StrPath] | StrPath = (),
-):
+    inp: Iterable[StrPath] | StrPath = (),
+    env: Iterable[str] | str = (),
+    out: Iterable[StrPath] | StrPath = (),
+    vol: Iterable[StrPath] | StrPath = (),
+) -> None:
     """Declare additional inputs, outputs, and environment dependencies from within a running step.
 
     Parameters
@@ -681,7 +682,7 @@ def getinfo() -> StepInfo:
     return step_info
 
 
-def graph(prefix: StrPath):
+def graph(prefix: StrPath) -> None:
     """Write the workflow graph files in text and dot formats."""
     return RPC_CLIENT.call.graph(coerce_path(prefix))
 
@@ -725,10 +726,10 @@ def shq(paths: StrPath | Iterable[StrPath]) -> str:
 def run(
     command: StrPath,
     *,
-    inp: Collection[StrPath] | StrPath = (),
-    env: Collection[str] | str = (),
-    out: Collection[StrPath] | StrPath = (),
-    vol: Collection[StrPath] | StrPath = (),
+    inp: Iterable[StrPath] | StrPath = (),
+    env: Iterable[str] | str = (),
+    out: Iterable[StrPath] | StrPath = (),
+    vol: Iterable[StrPath] | StrPath = (),
     workdir: StrPath = ".",
     optional: bool = False,
     shell: bool = False,
@@ -806,10 +807,10 @@ def run(
 def plan(
     command: StrPath,
     *,
-    inp: Collection[StrPath] | StrPath = (),
-    env: Collection[str] | str = (),
-    out: Collection[StrPath] | StrPath = (),
-    vol: Collection[StrPath] | StrPath = (),
+    inp: Iterable[StrPath] | StrPath = (),
+    env: Iterable[str] | str = (),
+    out: Iterable[StrPath] | StrPath = (),
+    vol: Iterable[StrPath] | StrPath = (),
     workdir: StrPath = ".",
     resources: dict[str, int] | str | None = None,
 ) -> StepInfo:
@@ -1000,10 +1001,10 @@ def script(
     executable: StrPath,
     *,
     step_info: StrPath | None = None,
-    inp: Collection[StrPath] | StrPath = (),
-    env: Collection[str] | str = (),
-    out: Collection[StrPath] | StrPath = (),
-    vol: Collection[StrPath] | StrPath = (),
+    inp: Iterable[StrPath] | StrPath = (),
+    env: Iterable[str] | str = (),
+    out: Iterable[StrPath] | StrPath = (),
+    vol: Iterable[StrPath] | StrPath = (),
     workdir: StrPath = ".",
     optional: bool = False,
     resources: dict[str, int] | str | None = None,
@@ -1141,7 +1142,7 @@ def loadns(
     return SimpleNamespace(**variables)
 
 
-def dumpns(path: StrPath, data: dict | SimpleNamespace, *, do_amend: bool = True) -> None:
+def dumpns(path: StrPath, data: dict[str, Any] | SimpleNamespace, *, do_amend: bool = True) -> None:
     """Write variables to a JSON or YAML file.
 
     Parameters
@@ -1182,7 +1183,7 @@ def dumpns(path: StrPath, data: dict | SimpleNamespace, *, do_amend: bool = True
 
 
 def render_jinja(
-    *args: StrPath | dict,
+    *args: StrPath | dict[str, Any],
     mode: str = "auto",
     optional: bool = False,
     resources: dict[str, int] | str | None = None,
@@ -1278,7 +1279,7 @@ class DeferredNotConfirmedError(Exception):
     """Raised when static tree matches cannot be confirmed."""
 
 
-def _confirm_static(to_check: list[tuple[str, FileHash]] | None):
+def _confirm_static(to_check: Collection[tuple[str, FileHash]] | None):
     """Confirm initially missing files and send the updates to the director."""
     # When the RPC_CLIENT is a dummy, to_check may be `None`.
     if to_check is not None and len(to_check) > 0:
@@ -1291,7 +1292,7 @@ def _confirm_static(to_check: list[tuple[str, FileHash]] | None):
             RPC_CLIENT.call.confirm_hashes(checked)
 
 
-def _confirm_deferred(to_check: list[tuple[str, FileHash]] | None, step_i: int | None = None):
+def _confirm_deferred(to_check: Collection[tuple[str, FileHash]] | None, step_i: int | None = None):
     """Check file, update hashes of existing ones, and send the updates to the director."""
     if to_check is not None and len(to_check) > 0:
         # Select matches of the static tree that exist and update their hashes.
@@ -1459,7 +1460,7 @@ def _prepare_run_command(
     return command, exe, env_overrides
 
 
-def get_rpc_client(socket: str | None = None):
+def get_rpc_client(socket: str | None = None) -> DummySyncRPCClient | SocketSyncRPCClient:
     """Try setting up a Synchronous RPC client or fall back to the dummy client if that fails."""
     stepup_director_socket = os.getenv("STEPUP_DIRECTOR_SOCKET", socket)
     if stepup_director_socket == "_invalid_socket_for_director_process_":

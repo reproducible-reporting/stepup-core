@@ -30,7 +30,7 @@ import os
 import shlex
 import subprocess
 import sys
-from collections.abc import Callable, Collection, Iterator
+from collections.abc import Callable, Iterable, Iterator
 
 from path import Path
 
@@ -308,13 +308,13 @@ def run_subprocess(
     return cp
 
 
-def filter_dependencies(paths: Collection[StrPath]) -> set[Path]:
+def filter_dependencies(paths: Iterable[StrPath]) -> set[Path]:
     """Select path retained by the `${STEPUP_PATH_FILTER}`.
 
     Parameters
     ----------
     paths
-        A collection of paths or strings to filter.
+        An iterable of paths or strings to filter.
         Relative paths are assumed to be relative to the current working directory.
 
     Returns

@@ -98,7 +98,7 @@ class ScriptWrapper:
             raise TypeError(f"The case_info object in {self._script_path} is not callable.")
         return True
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         if not hasattr(self._object, "run"):
             raise TypeError(f"Script {self._script_path} has no run function.")
         if not (self._has_single or self._has_cases):
@@ -116,7 +116,7 @@ class ScriptWrapper:
 
     # Wrapper methods
 
-    def get_info(self) -> dict:
+    def get_info(self) -> dict[str, Any]:
         """Get the return value of the `info` function."""
         if not self._has_single:
             raise NotImplementedError("get_info only works for scripts with an info function")
@@ -147,7 +147,7 @@ class ScriptWrapper:
             _get_path_list("out", info, self._script_path, "info"),
         )
 
-    def generate_cases(self) -> Iterator[tuple[list, dict]]:
+    def generate_cases(self) -> Iterator[tuple[list[Any], dict[str, Any]]]:
         """Run the `cases` generator and normalize the iterates.
 
         Yields
@@ -174,7 +174,7 @@ class ScriptWrapper:
             else:
                 yield [case], {}
 
-    def format(self, *args, **kwargs) -> str:
+    def format(self, *args: Any, **kwargs: Any) -> str:
         """Convert a (normalized) iterate from the `cases` function into a string."""
         if not self._has_cases:
             raise NotImplementedError("format only works for scripts with multiple cases")
@@ -182,7 +182,7 @@ class ScriptWrapper:
             raise TypeError("CASE_FMT must be a string")
         return self._object.CASE_FMT.format(*args, **kwargs)
 
-    def parse(self, argstr: str) -> tuple[tuple, dict]:
+    def parse(self, argstr: str) -> tuple[tuple[Any, ...], dict[str, Any]]:
         """Convert a string back into `args` and `kwargs`. (Inverse of `format`.)"""
         if not self._has_cases:
             raise NotImplementedError("parse only works for scripts with multiple cases")
@@ -192,7 +192,7 @@ class ScriptWrapper:
             raise ValueError(f"Could not parse string '{argstr}' with CASE_FMT '{case_fmt}'.")
         return result.fixed, result.named
 
-    def get_case_info(self, *args, **kwargs) -> dict:
+    def get_case_info(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """Get the return value of the `info` function."""
         if not self._has_cases:
             raise NotImplementedError("get_case_info only works for scripts with multiple cases")
@@ -203,7 +203,7 @@ class ScriptWrapper:
             raise TypeError("All keys of the info dict must be strings.")
         return info
 
-    def get_case_plan(self, *args, **kwargs) -> tuple[list[str], list[str], list[str]]:
+    def get_case_plan(self, *args: Any, **kwargs: Any) -> tuple[list[str], list[str], list[str]]:
         """Return a tuple with normalized information from the info dictionary (multiple runs).
 
         Returns
@@ -223,17 +223,17 @@ class ScriptWrapper:
             _get_path_list("out", info, self._script_path, "case_info"),
         )
 
-    def filter_info(self, info: dict) -> dict:
+    def filter_info(self, info: dict[str, Any]) -> dict[str, Any]:
         """Return a reduced info dictionary with only the arguments used by the `run` function."""
         run_signature = inspect.signature(self._object.run)
         return {key: value for key, value in info.items() if key in run_signature.parameters}
 
-    def run(self, **filtered_info):
+    def run(self, **filtered_info: Any) -> None:
         """Call the `run` function."""
         self._object.run(**filtered_info)
 
 
-def driver(obj: Any = None):
+def driver(obj: Any = None) -> None:
     """Implement script protocol.
 
     The most common usage is to call `driver()` from a script
@@ -320,7 +320,7 @@ def parse_args(script_path: str) -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapper):
+def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapper) -> None:
     """Create the step to plan the run part of the script."""
     # Local import to delay activation synchronous connection to StepUp directory until needed.
     from stepup.core.api import run, static  # noqa: PLC0415
@@ -356,7 +356,7 @@ def _driver_plan(script_path: str, args: argparse.Namespace, wrapper: ScriptWrap
         dump_step_info(args.step_info, step_info)
 
 
-def _driver_cases(script_path: str, wrapper: ScriptWrapper):
+def _driver_cases(script_path: str, wrapper: ScriptWrapper) -> None:
     """Print all commands on script that can be used to run the script."""
     local_script = "." / Path(script_path)
     if wrapper.has_single:
@@ -369,7 +369,7 @@ def _driver_cases(script_path: str, wrapper: ScriptWrapper):
             print(f"{local_script} run {argstr}")
 
 
-def _driver_run(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapper):
+def _driver_run(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapper) -> None:
     """Call the `run` function with the appropriate arguments."""
     # Local import because the StepUp client is not always needed.
     if args.string == "":
@@ -385,7 +385,7 @@ def _driver_run(script_path: str, args: argparse.Namespace, wrapper: ScriptWrapp
     wrapper.run(**info)
 
 
-def _get_path_list(name: str, info: dict, script_path: str, func_name: str) -> list[str]:
+def _get_path_list(name: str, info: dict[str, Any], script_path: str, func_name: str) -> list[str]:
     """Get and check a list of paths from an info dictionary."""
     paths = info.get(name, [])
     if isinstance(paths, str):

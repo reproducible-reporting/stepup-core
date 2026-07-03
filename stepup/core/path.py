@@ -20,7 +20,7 @@
 """Specialized path operations"""
 
 import os
-from collections.abc import Collection
+from collections.abc import Iterable
 
 from path import Path
 
@@ -55,15 +55,15 @@ def coerce_path(arg: StrPath) -> Path:
     return Path(os.fspath(arg))
 
 
-def coerce_paths(args: StrPath | Collection[StrPath]) -> list[Path]:
-    """Convert a path-like argument or flat collection to `path.Path` instances."""
+def coerce_paths(args: StrPath | Iterable[StrPath]) -> list[Path]:
+    """Convert a path-like argument or flat iterable to `path.Path` instances."""
     if isinstance(args, (str, os.PathLike)):
         args = [args]
     return [Path(os.fspath(arg)) for arg in args]
 
 
-def coerce_paths2(args: Collection[StrPath] | Collection[Collection[StrPath]]) -> list[Path]:
-    """Convert a collection of paths or path sub-collections, flattening one level of nesting."""
+def coerce_paths2(args: Iterable[StrPath | Iterable[StrPath]]) -> list[Path]:
+    """Convert an iterable of paths or path sub-iterables, flattening one level of nesting."""
     result = []
     for arg in args:
         if isinstance(arg, (str, os.PathLike)):
@@ -139,7 +139,7 @@ def apply_affixes(path: StrPath, leading: str, trailing: str) -> Path:
 
 
 def make_path_out(
-    path_in: StrPath, dest: StrPath | None, ext: str | None, other_exts: Collection[str] = ()
+    path_in: StrPath, dest: StrPath | None, ext: str | None, other_exts: Iterable[str] = ()
 ) -> Path:
     """Construct an output path given the input path, an out argument and the expected extension.
 
