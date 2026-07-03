@@ -244,12 +244,17 @@ _PENDING_STEP_WHERE = f"""step.state = {StepState.PENDING.value} AND
     NOT node.detached"""
 
 # Priority WHERE clause:
-# - Planning steps run first to unlock more work early
-# - Within each group, higher tail_time steps go first
+# - Planning steps run first to unlock more work early.
+# - Within each group, higher tail_time steps go first.
+#   A step that has been rescheduled (multiple times) gets its tail_time divided by
+#   1 + reschedule_count, to reduce the risk of too early dispatching after rescheduling.
+#   Dividing (rather than subtracting a fixed penalty) keeps the demotion proportional
+#   to the step's own tail_time, so it behaves consistently regardless of the time
+#   scale of the workflow.
 # - Label provides a deterministic tie-breaker.
 _ORDER_BY_PRIORITY = f"""ORDER BY
     (step._implied_need = {Need.PLAN.value}) DESC,
-    step._tail_time DESC,
+    step._tail_time / (1 + step.reschedule_count) DESC,
     node.label ASC"""
 
 
