@@ -2586,6 +2586,13 @@ By default, no additional modules are pre-loaded (only internal StepUp modules a
 <p>Set to <code>false</code> to disable the progress bar in the terminal user interface.
 This can be useful to simplify and reduce the output.</p>
 </dd>
+<dt><code>reschedule_cap</code> / <code>STEPUP_BUILD_RESCHEDULE_CAP</code> / <code>--reschedule-cap</code></dt>
+<dd>
+<p>Maximum number of consecutive reschedules a step can undergo (since it last
+succeeded) before it is reported as failed instead of parked pending again.
+This guards against livelocks where a step&rsquo;s amended inputs keep flapping.
+The default is <code>100</code>, deliberately generous.</p>
+</dd>
 <dt><code>resources</code> / <code>STEPUP_BUILD_RESOURCES</code> / <code>--resources</code>, <code>-r</code></dt>
 <dd>
 <p>A comma-separated list of resource names and available quantities

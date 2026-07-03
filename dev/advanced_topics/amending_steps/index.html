@@ -2350,27 +2350,61 @@ and is convenient in various scenarios:</p>
   Such volatile outputs can be specified using <code>amend()</code> once they have been created.</p>
 </li>
 </ul>
-<p>To use <code>amend()</code> effectively, use it as early as possible,
-before accessing additional input files or creating unforeseen output files.
-Also, try to amend as many possible step arguments in a single call.
+<p><code>amend()</code> is safe to call after an input file has already been read
+(or an output file already written):
+if a file turns out to be missing, or to have been built too recently to be trusted
+(e.g. a producer step was still writing it while it was being read),
+the step is rescheduled instead of failing outright.
+Still, use <code>amend()</code> as early as possible,
+before accessing additional input files or creating unforeseen output files,
+whenever that is practical.
+Also, try to amend as many step arguments as possible in a single call.
 This will avoid the following problems:</p>
 <ul>
-<li>
-<p>Trying to read from a file that hasn&rsquo;t been created yet.</p>
-</li>
-<li>
-<p>Unintentionally overwriting a file, e.g. a STATIC file that you have written by hand.</p>
-</li>
-<li>
-<p>Performing unnecessary work.</p>
-</li>
+<li>Trying to read from a file that hasn&rsquo;t been created yet.</li>
 </ul>
-<p>(A call to amend may mean that the step is interrupted and restarted later.
-  This is particularly important when the step is time-consuming
-  or when it uses <code>stepup.core.api</code> functions to extend the workflow.)</p>
+<blockquote>
+<p>When you run <code>amend(inp=...)</code> before reading the file,
+and StepUp knows that the file is not yet available,
+the <code>amend()</code> call will raise an exception,
+preventing the step (or some wrapped program)
+from trying to read the file and failing.</p>
+</blockquote>
+<ul>
+<li>Unintentionally overwriting a file by calling <code>amend(out=...)</code> or <code>amend(vol=...)</code>
+  only after writing to these outputs.</li>
+</ul>
+<blockquote>
+<p>When you call <code>amend()</code> first and the files are registered as STATIC or outputs of other steps,
+an exception is raised.
+This is a safety check to prevent overwriting files that belong to other steps,
+but this only works if you call <code>amend()</code> before writing to the files.</p>
+</blockquote>
+<ul>
+<li>Performing unnecessary work.</li>
+</ul>
+<blockquote>
+<p>A call to amend may mean that the step is interrupted and restarted later.
+This is particularly important when the step is time-consuming
+or when it uses <code>stepup.core.api</code> functions to extend the workflow.</p>
+</blockquote>
 <ul>
 <li>Rescheduling a step multiple times.</li>
 </ul>
+<blockquote>
+<p>As a safety net, a step that is rescheduled too many times in a row without
+succeeding will eventually fail instead of being rescheduled forever.
+The limit is configurable with the <code>--reschedule-cap</code> option,
+see <a href="../../reference/configuration/">Configuration</a>.</p>
+<p>Note that there are two different rescheduling mechanisms in StepUp:
+1. The <code>amend(inp=...)</code> hits a file that has not been built yet.
+   (This is an &ldquo;unavailable input&rdquo;.)
+2. The <code>amend(inp=...)</code> hits a file that has been built by another step
+   that completed after the current step started.
+   If the <code>amend()</code> call is made after the file has been read,
+   StepUp cannot guarantee correctness and will therefore reschedule the step.</p>
+<p>Both types of rescheduling are counted towards the reschedule cap.</p>
+</blockquote>
 <p>To the best of our knowledge, there is no equivalent of <code>amend()</code> in other build tools.
 Some features in Ninja cover what can be achieved with <code>amend()</code>.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
