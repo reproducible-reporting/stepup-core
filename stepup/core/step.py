@@ -517,11 +517,11 @@ class Step(Node):
         command, workdir = self.command_workdir
         return StepInfo(
             command,
-            workdir,
             self.inp_paths(amended=False),
             self.env_deps(amended=False),
             self.out_paths(amended=False),
             self.vol_paths(amended=False),
+            workdir,
         )
 
     #

@@ -408,7 +408,7 @@ def step(
     _confirm_deferred(to_check)
 
     # Return a StepInfo instance to facilitate the definition of follow-up steps
-    return StepInfo(command, tr_workdir, su_inp_paths, env_deps, su_out_paths, su_vol_paths)
+    return StepInfo(command, su_inp_paths, env_deps, su_out_paths, su_vol_paths, tr_workdir)
 
 
 def call(

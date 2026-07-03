@@ -25,13 +25,15 @@ from collections.abc import Iterable
 import attrs
 from path import Path
 
+from .cattrs import json_converter
 from .nglob import NGlobMulti
+from .path import StrPath, coerce_path
 
 __all__ = ("StepInfo", "dump_step_info", "load_step_info")
 
 
 def _convert_to_paths(paths: Iterable[str]) -> list[Path]:
-    return sorted(Path(p) for p in paths)
+    return sorted(coerce_path(p) for p in paths)
 
 
 def _convert_to_strs(words: Iterable[str]) -> list[str]:
@@ -50,11 +52,6 @@ class StepInfo:
 
     command: str = attrs.field(converter=str)
     """The command to be executed of the step."""
-
-    workdir: Path = attrs.field(converter=Path)
-    """The work directory of the step.
-
-    If relative, it is relative to the StepUp root."""
 
     inp: list[Path] = attrs.field(converter=_convert_to_paths)
     """List of input paths of the step.
@@ -77,6 +74,11 @@ class StepInfo:
     If relative, they are relative to the work directory.
     """
 
+    workdir: Path = attrs.field(converter=coerce_path)
+    """The work directory of the step.
+
+    If relative, it is relative to the StepUp root."""
+
     def filter_inp(self, *patterns: str, **subs: str):
         """Return an `NGlobMulti` object with matching results from `self.inp`."""
         ngm = NGlobMulti.from_patterns(patterns, subs)
@@ -96,7 +98,7 @@ class StepInfo:
         return ngm
 
 
-def load_step_info(filename: str) -> StepInfo | list[StepInfo]:
+def load_step_info(filename: StrPath) -> StepInfo | list[StepInfo]:
     """Load one or more step info object from a JSON file.
 
     The file should contain a single JSON object or a JSON array of such objects.
@@ -104,20 +106,15 @@ def load_step_info(filename: str) -> StepInfo | list[StepInfo]:
     with open(filename) as fh:
         data = json.load(fh)
     if isinstance(data, dict):
-        return StepInfo(**data)
-    return [StepInfo(**item) for item in data]
+        return json_converter.structure(data, StepInfo)
+    return json_converter.structure(data, list[StepInfo])
 
 
-def dump_step_info(filename: str, step_info: StepInfo | list[StepInfo]):
+def dump_step_info(filename: StrPath, step_info: StepInfo | Iterable[StepInfo]):
     """Dump one or more step info objects to a JSON file.
 
     The file will contain a single JSON object or a JSON array of such objects.
     """
     with open(filename, "w") as fh:
-        data = (
-            attrs.asdict(step_info)
-            if isinstance(step_info, StepInfo)
-            else [attrs.asdict(si) for si in step_info]
-        )
-        json.dump(data, fh, indent=2)
+        json.dump(json_converter.unstructure(step_info), fh, indent=2)
         fh.write("\n")

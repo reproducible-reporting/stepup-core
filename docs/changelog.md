@@ -160,6 +160,7 @@ This is release candidate 7 for the upcoming StepUp 4.0 release.
       File hashing is offloaded to a dedicated subprocess (`_stepup_hasher` or a forkserver child).
     - Strict database sessions management and transaction correctness has been implemented
       to avoid database corruption, e.g. due to race conditions.
+    - Order of `StepInfo` attributes is made consistent with the `step()` API function.
     - The *run phase* has been renamed to *build phase* throughout the documentation and source code.
     - Runner has been renamed to Builder.
     - Cascade has been renamed to Trellis.

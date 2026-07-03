@@ -1,7 +1,6 @@
 [
   {
     "command": "./work.py run -- -5.0",
-    "workdir": ".",
     "inp": [
       "work.py"
     ],
@@ -9,11 +8,11 @@
     "out": [
       "data-5.0.txt"
     ],
-    "vol": []
+    "vol": [],
+    "workdir": "."
   },
   {
     "command": "./work.py run +7.0",
-    "workdir": ".",
     "inp": [
       "work.py"
     ],
@@ -21,6 +20,7 @@
     "out": [
       "data+7.0.txt"
     ],
-    "vol": []
+    "vol": [],
+    "workdir": "."
   }
 ]

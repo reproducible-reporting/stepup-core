@@ -79,7 +79,7 @@ def captured(monkeypatch):
                 "resources": resources,
             }
         )
-        return StepInfo(command, workdir, list(inp), list(env), list(out), list(vol))
+        return StepInfo(command, list(inp), list(env), list(out), list(vol), workdir)
 
     monkeypatch.setattr("stepup.core.api.step", mock_step)
     monkeypatch.setattr("stepup.core.api.amend", lambda **kw: None)

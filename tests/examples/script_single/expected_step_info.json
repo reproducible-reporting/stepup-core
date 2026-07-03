@@ -1,6 +1,5 @@
 {
   "command": "./generate.py run",
-  "workdir": "work",
   "inp": [
     "config.json",
     "generate.py"
@@ -9,5 +8,6 @@
   "out": [
     "test.csv"
   ],
-  "vol": []
+  "vol": [],
+  "workdir": "work"
 }
