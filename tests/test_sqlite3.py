@@ -19,6 +19,7 @@
 # --
 """Tests for stepup.core.sqlite3."""
 
+import inspect
 import json
 
 import pytest
@@ -70,8 +71,9 @@ async def test_sqllog_written_on_close(tmp_path):
         assert db.record
         async with db:
             db.execute("CREATE TABLE t (a INTEGER)")
-            db.execute("INSERT INTO t VALUES (?)", (1,))
-            db.execute("INSERT INTO t VALUES (?)", (2,))
+            insert_line = inspect.currentframe().f_lineno + 2
+            for value in (1, 2):
+                db.execute("INSERT INTO t VALUES (?)", (value,))
         # The log file is only written once the session is closed.
         assert not path_sqllog.is_file()
 
@@ -79,11 +81,18 @@ async def test_sqllog_written_on_close(tmp_path):
     with open(path_sqllog) as fh:
         log = json.load(fh)
 
-    assert set(log) == {"CREATE TABLE t (a INTEGER)", "INSERT INTO t VALUES (?)"}
-    create_entry = log["CREATE TABLE t (a INTEGER)"]
+    assert len(log) == 2
+    by_query = {record["query"]: record for record in log}
+    assert set(by_query) == {"CREATE TABLE t (a INTEGER)", "INSERT INTO t VALUES (?)"}
+
+    create_entry = by_query["CREATE TABLE t (a INTEGER)"]
     assert create_entry["count"] == 1
     assert create_entry["wtime"] >= 0.0
     assert isinstance(create_entry["plan"], str)
-    insert_entry = log["INSERT INTO t VALUES (?)"]
+    assert create_entry["module_name"] == __name__
+
+    insert_entry = by_query["INSERT INTO t VALUES (?)"]
     assert insert_entry["count"] == 2
     assert insert_entry["wtime"] >= 0.0
+    assert insert_entry["module_name"] == __name__
+    assert insert_entry["line"] == insert_line

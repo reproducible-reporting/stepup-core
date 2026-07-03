@@ -10,9 +10,11 @@ python tmp/analyze_perf.py [--prof tmp/director.prof] [--sqllog tmp/sqllog.json]
 The profile is expected in `pstats`-compatible format
 (as written by `yappi.get_func_stats().save(..., type="pstat")`,
 which is what `STEPUP_YAPPI` produces).
-The SQL log is the JSON file written when running with `--sql-log`:
-a mapping of `query text -> {"plan": ..., "wtime": ..., "count": ...}`,
-where `wtime` is the summed wall time over all executions of that query
+The SQL log is the JSON file written when running with `--sqllog`:
+a list of records, one per distinct call site,
+each `{"query": ..., "module_name": ..., "line": ..., "plan": ..., "wtime": ..., "count": ...}`,
+where `module_name` / `line` identify the `db.execute()` / `db.executemany()` call site,
+`wtime` is the summed wall time over all executions of that query at that call site,
 and `count` is the number of rows processed
 (1 per plain `execute()`, `n` per `executemany()` with `n` rows).
 """
@@ -57,32 +59,37 @@ def analyze_profile(prof_path: Path, top: int) -> None:
 def analyze_sqllog(sqllog_path: Path, top: int) -> float:
     """Print the costliest queries from a SQL query log and return the total wall time."""
     data = json.loads(sqllog_path.read_text())
-    total_wtime = sum(v["wtime"] for v in data.values())
+    total_wtime = sum(rec["wtime"] for rec in data)
+    distinct_queries = len({rec["query"] for rec in data})
     print(f"\n=== SQL log: {sqllog_path} ===")
-    print(f"Distinct queries: {len(data)}")
+    print(f"Distinct call sites: {len(data)}")
+    print(f"Distinct queries: {distinct_queries}")
     print(f"Total SQL wall time: {total_wtime:.3f} s")
 
     print(f"\n-- Top {top} queries by total wall time --")
-    print(f"{'wtime [s]':>10} {'%':>6} {'count':>8} {'avg [ms]':>10}  query")
-    rows = sorted(data.items(), key=lambda kv: -kv[1]["wtime"])[:top]
-    for query, info in rows:
-        wtime, count = info["wtime"], info["count"]
+    print(
+        f"{'wtime [s]':>10} {'%':>6} {'count':>8} {'avg [ms]':>10}"
+        "                        location  query"
+    )
+    rows = sorted(data, key=lambda rec: -rec["wtime"])[:top]
+    for rec in rows:
+        wtime, count = rec["wtime"], rec["count"]
         pct = 100 * wtime / total_wtime if total_wtime else 0.0
         avg_ms = 1000 * wtime / count if count else 0.0
-        flat_query = " ".join(query.split())
-        print(f"{wtime:10.3f} {pct:6.1f} {count:8d} {avg_ms:10.4f}  {flat_query[:90]}")
+        flat_query = " ".join(rec["query"].split())
+        location = f"{rec['module_name']}:{rec['line']}"
+        print(
+            f"{wtime:10.3f} {pct:6.1f} {count:8d} {avg_ms:10.4f}  {location:>30}  {flat_query[:70]}"
+        )
 
-    unindexed = [
-        (query, info)
-        for query, info in data.items()
-        if "SCAN" in info["plan"] and "USING" not in info["plan"]
-    ]
+    unindexed = [rec for rec in data if "SCAN" in rec["plan"] and "USING" not in rec["plan"]]
     if unindexed:
         print(f"\n-- Queries with a full table scan and no index ({len(unindexed)}) --")
-        print(f"{'wtime [s]':>10} {'count':>8}  query")
-        for query, info in sorted(unindexed, key=lambda kv: -kv[1]["wtime"]):
-            flat_query = " ".join(query.split())
-            print(f"{info['wtime']:10.3f} {info['count']:8d}  {flat_query[:90]}")
+        print(f"{'wtime [s]':>10} {'count':>8}                        location  query")
+        for rec in sorted(unindexed, key=lambda rec: -rec["wtime"]):
+            flat_query = " ".join(rec["query"].split())
+            location = f"{rec['module_name']}:{rec['line']}"
+            print(f"{rec['wtime']:10.3f} {rec['count']:8d}  {location:>30}  {flat_query[:70]}")
     else:
         print("\nNo unindexed full table scans found.")
 

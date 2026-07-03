@@ -88,50 +88,72 @@ def compare_profiles(before_path: Path, after_path: Path, top: int) -> tuple[flo
     return total_before, total_after
 
 
+def load_sqllog(path: Path) -> dict[tuple[str, int, str], dict]:
+    """Load a SQL query log into `{(module_name, line, flattened query): record}`.
+
+    The key combines the call site (`module_name`, `line`) with the flattened query text,
+    matching the fine-grained identity used by `DBSession._log`,
+    so that the same query text executed from two different call sites
+    is compared as two separate entries instead of being silently merged.
+    """
+    records = json.loads(path.read_text())
+    return {
+        (rec["module_name"], rec["line"], " ".join(rec["query"].split())): rec for rec in records
+    }
+
+
 def compare_sqllogs(before_path: Path, after_path: Path, top: int) -> tuple[float, float]:
     """Print the queries whose total wall time changed the most between two SQL logs."""
-    before = {" ".join(k.split()): v for k, v in json.loads(before_path.read_text()).items()}
-    after = {" ".join(k.split()): v for k, v in json.loads(after_path.read_text()).items()}
-    total_before = sum(v["wtime"] for v in before.values())
-    total_after = sum(v["wtime"] for v in after.values())
-    count_before = sum(v["count"] for v in before.values())
-    count_after = sum(v["count"] for v in after.values())
+    before = load_sqllog(before_path)
+    after = load_sqllog(after_path)
+    total_before = sum(rec["wtime"] for rec in before.values())
+    total_after = sum(rec["wtime"] for rec in after.values())
+    count_before = sum(rec["count"] for rec in before.values())
+    count_after = sum(rec["count"] for rec in after.values())
 
     print(f"\n=== SQL logs: {before_path.name} -> {after_path.name} ===")
     pct = 100 * (total_after - total_before) / total_before if total_before else 0.0
     print(f"Total SQL wall time: {total_before:.3f} s -> {total_after:.3f} s  ({pct:+.1f}%)")
     print(f"Total statement executions: {count_before} -> {count_after}")
-    print(f"Distinct queries: {len(before)} -> {len(after)}")
+    print(f"Distinct call sites: {len(before)} -> {len(after)}")
 
     keys = set(before) | set(after)
     rows = []
-    for query in keys:
+    for key in keys:
         wtime_before, count_b = (
-            (before[query]["wtime"], before[query]["count"]) if query in before else (0.0, 0)
+            (before[key]["wtime"], before[key]["count"]) if key in before else (0.0, 0)
         )
         wtime_after, count_a = (
-            (after[query]["wtime"], after[query]["count"]) if query in after else (0.0, 0)
+            (after[key]["wtime"], after[key]["count"]) if key in after else (0.0, 0)
         )
-        rows.append((query, wtime_before, wtime_after, count_b, count_a))
+        rows.append((key, wtime_before, wtime_after, count_b, count_a))
     rows.sort(key=lambda r: r[2] - r[1])
 
     print(f"\n-- Top {top} improved queries (wall time) --")
-    print(f"{'before [s]':>10} {'after [s]':>10} {'delta [s]':>10} {'count (b->a)':>14}  query")
-    for query, wb, wa, cb, ca in rows[:top]:
+    print(
+        f"{'before [s]':>10} {'after [s]':>10} {'delta [s]':>10} {'count (b->a)':>14}  "
+        "location  query"
+    )
+    for (module_name, line, query), wb, wa, cb, ca in rows[:top]:
         delta = wa - wb
         if delta >= 0:
             continue
         count_str = f"{cb} -> {ca}"
-        print(f"{wb:10.3f} {wa:10.3f} {delta:10.3f} {count_str:>14}  {query[:80]}")
+        location = f"{module_name}:{line}"
+        print(f"{wb:10.3f} {wa:10.3f} {delta:10.3f} {count_str:>14}  {location}  {query[:60]}")
 
     print(f"\n-- Top {top} regressed queries (wall time) --")
-    print(f"{'before [s]':>10} {'after [s]':>10} {'delta [s]':>10} {'count (b->a)':>14}  query")
-    for query, wb, wa, cb, ca in reversed(rows[-top:]):
+    print(
+        f"{'before [s]':>10} {'after [s]':>10} {'delta [s]':>10} {'count (b->a)':>14}  "
+        "location  query"
+    )
+    for (module_name, line, query), wb, wa, cb, ca in reversed(rows[-top:]):
         delta = wa - wb
         if delta <= 0:
             continue
         count_str = f"{cb} -> {ca}"
-        print(f"{wb:10.3f} {wa:10.3f} {delta:10.3f} {count_str:>14}  {query[:80]}")
+        location = f"{module_name}:{line}"
+        print(f"{wb:10.3f} {wa:10.3f} {delta:10.3f} {count_str:>14}  {location}  {query[:60]}")
 
     return total_before, total_after
 

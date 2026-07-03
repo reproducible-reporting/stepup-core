@@ -21,6 +21,7 @@
 
 import asyncio
 import contextlib
+import inspect
 import json
 import logging
 import os
@@ -132,12 +133,30 @@ def connect(path: StrPath, read_only: bool = False, **kwargs: Any) -> sqlite3.Co
     return con
 
 
+@attrs.define(frozen=True)
+class QueryKey:
+    """Identifies a distinct SQL query by its text and call site.
+
+    Combining the query text with its call site allows the same query text,
+    executed from two unrelated places in the code, to be tracked separately.
+    """
+
+    query: str = attrs.field()
+    """The SQL query text."""
+
+    module_name: str = attrs.field()
+    """The `__name__` of the module that called `db.execute()` / `db.executemany()`."""
+
+    line: int = attrs.field()
+    """The line number of the call to `db.execute()` / `db.executemany()`."""
+
+
 @attrs.define
 class QueryLog:
     """Properties associated with a single SQL query for logging purposes.
 
-    The query itself is not stored here,
-    as it is the key in a dictionary mapping queries to their logs.
+    The query and its call site are not stored here,
+    as they make up the `QueryKey` used in a dictionary mapping queries to their logs.
     """
 
     plan: str = attrs.field()
@@ -171,7 +190,7 @@ class DBSession:
     _cv: ContextVar[sqlite3.Connection | None] = attrs.field(
         factory=lambda: ContextVar("con_cv", default=None), init=False
     )
-    _log: dict[str, QueryLog] = attrs.field(factory=dict, init=False)
+    _log: dict[QueryKey, QueryLog] = attrs.field(factory=dict, init=False)
 
     #
     # Application lifecycle (Synchronous Context Manager)
@@ -215,13 +234,23 @@ class DBSession:
     def write_log(self, path: StrPath) -> None:
         """Write the recorded SQL debug log to a JSON file.
 
+        The file contains a list of records, one per distinct `QueryKey`,
+        each merging the key fields (`query`, `module_name`, `line`)
+        with the log fields (`plan`, `wtime`, `count`).
+        A list is used instead of a mapping keyed by query text,
+        because a `QueryKey` cannot be represented as a single JSON object key.
+
         Parameters
         ----------
         path
             The destination for the JSON log file.
         """
+        records = [
+            json_converter.unstructure(key) | json_converter.unstructure(log)
+            for key, log in self._log.items()
+        ]
         with open(path, "w") as f:
-            json.dump(json_converter.unstructure(self._log), f)
+            json.dump(records, f)
 
     #
     # Transaction locking (Asynchronous Context Manager)
@@ -273,7 +302,9 @@ class DBSession:
         if not isinstance(args, (Sequence, Mapping)):
             args = tuple(args)
         if self.record:
-            with self._update_log(sql, 1, args):
+            frame = inspect.currentframe().f_back
+            module_name = frame.f_globals.get("__name__", "?")
+            with self._update_log(sql, module_name, frame.f_lineno, 1, args):
                 return con.execute(sql, args)
         else:
             return con.execute(sql, args)
@@ -285,21 +316,28 @@ class DBSession:
             args if isinstance(args, (Sequence, Mapping)) else tuple(args) for args in seq_of_args
         ]
         if len(seq_of_args) > 0 and self.record:
-            with self._update_log(sql, len(seq_of_args), seq_of_args[0]):
+            frame = inspect.currentframe().f_back
+            module_name = frame.f_globals.get("__name__", "?")
+            with self._update_log(
+                sql, module_name, frame.f_lineno, len(seq_of_args), seq_of_args[0]
+            ):
                 return con.executemany(sql, seq_of_args)
         else:
             return con.executemany(sql, seq_of_args)
 
     @contextmanager
-    def _update_log(self, sql: str, count: int, args: Iterable[Any] = ()) -> Iterator[None]:
-        """Context manager to update the SQL debug log for a given query."""
-        item = self._log.get(sql)
+    def _update_log(
+        self, sql: str, module_name: str, line: int, count: int, args: Iterable[Any] = ()
+    ) -> Iterator[None]:
+        """Context manager to update the SQL debug log for a given query and call site."""
+        key = QueryKey(query=sql, module_name=module_name, line=line)
+        item = self._log.get(key)
         if item is None:
             con = self._take_con()
             plan_rows = list(con.execute(f"EXPLAIN QUERY PLAN {sql}", args))
             plan = _format_query_plan(plan_rows)
             item = QueryLog(plan=plan, wtime=0.0, count=0)
-            self._log[sql] = item
+            self._log[key] = item
 
         start_time = time.perf_counter()
         try:
