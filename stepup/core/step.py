@@ -62,13 +62,18 @@ CREATE TABLE IF NOT EXISTS step (
     -- The need of the step, as defined in the Need enum.
     duration REAL NOT NULL CHECK(duration >= 0) DEFAULT 1.0,
     -- An estimate of the wall time of the step in seconds.
-    rescheduled_info TEXT NOT NULL DEFAULT '',
-    -- Information about why this step was rescheduled,
-    -- or an empty string if it was not rescheduled.
+    unavailable_inputs TEXT NOT NULL DEFAULT '',
+    -- Amended input paths that were genuinely not built (or static) yet when amend()
+    -- checked them, or an empty string if none. Only a real producer completion
+    -- (mark_pending()) clears this.
+    unfresh_inputs TEXT NOT NULL DEFAULT '',
+    -- Amended input paths that were built, but failed the start/stop-time freshness
+    -- check in amend(), or an empty string if none. Self-resolving: cleared
+    -- unconditionally in Step.completed() rather than waiting for mark_pending().
     reschedule_count INTEGER NOT NULL CHECK(reschedule_count >= 0) DEFAULT 0,
     -- Number of consecutive reschedules since the last SUCCEEDED state.
     -- Reset to 0 only on SUCCEEDED (see step_reset_reschedule_count below);
-    -- NOT reset by FAILED or by rescheduled_info being cleared via mark_pending().
+    -- NOT reset by FAILED or by unavailable_inputs being cleared via mark_pending().
     subshell INTEGER NOT NULL CHECK(subshell IN (0, 1)),
     -- Whether the step command is executed via a subshell (shell=True).
     env_overrides TEXT,
@@ -111,17 +116,18 @@ BEGIN
     UPDATE step SET _check_after = 1 WHERE node IN (OLD.supplier, OLD.consumer);
 END;
 
--- Clear rescheduled_info once a step reaches a completed state, so a stale reschedule
--- note from a previous run does not keep gating schedulability after it settles again.
+-- Clear unavailable_inputs/unfresh_inputs once a step reaches a completed state, so a
+-- stale reschedule note from a previous run does not keep gating schedulability after
+-- it settles again.
 CREATE TRIGGER IF NOT EXISTS step_clear_rescheduled AFTER UPDATE OF state ON step
 WHEN NEW.state IN ({StepState.SUCCEEDED.value}, {StepState.FAILED.value})
 BEGIN
-    UPDATE step SET rescheduled_info = '' WHERE node = NEW.node;
+    UPDATE step SET unavailable_inputs = '', unfresh_inputs = '' WHERE node = NEW.node;
 END;
 
 -- Reset reschedule_count only on SUCCEEDED (not FAILED), so the cap measures
 -- consecutive reschedule attempts since the last convergence, independent of
--- rescheduled_info's own (broader) SUCCEEDED-or-FAILED clearing above.
+-- unavailable_inputs/unfresh_inputs's own (broader) SUCCEEDED-or-FAILED clearing above.
 CREATE TRIGGER IF NOT EXISTS step_reset_reschedule_count AFTER UPDATE OF state ON step
 WHEN NEW.state = {StepState.SUCCEEDED.value}
 BEGIN
@@ -450,20 +456,35 @@ class Step(Node):
             "UPDATE step SET state = ?, _check_safe = 1 WHERE node = ?", (state.value, self.i)
         )
 
-    def get_rescheduled_info(self) -> str:
-        sql = "SELECT rescheduled_info FROM step WHERE node = ?"
+    def get_unavailable_inputs(self) -> str:
+        sql = "SELECT unavailable_inputs FROM step WHERE node = ?"
         return self.db.execute(sql, (self.i,)).fetchone()[0]
 
-    def add_rescheduled_info(self, info: str):
+    def add_unavailable_inputs(self, info: str):
         self.db.execute(
-            "UPDATE step SET rescheduled_info = CASE rescheduled_info"
-            " WHEN '' THEN :info ELSE (rescheduled_info || '\n' || :info) END"
+            "UPDATE step SET unavailable_inputs = CASE unavailable_inputs"
+            " WHEN '' THEN :info ELSE (unavailable_inputs || '\n' || :info) END"
             " WHERE node = :i",
             {"info": info, "i": self.i},
         )
 
-    def clear_rescheduled_info(self):
-        self.db.execute("UPDATE step SET rescheduled_info = '' WHERE node = ?", (self.i,))
+    def clear_unavailable_inputs(self):
+        self.db.execute("UPDATE step SET unavailable_inputs = '' WHERE node = ?", (self.i,))
+
+    def get_unfresh_inputs(self) -> str:
+        sql = "SELECT unfresh_inputs FROM step WHERE node = ?"
+        return self.db.execute(sql, (self.i,)).fetchone()[0]
+
+    def add_unfresh_inputs(self, info: str):
+        self.db.execute(
+            "UPDATE step SET unfresh_inputs = CASE unfresh_inputs"
+            " WHEN '' THEN :info ELSE (unfresh_inputs || '\n' || :info) END"
+            " WHERE node = :i",
+            {"info": info, "i": self.i},
+        )
+
+    def clear_unfresh_inputs(self):
+        self.db.execute("UPDATE step SET unfresh_inputs = '' WHERE node = ?", (self.i,))
 
     def get_reschedule_count(self) -> int:
         """Return the number of consecutive reschedules since the last SUCCEEDED state."""
@@ -800,21 +821,35 @@ class Step(Node):
         # Drop any subprocess invocations recorded by a previous run.
         self.delete_subprocesses()
 
-    def completed(self, new_hash: StepHash | None):
+    def completed(self, new_hash: StepHash | None) -> bool:
         """Set a step as completed (succeeded or failed) and trigger the consequences.
 
         Parameters
         ----------
         new_hash
             The new digest of the completed step if the step was successful, `None` otherwise.
+
+        Returns
+        -------
+        interrupted_reschedule
+            True if rescheduling has been interrupted due to cap being exceeded, False otherwise.
         """
+        interrupted_reschedule = False
         if new_hash is None:
-            rescheduled_info = self.get_rescheduled_info()
+            unavailable_inputs = self.get_unavailable_inputs()
+            unfresh_inputs = self.get_unfresh_inputs()
             # Update states, needed for files that have not changed since previous run.
             for file in self.products(File):
                 if file.get_state() == FileState.BUILT:
                     file.set_state(FileState.OUTDATED)
-            if rescheduled_info != "":
+            if unavailable_inputs != "" or unfresh_inputs != "":
+                # unfresh_inputs always self-resolves: this step's own next dispatch is
+                # guaranteed a start_time later than every stop_time already recorded this
+                # invocation, so it can never block again --- clear it eagerly instead of
+                # waiting for a mark_pending() push that will never come. unavailable_inputs
+                # is left untouched here; only a real producer completion (mark_pending)
+                # clears that one.
+                self.clear_unfresh_inputs()
                 reschedule_count = self._increment_reschedule_count()
                 if reschedule_count <= self.graph.reschedule_cap:
                     logger.info(
@@ -824,12 +859,11 @@ class Step(Node):
                         self.label,
                     )
                     # We just set the state to PENDING.
-                    # However, it will not be scheduled as long as `rescheduled_info` has
+                    # However, it will not be scheduled as long as `unavailable_inputs` has
                     # some info. Any later file changes relevant to the step will result in
-                    # a call to mark_pending(), which will clear the rescheduled_info.
+                    # a call to mark_pending(), which will clear unavailable_inputs.
                     # This makes the step eligible for scheduling again.
                     self.set_state(StepState.PENDING)
-                    self.delete_hash()
                 else:
                     logger.info(
                         "Reschedule cap (%d) exceeded, failed step: %s",
@@ -837,11 +871,11 @@ class Step(Node):
                         self.label,
                     )
                     self.set_state(StepState.FAILED)
-                    self.delete_hash()
+                    interrupted_reschedule = True
             else:
                 logger.info("Failed step: %s", self.label)
                 self.set_state(StepState.FAILED)
-                self.delete_hash()
+            self.delete_hash()
         else:
             logger.info("Succeeded step: %s", self.label)
             self.set_state(StepState.SUCCEEDED)
@@ -851,6 +885,7 @@ class Step(Node):
                     file.set_state(FileState.BUILT)
                     file.completed()
             self.set_hash(new_hash)
+        return interrupted_reschedule
 
     def get_hash(self) -> StepHash | None:
         """Return the stored step hash, or `None` if none is stored."""
@@ -985,7 +1020,7 @@ class Step(Node):
         As a side effect, this method is sometimes also called on RUNNING steps,
         in which case the call is ignored.
 
-        This method also clears the rescheduled_info,
+        This method also clears unavailable_inputs,
         which makes the step eligible for scheduling again.
         """
         # Note that PENDING, RUNNING, and CHECKING are ignored.
@@ -994,7 +1029,7 @@ class Step(Node):
         state = self.get_state()
         if state in (StepState.RUNNING, StepState.CHECKING):
             return
-        self.clear_rescheduled_info()
+        self.clear_unavailable_inputs()
         if state in (StepState.SUCCEEDED, StepState.FAILED):
             logger.info("Mark %s step PENDING: %s", state.name, self.label)
             self.set_state(StepState.PENDING)

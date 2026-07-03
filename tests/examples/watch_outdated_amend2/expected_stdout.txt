@@ -4,7 +4,7 @@
         1/4 |    SUCCESS │ ./plan.py
         1/4 |      START │ ./work.py subs1.txt > subs2.txt
         1/4 | RESCHEDULE │ ./work.py subs1.txt > subs2.txt
-──────────────── Rescheduling due to unavailable amended inputs ────────────────
+────────────────────────── Unavailable amended inputs ──────────────────────────
 conv1.txt
 ────────────────────────────────────────────────────────────────────────────────
         1/4 |      START │ cp -p inp1.txt conv1.txt
@@ -32,7 +32,7 @@ Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
         1/4 |      START │ ./work.py subs1.txt > subs2.txt
         1/4 | RESCHEDULE │ ./work.py subs1.txt > subs2.txt
-──────────────── Rescheduling due to unavailable amended inputs ────────────────
+────────────────────────── Unavailable amended inputs ──────────────────────────
 conv2.txt
 ────────────────────────────────────────────────────────────────────────────────
         1/4 |      START │ cp -p inp2.txt conv2.txt

@@ -593,7 +593,17 @@ def amend(
     These substitutions are based on the state of `os.environ` in the calling script,
     at the time this function is called, not when the step is executed.
 
-    Always call `amend()` before reading input files and before writing output or volatile files.
+    Calling `amend(inp=...)` before reading additional input files is recommended, but not required:
+    it is also safe to call `amend()` afterward.
+    A file that is missing, or that was built too recently to be trusted
+    (e.g. still being written by its producer step while it was read),
+    causes the step to be rescheduled rather than to fail outright.
+    Calling `amend()` early remains preferable where practical,
+    since it avoids the wasted work of a reschedule.
+
+    For additional output files, `amend(out=...)` or `amend(vol=...)` is required before writing.
+    These will raise an exception if the amended outputs collide with files declared elsewhere
+    in the workflow, preventing accidental overwrites of other step's files.
 
     Repeated calls are safe: items already amended in prior calls are silently skipped.
     """

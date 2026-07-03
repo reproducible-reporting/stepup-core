@@ -46,7 +46,7 @@ import subprocess
 import sys
 import threading
 import traceback
-from collections.abc import AsyncGenerator, Sequence
+from collections.abc import AsyncGenerator
 from importlib.metadata import entry_points
 from time import perf_counter
 
@@ -575,8 +575,14 @@ class Run:
     out_missing: list = attrs.field(init=False, factory=list)
     """List of expected output files that were not created."""
 
-    rescheduled_info: str = attrs.field(init=False, default="")
-    """Information about why the step was rescheduled."""
+    unavailable_inputs: str = attrs.field(init=False, default="")
+    """Amended input paths that were genuinely not built yet, if the step was rescheduled."""
+
+    unfresh_inputs: str = attrs.field(init=False, default="")
+    """Amended input paths that failed the freshness check, if the step was rescheduled."""
+
+    interrupted_reschedule: bool = attrs.field(init=False, default=False)
+    """Set to True when the step has reached its reschedule cap."""
 
     returncode: int | None = attrs.field(init=False, default=None)
     """The return code from the command."""
@@ -732,12 +738,19 @@ class Executor:
                 self.workflow.update_file_hashes(new_out_hashes, HashUpdateCause.SUCCEEDED)
                 step.completed(new_hash)
                 step_counts = self.workflow.get_step_counts()
+                # Note that we do not call `scheduler.job_finished` here,
+                # because the step was never actually run.
+                # That would record a stop time while no outputs were written
+                # for which race conditions need to be excluded.
             await self.reporter.update_step_counts(step_counts)
 
     async def execute_job(
         self, step: Step, inp_hashes: list[tuple[str, FileHash]], env_deps: list[str]
     ):
-        """Execute a step (no skipping)."""
+        """Execute a step (no skipping).
+
+        When the reschedule cap is exceeded, the step is marked as failed without execution.
+        """
         async with self.new_step(step, inp_hashes, env_deps) as (run, new_hash):
             if new_hash is None:
                 # Failed to create the new step due to unexpected input changes.
@@ -755,33 +768,43 @@ class Executor:
             # so outputs can be removed safely if they are no longer needed.
             new_hash, new_inp_hashes, new_out_hashes = await self.compute_full_step_hash(run)
 
-            success = run.success
-
             async with self.db:
-                rescheduled_info = step.get_rescheduled_info()
-                extra_pages: list[tuple[str, str]] = []
-                if rescheduled_info != "":
-                    reschedule_cap = self.workflow.reschedule_cap
-                    # No `await` between this peek and step.completed()'s authoritative
-                    # increment below, so the two cannot disagree about the outcome.
-                    if step.get_reschedule_count() + 1 > reschedule_cap:
-                        extra_pages.append(
-                            (
-                                "Reschedule cap exceeded",
-                                f"Rescheduled {reschedule_cap} times without succeeding:\n"
-                                f"{rescheduled_info}",
-                            )
-                        )
-                    else:
-                        self.rescheduled(run, rescheduled_info)
-                    success = False
+                # Gather information about the step to determine how to handle it.
+                unavailable_inputs = step.get_unavailable_inputs()
+                unfresh_inputs = step.get_unfresh_inputs()
+                wants_reschedule = unavailable_inputs != "" or unfresh_inputs != ""
+
+                # Handling logic
+                if len(new_inp_hashes) > 0:
+                    # This is the worst case: inputs should never change while a step is running.
+                    # If they do, fail hard and stop ASAP.
+                    # Some of the stopping logic is found below outside `async with self.db`.
+                    run.success = False
+                    new_hash = None
+                    # Clear the amended inputs to mark the step as failed instead of pending.
+                    step.clear_unavailable_inputs()
+                    step.clear_unfresh_inputs()
+                elif wants_reschedule:
+                    # The inputs are not ready yet, so reschedule the step for later.
+                    run.unavailable_inputs = unavailable_inputs
+                    run.unfresh_inputs = unfresh_inputs
+                    # Rescheduling in the completed() method needs the new hash to be None,
+                    # so the step is not marked as succeeded.
+                    run.success = False
+                    new_hash = None
+                elif not run.success:
+                    # Some other failure occurred (command failed, output missing, etc.)
+                    new_hash = None
                 self.workflow.update_file_hashes(
                     new_out_hashes,
-                    HashUpdateCause.SUCCEEDED if success else HashUpdateCause.FAILED,
+                    HashUpdateCause.SUCCEEDED if run.success else HashUpdateCause.FAILED,
                 )
-                if not success:
-                    new_hash = None
-                step.completed(new_hash)
+                run.interrupted_reschedule = step.completed(new_hash)
+                if wants_reschedule and not run.interrupted_reschedule:
+                    # Erase error info to keep the screen output concise.
+                    run.stderr = ""
+                # Record the stop time.
+                self.scheduler.job_finished(step.i, succeeded=new_hash is not None)
                 # Persist the captured output in the same transaction as completed(),
                 # so a crash cannot leave a completed step without its output (or vice
                 # versa). run.stdout/run.stderr stay untruncated; store_output truncates a
@@ -792,7 +815,7 @@ class Executor:
             await self.reporter.update_step_counts(step_counts)
 
             # Report the result of running the step
-            await self.report(run, extra_pages=extra_pages)
+            await self.report(run)
 
             if len(new_inp_hashes) > 0:
                 # Changes to inputs are suspect and can break everything.
@@ -832,6 +855,7 @@ class Executor:
             # or some inputs were deleted. This breaks the workflow, so flag the step as failed.
             async with self.db:
                 step.completed(None)
+                self.scheduler.job_finished(step.i, succeeded=False)
                 step_counts = self.workflow.get_step_counts()
             await self.reporter.update_step_counts(step_counts)
             await self.report(run)
@@ -1029,45 +1053,48 @@ class Executor:
                     logger.info("Interrupting forkserver child %d with signal %d", pid, sig)
                     os.kill(pid, sig)
 
-    def rescheduled(self, run: Run, rescheduled_info: str):
-        run.rescheduled_info = rescheduled_info
-        # Erase other error info to keep the screen output concise.
-        run.success = True
-        run.stderr = ""
-
-    async def report(self, run: Run, *, extra_pages: Sequence[tuple[str, str]] = ()):
+    async def report(self, run: Run):
         command, workdir = run.step.command_workdir
         pages = []
-        if not run.success:
+        needs_reschedule = not (
+            (run.unavailable_inputs == "" and run.unfresh_inputs == "")
+            or run.interrupted_reschedule
+        )
+        if not (run.success or needs_reschedule):
             # Format command for display (can be copied and pasted into a shell); a non-zero
             # return code is appended as a trailing `# exit=N` comment by format_subprocess.
             async with self.db:
                 subshell = run.step.get_subshell()
             pages.append(
                 (
-                    "Failed command",
+                    f"Rescheduled more than {self.workflow.reschedule_cap} times"
+                    if run.interrupted_reschedule
+                    else "Failed command",
                     format_subprocess(command, str(workdir), None, run.returncode, shell=subshell),
                 )
             )
         if len(run.perf_info) > 0:
             pages.append(("Performance details", run.perf_info))
-        if run.rescheduled_info != "":
-            pages.append(("Rescheduling due to unavailable amended inputs", run.rescheduled_info))
-        else:
-            if len(run.inp_messages) > 0:
-                run.inp_messages.sort()
-                pages.append(("Invalid inputs", "\n".join(run.inp_messages)))
-            if len(run.out_missing) > 0:
-                run.out_missing.sort()
-                pages.append(("Expected outputs not created", "\n".join(run.out_missing)))
-        pages.extend(extra_pages)
+        if run.unavailable_inputs != "":
+            pages.append(("Unavailable amended inputs", run.unavailable_inputs))
+        if run.unfresh_inputs != "":
+            pages.append(("Unfresh amended inputs", run.unfresh_inputs))
+        if len(run.inp_messages) > 0:
+            run.inp_messages.sort()
+            pages.append(("Invalid inputs", "\n".join(run.inp_messages)))
+        if not needs_reschedule and len(run.out_missing) > 0:
+            # Do not show missing outputs, as they are fairly normal and harmless when rescheduling.
+            run.out_missing.sort()
+            pages.append(("Expected outputs not created", "\n".join(run.out_missing)))
         stdout = run.stdout.rstrip()
         if len(stdout) > 0:
             pages.append(("Standard output", stdout))
         stderr = run.stderr.rstrip()
         if len(stderr) > 0:
             pages.append(("Standard error", stderr))
-        if run.rescheduled_info != "":
+        if run.interrupted_reschedule:
+            action = "FAIL"
+        elif run.unavailable_inputs != "" or run.unfresh_inputs != "":
             action = "RESCHEDULE"
         elif run.success:
             action = "SUCCESS"

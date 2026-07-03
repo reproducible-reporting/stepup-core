@@ -610,6 +610,8 @@ class DirectorHandler:
                 env_deps=env_deps,
                 out_paths=out_paths,
                 vol_paths=vol_paths,
+                start_times=self.scheduler.start_times,
+                stop_times=self.scheduler.stop_times,
             )
 
     @allow_rpc
@@ -617,7 +619,7 @@ class DirectorHandler:
         """Reschedule a step for the given reason."""
         async with self.db:
             step = self.workflow.node(Step, step_i)
-            step.add_rescheduled_info(reason)
+            step.add_unavailable_inputs(reason)
 
     @allow_rpc
     async def record_subprocess(

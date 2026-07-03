@@ -2,9 +2,9 @@
         0/1 |      PHASE │ build
         0/1 |      START │ ./plan.py
         1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ ./x.py
-        1/2 | RESCHEDULE │ ./x.py
-──────────────── Rescheduling due to unavailable amended inputs ────────────────
+        1/2 |      START │ ./work.py
+        1/2 | RESCHEDULE │ ./work.py
+────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ 1 step(s) remained pending ...
@@ -12,9 +12,9 @@ never.txt
              AWAITED  never.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Command               ./x.py
+Command               ./work.py
 Inputs        STATIC  trigger.txt
-              STATIC  x.py
+              STATIC  work.py
              AWAITED  (never.txt) [amended]
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ Skipping file cleanup due to incomplete build
@@ -22,9 +22,9 @@ Inputs        STATIC  trigger.txt
         1/2 |      PHASE │ watch
         1/2 |    UPDATED │ trigger.txt
         1/2 |      PHASE │ build
-        1/2 |      START │ ./x.py
-        1/2 | RESCHEDULE │ ./x.py
-──────────────── Rescheduling due to unavailable amended inputs ────────────────
+        1/2 |      START │ ./work.py
+        1/2 | RESCHEDULE │ ./work.py
+────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ 1 step(s) remained pending ...
@@ -32,9 +32,9 @@ never.txt
              AWAITED  never.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Command               ./x.py
+Command               ./work.py
 Inputs        STATIC  trigger.txt
-              STATIC  x.py
+              STATIC  work.py
              AWAITED  (never.txt) [amended]
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ Skipping file cleanup due to incomplete build
@@ -42,9 +42,9 @@ Inputs        STATIC  trigger.txt
         1/2 |      PHASE │ watch
         1/2 |    UPDATED │ trigger.txt
         1/2 |      PHASE │ build
-        1/2 |      START │ ./x.py
-        1/2 | RESCHEDULE │ ./x.py
-──────────────── Rescheduling due to unavailable amended inputs ────────────────
+        1/2 |      START │ ./work.py
+        1/2 | RESCHEDULE │ ./work.py
+────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ 1 step(s) remained pending ...
@@ -52,9 +52,9 @@ never.txt
              AWAITED  never.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required inputs are unavailable
-Command               ./x.py
+Command               ./work.py
 Inputs        STATIC  trigger.txt
-              STATIC  x.py
+              STATIC  work.py
              AWAITED  (never.txt) [amended]
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ Skipping file cleanup due to incomplete build
@@ -62,12 +62,11 @@ Inputs        STATIC  trigger.txt
         1/2 |      PHASE │ watch
         1/2 |    UPDATED │ trigger.txt
         1/2 |      PHASE │ build
-        1/2 |      START │ ./x.py
-        1/1 |       FAIL │ ./x.py
-──────────────────────────────── Failed command ────────────────────────────────
-./x.py  # exit=1
-─────────────────────────── Reschedule cap exceeded ────────────────────────────
-Rescheduled 3 times without succeeding:
+        1/2 |      START │ ./work.py
+        1/1 |       FAIL │ ./work.py
+──────────────────────── Rescheduled more than 3 times ─────────────────────────
+./work.py  # exit=1
+────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)

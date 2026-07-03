@@ -4,14 +4,14 @@
         1/4 |    SUCCESS │ ./plan.py
         1/4 |      START │ ./work.py
         1/4 | RESCHEDULE │ ./work.py
-──────────────── Rescheduling due to unavailable amended inputs ────────────────
+────────────────────────── Unavailable amended inputs ──────────────────────────
 optional1.txt
 ────────────────────────────────────────────────────────────────────────────────
         1/4 |      START │ cp -p data1.txt optional1.txt
         2/4 |    SUCCESS │ cp -p data1.txt optional1.txt
         2/4 |      START │ ./work.py
         2/4 | RESCHEDULE │ ./work.py
-──────────────── Rescheduling due to unavailable amended inputs ────────────────
+────────────────────────── Unavailable amended inputs ──────────────────────────
 optional2.txt
 ────────────────────────────────────────────────────────────────────────────────
         2/4 |      START │ cp -p data2.txt optional2.txt

@@ -101,6 +101,13 @@ class SupplyInfo:
     but we cannot report it as unavailable yet, hence the True value.
     """
 
+    unfresh: bool = attrs.field()
+    """True if the file is BUILT but fails the amend() freshness check.
+
+    Only ever set when `_resolve_supply_file` is called while the start time of
+    the current step precedes the stop time of the file's creator step.
+    """
+
     deferred: list[Node] = attrs.field()
     """A list of MISSING file nodes whose existence and validity must be checked.
 
@@ -183,7 +190,8 @@ class Workflow(Trellis):
         # Verify that succeeded steps have no rescheduled info.
         sql = (
             "SELECT step.node, node.label FROM step JOIN node ON step.node = node.i "
-            "WHERE step.state = ? AND step.rescheduled_info != '' AND NOT node.detached"
+            "WHERE step.state = ? AND (step.unavailable_inputs != '' OR step.unfresh_inputs != '')"
+            " AND NOT node.detached"
         )
         data = (StepState.SUCCEEDED.value,)
         for si, slabel in self.db.execute(sql, data):
@@ -367,8 +375,13 @@ class Workflow(Trellis):
         return None
 
     def _resolve_supply_file(
-        self, node: Node, path: str, new: bool
-    ) -> tuple[File, bool, list[Node], bool]:
+        self,
+        node: Node,
+        path: str,
+        new: bool,
+        start_times: dict[int, int] | None = None,
+        stop_times: dict[int, int] | None = None,
+    ) -> tuple[File, bool, bool, list[Node], bool]:
         """Find or create the file for a path and resolve its relation to node.
 
         This performs everything `supply_files` needs except inserting the
@@ -384,6 +397,11 @@ class Workflow(Trellis):
         new
             When `True` the (file, node) relationship must be new.
             If not, a `GraphError` is raised.
+        start_times, stop_times
+            The scheduler's step-node-id-keyed dispatch/completion timestamps.
+            When both are given, a `BUILT` file whose creator step's `stop_time` is
+            not strictly before `node`'s own `start_time` is flagged as `unfresh`.
+            When `None` (the `define_step` hot path), the freshness check is skipped.
 
         Returns
         -------
@@ -391,6 +409,8 @@ class Workflow(Trellis):
             The existing or newly created file node.
         available
             See `SupplyInfo.available`.
+        unfresh
+            See `SupplyInfo.unfresh`.
         deferred
             See `SupplyInfo.deferred`.
         new_relation
@@ -404,6 +424,7 @@ class Workflow(Trellis):
             When the path exists while it is expected to be new.
         """
         available = False
+        unfresh = False
         file, detached = self.find_detached(File, path)
         deferred = []
         if file is None or detached:
@@ -422,6 +443,13 @@ class Workflow(Trellis):
             available = state in (FileState.BUILT, FileState.STATIC, FileState.MISSING)
             if state == FileState.MISSING:
                 deferred.append(file)
+            elif state == FileState.BUILT and start_times is not None:
+                producer = file.creator()
+                if isinstance(producer, Step):
+                    stop_time = stop_times.get(producer.i)
+                    start_time = start_times.get(node.i)
+                    if stop_time is not None and start_time is not None and start_time <= stop_time:
+                        unfresh = True
         new_relation = (
             self.db.execute(
                 "SELECT 1 FROM dependency WHERE supplier = ? AND consumer = ?", (file.i, node.i)
@@ -430,10 +458,15 @@ class Workflow(Trellis):
         )
         if not new_relation and new:
             raise GraphError(f"Supplying file already exists: {path}")
-        return file, available, deferred, new_relation
+        return file, available, unfresh, deferred, new_relation
 
     def supply_files(
-        self, node: Node, paths: Collection[str], new: bool = True
+        self,
+        node: Node,
+        paths: Collection[str],
+        new: bool = True,
+        start_times: dict[int, int] | None = None,
+        stop_times: dict[int, int] | None = None,
     ) -> list[SupplyInfo]:
         """Find or create files for several paths and make them suppliers of node.
 
@@ -454,6 +487,8 @@ class Workflow(Trellis):
         new
             When `True` every (file, node) relationship must be new.
             If not, a `GraphError` is raised.
+        start_times, stop_times
+            Forwarded to `_resolve_supply_file`. Only ever passed by `amend_step`.
 
         Returns
         -------
@@ -468,14 +503,16 @@ class Workflow(Trellis):
         CyclicError
             When adding the new relations would introduce a cyclic dependency.
         """
-        resolved = [self._resolve_supply_file(node, path, new) for path in paths]
-        new_file_is = [file.i for file, _, _, new_relation in resolved if new_relation]
+        resolved = [
+            self._resolve_supply_file(node, path, new, start_times, stop_times) for path in paths
+        ]
+        new_file_is = [file.i for file, _, _, _, new_relation in resolved if new_relation]
         if new_file_is:
             node.check_no_cycle_batch(new_file_is)
         results = []
-        for file, available, deferred, new_relation in resolved:
+        for file, available, unfresh, deferred, new_relation in resolved:
             new_idep = node.add_supplier(file, skip_cycle_check=True) if new_relation else None
-            results.append(SupplyInfo(file, available, deferred, new_idep))
+            results.append(SupplyInfo(file, available, unfresh, deferred, new_idep))
         return results
 
     def declare_file(
@@ -988,6 +1025,8 @@ class Workflow(Trellis):
         env_deps: Collection[str] = (),
         out_paths: Collection[str] = (),
         vol_paths: Collection[str] = (),
+        start_times: dict[int, int] | None = None,
+        stop_times: dict[int, int] | None = None,
     ) -> tuple[bool, list[tuple[File, FileState]]]:
         """Amend step information.
 
@@ -1003,11 +1042,14 @@ class Workflow(Trellis):
             Additional output paths.
         vol_paths
             Volatile output (not reproducible) but will be cleaned like built files.
+        start_times, stop_times
+            The scheduler's step-node-id-keyed dispatch/completion timestamps, forwarded
+            to `supply_files` for the freshness check.
 
         Returns
         -------
         keep_going
-            True when known inputs are readily available.
+            True when known inputs are readily available and fresh.
             False otherwise, meaning the step needs to be rescheduled.
         to_check
             A list of paths and file_hashes.
@@ -1028,18 +1070,24 @@ class Workflow(Trellis):
         if any(inp_path.endswith(os.sep) for inp_path in inp_paths):
             raise GraphError("Directory inputs are not supported.")
 
-        # Keep track of missing files, of which there are two different types:
+        # Keep track of missing files, of which there are three different types:
         # - unavailable = certainly not available
+        # - unfresh = available, but fails the amend() freshness check.
         # - deferred = possibly available but need to be checked.
         #   For example, these can be MISSING files that need to be confirmed as STATIC.
         unavailable = set()
+        unfresh = set()
         deferred = set()
 
         # Process inp_paths
-        infos = self.supply_files(step, inp_paths, new=False)
+        infos = self.supply_files(
+            step, inp_paths, new=False, start_times=start_times, stop_times=stop_times
+        )
         for inp_path, info in zip(inp_paths, infos, strict=True):
             if not info.available:
                 unavailable.add(inp_path)
+            elif info.unfresh:
+                unfresh.add(inp_path)
             if info.new_idep is not None:
                 self._amend_dep(info.new_idep)
             deferred.update(info.deferred)
@@ -1060,9 +1108,11 @@ class Workflow(Trellis):
             self._amend_dep(new_idep)
 
         if len(unavailable) > 0:
-            step.add_rescheduled_info("\n".join(sorted(unavailable)))
+            step.add_unavailable_inputs("\n".join(sorted(unavailable)))
+        if len(unfresh) > 0:
+            step.add_unfresh_inputs("\n".join(sorted(unfresh)))
 
-        return len(unavailable) == 0, self._build_to_check(deferred)
+        return len(unavailable) == 0 and len(unfresh) == 0, self._build_to_check(deferred)
 
     def _amend_dep(self, idep):
         self.db.execute("INSERT INTO amended_dep VALUES (?)", (idep,))

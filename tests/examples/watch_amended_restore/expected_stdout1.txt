@@ -10,7 +10,7 @@
         1/2 |      PHASE │ build
         1/2 |      START │ ./work.py
         1/2 | RESCHEDULE │ ./work.py
-──────────────── Rescheduling due to unavailable amended inputs ────────────────
+────────────────────────── Unavailable amended inputs ──────────────────────────
 inp.txt
 ────────────────────────────────────────────────────────────────────────────────
         1/2 |    WARNING │ 1 step(s) remained pending ...

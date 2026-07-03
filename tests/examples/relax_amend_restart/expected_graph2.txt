@@ -1,0 +1,44 @@
+root:
+             creates   file:plan.py
+             creates   step:./plan.py
+
+file:plan.py
+               state = STATIC
+          created by   root:
+            supplies   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+          created by   root:
+            consumes   file:plan.py
+             creates   file:trigger.txt
+             creates   step:./consumer.py
+             creates   step:./producer.sh
+
+file:trigger.txt
+               state = STATIC
+          created by   step:./plan.py
+            supplies   step:./consumer.py
+
+step:./producer.sh
+               state = SUCCEEDED
+                need = DEFAULT
+          created by   step:./plan.py
+             creates   file:data.txt
+            supplies   file:data.txt
+
+file:data.txt
+               state = BUILT
+          created by   step:./producer.sh
+            consumes   step:./producer.sh
+            supplies   step:./consumer.py
+
+step:./consumer.py
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [amended]
+          created by   step:./plan.py
+            consumes   file:data.txt [amended]
+            consumes   file:trigger.txt

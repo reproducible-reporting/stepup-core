@@ -585,6 +585,9 @@ class Trellis:
         #   instead of four columns.
         # - Added DEFAULT clauses in the step table so Step.initialize() no longer
         #   needs to hardcode their initial values by column position.
+        # - Split step.rescheduled_info into unavailable_inputs and unfresh_inputs columns,
+        #   to distinguish amended inputs that are genuinely not built yet from ones that
+        #   were built but failed the amend() start/stop-time freshness check.
 
         return 5
 

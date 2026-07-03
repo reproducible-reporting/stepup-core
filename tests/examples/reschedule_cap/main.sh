@@ -33,6 +33,9 @@ stepup wait
 stepup graph current_graph
 stepup join
 
+# Check that the full exception is printed when exceeding the cap.
+grep "stepup.core.api.InputNotFoundError: Amended inputs are not available yet." .stepup/fail.log || exit 1
+
 # Wait for background processes, if any.
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq 2 ]] || exit 1

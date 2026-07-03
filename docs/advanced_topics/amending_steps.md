@@ -29,27 +29,55 @@ and is convenient in various scenarios:
 - Some steps may produce a list of volatile outputs, some of which are difficult to know upfront.
   Such volatile outputs can be specified using `amend()` once they have been created.
 
-To use `amend()` effectively, use it as early as possible,
-before accessing additional input files or creating unforeseen output files.
-Also, try to amend as many possible step arguments in a single call.
+`amend()` is safe to call after an input file has already been read
+(or an output file already written):
+if a file turns out to be missing, or to have been built too recently to be trusted
+(e.g. a producer step was still writing it while it was being read),
+the step is rescheduled instead of failing outright.
+Still, use `amend()` as early as possible,
+before accessing additional input files or creating unforeseen output files,
+whenever that is practical.
+Also, try to amend as many step arguments as possible in a single call.
 This will avoid the following problems:
 
 - Trying to read from a file that hasn't been created yet.
 
-- Unintentionally overwriting a file, e.g. a STATIC file that you have written by hand.
+  > When you run `amend(inp=...)` before reading the file,
+  > and StepUp knows that the file is not yet available,
+  > the `amend()` call will raise an exception,
+  > preventing the step (or some wrapped program)
+  > from trying to read the file and failing.
+
+- Unintentionally overwriting a file by calling `amend(out=...)` or `amend(vol=...)`
+  only after writing to these outputs.
+
+  > When you call `amend()` first and the files are registered as STATIC or outputs of other steps,
+  > an exception is raised.
+  > This is a safety check to prevent overwriting files that belong to other steps,
+  > but this only works if you call `amend()` before writing to the files.
 
 - Performing unnecessary work.
 
-  (A call to amend may mean that the step is interrupted and restarted later.
-  This is particularly important when the step is time-consuming
-  or when it uses `stepup.core.api` functions to extend the workflow.)
+  > A call to amend may mean that the step is interrupted and restarted later.
+  > This is particularly important when the step is time-consuming
+  > or when it uses `stepup.core.api` functions to extend the workflow.
 
 - Rescheduling a step multiple times.
 
-  (As a safety net, a step that is rescheduled too many times in a row without
-  succeeding will eventually fail instead of being rescheduled forever.
-  The limit is configurable with the `--reschedule-cap` option,
-  see [Configuration](../reference/configuration.md).)
+  > As a safety net, a step that is rescheduled too many times in a row without
+  > succeeding will eventually fail instead of being rescheduled forever.
+  > The limit is configurable with the `--reschedule-cap` option,
+  > see [Configuration](../reference/configuration.md).
+  >
+  > Note that there are two different rescheduling mechanisms in StepUp:
+  > 1. The `amend(inp=...)` hits a file that has not been built yet.
+  >    (This is an "unavailable input".)
+  > 2. The `amend(inp=...)` hits a file that has been built by another step
+  >    that completed after the current step started.
+  >    If the `amend()` call is made after the file has been read,
+  >    StepUp cannot guarantee correctness and will therefore reschedule the step.
+  >
+  > Both types of rescheduling are counted towards the reschedule cap.
 
 To the best of our knowledge, there is no equivalent of `amend()` in other build tools.
 Some features in Ninja cover what can be achieved with `amend()`.

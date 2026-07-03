@@ -6,7 +6,7 @@
         2/4 |    SUCCESS │ cp -p asource1.txt data1.txt
         2/4 |      START │ ./work.py > log.txt
         2/4 | RESCHEDULE │ ./work.py > log.txt
-──────────────── Rescheduling due to unavailable amended inputs ────────────────
+────────────────────────── Unavailable amended inputs ──────────────────────────
 data2.txt
 ────────────────────────────────────────────────────────────────────────────────
         2/4 |      START │ cp -p asource2.txt data2.txt

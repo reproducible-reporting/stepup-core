@@ -163,12 +163,12 @@ async def test_step(wfs: Workflow):
     # (The extra inputs and outputs are not meant to be sensible for the copy command.)
     async with wfs.db:
         step.set_state(StepState.RUNNING)
-        assert step.get_rescheduled_info() == ""
+        assert step.get_unavailable_inputs() == ""
     async with wfs.db:
         keep_going, to_check = wfs.amend_step(step, inp_paths=["spam.txt"], out_paths=["egg.csv"])
         assert to_check == []
         assert not keep_going
-        assert step.get_rescheduled_info().splitlines() == ["spam.txt"]
+        assert step.get_unavailable_inputs().splitlines() == ["spam.txt"]
         assert set(step.inp_paths(yield_detached=True)) == {
             ("foo.txt", True),
             ("spam.txt", True),
@@ -827,6 +827,93 @@ async def test_amend_step(wfp: Workflow):
         step.set_state(StepState.PENDING)
         declare_static(wfp, plan, ["inp2"])
         assert [node.key() for node in step.products()] == ["file:log", "file:out3", "file:vol4"]
+
+
+def _build_producer_consumer(wfs: Workflow) -> tuple[Step, Step]:
+    """Define a producer step with a BUILT output "data.txt" and a plain consumer step.
+
+    Used by the freshness-check tests below to fabricate a BUILT input with a real
+    `Step` creator, without needing the full director/scheduler stack.
+    """
+    wfs.define_step(wfs.root, "plan")
+    plan = wfs.find(Step, "plan")
+
+    wfs.define_step(plan, "producer", out_paths=["data.txt"])
+    producer = wfs.find(Step, "producer")
+    out_hashes = [("data.txt", fake_hash("data.txt"))]
+    wfs.update_file_hashes(out_hashes, HashUpdateCause.SUCCEEDED)
+    step_hash = StepHash.from_inp(producer.key(), True, [], {})
+    step_hash = step_hash.evolve_out(out_hashes)
+    producer.completed(step_hash)
+
+    wfs.define_step(plan, "consumer")
+    consumer = wfs.find(Step, "consumer")
+    return producer, consumer
+
+
+async def test_amend_step_no_dicts_skips_freshness_check(wfs: Workflow):
+    """Without start_times/stop_times, amend() behaves exactly as before the freshness
+    check existed: a BUILT input is always accepted, regardless of any race."""
+    async with wfs.db:
+        _, consumer = _build_producer_consumer(wfs)
+        keep_going, _ = wfs.amend_step(consumer, inp_paths=["data.txt"])
+        assert keep_going
+        assert consumer.get_unfresh_inputs() == ""
+        assert consumer.get_unavailable_inputs() == ""
+
+
+async def test_amend_step_freshness_fresh(wfs: Workflow):
+    """consumer.start_time strictly after producer.stop_time: accepted as fresh."""
+    async with wfs.db:
+        producer, consumer = _build_producer_consumer(wfs)
+        start_times = {producer.i: 100, consumer.i: 200}
+        stop_times = {producer.i: 100}
+        keep_going, _ = wfs.amend_step(
+            consumer, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
+        )
+        assert keep_going
+        assert consumer.get_unfresh_inputs() == ""
+
+
+async def test_amend_step_freshness_unfresh(wfs: Workflow):
+    """consumer.start_time strictly before producer.stop_time: rejected as unfresh."""
+    async with wfs.db:
+        producer, consumer = _build_producer_consumer(wfs)
+        start_times = {producer.i: 200, consumer.i: 100}
+        stop_times = {producer.i: 200}
+        keep_going, _ = wfs.amend_step(
+            consumer, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
+        )
+        assert not keep_going
+        assert consumer.get_unfresh_inputs().splitlines() == ["data.txt"]
+        assert consumer.get_unavailable_inputs() == ""
+
+
+async def test_amend_step_freshness_tie_is_unfresh(wfs: Workflow):
+    """An exact start_time == stop_time tie is treated as unfresh (conservative choice)."""
+    async with wfs.db:
+        producer, consumer = _build_producer_consumer(wfs)
+        start_times = {producer.i: 150, consumer.i: 150}
+        stop_times = {producer.i: 150}
+        keep_going, _ = wfs.amend_step(
+            consumer, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
+        )
+        assert not keep_going
+        assert consumer.get_unfresh_inputs().splitlines() == ["data.txt"]
+
+
+async def test_amend_step_freshness_producer_stop_time_missing(wfs: Workflow):
+    """Producer has no stop_times entry (e.g. finished in a previous director invocation,
+    or was never tracked through a RUNNING transition this invocation): trivially fresh."""
+    async with wfs.db:
+        _, consumer = _build_producer_consumer(wfs)
+        start_times = {consumer.i: 100}
+        stop_times = {}
+        keep_going, _ = wfs.amend_step(
+            consumer, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
+        )
+        assert keep_going
+        assert consumer.get_unfresh_inputs() == ""
 
 
 PENDING_STEP_SKIP_AMENDED_GRAPH = """\
@@ -2134,22 +2221,34 @@ async def test_get_file_hashes(wfp: Workflow):
         ]
 
 
-async def test_add_rescheduled_info(wfs: Workflow):
+async def test_add_unavailable_inputs(wfs: Workflow):
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         echo = wfs.find(Step, "echo")
-        echo.add_rescheduled_info("because, like...\n...you know, right")
-        assert echo.get_rescheduled_info().splitlines() == [
+        echo.add_unavailable_inputs("because, like...\n...you know, right")
+        assert echo.get_unavailable_inputs().splitlines() == [
             "because, like...",
             "...you know, right",
         ]
-        echo.add_rescheduled_info("you know what...\n...I mean, come on!")
-        assert echo.get_rescheduled_info().splitlines() == [
+        echo.add_unavailable_inputs("you know what...\n...I mean, come on!")
+        assert echo.get_unavailable_inputs().splitlines() == [
             "because, like...",
             "...you know, right",
             "you know what...",
             "...I mean, come on!",
         ]
+
+
+async def test_add_unfresh_inputs(wfs: Workflow):
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        echo = wfs.find(Step, "echo")
+        echo.add_unfresh_inputs("data.txt")
+        assert echo.get_unfresh_inputs().splitlines() == ["data.txt"]
+        echo.add_unfresh_inputs("other.txt")
+        assert echo.get_unfresh_inputs().splitlines() == ["data.txt", "other.txt"]
+        # Independent of unavailable_inputs.
+        assert echo.get_unavailable_inputs() == ""
 
 
 @pytest.mark.parametrize("wfs", [3], indirect=True)
@@ -2160,18 +2259,20 @@ async def test_reschedule_cap(wfs: Workflow):
 
         # Reschedule 3 times (== cap): stays PENDING each time, count increments.
         for expected_count in [1, 2, 3]:
-            echo.add_rescheduled_info("still waiting")
-            echo.completed(None)
+            echo.add_unavailable_inputs("still waiting")
+            interrupted_reschedule = echo.completed(None)
+            assert interrupted_reschedule is False
             assert echo.get_state() == StepState.PENDING
             assert echo.get_reschedule_count() == expected_count
 
         # 4th reschedule (cap + 1): FAILED instead of PENDING.
-        echo.add_rescheduled_info("still waiting")
-        echo.completed(None)
+        echo.add_unavailable_inputs("still waiting")
+        interrupted_reschedule = echo.completed(None)
+        assert interrupted_reschedule is True
         assert echo.get_state() == StepState.FAILED
         assert echo.get_reschedule_count() == 4
-        # rescheduled_info is still cleared on FAILED, same as any other FAILED step.
-        assert echo.get_rescheduled_info() == ""
+        # unavailable_inputs is still cleared on FAILED, same as any other FAILED step.
+        assert echo.get_unavailable_inputs() == ""
 
 
 @pytest.mark.parametrize("wfs", [3], indirect=True)
@@ -2180,7 +2281,7 @@ async def test_reschedule_count_reset_on_success(wfs: Workflow):
         wfs.define_step(wfs.root, "echo")
         echo = wfs.find(Step, "echo")
 
-        echo.add_rescheduled_info("still waiting")
+        echo.add_unavailable_inputs("still waiting")
         echo.completed(None)
         assert echo.get_reschedule_count() == 1
 
@@ -2192,29 +2293,57 @@ async def test_reschedule_count_reset_on_success(wfs: Workflow):
 
         # Next reschedule cycle starts back at 1, not 2.
         echo.set_state(StepState.PENDING)
-        echo.add_rescheduled_info("waiting again")
+        echo.add_unavailable_inputs("waiting again")
         echo.completed(None)
         assert echo.get_reschedule_count() == 1
 
 
 async def test_reschedule_clear_independent_of_count(wfs: Workflow):
     # Uses the default cap (100): a single genuine (non-reschedule) FAILED step
-    # still clears rescheduled_info via step_clear_rescheduled, independent of
+    # still clears unavailable_inputs via step_clear_rescheduled, independent of
     # reschedule_count, which stays untouched by a plain FAILED (only SUCCEEDED resets it).
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         echo = wfs.find(Step, "echo")
-        echo.add_rescheduled_info("still waiting")
+        echo.add_unavailable_inputs("still waiting")
         echo.completed(None)
         assert echo.get_reschedule_count() == 1
-        # Simulate mark_pending() having cleared rescheduled_info (e.g. because the
+        # Simulate mark_pending() having cleared unavailable_inputs (e.g. because the
         # previously-missing input became available), followed by a genuine, unrelated
-        # command failure on the next run (rescheduled_info empty this time).
-        echo.clear_rescheduled_info()
+        # command failure on the next run (unavailable_inputs empty this time).
+        echo.clear_unavailable_inputs()
         echo.set_state(StepState.PENDING)
-        echo.completed(None)
+        interrupted_reschedule = echo.completed(None)
+        assert interrupted_reschedule is False  # plain FAILED, not a cap-exceeded reschedule
         assert echo.get_state() == StepState.FAILED
         assert echo.get_reschedule_count() == 1  # unchanged by a plain FAILED
+
+
+async def test_completed_unfresh_only_reschedules(wfs: Workflow):
+    """Step.completed() reschedules on unfresh_inputs alone, and clears it unconditionally."""
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        echo = wfs.find(Step, "echo")
+        echo.add_unfresh_inputs("data.txt")
+        echo.completed(None)
+        assert echo.get_state() == StepState.PENDING
+        assert echo.get_reschedule_count() == 1
+        assert echo.get_unfresh_inputs() == ""
+        assert echo.get_unavailable_inputs() == ""
+
+
+async def test_completed_mixed_unavailable_and_unfresh(wfs: Workflow):
+    """When both buckets are populated, only unfresh_inputs is cleared unconditionally;
+    unavailable_inputs is left for a real producer completion (mark_pending) to clear."""
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        echo = wfs.find(Step, "echo")
+        echo.add_unavailable_inputs("other.txt")
+        echo.add_unfresh_inputs("data.txt")
+        echo.completed(None)
+        assert echo.get_state() == StepState.PENDING
+        assert echo.get_unfresh_inputs() == ""
+        assert echo.get_unavailable_inputs() == "other.txt"
 
 
 async def test_clean_stepup_root_parents(wfs: Workflow):

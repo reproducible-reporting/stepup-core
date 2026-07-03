@@ -10,8 +10,6 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-(no changes yet)
-
 ## [4.0.0rc6][] - 2026-07-02 {: #v4.0.0rc6 }
 
 This is release candidate 6 for the upcoming StepUp 4.0 release.
@@ -72,10 +70,9 @@ This is release candidate 6 for the upcoming StepUp 4.0 release.
 - A resource usage report is shown ad the end of the file `.stepup/director.log`.
   Part of the analysis relies on Linux control groups, which are only available on this OS.
 - An SQL debug log option, to check query plans and execution times.
-- Added a `--reschedule-cap` option (default 100) that fails a step instead
-  of silently rescheduling it forever, once it has been rescheduled that
-  many times in a row without succeeding. A livelock guard for
-  `amend()`-driven reschedules.
+- Added a `--reschedule-cap` option (default 100) that fails a step
+  once it has been rescheduled that many times in a row without succeeding.
+  This acts as a livelock guard for `amend()`-driven reschedules.
 
 ### Changed
 
@@ -95,6 +92,10 @@ This is release candidate 6 for the upcoming StepUp 4.0 release.
   the old inp/out/pickle argument modes are replaced
   by explicit function dispatch and optional `args_file` support for file-based argument passing.
   See [Function Calls](getting_started/call.md) for details.
+- A known race condition related to `amend(inp=...)` has been fixed.
+  It is now safe to call `amend(inp=...)` after an amended input file has already been read.
+  (It is not the most efficient approach to call `amend(inp=...)` too late,
+  but in some cases it is the only practical one.)
 - The scheduler has been replaced by a new and more efficient implementation.
   This change also comes with several improved features:
     - Steps are prioritized using the *tail time*, which results in the shortest overall

@@ -42,10 +42,12 @@ from stepup.core.scheduler import (
     SELECT_RUNNABLE_STEPS,
     SELECT_UPDATE_CHECK_AFTER,
     UNAVAILABLE_INPUT,
+    Scheduler,
 )
 from stepup.core.sqlite3 import connect
-from stepup.core.step import STEP_SCHEMA
+from stepup.core.step import STEP_SCHEMA, Step
 from stepup.core.trellis import TRELLIS_SCHEMA
+from stepup.core.workflow import Workflow
 
 
 @pytest.fixture
@@ -89,9 +91,9 @@ def _insert_step(
     )
     con.execute(
         "INSERT INTO step"
-        " (node, state, need, duration, rescheduled_info, reschedule_count, subshell,"
-        " _safe, _check_safe, _implied_need, _tail_time, _check_after)"
-        " VALUES (?, ?, ?, ?, '', 0, 0, ?, ?, ?, ?, ?)",
+        " (node, state, need, duration, unavailable_inputs, unfresh_inputs, reschedule_count,"
+        " subshell, _safe, _check_safe, _implied_need, _tail_time, _check_after)"
+        " VALUES (?, ?, ?, ?, '', '', 0, 0, ?, ?, ?, ?, ?)",
         (
             node_id,
             state.value,
@@ -605,9 +607,9 @@ def test_optional_step_not_runnable(con):
 
 
 def test_rescheduled_step_not_runnable(con):
-    """A PENDING step with non-empty rescheduled_info is excluded."""
+    """A PENDING step with non-empty unavailable_inputs is excluded."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
-    con.execute("UPDATE step SET rescheduled_info = 'some reason' WHERE node = 2")
+    con.execute("UPDATE step SET unavailable_inputs = 'some reason' WHERE node = 2")
     assert _get_runnable_ids(con) == []
 
 
@@ -1060,9 +1062,18 @@ def test_pending_reasons_safe_flag_false(con):
 
 
 def test_pending_reasons_rescheduled_flag(con):
-    """A step with non-empty rescheduled_info returns rescheduled=1."""
+    """A step with non-empty unavailable_inputs returns rescheduled=1."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
-    con.execute("UPDATE step SET rescheduled_info = 'some reason' WHERE node = 2")
+    con.execute("UPDATE step SET unavailable_inputs = 'some reason' WHERE node = 2")
+    rows = _get_pending_reasons(con)
+    assert rows[2]["rescheduled"] == 1
+
+
+def test_pending_reasons_rescheduled_flag_unfresh(con):
+    """A step with non-empty unfresh_inputs (but empty unavailable_inputs) also
+    returns rescheduled=1 --- both columns feed the same `rescheduled` flag."""
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    con.execute("UPDATE step SET unfresh_inputs = 'some reason' WHERE node = 2")
     rows = _get_pending_reasons(con)
     assert rows[2]["rescheduled"] == 1
 
@@ -1533,3 +1544,62 @@ def test_unavailable_input_blocks_on_volatile(con):
     _insert_input_file(con, 3, 1, FileState.VOLATILE)
     _add_dep(con, 3, 2)
     assert _has_unavailable_input(con, 2)
+
+
+# -----------------------------------------------------------------------
+# Tests for start_times/stop_times bookkeeping
+# -----------------------------------------------------------------------
+
+
+async def test_job_finished_writes_stop_time_and_prunes_start_time(wfs: Workflow):
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        step = wfs.find(Step, "echo")
+        step.set_state(StepState.RUNNING)
+
+        scheduler = Scheduler(wfs, db=wfs.db)
+        scheduler.start_times[step.i] = 100
+
+        scheduler.job_finished(step.i, succeeded=True)
+        assert step.i not in scheduler.start_times
+        assert step.i in scheduler.stop_times
+
+
+async def test_job_finished_no_stop_time_on_failure(wfs: Workflow):
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        step = wfs.find(Step, "echo")
+        step.set_state(StepState.RUNNING)
+
+        scheduler = Scheduler(wfs, db=wfs.db)
+        scheduler.start_times[step.i] = 100
+
+        scheduler.job_finished(step.i, succeeded=False)
+        assert step.i not in scheduler.start_times
+        assert step.i not in scheduler.stop_times
+
+
+async def test_stop_times_cleared_when_no_steps_running(wfs: Workflow):
+    """Once the last RUNNING step finishes, every stop_times entry is dropped: nothing
+    running means nothing can race with a not-yet-dispatched step."""
+    async with wfs.db:
+        wfs.define_step(wfs.root, "plan")
+        plan = wfs.find(Step, "plan")
+        wfs.define_step(plan, "a")
+        wfs.define_step(plan, "b")
+        step_a = wfs.find(Step, "a")
+        step_b = wfs.find(Step, "b")
+        step_a.set_state(StepState.RUNNING)
+        step_b.set_state(StepState.RUNNING)
+
+        scheduler = Scheduler(wfs, db=wfs.db)
+
+        # step_a finishes while step_b is still RUNNING: stop_times must survive.
+        step_a.set_state(StepState.SUCCEEDED)
+        scheduler.job_finished(step_a.i, succeeded=True)
+        assert step_a.i in scheduler.stop_times
+
+        # step_b finishes too: nothing RUNNING anymore, so stop_times is cleared entirely.
+        step_b.set_state(StepState.SUCCEEDED)
+        scheduler.job_finished(step_b.i, succeeded=True)
+        assert scheduler.stop_times == {}

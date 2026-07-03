@@ -20,6 +20,7 @@
 """The `Scheduler` Turns PENDING jobs into RUNNING jobs as the builder requests them."""
 
 import logging
+import time
 
 import attrs
 
@@ -238,7 +239,7 @@ WHERE dep.consumer = node.i AND (
 # Building blocks shared by step-selection queries.
 _PENDING_STEP_WHERE = f"""step.state = {StepState.PENDING.value} AND
     step._safe AND
-    step.rescheduled_info = '' AND
+    step.unavailable_inputs = '' AND
     step._implied_need > {Need.OPTIONAL.value} AND
     NOT node.detached"""
 
@@ -339,7 +340,7 @@ SELECT
     node.i,
     node.label,
     step._safe,
-    step.rescheduled_info != '' AS rescheduled,
+    (step.unavailable_inputs != '' OR step.unfresh_inputs != '') AS rescheduled,
     EXISTS ({UNAVAILABLE_INPUT}) AS hasUNAVAILABLE_INPUTs,
     EXISTS (
         SELECT 1 FROM step_resource AS req
@@ -370,6 +371,19 @@ class Scheduler:
 
     on_hold: bool = attrs.field(init=False, default=False)
     """Temporarily pause scheduling of jobs, e.g. interrupted by the user."""
+
+    start_times: dict[int, int] = attrs.field(init=False, factory=dict)
+    """Step node id -> `time.monotonic_ns()` at the moment it was dispatched to RUNNING.
+
+    In-memory only (not persisted): used by `amend()`'s freshness check to compare
+    against a producer's `stop_times` entry.
+    """
+
+    stop_times: dict[int, int] = attrs.field(init=False, factory=dict)
+    """Step node id -> `time.monotonic_ns()` at the moment it reached SUCCEEDED.
+
+    In-memory only, pruned by `job_finished()`. See `start_times`.
+    """
 
     #
     # Initialization
@@ -421,7 +435,10 @@ class Scheduler:
                 logger.debug("Derived checkable job: %s", job)
                 logger.info("Pop %s", job.name)
                 step.set_state(StepState.CHECKING)
-                step.clear_rescheduled_info()
+                step.clear_unavailable_inputs()
+                # Not that skip jobs record not start time, because skipping does not produce
+                # new outputs, and thus have no risk of race conditions related to amend()'s
+                # freshness check.
                 return job
             step = self._get_step(SELECT_RUNNABLE_STEPS)
             if step is None:
@@ -432,8 +449,33 @@ class Scheduler:
             logger.debug("Derived job: %s", job)
             logger.info("Pop %s", job.name)
             step.set_state(StepState.RUNNING)
-            step.clear_rescheduled_info()
+            self.start_times[step.i] = time.monotonic_ns()
+            step.clear_unavailable_inputs()
             return job
+
+    def job_finished(self, step_i: int, *, succeeded: bool) -> None:
+        """Update start/stop-time bookkeeping after a step reaches a terminal state.
+
+        Parameters
+        ----------
+        step_i
+            The node id of the step that just completed.
+        succeeded
+            Whether the step reached SUCCEEDED (True) or PENDING/FAILED (False).
+        """
+        self.start_times.pop(step_i, None)
+        if succeeded:
+            self.stop_times[step_i] = time.monotonic_ns()
+        if self._count_running() == 0:
+            # Nothing running means nothing can race with a not-yet-dispatched step,
+            # so every remaining stop_times entry is safe to drop.
+            self.stop_times.clear()
+
+    def _count_running(self) -> int:
+        row = self.workflow.db.execute(
+            "SELECT COUNT(*) FROM step WHERE state = ?", (StepState.RUNNING.value,)
+        ).fetchone()
+        return row[0]
 
     def _update_meta_safe(self):
         """Update the "safe" metadata fields where needed."""
