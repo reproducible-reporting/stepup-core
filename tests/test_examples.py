@@ -168,6 +168,7 @@ EXAMPLES = [
     "replay_static_tree",
     "replay_static_tree_plan",
     "reqdir_missing",
+    "reschedule_cap",
     "resource_multi",
     "resource_pool",
     "resource_skip",

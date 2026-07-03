@@ -46,6 +46,11 @@ This will avoid the following problems:
 
 - Rescheduling a step multiple times.
 
+  (As a safety net, a step that is rescheduled too many times in a row without
+  succeeding will eventually fail instead of being rescheduled forever.
+  The limit is configurable with the `--reschedule-cap` option,
+  see [Configuration](../reference/configuration.md).)
+
 To the best of our knowledge, there is no equivalent of `amend()` in other build tools.
 Some features in Ninja cover what can be achieved with `amend()`.
 

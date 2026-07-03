@@ -65,6 +65,10 @@ CREATE TABLE IF NOT EXISTS step (
     rescheduled_info TEXT NOT NULL,
     -- Information about why this step was rescheduled,
     -- or an empty string if it was not rescheduled.
+    reschedule_count INTEGER NOT NULL CHECK(reschedule_count >= 0),
+    -- Number of consecutive reschedules since the last SUCCEEDED state.
+    -- Reset to 0 only on SUCCEEDED (see step_reset_reschedule_count below);
+    -- NOT reset by FAILED or by rescheduled_info being cleared via mark_pending().
     subshell INTEGER NOT NULL CHECK(subshell IN (0, 1)),
     -- Whether the step command is executed via a subshell (shell=True).
     env_overrides TEXT,
@@ -113,6 +117,15 @@ CREATE TRIGGER IF NOT EXISTS step_clear_rescheduled AFTER UPDATE OF state ON ste
 WHEN NEW.state IN ({StepState.SUCCEEDED.value}, {StepState.FAILED.value})
 BEGIN
     UPDATE step SET rescheduled_info = '' WHERE node = NEW.node;
+END;
+
+-- Reset reschedule_count only on SUCCEEDED (not FAILED), so the cap measures
+-- consecutive reschedule attempts since the last convergence, independent of
+-- rescheduled_info's own (broader) SUCCEEDED-or-FAILED clearing above.
+CREATE TRIGGER IF NOT EXISTS step_reset_reschedule_count AFTER UPDATE OF state ON step
+WHEN NEW.state = {StepState.SUCCEEDED.value}
+BEGIN
+    UPDATE step SET reschedule_count = 0 WHERE node = NEW.node;
 END;
 
 CREATE TABLE IF NOT EXISTS nglob_multi (
@@ -302,7 +315,7 @@ class Step(Node):
         """
         self.db.execute(
             "INSERT OR REPLACE INTO step "
-            "VALUES(:node, :state, :need, 1.0, '', :subshell, NULL, "
+            "VALUES(:node, :state, :need, 1.0, '', 0, :subshell, NULL, "
             ":safe, :check_safe, :implied_need, 1.0, :check_need)",
             {
                 "node": self.i,
@@ -450,6 +463,18 @@ class Step(Node):
 
     def clear_rescheduled_info(self):
         self.db.execute("UPDATE step SET rescheduled_info = '' WHERE node = ?", (self.i,))
+
+    def get_reschedule_count(self) -> int:
+        """Return the number of consecutive reschedules since the last SUCCEEDED state."""
+        sql = "SELECT reschedule_count FROM step WHERE node = ?"
+        return self.db.execute(sql, (self.i,)).fetchone()[0]
+
+    def _increment_reschedule_count(self) -> int:
+        """Increment reschedule_count and return the new value."""
+        self.db.execute(
+            "UPDATE step SET reschedule_count = reschedule_count + 1 WHERE node = ?", (self.i,)
+        )
+        return self.get_reschedule_count()
 
     def set_duration(self, duration: float):
         self.db.execute(
@@ -789,14 +814,29 @@ class Step(Node):
                 if file.get_state() == FileState.BUILT:
                     file.set_state(FileState.OUTDATED)
             if rescheduled_info != "":
-                logger.info("Rescheduled step: %s", self.label)
-                # We just set the state to PENDING.
-                # However, it will not be scheduled as long as `rescheduled_info` has some info.
-                # Any later file changes relevant to the step will result in a call
-                # to mark_pending(), which will clear the rescheduled_info.
-                # This makes the step eligible for scheduling again.
-                self.set_state(StepState.PENDING)
-                self.delete_hash()
+                reschedule_count = self._increment_reschedule_count()
+                if reschedule_count <= self.graph.reschedule_cap:
+                    logger.info(
+                        "Rescheduled step (%d/%d): %s",
+                        reschedule_count,
+                        self.graph.reschedule_cap,
+                        self.label,
+                    )
+                    # We just set the state to PENDING.
+                    # However, it will not be scheduled as long as `rescheduled_info` has
+                    # some info. Any later file changes relevant to the step will result in
+                    # a call to mark_pending(), which will clear the rescheduled_info.
+                    # This makes the step eligible for scheduling again.
+                    self.set_state(StepState.PENDING)
+                    self.delete_hash()
+                else:
+                    logger.info(
+                        "Reschedule cap (%d) exceeded, failed step: %s",
+                        self.graph.reschedule_cap,
+                        self.label,
+                    )
+                    self.set_state(StepState.FAILED)
+                    self.delete_hash()
             else:
                 logger.info("Failed step: %s", self.label)
                 self.set_state(StepState.FAILED)

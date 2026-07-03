@@ -46,7 +46,7 @@ import subprocess
 import sys
 import threading
 import traceback
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Sequence
 from importlib.metadata import entry_points
 from time import perf_counter
 
@@ -759,8 +759,21 @@ class Executor:
 
             async with self.db:
                 rescheduled_info = step.get_rescheduled_info()
+                extra_pages: list[tuple[str, str]] = []
                 if rescheduled_info != "":
-                    self.rescheduled(run, rescheduled_info)
+                    reschedule_cap = self.workflow.reschedule_cap
+                    # No `await` between this peek and step.completed()'s authoritative
+                    # increment below, so the two cannot disagree about the outcome.
+                    if step.get_reschedule_count() + 1 > reschedule_cap:
+                        extra_pages.append(
+                            (
+                                "Reschedule cap exceeded",
+                                f"Rescheduled {reschedule_cap} times without succeeding:\n"
+                                f"{rescheduled_info}",
+                            )
+                        )
+                    else:
+                        self.rescheduled(run, rescheduled_info)
                     success = False
                 self.workflow.update_file_hashes(
                     new_out_hashes,
@@ -779,7 +792,7 @@ class Executor:
             await self.reporter.update_step_counts(step_counts)
 
             # Report the result of running the step
-            await self.report(run)
+            await self.report(run, extra_pages=extra_pages)
 
             if len(new_inp_hashes) > 0:
                 # Changes to inputs are suspect and can break everything.
@@ -1022,7 +1035,7 @@ class Executor:
         run.success = True
         run.stderr = ""
 
-    async def report(self, run: Run):
+    async def report(self, run: Run, *, extra_pages: Sequence[tuple[str, str]] = ()):
         command, workdir = run.step.command_workdir
         pages = []
         if not run.success:
@@ -1047,6 +1060,7 @@ class Executor:
             if len(run.out_missing) > 0:
                 run.out_missing.sort()
                 pages.append(("Expected outputs not created", "\n".join(run.out_missing)))
+        pages.extend(extra_pages)
         stdout = run.stdout.rstrip()
         if len(stdout) > 0:
             pages.append(("Standard output", stdout))

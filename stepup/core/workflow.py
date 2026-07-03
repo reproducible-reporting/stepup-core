@@ -119,6 +119,11 @@ class Workflow(Trellis):
     dir_queue: asyncio.Queue | None = attrs.field(kw_only=True)
     """Directories to be (un)watched can be added to this queue."""
 
+    reschedule_cap: int = attrs.field(kw_only=True, default=100)
+    """Maximum number of consecutive reschedules (since the last SUCCEEDED) before a
+    step is failed instead of parked in PENDING again. A livelock guard, not expected
+    to bind in normal use; see `Step.completed()`."""
+
     to_be_deleted: list[tuple[str, FileHash | None]] = attrs.field(init=False, factory=list)
     """A list of files and directories that can be deleted.
 

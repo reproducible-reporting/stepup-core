@@ -72,6 +72,10 @@ This is release candidate 6 for the upcoming StepUp 4.0 release.
 - A resource usage report is shown ad the end of the file `.stepup/director.log`.
   Part of the analysis relies on Linux control groups, which are only available on this OS.
 - An SQL debug log option, to check query plans and execution times.
+- Added a `--reschedule-cap` option (default 100) that fails a step instead
+  of silently rescheduling it forever, once it has been rescheduled that
+  many times in a row without succeeding. A livelock guard for
+  `amend()`-driven reschedules.
 
 ### Changed
 

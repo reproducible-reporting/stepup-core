@@ -2152,6 +2152,71 @@ async def test_add_rescheduled_info(wfs: Workflow):
         ]
 
 
+@pytest.mark.parametrize("wfs", [3], indirect=True)
+async def test_reschedule_cap(wfs: Workflow):
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        echo = wfs.find(Step, "echo")
+
+        # Reschedule 3 times (== cap): stays PENDING each time, count increments.
+        for expected_count in [1, 2, 3]:
+            echo.add_rescheduled_info("still waiting")
+            echo.completed(None)
+            assert echo.get_state() == StepState.PENDING
+            assert echo.get_reschedule_count() == expected_count
+
+        # 4th reschedule (cap + 1): FAILED instead of PENDING.
+        echo.add_rescheduled_info("still waiting")
+        echo.completed(None)
+        assert echo.get_state() == StepState.FAILED
+        assert echo.get_reschedule_count() == 4
+        # rescheduled_info is still cleared on FAILED, same as any other FAILED step.
+        assert echo.get_rescheduled_info() == ""
+
+
+@pytest.mark.parametrize("wfs", [3], indirect=True)
+async def test_reschedule_count_reset_on_success(wfs: Workflow):
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        echo = wfs.find(Step, "echo")
+
+        echo.add_rescheduled_info("still waiting")
+        echo.completed(None)
+        assert echo.get_reschedule_count() == 1
+
+        # A genuine success resets the counter to 0.
+        step_hash = StepHash(b"h" * 32, None, b"h" * 32, None)
+        echo.completed(step_hash)
+        assert echo.get_state() == StepState.SUCCEEDED
+        assert echo.get_reschedule_count() == 0
+
+        # Next reschedule cycle starts back at 1, not 2.
+        echo.set_state(StepState.PENDING)
+        echo.add_rescheduled_info("waiting again")
+        echo.completed(None)
+        assert echo.get_reschedule_count() == 1
+
+
+async def test_reschedule_clear_independent_of_count(wfs: Workflow):
+    # Uses the default cap (100): a single genuine (non-reschedule) FAILED step
+    # still clears rescheduled_info via step_clear_rescheduled, independent of
+    # reschedule_count, which stays untouched by a plain FAILED (only SUCCEEDED resets it).
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        echo = wfs.find(Step, "echo")
+        echo.add_rescheduled_info("still waiting")
+        echo.completed(None)
+        assert echo.get_reschedule_count() == 1
+        # Simulate mark_pending() having cleared rescheduled_info (e.g. because the
+        # previously-missing input became available), followed by a genuine, unrelated
+        # command failure on the next run (rescheduled_info empty this time).
+        echo.clear_rescheduled_info()
+        echo.set_state(StepState.PENDING)
+        echo.completed(None)
+        assert echo.get_state() == StepState.FAILED
+        assert echo.get_reschedule_count() == 1  # unchanged by a plain FAILED
+
+
 async def test_clean_stepup_root_parents(wfs: Workflow):
     async with wfs.db:
         declare_static(wfs, wfs.root, ["../foo.txt"])

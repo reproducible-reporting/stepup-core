@@ -1,0 +1,79 @@
+        0/0 |    STARTUP │ (Re)initialized boot script
+        0/1 |      PHASE │ build
+        0/1 |      START │ ./plan.py
+        1/2 |    SUCCESS │ ./plan.py
+        1/2 |      START │ ./x.py
+        1/2 | RESCHEDULE │ ./x.py
+──────────────── Rescheduling due to unavailable amended inputs ────────────────
+never.txt
+────────────────────────────────────────────────────────────────────────────────
+        1/2 |    WARNING │ 1 step(s) remained pending ...
+─────────────────────────────── Detached inputs ────────────────────────────────
+             AWAITED  never.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Reason                required inputs are unavailable
+Command               ./x.py
+Inputs        STATIC  trigger.txt
+              STATIC  x.py
+             AWAITED  (never.txt) [amended]
+────────────────────────────────────────────────────────────────────────────────
+        1/2 |    WARNING │ Skipping file cleanup due to incomplete build
+        1/2 |    WARNING │ Check logs: .stepup/warning.log
+        1/2 |      PHASE │ watch
+        1/2 |    UPDATED │ trigger.txt
+        1/2 |      PHASE │ build
+        1/2 |      START │ ./x.py
+        1/2 | RESCHEDULE │ ./x.py
+──────────────── Rescheduling due to unavailable amended inputs ────────────────
+never.txt
+────────────────────────────────────────────────────────────────────────────────
+        1/2 |    WARNING │ 1 step(s) remained pending ...
+─────────────────────────────── Detached inputs ────────────────────────────────
+             AWAITED  never.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Reason                required inputs are unavailable
+Command               ./x.py
+Inputs        STATIC  trigger.txt
+              STATIC  x.py
+             AWAITED  (never.txt) [amended]
+────────────────────────────────────────────────────────────────────────────────
+        1/2 |    WARNING │ Skipping file cleanup due to incomplete build
+        1/2 |    WARNING │ Check logs: .stepup/warning.log
+        1/2 |      PHASE │ watch
+        1/2 |    UPDATED │ trigger.txt
+        1/2 |      PHASE │ build
+        1/2 |      START │ ./x.py
+        1/2 | RESCHEDULE │ ./x.py
+──────────────── Rescheduling due to unavailable amended inputs ────────────────
+never.txt
+────────────────────────────────────────────────────────────────────────────────
+        1/2 |    WARNING │ 1 step(s) remained pending ...
+─────────────────────────────── Detached inputs ────────────────────────────────
+             AWAITED  never.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Reason                required inputs are unavailable
+Command               ./x.py
+Inputs        STATIC  trigger.txt
+              STATIC  x.py
+             AWAITED  (never.txt) [amended]
+────────────────────────────────────────────────────────────────────────────────
+        1/2 |    WARNING │ Skipping file cleanup due to incomplete build
+        1/2 |    WARNING │ Check logs: .stepup/warning.log
+        1/2 |      PHASE │ watch
+        1/2 |    UPDATED │ trigger.txt
+        1/2 |      PHASE │ build
+        1/2 |      START │ ./x.py
+        1/1 |       FAIL │ ./x.py
+──────────────────────────────── Failed command ────────────────────────────────
+./x.py  # exit=1
+─────────────────────────── Reschedule cap exceeded ────────────────────────────
+Rescheduled 3 times without succeeding:
+never.txt
+──────────────────────────────── Standard error ────────────────────────────────
+(stripped)
+────────────────────────────────────────────────────────────────────────────────
+        1/1 |    WARNING │ 1 step(s) failed.
+        1/1 |    WARNING │ Skipping file cleanup due to incomplete build
+        1/1 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+        1/1 |      PHASE │ watch
+        1/1 |   DIRECTOR │ See you!

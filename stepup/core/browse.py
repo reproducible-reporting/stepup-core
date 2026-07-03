@@ -405,8 +405,8 @@ class GraphServer(BaseHTTPRequestHandler):
         # Format the state (if a file or a step)
         if kind == "step":
             sql_props = (
-                "SELECT state, need, duration, rescheduled_info, subshell, env_overrides,"
-                "_safe, _check_safe, _implied_need, _tail_time, _check_after "
+                "SELECT state, need, duration, rescheduled_info, reschedule_count, subshell,"
+                "env_overrides, _safe, _check_safe, _implied_need, _tail_time, _check_after "
                 "FROM step WHERE node = ?"
             )
             (
@@ -414,6 +414,7 @@ class GraphServer(BaseHTTPRequestHandler):
                 need_id,
                 duration,
                 rescheduled_info,
+                reschedule_count,
                 subshell,
                 env_overrides,
                 safe,
@@ -430,6 +431,8 @@ class GraphServer(BaseHTTPRequestHandler):
                     '<p><b>Rescheduled:</b> <span class="rescheduled">'
                     f"{rescheduled_info}</span></p>"
                 )
+            if reschedule_count > 0:
+                yield f"<p><b>Reschedule count:</b> {reschedule_count}</p>"
             need = Need(need_id)
             implied_need = Need(implied_need_id)
             if need == implied_need:
