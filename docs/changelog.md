@@ -16,7 +16,7 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [4.0.0rc8][] - 2026-07-04 {: #v4.0.0rc8 }
 
-This is release candidate 8 for the upcoming StepUp 4.0 release.
+This is release candidate 8 of the upcoming StepUp Core 4.0 release.
 
 ### Added
 

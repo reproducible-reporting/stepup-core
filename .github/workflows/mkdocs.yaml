@@ -16,6 +16,7 @@ on:
       # ... and only if relevant files have changed.
       - stepup/**
       - docs/**
+      - overrides/**
       - mkdocs.yaml
       - pyproject.toml
       - .github/workflows/mkdocs.yaml
@@ -25,6 +26,7 @@ on:
       # ... only if relevant files have changed.
       - stepup/**
       - docs/**
+      - overrides/**
       - mkdocs.yaml
       - pyproject.toml
       - .github/workflows/mkdocs.yaml
