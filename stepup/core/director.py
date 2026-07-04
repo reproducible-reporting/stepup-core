@@ -196,7 +196,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--jobs",
         type=Decimal,
-        default=Decimal("1.2"),
+        default=Decimal("1.0"),
         help="Number of jobs running in parallel. "
         "When given as a real number with digits after the comma, "
         "it is multiplied with the number of available cores. [default=%(default)s]",

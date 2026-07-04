@@ -84,6 +84,10 @@ This is release candidate 7 for the upcoming StepUp 4.0 release.
   in line with the convention used by `make` and similar tools.
   The config-file key changes from `num_workers` to `jobs`,
   and the environment variable changes from `STEPUP_NUM_WORKERS` to `STEPUP_BUILD_JOBS`.
+  The default value is now `1.0` (one job per CPU core) instead of `1.2`.
+  (The old values is common for I/O-bound build workflows,
+  but StepUp is more commonly applied to CPU-bound workflows,
+  for which the new default is more suitable.)
 - The `runsh()` and `runpy()` functions have been replaced by the more flexible `run()` function.
   The new implementation is more efficient and automatically tracks local scripts as dependencies.
 - The `plan()` function has been made maximally similar to `run()`,

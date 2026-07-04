@@ -160,7 +160,7 @@ separated by slashes, where applicable.
 
 :   The maximum number of steps to run concurrently.
     When given as a floating point number, the value is multiplied by the number of available CPU cores.
-    The default is `1.2`.
+    The default is `1.0`.
 
 `perf` / `STEPUP_BUILD_PERF` / `--perf`
 

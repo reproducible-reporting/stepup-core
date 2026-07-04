@@ -351,7 +351,7 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         "--jobs",
         "-j",
         type=Decimal,
-        default=Decimal("1.2"),
+        default=Decimal("1.0"),
         help="Number of parallel jobs. "
         "When given as a real number with digits after the comma, "
         "it is multiplied with the number of available cores. [default=%(default)s]",
