@@ -1,60 +1,60 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:generate.py
-             creates   step:./generate.py plan --optional
-             creates   step:cp -p runout.txt copy.txt
+             creator   root:
+              source   file:plan.py
+             product   file:generate.py
+             product   step:./generate.py plan --optional
+             product   step:cp -p runout.txt copy.txt
 
 file:generate.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./generate.py plan --optional
-            supplies   step:./generate.py run
+             creator   step:./plan.py
+                sink   step:./generate.py plan --optional
+                sink   step:./generate.py run
 
 step:./generate.py plan --optional
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:generate.py
-             creates   step:./generate.py run
+             creator   step:./plan.py
+              source   file:generate.py
+             product   step:./generate.py run
 
 step:./generate.py run
                state = SUCCEEDED
                 need = DEFAULT (implied by sinks > OPTIONAL)
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./generate.py plan --optional
-            consumes   file:generate.py
-             creates   file:runout.txt
-            supplies   file:runout.txt
+             creator   step:./generate.py plan --optional
+              source   file:generate.py
+             product   file:runout.txt
+                sink   file:runout.txt
 
 file:runout.txt
                state = BUILT
-          created by   step:./generate.py run
-            consumes   step:./generate.py run
-            supplies   step:cp -p runout.txt copy.txt
+             creator   step:./generate.py run
+              source   step:./generate.py run
+                sink   step:cp -p runout.txt copy.txt
 
 step:cp -p runout.txt copy.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:runout.txt
-             creates   file:copy.txt
-            supplies   file:copy.txt
+             creator   step:./plan.py
+              source   file:runout.txt
+             product   file:copy.txt
+                sink   file:copy.txt
 
 file:copy.txt
                state = BUILT
-          created by   step:cp -p runout.txt copy.txt
-            consumes   step:cp -p runout.txt copy.txt
+             creator   step:cp -p runout.txt copy.txt
+              source   step:cp -p runout.txt copy.txt

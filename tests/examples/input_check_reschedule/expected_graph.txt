@@ -1,41 +1,41 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:trigger.txt
-             creates   file:work.py
-             creates   step:./work.py
+             creator   root:
+              source   file:plan.py
+             product   file:trigger.txt
+             product   file:work.py
+             product   step:./work.py
 
 file:trigger.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py
+             creator   step:./plan.py
+                sink   step:./work.py
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py
+             creator   step:./plan.py
+                sink   step:./work.py
 
 step:./work.py
                state = FAILED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   (file:never.txt) [amended]
-            consumes   file:trigger.txt
-            consumes   file:work.py
+             creator   step:./plan.py
+              source   (file:never.txt) [amended]
+              source   file:trigger.txt
+              source   file:work.py
 
 (file:never.txt)
                state = AWAITED
-            supplies   step:./work.py
+                sink   step:./work.py

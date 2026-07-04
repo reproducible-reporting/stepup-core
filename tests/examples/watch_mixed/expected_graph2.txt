@@ -1,46 +1,46 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   step:cp copy1.txt copy2.txt
+             creator   root:
+              source   file:plan.py
+             product   step:cp copy1.txt copy2.txt
 
 (file:orig.txt)
                state = MISSING
-            supplies   (step:cp orig.txt copy1.txt)
+                sink   (step:cp orig.txt copy1.txt)
 
 (step:cp orig.txt copy1.txt)
                state = PENDING
                 need = DEFAULT
-            consumes   (file:orig.txt)
-             creates   (file:copy1.txt)
-            supplies   (file:copy1.txt)
+              source   (file:orig.txt)
+             product   (file:copy1.txt)
+                sink   (file:copy1.txt)
 
 (file:copy1.txt)
                state = OUTDATED
-          created by   (step:cp orig.txt copy1.txt)
-            consumes   (step:cp orig.txt copy1.txt)
-            supplies   step:cp copy1.txt copy2.txt
+             creator   (step:cp orig.txt copy1.txt)
+              source   (step:cp orig.txt copy1.txt)
+                sink   step:cp copy1.txt copy2.txt
 
 step:cp copy1.txt copy2.txt
                state = PENDING
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   (file:copy1.txt)
-             creates   file:copy2.txt
-            supplies   file:copy2.txt
+             creator   step:./plan.py
+              source   (file:copy1.txt)
+             product   file:copy2.txt
+                sink   file:copy2.txt
 
 file:copy2.txt
                state = OUTDATED
-          created by   step:cp copy1.txt copy2.txt
-            consumes   step:cp copy1.txt copy2.txt
+             creator   step:cp copy1.txt copy2.txt
+              source   step:cp copy1.txt copy2.txt

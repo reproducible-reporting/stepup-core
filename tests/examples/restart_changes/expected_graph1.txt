@@ -1,58 +1,58 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
            explained = yes
-          created by   root:
-            consumes   file:plan.py
-             creates   file:source1.txt
-             creates   file:source_both.txt
-             creates   step:cp source1.txt copy1.txt
-             creates   step:cp source_both.txt copy_both1.txt
+             creator   root:
+              source   file:plan.py
+             product   file:source1.txt
+             product   file:source_both.txt
+             product   step:cp source1.txt copy1.txt
+             product   step:cp source_both.txt copy_both1.txt
 
 file:source_both.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:cp source_both.txt copy_both1.txt
+             creator   step:./plan.py
+                sink   step:cp source_both.txt copy_both1.txt
 
 step:cp source_both.txt copy_both1.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:source_both.txt
-             creates   file:copy_both1.txt
-            supplies   file:copy_both1.txt
+             creator   step:./plan.py
+              source   file:source_both.txt
+             product   file:copy_both1.txt
+                sink   file:copy_both1.txt
 
 file:copy_both1.txt
                state = BUILT
-          created by   step:cp source_both.txt copy_both1.txt
-            consumes   step:cp source_both.txt copy_both1.txt
+             creator   step:cp source_both.txt copy_both1.txt
+              source   step:cp source_both.txt copy_both1.txt
 
 step:cp source1.txt copy1.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:source1.txt
-             creates   file:copy1.txt
-            supplies   file:copy1.txt
+             creator   step:./plan.py
+              source   file:source1.txt
+             product   file:copy1.txt
+                sink   file:copy1.txt
 
 file:source1.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:cp source1.txt copy1.txt
+             creator   step:./plan.py
+                sink   step:cp source1.txt copy1.txt
 
 file:copy1.txt
                state = BUILT
-          created by   step:cp source1.txt copy1.txt
-            consumes   step:cp source1.txt copy1.txt
+             creator   step:cp source1.txt copy1.txt
+              source   step:cp source1.txt copy1.txt

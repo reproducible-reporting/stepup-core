@@ -1,66 +1,66 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:data.txt
-             creates   file:first.py
-             creates   file:second.py
-             creates   step:./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
+             creator   root:
+              source   file:plan.py
+             product   file:data.txt
+             product   file:first.py
+             product   file:second.py
+             product   step:./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
 
 file:data.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
+             creator   step:./plan.py
+                sink   step:./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
 
 file:first.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
+             creator   step:./plan.py
+                sink   step:./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
 
 file:second.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./second.py finalize '{"inp": ["intermediate.txt"], "out": ["final.txt"]}'
+             creator   step:./plan.py
+                sink   step:./second.py finalize '{"inp": ["intermediate.txt"], "out": ["final.txt"]}'
 
 step:./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:data.txt
-            consumes   file:first.py
-             creates   file:intermediate.txt
-             creates   step:./second.py finalize '{"inp": ["intermediate.txt"], "out": ["final.txt"]}'
-            supplies   file:intermediate.txt
+             creator   step:./plan.py
+              source   file:data.txt
+              source   file:first.py
+             product   file:intermediate.txt
+             product   step:./second.py finalize '{"inp": ["intermediate.txt"], "out": ["final.txt"]}'
+                sink   file:intermediate.txt
 
 file:intermediate.txt
                state = BUILT
-          created by   step:./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
-            consumes   step:./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
-            supplies   step:./second.py finalize '{"inp": ["intermediate.txt"], "out": ["final.txt"]}'
+             creator   step:./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
+              source   step:./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
+                sink   step:./second.py finalize '{"inp": ["intermediate.txt"], "out": ["final.txt"]}'
 
 step:./second.py finalize '{"inp": ["intermediate.txt"], "out": ["final.txt"]}'
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
-            consumes   file:intermediate.txt
-            consumes   file:second.py
-             creates   file:final.txt
-            supplies   file:final.txt
+             creator   step:./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
+              source   file:intermediate.txt
+              source   file:second.py
+             product   file:final.txt
+                sink   file:final.txt
 
 file:final.txt
                state = BUILT
-          created by   step:./second.py finalize '{"inp": ["intermediate.txt"], "out": ["final.txt"]}'
-            consumes   step:./second.py finalize '{"inp": ["intermediate.txt"], "out": ["final.txt"]}'
+             creator   step:./second.py finalize '{"inp": ["intermediate.txt"], "out": ["final.txt"]}'
+              source   step:./second.py finalize '{"inp": ["intermediate.txt"], "out": ["final.txt"]}'

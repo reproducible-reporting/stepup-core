@@ -1,37 +1,37 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:show.py
-             creates   step:./show.py
+             creator   root:
+              source   file:plan.py
+             product   file:show.py
+             product   step:./show.py
 
 file:show.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./show.py
+             creator   step:./plan.py
+                sink   step:./show.py
 
 step:./show.py
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
        env_overrides = GREETING=hello
-          created by   step:./plan.py
-            consumes   file:show.py
-             creates   file:greeting.txt
-            supplies   file:greeting.txt
+             creator   step:./plan.py
+              source   file:show.py
+             product   file:greeting.txt
+                sink   file:greeting.txt
 
 file:greeting.txt
                state = BUILT
-          created by   step:./show.py
-            consumes   step:./show.py
+             creator   step:./show.py
+              source   step:./show.py

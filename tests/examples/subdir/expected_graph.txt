@@ -1,72 +1,72 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
-            supplies   step:cat ../plan.py  # wd=sub
+             creator   root:
+                sink   step:./plan.py
+                sink   step:cat ../plan.py  # wd=sub
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:example.txt
-             creates   file:sub/plan.py
-             creates   step:./plan.py  # wd=sub
-             creates   step:cp -p example.txt sub/example.txt
+             creator   root:
+              source   file:plan.py
+             product   file:example.txt
+             product   file:sub/plan.py
+             product   step:./plan.py  # wd=sub
+             product   step:cp -p example.txt sub/example.txt
 
 file:example.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:cp -p example.txt sub/example.txt
+             creator   step:./plan.py
+                sink   step:cp -p example.txt sub/example.txt
 
 file:sub/plan.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./plan.py  # wd=sub
+             creator   step:./plan.py
+                sink   step:./plan.py  # wd=sub
 
 step:cp -p example.txt sub/example.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:example.txt
-             creates   file:sub/example.txt
-            supplies   file:sub/example.txt
+             creator   step:./plan.py
+              source   file:example.txt
+             product   file:sub/example.txt
+                sink   file:sub/example.txt
 
 file:sub/example.txt
                state = BUILT
-          created by   step:cp -p example.txt sub/example.txt
-            consumes   step:cp -p example.txt sub/example.txt
-            supplies   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub
+             creator   step:cp -p example.txt sub/example.txt
+              source   step:cp -p example.txt sub/example.txt
+                sink   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub
 
 step:./plan.py  # wd=sub
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:sub/plan.py
-             creates   step:cat ../plan.py  # wd=sub
-             creates   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub
+             creator   step:./plan.py
+              source   file:sub/plan.py
+             product   step:cat ../plan.py  # wd=sub
+             product   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub
 
 step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py  # wd=sub
-            consumes   file:sub/example.txt
-             creates   file:sub/upper.txt
-            supplies   file:sub/upper.txt
+             creator   step:./plan.py  # wd=sub
+              source   file:sub/example.txt
+             product   file:sub/upper.txt
+                sink   file:sub/upper.txt
 
 file:sub/upper.txt
                state = BUILT
-          created by   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub
-            consumes   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub
+             creator   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub
+              source   step:tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub
 
 step:cat ../plan.py  # wd=sub
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py  # wd=sub
-            consumes   file:plan.py
+             creator   step:./plan.py  # wd=sub
+              source   file:plan.py

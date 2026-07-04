@@ -1,49 +1,49 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:work.py
-             creates   step:./work.py
+             creator   root:
+              source   file:plan.py
+             product   file:work.py
+             product   step:./work.py
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py
+             creator   step:./plan.py
+                sink   step:./work.py
 
 step:./work.py
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:work.py
-             creates   file:inp.txt
-             creates   step:cp -p inp.txt out.txt
+             creator   step:./plan.py
+              source   file:work.py
+             product   file:inp.txt
+             product   step:cp -p inp.txt out.txt
 
 file:inp.txt
                state = STATIC
-          created by   step:./work.py
-            supplies   step:cp -p inp.txt out.txt
+             creator   step:./work.py
+                sink   step:cp -p inp.txt out.txt
 
 step:cp -p inp.txt out.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./work.py
-            consumes   file:inp.txt
-             creates   file:out.txt
-            supplies   file:out.txt
+             creator   step:./work.py
+              source   file:inp.txt
+             product   file:out.txt
+                sink   file:out.txt
 
 file:out.txt
                state = BUILT
-          created by   step:cp -p inp.txt out.txt
-            consumes   step:cp -p inp.txt out.txt
+             creator   step:cp -p inp.txt out.txt
+              source   step:cp -p inp.txt out.txt

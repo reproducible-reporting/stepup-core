@@ -1,46 +1,46 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   step:echo data > hello.txt
-             creates   step:echo soon gone > bye.txt
+             creator   root:
+              source   file:plan.py
+             product   step:echo data > hello.txt
+             product   step:echo soon gone > bye.txt
 
 step:echo data > hello.txt
                state = PENDING
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   (file:missing.txt)
-             creates   file:hello.txt
-            supplies   file:hello.txt
+             creator   step:./plan.py
+              source   (file:missing.txt)
+             product   file:hello.txt
+                sink   file:hello.txt
 
 (file:missing.txt)
                state = AWAITED
-            supplies   step:echo data > hello.txt
+                sink   step:echo data > hello.txt
 
 file:hello.txt
                state = AWAITED
-          created by   step:echo data > hello.txt
-            consumes   step:echo data > hello.txt
+             creator   step:echo data > hello.txt
+              source   step:echo data > hello.txt
 
 step:echo soon gone > bye.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-             creates   file:bye.txt
-            supplies   file:bye.txt
+             creator   step:./plan.py
+             product   file:bye.txt
+                sink   file:bye.txt
 
 file:bye.txt
                state = BUILT
-          created by   step:echo soon gone > bye.txt
-            consumes   step:echo soon gone > bye.txt
+             creator   step:echo soon gone > bye.txt
+              source   step:echo soon gone > bye.txt

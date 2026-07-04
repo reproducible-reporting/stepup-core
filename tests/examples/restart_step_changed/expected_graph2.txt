@@ -1,46 +1,46 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
            explained = yes
-          created by   root:
-            consumes   file:plan.py
-             creates   step:cp -p original.txt copy.txt
-             creates   step:echo 2 > original.txt
+             creator   root:
+              source   file:plan.py
+             product   step:cp -p original.txt copy.txt
+             product   step:echo 2 > original.txt
 
 file:original.txt
                state = BUILT
-          created by   step:echo 2 > original.txt
-            consumes   step:echo 2 > original.txt
-            supplies   step:cp -p original.txt copy.txt
+             creator   step:echo 2 > original.txt
+              source   step:echo 2 > original.txt
+                sink   step:cp -p original.txt copy.txt
 
 step:cp -p original.txt copy.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:original.txt
-             creates   file:copy.txt
-            supplies   file:copy.txt
+             creator   step:./plan.py
+              source   file:original.txt
+             product   file:copy.txt
+                sink   file:copy.txt
 
 file:copy.txt
                state = BUILT
-          created by   step:cp -p original.txt copy.txt
-            consumes   step:cp -p original.txt copy.txt
+             creator   step:cp -p original.txt copy.txt
+              source   step:cp -p original.txt copy.txt
 
 step:echo 2 > original.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-             creates   file:original.txt
-            supplies   file:original.txt
+             creator   step:./plan.py
+             product   file:original.txt
+                sink   file:original.txt

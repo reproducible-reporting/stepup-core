@@ -160,11 +160,11 @@ async def lt():
 
 SINGLETON1_FORMAT_STR = """\
 root:
-             creates   f:one
+             product   f:one
 
 f:one
                value = 1
-          created by   root:
+             creator   root:
 """
 
 
@@ -235,69 +235,69 @@ async def test_singleton(lt):
 
 CHAIN1_FORMAT_STR = """\
 root:
-             creates   f:one
-             creates   f:zero
+             product   f:one
+             product   f:zero
 
 f:zero
                value = 0
-          created by   root:
-             creates   f:four
-            supplies   (f:two)
+             creator   root:
+             product   f:four
+                sink   (f:two)
 
 f:one
                value = 1
-          created by   root:
-            supplies   (f:two)
+             creator   root:
+                sink   (f:two)
 
 (f:two)
                value = 2
-            consumes   f:one
-            consumes   f:zero
-             creates   (f:three)
-            supplies   f:four
+              source   f:one
+              source   f:zero
+             product   (f:three)
+                sink   f:four
 
 (f:three)
                value = 3
-          created by   (f:two)
+             creator   (f:two)
 
 f:four
                value = 4
-          created by   f:zero
-            consumes   (f:two)
+             creator   f:zero
+              source   (f:two)
 """
 
 
 CHAIN2_FORMAT_STR = """\
 root:
-             creates   f:one
+             product   f:one
 
 (f:zero)
                value = 0
-             creates   (f:four)
-            supplies   f:two
+             product   (f:four)
+                sink   f:two
 
 f:one
                value = 1
-          created by   root:
-             creates   f:two
-            supplies   f:two
+             creator   root:
+             product   f:two
+                sink   f:two
 
 f:two
                value = 2
-          created by   f:one
-            consumes   f:one
-            consumes   (f:zero)
-             creates   f:three
-            supplies   (f:four)
+             creator   f:one
+              source   f:one
+              source   (f:zero)
+             product   f:three
+                sink   (f:four)
 
 f:three
                value = 3
-          created by   f:two
+             creator   f:two
 
 (f:four)
                value = 4
-          created by   (f:zero)
-            consumes   f:two
+             creator   (f:zero)
+              source   f:two
 """
 
 
@@ -407,28 +407,28 @@ async def test_chain(lt):
 
 CLEAN_SINK1_FORMAT_STR = """\
 root:
-             creates   f:3
+             product   f:3
 
 (f:0)
                value = 0
-             creates   (f:1)
-             creates   (f:2)
+             product   (f:1)
+             product   (f:2)
 
 (f:1)
                value = 1
-          created by   (f:0)
-            supplies   f:3
+             creator   (f:0)
+                sink   f:3
 
 (f:2)
                value = 2
-          created by   (f:0)
-            supplies   f:3
+             creator   (f:0)
+                sink   f:3
 
 f:3
                value = 3
-          created by   root:
-            consumes   (f:1)
-            consumes   (f:2)
+             creator   root:
+              source   (f:1)
+              source   (f:2)
 """
 
 
@@ -664,35 +664,35 @@ async def test_relocate_tree(lt):
 
 RELOCATE_FORMAT_STR = """\
 root:
-             creates   f:0
+             product   f:0
 
 f:0
                value = 0
-          created by   root:
-             creates   f:4
+             creator   root:
+             product   f:4
 
 f:1
                value = 1
-          created by   f:4
-             creates   f:2
-             creates   f:3
-            supplies   f:2
+             creator   f:4
+             product   f:2
+             product   f:3
+                sink   f:2
 
 f:2
                value = 2
-          created by   f:1
-            consumes   f:1
-            consumes   f:4
+             creator   f:1
+              source   f:1
+              source   f:4
 
 f:3
                value = 3
-          created by   f:1
+             creator   f:1
 
 f:4
                value = 4
-          created by   f:0
-             creates   f:1
-            supplies   f:2
+             creator   f:0
+             product   f:1
+                sink   f:2
 """
 
 
@@ -725,33 +725,33 @@ async def test_check_consistency_second_root(lt):
 
 RELOCATE_NESTED_FORMAT_STR = """\
 root:
-             creates   f:0
+             product   f:0
 
 f:0
                value = 0
-          created by   root:
-             creates   f:4
+             creator   root:
+             product   f:4
 
 (f:1)
                value = 1
-             creates   (f:3)
-            supplies   f:2
+             product   (f:3)
+                sink   f:2
 
 f:2
                value = 2
-          created by   f:4
-            consumes   (f:1)
-            consumes   f:4
+             creator   f:4
+              source   (f:1)
+              source   f:4
 
 (f:3)
                value = 3
-          created by   (f:1)
+             creator   (f:1)
 
 f:4
                value = 4
-          created by   f:0
-             creates   f:2
-            supplies   f:2
+             creator   f:0
+             product   f:2
+                sink   f:2
 """
 
 

@@ -1,50 +1,50 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:sub/inp.txt
-             creates   step:cp -p sub/inp.txt sub/tmp.txt
-             creates   step:cp -p sub/tmp.txt sub/out.txt
+             creator   root:
+              source   file:plan.py
+             product   file:sub/inp.txt
+             product   step:cp -p sub/inp.txt sub/tmp.txt
+             product   step:cp -p sub/tmp.txt sub/out.txt
 
 file:sub/inp.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:cp -p sub/inp.txt sub/tmp.txt
+             creator   step:./plan.py
+                sink   step:cp -p sub/inp.txt sub/tmp.txt
 
 step:cp -p sub/inp.txt sub/tmp.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:sub/inp.txt
-             creates   file:sub/tmp.txt
-            supplies   file:sub/tmp.txt
+             creator   step:./plan.py
+              source   file:sub/inp.txt
+             product   file:sub/tmp.txt
+                sink   file:sub/tmp.txt
 
 file:sub/tmp.txt
                state = BUILT
-          created by   step:cp -p sub/inp.txt sub/tmp.txt
-            consumes   step:cp -p sub/inp.txt sub/tmp.txt
-            supplies   step:cp -p sub/tmp.txt sub/out.txt
+             creator   step:cp -p sub/inp.txt sub/tmp.txt
+              source   step:cp -p sub/inp.txt sub/tmp.txt
+                sink   step:cp -p sub/tmp.txt sub/out.txt
 
 step:cp -p sub/tmp.txt sub/out.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:sub/tmp.txt
-             creates   file:sub/out.txt
-            supplies   file:sub/out.txt
+             creator   step:./plan.py
+              source   file:sub/tmp.txt
+             product   file:sub/out.txt
+                sink   file:sub/out.txt
 
 file:sub/out.txt
                state = BUILT
-          created by   step:cp -p sub/tmp.txt sub/out.txt
-            consumes   step:cp -p sub/tmp.txt sub/out.txt
+             creator   step:cp -p sub/tmp.txt sub/out.txt
+              source   step:cp -p sub/tmp.txt sub/out.txt

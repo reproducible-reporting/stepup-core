@@ -1,43 +1,43 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   step:cp first.txt final.txt
-             creates   step:echo "test 1" > first.txt
+             creator   root:
+              source   file:plan.py
+             product   step:cp first.txt final.txt
+             product   step:echo "test 1" > first.txt
 
 step:echo "test 1" > first.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-             creates   file:first.txt
-            supplies   file:first.txt
+             creator   step:./plan.py
+             product   file:first.txt
+                sink   file:first.txt
 
 file:first.txt
                state = BUILT
-          created by   step:echo "test 1" > first.txt
-            consumes   step:echo "test 1" > first.txt
-            supplies   step:cp first.txt final.txt
+             creator   step:echo "test 1" > first.txt
+              source   step:echo "test 1" > first.txt
+                sink   step:cp first.txt final.txt
 
 step:cp first.txt final.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:first.txt
-             creates   file:final.txt
-            supplies   file:final.txt
+             creator   step:./plan.py
+              source   file:first.txt
+             product   file:final.txt
+                sink   file:final.txt
 
 file:final.txt
                state = BUILT
-          created by   step:cp first.txt final.txt
-            consumes   step:cp first.txt final.txt
+             creator   step:cp first.txt final.txt
+              source   step:cp first.txt final.txt

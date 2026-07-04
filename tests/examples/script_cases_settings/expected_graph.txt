@@ -1,79 +1,79 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:helper.py
-             creates   file:settings.py
-             creates   file:work.py
-             creates   step:./work.py plan
+             creator   root:
+              source   file:plan.py
+             product   file:helper.py
+             product   file:settings.py
+             product   file:work.py
+             product   step:./work.py plan
 
 file:helper.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py plan
-            supplies   step:./work.py run +0.3
-            supplies   step:./work.py run -- -1.2
+             creator   step:./plan.py
+                sink   step:./work.py plan
+                sink   step:./work.py run +0.3
+                sink   step:./work.py run -- -1.2
 
 file:settings.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py plan
+             creator   step:./plan.py
+                sink   step:./work.py plan
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py plan
-            supplies   step:./work.py run +0.3
-            supplies   step:./work.py run -- -1.2
+             creator   step:./plan.py
+                sink   step:./work.py plan
+                sink   step:./work.py run +0.3
+                sink   step:./work.py run -- -1.2
 
 step:./work.py plan
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:helper.py [amended]
-            consumes   file:settings.py [amended]
-            consumes   file:work.py
-             creates   step:./work.py run +0.3
-             creates   step:./work.py run -- -1.2
+             creator   step:./plan.py
+              source   file:helper.py [amended]
+              source   file:settings.py [amended]
+              source   file:work.py
+             product   step:./work.py run +0.3
+             product   step:./work.py run -- -1.2
 
 step:./work.py run +0.3
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./work.py plan
-            consumes   file:helper.py [amended]
-            consumes   file:work.py
-             creates   file:data+0.3.txt
-            supplies   file:data+0.3.txt
+             creator   step:./work.py plan
+              source   file:helper.py [amended]
+              source   file:work.py
+             product   file:data+0.3.txt
+                sink   file:data+0.3.txt
 
 file:data+0.3.txt
                state = BUILT
-          created by   step:./work.py run +0.3
-            consumes   step:./work.py run +0.3
+             creator   step:./work.py run +0.3
+              source   step:./work.py run +0.3
 
 step:./work.py run -- -1.2
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./work.py plan
-            consumes   file:helper.py [amended]
-            consumes   file:work.py
-             creates   file:data-1.2.txt
-            supplies   file:data-1.2.txt
+             creator   step:./work.py plan
+              source   file:helper.py [amended]
+              source   file:work.py
+             product   file:data-1.2.txt
+                sink   file:data-1.2.txt
 
 file:data-1.2.txt
                state = BUILT
-          created by   step:./work.py run -- -1.2
-            consumes   step:./work.py run -- -1.2
+             creator   step:./work.py run -- -1.2
+              source   step:./work.py run -- -1.2

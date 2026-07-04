@@ -1,11 +1,11 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
@@ -13,34 +13,34 @@ step:./plan.py
            using_env = ENV_VAR_TEST_STEPUP_PREFIX [amended]
                      = STEPUP_PATH_FILTER [amended]
            explained = yes
-          created by   root:
-            consumes   file:plan.py
-             creates   file:README.txt
-             creates   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+             creator   root:
+              source   file:plan.py
+             product   file:README.txt
+             product   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
 
 file:README.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+             creator   step:./plan.py
+                sink   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
 
 step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
                state = SUCCEEDED
                 need = DEFAULT
            using_env = ENV_VAR_TEST_STEPUP_PREFIX
            explained = yes
-          created by   step:./plan.py
-            consumes   file:README.txt
-             creates   file:README-stderr.txt
-             creates   file:README-stdout.txt
-            supplies   file:README-stderr.txt
-            supplies   file:README-stdout.txt
+             creator   step:./plan.py
+              source   file:README.txt
+             product   file:README-stderr.txt
+             product   file:README-stdout.txt
+                sink   file:README-stderr.txt
+                sink   file:README-stdout.txt
 
 file:README-stdout.txt
                state = BUILT
-          created by   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
-            consumes   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+             creator   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+              source   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
 
 file:README-stderr.txt
                state = VOLATILE
-          created by   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
-            consumes   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+             creator   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt
+              source   step:grep variable README.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > README-stdout.txt 2> README-stderr.txt

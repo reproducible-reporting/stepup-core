@@ -1,50 +1,50 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = MISSING
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = PENDING
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:original.txt
-             creates   step:cp copy.txt another.txt
-             creates   step:cp original.txt copy.txt
+             creator   root:
+              source   file:plan.py
+             product   file:original.txt
+             product   step:cp copy.txt another.txt
+             product   step:cp original.txt copy.txt
 
 step:cp copy.txt another.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:copy.txt
-             creates   file:another.txt
-            supplies   file:another.txt
+             creator   step:./plan.py
+              source   file:copy.txt
+             product   file:another.txt
+                sink   file:another.txt
 
 file:copy.txt
                state = BUILT
-          created by   step:cp original.txt copy.txt
-            consumes   step:cp original.txt copy.txt
-            supplies   step:cp copy.txt another.txt
+             creator   step:cp original.txt copy.txt
+              source   step:cp original.txt copy.txt
+                sink   step:cp copy.txt another.txt
 
 file:another.txt
                state = BUILT
-          created by   step:cp copy.txt another.txt
-            consumes   step:cp copy.txt another.txt
+             creator   step:cp copy.txt another.txt
+              source   step:cp copy.txt another.txt
 
 step:cp original.txt copy.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:original.txt
-             creates   file:copy.txt
-            supplies   file:copy.txt
+             creator   step:./plan.py
+              source   file:original.txt
+             product   file:copy.txt
+                sink   file:copy.txt
 
 file:original.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:cp original.txt copy.txt
+             creator   step:./plan.py
+                sink   step:cp original.txt copy.txt

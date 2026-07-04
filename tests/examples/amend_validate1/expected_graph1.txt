@@ -1,66 +1,66 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:work.py
-             creates   step:./work.py
-             creates   step:echo ping > ping.txt
-             creates   step:echo pong > pong.txt
+             creator   root:
+              source   file:plan.py
+             product   file:work.py
+             product   step:./work.py
+             product   step:echo ping > ping.txt
+             product   step:echo pong > pong.txt
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py
+             creator   step:./plan.py
+                sink   step:./work.py
 
 step:echo ping > ping.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-             creates   file:ping.txt
-            supplies   file:ping.txt
+             creator   step:./plan.py
+             product   file:ping.txt
+                sink   file:ping.txt
 
 file:ping.txt
                state = BUILT
-          created by   step:echo ping > ping.txt
-            consumes   step:echo ping > ping.txt
-            supplies   step:./work.py
+             creator   step:echo ping > ping.txt
+              source   step:echo ping > ping.txt
+                sink   step:./work.py
 
 step:echo pong > pong.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-             creates   file:pong.txt
-            supplies   file:pong.txt
+             creator   step:./plan.py
+             product   file:pong.txt
+                sink   file:pong.txt
 
 file:pong.txt
                state = BUILT
-          created by   step:echo pong > pong.txt
-            consumes   step:echo pong > pong.txt
-            supplies   step:./work.py
+             creator   step:echo pong > pong.txt
+              source   step:echo pong > pong.txt
+                sink   step:./work.py
 
 step:./work.py
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:ping.txt [amended]
-            consumes   file:pong.txt [amended]
-            consumes   file:work.py
-             creates   file:work.txt
-            supplies   file:work.txt
+             creator   step:./plan.py
+              source   file:ping.txt [amended]
+              source   file:pong.txt [amended]
+              source   file:work.py
+             product   file:work.txt
+                sink   file:work.txt
 
 file:work.txt
                state = BUILT
-          created by   step:./work.py
-            consumes   step:./work.py
+             creator   step:./work.py
+              source   step:./work.py

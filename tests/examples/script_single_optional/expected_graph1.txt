@@ -1,44 +1,44 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:generate.py
-             creates   step:./generate.py plan --optional
+             creator   root:
+              source   file:plan.py
+             product   file:generate.py
+             product   step:./generate.py plan --optional
 
 file:generate.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./generate.py plan --optional
-            supplies   step:./generate.py run
+             creator   step:./plan.py
+                sink   step:./generate.py plan --optional
+                sink   step:./generate.py run
 
 step:./generate.py plan --optional
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:generate.py
-             creates   step:./generate.py run
+             creator   step:./plan.py
+              source   file:generate.py
+             product   step:./generate.py run
 
 step:./generate.py run
                state = PENDING
                 need = OPTIONAL
-          created by   step:./generate.py plan --optional
-            consumes   file:generate.py
-             creates   file:runout.txt
-            supplies   file:runout.txt
+             creator   step:./generate.py plan --optional
+              source   file:generate.py
+             product   file:runout.txt
+                sink   file:runout.txt
 
 file:runout.txt
                state = AWAITED
-          created by   step:./generate.py run
-            consumes   step:./generate.py run
+             creator   step:./generate.py run
+              source   step:./generate.py run

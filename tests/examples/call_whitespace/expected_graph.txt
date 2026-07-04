@@ -1,43 +1,43 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:data.txt
-             creates   file:my work.py
-             creates   step:'./my work.py' run '{"inp": ["data.txt"], "out": ["result.txt"]}'
+             creator   root:
+              source   file:plan.py
+             product   file:data.txt
+             product   file:my work.py
+             product   step:'./my work.py' run '{"inp": ["data.txt"], "out": ["result.txt"]}'
 
 file:data.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:'./my work.py' run '{"inp": ["data.txt"], "out": ["result.txt"]}'
+             creator   step:./plan.py
+                sink   step:'./my work.py' run '{"inp": ["data.txt"], "out": ["result.txt"]}'
 
 file:my work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:'./my work.py' run '{"inp": ["data.txt"], "out": ["result.txt"]}'
+             creator   step:./plan.py
+                sink   step:'./my work.py' run '{"inp": ["data.txt"], "out": ["result.txt"]}'
 
 step:'./my work.py' run '{"inp": ["data.txt"], "out": ["result.txt"]}'
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:data.txt
-            consumes   file:my work.py
-             creates   file:result.txt
-            supplies   file:result.txt
+             creator   step:./plan.py
+              source   file:data.txt
+              source   file:my work.py
+             product   file:result.txt
+                sink   file:result.txt
 
 file:result.txt
                state = BUILT
-          created by   step:'./my work.py' run '{"inp": ["data.txt"], "out": ["result.txt"]}'
-            consumes   step:'./my work.py' run '{"inp": ["data.txt"], "out": ["result.txt"]}'
+             creator   step:'./my work.py' run '{"inp": ["data.txt"], "out": ["result.txt"]}'
+              source   step:'./my work.py' run '{"inp": ["data.txt"], "out": ["result.txt"]}'

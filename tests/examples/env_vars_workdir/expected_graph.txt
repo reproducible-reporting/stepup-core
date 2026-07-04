@@ -1,36 +1,36 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = INP_VAR_TEST_STEPUP_WORKDIR [amended]
                      = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:sub/input.txt
-             creates   step:cat input.txt > output.txt  # wd=sub
+             creator   root:
+              source   file:plan.py
+             product   file:sub/input.txt
+             product   step:cat input.txt > output.txt  # wd=sub
 
 file:sub/input.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:cat input.txt > output.txt  # wd=sub
+             creator   step:./plan.py
+                sink   step:cat input.txt > output.txt  # wd=sub
 
 step:cat input.txt > output.txt  # wd=sub
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:sub/input.txt
-             creates   file:sub/output.txt
-            supplies   file:sub/output.txt
+             creator   step:./plan.py
+              source   file:sub/input.txt
+             product   file:sub/output.txt
+                sink   file:sub/output.txt
 
 file:sub/output.txt
                state = BUILT
-          created by   step:cat input.txt > output.txt  # wd=sub
-            consumes   step:cat input.txt > output.txt  # wd=sub
+             creator   step:cat input.txt > output.txt  # wd=sub
+              source   step:cat input.txt > output.txt  # wd=sub

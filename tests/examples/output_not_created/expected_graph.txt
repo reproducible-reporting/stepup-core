@@ -1,43 +1,43 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   step:cp input.txt wrong.txt
-             creates   step:touch input.txt
+             creator   root:
+              source   file:plan.py
+             product   step:cp input.txt wrong.txt
+             product   step:touch input.txt
 
 step:touch input.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-             creates   file:input.txt
-            supplies   file:input.txt
+             creator   step:./plan.py
+             product   file:input.txt
+                sink   file:input.txt
 
 file:input.txt
                state = BUILT
-          created by   step:touch input.txt
-            consumes   step:touch input.txt
-            supplies   step:cp input.txt wrong.txt
+             creator   step:touch input.txt
+              source   step:touch input.txt
+                sink   step:cp input.txt wrong.txt
 
 step:cp input.txt wrong.txt
                state = FAILED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:input.txt
-             creates   file:output.txt
-            supplies   file:output.txt
+             creator   step:./plan.py
+              source   file:input.txt
+             product   file:output.txt
+                sink   file:output.txt
 
 file:output.txt
                state = AWAITED
-          created by   step:cp input.txt wrong.txt
-            consumes   step:cp input.txt wrong.txt
+             creator   step:cp input.txt wrong.txt
+              source   step:cp input.txt wrong.txt

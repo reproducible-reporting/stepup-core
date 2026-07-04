@@ -1,58 +1,58 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:f1.txt
-             creates   file:work.py
-             creates   step:./work.py
-             creates   step:cat f1.txt f2.txt > f3.txt
+             creator   root:
+              source   file:plan.py
+             product   file:f1.txt
+             product   file:work.py
+             product   step:./work.py
+             product   step:cat f1.txt f2.txt > f3.txt
 
 file:f1.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:cat f1.txt f2.txt > f3.txt
+             creator   step:./plan.py
+                sink   step:cat f1.txt f2.txt > f3.txt
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py
+             creator   step:./plan.py
+                sink   step:./work.py
 
 step:./work.py
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:work.py
-             creates   file:f2.txt
-            supplies   file:f2.txt
+             creator   step:./plan.py
+              source   file:work.py
+             product   file:f2.txt
+                sink   file:f2.txt
 
 file:f2.txt
                state = BUILT
-          created by   step:./work.py
-            consumes   step:./work.py
-            supplies   step:cat f1.txt f2.txt > f3.txt
+             creator   step:./work.py
+              source   step:./work.py
+                sink   step:cat f1.txt f2.txt > f3.txt
 
 step:cat f1.txt f2.txt > f3.txt
                state = FAILED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:f1.txt
-            consumes   file:f2.txt
-             creates   file:f3.txt
-            supplies   file:f3.txt
+             creator   step:./plan.py
+              source   file:f1.txt
+              source   file:f2.txt
+             product   file:f3.txt
+                sink   file:f3.txt
 
 file:f3.txt
                state = AWAITED
-          created by   step:cat f1.txt f2.txt > f3.txt
-            consumes   step:cat f1.txt f2.txt > f3.txt
+             creator   step:cat f1.txt f2.txt > f3.txt
+              source   step:cat f1.txt f2.txt > f3.txt

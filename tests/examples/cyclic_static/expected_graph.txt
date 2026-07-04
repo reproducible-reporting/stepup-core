@@ -1,71 +1,71 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:work1.py
-             creates   file:work2.py
-             creates   step:./work1.py
-             creates   step:./work2.py
+             creator   root:
+              source   file:plan.py
+             product   file:work1.py
+             product   file:work2.py
+             product   step:./work1.py
+             product   step:./work2.py
 
 file:work1.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work1.py
+             creator   step:./plan.py
+                sink   step:./work1.py
 
 file:work2.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work2.py
+             creator   step:./plan.py
+                sink   step:./work2.py
 
 step:./work1.py
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:inp2.txt [amended]
-            consumes   file:work1.py
-             creates   file:inp1.txt
-             creates   file:out2.txt
-            supplies   file:out2.txt [amended]
+             creator   step:./plan.py
+              source   file:inp2.txt [amended]
+              source   file:work1.py
+             product   file:inp1.txt
+             product   file:out2.txt
+                sink   file:out2.txt [amended]
 
 step:./work2.py
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:inp1.txt [amended]
-            consumes   file:work2.py
-             creates   file:inp2.txt
-             creates   file:out1.txt
-            supplies   file:out1.txt [amended]
+             creator   step:./plan.py
+              source   file:inp1.txt [amended]
+              source   file:work2.py
+             product   file:inp2.txt
+             product   file:out1.txt
+                sink   file:out1.txt [amended]
 
 file:inp1.txt
                state = STATIC
-          created by   step:./work1.py
-            supplies   step:./work2.py
+             creator   step:./work1.py
+                sink   step:./work2.py
 
 file:inp2.txt
                state = STATIC
-          created by   step:./work2.py
-            supplies   step:./work1.py
+             creator   step:./work2.py
+                sink   step:./work1.py
 
 file:out2.txt
                state = BUILT
-          created by   step:./work1.py
-            consumes   step:./work1.py
+             creator   step:./work1.py
+              source   step:./work1.py
 
 file:out1.txt
                state = BUILT
-          created by   step:./work2.py
-            consumes   step:./work2.py
+             creator   step:./work2.py
+              source   step:./work2.py

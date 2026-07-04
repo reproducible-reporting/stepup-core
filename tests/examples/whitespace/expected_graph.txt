@@ -1,67 +1,67 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:README NOW.txt
-             creates   file:script is cool.py
-             creates   step:'./script is cool.py' plan
-             creates   step:cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+             creator   root:
+              source   file:plan.py
+             product   file:README NOW.txt
+             product   file:script is cool.py
+             product   step:'./script is cool.py' plan
+             product   step:cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
 
 file:README NOW.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:'./script is cool.py' run
-            supplies   step:cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+             creator   step:./plan.py
+                sink   step:'./script is cool.py' run
+                sink   step:cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
 
 file:script is cool.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:'./script is cool.py' plan
-            supplies   step:'./script is cool.py' run
+             creator   step:./plan.py
+                sink   step:'./script is cool.py' plan
+                sink   step:'./script is cool.py' run
 
 step:cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:README NOW.txt
-             creates   file:white space leaves a lot of room for mistakes.txt
-            supplies   file:white space leaves a lot of room for mistakes.txt
+             creator   step:./plan.py
+              source   file:README NOW.txt
+             product   file:white space leaves a lot of room for mistakes.txt
+                sink   file:white space leaves a lot of room for mistakes.txt
 
 file:white space leaves a lot of room for mistakes.txt
                state = BUILT
-          created by   step:cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-            consumes   step:cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+             creator   step:cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+              source   step:cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
 
 step:'./script is cool.py' plan
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:script is cool.py
-             creates   step:'./script is cool.py' run
+             creator   step:./plan.py
+              source   file:script is cool.py
+             product   step:'./script is cool.py' run
 
 step:'./script is cool.py' run
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:'./script is cool.py' plan
-            consumes   file:README NOW.txt
-            consumes   file:script is cool.py
-             creates   file:the road to hell is paved with whitespace.txt
-            supplies   file:the road to hell is paved with whitespace.txt
+             creator   step:'./script is cool.py' plan
+              source   file:README NOW.txt
+              source   file:script is cool.py
+             product   file:the road to hell is paved with whitespace.txt
+                sink   file:the road to hell is paved with whitespace.txt
 
 file:the road to hell is paved with whitespace.txt
                state = BUILT
-          created by   step:'./script is cool.py' run
-            consumes   step:'./script is cool.py' run
+             creator   step:'./script is cool.py' run
+              source   step:'./script is cool.py' run

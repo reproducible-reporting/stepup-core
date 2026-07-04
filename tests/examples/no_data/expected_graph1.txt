@@ -1,11 +1,11 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
@@ -13,35 +13,35 @@ step:./plan.py
            using_env = STEPUP_PATH_FILTER [amended]
                  ngm = ['data.txt'] {}
            explained = yes
-          created by   root:
-            consumes   file:plan.py
-             creates   file:data.txt
-             creates   step:cat analyzed.txt
-             creates   step:grep -i foo data.txt > analyzed.txt
+             creator   root:
+              source   file:plan.py
+             product   file:data.txt
+             product   step:cat analyzed.txt
+             product   step:grep -i foo data.txt > analyzed.txt
 
 file:data.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:grep -i foo data.txt > analyzed.txt
+             creator   step:./plan.py
+                sink   step:grep -i foo data.txt > analyzed.txt
 
 step:grep -i foo data.txt > analyzed.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:data.txt
-             creates   file:analyzed.txt
-            supplies   file:analyzed.txt
+             creator   step:./plan.py
+              source   file:data.txt
+             product   file:analyzed.txt
+                sink   file:analyzed.txt
 
 file:analyzed.txt
                state = BUILT
-          created by   step:grep -i foo data.txt > analyzed.txt
-            consumes   step:grep -i foo data.txt > analyzed.txt
-            supplies   step:cat analyzed.txt
+             creator   step:grep -i foo data.txt > analyzed.txt
+              source   step:grep -i foo data.txt > analyzed.txt
+                sink   step:cat analyzed.txt
 
 step:cat analyzed.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:analyzed.txt
+             creator   step:./plan.py
+              source   file:analyzed.txt

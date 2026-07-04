@@ -1,44 +1,44 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:work.py
-             creates   step:./work.py
-             creates   step:echo Will be deleted by accident > missing.txt
+             creator   root:
+              source   file:plan.py
+             product   file:work.py
+             product   step:./work.py
+             product   step:echo Will be deleted by accident > missing.txt
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py
+             creator   step:./plan.py
+                sink   step:./work.py
 
 step:./work.py
                state = FAILED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:missing.txt [amended]
-            consumes   file:work.py
+             creator   step:./plan.py
+              source   file:missing.txt [amended]
+              source   file:work.py
 
 step:echo Will be deleted by accident > missing.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-             creates   file:missing.txt
-            supplies   file:missing.txt
+             creator   step:./plan.py
+             product   file:missing.txt
+                sink   file:missing.txt
 
 file:missing.txt
                state = BUILT
-          created by   step:echo Will be deleted by accident > missing.txt
-            consumes   step:echo Will be deleted by accident > missing.txt
-            supplies   step:./work.py
+             creator   step:echo Will be deleted by accident > missing.txt
+              source   step:echo Will be deleted by accident > missing.txt
+                sink   step:./work.py

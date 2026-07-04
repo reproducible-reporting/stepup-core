@@ -1,11 +1,11 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
@@ -13,65 +13,65 @@ step:./plan.py
            using_env = STEPUP_PATH_FILTER [amended]
                  ngm = ['data/**/*.inp'] {}
                  ngm = ['data/**/*.out'] {}
-          created by   root:
-            consumes   file:plan.py
-             creates   file:data/part1/bar.inp
-             creates   file:data/part1/bar.out
-             creates   file:data/part1/foo.inp
-             creates   file:data/part1/foo.out
-             creates   file:data/part2/bar.inp
-             creates   file:data/part2/bar.out
-             creates   file:data/part2/foo.inp
-             creates   file:data/part2/foo.out
-             creates   file:data/part2/sub/other.inp
-             creates   file:data/part2/sub/other.out
-             creates   file:data/top.inp
-             creates   file:data/top.out
+             creator   root:
+              source   file:plan.py
+             product   file:data/part1/bar.inp
+             product   file:data/part1/bar.out
+             product   file:data/part1/foo.inp
+             product   file:data/part1/foo.out
+             product   file:data/part2/bar.inp
+             product   file:data/part2/bar.out
+             product   file:data/part2/foo.inp
+             product   file:data/part2/foo.out
+             product   file:data/part2/sub/other.inp
+             product   file:data/part2/sub/other.out
+             product   file:data/top.inp
+             product   file:data/top.out
 
 file:data/part1/bar.inp
                state = STATIC
-          created by   step:./plan.py
+             creator   step:./plan.py
 
 file:data/part1/foo.inp
                state = STATIC
-          created by   step:./plan.py
+             creator   step:./plan.py
 
 file:data/part2/bar.inp
                state = STATIC
-          created by   step:./plan.py
+             creator   step:./plan.py
 
 file:data/part2/foo.inp
                state = STATIC
-          created by   step:./plan.py
+             creator   step:./plan.py
 
 file:data/part2/sub/other.inp
                state = STATIC
-          created by   step:./plan.py
+             creator   step:./plan.py
 
 file:data/top.inp
                state = STATIC
-          created by   step:./plan.py
+             creator   step:./plan.py
 
 file:data/part1/bar.out
                state = STATIC
-          created by   step:./plan.py
+             creator   step:./plan.py
 
 file:data/part1/foo.out
                state = STATIC
-          created by   step:./plan.py
+             creator   step:./plan.py
 
 file:data/part2/bar.out
                state = STATIC
-          created by   step:./plan.py
+             creator   step:./plan.py
 
 file:data/part2/foo.out
                state = STATIC
-          created by   step:./plan.py
+             creator   step:./plan.py
 
 file:data/part2/sub/other.out
                state = STATIC
-          created by   step:./plan.py
+             creator   step:./plan.py
 
 file:data/top.out
                state = STATIC
-          created by   step:./plan.py
+             creator   step:./plan.py

@@ -1,94 +1,94 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
            explained = yes
-          created by   root:
-            consumes   file:plan.py
-             creates   step:cat bar.txt > egg.txt
-             creates   step:cat egg.txt > spam.txt
-             creates   step:cat foo1.txt foo2.txt > bar.txt
-             creates   step:echo inp1 > foo1.txt
-             creates   step:echo inp2 > foo2.txt
+             creator   root:
+              source   file:plan.py
+             product   step:cat bar.txt > egg.txt
+             product   step:cat egg.txt > spam.txt
+             product   step:cat foo1.txt foo2.txt > bar.txt
+             product   step:echo inp1 > foo1.txt
+             product   step:echo inp2 > foo2.txt
 
 step:echo inp1 > foo1.txt
                state = SUCCEEDED
                 need = DEFAULT (implied by sinks > OPTIONAL)
            explained = yes
-          created by   step:./plan.py
-             creates   file:foo1.txt
-            supplies   file:foo1.txt
+             creator   step:./plan.py
+             product   file:foo1.txt
+                sink   file:foo1.txt
 
 file:foo1.txt
                state = BUILT
-          created by   step:echo inp1 > foo1.txt
-            consumes   step:echo inp1 > foo1.txt
-            supplies   step:cat foo1.txt foo2.txt > bar.txt
+             creator   step:echo inp1 > foo1.txt
+              source   step:echo inp1 > foo1.txt
+                sink   step:cat foo1.txt foo2.txt > bar.txt
 
 step:echo inp2 > foo2.txt
                state = SUCCEEDED
                 need = DEFAULT (implied by sinks > OPTIONAL)
            explained = yes
-          created by   step:./plan.py
-             creates   file:foo2.txt
-            supplies   file:foo2.txt
+             creator   step:./plan.py
+             product   file:foo2.txt
+                sink   file:foo2.txt
 
 file:foo2.txt
                state = BUILT
-          created by   step:echo inp2 > foo2.txt
-            consumes   step:echo inp2 > foo2.txt
-            supplies   step:cat foo1.txt foo2.txt > bar.txt
+             creator   step:echo inp2 > foo2.txt
+              source   step:echo inp2 > foo2.txt
+                sink   step:cat foo1.txt foo2.txt > bar.txt
 
 step:cat foo1.txt foo2.txt > bar.txt
                state = SUCCEEDED
                 need = DEFAULT (implied by sinks > OPTIONAL)
            explained = yes
-          created by   step:./plan.py
-            consumes   file:foo1.txt
-            consumes   file:foo2.txt
-             creates   file:bar.txt
-            supplies   file:bar.txt
+             creator   step:./plan.py
+              source   file:foo1.txt
+              source   file:foo2.txt
+             product   file:bar.txt
+                sink   file:bar.txt
 
 file:bar.txt
                state = BUILT
-          created by   step:cat foo1.txt foo2.txt > bar.txt
-            consumes   step:cat foo1.txt foo2.txt > bar.txt
-            supplies   step:cat bar.txt > egg.txt
+             creator   step:cat foo1.txt foo2.txt > bar.txt
+              source   step:cat foo1.txt foo2.txt > bar.txt
+                sink   step:cat bar.txt > egg.txt
 
 step:cat bar.txt > egg.txt
                state = SUCCEEDED
                 need = DEFAULT (implied by sinks > OPTIONAL)
            explained = yes
-          created by   step:./plan.py
-            consumes   file:bar.txt
-             creates   file:egg.txt
-            supplies   file:egg.txt
+             creator   step:./plan.py
+              source   file:bar.txt
+             product   file:egg.txt
+                sink   file:egg.txt
 
 file:egg.txt
                state = BUILT
-          created by   step:cat bar.txt > egg.txt
-            consumes   step:cat bar.txt > egg.txt
-            supplies   step:cat egg.txt > spam.txt
+             creator   step:cat bar.txt > egg.txt
+              source   step:cat bar.txt > egg.txt
+                sink   step:cat egg.txt > spam.txt
 
 step:cat egg.txt > spam.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:egg.txt
-             creates   file:spam.txt
-            supplies   file:spam.txt
+             creator   step:./plan.py
+              source   file:egg.txt
+             product   file:spam.txt
+                sink   file:spam.txt
 
 file:spam.txt
                state = BUILT
-          created by   step:cat egg.txt > spam.txt
-            consumes   step:cat egg.txt > spam.txt
+             creator   step:cat egg.txt > spam.txt
+              source   step:cat egg.txt > spam.txt

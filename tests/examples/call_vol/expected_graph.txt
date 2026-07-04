@@ -1,43 +1,43 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:work.py
-             creates   step:./work.py run '{"out": ["stable.txt"]}'
+             creator   root:
+              source   file:plan.py
+             product   file:work.py
+             product   step:./work.py run '{"out": ["stable.txt"]}'
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py run '{"out": ["stable.txt"]}'
+             creator   step:./plan.py
+                sink   step:./work.py run '{"out": ["stable.txt"]}'
 
 step:./work.py run '{"out": ["stable.txt"]}'
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:work.py
-             creates   file:stable.txt
-             creates   file:volatile.txt
-            supplies   file:stable.txt
-            supplies   file:volatile.txt
+             creator   step:./plan.py
+              source   file:work.py
+             product   file:stable.txt
+             product   file:volatile.txt
+                sink   file:stable.txt
+                sink   file:volatile.txt
 
 file:stable.txt
                state = BUILT
-          created by   step:./work.py run '{"out": ["stable.txt"]}'
-            consumes   step:./work.py run '{"out": ["stable.txt"]}'
+             creator   step:./work.py run '{"out": ["stable.txt"]}'
+              source   step:./work.py run '{"out": ["stable.txt"]}'
 
 file:volatile.txt
                state = VOLATILE
-          created by   step:./work.py run '{"out": ["stable.txt"]}'
-            consumes   step:./work.py run '{"out": ["stable.txt"]}'
+             creator   step:./work.py run '{"out": ["stable.txt"]}'
+              source   step:./work.py run '{"out": ["stable.txt"]}'

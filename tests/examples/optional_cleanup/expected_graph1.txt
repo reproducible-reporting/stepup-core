@@ -1,49 +1,49 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   step:cat test2.txt
-             creates   step:echo test1 > test1.txt
-             creates   step:echo test2 > test2.txt
+             creator   root:
+              source   file:plan.py
+             product   step:cat test2.txt
+             product   step:echo test1 > test1.txt
+             product   step:echo test2 > test2.txt
 
 step:echo test1 > test1.txt
                state = PENDING
                 need = OPTIONAL
-          created by   step:./plan.py
-             creates   file:test1.txt
-            supplies   file:test1.txt
+             creator   step:./plan.py
+             product   file:test1.txt
+                sink   file:test1.txt
 
 file:test1.txt
                state = AWAITED
-          created by   step:echo test1 > test1.txt
-            consumes   step:echo test1 > test1.txt
+             creator   step:echo test1 > test1.txt
+              source   step:echo test1 > test1.txt
 
 step:echo test2 > test2.txt
                state = SUCCEEDED
                 need = DEFAULT (implied by sinks > OPTIONAL)
-          created by   step:./plan.py
-             creates   file:test2.txt
-            supplies   file:test2.txt
+             creator   step:./plan.py
+             product   file:test2.txt
+                sink   file:test2.txt
 
 file:test2.txt
                state = BUILT
-          created by   step:echo test2 > test2.txt
-            consumes   step:echo test2 > test2.txt
-            supplies   step:cat test2.txt
+             creator   step:echo test2 > test2.txt
+              source   step:echo test2 > test2.txt
+                sink   step:cat test2.txt
 
 step:cat test2.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:test2.txt
+             creator   step:./plan.py
+              source   file:test2.txt

@@ -1,68 +1,68 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
            explained = yes
-          created by   root:
-            consumes   file:plan.py
-             creates   file:inp1.txt
-             creates   file:work.py
-             creates   step:./work.py
-             creates   step:echo word2 > inp2.txt
+             creator   root:
+              source   file:plan.py
+             product   file:inp1.txt
+             product   file:work.py
+             product   step:./work.py
+             product   step:echo word2 > inp2.txt
 
 file:inp1.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py
+             creator   step:./plan.py
+                sink   step:./work.py
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py
+             creator   step:./plan.py
+                sink   step:./work.py
 
 step:./work.py
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
            explained = yes
-          created by   step:./plan.py
-            consumes   file:inp1.txt
-            consumes   file:inp2.txt [amended]
-            consumes   file:work.py
-             creates   file:out1.txt
-             creates   file:out2.txt
-            supplies   file:out1.txt
-            supplies   file:out2.txt [amended]
+             creator   step:./plan.py
+              source   file:inp1.txt
+              source   file:inp2.txt [amended]
+              source   file:work.py
+             product   file:out1.txt
+             product   file:out2.txt
+                sink   file:out1.txt
+                sink   file:out2.txt [amended]
 
 file:out1.txt
                state = BUILT
-          created by   step:./work.py
-            consumes   step:./work.py
+             creator   step:./work.py
+              source   step:./work.py
 
 step:echo word2 > inp2.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-             creates   file:inp2.txt
-            supplies   file:inp2.txt
+             creator   step:./plan.py
+             product   file:inp2.txt
+                sink   file:inp2.txt
 
 file:inp2.txt
                state = BUILT
-          created by   step:echo word2 > inp2.txt
-            consumes   step:echo word2 > inp2.txt
-            supplies   step:./work.py
+             creator   step:echo word2 > inp2.txt
+              source   step:echo word2 > inp2.txt
+                sink   step:./work.py
 
 file:out2.txt
                state = BUILT
-          created by   step:./work.py
-            consumes   step:./work.py
+             creator   step:./work.py
+              source   step:./work.py

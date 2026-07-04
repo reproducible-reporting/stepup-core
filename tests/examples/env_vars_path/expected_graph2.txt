@@ -1,11 +1,11 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
@@ -13,34 +13,34 @@ step:./plan.py
            using_env = ENV_VAR_TEST_STEPUP_PREFIX [amended]
                      = STEPUP_PATH_FILTER [amended]
            explained = yes
-          created by   root:
-            consumes   file:plan.py
-             creates   file:FOO.txt
-             creates   step:grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+             creator   root:
+              source   file:plan.py
+             product   file:FOO.txt
+             product   step:grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
 
 file:FOO.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+             creator   step:./plan.py
+                sink   step:grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
 
 step:grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
                state = SUCCEEDED
                 need = DEFAULT
            using_env = ENV_VAR_TEST_STEPUP_PREFIX
            explained = yes
-          created by   step:./plan.py
-            consumes   file:FOO.txt
-             creates   file:FOO-stderr.txt
-             creates   file:FOO-stdout.txt
-            supplies   file:FOO-stderr.txt
-            supplies   file:FOO-stdout.txt
+             creator   step:./plan.py
+              source   file:FOO.txt
+             product   file:FOO-stderr.txt
+             product   file:FOO-stdout.txt
+                sink   file:FOO-stderr.txt
+                sink   file:FOO-stdout.txt
 
 file:FOO-stdout.txt
                state = BUILT
-          created by   step:grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
-            consumes   step:grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+             creator   step:grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+              source   step:grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
 
 file:FOO-stderr.txt
                state = VOLATILE
-          created by   step:grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
-            consumes   step:grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+             creator   step:grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+              source   step:grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt

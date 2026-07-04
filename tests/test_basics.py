@@ -36,20 +36,20 @@ async def test_wrong_type(client: AsyncRPCClient):
 
 FROM_SCRATCH_GRAPH = """\
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
+             creator   root:
+              source   file:plan.py
 
 """
 
@@ -72,25 +72,25 @@ async def test_from_scratch(client: AsyncRPCClient, path_tmp: Path):
 
 STATIC_GRAPH = """\
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:foo
+             creator   root:
+              source   file:plan.py
+             product   file:foo
 
 file:foo
                state = MISSING
-          created by   step:./plan.py
+             creator   step:./plan.py
 
 """
 
@@ -112,40 +112,40 @@ async def test_missing(client: AsyncRPCClient, path_tmp: Path):
 
 COPY_GRAPH = """\
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:original.txt
-             creates   step:cp -v original.txt copy.txt
+             creator   root:
+              source   file:plan.py
+             product   file:original.txt
+             product   step:cp -v original.txt copy.txt
 
 step:cp -v original.txt copy.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:original.txt
-             creates   file:copy.txt
-            supplies   file:copy.txt
+             creator   step:./plan.py
+              source   file:original.txt
+             product   file:copy.txt
+                sink   file:copy.txt
 
 file:original.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:cp -v original.txt copy.txt
+             creator   step:./plan.py
+                sink   step:cp -v original.txt copy.txt
 
 file:copy.txt
                state = BUILT
-          created by   step:cp -v original.txt copy.txt
-            consumes   step:cp -v original.txt copy.txt
+             creator   step:cp -v original.txt copy.txt
+              source   step:cp -v original.txt copy.txt
 
 """
 

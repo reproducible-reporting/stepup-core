@@ -23,4 +23,4 @@ wait
 [[ -f project/worker.py ]] || exit 1
 [[ -f project/worker_out.json ]] || exit 1
 grep 'Helper version 3' project/worker_out.json
-grep 'consumes   file:../pkgs_a/helper.py \[amended\]' current_graph.txt
+grep 'source   file:../pkgs_a/helper.py \[amended\]' current_graph.txt

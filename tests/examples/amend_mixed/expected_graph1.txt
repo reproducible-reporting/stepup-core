@@ -1,83 +1,83 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
            explained = yes
-          created by   root:
-            consumes   file:plan.py
-             creates   file:inp0.txt
-             creates   file:inp1.txt
-             creates   file:work.py
-             creates   step:./work.py > log.txt
-             creates   step:cp inp1.txt tmp1.txt
-             creates   step:echo Contents of inp2.txt > inp2.txt
+             creator   root:
+              source   file:plan.py
+             product   file:inp0.txt
+             product   file:inp1.txt
+             product   file:work.py
+             product   step:./work.py > log.txt
+             product   step:cp inp1.txt tmp1.txt
+             product   step:echo Contents of inp2.txt > inp2.txt
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py > log.txt
+             creator   step:./plan.py
+                sink   step:./work.py > log.txt
 
 step:./work.py > log.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:inp0.txt [amended]
-            consumes   file:inp2.txt [amended]
-            consumes   file:tmp1.txt [amended]
-            consumes   file:work.py
-             creates   file:log.txt
-            supplies   file:log.txt
+             creator   step:./plan.py
+              source   file:inp0.txt [amended]
+              source   file:inp2.txt [amended]
+              source   file:tmp1.txt [amended]
+              source   file:work.py
+             product   file:log.txt
+                sink   file:log.txt
 
 file:log.txt
                state = BUILT
-          created by   step:./work.py > log.txt
-            consumes   step:./work.py > log.txt
+             creator   step:./work.py > log.txt
+              source   step:./work.py > log.txt
 
 file:inp0.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py > log.txt
+             creator   step:./plan.py
+                sink   step:./work.py > log.txt
 
 file:inp1.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:cp inp1.txt tmp1.txt
+             creator   step:./plan.py
+                sink   step:cp inp1.txt tmp1.txt
 
 step:cp inp1.txt tmp1.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:inp1.txt
-             creates   file:tmp1.txt
-            supplies   file:tmp1.txt
+             creator   step:./plan.py
+              source   file:inp1.txt
+             product   file:tmp1.txt
+                sink   file:tmp1.txt
 
 file:tmp1.txt
                state = BUILT
-          created by   step:cp inp1.txt tmp1.txt
-            consumes   step:cp inp1.txt tmp1.txt
-            supplies   step:./work.py > log.txt
+             creator   step:cp inp1.txt tmp1.txt
+              source   step:cp inp1.txt tmp1.txt
+                sink   step:./work.py > log.txt
 
 step:echo Contents of inp2.txt > inp2.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-             creates   file:inp2.txt
-            supplies   file:inp2.txt
+             creator   step:./plan.py
+             product   file:inp2.txt
+                sink   file:inp2.txt
 
 file:inp2.txt
                state = BUILT
-          created by   step:echo Contents of inp2.txt > inp2.txt
-            consumes   step:echo Contents of inp2.txt > inp2.txt
-            supplies   step:./work.py > log.txt
+             creator   step:echo Contents of inp2.txt > inp2.txt
+              source   step:echo Contents of inp2.txt > inp2.txt
+                sink   step:./work.py > log.txt

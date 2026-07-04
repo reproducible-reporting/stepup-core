@@ -1,48 +1,48 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
                  ngm = ['head_${*char}.txt', 'tail_${*char}.txt'] {'char': '?'}
-          created by   root:
-            consumes   file:plan.py
-             creates   file:head_x.txt
-             creates   file:head_y.txt
-             creates   file:tail_x.txt
-             creates   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+             creator   root:
+              source   file:plan.py
+             product   file:head_x.txt
+             product   file:head_y.txt
+             product   file:tail_x.txt
+             product   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 file:head_x.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+             creator   step:./plan.py
+                sink   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 file:head_y.txt
                state = STATIC
-          created by   step:./plan.py
+             creator   step:./plan.py
 
 file:tail_x.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+             creator   step:./plan.py
+                sink   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
 
 step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:head_x.txt
-            consumes   file:tail_x.txt
-             creates   file:paste_x.txt
-            supplies   file:paste_x.txt
+             creator   step:./plan.py
+              source   file:head_x.txt
+              source   file:tail_x.txt
+             product   file:paste_x.txt
+                sink   file:paste_x.txt
 
 file:paste_x.txt
                state = BUILT
-          created by   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
-            consumes   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+             creator   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+              source   step:paste -d ' ' head_x.txt tail_x.txt > paste_x.txt

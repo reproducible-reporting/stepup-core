@@ -1,74 +1,74 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:work/generate.py
-             creates   step:./generate.py plan --step-info=../current_step_info.json  # wd=work
-             creates   step:cp -p work/test.csv work/copy.csv
+             creator   root:
+              source   file:plan.py
+             product   file:work/generate.py
+             product   step:./generate.py plan --step-info=../current_step_info.json  # wd=work
+             product   step:cp -p work/test.csv work/copy.csv
 
 file:work/generate.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./generate.py plan --step-info=../current_step_info.json  # wd=work
-            supplies   step:./generate.py run  # wd=work
+             creator   step:./plan.py
+                sink   step:./generate.py plan --step-info=../current_step_info.json  # wd=work
+                sink   step:./generate.py run  # wd=work
 
 step:./generate.py plan --step-info=../current_step_info.json  # wd=work
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:work/generate.py
-             creates   file:current_step_info.json
-             creates   file:work/config.json
-             creates   step:./generate.py run  # wd=work
-            supplies   file:current_step_info.json
+             creator   step:./plan.py
+              source   file:work/generate.py
+             product   file:current_step_info.json
+             product   file:work/config.json
+             product   step:./generate.py run  # wd=work
+                sink   file:current_step_info.json
 
 file:current_step_info.json
                state = BUILT
-          created by   step:./generate.py plan --step-info=../current_step_info.json  # wd=work
-            consumes   step:./generate.py plan --step-info=../current_step_info.json  # wd=work
+             creator   step:./generate.py plan --step-info=../current_step_info.json  # wd=work
+              source   step:./generate.py plan --step-info=../current_step_info.json  # wd=work
 
 step:cp -p work/test.csv work/copy.csv
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:work/test.csv
-             creates   file:work/copy.csv
-            supplies   file:work/copy.csv
+             creator   step:./plan.py
+              source   file:work/test.csv
+             product   file:work/copy.csv
+                sink   file:work/copy.csv
 
 file:work/test.csv
                state = BUILT
-          created by   step:./generate.py run  # wd=work
-            consumes   step:./generate.py run  # wd=work
-            supplies   step:cp -p work/test.csv work/copy.csv
+             creator   step:./generate.py run  # wd=work
+              source   step:./generate.py run  # wd=work
+                sink   step:cp -p work/test.csv work/copy.csv
 
 file:work/copy.csv
                state = BUILT
-          created by   step:cp -p work/test.csv work/copy.csv
-            consumes   step:cp -p work/test.csv work/copy.csv
+             creator   step:cp -p work/test.csv work/copy.csv
+              source   step:cp -p work/test.csv work/copy.csv
 
 file:work/config.json
                state = STATIC
-          created by   step:./generate.py plan --step-info=../current_step_info.json  # wd=work
-            supplies   step:./generate.py run  # wd=work
+             creator   step:./generate.py plan --step-info=../current_step_info.json  # wd=work
+                sink   step:./generate.py run  # wd=work
 
 step:./generate.py run  # wd=work
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./generate.py plan --step-info=../current_step_info.json  # wd=work
-            consumes   file:work/config.json
-            consumes   file:work/generate.py
-             creates   file:work/test.csv
-            supplies   file:work/test.csv
+             creator   step:./generate.py plan --step-info=../current_step_info.json  # wd=work
+              source   file:work/config.json
+              source   file:work/generate.py
+             product   file:work/test.csv
+                sink   file:work/test.csv

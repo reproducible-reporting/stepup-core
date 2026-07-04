@@ -1,43 +1,43 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:README.txt
-             creates   file:inp1.txt
-             creates   file:sub/getinfo.py
-             creates   file:sub/inp0.txt
-             creates   step:./getinfo.py  # wd=sub
+             creator   root:
+              source   file:plan.py
+             product   file:README.txt
+             product   file:inp1.txt
+             product   file:sub/getinfo.py
+             product   file:sub/inp0.txt
+             product   step:./getinfo.py  # wd=sub
 
 file:README.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./getinfo.py  # wd=sub
+             creator   step:./plan.py
+                sink   step:./getinfo.py  # wd=sub
 
 file:inp1.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./getinfo.py  # wd=sub
+             creator   step:./plan.py
+                sink   step:./getinfo.py  # wd=sub
 
 file:sub/getinfo.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./getinfo.py  # wd=sub
+             creator   step:./plan.py
+                sink   step:./getinfo.py  # wd=sub
 
 file:sub/inp0.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./getinfo.py  # wd=sub
+             creator   step:./plan.py
+                sink   step:./getinfo.py  # wd=sub
 
 step:./getinfo.py  # wd=sub
                state = SUCCEEDED
@@ -46,50 +46,50 @@ step:./getinfo.py  # wd=sub
                      = EGG [amended]
                      = FOO
                      = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:README.txt
-            consumes   file:inp1.txt [amended]
-            consumes   file:sub/getinfo.py
-            consumes   file:sub/inp0.txt
-             creates   file:out0.txt
-             creates   file:out2.txt
-             creates   file:sub/out1.txt
-             creates   file:sub/vol0.txt
-             creates   file:vol1.txt
-             creates   file:vol2.txt
-            supplies   file:out0.txt
-            supplies   file:out2.txt [amended]
-            supplies   file:sub/out1.txt
-            supplies   file:sub/vol0.txt
-            supplies   file:vol1.txt
-            supplies   file:vol2.txt [amended]
+             creator   step:./plan.py
+              source   file:README.txt
+              source   file:inp1.txt [amended]
+              source   file:sub/getinfo.py
+              source   file:sub/inp0.txt
+             product   file:out0.txt
+             product   file:out2.txt
+             product   file:sub/out1.txt
+             product   file:sub/vol0.txt
+             product   file:vol1.txt
+             product   file:vol2.txt
+                sink   file:out0.txt
+                sink   file:out2.txt [amended]
+                sink   file:sub/out1.txt
+                sink   file:sub/vol0.txt
+                sink   file:vol1.txt
+                sink   file:vol2.txt [amended]
 
 file:out0.txt
                state = BUILT
-          created by   step:./getinfo.py  # wd=sub
-            consumes   step:./getinfo.py  # wd=sub
+             creator   step:./getinfo.py  # wd=sub
+              source   step:./getinfo.py  # wd=sub
 
 file:sub/out1.txt
                state = BUILT
-          created by   step:./getinfo.py  # wd=sub
-            consumes   step:./getinfo.py  # wd=sub
+             creator   step:./getinfo.py  # wd=sub
+              source   step:./getinfo.py  # wd=sub
 
 file:sub/vol0.txt
                state = VOLATILE
-          created by   step:./getinfo.py  # wd=sub
-            consumes   step:./getinfo.py  # wd=sub
+             creator   step:./getinfo.py  # wd=sub
+              source   step:./getinfo.py  # wd=sub
 
 file:vol1.txt
                state = VOLATILE
-          created by   step:./getinfo.py  # wd=sub
-            consumes   step:./getinfo.py  # wd=sub
+             creator   step:./getinfo.py  # wd=sub
+              source   step:./getinfo.py  # wd=sub
 
 file:out2.txt
                state = BUILT
-          created by   step:./getinfo.py  # wd=sub
-            consumes   step:./getinfo.py  # wd=sub
+             creator   step:./getinfo.py  # wd=sub
+              source   step:./getinfo.py  # wd=sub
 
 file:vol2.txt
                state = VOLATILE
-          created by   step:./getinfo.py  # wd=sub
-            consumes   step:./getinfo.py  # wd=sub
+             creator   step:./getinfo.py  # wd=sub
+              source   step:./getinfo.py  # wd=sub

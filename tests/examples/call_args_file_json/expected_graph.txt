@@ -1,52 +1,52 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:args.json
-             creates   file:data.txt
-             creates   file:work.py
-             creates   step:./work.py run --inp=args.json
-            supplies   file:args.json [amended]
+             creator   root:
+              source   file:plan.py
+             product   file:args.json
+             product   file:data.txt
+             product   file:work.py
+             product   step:./work.py run --inp=args.json
+                sink   file:args.json [amended]
 
 file:data.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py run --inp=args.json
+             creator   step:./plan.py
+                sink   step:./work.py run --inp=args.json
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py run --inp=args.json
+             creator   step:./plan.py
+                sink   step:./work.py run --inp=args.json
 
 file:args.json
                state = BUILT
-          created by   step:./plan.py
-            consumes   step:./plan.py
-            supplies   step:./work.py run --inp=args.json
+             creator   step:./plan.py
+              source   step:./plan.py
+                sink   step:./work.py run --inp=args.json
 
 step:./work.py run --inp=args.json
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:args.json
-            consumes   file:data.txt
-            consumes   file:work.py
-             creates   file:result.txt
-            supplies   file:result.txt
+             creator   step:./plan.py
+              source   file:args.json
+              source   file:data.txt
+              source   file:work.py
+             product   file:result.txt
+                sink   file:result.txt
 
 file:result.txt
                state = BUILT
-          created by   step:./work.py run --inp=args.json
-            consumes   step:./work.py run --inp=args.json
+             creator   step:./work.py run --inp=args.json
+              source   step:./work.py run --inp=args.json

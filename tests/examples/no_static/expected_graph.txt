@@ -1,43 +1,43 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   step:cp -v first.txt second.txt
-             creates   step:echo "spam" > first.txt
+             creator   root:
+              source   file:plan.py
+             product   step:cp -v first.txt second.txt
+             product   step:echo "spam" > first.txt
 
 step:echo "spam" > first.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-             creates   file:first.txt
-            supplies   file:first.txt
+             creator   step:./plan.py
+             product   file:first.txt
+                sink   file:first.txt
 
 file:first.txt
                state = BUILT
-          created by   step:echo "spam" > first.txt
-            consumes   step:echo "spam" > first.txt
-            supplies   step:cp -v first.txt second.txt
+             creator   step:echo "spam" > first.txt
+              source   step:echo "spam" > first.txt
+                sink   step:cp -v first.txt second.txt
 
 step:cp -v first.txt second.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:first.txt
-             creates   file:second.txt
-            supplies   file:second.txt
+             creator   step:./plan.py
+              source   file:first.txt
+             product   file:second.txt
+                sink   file:second.txt
 
 file:second.txt
                state = BUILT
-          created by   step:cp -v first.txt second.txt
-            consumes   step:cp -v first.txt second.txt
+             creator   step:cp -v first.txt second.txt
+              source   step:cp -v first.txt second.txt

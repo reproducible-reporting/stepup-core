@@ -1,25 +1,25 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:www/plan.py
-             creates   step:./plan.py  # wd=www
+             creator   root:
+              source   file:plan.py
+             product   file:www/plan.py
+             product   step:./plan.py  # wd=www
 
 file:www/plan.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./plan.py  # wd=www
+             creator   step:./plan.py
+                sink   step:./plan.py  # wd=www
 
 step:./plan.py  # wd=www
                state = SUCCEEDED
@@ -28,25 +28,25 @@ step:./plan.py  # wd=www
                      = PUBLIC [amended]
                      = ROOT [amended]
                      = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:www/plan.py
-             creates   file:www/index.md
-             creates   step:cp -p index.md ../../public/www/index.md  # wd=www
+             creator   step:./plan.py
+              source   file:www/plan.py
+             product   file:www/index.md
+             product   step:cp -p index.md ../../public/www/index.md  # wd=www
 
 file:www/index.md
                state = STATIC
-          created by   step:./plan.py  # wd=www
-            supplies   step:cp -p index.md ../../public/www/index.md  # wd=www
+             creator   step:./plan.py  # wd=www
+                sink   step:cp -p index.md ../../public/www/index.md  # wd=www
 
 step:cp -p index.md ../../public/www/index.md  # wd=www
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py  # wd=www
-            consumes   file:www/index.md
-             creates   file:../public/www/index.md
-            supplies   file:../public/www/index.md
+             creator   step:./plan.py  # wd=www
+              source   file:www/index.md
+             product   file:../public/www/index.md
+                sink   file:../public/www/index.md
 
 file:../public/www/index.md
                state = BUILT
-          created by   step:cp -p index.md ../../public/www/index.md  # wd=www
-            consumes   step:cp -p index.md ../../public/www/index.md  # wd=www
+             creator   step:cp -p index.md ../../public/www/index.md  # wd=www
+              source   step:cp -p index.md ../../public/www/index.md  # wd=www

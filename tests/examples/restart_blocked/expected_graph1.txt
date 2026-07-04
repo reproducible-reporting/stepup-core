@@ -1,73 +1,73 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:expensive.py
-             creates   file:initial.txt
-             creates   step:./expensive.py
-             creates   step:cp -p initial.txt input.txt
-             creates   step:cp -p output.txt final.txt
+             creator   root:
+              source   file:plan.py
+             product   file:expensive.py
+             product   file:initial.txt
+             product   step:./expensive.py
+             product   step:cp -p initial.txt input.txt
+             product   step:cp -p output.txt final.txt
 
 file:expensive.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./expensive.py
+             creator   step:./plan.py
+                sink   step:./expensive.py
 
 file:initial.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:cp -p initial.txt input.txt
+             creator   step:./plan.py
+                sink   step:cp -p initial.txt input.txt
 
 step:cp -p initial.txt input.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:initial.txt
-             creates   file:input.txt
-            supplies   file:input.txt
+             creator   step:./plan.py
+              source   file:initial.txt
+             product   file:input.txt
+                sink   file:input.txt
 
 file:input.txt
                state = BUILT
-          created by   step:cp -p initial.txt input.txt
-            consumes   step:cp -p initial.txt input.txt
-            supplies   step:./expensive.py
+             creator   step:cp -p initial.txt input.txt
+              source   step:cp -p initial.txt input.txt
+                sink   step:./expensive.py
 
 step:./expensive.py
                state = PENDING
                 need = DEFAULT
             resource = blocked: 1 units
-          created by   step:./plan.py
-            consumes   file:expensive.py
-            consumes   file:input.txt
-             creates   file:output.txt
-            supplies   file:output.txt
+             creator   step:./plan.py
+              source   file:expensive.py
+              source   file:input.txt
+             product   file:output.txt
+                sink   file:output.txt
 
 file:output.txt
                state = AWAITED
-          created by   step:./expensive.py
-            consumes   step:./expensive.py
-            supplies   step:cp -p output.txt final.txt
+             creator   step:./expensive.py
+              source   step:./expensive.py
+                sink   step:cp -p output.txt final.txt
 
 step:cp -p output.txt final.txt
                state = PENDING
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:output.txt
-             creates   file:final.txt
-            supplies   file:final.txt
+             creator   step:./plan.py
+              source   file:output.txt
+             product   file:final.txt
+                sink   file:final.txt
 
 file:final.txt
                state = AWAITED
-          created by   step:cp -p output.txt final.txt
-            consumes   step:cp -p output.txt final.txt
+             creator   step:cp -p output.txt final.txt
+              source   step:cp -p output.txt final.txt

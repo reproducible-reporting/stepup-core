@@ -1,11 +1,11 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
@@ -13,5 +13,5 @@ step:./plan.py
            using_env = STEPUP_PATH_FILTER [amended]
                  ngm = ['inp*.txt'] {}
            explained = yes
-          created by   root:
-            consumes   file:plan.py
+             creator   root:
+              source   file:plan.py

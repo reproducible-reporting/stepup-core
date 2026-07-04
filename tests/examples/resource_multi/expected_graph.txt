@@ -1,37 +1,37 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   step:echo A; mv s.free s.used; mv t1.free t1.used; sleep 1; mv s.used s.free; mv t1.used t1.free
-             creates   step:echo B; mv t2.free t2.used; sleep 1; mv t2.used t2.free
-             creates   step:echo C; mv s.free s.used; sleep 1; mv s.used s.free
+             creator   root:
+              source   file:plan.py
+             product   step:echo A; mv s.free s.used; mv t1.free t1.used; sleep 1; mv s.used s.free; mv t1.used t1.free
+             product   step:echo B; mv t2.free t2.used; sleep 1; mv t2.used t2.free
+             product   step:echo C; mv s.free s.used; sleep 1; mv s.used s.free
 
 step:echo A; mv s.free s.used; mv t1.free t1.used; sleep 1; mv s.used s.free; mv t1.used t1.free
                state = SUCCEEDED
                 need = DEFAULT
             resource = slot: 1 units
             resource = token: 1 units
-          created by   step:./plan.py
+             creator   step:./plan.py
 
 step:echo B; mv t2.free t2.used; sleep 1; mv t2.used t2.free
                state = SUCCEEDED
                 need = DEFAULT
             resource = token: 1 units
-          created by   step:./plan.py
+             creator   step:./plan.py
 
 step:echo C; mv s.free s.used; sleep 1; mv s.used s.free
                state = SUCCEEDED
                 need = DEFAULT
             resource = slot: 1 units
-          created by   step:./plan.py
+             creator   step:./plan.py

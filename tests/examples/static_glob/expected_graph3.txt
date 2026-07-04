@@ -1,11 +1,11 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
@@ -13,47 +13,47 @@ step:./plan.py
            using_env = STEPUP_PATH_FILTER [amended]
                  ngm = ['inp*.txt'] {}
            explained = yes
-          created by   root:
-            consumes   file:plan.py
-             creates   file:inp3.txt
-             creates   file:inp4.txt
-             creates   step:cp -p inp3.txt out3.txt
-             creates   step:cp -p inp4.txt out4.txt
+             creator   root:
+              source   file:plan.py
+             product   file:inp3.txt
+             product   file:inp4.txt
+             product   step:cp -p inp3.txt out3.txt
+             product   step:cp -p inp4.txt out4.txt
 
 file:inp3.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:cp -p inp3.txt out3.txt
+             creator   step:./plan.py
+                sink   step:cp -p inp3.txt out3.txt
 
 step:cp -p inp3.txt out3.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:inp3.txt
-             creates   file:out3.txt
-            supplies   file:out3.txt
+             creator   step:./plan.py
+              source   file:inp3.txt
+             product   file:out3.txt
+                sink   file:out3.txt
 
 file:out3.txt
                state = BUILT
-          created by   step:cp -p inp3.txt out3.txt
-            consumes   step:cp -p inp3.txt out3.txt
+             creator   step:cp -p inp3.txt out3.txt
+              source   step:cp -p inp3.txt out3.txt
 
 file:inp4.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:cp -p inp4.txt out4.txt
+             creator   step:./plan.py
+                sink   step:cp -p inp4.txt out4.txt
 
 step:cp -p inp4.txt out4.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:inp4.txt
-             creates   file:out4.txt
-            supplies   file:out4.txt
+             creator   step:./plan.py
+              source   file:inp4.txt
+             product   file:out4.txt
+                sink   file:out4.txt
 
 file:out4.txt
                state = BUILT
-          created by   step:cp -p inp4.txt out4.txt
-            consumes   step:cp -p inp4.txt out4.txt
+             creator   step:cp -p inp4.txt out4.txt
+              source   step:cp -p inp4.txt out4.txt

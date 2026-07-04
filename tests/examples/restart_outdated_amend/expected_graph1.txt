@@ -1,56 +1,56 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
            explained = yes
-          created by   root:
-            consumes   file:plan.py
-             creates   file:subs.txt
-             creates   file:work.py
-             creates   st:data/
-             creates   step:./work.py
+             creator   root:
+              source   file:plan.py
+             product   file:subs.txt
+             product   file:work.py
+             product   st:data/
+             product   step:./work.py
 
 file:subs.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py
+             creator   step:./plan.py
+                sink   step:./work.py
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py
+             creator   step:./plan.py
+                sink   step:./work.py
 
 st:data/
-          created by   step:./plan.py
-             creates   file:data/inp1.txt
+             creator   step:./plan.py
+             product   file:data/inp1.txt
 
 step:./work.py
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
            explained = yes
-          created by   step:./plan.py
-            consumes   file:data/inp1.txt [amended]
-            consumes   file:subs.txt
-            consumes   file:work.py
-             creates   file:copy.txt
-            supplies   file:copy.txt [amended]
+             creator   step:./plan.py
+              source   file:data/inp1.txt [amended]
+              source   file:subs.txt
+              source   file:work.py
+             product   file:copy.txt
+                sink   file:copy.txt [amended]
 
 file:data/inp1.txt
                state = STATIC
-          created by   st:data/
-            supplies   step:./work.py
+             creator   st:data/
+                sink   step:./work.py
 
 file:copy.txt
                state = BUILT
-          created by   step:./work.py
-            consumes   step:./work.py
+             creator   step:./work.py
+              source   step:./work.py

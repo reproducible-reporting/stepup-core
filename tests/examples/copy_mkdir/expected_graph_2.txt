@@ -1,43 +1,43 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   step:cp -p hello.txt other/hello.txt
-             creates   step:echo hello > hello.txt
+             creator   root:
+              source   file:plan.py
+             product   step:cp -p hello.txt other/hello.txt
+             product   step:echo hello > hello.txt
 
 step:echo hello > hello.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-             creates   file:hello.txt
-            supplies   file:hello.txt
+             creator   step:./plan.py
+             product   file:hello.txt
+                sink   file:hello.txt
 
 file:hello.txt
                state = BUILT
-          created by   step:echo hello > hello.txt
-            consumes   step:echo hello > hello.txt
-            supplies   step:cp -p hello.txt other/hello.txt
+             creator   step:echo hello > hello.txt
+              source   step:echo hello > hello.txt
+                sink   step:cp -p hello.txt other/hello.txt
 
 step:cp -p hello.txt other/hello.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:hello.txt
-             creates   file:other/hello.txt
-            supplies   file:other/hello.txt
+             creator   step:./plan.py
+              source   file:hello.txt
+             product   file:other/hello.txt
+                sink   file:other/hello.txt
 
 file:other/hello.txt
                state = BUILT
-          created by   step:cp -p hello.txt other/hello.txt
-            consumes   step:cp -p hello.txt other/hello.txt
+             creator   step:cp -p hello.txt other/hello.txt
+              source   step:cp -p hello.txt other/hello.txt

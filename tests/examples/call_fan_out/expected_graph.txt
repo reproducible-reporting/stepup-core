@@ -1,104 +1,104 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:input_a.txt
-             creates   file:input_b.txt
-             creates   file:input_c.txt
-             creates   file:work.py
-             creates   step:./work.py plan '{}'
+             creator   root:
+              source   file:plan.py
+             product   file:input_a.txt
+             product   file:input_b.txt
+             product   file:input_c.txt
+             product   file:work.py
+             product   step:./work.py plan '{}'
 
 file:input_a.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py plan '{}'
-            supplies   step:./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
+             creator   step:./plan.py
+                sink   step:./work.py plan '{}'
+                sink   step:./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
 
 file:input_b.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py plan '{}'
-            supplies   step:./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
+             creator   step:./plan.py
+                sink   step:./work.py plan '{}'
+                sink   step:./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
 
 file:input_c.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py plan '{}'
-            supplies   step:./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
+             creator   step:./plan.py
+                sink   step:./work.py plan '{}'
+                sink   step:./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py plan '{}'
-            supplies   step:./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
-            supplies   step:./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
-            supplies   step:./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
+             creator   step:./plan.py
+                sink   step:./work.py plan '{}'
+                sink   step:./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
+                sink   step:./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
+                sink   step:./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
 
 step:./work.py plan '{}'
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:input_a.txt [amended]
-            consumes   file:input_b.txt [amended]
-            consumes   file:input_c.txt [amended]
-            consumes   file:work.py
-             creates   step:./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
-             creates   step:./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
-             creates   step:./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
+             creator   step:./plan.py
+              source   file:input_a.txt [amended]
+              source   file:input_b.txt [amended]
+              source   file:input_c.txt [amended]
+              source   file:work.py
+             product   step:./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
+             product   step:./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
+             product   step:./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
 
 step:./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./work.py plan '{}'
-            consumes   file:input_a.txt
-            consumes   file:work.py
-             creates   file:output_a.txt
-            supplies   file:output_a.txt
+             creator   step:./work.py plan '{}'
+              source   file:input_a.txt
+              source   file:work.py
+             product   file:output_a.txt
+                sink   file:output_a.txt
 
 file:output_a.txt
                state = BUILT
-          created by   step:./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
-            consumes   step:./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
+             creator   step:./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
+              source   step:./work.py run '{"inp": ["input_a.txt"], "out": ["output_a.txt"]}'
 
 step:./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./work.py plan '{}'
-            consumes   file:input_b.txt
-            consumes   file:work.py
-             creates   file:output_b.txt
-            supplies   file:output_b.txt
+             creator   step:./work.py plan '{}'
+              source   file:input_b.txt
+              source   file:work.py
+             product   file:output_b.txt
+                sink   file:output_b.txt
 
 file:output_b.txt
                state = BUILT
-          created by   step:./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
-            consumes   step:./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
+             creator   step:./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
+              source   step:./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
 
 step:./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./work.py plan '{}'
-            consumes   file:input_c.txt
-            consumes   file:work.py
-             creates   file:output_c.txt
-            supplies   file:output_c.txt
+             creator   step:./work.py plan '{}'
+              source   file:input_c.txt
+              source   file:work.py
+             product   file:output_c.txt
+                sink   file:output_c.txt
 
 file:output_c.txt
                state = BUILT
-          created by   step:./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
-            consumes   step:./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
+             creator   step:./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
+              source   step:./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'

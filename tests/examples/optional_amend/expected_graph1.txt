@@ -1,58 +1,58 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:data.txt
-             creates   file:work.py
-             creates   step:./work.py
-             creates   step:cp -p data.txt optional.txt
+             creator   root:
+              source   file:plan.py
+             product   file:data.txt
+             product   file:work.py
+             product   step:./work.py
+             product   step:cp -p data.txt optional.txt
 
 file:data.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:cp -p data.txt optional.txt
+             creator   step:./plan.py
+                sink   step:cp -p data.txt optional.txt
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py
+             creator   step:./plan.py
+                sink   step:./work.py
 
 step:cp -p data.txt optional.txt
                state = SUCCEEDED
                 need = DEFAULT (implied by sinks > OPTIONAL)
-          created by   step:./plan.py
-            consumes   file:data.txt
-             creates   file:optional.txt
-            supplies   file:optional.txt
+             creator   step:./plan.py
+              source   file:data.txt
+             product   file:optional.txt
+                sink   file:optional.txt
 
 file:optional.txt
                state = BUILT
-          created by   step:cp -p data.txt optional.txt
-            consumes   step:cp -p data.txt optional.txt
-            supplies   step:./work.py
+             creator   step:cp -p data.txt optional.txt
+              source   step:cp -p data.txt optional.txt
+                sink   step:./work.py
 
 step:./work.py
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:optional.txt [amended]
-            consumes   file:work.py
-             creates   file:work.out
-            supplies   file:work.out
+             creator   step:./plan.py
+              source   file:optional.txt [amended]
+              source   file:work.py
+             product   file:work.out
+                sink   file:work.out
 
 file:work.out
                state = BUILT
-          created by   step:./work.py
-            consumes   step:./work.py
+             creator   step:./work.py
+              source   step:./work.py

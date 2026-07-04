@@ -1,62 +1,62 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
            explained = yes
-          created by   root:
-            consumes   file:plan.py
-             creates   step:cat double.txt double.txt > quadruple.txt
-             creates   step:cat single.txt single.txt > double.txt
-             creates   step:echo something > single.txt
+             creator   root:
+              source   file:plan.py
+             product   step:cat double.txt double.txt > quadruple.txt
+             product   step:cat single.txt single.txt > double.txt
+             product   step:echo something > single.txt
 
 step:echo something > single.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-             creates   file:single.txt
-            supplies   file:single.txt
+             creator   step:./plan.py
+             product   file:single.txt
+                sink   file:single.txt
 
 file:single.txt
                state = BUILT
-          created by   step:echo something > single.txt
-            consumes   step:echo something > single.txt
-            supplies   step:cat single.txt single.txt > double.txt
+             creator   step:echo something > single.txt
+              source   step:echo something > single.txt
+                sink   step:cat single.txt single.txt > double.txt
 
 step:cat single.txt single.txt > double.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:single.txt
-             creates   file:double.txt
-            supplies   file:double.txt
+             creator   step:./plan.py
+              source   file:single.txt
+             product   file:double.txt
+                sink   file:double.txt
 
 file:double.txt
                state = BUILT
-          created by   step:cat single.txt single.txt > double.txt
-            consumes   step:cat single.txt single.txt > double.txt
-            supplies   step:cat double.txt double.txt > quadruple.txt
+             creator   step:cat single.txt single.txt > double.txt
+              source   step:cat single.txt single.txt > double.txt
+                sink   step:cat double.txt double.txt > quadruple.txt
 
 step:cat double.txt double.txt > quadruple.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:double.txt
-             creates   file:quadruple.txt
-            supplies   file:quadruple.txt
+             creator   step:./plan.py
+              source   file:double.txt
+             product   file:quadruple.txt
+                sink   file:quadruple.txt
 
 file:quadruple.txt
                state = BUILT
-          created by   step:cat double.txt double.txt > quadruple.txt
-            consumes   step:cat double.txt double.txt > quadruple.txt
+             creator   step:cat double.txt double.txt > quadruple.txt
+              source   step:cat double.txt double.txt > quadruple.txt

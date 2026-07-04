@@ -1,11 +1,11 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
@@ -13,76 +13,76 @@ step:./plan.py
            using_env = STEPUP_PATH_FILTER [amended]
                  ngm = ['inp*.txt'] {}
            explained = yes
-          created by   root:
-            consumes   file:plan.py
-             creates   file:inp1.txt
-             creates   file:subs1.txt
-             creates   file:work.py
-             creates   step:./work.py subs1.txt > subs2.txt
-             creates   step:./work.py subs2.txt > subs3.txt
-             creates   step:cp -p inp1.txt conv1.txt
+             creator   root:
+              source   file:plan.py
+             product   file:inp1.txt
+             product   file:subs1.txt
+             product   file:work.py
+             product   step:./work.py subs1.txt > subs2.txt
+             product   step:./work.py subs2.txt > subs3.txt
+             product   step:cp -p inp1.txt conv1.txt
 
 file:subs1.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py subs1.txt > subs2.txt
+             creator   step:./plan.py
+                sink   step:./work.py subs1.txt > subs2.txt
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py subs1.txt > subs2.txt
-            supplies   step:./work.py subs2.txt > subs3.txt
+             creator   step:./plan.py
+                sink   step:./work.py subs1.txt > subs2.txt
+                sink   step:./work.py subs2.txt > subs3.txt
 
 file:inp1.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:cp -p inp1.txt conv1.txt
+             creator   step:./plan.py
+                sink   step:cp -p inp1.txt conv1.txt
 
 step:cp -p inp1.txt conv1.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:inp1.txt
-             creates   file:conv1.txt
-            supplies   file:conv1.txt
+             creator   step:./plan.py
+              source   file:inp1.txt
+             product   file:conv1.txt
+                sink   file:conv1.txt
 
 file:conv1.txt
                state = BUILT
-          created by   step:cp -p inp1.txt conv1.txt
-            consumes   step:cp -p inp1.txt conv1.txt
-            supplies   step:./work.py subs1.txt > subs2.txt
-            supplies   step:./work.py subs2.txt > subs3.txt
+             creator   step:cp -p inp1.txt conv1.txt
+              source   step:cp -p inp1.txt conv1.txt
+                sink   step:./work.py subs1.txt > subs2.txt
+                sink   step:./work.py subs2.txt > subs3.txt
 
 step:./work.py subs1.txt > subs2.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:conv1.txt [amended]
-            consumes   file:subs1.txt
-            consumes   file:work.py
-             creates   file:subs2.txt
-            supplies   file:subs2.txt
+             creator   step:./plan.py
+              source   file:conv1.txt [amended]
+              source   file:subs1.txt
+              source   file:work.py
+             product   file:subs2.txt
+                sink   file:subs2.txt
 
 file:subs2.txt
                state = BUILT
-          created by   step:./work.py subs1.txt > subs2.txt
-            consumes   step:./work.py subs1.txt > subs2.txt
-            supplies   step:./work.py subs2.txt > subs3.txt
+             creator   step:./work.py subs1.txt > subs2.txt
+              source   step:./work.py subs1.txt > subs2.txt
+                sink   step:./work.py subs2.txt > subs3.txt
 
 step:./work.py subs2.txt > subs3.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:conv1.txt [amended]
-            consumes   file:subs2.txt
-            consumes   file:work.py
-             creates   file:subs3.txt
-            supplies   file:subs3.txt
+             creator   step:./plan.py
+              source   file:conv1.txt [amended]
+              source   file:subs2.txt
+              source   file:work.py
+             product   file:subs3.txt
+                sink   file:subs3.txt
 
 file:subs3.txt
                state = BUILT
-          created by   step:./work.py subs2.txt > subs3.txt
-            consumes   step:./work.py subs2.txt > subs3.txt
+             creator   step:./work.py subs2.txt > subs3.txt
+              source   step:./work.py subs2.txt > subs3.txt

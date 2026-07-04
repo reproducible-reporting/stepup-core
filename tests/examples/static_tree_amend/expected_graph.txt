@@ -1,54 +1,54 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:work.py
-             creates   st:dir_inp/
-             creates   step:./work.py
+             creator   root:
+              source   file:plan.py
+             product   file:work.py
+             product   st:dir_inp/
+             product   step:./work.py
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py
+             creator   step:./plan.py
+                sink   step:./work.py
 
 step:./work.py
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:dir_inp/inp.txt [amended]
-            consumes   file:work.py
-             creates   file:dir_out/out.txt
-             creates   file:dir_vol/vol.txt
-            supplies   file:dir_out/out.txt [amended]
-            supplies   file:dir_vol/vol.txt [amended]
+             creator   step:./plan.py
+              source   file:dir_inp/inp.txt [amended]
+              source   file:work.py
+             product   file:dir_out/out.txt
+             product   file:dir_vol/vol.txt
+                sink   file:dir_out/out.txt [amended]
+                sink   file:dir_vol/vol.txt [amended]
 
 st:dir_inp/
-          created by   step:./plan.py
-             creates   file:dir_inp/inp.txt
+             creator   step:./plan.py
+             product   file:dir_inp/inp.txt
 
 file:dir_inp/inp.txt
                state = STATIC
-          created by   st:dir_inp/
-            supplies   step:./work.py
+             creator   st:dir_inp/
+                sink   step:./work.py
 
 file:dir_out/out.txt
                state = BUILT
-          created by   step:./work.py
-            consumes   step:./work.py
+             creator   step:./work.py
+              source   step:./work.py
 
 file:dir_vol/vol.txt
                state = VOLATILE
-          created by   step:./work.py
-            consumes   step:./work.py
+             creator   step:./work.py
+              source   step:./work.py

@@ -1,91 +1,91 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = PUBLIC [amended]
                      = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:variables.py
-             creates   st:static/
-             creates   step:./plan.py  # wd=static
-             creates   step:cp -p static/preamble.inc.tex public/preamble.inc.tex
+             creator   root:
+              source   file:plan.py
+             product   file:variables.py
+             product   st:static/
+             product   step:./plan.py  # wd=static
+             product   step:cp -p static/preamble.inc.tex public/preamble.inc.tex
 
 file:variables.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
+             creator   step:./plan.py
+                sink   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
 
 st:static/
-          created by   step:./plan.py
-             creates   file:static/main.tex
-             creates   file:static/plan.py
-             creates   file:static/preamble.inc.tex
-             creates   file:static/variables.py
+             creator   step:./plan.py
+             product   file:static/main.tex
+             product   file:static/plan.py
+             product   file:static/preamble.inc.tex
+             product   file:static/variables.py
 
 step:cp -p static/preamble.inc.tex public/preamble.inc.tex
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:static/preamble.inc.tex
-             creates   file:public/preamble.inc.tex
-            supplies   file:public/preamble.inc.tex
+             creator   step:./plan.py
+              source   file:static/preamble.inc.tex
+             product   file:public/preamble.inc.tex
+                sink   file:public/preamble.inc.tex
 
 file:static/preamble.inc.tex
                state = STATIC
-          created by   st:static/
-            supplies   step:cp -p static/preamble.inc.tex public/preamble.inc.tex
+             creator   st:static/
+                sink   step:cp -p static/preamble.inc.tex public/preamble.inc.tex
 
 file:public/preamble.inc.tex
                state = BUILT
-          created by   step:cp -p static/preamble.inc.tex public/preamble.inc.tex
-            consumes   step:cp -p static/preamble.inc.tex public/preamble.inc.tex
+             creator   step:cp -p static/preamble.inc.tex public/preamble.inc.tex
+              source   step:cp -p static/preamble.inc.tex public/preamble.inc.tex
 
 step:./plan.py  # wd=static
                state = SUCCEEDED
                 need = PLAN
            using_env = PUBLIC [amended]
                      = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:static/plan.py
-             creates   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
+             creator   step:./plan.py
+              source   file:static/plan.py
+             product   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
 
 file:static/plan.py
                state = STATIC
-          created by   st:static/
-            supplies   step:./plan.py  # wd=static
+             creator   st:static/
+                sink   step:./plan.py  # wd=static
 
 step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
                state = SUCCEEDED
                 need = DEFAULT
            using_env = PUBLIC [amended]
                      = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py  # wd=static
-            consumes   file:static/main.tex
-            consumes   file:static/variables.py
-            consumes   file:variables.py
-             creates   file:public/main.tex
-            supplies   file:public/main.tex
+             creator   step:./plan.py  # wd=static
+              source   file:static/main.tex
+              source   file:static/variables.py
+              source   file:variables.py
+             product   file:public/main.tex
+                sink   file:public/main.tex
 
 file:static/main.tex
                state = STATIC
-          created by   st:static/
-            supplies   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
+             creator   st:static/
+                sink   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
 
 file:static/variables.py
                state = STATIC
-          created by   st:static/
-            supplies   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
+             creator   st:static/
+                sink   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
 
 file:public/main.tex
                state = BUILT
-          created by   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
-            consumes   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
+             creator   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
+              source   step:sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static

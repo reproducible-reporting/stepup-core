@@ -1,43 +1,43 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   step:cp second.txt final.txt
-             creates   step:echo "test 2" > second.txt
+             creator   root:
+              source   file:plan.py
+             product   step:cp second.txt final.txt
+             product   step:echo "test 2" > second.txt
 
 file:final.txt
                state = BUILT
-          created by   step:cp second.txt final.txt
-            consumes   step:cp second.txt final.txt
+             creator   step:cp second.txt final.txt
+              source   step:cp second.txt final.txt
 
 step:echo "test 2" > second.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-             creates   file:second.txt
-            supplies   file:second.txt
+             creator   step:./plan.py
+             product   file:second.txt
+                sink   file:second.txt
 
 file:second.txt
                state = BUILT
-          created by   step:echo "test 2" > second.txt
-            consumes   step:echo "test 2" > second.txt
-            supplies   step:cp second.txt final.txt
+             creator   step:echo "test 2" > second.txt
+              source   step:echo "test 2" > second.txt
+                sink   step:cp second.txt final.txt
 
 step:cp second.txt final.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:second.txt
-             creates   file:final.txt
-            supplies   file:final.txt
+             creator   step:./plan.py
+              source   file:second.txt
+             product   file:final.txt
+                sink   file:final.txt

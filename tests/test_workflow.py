@@ -21,12 +21,12 @@ from stepup.core.workflow import RECURSE_DEFERRED_INPUTS, RECURSE_OUTDATED_STEPS
 
 TEST_FILE_GRAPH = """\
 root:
-             creates   file:script.sh
+             product   file:script.sh
 
 file:script.sh
                state = STATIC
               digest = 116b4e2b ac3e35be fdfae3f3 b6eb8891 1689c30b fe6696d9 e6b0139d a8cb5e72
-          created by   root:
+             creator   root:
 """
 
 
@@ -58,59 +58,59 @@ async def test_invalid_path(wfs):
 
 TEST_STEP_GRAPH = """\
 root:
-             creates   step:cp foo.txt sub/bar.txt
+             product   step:cp foo.txt sub/bar.txt
 
 step:cp foo.txt sub/bar.txt
                state = PENDING
                 need = DEFAULT
-          created by   root:
-            consumes   (file:foo.txt)
-             creates   file:sub/bar.txt
-            supplies   file:sub/bar.txt
+             creator   root:
+              source   (file:foo.txt)
+             product   file:sub/bar.txt
+                sink   file:sub/bar.txt
 
 (file:foo.txt)
                state = AWAITED
-            supplies   step:cp foo.txt sub/bar.txt
+                sink   step:cp foo.txt sub/bar.txt
 
 file:sub/bar.txt
                state = AWAITED
-          created by   step:cp foo.txt sub/bar.txt
-            consumes   step:cp foo.txt sub/bar.txt
+             creator   step:cp foo.txt sub/bar.txt
+              source   step:cp foo.txt sub/bar.txt
 """
 
 
 TEST_STEP_GRAPH2 = """\
 root:
-             creates   step:cp foo.txt sub/bar.txt
+             product   step:cp foo.txt sub/bar.txt
 
 step:cp foo.txt sub/bar.txt
                state = RUNNING
                 need = DEFAULT
-          created by   root:
-            consumes   (file:foo.txt)
-            consumes   (file:spam.txt) [amended]
-             creates   file:egg.csv
-             creates   file:sub/bar.txt
-            supplies   file:egg.csv [amended]
-            supplies   file:sub/bar.txt
+             creator   root:
+              source   (file:foo.txt)
+              source   (file:spam.txt) [amended]
+             product   file:egg.csv
+             product   file:sub/bar.txt
+                sink   file:egg.csv [amended]
+                sink   file:sub/bar.txt
 
 (file:foo.txt)
                state = AWAITED
-            supplies   step:cp foo.txt sub/bar.txt
+                sink   step:cp foo.txt sub/bar.txt
 
 file:sub/bar.txt
                state = AWAITED
-          created by   step:cp foo.txt sub/bar.txt
-            consumes   step:cp foo.txt sub/bar.txt
+             creator   step:cp foo.txt sub/bar.txt
+              source   step:cp foo.txt sub/bar.txt
 
 (file:spam.txt)
                state = AWAITED
-            supplies   step:cp foo.txt sub/bar.txt
+                sink   step:cp foo.txt sub/bar.txt
 
 file:egg.csv
                state = AWAITED
-          created by   step:cp foo.txt sub/bar.txt
-            consumes   step:cp foo.txt sub/bar.txt
+             creator   step:cp foo.txt sub/bar.txt
+              source   step:cp foo.txt sub/bar.txt
 """
 
 
@@ -181,55 +181,55 @@ async def test_step(wfs: Workflow):
 
 TEST_SIMPLE_EXAMPLE_GRAPH1 = """\
 root:
-             creates   step:cp foo.txt bar.txt
+             product   step:cp foo.txt bar.txt
 
 step:cp foo.txt bar.txt
                state = PENDING
                 need = DEFAULT
-          created by   root:
-            consumes   (file:foo.txt)
-             creates   file:bar.txt
-            supplies   file:bar.txt
+             creator   root:
+              source   (file:foo.txt)
+             product   file:bar.txt
+                sink   file:bar.txt
 
 (file:foo.txt)
                state = AWAITED
-            supplies   step:cp foo.txt bar.txt
+                sink   step:cp foo.txt bar.txt
 
 file:bar.txt
                state = AWAITED
-          created by   step:cp foo.txt bar.txt
-            consumes   step:cp foo.txt bar.txt
+             creator   step:cp foo.txt bar.txt
+              source   step:cp foo.txt bar.txt
 """
 
 TEST_SIMPLE_EXAMPLE_GRAPH2 = """\
 root:
-             creates   file:foo.txt
-             creates   step:cp foo.txt bar.txt
+             product   file:foo.txt
+             product   step:cp foo.txt bar.txt
 
 step:cp foo.txt bar.txt
                state = PENDING
                 need = DEFAULT
-          created by   root:
-            consumes   file:foo.txt
-             creates   file:bar.txt
-            supplies   file:bar.txt
+             creator   root:
+              source   file:foo.txt
+             product   file:bar.txt
+                sink   file:bar.txt
 
 file:foo.txt
                state = STATIC
               digest = ddab29ff 2c393ee5 2855d21a 240eb05f 775df88e 3ce347df 759f0c4b 80356c35
-          created by   root:
-            supplies   step:cp foo.txt bar.txt
+             creator   root:
+                sink   step:cp foo.txt bar.txt
 
 file:bar.txt
                state = AWAITED
-          created by   step:cp foo.txt bar.txt
-            consumes   step:cp foo.txt bar.txt
+             creator   step:cp foo.txt bar.txt
+              source   step:cp foo.txt bar.txt
 """
 
 TEST_SIMPLE_EXAMPLE_GRAPH3 = """\
 root:
-             creates   file:foo.txt
-             creates   step:cp foo.txt bar.txt
+             product   file:foo.txt
+             product   step:cp foo.txt bar.txt
 
 step:cp foo.txt bar.txt
                state = SUCCEEDED
@@ -237,28 +237,28 @@ step:cp foo.txt bar.txt
           inp_digest = 7c9d6cf6 ff15a9db f94295ad 7661e93e 22c7ce39 2c25303e f8553235 87b8a198
           out_digest = 989a8ef2 4a8ea52e 844a0770 1bfae079 4a7088e1 6a2ba779 3dfacd9a f1164aa1
            explained = yes
-          created by   root:
-            consumes   file:foo.txt
-             creates   file:bar.txt
-            supplies   file:bar.txt
+             creator   root:
+              source   file:foo.txt
+             product   file:bar.txt
+                sink   file:bar.txt
 
 file:foo.txt
                state = STATIC
               digest = ddab29ff 2c393ee5 2855d21a 240eb05f 775df88e 3ce347df 759f0c4b 80356c35
-          created by   root:
-            supplies   step:cp foo.txt bar.txt
+             creator   root:
+                sink   step:cp foo.txt bar.txt
 
 file:bar.txt
                state = BUILT
               digest = 08bd2d24 7cc7aa38 b8c4b7fd 20ee7eda d0b593c3 debce92f 595c9d01 6da40bae
-          created by   step:cp foo.txt bar.txt
-            consumes   step:cp foo.txt bar.txt
+             creator   step:cp foo.txt bar.txt
+              source   step:cp foo.txt bar.txt
 """
 
 TEST_SIMPLE_EXAMPLE_GRAPH4 = """\
 root:
-             creates   file:foo.txt
-             creates   step:cp foo.txt bar.txt
+             product   file:foo.txt
+             product   step:cp foo.txt bar.txt
 
 step:cp foo.txt bar.txt
                state = PENDING
@@ -266,22 +266,22 @@ step:cp foo.txt bar.txt
           inp_digest = 7c9d6cf6 ff15a9db f94295ad 7661e93e 22c7ce39 2c25303e f8553235 87b8a198
           out_digest = 989a8ef2 4a8ea52e 844a0770 1bfae079 4a7088e1 6a2ba779 3dfacd9a f1164aa1
            explained = yes
-          created by   root:
-            consumes   file:foo.txt
-             creates   file:bar.txt
-            supplies   file:bar.txt
+             creator   root:
+              source   file:foo.txt
+             product   file:bar.txt
+                sink   file:bar.txt
 
 file:foo.txt
                state = STATIC
               digest = ddab29ff 2c393ee5 2855d21a 240eb05f 775df88e 3ce347df 759f0c4b 80356c35
-          created by   root:
-            supplies   step:cp foo.txt bar.txt
+             creator   root:
+                sink   step:cp foo.txt bar.txt
 
 file:bar.txt
                state = OUTDATED
               digest = 08bd2d24 7cc7aa38 b8c4b7fd 20ee7eda d0b593c3 debce92f 595c9d01 6da40bae
-          created by   step:cp foo.txt bar.txt
-            consumes   step:cp foo.txt bar.txt
+             creator   step:cp foo.txt bar.txt
+              source   step:cp foo.txt bar.txt
 """
 
 
@@ -570,44 +570,44 @@ async def test_file_state_volatile_overlap(wfp: Workflow):
 
 PENDING_STEP_SKIP_GRAPH = """\
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
               digest = 4e929dac d83345e7 26c42517 5f6089aa 9b9513af 07615728 a82225e3 1383ff4f
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = PENDING
                 need = PLAN
-          created by   root:
-            consumes   file:plan.py
-             creates   file:inp
-             creates   step:cat < inp > out
+             creator   root:
+              source   file:plan.py
+             product   file:inp
+             product   step:cat < inp > out
 
 file:inp
                state = STATIC
               digest = 29a9e775 80ac85ad 896542d4 5ae52e21 8428bbe9 b0c752bc 2785ed22 a6eca01a
-          created by   step:./plan.py
-            supplies   step:cat < inp > out
+             creator   step:./plan.py
+                sink   step:cat < inp > out
 
 step:cat < inp > out
                state = SUCCEEDED
                 need = DEFAULT
           inp_digest = 61616161 61616161 61616161 61616161 61616161 61616161 61616161 61616161
           out_digest = 62626262 62626262 62626262 62626262 62626262 62626262 62626262 62626262
-          created by   step:./plan.py
-            consumes   file:inp
-             creates   file:out
-            supplies   file:out
+             creator   step:./plan.py
+              source   file:inp
+             product   file:out
+                sink   file:out
 
 file:out
                state = BUILT
               digest = 762069bc 07a6e1b5 df123a5a e7bd91c1 0daa0469 4fbaa17f ba0cd6a8 dcce8f22
-          created by   step:cat < inp > out
-            consumes   step:cat < inp > out
+             creator   step:cat < inp > out
+              source   step:cat < inp > out
 """
 
 
@@ -901,74 +901,74 @@ async def test_amend_step_freshness_producer_stop_time_missing(wfs: Workflow):
 
 PENDING_STEP_SKIP_AMENDED_GRAPH = """\
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
               digest = 4e929dac d83345e7 26c42517 5f6089aa 9b9513af 07615728 a82225e3 1383ff4f
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = PENDING
                 need = PLAN
-          created by   root:
-            consumes   file:plan.py
-             creates   file:ainp
-             creates   file:inp
-             creates   step:cat < inp > out 2> vol
+             creator   root:
+              source   file:plan.py
+             product   file:ainp
+             product   file:inp
+             product   step:cat < inp > out 2> vol
 
 file:ainp
                state = STATIC
               digest = c0a3760b 3f6ad19a 940952bc 5e60a7e3 e6554d97 f19114b7 765e21e0 a14cf4d6
-          created by   step:./plan.py
-            supplies   step:cat < inp > out 2> vol
+             creator   step:./plan.py
+                sink   step:cat < inp > out 2> vol
 
 file:inp
                state = STATIC
               digest = 29a9e775 80ac85ad 896542d4 5ae52e21 8428bbe9 b0c752bc 2785ed22 a6eca01a
-          created by   step:./plan.py
-            supplies   step:cat < inp > out 2> vol
+             creator   step:./plan.py
+                sink   step:cat < inp > out 2> vol
 
 step:cat < inp > out 2> vol
                state = SUCCEEDED
                 need = DEFAULT
           inp_digest = 63636363 63636363 63636363 63636363 63636363 63636363 63636363 63636363
           out_digest = 64646464 64646464 64646464 64646464 64646464 64646464 64646464 64646464
-          created by   step:./plan.py
-            consumes   file:ainp [amended]
-            consumes   file:inp
-             creates   file:aout
-             creates   file:avol
-             creates   file:out
-             creates   file:vol
-            supplies   file:aout [amended]
-            supplies   file:avol [amended]
-            supplies   file:out
-            supplies   file:vol
+             creator   step:./plan.py
+              source   file:ainp [amended]
+              source   file:inp
+             product   file:aout
+             product   file:avol
+             product   file:out
+             product   file:vol
+                sink   file:aout [amended]
+                sink   file:avol [amended]
+                sink   file:out
+                sink   file:vol
 
 file:out
                state = BUILT
               digest = 762069bc 07a6e1b5 df123a5a e7bd91c1 0daa0469 4fbaa17f ba0cd6a8 dcce8f22
-          created by   step:cat < inp > out 2> vol
-            consumes   step:cat < inp > out 2> vol
+             creator   step:cat < inp > out 2> vol
+              source   step:cat < inp > out 2> vol
 
 file:vol
                state = VOLATILE
-          created by   step:cat < inp > out 2> vol
-            consumes   step:cat < inp > out 2> vol
+             creator   step:cat < inp > out 2> vol
+              source   step:cat < inp > out 2> vol
 
 file:aout
                state = BUILT
               digest = bff8fd60 206e04a5 f6052fe5 5896f8da b0fb3f74 fd92802e d68adedb 7b082496
-          created by   step:cat < inp > out 2> vol
-            consumes   step:cat < inp > out 2> vol
+             creator   step:cat < inp > out 2> vol
+              source   step:cat < inp > out 2> vol
 
 file:avol
                state = VOLATILE
-          created by   step:cat < inp > out 2> vol
-            consumes   step:cat < inp > out 2> vol
+             creator   step:cat < inp > out 2> vol
+              source   step:cat < inp > out 2> vol
 """
 
 
@@ -1028,34 +1028,34 @@ async def test_define_pending_step_skip_amended(wfp: Workflow):
 
 REGISTER_NGLOB_GRAPH = """\
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
               digest = 4e929dac d83345e7 26c42517 5f6089aa 9b9513af 07615728 a82225e3 1383ff4f
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = PENDING
                 need = PLAN
-          created by   root:
-            consumes   file:plan.py
-             creates   step:touch log
+             creator   root:
+              source   file:plan.py
+             product   step:touch log
 
 step:touch log
                state = PENDING
                 need = DEFAULT
                  ngm = ['*.txt'] {}
-          created by   step:./plan.py
-             creates   file:log
-            supplies   file:log
+             creator   step:./plan.py
+             product   file:log
+                sink   file:log
 
 file:log
                state = VOLATILE
-          created by   step:touch log
-            consumes   step:touch log
+             creator   step:touch log
+              source   step:touch log
 """
 
 

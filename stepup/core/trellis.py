@@ -699,12 +699,12 @@ class Trellis:
                 lines.append(f"{name:>20s} = {value!s}")
             pairs = []
             if ci is not None and (label != clabel):
-                pairs.append(("created by", creator.key(cdetached)))
-            pairs.extend(("consumes", other_str) for _, other_str in node.sources_str())
+                pairs.append(("creator", creator.key(cdetached)))
+            pairs.extend(("source", other_str) for _, other_str in node.sources_str())
             pairs.extend(
-                ("creates", other_str) for other_str in node.products_str() if other_str != "root:"
+                ("product", other_str) for other_str in node.products_str() if other_str != "root:"
             )
-            pairs.extend(("supplies", other_str) for _, other_str in node.sinks_str())
+            pairs.extend(("sink", other_str) for _, other_str in node.sinks_str())
             for role, key in pairs:
                 lines.append(f"{role:>20s}   {key}")
             lines.append("")

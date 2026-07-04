@@ -1,46 +1,46 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   st:dir_inp/
-             creates   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work
+             creator   root:
+              source   file:plan.py
+             product   st:dir_inp/
+             product   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work
 
 st:dir_inp/
-          created by   step:./plan.py
-             creates   file:dir_inp/inp.txt
+             creator   step:./plan.py
+             product   file:dir_inp/inp.txt
 
 step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:dir_inp/inp.txt
-             creates   file:dir_out/out.txt
-             creates   file:dir_vol/vol.txt
-            supplies   file:dir_out/out.txt
-            supplies   file:dir_vol/vol.txt
+             creator   step:./plan.py
+              source   file:dir_inp/inp.txt
+             product   file:dir_out/out.txt
+             product   file:dir_vol/vol.txt
+                sink   file:dir_out/out.txt
+                sink   file:dir_vol/vol.txt
 
 file:dir_inp/inp.txt
                state = STATIC
-          created by   st:dir_inp/
-            supplies   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work
+             creator   st:dir_inp/
+                sink   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work
 
 file:dir_out/out.txt
                state = BUILT
-          created by   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work
-            consumes   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work
+             creator   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work
+              source   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work
 
 file:dir_vol/vol.txt
                state = VOLATILE
-          created by   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work
-            consumes   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work
+             creator   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work
+              source   step:cp ../dir_inp/inp.txt ../dir_out/out.txt; cp ../dir_inp/inp.txt ../dir_vol/vol.txt  # wd=dir_work

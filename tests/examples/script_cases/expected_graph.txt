@@ -1,79 +1,79 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:helper.py
-             creates   file:work.py
-             creates   step:./work.py plan --step-info=current_step_info.json
+             creator   root:
+              source   file:plan.py
+             product   file:helper.py
+             product   file:work.py
+             product   step:./work.py plan --step-info=current_step_info.json
 
 file:helper.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py plan --step-info=current_step_info.json
-            supplies   step:./work.py run +7.0
-            supplies   step:./work.py run -- -5.0
+             creator   step:./plan.py
+                sink   step:./work.py plan --step-info=current_step_info.json
+                sink   step:./work.py run +7.0
+                sink   step:./work.py run -- -5.0
 
 file:work.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work.py plan --step-info=current_step_info.json
-            supplies   step:./work.py run +7.0
-            supplies   step:./work.py run -- -5.0
+             creator   step:./plan.py
+                sink   step:./work.py plan --step-info=current_step_info.json
+                sink   step:./work.py run +7.0
+                sink   step:./work.py run -- -5.0
 
 step:./work.py plan --step-info=current_step_info.json
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:helper.py [amended]
-            consumes   file:work.py
-             creates   file:current_step_info.json
-             creates   step:./work.py run +7.0
-             creates   step:./work.py run -- -5.0
-            supplies   file:current_step_info.json
+             creator   step:./plan.py
+              source   file:helper.py [amended]
+              source   file:work.py
+             product   file:current_step_info.json
+             product   step:./work.py run +7.0
+             product   step:./work.py run -- -5.0
+                sink   file:current_step_info.json
 
 file:current_step_info.json
                state = BUILT
-          created by   step:./work.py plan --step-info=current_step_info.json
-            consumes   step:./work.py plan --step-info=current_step_info.json
+             creator   step:./work.py plan --step-info=current_step_info.json
+              source   step:./work.py plan --step-info=current_step_info.json
 
 step:./work.py run -- -5.0
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./work.py plan --step-info=current_step_info.json
-            consumes   file:helper.py [amended]
-            consumes   file:work.py
-             creates   file:data-5.0.txt
-            supplies   file:data-5.0.txt
+             creator   step:./work.py plan --step-info=current_step_info.json
+              source   file:helper.py [amended]
+              source   file:work.py
+             product   file:data-5.0.txt
+                sink   file:data-5.0.txt
 
 file:data-5.0.txt
                state = BUILT
-          created by   step:./work.py run -- -5.0
-            consumes   step:./work.py run -- -5.0
+             creator   step:./work.py run -- -5.0
+              source   step:./work.py run -- -5.0
 
 step:./work.py run +7.0
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./work.py plan --step-info=current_step_info.json
-            consumes   file:helper.py [amended]
-            consumes   file:work.py
-             creates   file:data+7.0.txt
-            supplies   file:data+7.0.txt
+             creator   step:./work.py plan --step-info=current_step_info.json
+              source   file:helper.py [amended]
+              source   file:work.py
+             product   file:data+7.0.txt
+                sink   file:data+7.0.txt
 
 file:data+7.0.txt
                state = BUILT
-          created by   step:./work.py run +7.0
-            consumes   step:./work.py run +7.0
+             creator   step:./work.py run +7.0
+              source   step:./work.py run +7.0

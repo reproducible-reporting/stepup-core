@@ -1,87 +1,87 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   file:work1.py
-             creates   file:work2.py
-             creates   step:./work1.py
-             creates   step:./work2.py
+             creator   root:
+              source   file:plan.py
+             product   file:work1.py
+             product   file:work2.py
+             product   step:./work1.py
+             product   step:./work2.py
 
 file:work1.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work1.py
+             creator   step:./plan.py
+                sink   step:./work1.py
 
 file:work2.py
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:./work2.py
+             creator   step:./plan.py
+                sink   step:./work2.py
 
 step:./work1.py
                state = PENDING
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:inp2.txt [amended]
-            consumes   file:work1.py
-             creates   file:out2.txt
-             creates   step:echo first > inp1.txt
-            supplies   file:out2.txt [amended]
+             creator   step:./plan.py
+              source   file:inp2.txt [amended]
+              source   file:work1.py
+             product   file:out2.txt
+             product   step:echo first > inp1.txt
+                sink   file:out2.txt [amended]
 
 step:./work2.py
                state = PENDING
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   step:./plan.py
-            consumes   file:inp1.txt [amended]
-            consumes   file:work2.py
-             creates   file:out1.txt
-             creates   step:echo second > inp2.txt
-            supplies   file:out1.txt [amended]
+             creator   step:./plan.py
+              source   file:inp1.txt [amended]
+              source   file:work2.py
+             product   file:out1.txt
+             product   step:echo second > inp2.txt
+                sink   file:out1.txt [amended]
 
 step:echo first > inp1.txt
                state = PENDING
                 need = DEFAULT
-          created by   step:./work1.py
-             creates   file:inp1.txt
-            supplies   file:inp1.txt
+             creator   step:./work1.py
+             product   file:inp1.txt
+                sink   file:inp1.txt
 
 file:inp1.txt
                state = AWAITED
-          created by   step:echo first > inp1.txt
-            consumes   step:echo first > inp1.txt
-            supplies   step:./work2.py
+             creator   step:echo first > inp1.txt
+              source   step:echo first > inp1.txt
+                sink   step:./work2.py
 
 file:inp2.txt
                state = AWAITED
-          created by   step:echo second > inp2.txt
-            consumes   step:echo second > inp2.txt
-            supplies   step:./work1.py
+             creator   step:echo second > inp2.txt
+              source   step:echo second > inp2.txt
+                sink   step:./work1.py
 
 file:out2.txt
                state = AWAITED
-          created by   step:./work1.py
-            consumes   step:./work1.py
+             creator   step:./work1.py
+              source   step:./work1.py
 
 step:echo second > inp2.txt
                state = PENDING
                 need = DEFAULT
-          created by   step:./work2.py
-             creates   file:inp2.txt
-            supplies   file:inp2.txt
+             creator   step:./work2.py
+             product   file:inp2.txt
+                sink   file:inp2.txt
 
 file:out1.txt
                state = AWAITED
-          created by   step:./work2.py
-            consumes   step:./work2.py
+             creator   step:./work2.py
+              source   step:./work2.py

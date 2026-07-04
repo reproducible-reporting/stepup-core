@@ -1,40 +1,40 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = ENV_VAR_TEST_STEPUP_INP [amended]
                      = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   st:static/
-             creates   step:cp -p static/sub/foo.txt copy.txt
+             creator   root:
+              source   file:plan.py
+             product   st:static/
+             product   step:cp -p static/sub/foo.txt copy.txt
 
 step:cp -p static/sub/foo.txt copy.txt
                state = SUCCEEDED
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:static/sub/foo.txt
-             creates   file:copy.txt
-            supplies   file:copy.txt
+             creator   step:./plan.py
+              source   file:static/sub/foo.txt
+             product   file:copy.txt
+                sink   file:copy.txt
 
 file:static/sub/foo.txt
                state = STATIC
-          created by   st:static/
-            supplies   step:cp -p static/sub/foo.txt copy.txt
+             creator   st:static/
+                sink   step:cp -p static/sub/foo.txt copy.txt
 
 file:copy.txt
                state = BUILT
-          created by   step:cp -p static/sub/foo.txt copy.txt
-            consumes   step:cp -p static/sub/foo.txt copy.txt
+             creator   step:cp -p static/sub/foo.txt copy.txt
+              source   step:cp -p static/sub/foo.txt copy.txt
 
 st:static/
-          created by   step:./plan.py
-             creates   file:static/sub/foo.txt
+             creator   step:./plan.py
+             product   file:static/sub/foo.txt

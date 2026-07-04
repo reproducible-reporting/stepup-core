@@ -1,28 +1,28 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-          created by   root:
-            consumes   file:plan.py
-             creates   step:echo hello > foo.txt
+             creator   root:
+              source   file:plan.py
+             product   step:echo hello > foo.txt
 
 step:echo hello > foo.txt
                state = PENDING
                 need = OPTIONAL
-          created by   step:./plan.py
-             creates   file:foo.txt
-            supplies   file:foo.txt
+             creator   step:./plan.py
+             product   file:foo.txt
+                sink   file:foo.txt
 
 file:foo.txt
                state = AWAITED
-          created by   step:echo hello > foo.txt
-            consumes   step:echo hello > foo.txt
+             creator   step:echo hello > foo.txt
+              source   step:echo hello > foo.txt

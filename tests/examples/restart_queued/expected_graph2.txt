@@ -1,53 +1,53 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
            explained = yes
-          created by   root:
-            consumes   file:plan.py
-             creates   file:inp.txt
-             creates   step:cp -p inp.txt out.txt
-             creates   step:cp -p out.txt final.txt
+             creator   root:
+              source   file:plan.py
+             product   file:inp.txt
+             product   step:cp -p inp.txt out.txt
+             product   step:cp -p out.txt final.txt
 
 file:inp.txt
                state = STATIC
-          created by   step:./plan.py
-            supplies   step:cp -p inp.txt out.txt
+             creator   step:./plan.py
+                sink   step:cp -p inp.txt out.txt
 
 step:cp -p inp.txt out.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:inp.txt
-             creates   file:out.txt
-            supplies   file:out.txt
+             creator   step:./plan.py
+              source   file:inp.txt
+             product   file:out.txt
+                sink   file:out.txt
 
 file:out.txt
                state = BUILT
-          created by   step:cp -p inp.txt out.txt
-            consumes   step:cp -p inp.txt out.txt
-            supplies   step:cp -p out.txt final.txt
+             creator   step:cp -p inp.txt out.txt
+              source   step:cp -p inp.txt out.txt
+                sink   step:cp -p out.txt final.txt
 
 step:cp -p out.txt final.txt
                state = SUCCEEDED
                 need = DEFAULT
            explained = yes
-          created by   step:./plan.py
-            consumes   file:out.txt
-             creates   file:final.txt
-            supplies   file:final.txt
+             creator   step:./plan.py
+              source   file:out.txt
+             product   file:final.txt
+                sink   file:final.txt
 
 file:final.txt
                state = BUILT
-          created by   step:cp -p out.txt final.txt
-            consumes   step:cp -p out.txt final.txt
+             creator   step:cp -p out.txt final.txt
+              source   step:cp -p out.txt final.txt
