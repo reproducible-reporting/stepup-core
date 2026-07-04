@@ -29,7 +29,15 @@ from path import Path
 
 from stepup.core.asyncio import pipe
 from stepup.core.exceptions import RPCError
-from stepup.core.rpc import AsyncRPCClient, SocketSyncRPCClient, fmt_rpc_call, serve_rpc
+from stepup.core.rpc import (
+    AsyncRPCClient,
+    SocketSyncRPCClient,
+    _handle_connection,
+    _recv_rpc_message,
+    _serve_rpc_send_loop,
+    fmt_rpc_call,
+    serve_rpc,
+)
 
 
 @pytest_asyncio.fixture()
@@ -228,3 +236,141 @@ async def test_pipe_not_allowed(pc):
 async def test_pipe_not_defined(pc):
     with pytest.raises(RPCError):
         await pc.call.not_defined()
+
+
+class _ImmediateEOFReader:
+    """Reader stub that reports EOF on the first read, like an already-closed connection."""
+
+    async def readexactly(self, n: int):
+        raise asyncio.IncompleteReadError(partial=b"", expected=n)
+
+
+class _ResetOnCloseWriter:
+    """Writer stub whose `drain()` and `wait_closed()` both raise, like a peer that has
+    already reset the connection (e.g. a forkserver child crashing right after its
+    automatic `amend()` call) by the time the server tears the connection down.
+    """
+
+    def __init__(self):
+        self.closed = False
+
+    async def drain(self):
+        raise ConnectionError("Connection reset by peer (drain)")
+
+    def close(self):
+        self.closed = True
+
+    async def wait_closed(self):
+        raise ConnectionResetError("Connection reset by peer (wait_closed)")
+
+
+async def test_handle_connection_survives_reset_during_close():
+    """A connection reset can surface on `wait_closed()`, not just `drain()`.
+
+    Both must be tolerated, or an unhandled `ConnectionResetError` propagates out of the
+    task spawned for this connection (visible as "Unhandled exception in
+    client_connected_cb" in `serve_socket_rpc`).
+    """
+    async with asyncio.timeout(5):
+        writer = _ResetOnCloseWriter()
+        await _handle_connection(EchoHandler("x"), _ImmediateEOFReader(), writer)
+        assert writer.closed
+
+
+class _ResetReader:
+    """Reader stub whose read raises a raw `ConnectionResetError`, like a peer that reset
+    the connection instead of closing it cleanly (no `IncompleteReadError` involved).
+    """
+
+    async def readexactly(self, n: int):
+        raise ConnectionResetError("Connection reset by peer")
+
+
+class _BenignWriter:
+    """Writer stub whose send/close operations always succeed."""
+
+    def __init__(self):
+        self.closed = False
+
+    async def drain(self):
+        pass
+
+    def close(self):
+        self.closed = True
+
+    async def wait_closed(self):
+        pass
+
+
+async def test_recv_rpc_message_treats_reset_like_eof():
+    """A reset connection must be treated the same as a clean EOF.
+
+    `asyncio.StreamReader.readexactly()` raises `IncompleteReadError` on a clean EOF, but a
+    genuine reset while a read is pending surfaces as a raw `ConnectionResetError` instead
+    (the stream's stored transport exception is raised directly). `_recv_rpc_message` only
+    catches `IncompleteReadError`, so a reset currently escapes uncaught instead of being
+    reported as "the peer is gone" like a clean disconnect.
+    """
+    async with asyncio.timeout(5):
+        call_id, body = await _recv_rpc_message(_ResetReader())
+        assert call_id is None
+        assert body is None
+
+
+async def test_handle_connection_survives_reset_during_recv():
+    """Same failure mode as above, exercised through the full `_handle_connection`."""
+    async with asyncio.timeout(5):
+        await _handle_connection(EchoHandler("x"), _ResetReader(), _BenignWriter())
+
+
+class _AlwaysResetWriter:
+    """Writer stub that fails every send, like a peer that is already gone."""
+
+    def write(self, data):
+        pass
+
+    async def drain(self):
+        raise ConnectionResetError("Connection reset by peer")
+
+
+class _MarkerError(Exception):
+    """Distinct exception, used to tell 'the original failure' apart from a masking one."""
+
+
+async def _boom():
+    raise _MarkerError("boom")
+
+
+async def _return(value):
+    return value
+
+
+async def test_send_loop_stops_gracefully_on_connection_reset():
+    """When the client is already gone, the send loop must not crash the connection task.
+
+    The current bare `except:` in `_serve_rpc_send_loop` retries the send unconditionally;
+    when the connection is dead, that retry also raises, and the resulting
+    `ConnectionResetError` escapes uncaught (same "Unhandled exception in
+    client_connected_cb" symptom as the other tests in this module).
+    """
+    async with asyncio.timeout(5):
+        stop_event = asyncio.Event()
+        queue = asyncio.Queue()
+        await queue.put((1, asyncio.ensure_future(_return("ok"))))
+        await _serve_rpc_send_loop(_AlwaysResetWriter(), stop_event, queue)
+        assert stop_event.is_set()
+
+
+async def test_send_loop_does_not_mask_original_error_with_connection_error():
+    """A genuine handler-side failure must surface as itself, not as a `ConnectionError`.
+
+    If the connection also happens to be dead, the loop's own attempt to notify the
+    (already gone) client of the failure must not replace the original exception with the
+    `ConnectionError` from that doomed notification attempt.
+    """
+    async with asyncio.timeout(5):
+        stop_event = asyncio.Event()
+        queue = asyncio.Queue()
+        await queue.put((1, asyncio.ensure_future(_boom())))
+        with pytest.raises(_MarkerError):
+            await _serve_rpc_send_loop(_AlwaysResetWriter(), stop_event, queue)

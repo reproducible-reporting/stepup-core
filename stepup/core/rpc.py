@@ -23,6 +23,7 @@ This module also includes a synchronous RPC client to support simple client APIs
 """
 
 import asyncio
+import contextlib
 import inspect
 import logging
 import os
@@ -105,7 +106,10 @@ async def _recv_rpc_message(reader: asyncio.StreamReader) -> tuple[int, bytes] |
         call_id = int.from_bytes(await reader.readexactly(8))
         size = int.from_bytes(await reader.readexactly(8))
         body = None if size == 0 else await reader.readexactly(size)
-    except asyncio.IncompleteReadError:
+    except (asyncio.IncompleteReadError, ConnectionError):
+        # IncompleteReadError is a graceful EOF (peer closed cleanly). A reset while a read
+        # is pending instead surfaces as a raw ConnectionError (e.g. ConnectionResetError).
+        # Both mean the same thing here: the peer is gone, so the RPC loop should stop.
         return None, None
     return call_id, body
 
@@ -228,8 +232,16 @@ async def _serve_rpc_send_loop(
         try:
             response = pickle.dumps(await task, protocol=pickle.HIGHEST_PROTOCOL)
             await _send_rpc_message(writer, call_id, response)
-        except:
-            await _send_rpc_message(writer, call_id, None)
+        except ConnectionError:
+            # The peer is already gone: no point notifying it or serving this connection
+            # any further.
+            stop_event.set()
+            return
+        except Exception:
+            # Some other failure (e.g. an unpicklable result): try to tell the client, but
+            # don't let a doomed notification attempt mask the original exception.
+            with contextlib.suppress(ConnectionError):
+                await _send_rpc_message(writer, call_id, None)
             raise
 
 
@@ -252,7 +264,10 @@ async def _handle_connection(
         except ConnectionError:
             logger.warning("Connection error while draining writer in _handle_connection")
         writer.close()
-        await writer.wait_closed()
+        try:
+            await writer.wait_closed()
+        except ConnectionError:
+            logger.warning("Connection error while closing writer in _handle_connection")
 
 
 async def serve_socket_rpc(handler, path: str, stop_event: asyncio.Event):
