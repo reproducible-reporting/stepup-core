@@ -31,7 +31,6 @@ from stepup.core.usage import (
     ResourceAccumulator,
     ResourceUsage,
     find_own_memory_cgroup,
-    read_cgroup_memory_mib,
 )
 
 
@@ -95,96 +94,80 @@ def test_resource_accumulator_add_usage():
     assert acc.oublock == 10
 
 
-def test_find_own_memory_cgroup_success(tmp_path):
-    (tmp_path / "own").mkdir()
-    (tmp_path / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n")
-    (tmp_path / "own" / "memory.current").write_text("1048576")
+def test_own_cgroup_path_no_unified_hierarchy(monkeypatch, path_tmp):
+    fake_path = path_tmp / "cgroup"
+    fake_path.write_text("1:name=systemd:/\n2:cpu,cpuacct:/\n")
+    real_open = open
+
+    def fake_open(path, *args, **kwargs):
+        if path == "/proc/self/cgroup":
+            path = fake_path
+        return real_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(usage, "open", fake_open, raising=False)
+    with pytest.raises(RuntimeError):
+        usage._own_cgroup_path()
+
+
+def test_find_own_memory_cgroup_success(path_tmp):
+    (path_tmp / "own").mkdir()
+    (path_tmp / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n")
+    (path_tmp / "own" / "memory.current").write_text("1048576")
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(usage, "_own_cgroup_path", lambda: "own")
-        assert find_own_memory_cgroup(cgroup_root=str(tmp_path)) == str(tmp_path / "own")
+        assert find_own_memory_cgroup(cgroup_root=path_tmp) == str(path_tmp / "own")
 
 
 def test_find_own_memory_cgroup_not_linux(monkeypatch):
     monkeypatch.setattr(usage.sys, "platform", "darwin")
-    assert find_own_memory_cgroup() is None
+    with pytest.raises(RuntimeError):
+        find_own_memory_cgroup()
 
 
-def test_find_own_memory_cgroup_no_own_cgroup(monkeypatch, tmp_path):
-    monkeypatch.setattr(usage, "_own_cgroup_path", lambda: None)
-    assert find_own_memory_cgroup(cgroup_root=str(tmp_path)) is None
-
-
-def test_find_own_memory_cgroup_no_cgroup_procs(tmp_path, monkeypatch):
-    (tmp_path / "own").mkdir()
+def test_find_own_memory_cgroup_no_cgroup_procs(path_tmp, monkeypatch):
+    (path_tmp / "own").mkdir()
     monkeypatch.setattr(usage, "_own_cgroup_path", lambda: "own")
-    assert find_own_memory_cgroup(cgroup_root=str(tmp_path)) is None
+    with pytest.raises(RuntimeError):
+        find_own_memory_cgroup(cgroup_root=path_tmp)
 
 
-def test_find_own_memory_cgroup_not_alone(tmp_path, monkeypatch):
-    (tmp_path / "own").mkdir()
-    (tmp_path / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n{os.getpid() + 1}\n")
+def test_find_own_memory_cgroup_not_alone(path_tmp, monkeypatch):
+    (path_tmp / "own").mkdir()
+    (path_tmp / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n{os.getpid() + 1}\n")
     monkeypatch.setattr(usage, "_own_cgroup_path", lambda: "own")
-    assert find_own_memory_cgroup(cgroup_root=str(tmp_path)) is None
+    with pytest.raises(RuntimeError):
+        find_own_memory_cgroup(cgroup_root=path_tmp)
 
 
-def test_find_own_memory_cgroup_memory_not_readable(tmp_path, monkeypatch):
-    (tmp_path / "own").mkdir()
-    (tmp_path / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n")
+def test_find_own_memory_cgroup_memory_not_readable(path_tmp, monkeypatch):
+    (path_tmp / "own").mkdir()
+    (path_tmp / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n")
     monkeypatch.setattr(usage, "_own_cgroup_path", lambda: "own")
-    assert find_own_memory_cgroup(cgroup_root=str(tmp_path)) is None
+    with pytest.raises(RuntimeError):
+        find_own_memory_cgroup(cgroup_root=path_tmp)
 
 
-def test_read_cgroup_memory_current_mib(tmp_path):
-    (tmp_path / "memory.current").write_text("2097152")
-    assert read_cgroup_memory_mib(str(tmp_path), "current") == 2.0
-
-
-def test_read_cgroup_memory_current_mib_missing(tmp_path):
-    assert read_cgroup_memory_mib(str(tmp_path), "current") is None
-
-
-def test_read_cgroup_memory_current_mib_invalid(tmp_path):
-    (tmp_path / "memory.current").write_text("not-a-number")
-    assert read_cgroup_memory_mib(str(tmp_path), "current") is None
-
-
-def test_read_cgroup_memory_peak_mib(tmp_path):
-    (tmp_path / "memory.peak").write_text("3145728")
-    assert read_cgroup_memory_mib(str(tmp_path), "peak") == 3.0
-
-
-def test_read_cgroup_memory_peak_mib_missing(tmp_path):
-    assert read_cgroup_memory_mib(str(tmp_path), "peak") is None
-
-
-def test_cgroup_memory_sampler_noop_when_unavailable():
-    sampler = CgroupMemorySampler(cgroup_dir=None)
-    sampler.sample_once()
-    assert sampler.nsample == 0
-    assert sampler.peak_mib is None
-
-
-def test_cgroup_memory_sampler_tracks_peak(tmp_path):
-    (tmp_path / "memory.current").write_text("1048576")  # 1 MiB
-    sampler = CgroupMemorySampler(cgroup_dir=str(tmp_path))
+def test_cgroup_memory_sampler_tracks_peak(path_tmp):
+    (path_tmp / "memory.current").write_text("1048576")  # 1 MiB
+    sampler = CgroupMemorySampler(cgroup_dir=path_tmp)
     sampler.sample_once()
     assert sampler.nsample == 1
     assert sampler.peak_mib == 1.0
 
-    (tmp_path / "memory.current").write_text("2097152")  # 2 MiB
+    (path_tmp / "memory.current").write_text("2097152")  # 2 MiB
     sampler.sample_once()
     assert sampler.nsample == 2
     assert sampler.peak_mib == 2.0
 
-    (tmp_path / "memory.current").write_text("524288")  # 0.5 MiB: peak must not drop
+    (path_tmp / "memory.current").write_text("524288")  # 0.5 MiB: peak must not drop
     sampler.sample_once()
     assert sampler.nsample == 3
     assert sampler.peak_mib == 2.0
 
 
-def test_cgroup_memory_sampler_uses_memory_peak_file(tmp_path):
-    (tmp_path / "memory.current").write_text("1048576")  # 1 MiB
-    (tmp_path / "memory.peak").write_text("5242880")  # 5 MiB kernel-tracked peak
-    sampler = CgroupMemorySampler(cgroup_dir=str(tmp_path))
+def test_cgroup_memory_sampler_uses_memory_peak_file(path_tmp):
+    (path_tmp / "memory.current").write_text("1048576")  # 1 MiB
+    (path_tmp / "memory.peak").write_text("5242880")  # 5 MiB kernel-tracked peak
+    sampler = CgroupMemorySampler(cgroup_dir=path_tmp)
     sampler.sample_once()
     assert sampler.peak_mib == 5.0

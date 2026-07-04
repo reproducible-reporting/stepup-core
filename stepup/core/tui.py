@@ -52,36 +52,26 @@ def merge_resources(base: str | None, override: str | None) -> str:
     return ",".join(f"{k}:{v}" for k, v in merged.items())
 
 
-def cgroup_scope_prefix(cgroup_isolate: bool, reporter_handler: ReporterHandler) -> list[str]:
+def cgroup_scope_prefix() -> list[str]:
     """Return an argv prefix that launches a command in its own `systemd-run --scope`.
 
-    The director cannot isolate itself into a dedicated cgroup after the fact
-    (see `stepup.core.usage.find_own_memory_cgroup()`):
-    A plain interactive invocation shares its ambient cgroup with the shell
-    and everything else in the session.
-    Cgroup v2 only exposes `memory.current`/`memory.peak` directly in a cgroup that nothing else
-    also lives in.
-    Launching the director itself as the sole process in a fresh `systemd-run --scope`
-    sidesteps that entirely: no cgroup needs to be created or modified,
-    since the fresh scope already is one, dedicated and empty.
+    Returns
+    -------
+    argv_prefix
+        A list of strings that can be prepended to a command to launch it in its own
+        `systemd-run --scope` cgroup.
 
-    This function follows a best-effort approach:
-    It returns `[]` (no wrapping) if this is disabled via `--no-cgroup-isolate`,
-    not on Linux, `systemd-run` isn't installed,
-    or a quick preflight probe shows it isn't usable (no systemd user session, policy denial, ...).
-    A warning is printed to the reporter if the cgroup isolation is requested on Linux
-    but is unavailable for any reason.
-
-    The TUI's own memory usage is not covered by this.
+    Raises
+    ------
+    RuntimeError
+        If not running on Linux, if `systemd-run` is not available,
+        or if a preflight probe of `systemd-run` fails.
     """
-    if not cgroup_isolate or sys.platform != "linux":
-        return []
+    if sys.platform != "linux":
+        raise RuntimeError("Cgroup isolation is only supported on Linux.")
     systemd_run = shutil.which("systemd-run")
     if systemd_run is None:
-        reporter_handler.report(
-            "WARNING", "systemd-run not available; not using cgroup isolation.", []
-        )
-        return []
+        raise RuntimeError("systemd-run not available.")
     prefix = [systemd_run, "--user", "--scope", "--quiet", "-p", "Delegate=yes", "--"]
     try:
         subprocess.run(
@@ -92,23 +82,12 @@ def cgroup_scope_prefix(cgroup_isolate: bool, reporter_handler: ReporterHandler)
             check=True,
             timeout=3.0,
         )
-    except subprocess.TimeoutExpired:
-        reporter_handler.report(
-            "WARNING", "systemd-run probe timed out; not using cgroup isolation.", []
-        )
-        return []
-    except subprocess.CalledProcessError:
-        reporter_handler.report(
-            "WARNING", "systemd-run probe failed; not using cgroup isolation.", []
-        )
-        return []
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("systemd-run probe timed out.") from exc
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError("systemd-run probe subprocess failed.") from exc
     except OSError as exc:
-        reporter_handler.report(
-            "WARNING",
-            f"systemd-run probe failed with {type(exc).__name__}; not using cgroup isolation.",
-            [],
-        )
-        return []
+        raise RuntimeError(f"systemd-run probe failed with {type(exc).__name__}.") from exc
     return prefix
 
 
@@ -199,6 +178,8 @@ async def async_build(args: argparse.Namespace, default_resources: str):
         args.resources = merge_resources(default_resources, args.resources)
         if args.resources:
             argv.append(f"--resources={args.resources}")
+        if args.sqllog:
+            argv.append("--sqllog")
         if WATCHER_AVAILABLE:
             if args.watch:
                 argv.append("--watch")
@@ -206,11 +187,9 @@ async def async_build(args: argparse.Namespace, default_resources: str):
                 argv.append("--watch-first")
         if args.yappi:
             argv.append("--yappi")
-        if args.sqllog:
-            argv.append("--sqllog")
-        cgroup_argv = cgroup_scope_prefix(args.cgroup_isolate, reporter_handler)
-        if len(cgroup_argv) > 0:
-            argv = [*cgroup_argv, *argv]
+        if args.cgroup:
+            cgroup_argv = cgroup_scope_prefix()
+            argv = [*cgroup_argv, *argv, "--cgroup"]
         returncode = 1  # Internal error unless it is overriden later by the director subprocess
         try:
             with open(DIRECTOR_LOG, "w") as log_file:
@@ -342,13 +321,12 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         help=help_text,
     )
     parser.add_argument(
-        "--cgroup-isolate",
-        default=True,
+        "--cgroup",
+        default=False,
         action=argparse.BooleanOptionalAction,
-        help="Launch the director in its own cgroup (Linux with systemd only, via "
-        "'systemd-run --user --scope'), so that peak memory usage of the director and "
-        "its children can be measured accurately. Falls back to not reporting memory "
-        "usage if unavailable or disabled here.",
+        help="Launch the director in its own cgroup, so that peak memory usage of the director and "
+        "its children can be measured accurately. (Supported on Linux with systemd only.) "
+        "Fails if not supported.",
     )
     parser.add_argument(
         "--clean",

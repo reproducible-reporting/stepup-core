@@ -73,6 +73,7 @@ This is release candidate 7 for the upcoming StepUp 4.0 release.
 - Added a `--reschedule-cap` option (default 100) that fails a step
   once it has been rescheduled that many times in a row without succeeding.
   This acts as a livelock guard for `amend()`-driven reschedules.
+- Added support for cgroup v2 memory accounting on Linux with `systemd-run`.
 
 ### Changed
 

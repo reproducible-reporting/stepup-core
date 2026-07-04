@@ -87,6 +87,7 @@ async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
                     director_socket_path=director_socket_path,
                     njob=1,
                     reporter=reporter,
+                    do_cgroup=False,
                     do_clean=True,
                     use_duration=False,
                     explain_rerun=False,

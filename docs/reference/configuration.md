@@ -113,11 +113,14 @@ These settings are stored under the `[build]` section in config files
 Each entry below lists the config file key, environment variable, and command-line option
 separated by slashes, where applicable.
 
-`cgroup_isolate` / `STEPUP_BUILD_CGROUP_ISOLATE` / `--cgroup-isolate`, `--no-cgroup-isolate`
+`cgroup` / `STEPUP_BUILD_CGROUP` / `--cgroup`, `--no-cgroup`
 
-:   On by default on Linux.
-    This setting controls whether StepUp will use cgroup isolation for measuring
-    the peak memory usage of the director process and all its child processes.
+:   This setting controls whether StepUp will run the director
+    (and all its child processes running steps) use cgroup isolation.
+    When enabled, peak memory usage of the director process and all its child processes is measured.
+    Only available on Linux with cgroup v2 enabled and if `systemd-run` is available.
+    Exceptions are raised if cgroup isolation is requested but not working.
+    Off by default.
 
 `clean` / `STEPUP_BUILD_CLEAN` / `--clean`, `--no-clean`
 

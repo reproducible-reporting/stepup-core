@@ -52,7 +52,7 @@ from .sqlite3 import DBSession
 from .startup import startup_from_db
 from .step import Step
 from .stepinfo import StepInfo
-from .usage import CgroupMemorySampler, find_own_memory_cgroup, format_resource_usage
+from .usage import CgroupMemorySampler, format_resource_usage
 from .watcher import WATCHER_AVAILABLE, Watcher
 from .workflow import Workflow
 
@@ -122,6 +122,7 @@ async def async_main(
                 director_socket_path=args.director_socket,
                 njob=args.jobs,
                 reporter=reporter,
+                do_cgroup=args.cgroup,
                 do_clean=args.clean,
                 use_duration=args.duration,
                 explain_rerun=args.explain_rerun,
@@ -160,6 +161,12 @@ def parse_args() -> argparse.Namespace:
         "director_socket",
         type=Path,
         help="The socket at which StepUp will listen for instructions.",
+    )
+    parser.add_argument(
+        "--cgroup",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Enable peak memory usage tracking through cgroups.",
     )
     parser.add_argument(
         "--clean",
@@ -292,6 +299,7 @@ async def serve(
     director_socket_path: Path,
     njob: int,
     reporter: ReporterClient,
+    do_cgroup: bool,
     do_clean: bool,
     use_duration: bool,
     explain_rerun: bool,
@@ -315,6 +323,8 @@ async def serve(
     reporter
         The reporter client for sending information back to
         the terminal user interface.
+    do_cgroup
+        If True, the director tracks peak memory usage through cgroups.
     do_clean
         If True, the director removes outdated output files.
     use_duration
@@ -387,8 +397,7 @@ async def serve(
         mp_ctx=mp_ctx,
         infra_env=infra_env,
     )
-    cgroup_dir = find_own_memory_cgroup()
-    memory_sampler = None if cgroup_dir is None else CgroupMemorySampler(cgroup_dir)
+    memory_sampler = CgroupMemorySampler() if do_cgroup else None
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(
         scheduler, workflow, db, reporter, builder, watcher, stop_event

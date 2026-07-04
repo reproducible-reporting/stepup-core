@@ -42,7 +42,6 @@ __all__ = (
     "ResourceUsage",
     "find_own_memory_cgroup",
     "format_resource_usage",
-    "read_cgroup_memory_mib",
 )
 
 
@@ -143,45 +142,41 @@ class ResourceAccumulator:
         self.add(usage.utime, usage.stime, usage.inblock, usage.oublock)
 
 
-def _own_cgroup_path() -> str | None:
-    """Return this process's cgroup v2 path, relative to the cgroup mount, or `None`.
+def _own_cgroup_path() -> Path:
+    """Return this process's cgroup v2 path, relative to the cgroup mount.
 
     Parses `/proc/self/cgroup` for the unified-hierarchy line (`"0::/path"`).
-    Returns `None` on any other layout (e.g. a cgroup v1 system, where that file
+    Raises on any other layout (e.g. a cgroup v1 system, where that file
     has one line per legacy controller instead) or if the file cannot be read.
 
     The kernel always writes `path` with a leading slash, but it is relative to
-    the cgroup v2 mount point, not an absolute filesystem path — that leading
-    slash is stripped here so callers can safely join it onto `cgroup_root`
-    (joining two `Path`s where the second looks absolute would otherwise
-    silently discard the first).
+    the cgroup v2 mount point, not an absolute filesystem path.
+    The leading slash is stripped here so callers can safely join it onto `cgroup_root`.
+
+    Raises
+    ------
+    OSError
+        If `/proc/self/cgroup` cannot be read.
+    RuntimeError
+        If the file is read but does not contain a unified-hierarchy line.
     """
-    try:
-        with open("/proc/self/cgroup") as fh:
-            for line in fh:
-                if line.startswith("0::"):
-                    return line[3:].strip().lstrip("/")
-    except OSError:
-        return None
-    return None
+    with open("/proc/self/cgroup") as fh:
+        for line in fh:
+            if line.startswith("0::"):
+                return Path(line[3:].strip().lstrip("/"))
+    raise RuntimeError("Cgroups unavailable: no unified-hierarchy line in /proc/self/cgroup.")
 
 
-def find_own_memory_cgroup(cgroup_root: str = "/sys/fs/cgroup") -> str | None:
+def find_own_memory_cgroup(cgroup_root: str = "/sys/fs/cgroup") -> Path:
     """Return this process's cgroup directory, if memory accounting is usable there.
 
-    Cgroup v2 memory accounting (`memory.current` / `memory.peak`) reflects every
-    process in a cgroup, so it only gives a meaningful total for "this process and
-    its descendants" if that cgroup does not also contain unrelated processes — which
-    is essentially never true for a plain interactive invocation (the shell, and
-    everything else in the session, share that cgroup too). This does not create or
-    modify any cgroup; it is on the caller (see `stepup.core.tui.cgroup_scope_prefix()`)
-    to arrange for this process to already be the sole occupant of its own cgroup, e.g.
-    by launching it via `systemd-run --scope`.
+    This does not create or modify any cgroup;
+    it is on the caller (see `stepup.core.tui.cgroup_scope_prefix()`)
+    to arrange for this process to already be the sole occupant of its own cgroup,
+    e.g. by launching it via `systemd-run --scope`.
 
-    This is best-effort: any failure (not Linux, not cgroup v2, memory accounting not
-    active for this cgroup, ...) is logged and reported by returning `None` rather than
-    raising, per this module's "no fallback" policy — callers should simply skip memory
-    sampling in that case.
+    Any failure (not Linux, not cgroup v2, memory accounting not active for this cgroup, ...)
+    will raise an exception.
 
     Parameters
     ----------
@@ -192,61 +187,38 @@ def find_own_memory_cgroup(cgroup_root: str = "/sys/fs/cgroup") -> str | None:
     Returns
     -------
     cgroup_dir
-        The absolute path of this process's own cgroup, or `None` if cgroup memory
-        accounting is not usable there.
+        The absolute path of this process's own cgroup.
+
+    Raises
+    ------
+    RuntimeError
+        If cgroup memory accounting is unavailable for any reason.
     """
     if sys.platform != "linux":
-        logger.info("Cgroup memory accounting unavailable: not running on Linux.")
-        return None
+        raise RuntimeError("Cgroups unavailable: not running on Linux.")
     # Try to get the cgroup path.
     cgroup_root = Path(cgroup_root)
-    own_path = _own_cgroup_path()
-    if own_path is None:
-        logger.info("Cgroup memory accounting unavailable: not using cgroup v2.")
-        return None
+    try:
+        own_path = _own_cgroup_path()
+    except OSError as exc:
+        raise RuntimeError("Cgroups unavailable: failed to read /proc/self/cgroup.") from exc
     # Verify that the director is alone in the cgroup.
     own_dir = cgroup_root / own_path
     try:
         with open(own_dir / "cgroup.procs") as fh:
             pids = [int(line) for line in fh if line.strip()]
-    except (OSError, ValueError):
-        logger.info("Cgroup memory accounting unavailable: failed to read cgroup.procs.")
-        return None
+    except (OSError, ValueError) as exc:
+        raise RuntimeError("Cgroups unavailable: failed to read cgroup.procs.") from exc
     if pids != [os.getpid()]:
-        logger.info(
-            "Cgroup memory accounting unavailable: cgroup %s contains other processes: %s.",
-            own_path,
-            pids,
-        )
-        return None
+        raise RuntimeError("Cgroups unavailable: director is not alone in its cgroup.")
     # Verify that memory accounting is actually active for this cgroup.
-    if read_cgroup_memory_mib(own_dir, "current") is None:
-        logger.info(
-            "Cgroup memory accounting unavailable: memory.current not readable in %s.", own_dir
-        )
-        return None
+    try:
+        with open(own_dir / "memory.current") as fh:
+            fh.read()
+    except (OSError, ValueError) as exc:
+        raise RuntimeError("Cgroups unavailable: failed to read memory.current.") from exc
     logger.info("Cgroup memory accounting enabled: sampling memory.current/peak in %s.", own_dir)
     return own_dir
-
-
-def read_cgroup_memory_mib(cgroup_dir: str, kind: str) -> float | None:
-    """Read a cgroup's memory usage, in mibibytes.
-
-    Parameters
-    ----------
-    cgroup_dir
-        Absolute path of the cgroup, as returned by `find_own_memory_cgroup()`.
-
-    Returns
-    -------
-    memory_mib
-        The memory usage in mibibytes, or `None` if unreadable.
-    """
-    try:
-        with open(Path(cgroup_dir) / f"memory.{kind}") as fh:
-            return int(fh.read()) / 1048576
-    except (OSError, ValueError):
-        return None
 
 
 @attrs.define
@@ -265,8 +237,12 @@ class CgroupMemorySampler:
     where `memory.peak` is not available.
     """
 
-    cgroup_dir: str | None = attrs.field()
-    """The dedicated cgroup to sample, or `None` if cgroup memory accounting is unavailable."""
+    cgroup_dir: Path | None = attrs.field(default=None)
+    """The dedicated cgroup to sample.
+
+    Pass `None` (the default) to auto-detect via `find_own_memory_cgroup()`
+    during `__attrs_post_init__`, which raises `RuntimeError` if unavailable.
+    """
 
     interval: float = attrs.field(default=1.0)
     """Sampling period [s]."""
@@ -277,35 +253,38 @@ class CgroupMemorySampler:
     nsample: int = attrs.field(init=False, default=0)
     """The number of samples successfully read (0 means no peak is available)."""
 
+    def __attrs_post_init__(self) -> None:
+        if self.cgroup_dir is None:
+            self.cgroup_dir = find_own_memory_cgroup()
+
     def sample_once(self) -> None:
         """Take one sample and update `peak_mib` if it is a new maximum.
 
-        Does nothing when `cgroup_dir` is `None`.
+        Silently skips the sample if neither `memory.peak` nor `memory.current`
+        is readable, e.g. due to a race with the cgroup scope being torn down.
         """
-        if self.cgroup_dir is None:
-            return
-        current_mib = read_cgroup_memory_mib(self.cgroup_dir, "current")
-        peak_mib = read_cgroup_memory_mib(self.cgroup_dir, "peak")
-        best_mib = max((mib for mib in (current_mib, peak_mib) if mib is not None), default=None)
+        best_mib = None
+        with contextlib.suppress(OSError, ValueError), open(self.cgroup_dir / "memory.peak") as fh:
+            best_mib = int(fh.read()) / 1048576
+        if best_mib is None:
+            with (
+                contextlib.suppress(OSError, ValueError),
+                open(self.cgroup_dir / "memory.current") as fh,
+            ):
+                best_mib = int(fh.read()) / 1048576
         if best_mib is not None:
             self.nsample += 1
             self.peak_mib = best_mib if self.peak_mib is None else max(self.peak_mib, best_mib)
 
     async def loop(self, stop_event: asyncio.Event) -> None:
-        """Background loop: sample immediately, then periodically until `stop_event` is set.
-
-        An eager first sample ensures very short-lived builds still get one data point.
-        Unlike `/proc`-tree-walking, a sample here is just one or two small cgroup
-        pseudo-file reads, cheap enough to run directly on the event loop.
-        """
-        self.sample_once()
+        """Sample memory usage periodically until `stop_event` is set."""
         while not stop_event.is_set():
             try:
+                self.sample_once()
                 with contextlib.suppress(asyncio.TimeoutError):
                     await asyncio.wait_for(stop_event.wait(), timeout=self.interval)
                 if stop_event.is_set():
                     break
-                self.sample_once()
             except asyncio.CancelledError:
                 break
 
