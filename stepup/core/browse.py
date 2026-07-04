@@ -27,6 +27,7 @@ import json
 import os
 import pickle
 import stat
+import threading
 import traceback
 import webbrowser
 from collections.abc import Callable, Iterator
@@ -46,6 +47,13 @@ from .step import Step
 from .utils import escape_command_display, format_subprocess
 
 
+def _detect_browsers() -> str:
+    """Return a comma-separated list of browsers detected by the `webbrowser` module."""
+    with contextlib.suppress(webbrowser.Error):
+        webbrowser.get()
+    return ", ".join(webbrowser._tryorder) if webbrowser._tryorder else "none detected"
+
+
 def browse_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     """Define command-line arguments for the browse tool.
 
@@ -61,8 +69,20 @@ def browse_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     parser.add_argument(
         "--port",
         type=int,
-        default=8000,
-        help="Port to bind the server to (default: 8000).",
+        default=7837,
+        help="Port to bind the server to (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--open-browser",
+        default=True,
+        action=argparse.BooleanOptionalAction,
+        help="Open a web browser to view the graph (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--browser",
+        type=str,
+        default=None,
+        help=f"Browser to use (default: system default). Detected browsers: {_detect_browsers()}.",
     )
     loader.patch_parser(parser)
     return browse_tool
@@ -79,15 +99,40 @@ def browse_tool(args: argparse.Namespace):
     GraphServer.path_db = path_db
     # Standard library HTTP server.
     server = HTTPServer(("localhost", args.port), GraphServer)
+    # Serve in a background thread and start it before opening the browser:
+    # some browsers (e.g. text-mode ones like lynx or w3m, launched by webbrowser.open()
+    # below) block the calling thread until they exit, which would otherwise prevent
+    # the server from ever answering their own requests.
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
     try:
         url = f"http://localhost:{args.port}"
         print(f"Server started {url}")
         print("Press Ctrl+C to stop the server.")
-        if not webbrowser.open(url):
-            print("Warning: could not open a browser. Open the URL above manually.")
-        with contextlib.suppress(KeyboardInterrupt):
-            server.serve_forever()
+        if args.open_browser and args.browser is None:
+            print("Set --browser or the BROWSER environment variable to pick a browser.")
+        blocking = False
+        if args.open_browser:
+            try:
+                browser = webbrowser.get(args.browser)
+            except webbrowser.Error:
+                browser = None
+            # Generic (non-background) browsers, e.g. text-mode ones like lynx or w3m,
+            # run in the foreground and block webbrowser.open() below until the user quits
+            # them. In that case, exit as soon as they return instead of waiting for
+            # Ctrl+C. GUI browsers return immediately after launching, so keep serving
+            # until interrupted.
+            blocking = isinstance(browser, webbrowser.GenericBrowser) and not isinstance(
+                browser, webbrowser.BackgroundBrowser
+            )
+            if browser is None or not browser.open(url):
+                print("Warning: could not open a browser. Open the URL above manually.")
+                blocking = False
+        if not blocking:
+            with contextlib.suppress(KeyboardInterrupt):
+                server_thread.join()
     finally:
+        server.shutdown()
         if GraphServer.con is not None:
             GraphServer.con.close()
         server.server_close()
@@ -305,6 +350,11 @@ class GraphServer(BaseHTTPRequestHandler):
     path_db = None
     con = None
 
+    def log_message(self, fmt, *args):
+        # Suppress the default request logging to stderr: it clutters the terminal
+        # when a text-mode browser (e.g. lynx) is used to browse the graph there.
+        pass
+
     def do_GET(self):
         # Basic URL parsing.
         parsed = urlparse(self.path)
@@ -312,7 +362,6 @@ class GraphServer(BaseHTTPRequestHandler):
 
         # (Re)load the database if requested.
         if "reload" in args or self.con is None:
-            print("Loading database...")
             if self.con is not None:
                 self.con.close()
             self.con = connect(self.path_db, read_only=True)

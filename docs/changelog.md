@@ -160,8 +160,10 @@ This is release candidate 7 for the upcoming StepUp 4.0 release.
     - All tutorials have been updated to reflect the new API and workflow.
     - A [migration guide](migration/from_3x_to_40.md) has been added
       to help users migrate from StepUp 3 to StepUp 4.
-- The `stepup browse` command has become easier to use (opens a browser window automatically)
-  and shows more details of the steps.
+- The `stepup browse` command has become easier to use:
+    - When a graphical browser is the default, it opens a browser tab automatically.
+    - When a terminal browser is the default, it runs it cleanly in the terminal and exits
+      when the terminal browser is closed by the user.
 - Updates of many internals, including:
     - Renamed "orphan" and related names to "detached", which is more intuitive.
       The new terminology is applied more consistently with consistent distinction between
