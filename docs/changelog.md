@@ -88,6 +88,13 @@ This is release candidate 7 for the upcoming StepUp 4.0 release.
   (The old values is common for I/O-bound build workflows,
   but StepUp is more commonly applied to CPU-bound workflows,
   for which the new default is more suitable.)
+- The CPU detection (when `-j` is given as a float) has been extended.
+  It now tries, in order:
+  1. The number of cores available within the current cgroup (cgroup v2 only).
+  2. Job-scheduler CPU-related environment variables (SLURM, PBS).
+  3. The CPU affinity mask reported by the operating system.
+  4. The total number of CPUs reported by the operating system.
+  The first source that yields a usable value is used.
 - The `runsh()` and `runpy()` functions have been replaced by the more flexible `run()` function.
   The new implementation is more efficient and automatically tracks local scripts as dependencies.
 - The `plan()` function has been made maximally similar to `run()`,

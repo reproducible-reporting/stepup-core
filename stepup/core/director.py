@@ -41,8 +41,10 @@ except ImportError:
 
 from .asyncio import wait_for_events
 from .builder import Builder
+from .cgroups import get_ncore_from_cgroup
 from .constants import DIRECTOR_LOG, DIRECTOR_PROF, GRAPH_DB, SQLLOG_JSON
 from .enums import HashUpdateCause, Need, ReturnCode, StepState
+from .exceptions import CgroupError
 from .hash import FileHash
 from .nglob import NGlobMulti
 from .reporter import ReporterClient
@@ -56,7 +58,7 @@ from .usage import CgroupMemorySampler, format_resource_usage
 from .watcher import WATCHER_AVAILABLE, Watcher
 from .workflow import Workflow
 
-__all__ = ("ServeResult", "get_socket", "interpret_jobs", "serve")
+__all__ = ("ServeResult", "get_ncore", "get_socket", "interpret_jobs", "serve")
 
 
 logger = logging.getLogger(__name__)
@@ -285,13 +287,38 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+# Environment variables through which batch schedulers advertise the number of cores
+# allocated to the current job, in order of priority.
+SCHEDULER_CPU_ENV_VARS = ("SLURM_CPUS_PER_TASK", "PBS_NUM_PPN", "NCPUS")
+
+
+def get_ncore() -> int:
+    """Determine the number of CPU cores available to this process.
+
+    Cgroup v2 accounting (`cpuset.cpus.effective` / `cpu.max`) is tried first, since
+    that reflects the containment actually applied to this process, e.g. by Slurm
+    or PBS. Scheduler-provided environment variables are the fallback (they are
+    only advisory and can disagree with actual cgroup containment), then the
+    OS-reported core count, because a batch scheduler may allocate fewer cores
+    than are physically present on the node.
+    """
+    try:
+        return get_ncore_from_cgroup()
+    except CgroupError:
+        pass
+    for var in SCHEDULER_CPU_ENV_VARS:
+        value = os.environ.get(var)
+        if value is not None:
+            return int(value)
+    if hasattr(os, "sched_getaffinity"):
+        return len(os.sched_getaffinity(0))
+    return os.cpu_count()
+
+
 def interpret_jobs(jobs: Decimal) -> int:
     """Convert the command-line argument jobs into an integer."""
-    if jobs.as_tuple().exponent < 0:
-        if hasattr(os, "sched_getaffinity"):
-            return int(len(os.sched_getaffinity(0)) * jobs)
-        return int(os.cpu_count() * jobs)
-    return int(jobs)
+    ncore = get_ncore() if jobs.as_tuple().exponent < 0 else 1
+    return int(ncore * jobs)
 
 
 async def serve(

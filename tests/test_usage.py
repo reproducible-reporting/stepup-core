@@ -19,18 +19,15 @@
 # --
 """Unit tests for stepup.core.usage"""
 
-import os
 from types import SimpleNamespace
 
 import pytest
 
-from stepup.core import usage
 from stepup.core.usage import (
     CgroupMemorySampler,
     ChildOutcome,
     ResourceAccumulator,
     ResourceUsage,
-    find_own_memory_cgroup,
 )
 
 
@@ -92,59 +89,6 @@ def test_resource_accumulator_add_usage():
     assert acc.stime == pytest.approx(2.0)
     assert acc.inblock == 8
     assert acc.oublock == 10
-
-
-def test_own_cgroup_path_no_unified_hierarchy(monkeypatch, path_tmp):
-    fake_path = path_tmp / "cgroup"
-    fake_path.write_text("1:name=systemd:/\n2:cpu,cpuacct:/\n")
-    real_open = open
-
-    def fake_open(path, *args, **kwargs):
-        if path == "/proc/self/cgroup":
-            path = fake_path
-        return real_open(path, *args, **kwargs)
-
-    monkeypatch.setattr(usage, "open", fake_open, raising=False)
-    with pytest.raises(RuntimeError):
-        usage._own_cgroup_path()
-
-
-def test_find_own_memory_cgroup_success(path_tmp):
-    (path_tmp / "own").mkdir()
-    (path_tmp / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n")
-    (path_tmp / "own" / "memory.current").write_text("1048576")
-    with pytest.MonkeyPatch.context() as monkeypatch:
-        monkeypatch.setattr(usage, "_own_cgroup_path", lambda: "own")
-        assert find_own_memory_cgroup(cgroup_root=path_tmp) == str(path_tmp / "own")
-
-
-def test_find_own_memory_cgroup_not_linux(monkeypatch):
-    monkeypatch.setattr(usage.sys, "platform", "darwin")
-    with pytest.raises(RuntimeError):
-        find_own_memory_cgroup()
-
-
-def test_find_own_memory_cgroup_no_cgroup_procs(path_tmp, monkeypatch):
-    (path_tmp / "own").mkdir()
-    monkeypatch.setattr(usage, "_own_cgroup_path", lambda: "own")
-    with pytest.raises(RuntimeError):
-        find_own_memory_cgroup(cgroup_root=path_tmp)
-
-
-def test_find_own_memory_cgroup_not_alone(path_tmp, monkeypatch):
-    (path_tmp / "own").mkdir()
-    (path_tmp / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n{os.getpid() + 1}\n")
-    monkeypatch.setattr(usage, "_own_cgroup_path", lambda: "own")
-    with pytest.raises(RuntimeError):
-        find_own_memory_cgroup(cgroup_root=path_tmp)
-
-
-def test_find_own_memory_cgroup_memory_not_readable(path_tmp, monkeypatch):
-    (path_tmp / "own").mkdir()
-    (path_tmp / "own" / "cgroup.procs").write_text(f"{os.getpid()}\n")
-    monkeypatch.setattr(usage, "_own_cgroup_path", lambda: "own")
-    with pytest.raises(RuntimeError):
-        find_own_memory_cgroup(cgroup_root=path_tmp)
 
 
 def test_cgroup_memory_sampler_tracks_peak(path_tmp):

@@ -26,8 +26,6 @@ children, for a compact summary report printed at director shutdown.
 
 import asyncio
 import contextlib
-import logging
-import os
 import resource
 import sys
 import time
@@ -35,17 +33,15 @@ import time
 import attrs
 from path import Path
 
+from .cgroups import find_own_memory_cgroup
+
 __all__ = (
     "CgroupMemorySampler",
     "ChildOutcome",
     "ResourceAccumulator",
     "ResourceUsage",
-    "find_own_memory_cgroup",
     "format_resource_usage",
 )
-
-
-logger = logging.getLogger(__name__)
 
 
 @attrs.define(frozen=True)
@@ -142,85 +138,6 @@ class ResourceAccumulator:
         self.add(usage.utime, usage.stime, usage.inblock, usage.oublock)
 
 
-def _own_cgroup_path() -> Path:
-    """Return this process's cgroup v2 path, relative to the cgroup mount.
-
-    Parses `/proc/self/cgroup` for the unified-hierarchy line (`"0::/path"`).
-    Raises on any other layout (e.g. a cgroup v1 system, where that file
-    has one line per legacy controller instead) or if the file cannot be read.
-
-    The kernel always writes `path` with a leading slash, but it is relative to
-    the cgroup v2 mount point, not an absolute filesystem path.
-    The leading slash is stripped here so callers can safely join it onto `cgroup_root`.
-
-    Raises
-    ------
-    OSError
-        If `/proc/self/cgroup` cannot be read.
-    RuntimeError
-        If the file is read but does not contain a unified-hierarchy line.
-    """
-    with open("/proc/self/cgroup") as fh:
-        for line in fh:
-            if line.startswith("0::"):
-                return Path(line[3:].strip().lstrip("/"))
-    raise RuntimeError("Cgroups unavailable: no unified-hierarchy line in /proc/self/cgroup.")
-
-
-def find_own_memory_cgroup(cgroup_root: str = "/sys/fs/cgroup") -> Path:
-    """Return this process's cgroup directory, if memory accounting is usable there.
-
-    This does not create or modify any cgroup;
-    it is on the caller (see `stepup.core.tui.cgroup_scope_prefix()`)
-    to arrange for this process to already be the sole occupant of its own cgroup,
-    e.g. by launching it via `systemd-run --scope`.
-
-    Any failure (not Linux, not cgroup v2, memory accounting not active for this cgroup, ...)
-    will raise an exception.
-
-    Parameters
-    ----------
-    cgroup_root
-        The cgroup v2 mount point. Overridable so tests can point this at a fake
-        tree instead of the real `/sys/fs/cgroup`.
-
-    Returns
-    -------
-    cgroup_dir
-        The absolute path of this process's own cgroup.
-
-    Raises
-    ------
-    RuntimeError
-        If cgroup memory accounting is unavailable for any reason.
-    """
-    if sys.platform != "linux":
-        raise RuntimeError("Cgroups unavailable: not running on Linux.")
-    # Try to get the cgroup path.
-    cgroup_root = Path(cgroup_root)
-    try:
-        own_path = _own_cgroup_path()
-    except OSError as exc:
-        raise RuntimeError("Cgroups unavailable: failed to read /proc/self/cgroup.") from exc
-    # Verify that the director is alone in the cgroup.
-    own_dir = cgroup_root / own_path
-    try:
-        with open(own_dir / "cgroup.procs") as fh:
-            pids = [int(line) for line in fh if line.strip()]
-    except (OSError, ValueError) as exc:
-        raise RuntimeError("Cgroups unavailable: failed to read cgroup.procs.") from exc
-    if pids != [os.getpid()]:
-        raise RuntimeError("Cgroups unavailable: director is not alone in its cgroup.")
-    # Verify that memory accounting is actually active for this cgroup.
-    try:
-        with open(own_dir / "memory.current") as fh:
-            fh.read()
-    except (OSError, ValueError) as exc:
-        raise RuntimeError("Cgroups unavailable: failed to read memory.current.") from exc
-    logger.info("Cgroup memory accounting enabled: sampling memory.current/peak in %s.", own_dir)
-    return own_dir
-
-
 @attrs.define
 class CgroupMemorySampler:
     """Periodically sample aggregate cgroup memory across the director's process tree.
@@ -241,7 +158,7 @@ class CgroupMemorySampler:
     """The dedicated cgroup to sample.
 
     Pass `None` (the default) to auto-detect via `find_own_memory_cgroup()`
-    during `__attrs_post_init__`, which raises `RuntimeError` if unavailable.
+    during `__attrs_post_init__`, which raises `CgroupError` if unavailable.
     """
 
     interval: float = attrs.field(default=1.0)
