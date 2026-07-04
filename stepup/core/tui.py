@@ -24,6 +24,7 @@ import asyncio
 import contextlib
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -93,6 +94,18 @@ def cgroup_scope_prefix() -> list[str]:
 
 def build_tool(args: argparse.Namespace, default_resources: str):
     asyncio.run(async_build(args, default_resources))
+
+
+def _handle_terminal_signal(
+    reporter_handler: ReporterHandler,
+    process_director: asyncio.subprocess.Process,
+    sig: signal.Signals,
+):
+    """Print a warning message and forward the signal to the director."""
+    reporter_handler.report("ERROR", f"TUI killed by {sig.name}. Immediate shutdown.", [])
+    reporter_handler.shutdown()
+    # process_director.send_signal(sig)
+    sys.exit()
 
 
 async def async_build(args: argparse.Namespace, default_resources: str):
@@ -199,6 +212,13 @@ async def async_build(args: argparse.Namespace, default_resources: str):
                     stdout=log_file,
                     stderr=subprocess.STDOUT,
                 )
+                # Install terminal signal handlers, to avoid internal tracebacks
+                # when the user presses Ctrl-C or the process is killed by a SIGTERM.
+                loop = asyncio.get_running_loop()
+                for sig in (signal.SIGINT, signal.SIGTERM):
+                    loop.add_signal_handler(
+                        sig, _handle_terminal_signal, reporter_handler, process_director, sig
+                    )
                 # Instantiate keyboard interaction or work non-interactively
                 if sys.stdin.isatty():
                     await wait_for_path(director_socket_path, stop_event)
@@ -208,6 +228,12 @@ async def async_build(args: argparse.Namespace, default_resources: str):
                     )
                     tasks.append(task_keyboard)
                 returncode = await process_director.wait()
+            if returncode < 0:
+                signal_name = signal.Signals(-returncode).name
+                reporter_handler.report("ERROR", f"Director killed by {signal_name}", [])
+                # The director never got to call back into reporter.shutdown(), which would
+                # normally stop the progress bar's Live display and restore the cursor.
+                reporter_handler.shutdown()
             stop_event.set()
         finally:
             try:
