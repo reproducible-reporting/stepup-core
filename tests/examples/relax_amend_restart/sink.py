@@ -19,10 +19,10 @@ else:
     raise RuntimeError("data.txt never appeared")
 
 # Comfortable margin for the director to register data.txt as BUILT (see
-# relax_amend_success/consumer.py for why this matters). Only relevant for the very
+# relax_amend_success/sink.py for why this matters). Only relevant for the very
 # first invocation, where producer.sh and this step race; irrelevant afterward.
 time.sleep(0.2)
 
 content = data_path.read_text()
 amend(inp=["data.txt"])
-print(f"consumer read: {content.strip()}")
+print(f"sink read: {content.strip()}")

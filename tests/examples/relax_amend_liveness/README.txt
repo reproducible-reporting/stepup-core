@@ -1,7 +1,7 @@
 Exercises the liveness gap fixed by splitting rescheduled_info into unavailable_inputs and unfresh_inputs.
 
-The consumer's amend() call happens after its producer has already fully completed,
-so the dependency edge to data.txt is created only after producer.sh's own File.completed() already ran.
+The sink's amend() call happens after its producer has already fully completed,
+so the dependency edge to data.txt is created only after source.sh's own File.completed() already ran.
 Under the old single-bucket scheme nothing would ever call mark_pending() on this step again,
 so it would sit in PENDING forever.
 Here it converges to SUCCESS after exactly one reschedule,

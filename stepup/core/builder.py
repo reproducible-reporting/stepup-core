@@ -235,8 +235,8 @@ CREATE TEMP TABLE optional_to_be_deleted AS
 SELECT node.i, node.label, file.state, file.hash
 FROM file
 JOIN node ON file.node = node.i
-JOIN dependency ON dependency.consumer = node.i
-JOIN optional_step ON dependency.supplier = optional_step.i
+JOIN dependency ON dependency.sink = node.i
+JOIN optional_step ON dependency.source = optional_step.i
 WHERE file.state
 IN ({FileState.VOLATILE.value}, {FileState.BUILT.value}, {FileState.OUTDATED.value})
 """

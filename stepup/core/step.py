@@ -69,13 +69,13 @@ CREATE TABLE IF NOT EXISTS step (
     _check_safe INTEGER NOT NULL CHECK(_check_safe IN (0, 1)),
     -- Whether recent changes to this step imply updates of the _safe metadata field of others.
     _implied_need INTEGER NOT NULL CHECK(_implied_need >= 31 AND _implied_need <= 34),
-    -- The need that is implied by consumers, as defined in the Need enum.
+    -- The need that is implied by sinks, as defined in the Need enum.
     _tail_time REAL NOT NULL CHECK(_tail_time >= 0) DEFAULT 1.0,
     -- The tail_time of this step, defined as the total duration of the critical path from this step
     -- to the exit nodes of the workflow.
     _check_after INTEGER NOT NULL CHECK(_check_after IN (0, 1)),
     -- Whether recent changes to this step require the recalculation of the _implied_need
-    -- metadata of this step and its suppliers.
+    -- metadata of this step and its sources.
 
     -- Indices for efficient querying
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
@@ -92,11 +92,11 @@ CREATE INDEX IF NOT EXISTS step_check_after ON step(node) WHERE _check_after;
 -- A no-op UPDATE (zero rows matched) is harmless when the other endpoint is not a step.
 CREATE TRIGGER IF NOT EXISTS step_dependency_check_after_ins AFTER INSERT ON dependency
 BEGIN
-    UPDATE step SET _check_after = 1 WHERE node IN (NEW.supplier, NEW.consumer);
+    UPDATE step SET _check_after = 1 WHERE node IN (NEW.source, NEW.sink);
 END;
 CREATE TRIGGER IF NOT EXISTS step_dependency_check_after_del AFTER DELETE ON dependency
 BEGIN
-    UPDATE step SET _check_after = 1 WHERE node IN (OLD.supplier, OLD.consumer);
+    UPDATE step SET _check_after = 1 WHERE node IN (OLD.source, OLD.sink);
 END;
 
 -- Clear unavailable_inputs/unfresh_inputs once a step reaches a completed state, so a
@@ -239,11 +239,11 @@ UPDATE step SET _check_safe = 1, _check_after = 1 FROM (
 """
 
 
-# When a step (sub)tree is detached, the steps supplying inputs to it lose a consumer.
+# When a step (sub)tree is detached, the steps supplying inputs to it lose a sink.
 # Their _implied_need and _tail_time must therefore be recomputed, so flag _check_after on them.
-# Suppliers are reached with two dependency hops: subtree_step <- input_file <- supplier_step.
-# Only non-detached supplier steps are flagged; detached ones are excluded from the metadata anyway.
-RECURSIVE_CHECK_AFTER_SUPPLIERS = """
+# Sources are reached with two dependency hops: subtree_step <- input_file <- source_step.
+# Only non-detached source steps are flagged; detached ones are excluded from the metadata anyway.
+RECURSIVE_CHECK_AFTER_SOURCES = """
 UPDATE step SET _check_after = 1 FROM (
     WITH RECURSIVE subtree(node) AS (
         -- Start from the detached step and recurse over its product steps (the detached subtree).
@@ -253,13 +253,13 @@ UPDATE step SET _check_after = 1 FROM (
         JOIN subtree ON node.creator = subtree.node
         WHERE node.kind = 'step'
     )
-    -- Two hops back along dependency edges to the supplier steps of the subtree.
-    SELECT DISTINCT dep2.supplier AS node
+    -- Two hops back along dependency edges to the source steps of the subtree.
+    SELECT DISTINCT dep2.source AS node
     FROM subtree
-    JOIN dependency AS dep1 ON dep1.consumer = subtree.node
-    JOIN dependency AS dep2 ON dep2.consumer = dep1.supplier
-    JOIN node AS supplier_node ON supplier_node.i = dep2.supplier
-    WHERE supplier_node.kind = 'step' AND NOT supplier_node.detached
+    JOIN dependency AS dep1 ON dep1.sink = subtree.node
+    JOIN dependency AS dep2 ON dep2.sink = dep1.source
+    JOIN node AS source_node ON source_node.i = dep2.source
+    WHERE source_node.kind = 'step' AND NOT source_node.detached
 ) AS sup WHERE step.node = sup.node
 """
 
@@ -336,7 +336,7 @@ class Step(Node):
         if need == implied_need:
             yield "need", need.name
         else:
-            yield "need", f"{implied_need.name} (implied by consumers > {need.name})"
+            yield "need", f"{implied_need.name} (implied by sinks > {need.name})"
 
         sql = "SELECT name, amended FROM env_var WHERE node = ?"
         label = "using_env"
@@ -372,17 +372,17 @@ class Step(Node):
         step_resource, step_subprocess) are removed automatically by `ON DELETE CASCADE`
         when the node row is deleted, so only the dependency edges are handled here.
         """
-        self.del_suppliers()
-        for consumer in self.consumers(include_detached=True):
-            consumer.del_suppliers([self])
+        self.del_sources()
+        for sink in self.sinks(include_detached=True):
+            sink.del_sources([self])
 
     def give_up(self):
         """Clean up a detached node because it loses a product node.
 
         Completely remove this step, making reuse impossible.
         """
-        for consumer in self.consumers(include_detached=True):
-            consumer.del_suppliers([self])
+        for sink in self.sinks(include_detached=True):
+            sink.del_sources([self])
         for product in self.products():
             product.detach()
         self.detach()
@@ -396,11 +396,11 @@ class Step(Node):
     def _dependencies_str(
         self,
         node_type: type = Self,
-        do_suppliers: bool = True,
+        do_sources: bool = True,
     ) -> Iterator[tuple[int, str]]:
         # TODO: make more efficient with executemany
         sql = "SELECT 1 FROM amended_dep WHERE i = ?"
-        for idep, node_str in super()._dependencies_str(node_type, do_suppliers):
+        for idep, node_str in super()._dependencies_str(node_type, do_sources):
             amended = self.db.execute(sql, (idep,)).fetchone() is not None
             yield idep, f"{node_str} [amended]" if amended else node_str
 
@@ -543,15 +543,15 @@ class Step(Node):
             if yield_amended or amended is not None:
                 raise ValueError("Cannot combine amended with product relation.")
             sql = "WITH relevant AS (SELECT i AS node FROM node WHERE creator = :node)"
-        elif relation == "supplier":
+        elif relation == "source":
             sql = (
                 "WITH relevant AS "
-                "(SELECT supplier AS node, i AS idep FROM dependency WHERE consumer = :node)"
+                "(SELECT source AS node, i AS idep FROM dependency WHERE sink = :node)"
             )
-        elif relation == "consumer":
+        elif relation == "sink":
             sql = (
                 "WITH relevant AS "
-                "(SELECT consumer AS node, i AS idep FROM dependency WHERE supplier = :node)"
+                "(SELECT sink AS node, i AS idep FROM dependency WHERE source = :node)"
             )
         else:
             raise ValueError(f"Unrecognized relation argument: '{relation}'")
@@ -626,7 +626,7 @@ class Step(Node):
     ) -> Iterator:
         """Iterate over input files of this step."""
         yield from self._paths(
-            "supplier", yield_state, yield_hash, yield_detached, yield_amended, amended
+            "source", yield_state, yield_hash, yield_detached, yield_amended, amended
         )
 
     def out_paths(
@@ -640,7 +640,7 @@ class Step(Node):
     ) -> Iterator:
         """Iterate over output files of this step."""
         yield from self._paths(
-            "consumer",
+            "sink",
             yield_state,
             yield_hash,
             yield_detached,
@@ -659,7 +659,7 @@ class Step(Node):
     ) -> Iterator:
         """Iterate over volatile output files of this step."""
         yield from self._paths(
-            "consumer",
+            "sink",
             False,
             yield_hash,
             yield_detached,
@@ -729,17 +729,17 @@ class Step(Node):
 
         - output files that are in state BUILT
         """
-        # Drop amended suppliers.
+        # Drop amended sources.
         rows = list(
             self.db.execute(
                 "SELECT dependency.i, node.i, node.label, node.kind FROM dependency "
-                "JOIN node ON node.i = supplier "
-                "JOIN amended_dep ON amended_dep.i = dependency.i WHERE consumer = ?",
+                "JOIN node ON node.i = source "
+                "JOIN amended_dep ON amended_dep.i = dependency.i WHERE sink = ?",
                 (self.i,),
             )
         )
         self.db.executemany("DELETE FROM amended_dep WHERE i = ?", ((row[0],) for row in rows))
-        self.del_suppliers(
+        self.del_sources(
             [self.graph.node_classes[kind](self.graph, i, label) for _, i, label, kind in rows]
         )
 
@@ -749,21 +749,21 @@ class Step(Node):
         # Drop nglob_multis
         self.db.execute("DELETE FROM nglob_multi WHERE node = ?", (self.i,))
 
-        # Drop amended consumers and detach the corresponding consumer nodes.
-        records_consumer = list(
+        # Drop amended sinks and detach the corresponding sink nodes.
+        records_sink = list(
             self.db.execute(
-                "SELECT dependency.i, consumer, label, kind FROM dependency "
+                "SELECT dependency.i, sink, label, kind FROM dependency "
                 "JOIN amended_dep ON amended_dep.i = dependency.i "
-                "JOIN node ON consumer = node.i "
-                "WHERE supplier = ?",
+                "JOIN node ON sink = node.i "
+                "WHERE source = ?",
                 (self.i,),
             )
         )
-        ideps_consumer = [(row[0],) for row in records_consumer]
-        self.db.executemany("DELETE FROM amended_dep WHERE i = ?", ideps_consumer)
-        for _, i, label, kind in records_consumer:
+        ideps_sink = [(row[0],) for row in records_sink]
+        self.db.executemany("DELETE FROM amended_dep WHERE i = ?", ideps_sink)
+        for _, i, label, kind in records_sink:
             node = self.graph.node_classes[kind](self.graph, i, label)
-            node.del_suppliers([self])
+            node.del_sources([self])
             node.detach()
 
         # Detach steps created by this step
@@ -1016,8 +1016,8 @@ class Step(Node):
         if state in (StepState.SUCCEEDED, StepState.FAILED):
             logger.info("Mark %s step PENDING: %s", state.name, self.label)
             self.set_state(StepState.PENDING)
-            # Make all consumers (output files) pending
-            for file in self.consumers(File, include_detached=True):
+            # Make all sinks (output files) pending
+            for file in self.sinks(File, include_detached=True):
                 if file.get_state() == FileState.BUILT:
                     file.mark_outdated()
 
@@ -1029,8 +1029,8 @@ class Step(Node):
         """Detach this step from the graph, but keep it in the database."""
         super().detach()
         self._check_with_products()
-        # Supplier steps of the detached subtree lost a consumer, so their metadata is stale.
-        self.db.execute(RECURSIVE_CHECK_AFTER_SUPPLIERS, (self.i,))
+        # Source steps of the detached subtree lost a sink, so their metadata is stale.
+        self.db.execute(RECURSIVE_CHECK_AFTER_SOURCES, (self.i,))
 
     def recycle(self, new_creator: Node):
         """Reconnect the node to a new creator node, preserving its properties."""

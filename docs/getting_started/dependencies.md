@@ -105,7 +105,7 @@ After some files have changed and StepUp is run again, some nodes may no longer 
 These "old" nodes will still exist in the database as "detached" nodes, i.e. without a creator.
 
 After all steps have been successfully completed,
-StepUp will remove detached nodes that are not suppliers to other steps.
+StepUp will remove detached nodes that are not sources to other steps.
 When output file nodes are deleted, the corresponding files are also removed from disk.
 StepUp ensures safe removal:
 it will only delete files if it confirms they were created in a previous run

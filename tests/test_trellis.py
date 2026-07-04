@@ -43,13 +43,13 @@ async def test_supply_missing_nodes(trellis):
         fake4 = Node(trellis, 4, "fake3")
     with pytest.raises(GraphError):
         async with trellis.db:
-            fake3.add_supplier(trellis.root)
+            fake3.add_source(trellis.root)
     with pytest.raises(GraphError):
         async with trellis.db:
-            trellis.root.add_supplier(fake4)
+            trellis.root.add_source(fake4)
     with pytest.raises(GraphError):
         async with trellis.db:
-            fake3.add_supplier(fake4)
+            fake3.add_source(fake4)
 
 
 async def test_no_node_class(trellis):
@@ -190,8 +190,8 @@ async def test_singleton(lt):
         assert foo.i == 2
         assert foo.label == "one"
         foo.act("hello")
-        assert len(list(foo.consumers())) == 0
-        assert len(list(foo.suppliers())) == 0
+        assert len(list(foo.sinks())) == 0
+        assert len(list(foo.sources())) == 0
         assert len(list(foo.products())) == 0
         assert foo.creator() == lt.root
         assert foo.creator_detached() == (lt.root, False)
@@ -317,9 +317,9 @@ async def test_chain(lt):
         assert foo2.key() == "f:two"
         assert foo3.key() == "f:three"
         assert foo4.key() == "f:four"
-        foo2.add_supplier(foo0)
-        foo2.add_supplier(foo1)
-        foo4.add_supplier(foo2)
+        foo2.add_source(foo0)
+        foo2.add_source(foo1)
+        foo4.add_source(foo2)
 
         # Test nodes
         assert list(lt.nodes()) == [lt.root, foo0, foo1, foo2, foo3, foo4]
@@ -335,19 +335,19 @@ async def test_chain(lt):
         assert list(foo2.products()) == [foo3]
         assert list(foo0.products()) == [foo4]
 
-        # Test consumers
-        assert list(foo0.consumers()) == [foo2]
-        assert list(foo1.consumers()) == [foo2]
-        assert list(foo2.consumers()) == [foo4]
-        assert list(foo3.consumers()) == []
-        assert list(foo4.consumers()) == []
+        # Test sinks
+        assert list(foo0.sinks()) == [foo2]
+        assert list(foo1.sinks()) == [foo2]
+        assert list(foo2.sinks()) == [foo4]
+        assert list(foo3.sinks()) == []
+        assert list(foo4.sinks()) == []
 
-        # Test suppliers
-        assert list(foo0.suppliers()) == []
-        assert list(foo1.suppliers()) == []
-        assert list(foo2.suppliers()) == [foo0, foo1]
-        assert list(foo3.suppliers()) == []
-        assert list(foo4.suppliers()) == [foo2]
+        # Test sources
+        assert list(foo0.sources()) == []
+        assert list(foo1.sources()) == []
+        assert list(foo2.sources()) == [foo0, foo1]
+        assert list(foo3.sources()) == []
+        assert list(foo4.sources()) == [foo2]
 
         # Modify the graph and test result
         foo2.detach()
@@ -358,32 +358,32 @@ async def test_chain(lt):
         assert set(lt.nodes(Foo, include_detached=True)) == {foo0, foo1, foo2, foo3, foo4}
 
         # foo0
-        assert list(foo0.consumers()) == []
-        assert list(foo0.suppliers()) == []
+        assert list(foo0.sinks()) == []
+        assert list(foo0.sources()) == []
         assert foo0.creator() == lt.root
         assert list(foo0.products()) == [foo4]
         # foo1
-        assert list(foo1.consumers()) == []
-        assert list(foo1.suppliers()) == []
+        assert list(foo1.sinks()) == []
+        assert list(foo1.sources()) == []
         assert foo1.creator() == lt.root
         assert list(foo1.products()) == []
         # foo2
-        assert list(foo2.consumers()) == [foo4]
-        assert list(foo2.suppliers()) == [foo0, foo1]
+        assert list(foo2.sinks()) == [foo4]
+        assert list(foo2.sources()) == [foo0, foo1]
         assert foo2.is_detached()
         assert foo2.creator() is None
         assert foo2.creator_detached() == (None, None)
         assert list(foo2.products()) == [foo3]
         # foo3
-        assert list(foo3.consumers()) == []
-        assert list(foo3.suppliers()) == []
+        assert list(foo3.sinks()) == []
+        assert list(foo3.sources()) == []
         assert foo3.is_detached()
         assert foo3.creator() == foo2
         assert foo3.creator_detached() == (foo2, True)
         assert list(foo3.products()) == []
         # foo4
-        assert list(foo4.consumers()) == []
-        assert list(foo4.suppliers()) == []
+        assert list(foo4.sinks()) == []
+        assert list(foo4.sources()) == []
         assert foo4.creator() == foo0
         assert foo4.creator_detached() == (foo0, False)
         assert list(foo4.products()) == []
@@ -405,7 +405,7 @@ async def test_chain(lt):
         ]
 
 
-CLEAN_CONSUMER1_FORMAT_STR = """\
+CLEAN_SINK1_FORMAT_STR = """\
 root:
              creates   f:3
 
@@ -432,39 +432,39 @@ f:3
 """
 
 
-async def test_clean_consumers(lt):
-    """Detached nodes only get removed when they have no consumers."""
+async def test_clean_sinks(lt):
+    """Detached nodes only get removed when they have no sinks."""
     async with lt.db:
         foo0 = lt.create(Foo, lt.root, "0", value=0)
         foo1 = lt.create(Foo, foo0, "1", value=1)
         foo2 = lt.create(Foo, foo0, "2", value=2)
         foo3 = lt.create(Foo, lt.root, "3", value=3)
-        foo3.add_supplier(foo1)
-        foo3.add_supplier(foo2)
+        foo3.add_source(foo1)
+        foo3.add_source(foo2)
         foo0.detach()
-        assert lt.format_str() == CLEAN_CONSUMER1_FORMAT_STR
+        assert lt.format_str() == CLEAN_SINK1_FORMAT_STR
         lt.clean()
         assert list(lt.nodes(Foo, include_detached=True)) == [foo0, foo1, foo2, foo3]
-        assert lt.format_str() == CLEAN_CONSUMER1_FORMAT_STR
+        assert lt.format_str() == CLEAN_SINK1_FORMAT_STR
         foo3.detach()
         lt.clean()
         assert len(list(lt.nodes(Foo, include_detached=True))) == 0
         assert lt.format_str() == FROM_SCRATCH_FORMAT_STR
 
 
-async def test_recycle_consumers(lt):
-    """When a detached node with consumers is recycled, the consumer relations remain."""
+async def test_recycle_sinks(lt):
+    """When a detached node with sinks is recycled, the sink relations remain."""
     async with lt.db:
         foo0 = lt.create(Foo, lt.root, "0", value=0)
         foo1 = lt.create(Foo, lt.root, "1", value=1)
         foo2 = lt.create(Foo, lt.root, "2", value=2)
-        foo1.add_supplier(foo0)
-        foo2.add_supplier(foo0)
-        assert list(foo0.consumers()) == [foo1, foo2]
+        foo1.add_source(foo0)
+        foo2.add_source(foo0)
+        assert list(foo0.sinks()) == [foo1, foo2]
         foo0.detach()
-        assert list(foo0.consumers()) == [foo1, foo2]
+        assert list(foo0.sinks()) == [foo1, foo2]
         lt.create(Foo, lt.root, "0")
-        assert list(foo0.consumers()) == [foo1, foo2]
+        assert list(foo0.sinks()) == [foo1, foo2]
 
 
 async def test_clean_nested(lt):
@@ -480,9 +480,9 @@ async def test_clean_nested(lt):
         assert foo2.is_alive()
         assert foo3.is_alive()
 
-        foo1.add_supplier(foo0)
-        foo2.add_supplier(foo1)
-        foo3.add_supplier(foo2)
+        foo1.add_source(foo0)
+        foo2.add_source(foo1)
+        foo3.add_source(foo2)
         lt.clean()
         assert lt.find(Foo, "3") == foo3
         assert lt.find_detached(Foo, "3") == (foo3, False)
@@ -562,26 +562,26 @@ async def test_duplicate_dependency(lt):
     async with lt.db:
         foo0 = lt.create(Foo, lt.root, "0", value=0)
         foo1 = lt.create(Foo, foo0, "1", value=1)
-        foo0.add_supplier(foo1)
+        foo0.add_source(foo1)
         with pytest.raises(GraphError):
-            foo0.add_supplier(foo1)
+            foo0.add_source(foo1)
 
 
 async def test_cyclic1(lt):
     async with lt.db:
         foo0 = lt.create(Foo, lt.root, "0", value=0)
         foo1 = lt.create(Foo, foo0, "1", value=1)
-        foo0.add_supplier(foo1)
-        assert list(foo0.suppliers()) == [foo1]
+        foo0.add_source(foo1)
+        assert list(foo0.sources()) == [foo1]
 
 
 async def test_cyclic2(lt):
     async with lt.db:
         foo0 = lt.create(Foo, lt.root, "0", value=0)
         foo1 = lt.create(Foo, lt.root, "1", value=1)
-        foo1.add_supplier(foo0)
+        foo1.add_source(foo0)
         with pytest.raises(CyclicError):
-            foo0.add_supplier(foo1)
+            foo0.add_source(foo1)
 
 
 async def test_cyclic3(lt):
@@ -589,10 +589,10 @@ async def test_cyclic3(lt):
         foo0 = lt.create(Foo, lt.root, "0", value=0)
         foo1 = lt.create(Foo, lt.root, "1", value=1)
         foo2 = lt.create(Foo, lt.root, "2", value=2)
-        foo1.add_supplier(foo0)
-        foo2.add_supplier(foo1)
+        foo1.add_source(foo0)
+        foo2.add_source(foo1)
         with pytest.raises(CyclicError):
-            foo0.add_supplier(foo2)
+            foo0.add_source(foo2)
 
 
 async def test_check_no_cycle_batch(lt):
@@ -601,28 +601,28 @@ async def test_check_no_cycle_batch(lt):
         foo1 = lt.create(Foo, lt.root, "1", value=1)
         foo2 = lt.create(Foo, lt.root, "2", value=2)
         foo3 = lt.create(Foo, lt.root, "3", value=3)
-        foo1.add_supplier(foo0)  # foo0 -> foo1
-        foo2.add_supplier(foo1)  # foo1 -> foo2 (foo0's indirect consumers: {foo0, foo1, foo2})
-        # foo3 is unrelated: not a consumer of foo0.
+        foo1.add_source(foo0)  # foo0 -> foo1
+        foo2.add_source(foo1)  # foo1 -> foo2 (foo0's indirect sinks: {foo0, foo1, foo2})
+        # foo3 is unrelated: not a sink of foo0.
         with pytest.raises(CyclicError):
             # foo2 in the batch would close a cycle; the whole batch must be rejected
             # before any edge is inserted.
             foo0.check_no_cycle_batch([foo3.i, foo2.i])
-        assert list(foo0.suppliers()) == []
+        assert list(foo0.sources()) == []
         # An all-acyclic batch does not raise.
         foo0.check_no_cycle_batch([foo3.i])
 
 
-async def test_add_supplier_skip_cycle_check(lt):
+async def test_add_source_skip_cycle_check(lt):
     async with lt.db:
         foo0 = lt.create(Foo, lt.root, "0", value=0)
         foo1 = lt.create(Foo, lt.root, "1", value=1)
-        foo1.add_supplier(foo0)  # foo0 -> foo1
+        foo1.add_source(foo0)  # foo0 -> foo1
         with pytest.raises(CyclicError):
-            foo0.add_supplier(foo1)  # would close a cycle
+            foo0.add_source(foo1)  # would close a cycle
         # skip_cycle_check=True bypasses the check, proving the flag is wired through.
-        foo0.add_supplier(foo1, skip_cycle_check=True)
-        assert list(foo0.suppliers()) == [foo1]
+        foo0.add_source(foo1, skip_cycle_check=True)
+        assert list(foo0.sources()) == [foo1]
 
 
 async def test_load_existing(path_tmp):
@@ -650,8 +650,8 @@ async def test_relocate_tree(lt):
         foo2 = lt.create(Foo, foo1, "2", value=2)
         lt.create(Foo, foo1, "3", value=3)
         foo4 = lt.create(Foo, foo0, "4", value=4)
-        foo2.add_supplier(foo1)
-        foo2.add_supplier(foo4)
+        foo2.add_source(foo1)
+        foo2.add_source(foo4)
 
         # Detach the foo1 node and attach it to the foo4 node.
         # The new topology is:
@@ -766,8 +766,8 @@ async def test_relocate_nested_detached(lt):
         foo2 = lt.create(Foo, foo1, "2", value=2)
         lt.create(Foo, foo1, "3", value=3)
         foo4 = lt.create(Foo, foo0, "4", value=4)
-        foo2.add_supplier(foo1)
-        foo2.add_supplier(foo4)
+        foo2.add_source(foo1)
+        foo2.add_source(foo4)
 
         # Detach the foo1 node and attach foo2 to foo4.
         # The new topology is:

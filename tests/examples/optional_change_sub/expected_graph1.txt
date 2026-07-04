@@ -30,7 +30,7 @@ file:sub/plan.py
 
 step:cp -p hop1.txt hop2.txt
                state = SUCCEEDED
-                need = DEFAULT (implied by consumers > OPTIONAL)
+                need = DEFAULT (implied by sinks > OPTIONAL)
           created by   step:./plan.py
             consumes   file:hop1.txt
              creates   file:hop2.txt

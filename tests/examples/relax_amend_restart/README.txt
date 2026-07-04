@@ -1,10 +1,10 @@
 Exercises the director-restart case for the start/stop-timestamp freshness check.
 
-In phase 1, producer.sh and consumer.py race once (unfresh reschedule) and converge.
+In phase 1, source.sh and sink.py race once (unfresh reschedule) and converge.
 In phase 2, the director is restarted with a fresh (empty) Scheduler;
-producer.sh stays SUCCEEDED from phase 1 and is never re-dispatched,
+source.sh stays SUCCEEDED from phase 1 and is never re-dispatched,
 so it has no start_times/stop_times entry in the new invocation.
-consumer.py is forced to re-run via an edit to its ordinary trigger.txt input,
+sink.py is forced to re-run via an edit to its ordinary trigger.txt input,
 and its renewed amend(inp=["data.txt"]) call must be accepted immediately,
 proving that a missing stop_times entry after a restart is treated as "no race possible",
 not as a spurious block.

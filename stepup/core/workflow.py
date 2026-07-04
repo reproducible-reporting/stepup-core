@@ -38,14 +38,14 @@ WITH RECURSIVE missing(i, label, creator_kind) AS (
     SELECT node.i, node.label, cnode.kind FROM node
     JOIN node AS cnode ON node.creator = cnode.i
     JOIN file ON node.i = file.node
-    JOIN dependency ON node.i = supplier
-    WHERE consumer = ? AND node.kind = 'file' AND file.state = {FileState.MISSING.value}
+    JOIN dependency ON node.i = source
+    WHERE sink = ? AND node.kind = 'file' AND file.state = {FileState.MISSING.value}
     UNION
     SELECT node.i, node.label, cnode.kind FROM node
     JOIN node AS cnode ON node.creator = cnode.i
     JOIN file ON node.i = file.node
-    JOIN dependency ON node.i = supplier
-    JOIN missing ON consumer = missing.i
+    JOIN dependency ON node.i = source
+    JOIN missing ON sink = missing.i
     WHERE node.kind = 'file' AND file.state = {FileState.MISSING.value}
 )
 SELECT i, label FROM missing WHERE creator_kind = 'st'
@@ -62,8 +62,8 @@ WITH RECURSIVE outdated(i, label) AS (
     WHERE product_node.kind = 'step'
 )
 SELECT DISTINCT outdated.i, outdated.label FROM outdated
-JOIN dependency ON dependency.consumer = outdated.i
-JOIN file ON dependency.supplier = file.node
+JOIN dependency ON dependency.sink = outdated.i
+JOIN file ON dependency.source = file.node
 WHERE file.state IN ({FileState.AWAITED.value}, {FileState.OUTDATED.value})
 """
 
@@ -153,8 +153,8 @@ class Workflow(Trellis):
         # Verify that all succeeded steps only have BUILT outputs.
         sql = (
             "SELECT file.state, fnode.label, snode.i, snode.label FROM node AS fnode "
-            "JOIN file ON fnode.i = file.node JOIN dependency ON fnode.i = consumer "
-            "JOIN node AS snode ON snode.i = supplier JOIN step ON step.node = snode.i "
+            "JOIN file ON fnode.i = file.node JOIN dependency ON fnode.i = sink "
+            "JOIN node AS snode ON snode.i = source JOIN step ON step.node = snode.i "
             "WHERE step.state = ? AND file.state NOT IN (?, ?) AND NOT fnode.detached"
         )
         data = (StepState.SUCCEEDED.value, FileState.BUILT.value, FileState.VOLATILE.value)
@@ -257,13 +257,13 @@ class Workflow(Trellis):
         return self._format_dot_generic("empty", node_sql, edge_sql)
 
     def format_dot_dependency(self) -> str:
-        """Return the dependency graph (supplier-product) in GraphViz DOT format."""
+        """Return the dependency graph (source-product) in GraphViz DOT format."""
         return self._format_dot_generic(
             "normal",
             "SELECT i, kind, label FROM node WHERE NOT (kind = 'root')",
-            "SELECT supplier, consumer FROM dependency "
-            "JOIN node AS snode ON snode.i = supplier "
-            "JOIN node AS cnode ON cnode.i = consumer "
+            "SELECT source, sink FROM dependency "
+            "JOIN node AS snode ON snode.i = source "
+            "JOIN node AS cnode ON cnode.i = sink "
             "WHERE NOT ((snode.kind = 'file' AND snode.label LIKE '%/')"
             "OR (cnode.kind = 'file' AND cnode.label LIKE '%/'))",
         )
@@ -297,8 +297,8 @@ class Workflow(Trellis):
         sql = (
             "SELECT node.label, file.state FROM node JOIN file ON node.i = file.node "
             "WHERE node.detached "
-            "AND EXISTS (SELECT 1 FROM dependency JOIN node ON node.i = dependency.consumer "
-            "WHERE supplier = file.node AND not node.detached)"
+            "AND EXISTS (SELECT 1 FROM dependency JOIN node ON node.i = dependency.sink "
+            "WHERE source = file.node AND not node.detached)"
         )
         for row in self.db.execute(sql):
             yield row[0], FileState(row[1])
@@ -330,16 +330,15 @@ class Workflow(Trellis):
                 "creator must be a step or static tree"
             )
 
-    def _check_supplier(self, supplier: Node, consumer: Node) -> None:
-        super()._check_supplier(supplier, consumer)
+    def _check_source(self, source: Node, sink: Node) -> None:
+        super()._check_source(source, sink)
         if (
-            (isinstance(supplier, File) and not isinstance(consumer, Step))
-            or (isinstance(supplier, Step) and not isinstance(consumer, File))
-            or (isinstance(supplier, StaticTree) and not isinstance(consumer, File))
+            (isinstance(source, File) and not isinstance(sink, Step))
+            or (isinstance(source, Step) and not isinstance(sink, File))
+            or (isinstance(source, StaticTree) and not isinstance(sink, File))
         ):
             raise GraphError(
-                f"Node {consumer.key()!r} (kind={consumer.kind()!r}) "
-                "cannot be a dependency consumer"
+                f"Node {sink.key()!r} (kind={sink.kind()!r}) cannot be a dependency sink"
             )
 
     def matching_static_tree(self, path: str) -> StaticTree | None:
@@ -435,7 +434,7 @@ class Workflow(Trellis):
                         unfresh = True
         new_relation = (
             self.db.execute(
-                "SELECT 1 FROM dependency WHERE supplier = ? AND consumer = ?", (file.i, node.i)
+                "SELECT 1 FROM dependency WHERE source = ? AND sink = ?", (file.i, node.i)
             ).fetchone()
             is None
         )
@@ -451,13 +450,13 @@ class Workflow(Trellis):
         start_times: dict[int, int] | None = None,
         stop_times: dict[int, int] | None = None,
     ) -> list[SupplyInfo]:
-        """Find or create files for several paths and make them suppliers of node.
+        """Find or create files for several paths and make them sources of node.
 
-        Since `node` is the consumer of every new edge in this batch,
+        Since `node` is the sink of every new edge in this batch,
         the cyclic-dependency check is performed once for the whole batch
         (via `Node.check_no_cycle_batch`) instead of once per path.
         Note that if `paths` contains a duplicate, it is caught later than before:
-        as a `GraphError("Relation already exists")` from `add_supplier` instead of
+        as a `GraphError("Relation already exists")` from `add_source` instead of
         `GraphError("Supplying file already exists")`.
         This is unreachable in practice because callers already dedupe `paths`.
 
@@ -494,7 +493,7 @@ class Workflow(Trellis):
             node.check_no_cycle_batch(new_file_is)
         results = []
         for file, available, unfresh, deferred, new_relation in resolved:
-            new_idep = node.add_supplier(file, skip_cycle_check=True) if new_relation else None
+            new_idep = node.add_source(file, skip_cycle_check=True) if new_relation else None
             results.append(SupplyInfo(file, available, unfresh, deferred, new_idep))
         return results
 
@@ -531,8 +530,8 @@ class Workflow(Trellis):
         file = self.create(File, creator, path, state=file_state)
 
         if file_state == FileState.VOLATILE:
-            # Do not allow volatile files to have consumers.
-            if any(file.consumers()):
+            # Do not allow volatile files to have sinks.
+            if any(file.sinks()):
                 raise GraphError(f"An input to an existing step cannot be volatile: {path}")
         else:
             # Watch parent directories of non-volatile files.
@@ -912,12 +911,12 @@ class Workflow(Trellis):
         # Create out_paths
         for out_path in out_paths:
             file = self.declare_file(step, out_path, FileState.AWAITED)
-            file.add_supplier(step)
+            file.add_source(step)
 
         # Create vol_paths
         for vol_path in vol_paths:
             file = self.declare_file(step, vol_path, FileState.VOLATILE)
-            file.add_supplier(step)
+            file.add_source(step)
 
         # Determine if the step needs executing and queue if relevant.
         logger.info("Define step: %s", step.label)
@@ -1081,13 +1080,13 @@ class Workflow(Trellis):
         # Create out_paths
         for out_path in out_paths:
             file = self.declare_file(step, out_path, FileState.AWAITED)
-            new_idep = file.add_supplier(step)
+            new_idep = file.add_source(step)
             self._amend_dep(new_idep)
 
         # Create vol_paths
         for vol_path in vol_paths:
             file = self.declare_file(step, vol_path, FileState.VOLATILE)
-            new_idep = file.add_supplier(step)
+            new_idep = file.add_source(step)
             self._amend_dep(new_idep)
 
         if len(unavailable) > 0:
@@ -1155,7 +1154,7 @@ class Workflow(Trellis):
         for st in self.nodes(StaticTree):
             files = sorted(st.products(), reverse=True, key=(lambda node: node.path))
             for file in files:
-                if not any(file.consumers()):
+                if not any(file.sinks()):
                     file.detach()
         super().clean()
 

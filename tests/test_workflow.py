@@ -354,10 +354,10 @@ async def test_define_boot_input_static(wfs: Workflow):
         declare_static(wfs, wfs.root, ["foo.txt"])
         foo = wfs.find(File, "foo.txt")
         assert echo.creator() is not None
-        assert list(foo.consumers()) == [echo]
-        assert list(foo.suppliers()) == []
-        assert list(echo.consumers()) == []
-        assert set(echo.suppliers()) == {foo}
+        assert list(foo.sinks()) == [echo]
+        assert list(foo.sources()) == []
+        assert list(echo.sinks()) == []
+        assert set(echo.sources()) == {foo}
 
 
 async def test_command_workdir_string(wfs: Workflow):
@@ -373,10 +373,10 @@ async def test_define_boot_static_input(wfs: Workflow):
         assert to_check == []
         echo = wfs.find(Step, "echo")
         assert echo.creator().i is not None
-        assert list(foo.consumers()) == [echo]
-        assert list(foo.suppliers()) == []
-        assert list(echo.consumers()) == []
-        assert set(echo.suppliers()) == {foo}
+        assert list(foo.sinks()) == [echo]
+        assert list(foo.sources()) == []
+        assert list(echo.sinks()) == []
+        assert set(echo.sources()) == {foo}
 
 
 async def test_redefine_boot(wfs: Workflow):
@@ -675,7 +675,7 @@ async def test_define_pending_step_skip_extra(wfp: Workflow):
         bar.mark_pending()  # Should not hurt
         assert bar.get_state() == StepState.PENDING
         wfp.amend_step(bar, inp_paths=["ainp2"], out_paths=["aout2"], vol_paths=["avol2"])
-        assert wfp.find(File, "ainp2") in set(bar.suppliers())
+        assert wfp.find(File, "ainp2") in set(bar.sources())
         wfp.update_file_hashes([("aout2", fake_hash("aout2"))], HashUpdateCause.SUCCEEDED)
         bar.completed(StepHash(b"bar_ok", None, b"zzz", None))
         assert bar.get_state() == StepState.SUCCEEDED
@@ -812,8 +812,8 @@ async def test_amend_step(wfp: Workflow):
         assert [node.key() for node in step.products()] == ["file:log", "file:out3", "file:vol4"]
 
 
-def _build_producer_consumer(wfs: Workflow) -> tuple[Step, Step]:
-    """Define a producer step with a BUILT output "data.txt" and a plain consumer step.
+def _build_producer_sink(wfs: Workflow) -> tuple[Step, Step]:
+    """Define a producer step with a BUILT output "data.txt" and a plain sink step.
 
     Used by the freshness-check tests below to fabricate a BUILT input with a real
     `Step` creator, without needing the full director/scheduler stack.
@@ -829,74 +829,74 @@ def _build_producer_consumer(wfs: Workflow) -> tuple[Step, Step]:
     step_hash = step_hash.evolve_out(out_hashes)
     producer.completed(step_hash)
 
-    wfs.define_step(plan, "consumer")
-    consumer = wfs.find(Step, "consumer")
-    return producer, consumer
+    wfs.define_step(plan, "sink")
+    sink = wfs.find(Step, "sink")
+    return producer, sink
 
 
 async def test_amend_step_no_dicts_skips_freshness_check(wfs: Workflow):
     """Without start_times/stop_times, amend() behaves exactly as before the freshness
     check existed: a BUILT input is always accepted, regardless of any race."""
     async with wfs.db:
-        _, consumer = _build_producer_consumer(wfs)
-        keep_going, _ = wfs.amend_step(consumer, inp_paths=["data.txt"])
+        _, sink = _build_producer_sink(wfs)
+        keep_going, _ = wfs.amend_step(sink, inp_paths=["data.txt"])
         assert keep_going
-        assert consumer.get_unfresh_inputs() == ""
-        assert consumer.get_unavailable_inputs() == ""
+        assert sink.get_unfresh_inputs() == ""
+        assert sink.get_unavailable_inputs() == ""
 
 
 async def test_amend_step_freshness_fresh(wfs: Workflow):
-    """consumer.start_time strictly after producer.stop_time: accepted as fresh."""
+    """sink.start_time strictly after producer.stop_time: accepted as fresh."""
     async with wfs.db:
-        producer, consumer = _build_producer_consumer(wfs)
-        start_times = {producer.i: 100, consumer.i: 200}
+        producer, sink = _build_producer_sink(wfs)
+        start_times = {producer.i: 100, sink.i: 200}
         stop_times = {producer.i: 100}
         keep_going, _ = wfs.amend_step(
-            consumer, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
+            sink, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
         )
         assert keep_going
-        assert consumer.get_unfresh_inputs() == ""
+        assert sink.get_unfresh_inputs() == ""
 
 
 async def test_amend_step_freshness_unfresh(wfs: Workflow):
-    """consumer.start_time strictly before producer.stop_time: rejected as unfresh."""
+    """sink.start_time strictly before producer.stop_time: rejected as unfresh."""
     async with wfs.db:
-        producer, consumer = _build_producer_consumer(wfs)
-        start_times = {producer.i: 200, consumer.i: 100}
+        producer, sink = _build_producer_sink(wfs)
+        start_times = {producer.i: 200, sink.i: 100}
         stop_times = {producer.i: 200}
         keep_going, _ = wfs.amend_step(
-            consumer, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
+            sink, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
         )
         assert not keep_going
-        assert consumer.get_unfresh_inputs().splitlines() == ["data.txt"]
-        assert consumer.get_unavailable_inputs() == ""
+        assert sink.get_unfresh_inputs().splitlines() == ["data.txt"]
+        assert sink.get_unavailable_inputs() == ""
 
 
 async def test_amend_step_freshness_tie_is_unfresh(wfs: Workflow):
     """An exact start_time == stop_time tie is treated as unfresh (conservative choice)."""
     async with wfs.db:
-        producer, consumer = _build_producer_consumer(wfs)
-        start_times = {producer.i: 150, consumer.i: 150}
+        producer, sink = _build_producer_sink(wfs)
+        start_times = {producer.i: 150, sink.i: 150}
         stop_times = {producer.i: 150}
         keep_going, _ = wfs.amend_step(
-            consumer, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
+            sink, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
         )
         assert not keep_going
-        assert consumer.get_unfresh_inputs().splitlines() == ["data.txt"]
+        assert sink.get_unfresh_inputs().splitlines() == ["data.txt"]
 
 
 async def test_amend_step_freshness_producer_stop_time_missing(wfs: Workflow):
     """Producer has no stop_times entry (e.g. finished in a previous director invocation,
     or was never tracked through a RUNNING transition this invocation): trivially fresh."""
     async with wfs.db:
-        _, consumer = _build_producer_consumer(wfs)
-        start_times = {consumer.i: 100}
+        _, sink = _build_producer_sink(wfs)
+        start_times = {sink.i: 100}
         stop_times = {}
         keep_going, _ = wfs.amend_step(
-            consumer, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
+            sink, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
         )
         assert keep_going
-        assert consumer.get_unfresh_inputs() == ""
+        assert sink.get_unfresh_inputs() == ""
 
 
 PENDING_STEP_SKIP_AMENDED_GRAPH = """\
@@ -1006,13 +1006,13 @@ async def test_define_pending_step_skip_amended(wfp: Workflow):
         # Simulate and check rerun
         assert step.get_state() == StepState.PENDING
         step.completed(StepHash(b"c" * 32, None, b"d" * 32, None))
-        assert {node.key() for node in step.suppliers(include_detached=True)} == {
+        assert {node.key() for node in step.sources(include_detached=True)} == {
             "file:ainp",
             "file:inp",
         }
         assert isinstance(wfp.find(File, "aout"), File)
         assert isinstance(wfp.find(File, "avol"), File)
-        assert {node.key() for node in step.suppliers(include_detached=True)} == {
+        assert {node.key() for node in step.sources(include_detached=True)} == {
             "file:ainp",
             "file:inp",
         }
@@ -1376,7 +1376,7 @@ async def test_output_clean_nested(wfp: Workflow):
         assert wfp.find_detached(File, "s/foo/bar/egg") == (None, None)
 
 
-async def test_clean_multiple_suppliers(wfp: Workflow):
+async def test_clean_multiple_sources(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         (file,) = declare_static(wfp, plan, ["common.txt"])

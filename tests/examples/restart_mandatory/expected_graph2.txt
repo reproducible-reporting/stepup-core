@@ -19,7 +19,7 @@ step:./plan.py
 
 step:echo hello > foo.txt
                state = SUCCEEDED
-                need = DEFAULT (implied by consumers > OPTIONAL)
+                need = DEFAULT (implied by sinks > OPTIONAL)
            explained = yes
           created by   step:./plan.py
              creates   file:foo.txt

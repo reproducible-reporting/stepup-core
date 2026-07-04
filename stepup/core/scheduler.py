@@ -72,10 +72,10 @@ WHERE NOT node.detached AND step._check_after
 """
 
 
-# Remove from check_after steps that have (indirect) consumers also in check_after.
-# This is done by starting from the flagged steps, and recursively following their suppliers,
+# Remove from check_after steps that have (indirect) sinks also in check_after.
+# This is done by starting from the flagged steps, and recursively following their sources,
 # until we hit another step whose _check_after is set.
-# Such supplier steps will be updated anyway, and unchecking them here
+# Such source steps will be updated anyway, and unchecking them here
 # will avoid duplicate work and potential conflicts later.
 PRUNE_REDUNDANT_CHECK_AFTER = """
 DELETE FROM check_after
@@ -88,20 +88,20 @@ WHERE i IN (
             FALSE
         FROM check_after
         UNION ALL
-        -- Iterate over all their (recursive) suppliers,
+        -- Iterate over all their (recursive) sources,
         -- until we hit another step whose _check_after is set.
         -- There is no need to go further,
         -- because that step will be updated elsewhere in the trace.
         SELECT
-            supplier_step.node,
+            source_step.node,
             trace.depth + 1,
-            supplier_step._check_after
+            source_step._check_after
         FROM trace
-        JOIN dependency AS dep1 ON dep1.consumer = trace.i
-        JOIN dependency AS dep2 ON dep2.consumer = dep1.supplier
-        JOIN step AS supplier_step ON dep2.supplier = supplier_step.node
-        JOIN node AS supplier_node ON supplier_step.node = supplier_node.i
-        WHERE NOT supplier_node.detached AND NOT trace.hit
+        JOIN dependency AS dep1 ON dep1.sink = trace.i
+        JOIN dependency AS dep2 ON dep2.sink = dep1.source
+        JOIN step AS source_step ON dep2.source = source_step.node
+        JOIN node AS source_node ON source_step.node = source_node.i
+        WHERE NOT source_node.detached AND NOT trace.hit
     )
     SELECT trace.i
     FROM trace
@@ -133,25 +133,25 @@ WITH cte AS (
         MAX(
             step.need,
             COALESCE(
-                MAX(consumer_step._implied_need),
+                MAX(sink_step._implied_need),
                 {Need.OPTIONAL.value}
             )
         ) AS new_implied_need,
         step._tail_time AS old_tail_time,
         (
             step.duration
-            + COALESCE(MAX(consumer_step._tail_time), 0)
+            + COALESCE(MAX(sink_step._tail_time), 0)
         ) AS new_tail_time
     FROM check_after
     JOIN step ON step.node = check_after.i
-    LEFT JOIN dependency AS dep1 ON dep1.supplier = check_after.i
-    LEFT JOIN dependency AS dep2 ON dep2.supplier = dep1.consumer
-    LEFT JOIN node AS consumer_node ON (
-        consumer_node.i = dep2.consumer
-        AND NOT consumer_node.detached
+    LEFT JOIN dependency AS dep1 ON dep1.source = check_after.i
+    LEFT JOIN dependency AS dep2 ON dep2.source = dep1.sink
+    LEFT JOIN node AS sink_node ON (
+        sink_node.i = dep2.sink
+        AND NOT sink_node.detached
     )
-    LEFT JOIN step AS consumer_step ON (
-        consumer_step.node = consumer_node.i
+    LEFT JOIN step AS sink_step ON (
+        sink_step.node = sink_node.i
     )
     GROUP BY check_after.i
 )
@@ -172,16 +172,16 @@ WHERE step.node = update_after.i
 """
 
 
-# Propagate the updates to all (recursive) suppliers of the updated steps.
+# Propagate the updates to all (recursive) sources of the updated steps.
 PROPAGATE_UPDATE_CHECK_AFTER = """
 INSERT INTO check_after(i)
-SELECT DISTINCT supplier_step.node
+SELECT DISTINCT source_step.node
 FROM update_after
-JOIN dependency AS dep1 ON dep1.consumer = update_after.i
-JOIN dependency AS dep2 ON dep2.consumer = dep1.supplier
-JOIN step AS supplier_step ON supplier_step.node = dep2.supplier
-JOIN node AS supplier_node ON supplier_step.node = supplier_node.i
-WHERE NOT supplier_node.detached
+JOIN dependency AS dep1 ON dep1.sink = update_after.i
+JOIN dependency AS dep2 ON dep2.sink = dep1.source
+JOIN step AS source_step ON source_step.node = dep2.source
+JOIN node AS source_node ON source_step.node = source_node.i
+WHERE NOT source_node.detached
 """
 
 
@@ -196,10 +196,10 @@ DROP TABLE IF EXISTS check_after;
 UNAVAILABLE_INPUT = f"""
 SELECT node.i
 FROM dependency AS dep
-JOIN file AS input_file ON input_file.node = dep.supplier
-JOIN node AS input_node ON input_node.i = dep.supplier
+JOIN file AS input_file ON input_file.node = dep.source
+JOIN node AS input_node ON input_node.i = dep.source
 LEFT JOIN amended_dep ON amended_dep.i = dep.i
-WHERE dep.consumer = node.i AND (
+WHERE dep.sink = node.i AND (
     input_file.state = {FileState.VOLATILE.value} OR
     (
         -- Case 1: Is an amended dependency
@@ -300,9 +300,9 @@ SELECT
     file.state,
     EXISTS (SELECT 1 FROM amended_dep WHERE amended_dep.i = dep.i),
     file.hash
-FROM node JOIN dependency AS dep ON node.i = dep.supplier
+FROM node JOIN dependency AS dep ON node.i = dep.source
 JOIN file ON file.node = node.i
-WHERE dep.consumer = ?
+WHERE dep.sink = ?
 """
 
 
@@ -484,7 +484,7 @@ class Scheduler:
         ncheck = db.execute("SELECT COUNT(*) FROM check_after").fetchone()[0]
         first = True
         while ncheck > 0:
-            logger.debug(f"Found {ncheck} suppliers to update (first={first})")
+            logger.debug(f"Found {ncheck} sources to update (first={first})")
             # for row in db.execute("SELECT i FROM check_after"):
             #     logger.debug("  Step %s", row[0])
             # The first iteration is different: irrespective of having changed metadata fields of

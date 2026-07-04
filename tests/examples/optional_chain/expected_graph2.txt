@@ -22,7 +22,7 @@ step:./plan.py
 
 step:echo inp1 > foo1.txt
                state = SUCCEEDED
-                need = DEFAULT (implied by consumers > OPTIONAL)
+                need = DEFAULT (implied by sinks > OPTIONAL)
            explained = yes
           created by   step:./plan.py
              creates   file:foo1.txt
@@ -36,7 +36,7 @@ file:foo1.txt
 
 step:echo inp2 > foo2.txt
                state = SUCCEEDED
-                need = DEFAULT (implied by consumers > OPTIONAL)
+                need = DEFAULT (implied by sinks > OPTIONAL)
            explained = yes
           created by   step:./plan.py
              creates   file:foo2.txt
@@ -50,7 +50,7 @@ file:foo2.txt
 
 step:cat foo1.txt foo2.txt > bar.txt
                state = SUCCEEDED
-                need = DEFAULT (implied by consumers > OPTIONAL)
+                need = DEFAULT (implied by sinks > OPTIONAL)
            explained = yes
           created by   step:./plan.py
             consumes   file:foo1.txt
@@ -66,7 +66,7 @@ file:bar.txt
 
 step:cat bar.txt > egg.txt
                state = SUCCEEDED
-                need = DEFAULT (implied by consumers > OPTIONAL)
+                need = DEFAULT (implied by sinks > OPTIONAL)
            explained = yes
           created by   step:./plan.py
             consumes   file:bar.txt

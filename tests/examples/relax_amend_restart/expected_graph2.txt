@@ -14,15 +14,15 @@ step:./plan.py
           created by   root:
             consumes   file:plan.py
              creates   file:trigger.txt
-             creates   step:./consumer.py
-             creates   step:./producer.sh
+             creates   step:./sink.py
+             creates   step:./source.sh
 
 file:trigger.txt
                state = STATIC
           created by   step:./plan.py
-            supplies   step:./consumer.py
+            supplies   step:./sink.py
 
-step:./producer.sh
+step:./source.sh
                state = SUCCEEDED
                 need = DEFAULT
           created by   step:./plan.py
@@ -31,11 +31,11 @@ step:./producer.sh
 
 file:data.txt
                state = BUILT
-          created by   step:./producer.sh
-            consumes   step:./producer.sh
-            supplies   step:./consumer.py
+          created by   step:./source.sh
+            consumes   step:./source.sh
+            supplies   step:./sink.py
 
-step:./consumer.py
+step:./sink.py
                state = SUCCEEDED
                 need = DEFAULT
            using_env = STEPUP_PATH_FILTER [amended]

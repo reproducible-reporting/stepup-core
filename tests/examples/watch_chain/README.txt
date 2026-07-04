@@ -1,6 +1,6 @@
 This example illustrates the following chain of events:
 
-1. When a file changes, steps using it (consumers of the file) become pending.
+1. When a file changes, steps using it (sinks of the file) become pending.
 
    > In this example, file `config.json` is modified.
    > This is a model for a changing end-user configuration settings of a build.

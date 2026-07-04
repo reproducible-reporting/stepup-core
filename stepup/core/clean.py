@@ -209,30 +209,30 @@ def search_matching_paths(con: sqlite3.Connection, tr_paths: set[str]) -> set[st
     return tr_matching_paths
 
 
-INITIAL_CONSUMERS = "CREATE TABLE temp.initial_consumer (current INTEGER PRIMARY KEY) WITHOUT ROWID"
+INITIAL_SINKS = "CREATE TABLE temp.initial_sink (current INTEGER PRIMARY KEY) WITHOUT ROWID"
 
-RECURSE_CONSUMERS = """
-WITH RECURSIVE all_consumer(current) AS (
+RECURSE_SINKS = """
+WITH RECURSIVE all_sink(current) AS (
     -- Initial: Set initial node
     SELECT current
-    FROM temp.initial_consumer
+    FROM temp.initial_sink
     UNION
-    -- Recursion: Follow edges by selecting consumers of current
-    SELECT consumer AS current
-    FROM dependency INNER JOIN all_consumer ON supplier = current
+    -- Recursion: Follow edges by selecting sinks of current
+    SELECT sink AS current
+    FROM dependency INNER JOIN all_sink ON source = current
 )
 """
 
 SELECT_OUTPUTS = f"""
 SELECT label, file.state, detached, hash
-FROM all_consumer
-JOIN node ON node.i = all_consumer.current
-JOIN file ON file.node = all_consumer.current
+FROM all_sink
+JOIN node ON node.i = all_sink.current
+JOIN file ON file.node = all_sink.current
 WHERE file.state in
 ({FileState.BUILT.value}, {FileState.OUTDATED.value}, {FileState.VOLATILE.value})
 """
 
-DROP_CONSUMERS = "DROP TABLE IF EXISTS temp.initial_consumer"
+DROP_SINKS = "DROP TABLE IF EXISTS temp.initial_sink"
 
 
 def search_consuming_paths(
@@ -261,10 +261,10 @@ def search_consuming_paths(
         - The file hash
     """
     try:
-        con.execute(DROP_CONSUMERS)
-        con.execute(INITIAL_CONSUMERS)
+        con.execute(DROP_SINKS)
+        con.execute(INITIAL_SINKS)
         con.executemany(
-            "INSERT INTO temp.initial_consumer SELECT node.i FROM node WHERE node.label = ?",
+            "INSERT INTO temp.initial_sink SELECT node.i FROM node WHERE node.label = ?",
             ((path,) for path in initial_paths),
         )
         select_outputs = SELECT_OUTPUTS
@@ -272,7 +272,7 @@ def search_consuming_paths(
             select_outputs += " AND detached"
         return [
             (row[0], FileState(row[1]), bool(row[2]), FileHash.from_json(row[3]))
-            for row in con.execute(RECURSE_CONSUMERS + select_outputs)
+            for row in con.execute(RECURSE_SINKS + select_outputs)
         ]
     finally:
-        con.execute(DROP_CONSUMERS)
+        con.execute(DROP_SINKS)

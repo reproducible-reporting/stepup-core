@@ -118,12 +118,12 @@ There are also a few special nodes:
 The StepUp workflow has two types of directed edges (arrows) connecting pairs of nodes.
 Each type of edge is used to define a graph with its own rules and logic.
 
-- The **"dependency graph"** consists of **"supplier ➜ consumer"** edges.
-  This graph shows which nodes use information from other nodes when the workflow is executed.
+- The **"dependency graph"** consists of **"source ➜ sink"** edges.
+  This graph shows how information flows as the workflow is executed.
   A few examples:
 
-    - If a step uses a file as its input, it is the consumer of that file.
-    - Likewise, a step is the supplier of its outputs
+    - If a step uses a file as its input, it is the sink of that file.
+    - Likewise, a step is the source of its outputs
 
     The following diagram from the [Dependencies tutorial](dependencies.md)
     illustrates this type of edge.

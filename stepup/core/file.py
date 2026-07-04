@@ -153,14 +153,14 @@ class File(Node):
     #
 
     def completed(self):
-        """Check and if necessary, mark all consumer steps pending."""
+        """Check and if necessary, mark all sink steps pending."""
         # Local import to avoid cyclic imports.
         from .step import Step  # noqa: PLC0415
 
         state = self.get_state()
         if state in [FileState.STATIC, FileState.BUILT]:
             logger.info("Completed %s file: %s", state, self.path)
-            for step in self.consumers(Step, include_detached=True):
+            for step in self.sinks(Step, include_detached=True):
                 step.mark_pending()
 
     #
@@ -188,13 +188,13 @@ class File(Node):
             if creator is not None and creator.kind() == "step":
                 creator.mark_pending()
         if state != FileState.VOLATILE:
-            # Make all consumers pending.
+            # Make all sinks pending.
             # Local import to avoid cyclic imports.
             from .step import Step  # noqa: PLC0415
 
-            for step in self.consumers(Step):
+            for step in self.sinks(Step):
                 step.mark_pending()
-            for file in self.consumers(File):
+            for file in self.sinks(File):
                 file.externally_deleted()
 
     def externally_updated(self):
@@ -204,11 +204,11 @@ class File(Node):
         """
         state = self.get_state()
         if state == FileState.STATIC:
-            # Mark all consumers pending.
+            # Mark all sinks pending.
             # Local import to avoid cyclic imports.
             from .step import Step  # noqa: PLC0415
 
-            for step in self.consumers(Step):
+            for step in self.sinks(Step):
                 step.mark_pending()
         elif state == FileState.AWAITED:
             # Mark the creator pending, as to make sure the file is rebuilt.
@@ -224,7 +224,7 @@ class File(Node):
             # Local import to avoid cyclic imports.
             from .step import Step  # noqa: PLC0415
 
-            for step in self.consumers(Step, include_detached=True):
+            for step in self.sinks(Step, include_detached=True):
                 step.mark_pending()
         elif state != FileState.OUTDATED:
             raise ValueError(f"Cannot make file outdated when its state is {state}")

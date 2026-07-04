@@ -103,11 +103,11 @@ def _insert_file(con, node_id, creator_id):
     )
 
 
-def _add_dep(con, supplier_id, consumer_id):
-    """Add a directed dependency edge from supplier to consumer."""
+def _add_dep(con, source_id, sink_id):
+    """Add a directed dependency edge from source to sink."""
     con.execute(
-        "INSERT INTO dependency (supplier, consumer) VALUES (?, ?)",
-        (supplier_id, consumer_id),
+        "INSERT INTO dependency (source, sink) VALUES (?, ?)",
+        (source_id, sink_id),
     )
 
 
@@ -127,11 +127,11 @@ def _insert_input_file(con, node_id, creator_id, state, *, detached=False):
     )
 
 
-def _add_dep_returning_id(con, supplier_id, consumer_id):
+def _add_dep_returning_id(con, source_id, sink_id):
     """Add a dependency edge and return its primary-key id."""
     cur = con.execute(
-        "INSERT INTO dependency (supplier, consumer) VALUES (?, ?)",
-        (supplier_id, consumer_id),
+        "INSERT INTO dependency (source, sink) VALUES (?, ?)",
+        (source_id, sink_id),
     )
     return cur.lastrowid
 
@@ -251,13 +251,13 @@ def test_previously_safe_step_becomes_unsafe(con):
 # Tests for update_meta_after (INIT/SELECT/APPLY_UPDATE_CHECK_AFTER)
 #
 # Dependencies follow the two-hop pattern:  step_A -> file -> step_B
-# meaning: dep(supplier=step_A, consumer=file) + dep(supplier=file, consumer=step_B).
+# meaning: dep(source=step_A, sink=file) + dep(source=file, sink=step_B).
 # The queries compute _tail_time and _implied_need by traversing these two-hop paths.
 # -----------------------------------------------------------------------
 
 
 def test_isolated_step_tail_time_set_to_duration(con):
-    """A step with no file consumers gets _tail_time = duration after the update."""
+    """A step with no file sinks gets _tail_time = duration after the update."""
     _insert_step(con, 2, 1, StepState.PENDING, check_after=True, duration=3.5, tail_time=0.0)
     _run_update_meta_after(con)
     row = con.execute("SELECT _tail_time, _check_after FROM step WHERE node = 2").fetchone()
@@ -282,7 +282,7 @@ def test_three_step_chain_processes_bottom_up(con):
     """When A and B both have check_after=True in A -> F1 -> B -> F2 -> C, A is deferred.
 
     INIT_CHECK_AFTER removes A from the initial set because B (also check_after=True) is a
-    downstream consumer of A.  B is processed first; propagation from B then queues A,
+    downstream sink of A.  B is processed first; propagation from B then queues A,
     so A._tail_time picks up B's already-updated value.
     """
     _insert_step(con, 2, 1, StepState.PENDING, check_after=True, duration=1.0, tail_time=0.0)
@@ -300,8 +300,8 @@ def test_three_step_chain_processes_bottom_up(con):
     assert tail[2] == pytest.approx(6.0)  # A = A.duration + B._tail_time = 1.0 + 5.0
 
 
-def test_implied_need_propagates_from_consumer(con):
-    """A step's _implied_need is raised to the maximum _implied_need of its consumers."""
+def test_implied_need_propagates_from_sink(con):
+    """A step's _implied_need is raised to the maximum _implied_need of its sinks."""
     _insert_step(
         con,
         2,
@@ -320,8 +320,8 @@ def test_implied_need_propagates_from_consumer(con):
     assert row[0] == Need.PLAN.value
 
 
-def test_tail_time_is_maximum_over_parallel_consumers(con):
-    """When a step supplies to two independent consumers, _tail_time tracks the longer branch."""
+def test_tail_time_is_maximum_over_parallel_sinks(con):
+    """When a step supplies to two independent sinks, _tail_time tracks the longer branch."""
     _insert_step(con, 2, 1, StepState.PENDING, check_after=True, duration=1.0, tail_time=0.0)
     _insert_file(con, 3, 1)  # intermediate for B
     _insert_file(con, 4, 1)  # intermediate for C
@@ -428,7 +428,7 @@ def test_prune_redundant_three_step_chain_keeps_only_tail(con):
     assert _get_check_after_ids(con) == [6]  # only C remains
 
 
-def test_prune_redundant_parallel_consumers_prunes_shared_supplier(con):
+def test_prune_redundant_parallel_sinks_prunes_shared_source(con):
     """A supplies both B and C; with all three flagged, A is pruned but B and C stay."""
     _insert_step(con, 2, 1, StepState.PENDING, check_after=True)  # A
     _insert_file(con, 3, 1)
@@ -454,7 +454,7 @@ def test_prune_redundant_unconnected_steps_unchanged(con):
 
 
 def test_prune_redundant_detached_intermediate_breaks_chain(con):
-    """A detached step in the middle of a chain blocks supplier traversal.
+    """A detached step in the middle of a chain blocks source traversal.
 
     With A -> file -> B(detached) -> file -> C and A and C both in check_after,
     the traversal from C stops at the detached B, so A is NOT pruned.
@@ -499,8 +499,8 @@ def test_prune_redundant_stops_at_first_hit(con):
 # -----------------------------------------------------------------------
 
 
-def test_propagate_suppliers_fork_no_duplicates(con):
-    """Suppliers in fork pattern don't cause duplicate insertions.
+def test_propagate_sources_fork_no_duplicates(con):
+    """Sources in fork pattern don't cause duplicate insertions.
 
     Fork pattern using deps: E -> file_e -> C, D
     When both C and D are in update_after, both depend on file_e which is
@@ -790,9 +790,9 @@ def test_ordering_label_tiebreaker(con):
 # -----------------------------------------------------------------------
 
 
-def _get_inputs(con, consumer_id):
-    """Run SELECT_INPUTS for the given consumer and return all rows as a list of dicts."""
-    rows = con.execute(SELECT_INPUTS, (consumer_id,)).fetchall()
+def _get_inputs(con, sink_id):
+    """Run SELECT_INPUTS for the given sink and return all rows as a list of dicts."""
+    rows = con.execute(SELECT_INPUTS, (sink_id,)).fetchall()
     keys = ("label", "detached", "state", "amended", "hash")
     return [dict(zip(keys, row, strict=True)) for row in rows]
 
@@ -889,7 +889,7 @@ def test_select_inputs_multiple_files(con):
     assert states["file_5.txt"] == FileState.AWAITED.value
 
 
-def test_select_inputs_only_returns_inputs_for_queried_consumer(con):
+def test_select_inputs_only_returns_inputs_for_queried_sink(con):
     """Inputs of another step are not included in the result for the queried step."""
     _insert_step(con, 2, 1, StepState.PENDING)
     _insert_step(con, 3, 1, StepState.PENDING)
@@ -1231,7 +1231,7 @@ def test_pending_reasons_ordering_label_tiebreaker(con):
 # UNAVAILABLE_INPUT is a correlated subquery parameterized by `node.i` from
 # the outer query.  The helper below wraps it with
 # `SELECT EXISTS (...) FROM node WHERE node.i = ?` so each test can drive it
-# directly against a known consumer step.
+# directly against a known sink step.
 #
 # The three blocking branches are:
 #   VOLATILE      – any dep type, any detach state
@@ -1240,11 +1240,11 @@ def test_pending_reasons_ordering_label_tiebreaker(con):
 # -----------------------------------------------------------------------
 
 
-def _has_unavailable_input(con, consumer_id):
-    """Return whether the given consumer has at least one unavailable input."""
+def _has_unavailable_input(con, sink_id):
+    """Return whether the given sink has at least one unavailable input."""
     row = con.execute(
         f"SELECT EXISTS ({UNAVAILABLE_INPUT}) FROM node WHERE node.i = ?",
-        (consumer_id,),
+        (sink_id,),
     ).fetchone()
     return bool(row[0])
 
@@ -1414,11 +1414,11 @@ def _get_checkable_ids(con):
     return [row[0] for row in con.execute(SELECT_CHECKABLE_STEPS).fetchall()]
 
 
-def _has_unavailable_input(con, consumer_id):
-    """Return whether the given consumer has at least one unavailable input."""
+def _has_unavailable_input(con, sink_id):
+    """Return whether the given sink has at least one unavailable input."""
     row = con.execute(
         f"SELECT EXISTS ({UNAVAILABLE_INPUT}) FROM node WHERE node.i = ?",
-        (consumer_id,),
+        (sink_id,),
     ).fetchone()
     return bool(row[0])
 

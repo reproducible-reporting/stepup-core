@@ -33,7 +33,7 @@ step:./generate.py plan --optional
 
 step:./generate.py run
                state = SUCCEEDED
-                need = DEFAULT (implied by consumers > OPTIONAL)
+                need = DEFAULT (implied by sinks > OPTIONAL)
            using_env = STEPUP_PATH_FILTER [amended]
           created by   step:./generate.py plan --optional
             consumes   file:generate.py

@@ -31,4 +31,4 @@ time.sleep(0.2)
 
 content = data_path.read_text()
 amend(inp=["data.txt"])
-print(f"consumer read: {content.strip()}")
+print(f"sink read: {content.strip()}")

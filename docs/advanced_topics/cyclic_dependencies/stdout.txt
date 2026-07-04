@@ -49,11 +49,11 @@ Traceback (most recent call last):
     )
     ^
   File "stepup/core/workflow.py", line 841, in define_step
-    file.add_supplier(step)
+    file.add_source(step)
     ~~~~~~~~~~~~~~~~~^^^^^^
-  File "stepup/core/file.py", line 276, in add_supplier
-    idep = super().add_supplier(supplier)
-  File "stepup/core/trellis.py", line 422, in add_supplier
+  File "stepup/core/file.py", line 276, in add_source
+    idep = super().add_source(source)
+  File "stepup/core/trellis.py", line 422, in add_source
     raise CyclicError("New relation introduces a cyclic dependency")
 stepup.core.exceptions.CyclicError: New relation introduces a cyclic dependency
 ────────────────────────────────────────────────────────────────────────────────

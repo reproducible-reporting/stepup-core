@@ -5,7 +5,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 # Cyclic dependencies
 
 Cyclic dependencies are defined in StepUp as closed loops in the dependency graph.
-Formally, such a loop is defined as a set of `supplier ➜ consumer` edges
+Formally, such a loop is defined as a set of `source ➜ sink` edges
 (as introduced under [Edges](../getting_started/introduction.md#edges))
 that can be followed such that one arrives back at the starting point.
 If you construct cyclic dependencies in a `plan.py`, an error message is generated.

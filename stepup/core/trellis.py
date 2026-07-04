@@ -46,15 +46,15 @@ CREATE INDEX IF NOT EXISTS node_detached ON node (i) WHERE detached;
 
 CREATE TABLE IF NOT EXISTS dependency (
     i INTEGER PRIMARY KEY,
-    supplier INTEGER NOT NULL,
-    consumer INTEGER NOT NULL,
-    UNIQUE (supplier,consumer),
-    FOREIGN KEY (supplier) REFERENCES node(i),
-    FOREIGN KEY (consumer) REFERENCES node(i)
+    source INTEGER NOT NULL,
+    sink INTEGER NOT NULL,
+    UNIQUE (source,sink),
+    FOREIGN KEY (source) REFERENCES node(i),
+    FOREIGN KEY (sink) REFERENCES node(i)
 );
--- An index on (supplier, consumer) is already provided by the UNIQUE(supplier, consumer)
+-- An index on (source, sink) is already provided by the UNIQUE(source, sink)
 -- constraint above (sqlite_autoindex_dependency_1), so only the reverse direction is added here.
-CREATE INDEX IF NOT EXISTS dependency_consumer_supplier ON dependency(consumer, supplier);
+CREATE INDEX IF NOT EXISTS dependency_sink_source ON dependency(sink, source);
 """
 
 # Recursively find all products of a node and mark them as detached or non-detached.
@@ -71,25 +71,25 @@ WITH RECURSIVE all_products(current, kind, label) AS (
 UPDATE node SET detached = ? WHERE i IN (SELECT current FROM all_products)
 """
 
-RECURSE_CONSUMERS_SINGLE = """
-WITH RECURSIVE all_consumer(current) AS (
+RECURSE_SINKS_SINGLE = """
+WITH RECURSIVE all_sink(current) AS (
     -- Initial: Set initial node
     SELECT ? AS current
     UNION
-    -- Recursion: Follow edges by selecting consumers of current
-    SELECT consumer AS current
-    FROM dependency INNER JOIN all_consumer ON supplier = current
+    -- Recursion: Follow edges by selecting sinks of current
+    SELECT sink AS current
+    FROM dependency INNER JOIN all_sink ON source = current
 )
 """
 
 SELECT_WALK = """
--- Final: Get all (indirect) consumers of a node.
-SELECT current FROM all_consumer
+-- Final: Get all (indirect) sinks of a node.
+SELECT current FROM all_sink
 """
 
 SELECT_CYCLIC = """
--- Final: Check if any of the (indirect) consumer matches the supplier in the new edge
-SELECT EXISTS (SELECT 1 FROM all_consumer WHERE current = ?)
+-- Final: Check if any of the (indirect) sink matches the source in the new edge
+SELECT EXISTS (SELECT 1 FROM all_sink WHERE current = ?)
 """
 
 
@@ -257,13 +257,13 @@ class Node:
         self,
         node_type: type[NodeType] = Self,
         include_detached: bool = False,
-        do_suppliers: bool = True,
+        do_sources: bool = True,
     ) -> Iterator[NodeType]:
         sql = "SELECT node.i, kind, label FROM node JOIN dependency ON node.i = "
-        if do_suppliers:
-            sql += "supplier WHERE consumer = ?"
+        if do_sources:
+            sql += "source WHERE sink = ?"
         else:
-            sql += "consumer WHERE supplier = ?"
+            sql += "sink WHERE source = ?"
         data = [self.i]
         if node_type is not Self:
             sql += " AND kind = ?"
@@ -273,28 +273,28 @@ class Node:
         for i, kind, label in self.db.execute(sql, data):
             yield self.graph.node_classes[kind](self.graph, i, label)
 
-    def suppliers(
+    def sources(
         self, node_type: type[NodeType] = Self, include_detached: bool = False
     ) -> Iterator[NodeType]:
         """Iterate over nodes that supply to this one."""
-        yield from self._dependencies(node_type, include_detached, do_suppliers=True)
+        yield from self._dependencies(node_type, include_detached, do_sources=True)
 
-    def consumers(
+    def sinks(
         self, node_type: type[NodeType] = Self, include_detached: bool = False
     ) -> Iterator[NodeType]:
         """Iterate over nodes that consume from this one."""
-        yield from self._dependencies(node_type, include_detached, do_suppliers=False)
+        yield from self._dependencies(node_type, include_detached, do_sources=False)
 
     def _dependencies_str(
         self,
         node_type: type[NodeType] = Self,
-        do_suppliers: bool = True,
+        do_sources: bool = True,
     ) -> Iterator[tuple[int, str]]:
         sql = "SELECT kind, label, detached, dependency.i FROM node JOIN dependency ON node.i ="
-        if do_suppliers:
-            sql += " supplier WHERE consumer = ?"
+        if do_sources:
+            sql += " source WHERE sink = ?"
         else:
-            sql += " consumer WHERE supplier = ?"
+            sql += " sink WHERE source = ?"
         data = [self.i]
         if node_type is not Self:
             sql += " AND kind = ?"
@@ -306,13 +306,13 @@ class Node:
                 node_str = f"({node_str})"
             yield idep, node_str
 
-    def suppliers_str(self, node_type: type[NodeType] = Self) -> Iterator[tuple[int, str]]:
+    def sources_str(self, node_type: type[NodeType] = Self) -> Iterator[tuple[int, str]]:
         """Iterate over nodes that supply to this one, formatted as strings."""
-        yield from self._dependencies_str(node_type, do_suppliers=True)
+        yield from self._dependencies_str(node_type, do_sources=True)
 
-    def consumers_str(self, node_type: type[NodeType] = Self) -> Iterator[tuple[int, str]]:
+    def sinks_str(self, node_type: type[NodeType] = Self) -> Iterator[tuple[int, str]]:
         """Iterate over nodes that consume from this one, formatted as strings."""
-        yield from self._dependencies_str(node_type, do_suppliers=False)
+        yield from self._dependencies_str(node_type, do_sources=False)
 
     #
     # Graph modifications
@@ -376,39 +376,39 @@ class Node:
         # Propagate the detached=FALSE property to all product nodes.
         self.db.execute(RECURSIVELY_SET_DETACHED, (self.i, False))
 
-    def check_no_cycle_batch(self, supplier_is: Iterable[int]) -> None:
-        """Verify that several new supplier edges can be added without introducing a cycle.
+    def check_no_cycle_batch(self, source_is: Iterable[int]) -> None:
+        """Verify that several new source edges can be added without introducing a cycle.
 
-        This computes the set of (indirect) consumers of this node once,
-        and checks all candidate supplier identifiers against it.
-        It must only be used when this node is the *consumer* of every candidate edge
+        This computes the set of (indirect) sinks of this node once,
+        and checks all candidate source identifiers against it.
+        It must only be used when this node is the *sink* of every candidate edge
         in the batch, since adding such edges cannot change what this node can reach
         going forward.
 
         Parameters
         ----------
-        supplier_is
-            Identifiers of candidate supplier nodes that would each become
-            a new supplier of this node.
+        source_is
+            Identifiers of candidate source nodes that would each become
+            a new source of this node.
 
         Raises
         ------
         CyclicError
-            If any of the given identifiers is an (indirect) consumer of this node
+            If any of the given identifiers is an (indirect) sink of this node
             (or is this node itself), which means the corresponding edge would
             introduce a cyclic dependency.
         """
-        cur = self.db.execute(RECURSE_CONSUMERS_SINGLE + SELECT_WALK, (self.i,))
-        consumer_is = {row[0] for row in cur}
-        if not consumer_is.isdisjoint(supplier_is):
+        cur = self.db.execute(RECURSE_SINKS_SINGLE + SELECT_WALK, (self.i,))
+        sink_is = {row[0] for row in cur}
+        if not sink_is.isdisjoint(source_is):
             raise CyclicError("New relation introduces a cyclic dependency")
 
-    def add_supplier(self, supplier: Self, skip_cycle_check: bool = False) -> int:
-        """Add a supplier-consumer relation.
+    def add_source(self, source: Self, skip_cycle_check: bool = False) -> int:
+        """Add a source-sink relation.
 
         Parameters
         ----------
-        supplier
+        source
             Other node that supplies to this node.
         skip_cycle_check
             Skip the cyclic-dependency check.
@@ -428,32 +428,32 @@ class Node:
         GraphError
             If the relation already exists.
         """
-        self.graph._check_supplier(supplier, self)
+        self.graph._check_source(source, self)
         if not skip_cycle_check:
             # Check whether the new edge would introduce a cyclic dependency.
-            cur = self.db.execute(RECURSE_CONSUMERS_SINGLE + SELECT_CYCLIC, (self.i, supplier.i))
+            cur = self.db.execute(RECURSE_SINKS_SINGLE + SELECT_CYCLIC, (self.i, source.i))
             if cur.fetchone()[0] > 0:
                 raise CyclicError("New relation introduces a cyclic dependency")
         try:
             cur = self.db.execute(
-                "INSERT INTO dependency(supplier, consumer) VALUES(?, ?)",
-                (supplier.i, self.i),
+                "INSERT INTO dependency(source, sink) VALUES(?, ?)",
+                (source.i, self.i),
             )
         except sqlite3.IntegrityError as exc:
             raise GraphError("Relation already exists") from exc
         return cur.lastrowid
 
-    def del_suppliers(self, suppliers: list[Self] | None = None):
-        """Delete given suppliers.
+    def del_sources(self, sources: list[Self] | None = None):
+        """Delete given sources.
 
-        Without arguments, all suppliers of the current node are deleted.
+        Without arguments, all sources of the current node are deleted.
         """
-        if suppliers is None:
-            self.db.execute("DELETE FROM dependency WHERE consumer = ?", (self.i,))
+        if sources is None:
+            self.db.execute("DELETE FROM dependency WHERE sink = ?", (self.i,))
         else:
             self.db.executemany(
-                "DELETE FROM dependency WHERE supplier = ? AND consumer = ?",
-                ((supplier.i, self.i) for supplier in suppliers),
+                "DELETE FROM dependency WHERE source = ? AND sink = ?",
+                ((source.i, self.i) for source in sources),
             )
 
 
@@ -546,7 +546,7 @@ class Trellis:
         #   which is paired with a database vacuum worker to reclaim space from deleted nodes.
         # - Added several triggers, which all replace some corresponding Python logic:
         #   - _dependency_check_after_ins/del triggers on the dependency table
-        #     (in STEP_SCHEMA) to flag step._check_after when a supplier/consumer
+        #     (in STEP_SCHEMA) to flag step._check_after when a source/sink
         #     edge touching a step is inserted or deleted.
         #   - Added a step_clear_rescheduled trigger to clear step.rescheduled_info when a step's
         #     state moves to SUCCEEDED or FAILED.
@@ -700,11 +700,11 @@ class Trellis:
             pairs = []
             if ci is not None and (label != clabel):
                 pairs.append(("created by", creator.key(cdetached)))
-            pairs.extend(("consumes", other_str) for _, other_str in node.suppliers_str())
+            pairs.extend(("consumes", other_str) for _, other_str in node.sources_str())
             pairs.extend(
                 ("creates", other_str) for other_str in node.products_str() if other_str != "root:"
             )
-            pairs.extend(("supplies", other_str) for _, other_str in node.consumers_str())
+            pairs.extend(("supplies", other_str) for _, other_str in node.sinks_str())
             for role, key in pairs:
                 lines.append(f"{role:>20s}   {key}")
             lines.append("")
@@ -719,8 +719,8 @@ class Trellis:
         if node_type is Root and self.db.execute("SELECT count(*) FROM node").fetchone()[0] > 0:
             raise GraphError("Only one root node is allowed and it must be the first node.")
 
-    def _check_supplier(self, supplier: Node, consumer: Node) -> None:
-        """Validate a supplier-consumer edge before it is inserted. Override in subclasses."""
+    def _check_source(self, source: Node, sink: Node) -> None:
+        """Validate a source-sink edge before it is inserted. Override in subclasses."""
 
     def create(
         self, node_type: type[NodeType], creator: Node | None, label: str = "", **kwargs
@@ -778,8 +778,8 @@ class Trellis:
                 if not old_creator_detached:
                     raise GraphError("Old creator of detached node is not detached.")
                 old_creator.give_up()
-            # Cut all ties to suppliers, so this node starts from a clean slate.
-            node.del_suppliers()
+            # Cut all ties to sources, so this node starts from a clean slate.
+            node.del_sources()
             # Since this node is recreated, it cannot have created other nodes (yet).
             for product in node.products():
                 product.detach()
@@ -805,16 +805,16 @@ class Trellis:
         cleaned_some = True
         while cleaned_some:
             cleaned_some = False
-            # Look for detached nodes without consumers or products.
-            # As long nodes have consumers or products, they cannot be removed.
+            # Look for detached nodes without sinks or products.
+            # As long nodes have sinks or products, they cannot be removed.
             query = (
                 "SELECT i, kind, label FROM node WHERE detached AND "
                 "NOT EXISTS (SELECT 1 FROM node AS cnode WHERE node.i = cnode.creator) AND "
-                "NOT EXISTS (SELECT 1 FROM dependency WHERE node.i = dependency.supplier)"
+                "NOT EXISTS (SELECT 1 FROM dependency WHERE node.i = dependency.source)"
             )
             for i, kind, label in self.db.execute(query):
                 node = self._node_classes[kind](self, i, label)
                 cleaned_some = True
-                node.del_suppliers()
+                node.del_sources()
                 node.clean()
                 self.db.execute("DELETE FROM node where i = ?", (i,))

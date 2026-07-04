@@ -260,7 +260,7 @@ HTML_TEMPLATE = """\
     td:nth-child(1) {
       text-align: right;
       padding-right: 10px;
-      width: 12ex;
+      width: 15ex;
     }
     td:nth-child(2) {
       padding-right: 10px;
@@ -477,9 +477,7 @@ class GraphServer(BaseHTTPRequestHandler):
             if need == implied_need:
                 yield f"<p><b>Need:</b> {need.name}</p>"
             else:
-                yield (
-                    f"<p><b>Need:</b> {implied_need.name} (implied by consumers > {need.name})</p>"
-                )
+                yield (f"<p><b>Need:</b> {implied_need.name} (implied by sinks > {need.name})</p>")
             yield f"<p><b>Duration:</b> {duration:.2f} s</p>"
             yield f"<p><b>Tail time:</b> {tail_time:.2f} s</p>"
             if not safe:
@@ -495,7 +493,7 @@ class GraphServer(BaseHTTPRequestHandler):
             if check_after:
                 yield (
                     "<p><b>The need of this step has not been propagated to the "
-                    "<code>_implied_need</code> field of this step and its suppliers yet.</b></p>"
+                    "<code>_implied_need</code> field of this step and its sources yet.</b></p>"
                 )
 
             sql_env = "SELECT name, amended FROM env_var WHERE node = ?"
@@ -594,11 +592,12 @@ class GraphServer(BaseHTTPRequestHandler):
                 yield f"<p><b>Inode:</b> {file_hash.inode}</p>"
 
         # Format the creator
+        yield "<h3>Provenance edges</h3>"
         creator = self.con.execute(
             f"SELECT kind, label, detached, {STATE_SQL} FROM node WHERE i = ?", (creator_i,)
         ).fetchone()
         if creator is not None:
-            yield "<h3>Creator</h3>"
+            yield "<p>Creator</p>"
             yield '<table class="list">'
             creator_kind, creator_label, creator_detached, creator_state_i = creator
             yield self._format_node(
@@ -607,38 +606,46 @@ class GraphServer(BaseHTTPRequestHandler):
             yield "</table>"
 
         # Format the products
-        yield "<h3>Products</h3>"
-        yield '<table class="list">'
-        for prod_i, prod_kind, prod_label, state in self.con.execute(
+        product_rows = self.con.execute(
             f"SELECT i, kind, label, {STATE_SQL} FROM node WHERE creator = ? ORDER BY kind, label",
             (node_i,),
-        ):
-            yield f"{self._format_node(prod_i, prod_kind, prod_label, False, state)}"
-        yield "</table>"
+        ).fetchall()
+        if len(product_rows) > 0:
+            yield "<p>Products</p>"
+            yield '<table class="list">'
+            for prod_i, prod_kind, prod_label, state in product_rows:
+                yield f"{self._format_node(prod_i, prod_kind, prod_label, False, state)}"
+            yield "</table>"
 
-        # Format the consumers
-        yield "<h3>Consumers</h3>"
-        yield '<table class="list">'
-        for cons_i, cons_kind, cons_label, amended, state in self.con.execute(
-            f"SELECT node.i, kind, label, dependency.i IN amended_dep, {STATE_SQL} FROM node "
-            "JOIN dependency ON dependency.consumer = node.i "
-            "WHERE dependency.supplier = ? ORDER BY node.kind, node.label",
-            (node_i,),
-        ):
-            yield self._format_node(cons_i, cons_kind, cons_label, False, state, amended)
-        yield "</table>"
+        yield "<h3>Dependency edges</h3>"
 
-        # Format the suppliers
-        yield "<h3>Suppliers</h3>"
-        yield '<table class="list">'
-        for sup_i, sup_kind, sup_label, amended, state in self.con.execute(
+        # Format the sources
+        source_rows = self.con.execute(
             f"SELECT node.i, kind, label, dependency.i IN amended_dep, {STATE_SQL} FROM node "
-            "JOIN dependency ON dependency.supplier = node.i "
-            "WHERE dependency.consumer = ? ORDER BY node.kind, node.label",
+            "JOIN dependency ON dependency.source = node.i "
+            "WHERE dependency.sink = ? ORDER BY node.kind, node.label",
             (node_i,),
-        ):
-            yield self._format_node(sup_i, sup_kind, sup_label, False, state, amended)
-        yield "</table>"
+        ).fetchall()
+        if len(source_rows) > 0:
+            yield "<p>Sources</p>"
+            yield '<table class="list">'
+            for sup_i, sup_kind, sup_label, amended, state in source_rows:
+                yield self._format_node(sup_i, sup_kind, sup_label, False, state, amended)
+            yield "</table>"
+
+        # Format the sinks
+        sink_rows = self.con.execute(
+            f"SELECT node.i, kind, label, dependency.i IN amended_dep, {STATE_SQL} FROM node "
+            "JOIN dependency ON dependency.sink = node.i "
+            "WHERE dependency.source = ? ORDER BY node.kind, node.label",
+            (node_i,),
+        ).fetchall()
+        if len(sink_rows) > 0:
+            yield "<p>Sinks</p>"
+            yield '<table class="list">'
+            for cons_i, cons_kind, cons_label, amended, state in sink_rows:
+                yield self._format_node(cons_i, cons_kind, cons_label, False, state, amended)
+            yield "</table>"
 
     def _search(self, env, args):
         pattern = args.get("pattern", [""])[0]

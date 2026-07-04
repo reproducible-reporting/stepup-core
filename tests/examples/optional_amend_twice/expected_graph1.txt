@@ -37,7 +37,7 @@ file:work.py
 
 step:cp -p data1.txt optional1.txt
                state = SUCCEEDED
-                need = DEFAULT (implied by consumers > OPTIONAL)
+                need = DEFAULT (implied by sinks > OPTIONAL)
           created by   step:./plan.py
             consumes   file:data1.txt
              creates   file:optional1.txt
@@ -51,7 +51,7 @@ file:optional1.txt
 
 step:cp -p data2.txt optional2.txt
                state = SUCCEEDED
-                need = DEFAULT (implied by consumers > OPTIONAL)
+                need = DEFAULT (implied by sinks > OPTIONAL)
           created by   step:./plan.py
             consumes   file:data2.txt
              creates   file:optional2.txt

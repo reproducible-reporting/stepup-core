@@ -18,8 +18,8 @@ class StaticTree(Node):
         """Lower-case prefix of the key string representing a node."""
         return "st"
 
-    def add_supplier(self, supplier: Node, skip_cycle_check: bool = False) -> int:
-        raise NotImplementedError("A static tree does not use suppliers.")
+    def add_source(self, source: Node, skip_cycle_check: bool = False) -> int:
+        raise NotImplementedError("A static tree does not use sources.")
 
     def give_up(self):
         """Clean up a detached node because it loses a product node.

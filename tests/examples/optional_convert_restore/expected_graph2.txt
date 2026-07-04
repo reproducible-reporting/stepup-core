@@ -48,7 +48,7 @@ file:raw4.txt
 
 step:cp -p raw1.txt converted1.txt
                state = SUCCEEDED
-                need = DEFAULT (implied by consumers > OPTIONAL)
+                need = DEFAULT (implied by sinks > OPTIONAL)
            explained = yes
           created by   step:./plan.py
             consumes   file:raw1.txt

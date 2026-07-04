@@ -35,7 +35,7 @@ wait
 [[ ! -f test2.txt ]] || exit 1
 
 # The above stepup runs have put the database in a somewhat unusual state.
-# The "echo" step now has a detached consumer whose state is "AWAITED",
+# The "echo" step now has a detached sink whose state is "AWAITED",
 # while the step itself has successfully completed.
 # The initial consistency checks should not fail on this situation.
 sb -j 1

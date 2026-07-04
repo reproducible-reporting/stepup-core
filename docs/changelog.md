@@ -186,6 +186,8 @@ This is release candidate 7 for the upcoming StepUp 4.0 release.
     - The *run phase* has been renamed to *build phase* throughout the documentation and source code.
     - Runner has been renamed to Builder.
     - Cascade has been renamed to Trellis.
+    - Supplier has been renamed to Source.
+    - Consumer has been renamed to Sink.
 
 ### Deprecated
 
@@ -770,7 +772,7 @@ This release fixes several bugs.
       It also features an improved verbosity option.
 
 - Terminology changes:
-    - The "supplier ➜ consumer" graph is now called the dependency graph.
+    - The "source ➜ sink" graph is now called the dependency graph.
     - The "creator ➜ product" graph is now called the provenance graph.
 
 - Internal changes:
@@ -947,7 +949,7 @@ This release fixes several bugs.
 ### Changed
 
 - Documentation updates.
-- Limit acyclic constraint to the supplier-consumer graph.
+- Limit acyclic constraint to the source-sink graph.
   This means a step can declare a static file and then amend it as input.
 - Refactoring of the file `stepup.core.watcher` module:
     - Replace dependency `watchfiles` by `watchdog`.
