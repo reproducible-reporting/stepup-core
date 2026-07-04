@@ -23,7 +23,6 @@ import argparse
 import asyncio
 import contextlib
 import os
-import shutil
 import signal
 import subprocess
 import sys
@@ -37,6 +36,7 @@ from functools import partial
 from path import Path
 
 from .asyncio import stoppable_iterator, wait_for_path
+from .cgroups import cgroup_scope_prefix
 from .config import ConfigLoader
 from .constants import DIRECTOR_LOG, PERF_DATA, SQLLOG_JSON, STEPUP_DIR
 from .director import interpret_jobs
@@ -51,45 +51,6 @@ __all__ = ()
 def merge_resources(base: str | None, override: str | None) -> str:
     merged = {**parse_resources(base or ""), **parse_resources(override or "")}
     return ",".join(f"{k}:{v}" for k, v in merged.items())
-
-
-def cgroup_scope_prefix() -> list[str]:
-    """Return an argv prefix that launches a command in its own `systemd-run --scope`.
-
-    Returns
-    -------
-    argv_prefix
-        A list of strings that can be prepended to a command to launch it in its own
-        `systemd-run --scope` cgroup.
-
-    Raises
-    ------
-    RuntimeError
-        If not running on Linux, if `systemd-run` is not available,
-        or if a preflight probe of `systemd-run` fails.
-    """
-    if sys.platform != "linux":
-        raise RuntimeError("Cgroup isolation is only supported on Linux.")
-    systemd_run = shutil.which("systemd-run")
-    if systemd_run is None:
-        raise RuntimeError("systemd-run not available.")
-    prefix = [systemd_run, "--user", "--scope", "--quiet", "-p", "Delegate=yes", "--"]
-    try:
-        subprocess.run(
-            [*prefix, "true"],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=True,
-            timeout=3.0,
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise RuntimeError("systemd-run probe timed out.") from exc
-    except subprocess.CalledProcessError as exc:
-        raise RuntimeError("systemd-run probe subprocess failed.") from exc
-    except OSError as exc:
-        raise RuntimeError(f"systemd-run probe failed with {type(exc).__name__}.") from exc
-    return prefix
 
 
 def build_tool(args: argparse.Namespace, default_resources: str):

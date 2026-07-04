@@ -22,16 +22,57 @@
 import logging
 import math
 import os
+import shutil
+import subprocess
 import sys
 
 from path import Path
 
 from .exceptions import CgroupError
 
-__all__ = ("find_own_memory_cgroup", "get_ncore_from_cgroup")
+__all__ = ("cgroup_scope_prefix", "find_own_memory_cgroup", "get_ncore_from_cgroup")
 
 
 logger = logging.getLogger(__name__)
+
+
+def cgroup_scope_prefix() -> list[str]:
+    """Return an argv prefix that launches a command in its own `systemd-run --scope`.
+
+    Returns
+    -------
+    argv_prefix
+        A list of strings that can be prepended to a command to launch it in its own
+        `systemd-run --scope` cgroup.
+
+    Raises
+    ------
+    RuntimeError
+        If not running on Linux, if `systemd-run` is not available,
+        or if a preflight probe of `systemd-run` fails.
+    """
+    if sys.platform != "linux":
+        raise RuntimeError("Cgroup isolation is only supported on Linux.")
+    systemd_run = shutil.which("systemd-run")
+    if systemd_run is None:
+        raise RuntimeError("systemd-run not available.")
+    prefix = [systemd_run, "--user", "--scope", "--quiet", "-p", "Delegate=yes", "--"]
+    try:
+        subprocess.run(
+            [*prefix, "true"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True,
+            timeout=3.0,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("systemd-run probe timed out.") from exc
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError("systemd-run probe subprocess failed.") from exc
+    except OSError as exc:
+        raise RuntimeError(f"systemd-run probe failed with {type(exc).__name__}.") from exc
+    return prefix
 
 
 def _own_cgroup_path() -> Path:
