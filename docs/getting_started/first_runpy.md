@@ -1,3 +1,7 @@
+<!--
+SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
 # Running Python Scripts
 
 When the first word of the command passed to [`run()`][stepup.core.api.run] ends in `.py`,

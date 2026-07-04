@@ -1,3 +1,7 @@
+<!--
+SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
 # Welcome to StepUp Core
 
 StepUp is a simple, powerful and universal build tool, a modern alternative to

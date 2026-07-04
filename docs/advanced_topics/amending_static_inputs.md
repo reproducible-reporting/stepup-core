@@ -1,3 +1,7 @@
+<!--
+SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
 # Amending Static Inputs
 
 This page covers a special case of [Amending Steps](amending_steps.md):

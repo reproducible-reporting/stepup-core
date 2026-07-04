@@ -1,3 +1,7 @@
+<!--
+SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
 # Migration from StepUp 3.X to 4.0
 
 StepUp 4 comes with many new features and improvements,

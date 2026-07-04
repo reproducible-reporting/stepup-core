@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+version = 1
+
+[[annotations]]
+path = "tests/examples/*/**"
+SPDX-FileCopyrightText = "2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>"
+SPDX-License-Identifier = "LGPL-3.0-or-later"
+
+[[annotations]]
+path = [
+    "docs/advanced_topics/*/**/*",
+    "docs/deprecated/*/**/*",
+    "docs/getting_started/*/**/*",
+]
+SPDX-FileCopyrightText = "2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>"
+SPDX-License-Identifier = "LGPL-3.0-or-later"
+
+[[annotations]]
+path = "docs/getting_started/processes.svg"
+SPDX-FileCopyrightText = "2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+[[annotations]]
+path = "docs/clean_stdout.sed"
+SPDX-FileCopyrightText = "2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>"
+SPDX-License-Identifier = "LGPL-3.0-or-later"
+
+[[annotations]]
+path = "asciinema/*.cast"
+SPDX-FileCopyrightText = "2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>"
+SPDX-License-Identifier = "LGPL-3.0-or-later"
+
+[[annotations]]
+path = [
+    "docs/logo.svg",
+    "stepup/core/logo.svg",
+]
+SPDX-FileCopyrightText = "2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>"
+SPDX-License-Identifier = "LicenseRef-StepUp-Logo-v1"

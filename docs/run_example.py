@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Run one example and amend (volatile) outputs."""
+# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+# """Run one example and amend (volatile) outputs."""
 
 import subprocess
 import sys

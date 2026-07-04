@@ -1,3 +1,7 @@
+<!--
+SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
 # Environment Variables
 
 When defining a step, one can specify the environment variables it uses (not their values).

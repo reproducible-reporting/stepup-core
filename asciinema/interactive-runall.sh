@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
 
 ASCIINEMA=${PWD}
 TUTORIAL=${PWD}/../docs/getting_started/static_glob/

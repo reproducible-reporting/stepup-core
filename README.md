@@ -1,3 +1,7 @@
+<!--
+SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+SPDX-License-Identifier: LGPL-3.0-or-later
+-->
 <!-- markdownlint-disable line-length -->
 
 # StepUp Core
@@ -7,7 +11,7 @@
 [![mkdocs](https://github.com/reproducible-reporting/stepup-core/actions/workflows/mkdocs.yaml/badge.svg?branch=main)](https://github.com/reproducible-reporting/stepup-core/actions/workflows/mkdocs.yaml)
 [![PyPI Version](https://img.shields.io/pypi/v/stepup)](https://pypi.org/project/stepup/)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/stepup)
-![GPL-3 License](https://img.shields.io/github/license/reproducible-reporting/stepup-core)
+![LGPL-3 License](https://img.shields.io/github/license/reproducible-reporting/stepup-core)
 [![CodeFactor](https://www.codefactor.io/repository/github/reproducible-reporting/stepup-core/badge)](https://www.codefactor.io/repository/github/reproducible-reporting/stepup-core)
 
 StepUp is a simple, powerful and universal build tool,
@@ -48,7 +52,7 @@ is available at <https://reproducible-reporting.github.io/stepup-core>.
 ## License
 
 StepUp Core is distributed under the terms of the
-[GPL-3.0-or-later](LICENSE) license.
+[LGPL-3.0-or-later](LICENSE) license.
 Contributions are welcome;
 see the [development guide](https://reproducible-reporting.github.io/stepup-core/development/)
 to get started.

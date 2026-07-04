@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
 # Ensure changes to these dependencies are reflected in pyproject.toml
 asyncinotify==4.0.9
 attrs==23.1.0

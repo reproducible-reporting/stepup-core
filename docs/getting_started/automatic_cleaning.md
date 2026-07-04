@@ -1,3 +1,7 @@
+<!--
+SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
 # Automatic Cleaning
 
 StepUp follows the same cleanup strategy as [tup](https://gittup.org/tup/index.html):

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v6.0.0
@@ -31,17 +33,21 @@ repos:
   hooks:
     - id: remove-crlf
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.15.16
+  rev: v0.15.20
   hooks:
     - id: ruff-format
     - id: ruff-check
       args: ["--fix", "--show-fixes"]
 - repo: https://github.com/DavidAnson/markdownlint-cli2
-  rev: v0.22.1
+  rev: v0.23.0
   hooks:
   - id: markdownlint-cli2
     require_serial: true
 - repo: https://github.com/python-jsonschema/check-jsonschema
-  rev: 0.37.2
+  rev: 0.37.4
   hooks:
     - id: check-github-workflows
+- repo: https://github.com/fsfe/reuse-tool
+  rev: v6.2.0
+  hooks:
+  - id: reuse

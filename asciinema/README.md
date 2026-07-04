@@ -1,3 +1,7 @@
+<!--
+SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+SPDX-License-Identifier: LGPL-3.0-or-later
+-->
 # Asciinema Recordings for StepUp
 
 This directory contains autocast inputs for automated Asciinema recordings of the StepUp demos.

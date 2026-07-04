@@ -1,3 +1,7 @@
+<!--
+SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
 # Static Glob Conditional
 
 The [`glob()`][stepup.core.api.glob] function introduced in the previous tutorial

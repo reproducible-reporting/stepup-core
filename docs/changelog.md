@@ -1,3 +1,7 @@
+<!--
+SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
 <!-- markdownlint-disable no-duplicate-heading -->
 
 # Changelog
@@ -77,6 +81,10 @@ This is release candidate 7 for the upcoming StepUp 4.0 release.
 
 ### Changed
 
+- Relicense the StepUp Core source code under `LGPL-3.0-or-later`.
+  This clarifies that users of StepUp can assign any license of their choice
+  to the workflows they create with StepUp (e.g., `plan.py` and related files).
+  This has always been the intention, but with this change, it becomes legally explicit.
 - `stepup boot` has been renamed to `stepup build`
   and can be called conveniently with the `sb` shortcut.
   The `boot` command will be removed in a future release.

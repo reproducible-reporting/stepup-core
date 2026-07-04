@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
 # Exit on first error and clean up.
 set -e
 # Examples may override `cleanup` to add their own teardown; it runs on exit,

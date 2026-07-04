@@ -1,0 +1,32 @@
+StepUp Logo License Version 1
+
+Copyright (C) 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+
+Everyone is permitted to copy and distribute verbatim copies of this
+license document, but changing it is not allowed.
+
+The StepUp logo is excluded from the copyright licenses that otherwise apply
+to this repository (LGPL-3.0-or-later for source code, CC-BY-SA-4.0 for
+documentation). It also serves as a trademark identifying the StepUp
+project, and is therefore licensed separately under the following terms.
+
+The copyright holder is Toon Verstraelen <Toon.Verstraelen@UGent.be>.
+
+All rights to the logo are reserved by the copyright holder, except that:
+
+1. You may reproduce and display the logo, unmodified, to refer to the
+   StepUp project — for example in articles, presentations, slides, or
+   links back to the project — provided this does not suggest endorsement
+   of, or affiliation with, your work where none exists.
+
+2. You may not modify, adapt, recolor, or create derivative works based on
+   the logo, and you may not use it (in original or modified form) to
+   identify or promote a fork or derivative of StepUp, without prior
+   explicit and written permission from the copyright holder.
+
+3. You may not use the logo in a way that states or implies that the
+   copyright holder endorses, sponsors, or approves of your product,
+   service, or project, unless you have received explicit and written
+   permission from the copyright holder to make such a claim.
+
+For any use not covered above, contact the copyright holder for permission.
