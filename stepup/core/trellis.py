@@ -104,7 +104,7 @@ class Node:
     These are typically short-lived objects.
     They only store a few immutable pieces of information:
 
-    - `con`: the SQLite connnection.
+    - `con`: the SQLite connection.
     - `i`: the identifier of the node in the database.
     - `kind`: determines the subclass of `Node` to use.
     - `label`: a unique (within its kind) label for the node.
@@ -568,19 +568,6 @@ class Trellis:
         #   instead of four columns.
         # - Added DEFAULT clauses in the step table so Step.initialize() no longer
         #   needs to hardcode their initial values by column position.
-        # - Split step.rescheduled_info into unavailable_inputs and unfresh_inputs columns,
-        #   to distinguish amended inputs that are genuinely not built yet from ones that
-        #   were built but failed the amend() start/stop-time freshness check.
-        # - Added a step_pending_ready partial index on step(state, _implied_need)
-        #   WHERE _safe AND unavailable_inputs = '', matching Scheduler._PENDING_STEP_WHERE,
-        #   to speed up SELECT_CHECKABLE_STEPS/SELECT_RUNNABLE_STEPS dispatch queries.
-        # - Added the safe_update temp table (same pattern as the existing update_after/
-        #   check_after temp tables) so Scheduler._update_meta_safe() applies _safe updates
-        #   via a primary-key-scoped UPDATE instead of a full step-table scan. Session-local
-        #   temp table only -- no persistent schema change. While rewriting the query, fixed
-        #   a latent bug where a product node reachable through two simultaneously-flagged
-        #   ancestors could get an incorrect _safe value, and removed CHECKING from the set
-        #   of creator states that make products safe.
 
         return 5
 

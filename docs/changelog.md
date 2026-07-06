@@ -14,16 +14,9 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
-### Deprecated
+## [4.0.0rc9][] - 2026-07-06 {: #v4.0.0rc9 }
 
-- `--show-perf` (and `-s`) now requires an interactive terminal and errors out otherwise,
-  since the performance details it prints are no longer conveyed in non-interactive/redirected
-  output. This flag will be removed in a future release; step timings will instead be recorded
-  as metadata in the workflow database, inspectable through `stepup browse`.
-
-## [4.0.0rc8][] - 2026-07-04 {: #v4.0.0rc8 }
-
-This is release candidate 8 of the upcoming StepUp Core 4.0 release.
+This is release candidate 9 of the upcoming StepUp Core 4.0 release.
 
 ### Added
 
@@ -202,6 +195,10 @@ This is release candidate 8 of the upcoming StepUp Core 4.0 release.
 - The script interface for calling user Python scripts from `plan.py` has been deprecated
   in favor of the new [Call](getting_started/call.md) interface.
   You are encouraged to migrate your `plan.py` files to the new API.
+- `--show-perf` (and `-s`) now requires an interactive terminal and errors out otherwise,
+  since the performance details it prints are no longer conveyed in non-interactive/redirected
+  output. This flag will be removed in a future release; step timings will instead be recorded
+  as metadata in the workflow database, inspectable through `stepup browse`.
 
 ### Removed
 
@@ -983,7 +980,7 @@ This release fixes several bugs.
 Initial release
 
 [Unreleased]: https://github.com/reproducible-reporting/stepup-core
-[4.0.0rc8]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc8
+[4.0.0rc9]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc9
 [3.2.3]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.3
 [3.2.2]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.2
 [3.2.1]: https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.1
