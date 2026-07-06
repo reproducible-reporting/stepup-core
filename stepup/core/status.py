@@ -1,0 +1,98 @@
+# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+"""Tool to get the current status directly from the graph database."""
+
+import argparse
+import os
+import sqlite3
+from collections.abc import Callable
+
+from path import Path
+from rich import print  # noqa: A004
+
+from .config import ConfigLoader
+from .constants import GRAPH_DB
+from .enums import FileState, StepState
+from .sqlite3 import connect
+
+SQL_STEP_COUNTS = (
+    "SELECT step.state, count(*) FROM node JOIN step ON node.i = step.node "
+    "WHERE NOT node.detached GROUP BY step.state"
+)
+
+SQL_FILE_COUNTS = (
+    "SELECT file.state, count(*) FROM node JOIN file ON node.i = file.node "
+    "WHERE NOT node.detached GROUP BY file.state"
+)
+
+SQL_STEP_LABELS = (
+    "SELECT label FROM node JOIN step ON node.i = step.node WHERE state = ? AND NOT detached"
+)
+
+# Used-only resource counts. The "available" half only lives in the director's
+# in-memory `available_resource` temp table (seeded from --resources) and is
+# never persisted to graph.db, so it cannot be reconstructed here.
+SQL_RESOURCE_COUNTS = """
+SELECT st.name, SUM(st.units) AS used
+FROM step_resource AS st
+JOIN step AS s ON s.node = st.node
+WHERE s.state = ?
+GROUP BY st.name
+"""
+
+
+def status_subcommand(subparsers, loader: ConfigLoader) -> Callable:
+    """Define command-line arguments for the status tool.
+
+    Parameters
+    ----------
+    subparsers
+        The sub parser to add the status tool to.
+    loader
+        The configuration loader to override the default configuration with
+        config file values.
+    """
+    subparsers.add_parser(
+        "status",
+        help="Print the status of the workflow, read directly from the graph database.",
+    )
+    return status_tool
+
+
+def status_tool(args: argparse.Namespace):
+    """Print the status of the workflow by reading `.stepup/graph.db` directly."""
+    root = Path(os.getenv("STEPUP_ROOT", "."))
+    path_db = root / GRAPH_DB
+    if not path_db.exists():
+        raise FileNotFoundError(f"Graph database {path_db} does not exist.")
+    con = connect(path_db, read_only=True)
+    try:
+        print_status(con)
+    finally:
+        con.close()
+
+
+def print_status(con: sqlite3.Connection):
+    """Print the status of the workflow stored in the given graph database connection."""
+    print("[bold underline]Step counts[/]")
+    for value, count in con.execute(SQL_STEP_COUNTS):
+        print(f"  {StepState(value).name:10s} {count:6d}")
+    print()
+
+    print("[bold underline]File counts[/]")
+    for value, count in con.execute(SQL_FILE_COUNTS):
+        print(f"  {FileState(value).name:10s} {count:6d}")
+    print()
+
+    resource_counts = dict(con.execute(SQL_RESOURCE_COUNTS, (StepState.RUNNING.value,)))
+    print("[bold underline]Resources[/]")
+    if resource_counts:
+        namelen = max(len(name) for name in resource_counts)
+        for name, used in resource_counts.items():
+            print(f"  {name:{namelen}s}  used {used:6d}")
+    print()
+
+    print("[bold underline]Running steps[/]")
+    for state in (StepState.RUNNING, StepState.CHECKING):
+        for (label,) in con.execute(SQL_STEP_LABELS, (state.value,)):
+            print(f"  {label}")

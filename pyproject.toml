@@ -83,7 +83,7 @@ wait = "stepup.core.interact:wait_subcommand"
 join = "stepup.core.interact:join_subcommand"
 show-config = "stepup.core.config:show_config_subcommand"
 shutdown = "stepup.core.interact:shutdown_subcommand"
-status = "stepup.core.interact:status_subcommand"
+status = "stepup.core.status:status_subcommand"
 
 
 [tool.pytest.ini_options]

@@ -759,25 +759,6 @@ class DirectorHandler:
                 print(self.workflow.format_dot_dependency(), file=fh)
 
     @allow_rpc
-    async def status(self) -> dict[str]:
-        """Return the status of the director.
-
-        Returns
-        -------
-        status
-            A dictionary with the number of steps in each state and the running steps"""
-        async with self.db:
-            return {
-                "step_counts": self.workflow.get_step_counts(),
-                "file_counts": self.workflow.get_file_counts(),
-                "running_steps": (
-                    [step.label for step in self.workflow.steps(StepState.RUNNING)]
-                    + [step.label for step in self.workflow.steps(StepState.CHECKING)]
-                ),
-                "resource_counts": self.scheduler.get_resource_counts(),
-            }
-
-    @allow_rpc
     async def run(self):
         """Run pending steps (based on file changes observed in the watch phase).
 

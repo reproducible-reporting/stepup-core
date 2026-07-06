@@ -10,13 +10,9 @@ or to interact with StepUp running in the background on a remote server.
 import argparse
 from collections.abc import Callable
 
-from rich import print  # noqa: A004
-
 from .api import get_rpc_client
 from .config import ConfigLoader
 from .director import get_socket
-from .file import FileState
-from .step import StepState
 
 __all__ = ()
 
@@ -79,37 +75,6 @@ def graph_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     )
     loader.patch_parser(parser)
     return graph_tool
-
-
-def status_tool(args: argparse.Namespace):
-    """Print the status of the director."""
-    status = get_rpc_client(get_socket()).call.status()
-    print("[bold underline]Step counts[/]")
-    for value, count in status["step_counts"].items():
-        print(f"  {StepState(value).name:10s} {count:6d}")
-    print()
-    print("[bold underline]File counts[/]")
-    for value, count in status["file_counts"].items():
-        print(f"  {FileState(value).name:10s} {count:6d}")
-    print()
-    resource_counts = status.get("resource_counts", {})
-    print("[bold underline]Resources[/]")
-    if resource_counts:
-        namelen = max(len(name) for name in resource_counts)
-        for name, counts in resource_counts.items():
-            print(f"  {name:{namelen}s}  used {counts['used']:6d}  / {counts['available']:6d}")
-    print()
-    print("[bold underline]Running steps[/]")
-    for command in status["running_steps"]:
-        print(f"  {command}")
-
-
-def status_subcommand(subparsers, loader: ConfigLoader) -> Callable:
-    subparsers.add_parser(
-        "status",
-        help="Print the status of the director.",
-    )
-    return status_tool
 
 
 def run_tool(args: argparse.Namespace):
