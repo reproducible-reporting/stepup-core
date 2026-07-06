@@ -643,10 +643,15 @@ class Executor:
     hash_accumulator: ResourceAccumulator = attrs.field(init=False, factory=ResourceAccumulator)
     """Running totals of CPU time and block-IO op counts for hashing."""
 
+    _base_env_cache: dict | None = attrs.field(init=False, default=None)
+    """Cache for `base_env`, populated lazily on first access."""
+
     @property
     def base_env(self) -> dict:
         """The base environment for step child processes: `os.environ` with `infra_env` applied."""
-        return {**os.environ, **self.infra_env}
+        if self._base_env_cache is None:
+            self._base_env_cache = {**os.environ, **self.infra_env}
+        return dict(self._base_env_cache)
 
     #
     # Functions called by jobs
