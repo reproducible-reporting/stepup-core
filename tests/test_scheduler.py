@@ -8,20 +8,23 @@ from stepup.core.enums import FileState, Need, StepState
 from stepup.core.file import FILE_SCHEMA
 from stepup.core.hash import FileHash
 from stepup.core.scheduler import (
+    APPLY_SAFE_UPDATE,
     APPLY_UPDATE_CHECK_AFTER,
     EMPTY_CHECK_AFTER,
+    EMPTY_SAFE_UPDATE,
     EMPTY_UPDATE_CHECK_AFTER,
     INIT_CHECK_AFTER,
+    INIT_SAFE_UPDATE,
     INIT_UPDATE_CHECK_AFTER,
     PROPAGATE_UPDATE_CHECK_AFTER,
     PRUNE_DETACHED_CHECK_AFTER,
     PRUNE_REDUNDANT_CHECK_AFTER,
-    RECURSIVE_UPDATE_SAFE,
     SELECT_CHECKABLE_STEPS,
     SELECT_INPUTS,
     SELECT_PENDING_REASONS,
     SELECT_RESOURCE_COUNTS,
     SELECT_RUNNABLE_STEPS,
+    SELECT_SAFE_UPDATE,
     SELECT_UPDATE_CHECK_AFTER,
     UNAVAILABLE_INPUT,
     Scheduler,
@@ -150,6 +153,14 @@ def _get_safe(con):
     return dict(con.execute("SELECT node, _safe FROM step").fetchall())
 
 
+def _run_update_meta_safe(con):
+    """Run the full update_meta_safe logic against a bare SQLite connection."""
+    con.execute(INIT_SAFE_UPDATE)
+    con.execute(EMPTY_SAFE_UPDATE)
+    con.execute(SELECT_SAFE_UPDATE)
+    con.execute(APPLY_SAFE_UPDATE)
+
+
 def _run_update_meta_after(con):
     """Run the full update_meta_after logic against a bare SQLite connection."""
     con.execute(INIT_CHECK_AFTER)
@@ -171,7 +182,7 @@ def _run_update_meta_after(con):
 
 
 # -----------------------------------------------------------------------
-# Tests for RECURSIVE_UPDATE_SAFE
+# Tests for INIT/EMPTY/SELECT/APPLY_SAFE_UPDATE (_update_meta_safe)
 # -----------------------------------------------------------------------
 
 
@@ -179,7 +190,7 @@ def test_running_creator_makes_product_safe(con):
     """Product of a RUNNING step gets _safe=1 after the update."""
     _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True)
     _insert_step(con, 3, 2, StepState.PENDING)
-    con.execute(RECURSIVE_UPDATE_SAFE)
+    _run_update_meta_safe(con)
     assert _get_safe(con)[3] == 1
 
 
@@ -187,7 +198,7 @@ def test_succeeded_creator_makes_product_safe(con):
     """Product of a SUCCEEDED step gets _safe=1 after the update."""
     _insert_step(con, 2, 1, StepState.SUCCEEDED, check_safe=True)
     _insert_step(con, 3, 2, StepState.PENDING)
-    con.execute(RECURSIVE_UPDATE_SAFE)
+    _run_update_meta_safe(con)
     assert _get_safe(con)[3] == 1
 
 
@@ -195,7 +206,7 @@ def test_failed_creator_keeps_product_unsafe(con):
     """Product of a FAILED step keeps _safe=0 after the update."""
     _insert_step(con, 2, 1, StepState.FAILED, check_safe=True)
     _insert_step(con, 3, 2, StepState.PENDING)
-    con.execute(RECURSIVE_UPDATE_SAFE)
+    _run_update_meta_safe(con)
     assert _get_safe(con)[3] == 0
 
 
@@ -203,7 +214,7 @@ def test_pending_creator_keeps_product_unsafe(con):
     """Product of a PENDING step keeps _safe=0 after the update."""
     _insert_step(con, 2, 1, StepState.PENDING, check_safe=True)
     _insert_step(con, 3, 2, StepState.PENDING)
-    con.execute(RECURSIVE_UPDATE_SAFE)
+    _run_update_meta_safe(con)
     assert _get_safe(con)[3] == 0
 
 
@@ -211,7 +222,7 @@ def test_no_check_safe_skips_update(con):
     """When no step has _check_safe=1, no _safe values are updated."""
     _insert_step(con, 2, 1, StepState.RUNNING, check_safe=False)
     _insert_step(con, 3, 2, StepState.PENDING, check_safe=False)
-    con.execute(RECURSIVE_UPDATE_SAFE)
+    _run_update_meta_safe(con)
     assert _get_safe(con)[3] == 0
 
 
@@ -220,7 +231,7 @@ def test_deep_chain_propagates_safe(con):
     _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True)
     _insert_step(con, 3, 2, StepState.RUNNING)
     _insert_step(con, 4, 3, StepState.PENDING)
-    con.execute(RECURSIVE_UPDATE_SAFE)
+    _run_update_meta_safe(con)
     safe = _get_safe(con)
     assert safe[3] == 1  # B is safe: creator A is RUNNING
     assert safe[4] == 1  # C is safe: creator B is RUNNING
@@ -231,7 +242,7 @@ def test_failed_intermediate_blocks_grandchild(con):
     _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True)
     _insert_step(con, 3, 2, StepState.FAILED)
     _insert_step(con, 4, 3, StepState.PENDING)
-    con.execute(RECURSIVE_UPDATE_SAFE)
+    _run_update_meta_safe(con)
     safe = _get_safe(con)
     assert safe[3] == 1  # B can still be queued: creator A is RUNNING
     assert safe[4] == 0  # C is blocked: creator B has not succeeded
@@ -241,8 +252,36 @@ def test_previously_safe_step_becomes_unsafe(con):
     """A step that was _safe=1 gets reset to 0 when its creator transitions to FAILED."""
     _insert_step(con, 2, 1, StepState.FAILED, check_safe=True, safe=True)
     _insert_step(con, 3, 2, StepState.PENDING, safe=True)
-    con.execute(RECURSIVE_UPDATE_SAFE)
+    _run_update_meta_safe(con)
     assert _get_safe(con)[3] == 0
+
+
+def test_no_check_safe_leaves_safe_update_empty(con):
+    """When no step has _check_safe=1, SELECT_SAFE_UPDATE inserts no rows."""
+    _insert_step(con, 2, 1, StepState.RUNNING, check_safe=False)
+    con.execute(INIT_SAFE_UPDATE)
+    con.execute(EMPTY_SAFE_UPDATE)
+    con.execute(SELECT_SAFE_UPDATE)
+    assert con.execute("SELECT COUNT(*) FROM safe_update").fetchone()[0] == 0
+
+
+def test_double_flagged_ancestor_chain_computes_correct_safe(con):
+    """A grandchild reachable via two simultaneously-flagged ancestors gets the correct value.
+
+    Reproduces the shape Step.detach()/recycle() creates via RECURSIVE_CHECK_WITH_PRODUCTS,
+    which flags _check_safe on a step and all its recursive products at once: S(FAILED,
+    check_safe) -> C(RUNNING, check_safe, creator=S) -> P(RUNNING, creator=C). C's own state
+    would naively make it look like a safe creator, but its real creator S has failed, so P
+    must end up unsafe. The old single-statement RECURSIVE_UPDATE_SAFE query got this wrong
+    (produced _safe=1 for P); MIN(safe) aggregation in SELECT_SAFE_UPDATE fixes it.
+    """
+    _insert_step(con, 2, 1, StepState.FAILED, check_safe=True)
+    _insert_step(con, 3, 2, StepState.RUNNING, check_safe=True)
+    _insert_step(con, 4, 3, StepState.RUNNING)
+    _run_update_meta_safe(con)
+    safe = _get_safe(con)
+    assert safe[3] == 0  # C is unsafe: its real creator S failed
+    assert safe[4] == 0  # P is unsafe: the old query incorrectly produced 1 here
 
 
 # -----------------------------------------------------------------------
@@ -1387,24 +1426,24 @@ def test_unavailable_input_multiple_none_blocking(con):
 
 
 # -----------------------------------------------------------------------
-# Tests for CHECKING state: RECURSIVE_UPDATE_SAFE
+# Tests for CHECKING state: SELECT_SAFE_UPDATE
 # -----------------------------------------------------------------------
 
 
-def test_checking_creator_makes_product_safe(con):
-    """A product of a CHECKING step gets _safe=1 (CHECKING is a safe running state)."""
+def test_checking_creator_keeps_product_unsafe(con):
+    """A product of a CHECKING step keeps _safe=0 (CHECKING is not a safe creator state)."""
     _insert_step(con, 2, 1, StepState.CHECKING, check_safe=True)
     _insert_step(con, 3, 2, StepState.PENDING)
-    con.execute(RECURSIVE_UPDATE_SAFE)
-    assert _get_safe(con)[3] == 1
+    _run_update_meta_safe(con)
+    assert _get_safe(con)[3] == 0
 
 
-def test_checking_in_chain_propagates_safe(con):
-    """Safety propagates through: root -> A(CHECKING) -> B(PENDING)."""
+def test_checking_in_chain_blocks_safe(con):
+    """Safety does not propagate through a CHECKING creator: root -> A(CHECKING) -> B(PENDING)."""
     _insert_step(con, 2, 1, StepState.CHECKING, check_safe=True)
     _insert_step(con, 3, 2, StepState.PENDING)
-    con.execute(RECURSIVE_UPDATE_SAFE)
-    assert _get_safe(con)[3] == 1
+    _run_update_meta_safe(con)
+    assert _get_safe(con)[3] == 0
 
 
 # -----------------------------------------------------------------------

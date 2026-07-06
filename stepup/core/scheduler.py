@@ -17,41 +17,58 @@ from .workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
-# Update the _safe metadata field for all flagged steps in the workflow.
-RECURSIVE_UPDATE_SAFE = f"""
-UPDATE step SET _safe = cte.safe FROM (
-    -- The trace table indicates which creators are in a safe state.
-    -- Nodes who have a _safe creator should be flagged with _safe = 1,
-    -- and _safe = 0 otherwise.
-    WITH RECURSIVE trace(i, safe) AS (
-        -- Start with all steps whose _check_safe is set.
-        SELECT
-            s.node,
-            s.state in (
-                {StepState.RUNNING.value}, {StepState.CHECKING.value}, {StepState.SUCCEEDED.value}
-            )
-        FROM step AS s
-        WHERE _check_safe
+INIT_SAFE_UPDATE = """
+CREATE TEMP TABLE IF NOT EXISTS safe_update(i INTEGER PRIMARY KEY, safe INTEGER)
+"""
 
-        UNION ALL
 
-        -- Iterate over all their (recursive) products, and set safe to 0 if the creator is not safe
-        -- or its own state does not allow queuing of products.
-        SELECT
-            s.node,
-            trace.safe AND s.state in (
-                {StepState.RUNNING.value}, {StepState.CHECKING.value}, {StepState.SUCCEEDED.value}
-            )
-        FROM trace
-        JOIN node AS product ON trace.i = product.creator
-        JOIN step AS s ON product.i = s.node
-    )
-    -- Transfer the safe state of the creators to the product nodes.
-    SELECT node.i, trace.safe
-    FROM node
-    JOIN trace ON trace.i = node.creator
-) as cte
-WHERE step.node = cte.i
+EMPTY_SAFE_UPDATE = """
+DELETE FROM safe_update
+"""
+
+
+# Compute the new _safe value for every (recursive) product of a _check_safe-flagged step.
+# A product node can be reached through more than one flagged ancestor at once (e.g.
+# Step.detach()/recycle() flags a whole subtree via RECURSIVE_CHECK_WITH_PRODUCTS in step.py), so
+# duplicate rows for the same node id are possible and are resolved with MIN(safe): the value
+# derived through a longer (more ancestor-inclusive) chain is always <= the value from a shorter
+# chain, so MIN always recovers the correct, fully-chained answer rather than an arbitrary one.
+# The final SELECT uses CROSS JOIN to force `trace` (tiny) as the driving table: `trace` is a
+# recursive CTE with no cardinality stats, so without this hint SQLite drives the join from
+# `node` instead (a full table scan), the same join-order pitfall fixed for
+# PROPAGATE_UPDATE_CHECK_AFTER below.
+SELECT_SAFE_UPDATE = f"""
+INSERT INTO safe_update(i, safe)
+WITH RECURSIVE trace(i, safe) AS (
+    -- Start with all steps whose _check_safe is set.
+    SELECT
+        s.node,
+        s.state in ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
+    FROM step AS s
+    WHERE _check_safe
+
+    UNION ALL
+
+    -- Iterate over all their (recursive) products, and set safe to 0 if the creator is not safe
+    -- or its own state does not allow queuing of products.
+    SELECT
+        s.node,
+        trace.safe AND s.state in ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
+    FROM trace
+    JOIN node AS product ON trace.i = product.creator
+    JOIN step AS s ON product.i = s.node
+)
+-- Transfer the safe state of the creators to the product nodes.
+SELECT node.i, MIN(trace.safe)
+FROM trace
+CROSS JOIN node ON node.creator = trace.i
+GROUP BY node.i
+"""
+
+
+APPLY_SAFE_UPDATE = """
+UPDATE step SET _safe = (SELECT safe FROM safe_update WHERE safe_update.i = step.node)
+WHERE step.node IN (SELECT i FROM safe_update)
 """
 
 
@@ -386,12 +403,13 @@ class Scheduler:
                     "INSERT INTO available_resource VALUES (?, ?)",
                     parse_resources(resources).items(),
                 )
-            # check_after and update_after are hot-path temp tables used by
-            # _update_meta_after(). Creating them once here, instead of on every call,
-            # avoids repeated schema-cookie bumps (which invalidate SQLite's
+            # check_after, update_after, and safe_update are hot-path temp tables used by
+            # _update_meta_after()/_update_meta_safe(). Creating them once here, instead of on
+            # every call, avoids repeated schema-cookie bumps (which invalidate SQLite's
             # prepared-statement cache) on the dispatch hot path.
             self.workflow.db.execute(INIT_CHECK_AFTER)
             self.workflow.db.execute(INIT_UPDATE_CHECK_AFTER)
+            self.workflow.db.execute(INIT_SAFE_UPDATE)
 
     #
     # Interaction with builder
@@ -473,7 +491,10 @@ class Scheduler:
         db = self.workflow.db
         if not db.execute("SELECT EXISTS(SELECT 1 FROM step WHERE _check_safe)").fetchone()[0]:
             return
-        cur = db.execute(RECURSIVE_UPDATE_SAFE)
+        # safe_update is created once in Scheduler.initialize().
+        db.execute(EMPTY_SAFE_UPDATE)
+        db.execute(SELECT_SAFE_UPDATE)
+        cur = db.execute(APPLY_SAFE_UPDATE)
         logger.debug(f"Updated {cur.rowcount} _safe metadata field(s) for steps")
         cur = db.execute("UPDATE step SET _check_safe = 0 WHERE _check_safe")
         logger.debug(f"Updated {cur.rowcount} _check_safe metadata field(s) for steps")

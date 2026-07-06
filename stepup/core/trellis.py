@@ -574,6 +574,13 @@ class Trellis:
         # - Added a step_pending_ready partial index on step(state, _implied_need)
         #   WHERE _safe AND unavailable_inputs = '', matching Scheduler._PENDING_STEP_WHERE,
         #   to speed up SELECT_CHECKABLE_STEPS/SELECT_RUNNABLE_STEPS dispatch queries.
+        # - Added the safe_update temp table (same pattern as the existing update_after/
+        #   check_after temp tables) so Scheduler._update_meta_safe() applies _safe updates
+        #   via a primary-key-scoped UPDATE instead of a full step-table scan. Session-local
+        #   temp table only -- no persistent schema change. While rewriting the query, fixed
+        #   a latent bug where a product node reachable through two simultaneously-flagged
+        #   ancestors could get an incorrect _safe value, and removed CHECKING from the set
+        #   of creator states that make products safe.
 
         return 5
 
