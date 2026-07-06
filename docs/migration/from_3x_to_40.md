@@ -17,7 +17,7 @@ For consistency, the `stepup build` command is now the main entry point for runn
 while `stepup boot` is deprecated and will be removed in a future release.
 You can use the new `sb` entrypoint as a shortcut for `stepup build`.
 
-## The new `run()` function replaces the old `runsh()` and `runpy()` functions
+## The New `run()` Function Replaces the Old `runsh()` and `runpy()` Functions
 
 StepUp 4 unifies `runsh()` and `runpy()` into a single and more powerful `run()` function,
 which takes an optional boolean `shell` argument (default `False`)
@@ -32,8 +32,8 @@ The new default, `run(..., shell=False)`, is much more general than the old `run
   and runs them in a forked Python interpreter.
   This is comparable to the old `runpy()` function,
   but more robust at about the same cost.
-- It automatically detects so called console scripts (executables installed by Python packages)
-  and runs them also in a forked Python interpreter.
+- It automatically detects so-called console scripts (executables installed by Python packages)
+  and runs them in a forked Python interpreter.
   This is a new feature. In StepUp 3, such scripts were run in a shell,
   which started another Python interpreter.
   The new approach is much more efficient.
@@ -41,13 +41,15 @@ The new default, `run(..., shell=False)`, is much more general than the old `run
 Note that the `run()` function checks whether the first word of the command
 is a relative path (contains a path separator, `/`, and is not absolute).
 If it is local, StepUp will automatically add it as an input dependency to the step.
-In StepUp 3, one had to be explicitly include the script as an input, e.g.
+In StepUp 3, one had to explicitly include the script as an input.
 
 StepUp 4 drops the magic substitution of `${inp}` and `${out}` in the command string.
-Instead, you can use Python's f-string syntax and the `shq()` function insert paths in the command.
+Instead, you can use Python's f-string syntax and the `shq()` function to insert paths in the command.
 This is a more general and robust approach than the old substitution mechanism.
+The `shq()` function handles single paths or lists of paths and adds quotes where needed,
+and gives you more control over which paths to insert where, e.g. using slicing.
 In simple cases, just repeating the input and output paths in the command string
-is recommended for readability, e.g. `run(f"cat hello.txt", inp="hello.txt")`.
+is recommended for readability.
 
 ```python
 # StepUp 3: you had to explicitly include the script as an input
@@ -100,7 +102,7 @@ runpy("./analyze.py --input data.csv", inp=["analyze.py", "data.csv"])
 run("./analyze.py --input data.csv", inp="data.csv")
 ```
 
-### Why prefer `run()` without `shell=True`
+### Why Prefer `run()` without `shell=True`
 
 Using `shell=True` (or the old `runsh()` for plain commands) has a few drawbacks
 compared to execution via `run()` with `shell=False`:
@@ -143,27 +145,27 @@ This has a few practical consequences for your `plan.py` file:
 
 - Directories can no longer be used as inputs or outputs of steps.
 
-StepUp 3 insisted strongly on trailing slashes for directory paths,
-which has been abandoned almost entirely in StepUp 4.
+StepUp 3 strongly insisted on trailing slashes for directory paths.
+This requirement has been abandoned almost entirely in StepUp 4.
 End users only need to specify such "path affixes" in two places to avoid ambiguity:
 
 - If the `dst` argument of `copy()` is a directory, it must end with a trailing slash.
   (StepUp cannot check the file system to test if it is a directory
   because the directory may not exist yet.)
 - When specifying a local executable, it must either start with a `./` prefix
-  or be a relative path containing a path separator (`/`)
+  or be a relative path containing a path separator (`/`).
   This is needed to avoid ambiguity with executables found in the PATH.
 
 ## Distributed Plans
 
-The function [`plan()`][stepup.core.api.plan] now works differently,
-and works almost in the same way as the `run()` function,
+The function [`plan()`][stepup.core.api.plan] now works very differently:
+it behaves almost like the `run()` function,
 except for a few small differences:
 
 - The first argument is now a command string, not a directory containing another `plan.py` file.
 - Except for `optional` and `shell`, all `run()` arguments are supported.
   (It is hardwired to use `optional=False, shell=False`.)
-- It differs from run in that it assigns a higher priority to planning steps,
+- It differs from `run()` in that it assigns a higher priority to planning steps,
   so the workflow is completed as early as possible.
 - It insists that the command is a relative path to a local executable.
   (While it would technically be possible to allow arbitrary commands,
@@ -185,13 +187,13 @@ plan("./plan.py", workdir="subdir")
 
 The advantages of the new `plan()` function are:
 
-- Increased flexibility: You are not forced to work in a subdirectory.
+- **Increased flexibility**: You are not forced to work in a subdirectory.
   E.g., you can have `plan_a.py` and `plan_b.py` in the same directory
   and call them both from a master `plan.py`.
-- Simplicity of the API: works like a simplified version of `run()`,
+- **Simplicity of the API**: works like a simplified version of `run()`,
   so there are fewer concepts to learn.
 
-## Resource constraints (replacement for pools and blocked steps)
+## Resource Constraints (Replacement for Pools and Blocked Steps)
 
 - The `pool()` function has been removed, and pools can no longer be defined in `plan.py`.
   Instead, you can declare the resources available on the host via an environment variable,
@@ -259,7 +261,7 @@ The translation is mechanical:
   for each run step it wants to register.
 - Any `static` declared via the info dictionary becomes an explicit `static()` call.
 
-### Single case
+### Single Case
 
 In StepUp 3, a single-case script returned its planning data from `info()`:
 
@@ -316,7 +318,7 @@ static("generate.py", "config.json")
 call("./generate.py", "plan", planning=True)
 ```
 
-### Multiple cases
+### Multiple Cases
 
 In StepUp 3, running the same script for several cases required the `cases()` generator,
 a `CASE_FMT` template, and a `case_info()` function:

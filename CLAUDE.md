@@ -145,6 +145,11 @@ Two rules that are easy to get wrong:
 - **MD031** — fenced code blocks must have a **blank line** before and after them,
   even when they appear inside a list item.
 
+Section headings (`##`, `###`, ...) use **Title Case**
+(capitalize nouns, verbs, adjectives, and adverbs; lowercase articles,
+coordinating conjunctions, and prepositions regardless of length, e.g. "from", "with").
+Inline code spans (e.g. `` `run()` ``) keep their own casing and are never title-cased.
+
 ### Dependencies
 
 Runtime dependencies are declared in `pyproject.toml` under `[project] dependencies`.
