@@ -618,15 +618,17 @@ class Workflow(Trellis):
         file_hashes
             A list of `(path, file_hash)` tuples.
         """
-        # CROSS JOIN (instead of JOIN) forces json_each to be the outer loop, so `node` is
-        # probed through its `node_kind_label` index once per requested path. A plain JOIN
-        # lets the planner drive from a full scan of `node` instead, which is O(n_nodes)
-        # regardless of how few paths are requested.
+        # The `label IN (SELECT value FROM json_each(...))` form makes the planner drive from
+        # `node`'s `node_kind_label` index (probed once per requested path via a Bloom-filtered
+        # membership test), instead of a plain JOIN against json_each, which lets the planner
+        # drive from a full scan of `node` instead, an O(n_nodes) cost regardless of how few
+        # paths are requested. As a bonus, results come out pre-sorted by the covering index,
+        # so no separate ORDER BY sort is needed.
         sql = (
-            "SELECT label, hash FROM json_each(:paths) AS wanted "
-            "CROSS JOIN node ON node.kind = 'file' AND node.label = wanted.value "
-            "CROSS JOIN file ON file.node = node.i "
-            "ORDER BY label"
+            "SELECT node.label, file.hash FROM node "
+            "JOIN file ON file.node = node.i "
+            "WHERE node.kind = 'file' AND node.label IN (SELECT value FROM json_each(:paths)) "
+            "ORDER BY node.label"
         )
         return [
             (path, FileHash.from_json(hash_value))
@@ -652,12 +654,13 @@ class Workflow(Trellis):
 
         # Efficiently get corresponding node_index and state tuples.
         file_hashes = dict(file_hashes)
-        # CROSS JOIN forces json_each to be the outer loop; see get_file_hashes for why.
+        # See get_file_hashes for why this uses an IN subquery instead of a plain JOIN against
+        # json_each. `node.label` is used directly as `path` (instead of joining back to
+        # json_each's `value` column) since a matching row's label is that same value.
         sql = (
-            "SELECT node.i, updated.value AS path, file.state "
-            "FROM json_each(:paths) AS updated "
-            "CROSS JOIN node ON node.kind = 'file' AND node.label = updated.value "
-            "CROSS JOIN file ON file.node = node.i "
+            "SELECT node.i, node.label AS path, file.state FROM node "
+            "JOIN file ON file.node = node.i "
+            "WHERE node.kind = 'file' AND node.label IN (SELECT value FROM json_each(:paths)) "
             "ORDER BY path"
         )
         paths = json.dumps(list(file_hashes))

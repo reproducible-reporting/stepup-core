@@ -210,15 +210,23 @@ WHERE step.node = update_after.i
 
 
 # Propagate the updates to all (recursive) sources of the updated steps.
+#
+# The two nested `IN` subqueries (rather than a plain JOIN chain starting from `update_after`)
+# make the planner drive from `dependency`'s `dependency_sink_source` index seeded by
+# `update_after`, instead of a full scan of `dependency` or `step`. A plain JOIN here lets the
+# planner pick either of those as the driving table, an O(n_dependencies) or O(n_steps) cost
+# regardless of how few steps are in `update_after`.
 PROPAGATE_UPDATE_CHECK_AFTER = """
 INSERT INTO check_after(i)
 SELECT DISTINCT source_step.node
-FROM update_after
-CROSS JOIN dependency AS dep1 ON dep1.sink = update_after.i
-JOIN dependency AS dep2 ON dep2.sink = dep1.source
+FROM dependency AS dep2
 JOIN step AS source_step ON source_step.node = dep2.source
 JOIN node AS source_node ON source_step.node = source_node.i
 WHERE NOT source_node.detached
+  AND dep2.sink IN (
+      SELECT dep1.source FROM dependency AS dep1
+      WHERE dep1.sink IN (SELECT i FROM update_after)
+  )
 """
 
 
