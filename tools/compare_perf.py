@@ -6,13 +6,12 @@
 Usage
 -----
 ```bash
-python tmp/compare_perf.py --before-prof tmp/director-v1.prof --after-prof tmp/director-v2.prof \
-    --before-sqllog tmp/sqllog-v1.json --after-sqllog tmp/sqllog-v2.json [--top N]
+python tools/compare_perf.py before_suffix after_suffix [--top N]
 ```
 
-By default it compares `<dir>/director-v1.prof` / `<dir>/sqllog-v1.json` (before) against
-`<dir>/director-v2.prof` / `<dir>/sqllog-v2.json` (after), where `<dir>` is this script's
-directory.
+`before_suffix` and `after_suffix` are appended to the default file names,
+e.g. with `_v1` and `_v2`, it compares `director_v1.prof` / `sqllog_v1.json` (before)
+against `director_v2.prof` / `sqllog_v2.json` (after), all in the current directory.
 
 See `analyze_perf.py` for the expected file formats.
 """
@@ -24,10 +23,17 @@ import json
 import pstats
 from pathlib import Path
 
-STEPUP_MARKER = "/stepup/core/"
+from common import (
+    add_top_argument,
+    flatten_query,
+    pct,
+    prof_path,
+    sqllog_path,
+    strip_site_packages,
+)
 
 
-def load_profile_tt(prof_path: Path) -> dict[tuple[str, str], tuple[float, float, int]]:
+def load_profile_tt(prof_file: Path) -> dict[tuple[str, str], tuple[float, float, int]]:
     """Load a pstats profile into `{(filename, funcname): (self_time, cum_time, ncalls)}`.
 
     The line number is deliberately dropped from the key and summed over,
@@ -35,7 +41,7 @@ def load_profile_tt(prof_path: Path) -> dict[tuple[str, str], tuple[float, float
     file was edited) is still recognized as "the same function" across the two profiles,
     instead of showing up as one function disappearing and an unrelated one appearing.
     """
-    stats = pstats.Stats(str(prof_path))
+    stats = pstats.Stats(str(prof_file))
     merged: dict[tuple[str, str], tuple[float, float, int]] = {}
     for (filename, _lineno, funcname), (_, nc, tt, ct, _callers) in stats.stats.items():
         key = (filename, funcname)
@@ -52,8 +58,8 @@ def compare_profiles(before_path: Path, after_path: Path, top: int) -> tuple[flo
     total_after = sum(tt for tt, _ct, _nc in after.values())
 
     print(f"\n=== Profiles: {before_path.name} -> {after_path.name} ===")
-    pct = 100 * (total_after - total_before) / total_before if total_before else 0.0
-    print(f"Total self time: {total_before:.3f} s -> {total_after:.3f} s  ({pct:+.1f}%)")
+    delta_pct = pct(total_after - total_before, total_before)
+    print(f"Total self time: {total_before:.3f} s -> {total_after:.3f} s  ({delta_pct:+.1f}%)")
 
     keys = set(before) | set(after)
     rows = []
@@ -64,44 +70,52 @@ def compare_profiles(before_path: Path, after_path: Path, top: int) -> tuple[flo
     rows.sort(key=lambda r: r[2] - r[1])
 
     print(f"\n-- Top {top} improved functions (self time) --")
-    print(f"{'before [s]':>10} {'after [s]':>10} {'delta [s]':>10} {'ncalls (b->a)':>16}  location")
+    print(f"{'before [s]':>10} {'after [s]':>10} {'delta [s]':>10} {'ncalls (b->a)':>20}  location")
     for (filename, funcname), tt_before, tt_after, nc_before, nc_after in rows[:top]:
         delta = tt_after - tt_before
         if delta >= 0:
             continue
         ncalls_str = f"{nc_before} -> {nc_after}"
+        location = strip_site_packages(filename)
         print(
-            f"{tt_before:10.3f} {tt_after:10.3f} {delta:10.3f} {ncalls_str:>16}  "
-            f"{filename}({funcname})"
+            f"{tt_before:10.3f} {tt_after:10.3f} {delta:10.3f} {ncalls_str:>20}  "
+            f"{location}({funcname})"
         )
 
     print(f"\n-- Top {top} regressed functions (self time) --")
-    print(f"{'before [s]':>10} {'after [s]':>10} {'delta [s]':>10} {'ncalls (b->a)':>16}  location")
+    print(f"{'before [s]':>10} {'after [s]':>10} {'delta [s]':>10} {'ncalls (b->a)':>20}  location")
     for (filename, funcname), tt_before, tt_after, nc_before, nc_after in reversed(rows[-top:]):
         delta = tt_after - tt_before
         if delta <= 0:
             continue
         ncalls_str = f"{nc_before} -> {nc_after}"
+        location = strip_site_packages(filename)
         print(
-            f"{tt_before:10.3f} {tt_after:10.3f} {delta:10.3f} {ncalls_str:>16}  "
-            f"{filename}({funcname})"
+            f"{tt_before:10.3f} {tt_after:10.3f} {delta:10.3f} {ncalls_str:>20}  "
+            f"{location}({funcname})"
         )
 
     return total_before, total_after
 
 
-def load_sqllog(path: Path) -> dict[tuple[str, int, str], dict]:
-    """Load a SQL query log into `{(module_name, line, flattened query): record}`.
+def load_sqllog(path: Path) -> dict[tuple[str, str], dict]:
+    """Load a SQL query log into `{(module_name, flattened query): record}`.
 
-    The key combines the call site (`module_name`, `line`) with the flattened query text,
-    matching the fine-grained identity used by `DBSession._log`,
-    so that the same query text executed from two different call sites
-    is compared as two separate entries instead of being silently merged.
+    The line number is deliberately dropped from the key and summed over,
+    so that a call site whose line shifted (e.g. because an optimization
+    added or removed code above it) is still recognized as "the same query"
+    across the two logs, instead of showing up as one entry disappearing
+    and an unrelated one appearing.
     """
     records = json.loads(path.read_text())
-    return {
-        (rec["module_name"], rec["line"], " ".join(rec["query"].split())): rec for rec in records
-    }
+    merged: dict[tuple[str, str], dict] = {}
+    for rec in records:
+        key = (rec["module_name"], flatten_query(rec["query"]))
+        prev_wtime, prev_count = (
+            (merged[key]["wtime"], merged[key]["count"]) if key in merged else (0.0, 0)
+        )
+        merged[key] = {"wtime": prev_wtime + rec["wtime"], "count": prev_count + rec["count"]}
+    return merged
 
 
 def compare_sqllogs(before_path: Path, after_path: Path, top: int) -> tuple[float, float]:
@@ -114,10 +128,10 @@ def compare_sqllogs(before_path: Path, after_path: Path, top: int) -> tuple[floa
     count_after = sum(rec["count"] for rec in after.values())
 
     print(f"\n=== SQL logs: {before_path.name} -> {after_path.name} ===")
-    pct = 100 * (total_after - total_before) / total_before if total_before else 0.0
-    print(f"Total SQL wall time: {total_before:.3f} s -> {total_after:.3f} s  ({pct:+.1f}%)")
+    delta_pct = pct(total_after - total_before, total_before)
+    print(f"Total SQL wall time: {total_before:.3f} s -> {total_after:.3f} s  ({delta_pct:+.1f}%)")
     print(f"Total statement executions: {count_before} -> {count_after}")
-    print(f"Distinct call sites: {len(before)} -> {len(after)}")
+    print(f"Distinct module/query pairs: {len(before)} -> {len(after)}")
 
     keys = set(before) | set(after)
     rows = []
@@ -133,63 +147,65 @@ def compare_sqllogs(before_path: Path, after_path: Path, top: int) -> tuple[floa
 
     print(f"\n-- Top {top} improved queries (wall time) --")
     print(
-        f"{'before [s]':>10} {'after [s]':>10} {'delta [s]':>10} {'count (b->a)':>14}  "
-        "location  query"
+        f"{'before [s]':>10} {'after [s]':>10} {'delta [s]':>10} {'count (b->a)':>18}  "
+        f"{'location':>24}  query"
     )
-    for (module_name, line, query), wb, wa, cb, ca in rows[:top]:
+    for (module_name, query), wb, wa, cb, ca in rows[:top]:
         delta = wa - wb
         if delta >= 0:
             continue
         count_str = f"{cb} -> {ca}"
-        location = f"{module_name}:{line}"
-        print(f"{wb:10.3f} {wa:10.3f} {delta:10.3f} {count_str:>14}  {location}  {query[:60]}")
+        print(
+            f"{wb:10.3f} {wa:10.3f} {delta:10.3f} {count_str:>18}  {module_name:>24}  {query[:60]}"
+        )
 
     print(f"\n-- Top {top} regressed queries (wall time) --")
     print(
-        f"{'before [s]':>10} {'after [s]':>10} {'delta [s]':>10} {'count (b->a)':>14}  "
-        "location  query"
+        f"{'before [s]':>10} {'after [s]':>10} {'delta [s]':>10} {'count (b->a)':>18}  "
+        f"{'location':>24}  query"
     )
-    for (module_name, line, query), wb, wa, cb, ca in reversed(rows[-top:]):
+    for (module_name, query), wb, wa, cb, ca in reversed(rows[-top:]):
         delta = wa - wb
         if delta <= 0:
             continue
         count_str = f"{cb} -> {ca}"
-        location = f"{module_name}:{line}"
-        print(f"{wb:10.3f} {wa:10.3f} {delta:10.3f} {count_str:>14}  {location}  {query[:60]}")
+        print(
+            f"{wb:10.3f} {wa:10.3f} {delta:10.3f} {count_str:>18}  {module_name:>24}  {query[:60]}"
+        )
 
     return total_before, total_after
 
 
 def main() -> None:
     """Parse command-line arguments and run the before/after comparison."""
-    here = Path(__file__).parent
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--before-prof", type=Path, default=here / "director-v1.prof")
-    parser.add_argument("--after-prof", type=Path, default=here / "director-v2.prof")
-    parser.add_argument("--before-sqllog", type=Path, default=here / "sqllog-v1.json")
-    parser.add_argument("--after-sqllog", type=Path, default=here / "sqllog-v2.json")
-    parser.add_argument("--top", type=int, default=15, help="Number of rows per table.")
+    parser.add_argument("before_suffix", help="Suffix of the 'before' file names.")
+    parser.add_argument("after_suffix", help="Suffix of the 'after' file names.")
+    add_top_argument(parser, 15)
     args = parser.parse_args()
 
+    before_prof = prof_path(args.before_suffix)
+    after_prof = prof_path(args.after_suffix)
+    before_sqllog = sqllog_path(args.before_suffix)
+    after_sqllog = sqllog_path(args.after_suffix)
+
     total_profiled_before = total_profiled_after = None
-    if args.before_prof.is_file() and args.after_prof.is_file():
+    if before_prof.is_file() and after_prof.is_file():
         total_profiled_before, total_profiled_after = compare_profiles(
-            args.before_prof, args.after_prof, args.top
+            before_prof, after_prof, args.top
         )
     else:
         print("Skipping profile comparison: one or both files are missing.")
 
     total_sql_before = total_sql_after = None
-    if args.before_sqllog.is_file() and args.after_sqllog.is_file():
-        total_sql_before, total_sql_after = compare_sqllogs(
-            args.before_sqllog, args.after_sqllog, args.top
-        )
+    if before_sqllog.is_file() and after_sqllog.is_file():
+        total_sql_before, total_sql_after = compare_sqllogs(before_sqllog, after_sqllog, args.top)
     else:
         print("Skipping SQL log comparison: one or both files are missing.")
 
     if total_profiled_before and total_sql_before:
-        pct_before = 100 * total_sql_before / total_profiled_before
-        pct_after = 100 * total_sql_after / total_profiled_after
+        pct_before = pct(total_sql_before, total_profiled_before)
+        pct_after = pct(total_sql_after, total_profiled_after)
         print(
             f"\n=== SQL share of total profiled self time: "
             f"{pct_before:.1f}% -> {pct_after:.1f}% ==="
