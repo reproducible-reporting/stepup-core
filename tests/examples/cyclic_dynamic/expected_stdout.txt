@@ -1,18 +1,18 @@
-        0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/3 |    SUCCESS │ ./plan.py
-        1/3 |      START │ ./work1.py
-        1/4 | RESCHEDULE │ ./work1.py
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./work1.py
+RESCHEDULE │ ./work1.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 inp2.txt
 ────────────────────────────────────────────────────────────────────────────────
-        1/4 |      START │ ./work2.py
-        1/5 | RESCHEDULE │ ./work2.py
+     START │ ./work2.py
+RESCHEDULE │ ./work2.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 inp1.txt
 ────────────────────────────────────────────────────────────────────────────────
-        1/5 |    WARNING │ 4 step(s) remained pending ...
+   WARNING │ 4 step(s) remained pending ...
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                creator is not RUNNING or SUCCEEDED
 Command               echo first > inp1.txt
@@ -34,7 +34,7 @@ Inputs        STATIC  work2.py
              AWAITED  inp1.txt [amended]
 Outputs      AWAITED  out1.txt [amended]
 ────────────────────────────────────────────────────────────────────────────────
-        1/5 |    WARNING │ Skipping file cleanup due to incomplete build
-        1/5 |    WARNING │ Check logs: .stepup/warning.log
-        1/5 |      PHASE │ watch
-        1/5 |   DIRECTOR │ See you!
+   WARNING │ Skipping file cleanup due to incomplete build
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ See you!

@@ -65,6 +65,9 @@ class Builder:
     explain_rerun: bool = attrs.field(kw_only=True)
     """Flag to enable more details on why steps cannot be skipped."""
 
+    live_progress: bool = attrs.field(kw_only=True)
+    """Whether the reporter is an interactive terminal that wants live step-count updates."""
+
     resume: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
     """Other parts of StepUp can set the resume event to put the builder back to work."""
 
@@ -98,6 +101,7 @@ class Builder:
             self.reporter,
             self.show_perf,
             self.explain_rerun,
+            self.live_progress,
             mp_ctx=self.mp_ctx,
             infra_env=self.infra_env,
         )
@@ -129,9 +133,10 @@ class Builder:
 
     async def job_loop(self):
         """Run all runnable jobs until there are non left or the scheduler is on hold."""
-        async with self.db:
-            step_counts = self.workflow.get_step_counts()
-        await self.reporter.update_step_counts(step_counts)
+        if self.live_progress:
+            async with self.db:
+                step_counts = self.workflow.get_step_counts()
+            await self.reporter.update_step_counts(step_counts)
         await self.reporter("PHASE", "build")
 
         # Get step jobs and run them as asyncio tasks.
@@ -174,9 +179,10 @@ class Builder:
             async with self.db:
                 self.workflow.clean()
             await remove_outdated_outputs(self.workflow, self.db, self.reporter)
-        async with self.db:
-            step_counts = self.workflow.get_step_counts()
-        await self.reporter.update_step_counts(step_counts)
+        if self.live_progress:
+            async with self.db:
+                step_counts = self.workflow.get_step_counts()
+            await self.reporter.update_step_counts(step_counts)
         await self.reporter.check_logs()
         if self.watcher is not None:
             self.watcher.resume.set()

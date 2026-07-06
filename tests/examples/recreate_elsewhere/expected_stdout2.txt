@@ -1,29 +1,29 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 4 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ plan.py (digest bbe406db ➜ 856761f8)
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        2/3 |      PHASE │ build
-        2/3 |     NOSKIP │ ./plan.py
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 4 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ plan.py (digest bbe406db ➜ 856761f8)
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+    NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 4962ab27 ➜ 8b9a9444, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest bbe406db ➜ 856761f8)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ ./outer.py bar
-        2/3 |    SUCCESS │ ./outer.py bar
-        2/3 |       SKIP │ ./inner.py
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./outer.py bar
+   SUCCESS │ ./outer.py bar
+      SKIP │ ./inner.py
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       explained, inp_digest fb9c75f8, out_digest 93fe80f7
 Same inp hash        inner.py
 Same env var         STEPUP_PATH_FILTER (unset)
 Same out hash        out.txt
 ────────────────────────────────────────────────────────────────────────────────
-        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        3/3 |    WARNING │ Check logs: .stepup/warning.log
-        3/3 |      PHASE │ watch
-        3/3 |   DIRECTOR │ See you!
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ See you!

@@ -1,19 +1,19 @@
-        0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ ./work.py
-        1/1 |       FAIL │ ./work.py
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./work.py
+      FAIL │ ./work.py
 ──────────────────────────────── Failed command ────────────────────────────────
 ./work.py  # exit=1
 ──────────────────────────────── Invalid inputs ────────────────────────────────
 Input changed unexpectedly: trigger.txt (digest 84325551 ➜ 92e78d0b, size 3 ➜ 9)
 ────────────────────────────────────────────────────────────────────────────────
-        1/1 |      ERROR │ The scheduler has been put on hold due to unexpected input changes.
-        1/1 |    WARNING │ 1 step(s) failed.
-        1/1 |    WARNING │ Scheduler is put on hold. Not reporting pending steps.
-        1/1 |    WARNING │ Skipping file cleanup due to incomplete build
-        1/1 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-        1/1 |      PHASE │ watch
-        1/1 |    UPDATED │ trigger.txt
-        1/1 |   DIRECTOR │ See you!
+     ERROR │ The scheduler has been put on hold due to unexpected input changes.
+   WARNING │ 1 step(s) failed.
+   WARNING │ Scheduler is put on hold. Not reporting pending steps.
+   WARNING │ Skipping file cleanup due to incomplete build
+   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+     PHASE │ watch
+   UPDATED │ trigger.txt
+  DIRECTOR │ See you!

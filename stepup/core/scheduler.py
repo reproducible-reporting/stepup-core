@@ -470,6 +470,8 @@ class Scheduler:
     def _update_meta_safe(self):
         """Update the "safe" metadata fields where needed."""
         db = self.workflow.db
+        if not db.execute("SELECT EXISTS(SELECT 1 FROM step WHERE _check_safe)").fetchone()[0]:
+            return
         cur = db.execute(RECURSIVE_UPDATE_SAFE)
         logger.debug(f"Updated {cur.rowcount} _safe metadata field(s) for steps")
         cur = db.execute("UPDATE step SET _check_safe = 0 WHERE _check_safe")
@@ -478,6 +480,8 @@ class Scheduler:
     def _update_meta_after(self):
         """Update the "after" metadata fields where needed."""
         db = self.workflow.db
+        if not db.execute("SELECT EXISTS(SELECT 1 FROM step WHERE _check_after)").fetchone()[0]:
+            return
         # Not using executescript to preserve atomicity of the transaction.
         db.execute(INIT_CHECK_AFTER)
         db.execute(EMPTY_CHECK_AFTER)

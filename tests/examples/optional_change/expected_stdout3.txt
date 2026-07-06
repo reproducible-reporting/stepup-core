@@ -1,14 +1,14 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 4 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ plan.py (digest 36257838 ➜ aa1a2f0a, size 158 ➜ 157)
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        2/3 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/3 |    SUCCESS │ ./plan.py
-        1/3 |       SKIP │ cp -p hop1.txt hop2.txt
-        2/3 |       SKIP │ cp -p hop2.txt hop3.txt
-        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        3/3 |      PHASE │ watch
-        3/3 |   DIRECTOR │ See you!
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 4 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ plan.py (digest 36257838 ➜ aa1a2f0a, size 158 ➜ 157)
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+      SKIP │ cp -p hop1.txt hop2.txt
+      SKIP │ cp -p hop2.txt hop3.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+     PHASE │ watch
+  DIRECTOR │ See you!

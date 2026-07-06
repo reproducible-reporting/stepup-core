@@ -1,8 +1,8 @@
-        0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |    WARNING │ 1 step(s) remained pending ...
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+   WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  bogus.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -12,7 +12,7 @@ Inputs       AWAITED  (bogus.txt)
 Outputs      AWAITED  test1.txt
              AWAITED  test2.txt
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |    WARNING │ Skipping file cleanup due to incomplete build
-        1/2 |    WARNING │ Check logs: .stepup/warning.log
-        1/2 |      PHASE │ watch
-        1/2 |   DIRECTOR │ See you!
+   WARNING │ Skipping file cleanup due to incomplete build
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ See you!

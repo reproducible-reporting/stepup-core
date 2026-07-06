@@ -98,14 +98,17 @@ class StepUpProgressBar(ProgressBar):
     def set_njob(self, njob: int):
         """Set the number of jobs in the progress bar."""
         self._njob = njob
+        self.refresh()
 
     def start_step(self, start: float, description: str, step_i: int):
         """Start a step in the progress bar."""
         self._running[step_i] = (start, description)
+        self.refresh()
 
     def stop_step(self, step_i: int):
         """Stop a step in the progress bar."""
         self._running.pop(step_i, None)
+        self.refresh()
 
     def get_renderables(self) -> Iterable[RenderableType]:
         if len(self._running) > 0:
@@ -160,7 +163,7 @@ class ReporterHandler:
             transient=True,
             console=self.console,
             auto_refresh=True,
-            refresh_per_second=2,
+            refresh_per_second=1,
         )
         progress_bar.start()
         return progress_bar
@@ -168,7 +171,7 @@ class ReporterHandler:
     @task_id_step.default
     def _default_task_id_step(self):
         return (
-            self.progress_bar.add_task("✔ ", total=0, visible=True)
+            self.progress_bar.add_task("", total=0, visible=True)
             if self.show_progress and self.console.is_terminal
             else None
         )
@@ -189,6 +192,7 @@ class ReporterHandler:
                     self.task_id_step,
                     completed=nsuc,
                     total=nsuc + nrun + npen,
+                    refresh=True,
                 )
 
         # Action info
@@ -220,11 +224,6 @@ class ReporterHandler:
             line = f"[gray50]{perf_counter() - self.start:7.2f} {nrun:{nd}d} [/]" + line
             if action == "PHASE":
                 self.start = now
-        if not self.console.is_terminal and self.show_progress:
-            # If not a terminal, the progress bars are not shown,
-            # so we need to print the completed and total number of steps.
-            progress = f"{nsuc}/{nsuc + nrun + npen}"
-            line = f"[gray50]{progress:>11s} | [/]" + line
         self.console.print(
             line, no_wrap=self.console.is_terminal, soft_wrap=not self.console.is_terminal
         )
@@ -265,7 +264,6 @@ class ReporterHandler:
     def start_step(self, description: str, step_i: int):
         if self.progress_bar is not None:
             self.progress_bar.start_step(perf_counter(), description, step_i)
-            self.progress_bar.refresh()
 
     @allow_rpc
     def stop_step(self, step_i: int):

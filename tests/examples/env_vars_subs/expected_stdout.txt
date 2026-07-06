@@ -1,16 +1,16 @@
-        0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
 ─────────────────────────────── Standard output ────────────────────────────────
 sub
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |      START │ ./plan.py  # wd=sub
-        2/2 |    SUCCESS │ ./plan.py  # wd=sub
+     START │ ./plan.py  # wd=sub
+   SUCCESS │ ./plan.py  # wd=sub
 ─────────────────────────────── Standard output ────────────────────────────────
 .
 foo.txt
 ────────────────────────────────────────────────────────────────────────────────
-        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ See you!
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+     PHASE │ watch
+  DIRECTOR │ See you!

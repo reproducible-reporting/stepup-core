@@ -1,13 +1,13 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 4 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    DELETED │ bye.txt
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/3 |      PHASE │ build
-        1/3 |      START │ echo soon gone > bye.txt
-        2/3 |    SUCCESS │ echo soon gone > bye.txt
-        2/3 |    WARNING │ 1 step(s) remained pending ...
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 4 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   DELETED │ bye.txt
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+     START │ echo soon gone > bye.txt
+   SUCCESS │ echo soon gone > bye.txt
+   WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  missing.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -16,7 +16,7 @@ Command               echo data > hello.txt
 Inputs       AWAITED  (missing.txt)
 Outputs      AWAITED  hello.txt
 ────────────────────────────────────────────────────────────────────────────────
-        2/3 |    WARNING │ Skipping file cleanup due to incomplete build
-        2/3 |    WARNING │ Check logs: .stepup/warning.log
-        2/3 |      PHASE │ watch
-        2/3 |   DIRECTOR │ See you!
+   WARNING │ Skipping file cleanup due to incomplete build
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ See you!

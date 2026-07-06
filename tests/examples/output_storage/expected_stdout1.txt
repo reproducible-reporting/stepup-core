@@ -1,14 +1,14 @@
-        0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/3 |    SUCCESS │ ./plan.py
-        1/3 |      START │ ./big.py
-        2/3 |    SUCCESS │ ./big.py
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./big.py
+   SUCCESS │ ./big.py
 ─────────────────────────────── Standard output ────────────────────────────────
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 ────────────────────────────────────────────────────────────────────────────────
-        2/3 |      START │ ./fail.py
-        2/2 |       FAIL │ ./fail.py
+     START │ ./fail.py
+      FAIL │ ./fail.py
 ──────────────────────────────── Failed command ────────────────────────────────
 ./fail.py  # exit=1
 ─────────────────────────────── Standard output ────────────────────────────────
@@ -16,8 +16,8 @@ fail-output-line
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
-        2/2 |    WARNING │ 1 step(s) failed.
-        2/2 |    WARNING │ Skipping file cleanup due to incomplete build
-        2/2 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-        2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ See you!
+   WARNING │ 1 step(s) failed.
+   WARNING │ Skipping file cleanup due to incomplete build
+   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ See you!

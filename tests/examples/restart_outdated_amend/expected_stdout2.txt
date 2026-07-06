@@ -1,12 +1,12 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 5 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ subs.txt (digest ae39a09a ➜ d642a3da)
-        0/0 |    DELETED │ data/inp1.txt
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/2 |      PHASE │ build
-        1/2 |  DROPAMEND │ ./work.py
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 5 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ subs.txt (digest ae39a09a ➜ d642a3da)
+   DELETED │ data/inp1.txt
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+ DROPAMEND │ ./work.py
 ────────────────────── Outdated amended step information ───────────────────────
 Modified step hash   explained, inp_digest 85ad62b4 ➜ b375115a, out_digest 2aa07484 ➜ (unset)
 Deleted inp hash     data/inp1.txt
@@ -15,9 +15,9 @@ Modified inp hash    subs.txt (digest ae39a09a ➜ d642a3da)
 Same inp hash        work.py
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |      START │ ./work.py
-        2/2 |    SUCCESS │ ./work.py
-        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        2/2 |    WARNING │ Check logs: .stepup/warning.log
-        2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ See you!
+     START │ ./work.py
+   SUCCESS │ ./work.py
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ See you!

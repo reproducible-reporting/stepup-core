@@ -602,6 +602,14 @@ class Run:
 #
 
 
+STEP_COUNTS_REPORT_INTERVAL = 0.5
+"""Minimum time (seconds) between `get_step_counts()` reports sent to the reporter.
+
+Reporting more often than this would only add `get_step_counts()` cost
+(a full `step` table scan) without any visible benefit.
+"""
+
+
 @attrs.define
 class Executor:
     """Run steps in the director process as asyncio tasks.
@@ -628,6 +636,9 @@ class Executor:
     explain_rerun: bool = attrs.field()
     """Flag to explain why a step could not be skipped."""
 
+    live_progress: bool = attrs.field()
+    """Whether the reporter is an interactive terminal that wants live step-count updates."""
+
     mp_ctx: object = attrs.field(kw_only=True, default=None)
     """Forkserver multiprocessing context, or None to use plain subprocesses."""
 
@@ -646,12 +657,36 @@ class Executor:
     _base_env_cache: dict | None = attrs.field(init=False, default=None)
     """Cache for `base_env`, populated lazily on first access."""
 
+    _last_step_counts_time: float | None = attrs.field(init=False, default=None)
+    """`perf_counter()` timestamp of the last step-counts report, or `None` before the first."""
+
     @property
     def base_env(self) -> dict:
         """The base environment for step child processes: `os.environ` with `infra_env` applied."""
         if self._base_env_cache is None:
             self._base_env_cache = {**os.environ, **self.infra_env}
         return dict(self._base_env_cache)
+
+    async def _report_step_counts(self) -> None:
+        """Send updated step-state counts to the reporter, throttled by elapsed time.
+
+        This skips the underlying `get_step_counts()` scan (and the RPC call) entirely
+        when the reporter has no live progress display to feed (`live_progress` is
+        `False`), and otherwise when the previous report was sent less than
+        `STEP_COUNTS_REPORT_INTERVAL` ago.
+        """
+        if not self.live_progress:
+            return
+        now = perf_counter()
+        if (
+            self._last_step_counts_time is not None
+            and now - self._last_step_counts_time < STEP_COUNTS_REPORT_INTERVAL
+        ):
+            return
+        self._last_step_counts_time = now
+        async with self.db:
+            step_counts = self.workflow.get_step_counts()
+        await self.reporter.update_step_counts(step_counts)
 
     #
     # Functions called by jobs
@@ -689,8 +724,7 @@ class Executor:
             # In both cases, the step is not invalidated and just made pending again.
             async with self.db:
                 step.set_state(StepState.PENDING)
-                step_counts = self.workflow.get_step_counts()
-            await self.reporter.update_step_counts(step_counts)
+            await self._report_step_counts()
 
     async def try_skip_job(
         self,
@@ -725,12 +759,11 @@ class Executor:
             async with self.db:
                 self.workflow.update_file_hashes(new_out_hashes, HashUpdateCause.SUCCEEDED)
                 step.completed(new_hash)
-                step_counts = self.workflow.get_step_counts()
                 # Note that we do not call `scheduler.job_finished` here,
                 # because the step was never actually run.
                 # That would record a stop time while no outputs were written
                 # for which race conditions need to be excluded.
-            await self.reporter.update_step_counts(step_counts)
+            await self._report_step_counts()
 
     async def execute_job(
         self, step: Step, inp_hashes: list[tuple[str, FileHash]], env_deps: list[str]
@@ -747,8 +780,7 @@ class Executor:
             # Run the step
             async with self.db:
                 step.clean_before_run()
-                step_counts = self.workflow.get_step_counts()
-            await self.reporter.update_step_counts(step_counts)
+            await self._report_step_counts()
             await self.run(run)
 
             # Recompute the step hash (inputs and outputs).
@@ -799,8 +831,7 @@ class Executor:
                 # copy internally, so report() below still forwards the full text to the TUI.
                 max_output_size = int(os.getenv("STEPUP_MAX_OUTPUT_SIZE", "0"))
                 step.store_output(run.stdout, run.stderr, max_output_size)
-                step_counts = self.workflow.get_step_counts()
-            await self.reporter.update_step_counts(step_counts)
+            await self._report_step_counts()
 
             # Report the result of running the step
             await self.report(run)
@@ -844,8 +875,7 @@ class Executor:
             async with self.db:
                 step.completed(None)
                 self.scheduler.job_finished(step.i, succeeded=False)
-                step_counts = self.workflow.get_step_counts()
-            await self.reporter.update_step_counts(step_counts)
+            await self._report_step_counts()
             await self.report(run)
             self.scheduler.on_hold = True
             await self.reporter(

@@ -1,18 +1,18 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 3 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ static/foo.txt (digest b640e840 ➜ 480c2336, size 6 ➜ 7)
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/2 |      PHASE │ build
-        1/2 |     NOSKIP │ cp -p static/foo.txt bar.txt
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 3 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ static/foo.txt (digest b640e840 ➜ 480c2336, size 6 ➜ 7)
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+    NOSKIP │ cp -p static/foo.txt bar.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 6f84f48c ➜ fed213d2, out_digest 8c2927c3 ➜ (unset)
 Modified inp hash    static/foo.txt (digest b640e840 ➜ 480c2336, size 6 ➜ 7)
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |      START │ cp -p static/foo.txt bar.txt
-        2/2 |    SUCCESS │ cp -p static/foo.txt bar.txt
-        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        2/2 |    WARNING │ Check logs: .stepup/warning.log
-        2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ See you!
+     START │ cp -p static/foo.txt bar.txt
+   SUCCESS │ cp -p static/foo.txt bar.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ See you!

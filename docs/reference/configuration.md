@@ -203,12 +203,6 @@ separated by slashes, where applicable.
     Note that resource specifications from config files, the environment variable, and the CLI option
     are merged together, with the CLI option taking precedence over the environment variable.
 
-`show_perf` / `STEPUP_BUILD_SHOW_PERF` / `--show-perf`, `-s`
-
-:   Set to `1` to show basic performance information
-    (like execution time) for each step in the terminal user interface.
-    Set to `2` to show more detailed performance information.
-
 `sqllog` / `STEPUP_BUILD_SQLLOG` / `--sqllog`, `--no-sqllog`
 
 :   Set to `true` to enable SQLite debug logging.

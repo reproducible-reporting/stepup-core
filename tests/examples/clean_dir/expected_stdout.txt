@@ -1,16 +1,16 @@
-        0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/4 |    SUCCESS │ ./plan.py
-        1/4 |      START │ echo hello > sub/inp.txt
-        2/4 |    SUCCESS │ echo hello > sub/inp.txt
-        2/4 |      START │ cp -p sub/inp.txt sub/tmp.txt
-        3/4 |    SUCCESS │ cp -p sub/inp.txt sub/tmp.txt
-        3/4 |      START │ cp -p sub/tmp.txt sub/out.txt
-        4/4 |    SUCCESS │ cp -p sub/tmp.txt sub/out.txt
-        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        4/4 |      PHASE │ watch
-        4/4 |    DELETED │ sub/tmp.txt
-        4/4 |    DELETED │ sub/out.txt
-        4/4 |    DELETED │ sub/inp.txt
-        4/4 |   DIRECTOR │ See you!
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ echo hello > sub/inp.txt
+   SUCCESS │ echo hello > sub/inp.txt
+     START │ cp -p sub/inp.txt sub/tmp.txt
+   SUCCESS │ cp -p sub/inp.txt sub/tmp.txt
+     START │ cp -p sub/tmp.txt sub/out.txt
+   SUCCESS │ cp -p sub/tmp.txt sub/out.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+     PHASE │ watch
+   DELETED │ sub/tmp.txt
+   DELETED │ sub/out.txt
+   DELETED │ sub/inp.txt
+  DIRECTOR │ See you!

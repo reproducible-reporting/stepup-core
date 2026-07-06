@@ -1,22 +1,22 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 7 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    DELETED │ inp1.txt
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        2/5 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/3 |    SUCCESS │ ./plan.py
-        1/3 |       SKIP │ cp -p inp2.txt out2.txt
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 7 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   DELETED │ inp1.txt
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+      SKIP │ cp -p inp2.txt out2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       compact, inp_digest ce2b09cd, out_digest 9e7bd348
 ────────────────────────────────────────────────────────────────────────────────
-        2/3 |       SKIP │ cp -p out2.txt foo2.txt
+      SKIP │ cp -p out2.txt foo2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       compact, inp_digest 3139b420, out_digest 810dcef4
 ────────────────────────────────────────────────────────────────────────────────
-        3/3 |   DIRECTOR │ Trying to delete 2 outdated output(s)
-        3/3 |      CLEAN │ out1.txt
-        3/3 |      CLEAN │ foo1.txt
-        3/3 |      PHASE │ watch
-        3/3 |   DIRECTOR │ See you!
+  DIRECTOR │ Trying to delete 2 outdated output(s)
+     CLEAN │ out1.txt
+     CLEAN │ foo1.txt
+     PHASE │ watch
+  DIRECTOR │ See you!

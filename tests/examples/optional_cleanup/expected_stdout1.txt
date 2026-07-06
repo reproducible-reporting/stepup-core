@@ -1,14 +1,14 @@
-        0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/4 |    SUCCESS │ ./plan.py
-        1/4 |      START │ echo test2 > test2.txt
-        2/4 |    SUCCESS │ echo test2 > test2.txt
-        2/4 |      START │ cat test2.txt
-        3/4 |    SUCCESS │ cat test2.txt
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ echo test2 > test2.txt
+   SUCCESS │ echo test2 > test2.txt
+     START │ cat test2.txt
+   SUCCESS │ cat test2.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 test2
 ────────────────────────────────────────────────────────────────────────────────
-        3/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        3/4 |      PHASE │ watch
-        3/4 |   DIRECTOR │ See you!
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+     PHASE │ watch
+  DIRECTOR │ See you!

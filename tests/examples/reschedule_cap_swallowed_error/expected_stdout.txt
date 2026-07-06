@@ -1,15 +1,15 @@
-        0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ ./work.py
-        1/2 | RESCHEDULE │ ./work.py
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./work.py
+RESCHEDULE │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 never.txt is now available.
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |    WARNING │ 1 step(s) remained pending ...
+   WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  never.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -19,13 +19,13 @@ Inputs        STATIC  trigger.txt
               STATIC  work.py
              AWAITED  (never.txt) [amended]
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |    WARNING │ Skipping file cleanup due to incomplete build
-        1/2 |    WARNING │ Check logs: .stepup/warning.log
-        1/2 |      PHASE │ watch
-        1/2 |    UPDATED │ trigger.txt
-        1/2 |      PHASE │ build
-        1/2 |      START │ ./work.py
-        1/1 |       FAIL │ ./work.py
+   WARNING │ Skipping file cleanup due to incomplete build
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+   UPDATED │ trigger.txt
+     PHASE │ build
+     START │ ./work.py
+      FAIL │ ./work.py
 ──────────────────────── Rescheduled more than 1 times ─────────────────────────
 ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
@@ -33,8 +33,8 @@ never.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 never.txt is now available.
 ────────────────────────────────────────────────────────────────────────────────
-        1/1 |    WARNING │ 1 step(s) failed.
-        1/1 |    WARNING │ Skipping file cleanup due to incomplete build
-        1/1 |    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-        1/1 |      PHASE │ watch
-        1/1 |   DIRECTOR │ See you!
+   WARNING │ 1 step(s) failed.
+   WARNING │ Skipping file cleanup due to incomplete build
+   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ See you!

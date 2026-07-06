@@ -1,19 +1,19 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 4 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ plan.py (digest 94fc2810 ➜ b3a06c38, size 111 ➜ 123)
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/2 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ ./work.py
-        2/2 |    SUCCESS │ ./work.py
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 4 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ plan.py (digest 94fc2810 ➜ b3a06c38, size 111 ➜ 123)
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./work.py
+   SUCCESS │ ./work.py
 ─────────────────────────────── Standard output ────────────────────────────────
 First input
 
 Second input
 ────────────────────────────────────────────────────────────────────────────────
-        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ See you!
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+     PHASE │ watch
+  DIRECTOR │ See you!

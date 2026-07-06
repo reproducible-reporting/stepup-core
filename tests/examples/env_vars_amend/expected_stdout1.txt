@@ -1,9 +1,9 @@
-        0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ ./demovars.py > output.txt
-        2/2 |    SUCCESS │ ./demovars.py > output.txt
-        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ See you!
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./demovars.py > output.txt
+   SUCCESS │ ./demovars.py > output.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+     PHASE │ watch
+  DIRECTOR │ See you!

@@ -1,16 +1,16 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 3 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ plan.py (digest 2048b586 ➜ a3ebbdfd, size 147 ➜ 149)
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        2/3 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        2/3 |    SUCCESS │ ./plan.py
-        2/3 |      START │ cp -p hello.txt other/hello.txt
-        3/3 |    SUCCESS │ cp -p hello.txt other/hello.txt
-        3/3 |   DIRECTOR │ Trying to delete 1 outdated output(s)
-        3/3 |      CLEAN │ sub/hello.txt
-        3/3 |      CLEAN │ sub
-        3/3 |      PHASE │ watch
-        3/3 |   DIRECTOR │ See you!
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 3 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ plan.py (digest 2048b586 ➜ a3ebbdfd, size 147 ➜ 149)
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cp -p hello.txt other/hello.txt
+   SUCCESS │ cp -p hello.txt other/hello.txt
+  DIRECTOR │ Trying to delete 1 outdated output(s)
+     CLEAN │ sub/hello.txt
+     CLEAN │ sub
+     PHASE │ watch
+  DIRECTOR │ See you!

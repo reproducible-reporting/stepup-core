@@ -1,22 +1,22 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 5 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    DELETED │ inp2.txt
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/0 |    UPDATED │ inp4.txt
-        1/3 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/3 |    SUCCESS │ ./plan.py
-        1/3 |       SKIP │ cp -p inp3.txt out3.txt
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 5 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   DELETED │ inp2.txt
+   STARTUP │ Scanning initial database for new nglob matches
+   UPDATED │ inp4.txt
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+      SKIP │ cp -p inp3.txt out3.txt
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       explained, inp_digest b0978595, out_digest bf3a2db2
 Same inp hash        inp3.txt
 Same out hash        out3.txt
 ────────────────────────────────────────────────────────────────────────────────
-        2/3 |      START │ cp -p inp4.txt out4.txt
-        3/3 |    SUCCESS │ cp -p inp4.txt out4.txt
-        3/3 |   DIRECTOR │ Trying to delete 1 outdated output(s)
-        3/3 |      CLEAN │ out2.txt
-        3/3 |      PHASE │ watch
-        3/3 |   DIRECTOR │ See you!
+     START │ cp -p inp4.txt out4.txt
+   SUCCESS │ cp -p inp4.txt out4.txt
+  DIRECTOR │ Trying to delete 1 outdated output(s)
+     CLEAN │ out2.txt
+     PHASE │ watch
+  DIRECTOR │ See you!

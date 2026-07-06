@@ -1,13 +1,13 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 3 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    DELETED │ test2.txt
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/4 |      PHASE │ build
-        1/4 |      START │ echo test2 > test2.txt
-        2/4 |    SUCCESS │ echo test2 > test2.txt
-        2/4 |       SKIP │ cat test2.txt
-        3/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        3/4 |      PHASE │ watch
-        3/4 |   DIRECTOR │ See you!
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 3 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   DELETED │ test2.txt
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+     START │ echo test2 > test2.txt
+   SUCCESS │ echo test2 > test2.txt
+      SKIP │ cat test2.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+     PHASE │ watch
+  DIRECTOR │ See you!

@@ -113,6 +113,7 @@ async def async_main(
                 explain_rerun=args.explain_rerun,
                 fix_epoch=args.fix_epoch,
                 show_perf=args.show_perf,
+                live_progress=args.live_progress,
                 do_watch=args.watch,
                 do_watch_first=args.watch_first,
                 available_resources=args.resources,
@@ -206,6 +207,13 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Comma-separated list of Python modules to pre-load into the forkserver. "
         "Only has effect when --forkserver is active.",
+    )
+    parser.add_argument(
+        "--live-progress",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Send live step-count updates to the reporter. Set by the TUI when its "
+        "console is an interactive terminal. [default=%(default)s]",
     )
     parser.add_argument(
         "--reporter",
@@ -315,6 +323,7 @@ async def serve(
     explain_rerun: bool,
     fix_epoch: bool,
     show_perf: bool,
+    live_progress: bool,
     do_watch: bool,
     do_watch_first: bool,
     available_resources: str | None,
@@ -343,6 +352,10 @@ async def serve(
         Report detailed diagnostics explaining why a step is rerun rather than skipped.
     show_perf
         Show performance details after each completed step.
+        Requires `live_progress`, since the performance details are printed inline with the
+        live step-count reporting.
+    live_progress
+        Whether the reporter is an interactive terminal that wants live step-count updates.
     do_watch
         If True, the director alternates between build and watch phases until
         it receives an RPC to shutdown.
@@ -371,6 +384,8 @@ async def serve(
         raise ValueError(f"Number of parallel tasks must be strictly positive, got {njob}")
     if do_watch_first and not do_watch:
         raise ValueError("do_watch_first cannot be set without do_watch.")
+    if show_perf and not live_progress:
+        raise ValueError("show_perf requires live_progress (an interactive terminal reporter).")
     _check_plan("plan.py")
 
     # Environment variables exported to step child processes (and forkserver children).
@@ -403,6 +418,7 @@ async def serve(
         reporter=reporter,
         show_perf=show_perf,
         explain_rerun=explain_rerun,
+        live_progress=live_progress,
         do_remove_outdated=do_clean,
         mp_ctx=mp_ctx,
         infra_env=infra_env,

@@ -1,14 +1,14 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 2 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ sub/plan.py (mode -rw-r--r-- ➜ -rwxr-xr-x)
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/2 |      PHASE │ build
-        1/2 |      START │ ./plan.py  # wd=sub
-        2/3 |    SUCCESS │ ./plan.py  # wd=sub
-        2/3 |      START │ touch done.txt  # wd=sub
-        3/3 |    SUCCESS │ touch done.txt  # wd=sub
-        3/3 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        3/3 |      PHASE │ watch
-        3/3 |   DIRECTOR │ See you!
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 2 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ sub/plan.py (mode -rw-r--r-- ➜ -rwxr-xr-x)
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+     START │ ./plan.py  # wd=sub
+   SUCCESS │ ./plan.py  # wd=sub
+     START │ touch done.txt  # wd=sub
+   SUCCESS │ touch done.txt  # wd=sub
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+     PHASE │ watch
+  DIRECTOR │ See you!

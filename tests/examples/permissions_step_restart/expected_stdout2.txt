@@ -1,12 +1,12 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 2 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ work.py (mode -rw-r--r-- ➜ -rwxr-xr-x)
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/2 |      PHASE │ build
-        1/2 |      START │ ./work.py
-        2/2 |    SUCCESS │ ./work.py
-        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ See you!
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 2 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ work.py (mode -rw-r--r-- ➜ -rwxr-xr-x)
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+     START │ ./work.py
+   SUCCESS │ ./work.py
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+     PHASE │ watch
+  DIRECTOR │ See you!

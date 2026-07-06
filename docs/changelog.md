@@ -14,6 +14,13 @@ and this project adheres to [Effort-based Versioning](https://jacobtomlinson.dev
 
 ## [Unreleased][]
 
+### Deprecated
+
+- `--show-perf` (and `-s`) now requires an interactive terminal and errors out otherwise,
+  since the performance details it prints are no longer conveyed in non-interactive/redirected
+  output. This flag will be removed in a future release; step timings will instead be recorded
+  as metadata in the workflow database, inspectable through `stepup browse`.
+
 ## [4.0.0rc8][] - 2026-07-04 {: #v4.0.0rc8 }
 
 This is release candidate 8 of the upcoming StepUp Core 4.0 release.

@@ -1,11 +1,11 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 3 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    DELETED │ copy.txt
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/2 |      PHASE │ build
-        1/2 |     NOSKIP │ cp -p original.txt copy.txt
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 3 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   DELETED │ copy.txt
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+    NOSKIP │ cp -p original.txt copy.txt
 ───────────────────────────── Missing output files ─────────────────────────────
 copy.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
@@ -14,9 +14,9 @@ Modified out hash    copy.txt (digest 4bc453b5 ➜ UNKNOWN, size 10 ➜ 0, mode 
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        original.txt
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |      START │ cp -p original.txt copy.txt
-        2/2 |    SUCCESS │ cp -p original.txt copy.txt
-        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        2/2 |    WARNING │ Check logs: .stepup/warning.log
-        2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ See you!
+     START │ cp -p original.txt copy.txt
+   SUCCESS │ cp -p original.txt copy.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ See you!

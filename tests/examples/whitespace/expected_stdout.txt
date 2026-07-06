@@ -1,13 +1,13 @@
-        0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/3 |    SUCCESS │ ./plan.py
-        1/3 |      START │ './script is cool.py' plan
-        2/4 |    SUCCESS │ './script is cool.py' plan
-        2/4 |      START │ './script is cool.py' run
-        3/4 |    SUCCESS │ './script is cool.py' run
-        3/4 |      START │ cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-        4/4 |    SUCCESS │ cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
-        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        4/4 |      PHASE │ watch
-        4/4 |   DIRECTOR │ See you!
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ './script is cool.py' plan
+   SUCCESS │ './script is cool.py' plan
+     START │ './script is cool.py' run
+   SUCCESS │ './script is cool.py' run
+     START │ cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+   SUCCESS │ cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+     PHASE │ watch
+  DIRECTOR │ See you!

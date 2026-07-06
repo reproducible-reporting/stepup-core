@@ -1,28 +1,28 @@
-        0/0 |    STARTUP │ (Re)initialized boot script
-        0/1 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/4 |    SUCCESS │ ./plan.py
-        1/4 |      START │ ./work.py subs1.txt > subs2.txt
-        1/4 | RESCHEDULE │ ./work.py subs1.txt > subs2.txt
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./work.py subs1.txt > subs2.txt
+RESCHEDULE │ ./work.py subs1.txt > subs2.txt
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 conv1.txt
 ────────────────────────────────────────────────────────────────────────────────
-        1/4 |      START │ cp -p inp1.txt conv1.txt
-        2/4 |    SUCCESS │ cp -p inp1.txt conv1.txt
-        2/4 |      START │ ./work.py subs1.txt > subs2.txt
-        3/4 |    SUCCESS │ ./work.py subs1.txt > subs2.txt
-        3/4 |      START │ ./work.py subs2.txt > subs3.txt
-        4/4 |    SUCCESS │ ./work.py subs2.txt > subs3.txt
-        4/4 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        4/4 |    WARNING │ Check logs: .stepup/warning.log
-        4/4 |      PHASE │ watch
-        4/4 |    DELETED │ inp1.txt
-        4/4 |    UPDATED │ inp2.txt
-        4/4 |    UPDATED │ subs1.txt
-        0/4 |      PHASE │ build
-        0/1 |      START │ ./plan.py
-        1/4 |    SUCCESS │ ./plan.py
-        1/4 |  DROPAMEND │ ./work.py subs1.txt > subs2.txt
+     START │ cp -p inp1.txt conv1.txt
+   SUCCESS │ cp -p inp1.txt conv1.txt
+     START │ ./work.py subs1.txt > subs2.txt
+   SUCCESS │ ./work.py subs1.txt > subs2.txt
+     START │ ./work.py subs2.txt > subs3.txt
+   SUCCESS │ ./work.py subs2.txt > subs3.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+   DELETED │ inp1.txt
+   UPDATED │ inp2.txt
+   UPDATED │ subs1.txt
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+ DROPAMEND │ ./work.py subs1.txt > subs2.txt
 ────────────────────── Outdated amended step information ───────────────────────
 Modified step hash   explained, inp_digest 325dd9ca ➜ 2b98c9dd, out_digest 23dab281 ➜ (unset)
 Deleted inp hash     conv1.txt
@@ -30,16 +30,16 @@ Modified inp hash    subs1.txt (digest 5f2c85fe ➜ 2d0abe4a)
 ──────────────────────── Remained the same (or missing) ────────────────────────
 Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
-        1/4 |      START │ ./work.py subs1.txt > subs2.txt
-        1/4 | RESCHEDULE │ ./work.py subs1.txt > subs2.txt
+     START │ ./work.py subs1.txt > subs2.txt
+RESCHEDULE │ ./work.py subs1.txt > subs2.txt
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 conv2.txt
 ────────────────────────────────────────────────────────────────────────────────
-        1/4 |      START │ cp -p inp2.txt conv2.txt
-        2/4 |    SUCCESS │ cp -p inp2.txt conv2.txt
-        2/4 |      START │ ./work.py subs1.txt > subs2.txt
-        3/4 |    SUCCESS │ ./work.py subs1.txt > subs2.txt
-        3/4 |  DROPAMEND │ ./work.py subs2.txt > subs3.txt
+     START │ cp -p inp2.txt conv2.txt
+   SUCCESS │ cp -p inp2.txt conv2.txt
+     START │ ./work.py subs1.txt > subs2.txt
+   SUCCESS │ ./work.py subs1.txt > subs2.txt
+ DROPAMEND │ ./work.py subs2.txt > subs3.txt
 ────────────────────── Outdated amended step information ───────────────────────
 Modified step hash   explained, inp_digest 11b3933d ➜ 0c5a0331, out_digest ad79dd71 ➜ (unset)
 Deleted inp hash     conv1.txt
@@ -47,10 +47,10 @@ Modified inp hash    subs2.txt (digest 5f2c85fe ➜ 2d0abe4a)
 ──────────────────────── Remained the same (or missing) ────────────────────────
 Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
-        3/4 |      START │ ./work.py subs2.txt > subs3.txt
-        4/4 |    SUCCESS │ ./work.py subs2.txt > subs3.txt
-        4/4 |   DIRECTOR │ Trying to delete 1 outdated output(s)
-        4/4 |      CLEAN │ conv1.txt
-        4/4 |    WARNING │ Check logs: .stepup/warning.log
-        4/4 |      PHASE │ watch
-        4/4 |   DIRECTOR │ See you!
+     START │ ./work.py subs2.txt > subs3.txt
+   SUCCESS │ ./work.py subs2.txt > subs3.txt
+  DIRECTOR │ Trying to delete 1 outdated output(s)
+     CLEAN │ conv1.txt
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ See you!

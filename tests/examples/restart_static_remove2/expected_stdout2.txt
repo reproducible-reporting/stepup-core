@@ -1,22 +1,22 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 4 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ plan.py (digest 04f162d6 ➜ 7800367b, size 264 ➜ 111)
-        0/0 |    DELETED │ inp.txt
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        1/2 |      PHASE │ build
-        1/2 |  DROPAMEND │ ./plan.py
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 4 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ plan.py (digest 04f162d6 ➜ 7800367b, size 264 ➜ 111)
+   DELETED │ inp.txt
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+ DROPAMEND │ ./plan.py
 ────────────────────── Outdated amended step information ───────────────────────
 Modified step hash   compact ➜ explained, inp_digest ea40b2f8 ➜ 603fc93b, out_digest b19341b7 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |      START │ echo bye > out2.txt
-        2/2 |    SUCCESS │ echo bye > out2.txt
-        2/2 |   DIRECTOR │ Trying to delete 2 outdated output(s)
-        2/2 |      CLEAN │ out1.txt
-        2/2 |      CLEAN │ out.txt
-        2/2 |    WARNING │ Check logs: .stepup/warning.log
-        2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ See you!
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ echo bye > out2.txt
+   SUCCESS │ echo bye > out2.txt
+  DIRECTOR │ Trying to delete 2 outdated output(s)
+     CLEAN │ out1.txt
+     CLEAN │ out.txt
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ See you!

@@ -1,30 +1,30 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 5 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ plan.py (digest 1553f340 ➜ 9db5ea86, size 418 ➜ 491)
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/5 |      PHASE │ build
-        0/5 |     NOSKIP │ ./plan.py
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 5 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ plan.py (digest 1553f340 ➜ 9db5ea86, size 418 ➜ 491)
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+    NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 449141be ➜ 2257df62, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest 1553f340 ➜ 9db5ea86, size 418 ➜ 491)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-        0/1 |      START │ ./plan.py
-        1/6 |    SUCCESS │ ./plan.py
-        1/6 |      START │ echo inp1 > foo1.txt
-        2/6 |    SUCCESS │ echo inp1 > foo1.txt
-        2/6 |      START │ echo inp2 > foo2.txt
-        3/6 |    SUCCESS │ echo inp2 > foo2.txt
-        3/6 |      START │ cat foo1.txt foo2.txt > bar.txt
-        4/6 |    SUCCESS │ cat foo1.txt foo2.txt > bar.txt
-        4/6 |      START │ cat bar.txt > egg.txt
-        5/6 |    SUCCESS │ cat bar.txt > egg.txt
-        5/6 |      START │ cat egg.txt > spam.txt
-        6/6 |    SUCCESS │ cat egg.txt > spam.txt
-        6/6 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        6/6 |    WARNING │ Check logs: .stepup/warning.log
-        6/6 |      PHASE │ watch
-        6/6 |   DIRECTOR │ See you!
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ echo inp1 > foo1.txt
+   SUCCESS │ echo inp1 > foo1.txt
+     START │ echo inp2 > foo2.txt
+   SUCCESS │ echo inp2 > foo2.txt
+     START │ cat foo1.txt foo2.txt > bar.txt
+   SUCCESS │ cat foo1.txt foo2.txt > bar.txt
+     START │ cat bar.txt > egg.txt
+   SUCCESS │ cat bar.txt > egg.txt
+     START │ cat egg.txt > spam.txt
+   SUCCESS │ cat egg.txt > spam.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ See you!

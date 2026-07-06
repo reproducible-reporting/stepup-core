@@ -93,6 +93,9 @@ async def async_build(args: argparse.Namespace, default_resources: str):
         # Set up the reporter monitor
         stop_event = asyncio.Event()
         reporter_handler = ReporterHandler(args.show_perf > 0, args.progress, stop_event)
+        if args.show_perf > 0 and not reporter_handler.console.is_terminal:
+            print("Error: --show-perf requires an interactive terminal.", file=sys.stderr)
+            sys.exit(1)
         task_reporter = asyncio.create_task(
             serve_socket_rpc(reporter_handler, reporter_socket_path, stop_event),
             name="reporter-rpc",
@@ -132,6 +135,8 @@ async def async_build(args: argparse.Namespace, default_resources: str):
             argv.append("--no-fix-epoch")
         if args.show_perf > 1:
             argv.append("--show-perf")
+        if args.progress and reporter_handler.console.is_terminal:
+            argv.append("--live-progress")
         args.resources = merge_resources(default_resources, args.resources)
         if args.resources:
             argv.append(f"--resources={args.resources}")

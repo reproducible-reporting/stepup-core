@@ -1,30 +1,30 @@
-        0/0 |    STARTUP │ Making failed steps pending
-        0/0 |    STARTUP │ Watching directories for 5 files from initial database
-        0/0 |    STARTUP │ Making steps pending that use changed environment variables
-        0/0 |    STARTUP │ Scanning initial database for changed files
-        0/0 |    UPDATED │ plan.py (digest 79bd0d52 ➜ 33fdf48c, size 141 ➜ 112)
-        0/0 |    DELETED │ static/foo.txt
-        0/0 |    DELETED │ foo.txt
-        0/0 |    UPDATED │ static/bar.txt (digest 7d865e95 ➜ 7e4fa2eb, size 4 ➜ 6)
-        0/0 |    STARTUP │ Scanning initial database for new nglob matches
-        0/3 |      PHASE │ build
-        0/3 |     NOSKIP │ ./plan.py
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 5 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ plan.py (digest 79bd0d52 ➜ 33fdf48c, size 141 ➜ 112)
+   DELETED │ static/foo.txt
+   DELETED │ foo.txt
+   UPDATED │ static/bar.txt (digest 7d865e95 ➜ 7e4fa2eb, size 4 ➜ 6)
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+    NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest c4a463a6 ➜ 7528ad20, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest 79bd0d52 ➜ 33fdf48c, size 141 ➜ 112)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-        0/1 |      START │ ./plan.py
-        1/2 |    SUCCESS │ ./plan.py
-        1/2 |     NOSKIP │ cp -p static/bar.txt bar.txt
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+    NOSKIP │ cp -p static/bar.txt bar.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest e05e9b5a ➜ ee1b9672, out_digest 6d0b6887 ➜ (unset)
 Modified inp hash    static/bar.txt (digest 7d865e95 ➜ 7e4fa2eb, size 4 ➜ 6)
 ────────────────────────────────────────────────────────────────────────────────
-        1/2 |      START │ cp -p static/bar.txt bar.txt
-        2/2 |    SUCCESS │ cp -p static/bar.txt bar.txt
-        2/2 |   DIRECTOR │ Trying to delete 0 outdated output(s)
-        2/2 |    WARNING │ Check logs: .stepup/warning.log
-        2/2 |      PHASE │ watch
-        2/2 |   DIRECTOR │ See you!
+     START │ cp -p static/bar.txt bar.txt
+   SUCCESS │ cp -p static/bar.txt bar.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ See you!
