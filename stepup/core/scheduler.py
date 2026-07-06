@@ -27,42 +27,62 @@ DELETE FROM safe_update
 """
 
 
-# Compute the new _safe value for every (recursive) product of a _check_safe-flagged step.
+# Compute the new _safe value for every (recursive) product of a _check_safe-flagged step,
+# AND for the flagged step itself.
+#
 # A product node can be reached through more than one flagged ancestor at once (e.g.
 # Step.detach()/recycle() flags a whole subtree via RECURSIVE_CHECK_WITH_PRODUCTS in step.py), so
 # duplicate rows for the same node id are possible and are resolved with MIN(safe): the value
 # derived through a longer (more ancestor-inclusive) chain is always <= the value from a shorter
 # chain, so MIN always recovers the correct, fully-chained answer rather than an arbitrary one.
-# The final SELECT uses CROSS JOIN to force `trace` (tiny) as the driving table: `trace` is a
-# recursive CTE with no cardinality stats, so without this hint SQLite drives the join from
-# `node` instead (a full table scan), the same join-order pitfall fixed for
-# PROPAGATE_UPDATE_CHECK_AFTER below.
+#
+# `trace` carries two values per node: `safe` is that node's own new _safe (what gets written
+# out) and depends only on its *ancestors'* states -- never its own, since a step's own state
+# must not affect its own _safe (e.g. `step_pending_ready`'s partial index checks _safe against
+# PENDING steps, so folding this step's own state into _safe would make every PENDING step look
+# permanently unsafe). `chain` is `safe` with this node's own state additionally folded in, i.e.
+# exactly what its products need as their incoming ancestor-safety. Computing `chain` costs
+# nothing extra: the join that looks up a node's own state (`sp`) is already needed to identify
+# the node itself, so the two values fall out of the same row instead of requiring a second
+# downward pass (as an earlier version of this query did, broadcasting `safe` from creators to
+# products via a separate final CROSS JOIN).
 SELECT_SAFE_UPDATE = f"""
 INSERT INTO safe_update(i, safe)
-WITH RECURSIVE trace(i, safe) AS (
-    -- Start with all steps whose _check_safe is set.
+WITH RECURSIVE trace(i, safe, chain) AS (
+    -- Seed directly at each _check_safe-flagged step, using its creator's already-computed
+    -- _safe and state (a root creator has no `step` row and is treated as trivially safe via
+    -- COALESCE).
     SELECT
         s.node,
-        s.state in ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
+        COALESCE(
+            creator_step._safe AND
+                creator_step.state IN ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value}),
+            1
+        ),
+        COALESCE(
+            creator_step._safe AND
+                creator_step.state IN ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value}),
+            1
+        ) AND s.state IN ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
     FROM step AS s
-    WHERE _check_safe
+    JOIN node AS cnode ON cnode.i = s.node
+    LEFT JOIN step AS creator_step ON creator_step.node = cnode.creator
+    WHERE s._check_safe
 
     UNION ALL
 
-    -- Iterate over all their (recursive) products, and set safe to 0 if the creator is not safe
-    -- or its own state does not allow queuing of products.
+    -- Follow (recursive) products: a product's own new _safe is simply the `chain` inherited
+    -- from its creator. `chain` is refreshed in the same row to also fold in the product's own
+    -- state, ready for use by *its* products in the next iteration.
     SELECT
-        s.node,
-        trace.safe AND s.state in ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
+        sp.node,
+        trace.chain,
+        trace.chain AND sp.state IN ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
     FROM trace
-    JOIN node AS product ON trace.i = product.creator
-    JOIN step AS s ON product.i = s.node
+    JOIN node AS product ON product.creator = trace.i
+    JOIN step AS sp ON sp.node = product.i
 )
--- Transfer the safe state of the creators to the product nodes.
-SELECT node.i, MIN(trace.safe)
-FROM trace
-CROSS JOIN node ON node.creator = trace.i
-GROUP BY node.i
+SELECT i, MIN(safe) FROM trace GROUP BY i
 """
 
 

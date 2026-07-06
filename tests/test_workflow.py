@@ -422,6 +422,51 @@ async def test_redefine_step(wfp: Workflow):
         assert echo.get_state() == StepState.PENDING
 
 
+@pytest.mark.skip(reason="Known issue, to be fixed later")
+async def test_rerun_creator_detaches_running_child(wfp: Workflow):
+    """Reproduce GraphError("step is detached") raised by `amend_step` on a RUNNING step.
+
+    This models a race that can occur in a real build: a step (`plan`) creates a
+    child step (`sub`), e.g. via a `step()` call in a `plan.py` script:
+
+    - StepUp is interrupted early, such that `sub` does not complete.
+    - The user then modifies `plan.py`, resulting in a slightly different child step.
+    - StepUp is restarted, which causes `plan` to be rerun.
+    - When `plan` reruns, it detaches all its product steps, but by that time `sub`
+      may already have started running again in the executor.
+    - When `sub` calls `amend()` while detached, e.g. via a `getenv()` call,
+      this raises `GraphError`, since `amend()` calls on a detached step are rejected.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        assert not sub.is_detached()
+
+        # The scheduler dispatches `sub`: it is forked and starts running.
+        sub.set_state(StepState.RUNNING)
+
+        # `plan` succeeds, but is later marked pending again, e.g. because a new file
+        # matching one of its `glob()` patterns was confirmed while `sub` is still running.
+        plan.set_state(StepState.SUCCEEDED)
+        plan.mark_pending()
+        assert plan.get_state() == StepState.PENDING
+
+        # Nothing prevents the scheduler from dispatching `plan` again even though it has
+        # a still-RUNNING child: creator-safety only flows from creator to product, never
+        # the other way around (see `scheduler.SELECT_SAFE_UPDATE`).
+        plan.set_state(StepState.RUNNING)
+        plan.clean_before_run()
+
+        # `sub` is now detached, but nobody told its (still running) child process.
+        assert sub.is_detached()
+        assert sub.get_state() == StepState.RUNNING
+
+        # The next RPC call made by `sub`'s child process blows up.
+        with pytest.raises(GraphError, match="step is detached"):
+            wfp.amend_step(sub, inp_paths=["some_new_input"])
+
+
 async def test_define_step_input_static(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")

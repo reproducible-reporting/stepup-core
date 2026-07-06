@@ -1633,3 +1633,62 @@ async def test_stop_times_cleared_when_no_steps_running(wfs: Workflow):
         step_b.set_state(StepState.SUCCEEDED)
         scheduler.job_finished(step_b.i, succeeded=True)
         assert scheduler.stop_times == {}
+
+
+async def test_child_of_running_step_dispatched_as_soon_as_created(wfp: Workflow):
+    """A step created by an already-RUNNING creator is dispatched right away, as soon as its
+    own inputs are ready, without waiting for the creator to settle into a new state.
+
+    Regression test for a bug where `_safe` was only (re)computed for a step's *existing*
+    children when the creator's own `_check_safe` flag was processed by `_update_meta_safe()`.
+    A step's `_check_safe` flag is set once, at the moment it is dispatched to RUNNING, and
+    used to be cleared by the very next `_update_meta_safe()` pass (which the builder runs on
+    every `pop_runnable_job()` call) -- typically well before the creator's script has had a
+    chance to create any children. When the creator then created a *new* child while
+    remaining RUNNING (the common case for a `plan.py` calling `step()`), nothing re-flagged
+    the creator's `_check_safe`, so the new child's `_safe` was never (re)computed from the
+    creator's RUNNING state until the creator transitioned state again (typically on
+    completion). `SELECT_SAFE_UPDATE` now seeds its recursive walk one level up, at each
+    flagged step's *creator*, using the creator's own already-computed `_safe`/state, so a
+    freshly created child's own `_safe` is derived the moment *it* is flagged (at creation),
+    regardless of whether its creator is flagged in the same pass.
+    """
+    scheduler = Scheduler(wfp, db=wfp.db)
+    await scheduler.initialize(None)
+
+    # Unlike the real boot step (created with `safe=True` in `Workflow.__init__`, see
+    # `workflow.py:217`), the `wfp` fixture defines "./plan.py" without it, so it starts
+    # with `_safe=0` like any other step. Root has no `step` row, so `_update_meta_safe()`
+    # can never derive the boot step's own `_safe` from its creator. Bring it in line with
+    # the real bootstrap so the scheduler can dispatch it in the first place.
+    async with wfp.db:
+        wfp.db.execute(
+            "UPDATE step SET _safe = 1, _check_safe = 0 WHERE node = ?",
+            (wfp.find(Step, "./plan.py").i,),
+        )
+
+    # Dispatch the boot step ("./plan.py"): the only runnable step so far.
+    # (`pop_runnable_job` acquires `wfp.db` itself, so it must not be called from
+    # within an outer `async with wfp.db:` block.)
+    job = await scheduler.pop_runnable_job()
+    assert job is not None
+    plan = job.step
+    async with wfp.db:
+        assert plan.get_state() == StepState.RUNNING
+
+    # A second poll (as the builder's job loop would do immediately after) finds nothing
+    # left to run, and as a side effect clears `plan`'s `_check_safe` flag.
+    assert await scheduler.pop_runnable_job() is None
+
+    # `plan`'s script now creates a child step, as `step()` would via RPC, well after
+    # `plan`'s own `_check_safe` flag was already cleared above.
+    async with wfp.db:
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        assert sub.get_state() == StepState.PENDING
+
+    # `plan` (its creator) is RUNNING and `sub` has no unmet inputs, so it is dispatched
+    # right away -- no need to wait for `plan` to transition state again.
+    job = await scheduler.pop_runnable_job()
+    assert job is not None
+    assert job.step.i == sub.i
