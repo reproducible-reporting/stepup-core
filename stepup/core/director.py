@@ -28,6 +28,7 @@ from .cgroups import get_ncore_from_cgroup
 from .constants import DIRECTOR_LOG, DIRECTOR_PROF, GRAPH_DB, SQLLOG_JSON
 from .enums import HashUpdateCause, Need, ReturnCode, StepState
 from .exceptions import CgroupError
+from .executor import Executor
 from .hash import FileHash
 from .nglob import NGlobMulti
 from .reporter import ReporterClient
@@ -409,6 +410,17 @@ async def serve(
         await reporter("DIRECTOR", f"Setting available resources: {available_resources}")
     await scheduler.initialize(available_resources)
     watcher = Watcher(workflow, db, reporter, dir_queue) if do_watch else None
+    executor = Executor(
+        scheduler,
+        workflow,
+        db,
+        reporter,
+        show_perf,
+        explain_rerun,
+        live_progress,
+        mp_ctx=mp_ctx,
+        infra_env=infra_env,
+    )
     builder = Builder(
         njob=njob,
         watcher=watcher,
@@ -416,12 +428,9 @@ async def serve(
         workflow=workflow,
         db=db,
         reporter=reporter,
-        show_perf=show_perf,
-        explain_rerun=explain_rerun,
         live_progress=live_progress,
         do_remove_outdated=do_clean,
-        mp_ctx=mp_ctx,
-        infra_env=infra_env,
+        executor=executor,
     )
     memory_sampler = CgroupMemorySampler() if do_cgroup else None
     stop_event = asyncio.Event()

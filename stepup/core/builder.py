@@ -59,12 +59,6 @@ class Builder:
     reporter: ReporterClient = attrs.field(kw_only=True)
     """A reporter client for sending progress info to."""
 
-    show_perf: bool = attrs.field(kw_only=True)
-    """Flag to enable performance output after a step executed."""
-
-    explain_rerun: bool = attrs.field(kw_only=True)
-    """Flag to enable more details on why steps cannot be skipped."""
-
     live_progress: bool = attrs.field(kw_only=True)
     """Whether the reporter is an interactive terminal that wants live step-count updates."""
 
@@ -83,28 +77,8 @@ class Builder:
     do_remove_outdated: bool = attrs.field(kw_only=True, default=True)
     """Flag to enable removal of outdated outputs."""
 
-    mp_ctx: object = attrs.field(kw_only=True, default=None)
-    """Multiprocessing forkserver context, or None to use plain subprocesses."""
-
-    infra_env: dict = attrs.field(kw_only=True, factory=dict)
-    """Environment variables from the director for step child processes, overriding `os.environ`."""
-
-    executor: Executor = attrs.field(init=False)
+    executor: Executor = attrs.field(kw_only=True)
     """The executor that runs the steps as asyncio tasks in this process."""
-
-    @executor.default
-    def _executor_default(self):
-        return Executor(
-            self.scheduler,
-            self.workflow,
-            self.db,
-            self.reporter,
-            self.show_perf,
-            self.explain_rerun,
-            self.live_progress,
-            mp_ctx=self.mp_ctx,
-            infra_env=self.infra_env,
-        )
 
     async def loop(self, stop_event: asyncio.Event):
         """The main builder loop.
