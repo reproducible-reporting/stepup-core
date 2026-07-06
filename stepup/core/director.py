@@ -407,7 +407,7 @@ async def serve(
     scheduler = Scheduler(workflow, db=db, use_duration=use_duration)
     if available_resources is not None:
         await reporter("DIRECTOR", f"Setting available resources: {available_resources}")
-    await scheduler.set_available_resources(available_resources)
+    await scheduler.initialize(available_resources)
     watcher = Watcher(workflow, db, reporter, dir_queue) if do_watch else None
     builder = Builder(
         njob=njob,

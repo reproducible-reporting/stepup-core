@@ -65,6 +65,11 @@ DELETE FROM check_after
 """
 
 
+EMPTY_UPDATE_CHECK_AFTER = """
+DELETE FROM update_after
+"""
+
+
 # Don't bother updating _check_after for detached steps.
 PRUNE_DETACHED_CHECK_AFTER = """
 INSERT INTO check_after(i) SELECT step.node FROM step JOIN node ON step.node = node.i
@@ -110,13 +115,8 @@ WHERE i IN (
 """
 
 
-DROP_UPDATE_CHECK_AFTER = """
-DROP TABLE IF EXISTS update_after
-"""
-
-
 INIT_UPDATE_CHECK_AFTER = """
-CREATE TEMP TABLE update_after(
+CREATE TEMP TABLE IF NOT EXISTS update_after(
     i INTEGER PRIMARY KEY,
     _implied_need INTEGER,
     _tail_time REAL
@@ -177,16 +177,11 @@ PROPAGATE_UPDATE_CHECK_AFTER = """
 INSERT INTO check_after(i)
 SELECT DISTINCT source_step.node
 FROM update_after
-JOIN dependency AS dep1 ON dep1.sink = update_after.i
+CROSS JOIN dependency AS dep1 ON dep1.sink = update_after.i
 JOIN dependency AS dep2 ON dep2.sink = dep1.source
 JOIN step AS source_step ON source_step.node = dep2.source
 JOIN node AS source_node ON source_step.node = source_node.i
 WHERE NOT source_node.detached
-"""
-
-
-DROP_CHECK_AFTER = """
-DROP TABLE IF EXISTS check_after;
 """
 
 
@@ -379,7 +374,7 @@ class Scheduler:
     # Initialization
     #
 
-    async def set_available_resources(self, resources: str | None):
+    async def initialize(self, resources: str | None):
         async with self.db:
             self.workflow.db.execute(
                 "CREATE TEMPORARY TABLE IF NOT EXISTS available_resource "
@@ -391,6 +386,12 @@ class Scheduler:
                     "INSERT INTO available_resource VALUES (?, ?)",
                     parse_resources(resources).items(),
                 )
+            # check_after and update_after are hot-path temp tables used by
+            # _update_meta_after(). Creating them once here, instead of on every call,
+            # avoids repeated schema-cookie bumps (which invalidate SQLite's
+            # prepared-statement cache) on the dispatch hot path.
+            self.workflow.db.execute(INIT_CHECK_AFTER)
+            self.workflow.db.execute(INIT_UPDATE_CHECK_AFTER)
 
     #
     # Interaction with builder
@@ -483,7 +484,7 @@ class Scheduler:
         if not db.execute("SELECT EXISTS(SELECT 1 FROM step WHERE _check_after)").fetchone()[0]:
             return
         # Not using executescript to preserve atomicity of the transaction.
-        db.execute(INIT_CHECK_AFTER)
+        # check_after and update_after are created once in Scheduler.initialize().
         db.execute(EMPTY_CHECK_AFTER)
         db.execute(PRUNE_DETACHED_CHECK_AFTER)
         db.execute(PRUNE_REDUNDANT_CHECK_AFTER)
@@ -495,8 +496,7 @@ class Scheduler:
             #     logger.debug("  Step %s", row[0])
             # The first iteration is different: irrespective of having changed metadata fields of
             # the initial _check_after steps, we need to propagate at least once.
-            db.execute(DROP_UPDATE_CHECK_AFTER)
-            db.execute(INIT_UPDATE_CHECK_AFTER)
+            db.execute(EMPTY_UPDATE_CHECK_AFTER)
             db.execute(SELECT_UPDATE_CHECK_AFTER, {"first": first})
             # for row in db.execute("SELECT * FROM update_after"):
             #     logger.debug("  Updating step %s", str(row))
@@ -506,7 +506,6 @@ class Scheduler:
             ncheck = db.execute("SELECT COUNT(*) FROM check_after").fetchone()[0]
             first = False
         logger.debug("Finished updating 'after' metadata fields")
-        db.execute(DROP_CHECK_AFTER)
         cur = db.execute("UPDATE step SET _check_after = 0 WHERE _check_after")
         logger.debug(f"Updated {cur.rowcount} _check_after metadata field(s) for steps")
 

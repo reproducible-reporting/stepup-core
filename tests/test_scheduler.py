@@ -9,9 +9,8 @@ from stepup.core.file import FILE_SCHEMA
 from stepup.core.hash import FileHash
 from stepup.core.scheduler import (
     APPLY_UPDATE_CHECK_AFTER,
-    DROP_CHECK_AFTER,
-    DROP_UPDATE_CHECK_AFTER,
     EMPTY_CHECK_AFTER,
+    EMPTY_UPDATE_CHECK_AFTER,
     INIT_CHECK_AFTER,
     INIT_UPDATE_CHECK_AFTER,
     PROPAGATE_UPDATE_CHECK_AFTER,
@@ -40,7 +39,7 @@ def con():
     c.executescript(TRELLIS_SCHEMA.format(application_id=0, schema_version=0))
     c.executescript(STEP_SCHEMA)
     c.executescript(FILE_SCHEMA)
-    # available_resource is normally a temp table created by Scheduler.set_available_resources.
+    # available_resource is normally a temp table created by Scheduler.initialize.
     c.execute(
         "CREATE TEMPORARY TABLE IF NOT EXISTS available_resource"
         " (name TEXT PRIMARY KEY, units INTEGER NOT NULL)"
@@ -154,21 +153,20 @@ def _get_safe(con):
 def _run_update_meta_after(con):
     """Run the full update_meta_after logic against a bare SQLite connection."""
     con.execute(INIT_CHECK_AFTER)
+    con.execute(INIT_UPDATE_CHECK_AFTER)
     con.execute(EMPTY_CHECK_AFTER)
     con.execute(PRUNE_DETACHED_CHECK_AFTER)
     con.execute(PRUNE_REDUNDANT_CHECK_AFTER)
     ncheck = con.execute("SELECT COUNT(*) FROM check_after").fetchone()[0]
     first = True
     while ncheck > 0:
-        con.execute(DROP_UPDATE_CHECK_AFTER)
-        con.execute(INIT_UPDATE_CHECK_AFTER)
+        con.execute(EMPTY_UPDATE_CHECK_AFTER)
         con.execute(SELECT_UPDATE_CHECK_AFTER, {"first": first})
         con.execute(APPLY_UPDATE_CHECK_AFTER)
         con.execute(EMPTY_CHECK_AFTER)
         con.execute(PROPAGATE_UPDATE_CHECK_AFTER)
         ncheck = con.execute("SELECT COUNT(*) FROM check_after").fetchone()[0]
         first = False
-    con.execute(DROP_CHECK_AFTER)
     con.execute("UPDATE step SET _check_after = 0 WHERE _check_after = 1")
 
 
