@@ -2035,35 +2035,18 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deprecated" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deprecated
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
-  <a href="#v4.0.0rc8" class="md-nav__link">
+  <a href="#v4.0.0rc9" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4.0.0rc8 - 2026-07-04
+        4.0.0rc9 - 2026-07-06
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="4.0.0rc8 - 2026-07-04">
+    <nav class="md-nav" aria-label="4.0.0rc9 - 2026-07-06">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2089,7 +2072,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
         
           <li class="md-nav__item">
-  <a href="#deprecated_1" class="md-nav__link">
+  <a href="#deprecated" class="md-nav__link">
     <span class="md-ellipsis">
       
         Deprecated
@@ -3957,35 +3940,18 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deprecated" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deprecated
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
-  <a href="#v4.0.0rc8" class="md-nav__link">
+  <a href="#v4.0.0rc9" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4.0.0rc8 - 2026-07-04
+        4.0.0rc9 - 2026-07-06
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="4.0.0rc8 - 2026-07-04">
+    <nav class="md-nav" aria-label="4.0.0rc9 - 2026-07-06">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -4011,7 +3977,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
         
           <li class="md-nav__item">
-  <a href="#deprecated_1" class="md-nav__link">
+  <a href="#deprecated" class="md-nav__link">
     <span class="md-ellipsis">
       
         Deprecated
@@ -5653,15 +5619,8 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-based Versioning</a>.
 (Changes to features documented as &ldquo;experimental&rdquo; will not increment macro and meso version numbers.)</p>
 <h2 id="unreleased"><a href="https://github.com/reproducible-reporting/stepup-core">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
-<h3 id="deprecated">Deprecated<a class="headerlink" href="#deprecated" title="Permanent link">&para;</a></h3>
-<ul>
-<li><code>--show-perf</code> (and <code>-s</code>) now requires an interactive terminal and errors out otherwise,
-  since the performance details it prints are no longer conveyed in non-interactive/redirected
-  output. This flag will be removed in a future release; step timings will instead be recorded
-  as metadata in the workflow database, inspectable through <code>stepup browse</code>.</li>
-</ul>
-<h2 id="v4.0.0rc8"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc8">4.0.0rc8</a> - 2026-07-04<a class="headerlink" href="#v4.0.0rc8" title="Permanent link">&para;</a></h2>
-<p>This is release candidate 8 of the upcoming StepUp Core 4.0 release.</p>
+<h2 id="v4.0.0rc9"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v4.0.0rc9">4.0.0rc9</a> - 2026-07-06<a class="headerlink" href="#v4.0.0rc9" title="Permanent link">&para;</a></h2>
+<p>This is release candidate 9 of the upcoming StepUp Core 4.0 release.</p>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
 <ul>
 <li>StepUp can now also be configured through configuration files,
@@ -5843,12 +5802,16 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
 </ul>
 </li>
 </ul>
-<h3 id="deprecated_1">Deprecated<a class="headerlink" href="#deprecated_1" title="Permanent link">&para;</a></h3>
+<h3 id="deprecated">Deprecated<a class="headerlink" href="#deprecated" title="Permanent link">&para;</a></h3>
 <ul>
 <li>The <code>stepup boot</code> command has been deprecated in favor of <code>sb</code> or alternatively <code>stepup build</code>.</li>
 <li>The script interface for calling user Python scripts from <code>plan.py</code> has been deprecated
   in favor of the new <a href="../getting_started/call/">Call</a> interface.
   You are encouraged to migrate your <code>plan.py</code> files to the new API.</li>
+<li><code>--show-perf</code> (and <code>-s</code>) now requires an interactive terminal and errors out otherwise,
+  since the performance details it prints are no longer conveyed in non-interactive/redirected
+  output. This flag will be removed in a future release; step timings will instead be recorded
+  as metadata in the workflow database, inspectable through <code>stepup browse</code>.</li>
 </ul>
 <h3 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h3>
 <ul>
