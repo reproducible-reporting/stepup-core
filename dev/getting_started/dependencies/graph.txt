@@ -1,36 +1,36 @@
 root:
-             creates   file:plan.py
-             creates   step:./plan.py
+             product   file:plan.py
+             product   step:./plan.py
 
 file:plan.py
                state = STATIC
               digest = 52f76e6e 44aa9a2f 2495d98a bc23e312 ac826bda eeaec4cf 28d9fe49 ec7603c9
-          created by   root:
-            supplies   step:./plan.py
+             creator   root:
+                sink   step:./plan.py
 
 step:./plan.py
                state = RUNNING
                 need = PLAN
-          created by   root:
-            consumes   file:plan.py
-             creates   step:grep Coffee story.txt
-             creates   step:printf "Monday frown\nCoffee smile\n" > story.txt
+             creator   root:
+              source   file:plan.py
+             product   step:grep Coffee story.txt
+             product   step:printf "Monday frown\nCoffee smile\n" > story.txt
 
 step:printf "Monday frown\nCoffee smile\n" > story.txt
                state = PENDING
                 need = DEFAULT
-          created by   step:./plan.py
-             creates   file:story.txt
-            supplies   file:story.txt
+             creator   step:./plan.py
+             product   file:story.txt
+                sink   file:story.txt
 
 file:story.txt
                state = AWAITED
-          created by   step:printf "Monday frown\nCoffee smile\n" > story.txt
-            consumes   step:printf "Monday frown\nCoffee smile\n" > story.txt
-            supplies   step:grep Coffee story.txt
+             creator   step:printf "Monday frown\nCoffee smile\n" > story.txt
+              source   step:printf "Monday frown\nCoffee smile\n" > story.txt
+                sink   step:grep Coffee story.txt
 
 step:grep Coffee story.txt
                state = PENDING
                 need = DEFAULT
-          created by   step:./plan.py
-            consumes   file:story.txt
+             creator   step:./plan.py
+              source   file:story.txt

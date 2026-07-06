@@ -1497,12 +1497,12 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#the-new-run-function-replaces-the-old-runsh-and-runpy-functions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The new run() function replaces the old runsh() and runpy() functions
+        The New run() Function Replaces the Old runsh() and runpy() Functions
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="The new run() function replaces the old runsh() and runpy() functions">
+    <nav class="md-nav" aria-label="The New run() Function Replaces the Old runsh() and runpy() Functions">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1531,7 +1531,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#why-prefer-run-without-shelltrue" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why prefer run() without shell=True
+        Why Prefer run() without shell=True
       
     </span>
   </a>
@@ -1569,7 +1569,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#resource-constraints-replacement-for-pools-and-blocked-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Resource constraints (replacement for pools and blocked steps)
+        Resource Constraints (Replacement for Pools and Blocked Steps)
       
     </span>
   </a>
@@ -1625,7 +1625,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#single-case" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Single case
+        Single Case
       
     </span>
   </a>
@@ -1636,7 +1636,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#multiple-cases" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Multiple cases
+        Multiple Cases
       
     </span>
   </a>
@@ -2485,12 +2485,12 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#the-new-run-function-replaces-the-old-runsh-and-runpy-functions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The new run() function replaces the old runsh() and runpy() functions
+        The New run() Function Replaces the Old runsh() and runpy() Functions
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="The new run() function replaces the old runsh() and runpy() functions">
+    <nav class="md-nav" aria-label="The New run() Function Replaces the Old runsh() and runpy() Functions">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2519,7 +2519,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#why-prefer-run-without-shelltrue" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why prefer run() without shell=True
+        Why Prefer run() without shell=True
       
     </span>
   </a>
@@ -2557,7 +2557,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#resource-constraints-replacement-for-pools-and-blocked-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Resource constraints (replacement for pools and blocked steps)
+        Resource Constraints (Replacement for Pools and Blocked Steps)
       
     </span>
   </a>
@@ -2613,7 +2613,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#single-case" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Single case
+        Single Case
       
     </span>
   </a>
@@ -2624,7 +2624,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <a href="#multiple-cases" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Multiple cases
+        Multiple Cases
       
     </span>
   </a>
@@ -2721,7 +2721,7 @@ and your entire workflow will be re-executed to recreate the database in the new
 For consistency, the <code>stepup build</code> command is now the main entry point for running the build phase,
 while <code>stepup boot</code> is deprecated and will be removed in a future release.
 You can use the new <code>sb</code> entrypoint as a shortcut for <code>stepup build</code>.</p>
-<h2 id="the-new-run-function-replaces-the-old-runsh-and-runpy-functions">The new <code>run()</code> function replaces the old <code>runsh()</code> and <code>runpy()</code> functions<a class="headerlink" href="#the-new-run-function-replaces-the-old-runsh-and-runpy-functions" title="Permanent link">&para;</a></h2>
+<h2 id="the-new-run-function-replaces-the-old-runsh-and-runpy-functions">The New <code>run()</code> Function Replaces the Old <code>runsh()</code> and <code>runpy()</code> Functions<a class="headerlink" href="#the-new-run-function-replaces-the-old-runsh-and-runpy-functions" title="Permanent link">&para;</a></h2>
 <p>StepUp 4 unifies <code>runsh()</code> and <code>runpy()</code> into a single and more powerful <code>run()</code> function,
 which takes an optional boolean <code>shell</code> argument (default <code>False</code>)
 to indicate whether the command should be passed to a shell or not.</p>
@@ -2734,8 +2734,8 @@ The new default, <code>run(..., shell=False)</code>, is much more general than t
   and runs them in a forked Python interpreter.
   This is comparable to the old <code>runpy()</code> function,
   but more robust at about the same cost.</li>
-<li>It automatically detects so called console scripts (executables installed by Python packages)
-  and runs them also in a forked Python interpreter.
+<li>It automatically detects so-called console scripts (executables installed by Python packages)
+  and runs them in a forked Python interpreter.
   This is a new feature. In StepUp 3, such scripts were run in a shell,
   which started another Python interpreter.
   The new approach is much more efficient.</li>
@@ -2743,12 +2743,14 @@ The new default, <code>run(..., shell=False)</code>, is much more general than t
 <p>Note that the <code>run()</code> function checks whether the first word of the command
 is a relative path (contains a path separator, <code>/</code>, and is not absolute).
 If it is local, StepUp will automatically add it as an input dependency to the step.
-In StepUp 3, one had to be explicitly include the script as an input, e.g.</p>
+In StepUp 3, one had to explicitly include the script as an input.</p>
 <p>StepUp 4 drops the magic substitution of <code>${inp}</code> and <code>${out}</code> in the command string.
-Instead, you can use Python&rsquo;s f-string syntax and the <code>shq()</code> function insert paths in the command.
+Instead, you can use Python&rsquo;s f-string syntax and the <code>shq()</code> function to insert paths in the command.
 This is a more general and robust approach than the old substitution mechanism.
+The <code>shq()</code> function handles single paths or lists of paths and adds quotes where needed,
+and gives you more control over which paths to insert where, e.g. using slicing.
 In simple cases, just repeating the input and output paths in the command string
-is recommended for readability, e.g. <code>run(f"cat hello.txt", inp="hello.txt")</code>.</p>
+is recommended for readability.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># StepUp 3: you had to explicitly include the script as an input</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">runpy</span><span class="p">(</span><span class="s2">&quot;./analyze.py data.csv&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;analyze.py&quot;</span><span class="p">,</span> <span class="s2">&quot;data.csv&quot;</span><span class="p">])</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># or</span>
@@ -2787,7 +2789,7 @@ The Python wrapper is selected automatically when the first word ends in <code>.
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># StepUp 4</span>
 </span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">run</span><span class="p">(</span><span class="s2">&quot;./analyze.py --input data.csv&quot;</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="s2">&quot;data.csv&quot;</span><span class="p">)</span>
 </span></code></pre></div>
-<h3 id="why-prefer-run-without-shelltrue">Why prefer <code>run()</code> without <code>shell=True</code><a class="headerlink" href="#why-prefer-run-without-shelltrue" title="Permanent link">&para;</a></h3>
+<h3 id="why-prefer-run-without-shelltrue">Why Prefer <code>run()</code> without <code>shell=True</code><a class="headerlink" href="#why-prefer-run-without-shelltrue" title="Permanent link">&para;</a></h3>
 <p>Using <code>shell=True</code> (or the old <code>runsh()</code> for plain commands) has a few drawbacks
 compared to execution via <code>run()</code> with <code>shell=False</code>:</p>
 <ul>
@@ -2833,26 +2835,26 @@ This has a few practical consequences for your <code>plan.py</code> file:</p>
 <p>Directories can no longer be used as inputs or outputs of steps.</p>
 </li>
 </ul>
-<p>StepUp 3 insisted strongly on trailing slashes for directory paths,
-which has been abandoned almost entirely in StepUp 4.
+<p>StepUp 3 strongly insisted on trailing slashes for directory paths.
+This requirement has been abandoned almost entirely in StepUp 4.
 End users only need to specify such &ldquo;path affixes&rdquo; in two places to avoid ambiguity:</p>
 <ul>
 <li>If the <code>dst</code> argument of <code>copy()</code> is a directory, it must end with a trailing slash.
   (StepUp cannot check the file system to test if it is a directory
   because the directory may not exist yet.)</li>
 <li>When specifying a local executable, it must either start with a <code>./</code> prefix
-  or be a relative path containing a path separator (<code>/</code>)
+  or be a relative path containing a path separator (<code>/</code>).
   This is needed to avoid ambiguity with executables found in the PATH.</li>
 </ul>
 <h2 id="distributed-plans">Distributed Plans<a class="headerlink" href="#distributed-plans" title="Permanent link">&para;</a></h2>
-<p>The function <a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='.', resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> now works differently,
-and works almost in the same way as the <code>run()</code> function,
+<p>The function <a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='.', resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> now works very differently:
+it behaves almost like the <code>run()</code> function,
 except for a few small differences:</p>
 <ul>
 <li>The first argument is now a command string, not a directory containing another <code>plan.py</code> file.</li>
 <li>Except for <code>optional</code> and <code>shell</code>, all <code>run()</code> arguments are supported.
   (It is hardwired to use <code>optional=False, shell=False</code>.)</li>
-<li>It differs from run in that it assigns a higher priority to planning steps,
+<li>It differs from <code>run()</code> in that it assigns a higher priority to planning steps,
   so the workflow is completed as early as possible.</li>
 <li>It insists that the command is a relative path to a local executable.
   (While it would technically be possible to allow arbitrary commands,
@@ -2868,13 +2870,13 @@ except for a few small differences:</p>
 </span></code></pre></div>
 <p>The advantages of the new <code>plan()</code> function are:</p>
 <ul>
-<li>Increased flexibility: You are not forced to work in a subdirectory.
+<li><strong>Increased flexibility</strong>: You are not forced to work in a subdirectory.
   E.g., you can have <code>plan_a.py</code> and <code>plan_b.py</code> in the same directory
   and call them both from a master <code>plan.py</code>.</li>
-<li>Simplicity of the API: works like a simplified version of <code>run()</code>,
+<li><strong>Simplicity of the API</strong>: works like a simplified version of <code>run()</code>,
   so there are fewer concepts to learn.</li>
 </ul>
-<h2 id="resource-constraints-replacement-for-pools-and-blocked-steps">Resource constraints (replacement for pools and blocked steps)<a class="headerlink" href="#resource-constraints-replacement-for-pools-and-blocked-steps" title="Permanent link">&para;</a></h2>
+<h2 id="resource-constraints-replacement-for-pools-and-blocked-steps">Resource Constraints (Replacement for Pools and Blocked Steps)<a class="headerlink" href="#resource-constraints-replacement-for-pools-and-blocked-steps" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
 <p>The <code>pool()</code> function has been removed, and pools can no longer be defined in <code>plan.py</code>.
@@ -2971,7 +2973,7 @@ See <a href="../../getting_started/call/">Function Calls</a> for a full introduc
   for each run step it wants to register.</li>
 <li>Any <code>static</code> declared via the info dictionary becomes an explicit <code>static()</code> call.</li>
 </ul>
-<h3 id="single-case">Single case<a class="headerlink" href="#single-case" title="Permanent link">&para;</a></h3>
+<h3 id="single-case">Single Case<a class="headerlink" href="#single-case" title="Permanent link">&para;</a></h3>
 <p>In StepUp 3, a single-case script returned its planning data from <code>info()</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># StepUp 3 — generate.py</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.script</span><span class="w"> </span><span class="kn">import</span> <span class="n">driver</span>
@@ -3017,7 +3019,7 @@ See <a href="../../getting_started/call/">Function Calls</a> for a full introduc
 </span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">static</span><span class="p">(</span><span class="s2">&quot;generate.py&quot;</span><span class="p">,</span> <span class="s2">&quot;config.json&quot;</span><span class="p">)</span>
 </span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">call</span><span class="p">(</span><span class="s2">&quot;./generate.py&quot;</span><span class="p">,</span> <span class="s2">&quot;plan&quot;</span><span class="p">,</span> <span class="n">planning</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </span></code></pre></div>
-<h3 id="multiple-cases">Multiple cases<a class="headerlink" href="#multiple-cases" title="Permanent link">&para;</a></h3>
+<h3 id="multiple-cases">Multiple Cases<a class="headerlink" href="#multiple-cases" title="Permanent link">&para;</a></h3>
 <p>In StepUp 3, running the same script for several cases required the <code>cases()</code> generator,
 a <code>CASE_FMT</code> template, and a <code>case_info()</code> function:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># StepUp 3 — plot.py</span>

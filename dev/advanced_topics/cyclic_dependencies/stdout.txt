@@ -1,4 +1,4 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc2.post0)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc4.post0)
    STARTUP │ (Re)initialized boot script
      PHASE │ build
      START │ ./plan.py
@@ -7,7 +7,7 @@
 ./plan.py  # exit=1
 ──────────────────────────────── Standard error ────────────────────────────────
 Traceback (most recent call last):
-  File "stepup/core/executor.py", line 155, in _forkserver_entry
+  File "stepup/core/executor.py", line 450, in _forkserver_entry
     runpy.run_path(cmd, run_name="__main__")
     ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "<frozen runpy>", line 294, in run_path
@@ -16,29 +16,29 @@ Traceback (most recent call last):
   File "./plan.py", line 5, in <module>
     copy("b.txt", "a.txt")
     ~~~~^^^^^^^^^^^^^^^^^^
-  File "stepup/core/api.py", line 898, in copy
+  File "stepup/core/api.py", line 916, in copy
     return step(
         f"cp -p {shq(src)} {shq(dst)}",
     ...<4 lines>...
         shell=False,
     )
-  File "stepup/core/api.py", line 367, in step
+  File "stepup/core/api.py", line 376, in step
     to_check = RPC_CLIENT.call.step(
         _get_step_i(),
     ...<9 lines>...
         env_overrides,
     )
-  File "stepup/core/rpc.py", line 543, in __call__
+  File "stepup/core/rpc.py", line 541, in __call__
     _handle_error(body, name, args, kwargs)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "stepup/core/rpc.py", line 74, in _handle_error
+  File "stepup/core/rpc.py", line 58, in _handle_error
     raise RPCError(f"An exception was raised in the server during the call {fmt_call}: \n\n{body}")
 stepup.core.exceptions.RPCError: An exception was raised in the server during the call step(3, 'cp -p b.txt a.txt', [Path('b.txt')], [], [Path('a.txt')], [], Path('.'), 32, {}, False, None):
 Traceback (most recent call last):
-  File "stepup/core/rpc.py", line 210, in _handle_request
+  File "stepup/core/rpc.py", line 197, in _handle_request
     result = await result
              ^^^^^^^^^^^^
-  File "stepup/core/director.py", line 516, in step
+  File "stepup/core/director.py", line 601, in step
     return self.workflow.define_step(
            ~~~~~~~~~~~~~~~~~~~~~~~~~^
         creator,
@@ -48,12 +48,10 @@ Traceback (most recent call last):
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     )
     ^
-  File "stepup/core/workflow.py", line 841, in define_step
+  File "stepup/core/workflow.py", line 907, in define_step
     file.add_source(step)
-    ~~~~~~~~~~~~~~~~~^^^^^^
-  File "stepup/core/file.py", line 276, in add_source
-    idep = super().add_source(source)
-  File "stepup/core/trellis.py", line 422, in add_source
+    ~~~~~~~~~~~~~~~^^^^^^
+  File "stepup/core/trellis.py", line 436, in add_source
     raise CyclicError("New relation introduces a cyclic dependency")
 stepup.core.exceptions.CyclicError: New relation introduces a cyclic dependency
 ────────────────────────────────────────────────────────────────────────────────

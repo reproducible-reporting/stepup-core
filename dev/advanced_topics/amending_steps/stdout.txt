@@ -1,4 +1,4 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 3.2.3.post54)
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc4.post0)
    STARTUP │ (Re)initialized boot script
      PHASE │ build
      START │ ./plan.py
@@ -7,7 +7,7 @@
    SUCCESS │ echo input.txt > sources.txt
      START │ ./step.py
 RESCHEDULE │ ./step.py
-──────────────── Rescheduling due to unavailable amended inputs ────────────────
+────────────────────────── Unavailable amended inputs ──────────────────────────
 input.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ echo You better read this. > input.txt
