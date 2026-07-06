@@ -18,9 +18,8 @@ and reacts to file system changes (via inotify) to re-run only outdated steps.
 ### Setup
 
 ```bash
-python -m venv venv
-source venv/bin/activate          # or: direnv allow (uses .envrc)
-pip install -e .[dev]
+uv sync --extra dev
+source .venv/bin/activate    # or: direnv allow (uses .envrc)
 pre-commit install
 ```
 

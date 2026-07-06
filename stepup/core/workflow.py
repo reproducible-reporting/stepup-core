@@ -592,22 +592,18 @@ class Workflow(Trellis):
             These must be sent back to the client where the hashes can be checked
             and which then calls `confirm_hashes` with the updated hashes.
         """
-        self.db.execute("DROP TABLE IF EXISTS temp.missing")
-        try:
-            self.db.execute("CREATE TABLE temp.missing(node INTEGER PRIMARY KEY)")
-            sql = "INSERT INTO temp.missing VALUES (?)"
-            self.db.executemany(sql, ((file.i,) for file in deferred))
-            sql = (
-                "SELECT label, hash "
-                "FROM temp.missing "
-                "JOIN node ON node.i = temp.missing.node "
-                "JOIN file ON file.node = temp.missing.node"
-            )
-            return [
-                (path, FileHash.from_json(hash_value)) for path, hash_value in self.db.execute(sql)
-            ]
-        finally:
-            self.db.execute("DROP TABLE IF EXISTS temp.missing")
+        sql = (
+            "SELECT label, hash "
+            "FROM json_each(:nodes) AS missing "
+            "JOIN node ON node.i = missing.value "
+            "JOIN file ON file.node = missing.value "
+            "ORDER BY label"
+        )
+        nodes = json.dumps([file.i for file in deferred])
+        return [
+            (path, FileHash.from_json(hash_value))
+            for path, hash_value in self.db.execute(sql, {"nodes": nodes})
+        ]
 
     def get_file_hashes(self, paths: Collection[str]) -> list[tuple[str, FileHash]]:
         """Get the hashes of existing files.
@@ -622,19 +618,20 @@ class Workflow(Trellis):
         file_hashes
             A list of `(path, file_hash)` tuples.
         """
-        self.db.execute("DROP TABLE IF EXISTS temp.paths")
-        try:
-            self.db.execute("CREATE TABLE temp.paths(path TEXT PRIMARY KEY)")
-            self.db.executemany("INSERT INTO temp.paths VALUES (?)", ((path,) for path in paths))
-            sql = (
-                "SELECT label, hash FROM node "
-                "JOIN file ON file.node = node.i JOIN temp.paths ON label = temp.paths.path"
-            )
-            return [
-                (path, FileHash.from_json(hash_value)) for path, hash_value in self.db.execute(sql)
-            ]
-        finally:
-            self.db.execute("DROP TABLE IF EXISTS temp.paths")
+        # CROSS JOIN (instead of JOIN) forces json_each to be the outer loop, so `node` is
+        # probed through its `node_kind_label` index once per requested path. A plain JOIN
+        # lets the planner drive from a full scan of `node` instead, which is O(n_nodes)
+        # regardless of how few paths are requested.
+        sql = (
+            "SELECT label, hash FROM json_each(:paths) AS wanted "
+            "CROSS JOIN node ON node.kind = 'file' AND node.label = wanted.value "
+            "CROSS JOIN file ON file.node = node.i "
+            "ORDER BY label"
+        )
+        return [
+            (path, FileHash.from_json(hash_value))
+            for path, hash_value in self.db.execute(sql, {"paths": json.dumps(list(paths))})
+        ]
 
     def update_file_hashes(
         self, file_hashes: Collection[tuple[str, FileHash]], cause: HashUpdateCause
@@ -655,23 +652,19 @@ class Workflow(Trellis):
 
         # Efficiently get corresponding node_index and state tuples.
         file_hashes = dict(file_hashes)
-        self.db.execute("DROP TABLE IF EXISTS temp.updated")
-        try:
-            self.db.execute("CREATE TABLE temp.updated(path TEXT PRIMARY KEY) WITHOUT ROWID")
-            self.db.executemany(
-                "INSERT INTO temp.updated VALUES (?)",
-                ((path,) for path in file_hashes),
-            )
-            sql = (
-                "SELECT node.i, path, file.state FROM temp.updated "
-                "JOIN node ON node.label = path JOIN file ON file.node = node.i "
-            )
-            records = [
-                (i, path, file_hashes[path], FileState(value))
-                for i, path, value in self.db.execute(sql)
-            ]
-        finally:
-            self.db.execute("DROP TABLE IF EXISTS temp.updated")
+        # CROSS JOIN forces json_each to be the outer loop; see get_file_hashes for why.
+        sql = (
+            "SELECT node.i, updated.value AS path, file.state "
+            "FROM json_each(:paths) AS updated "
+            "CROSS JOIN node ON node.kind = 'file' AND node.label = updated.value "
+            "CROSS JOIN file ON file.node = node.i "
+            "ORDER BY path"
+        )
+        paths = json.dumps(list(file_hashes))
+        records = [
+            (i, path, file_hashes[path], FileState(value))
+            for i, path, value in self.db.execute(sql, {"paths": paths})
+        ]
 
         if len(records) != len(file_hashes):
             raise AssertionError(
