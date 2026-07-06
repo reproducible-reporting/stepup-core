@@ -256,6 +256,7 @@ WHERE
     NOT EXISTS ({UNAVAILABLE_INPUT}) AND
     EXISTS (SELECT 1 FROM step_hash WHERE step_hash.node = node.i)
 {_ORDER_BY_PRIORITY}
+LIMIT 1
 """
 
 
@@ -289,6 +290,7 @@ WHERE
           )
     )
 {_ORDER_BY_PRIORITY}
+LIMIT 1
 """
 
 

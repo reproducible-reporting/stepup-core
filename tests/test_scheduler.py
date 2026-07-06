@@ -759,30 +759,40 @@ def test_resource_exactly_at_limit_allows_step(con):
 
 
 def test_ordering_plan_before_default(con):
-    """PLAN steps are ordered before DEFAULT steps, regardless of tail_time."""
+    """PLAN steps are ordered before DEFAULT steps, regardless of tail_time.
+
+    SELECT_RUNNABLE_STEPS carries a LIMIT 1 (only fetchone() is ever used on it), so only
+    the top-priority candidate comes back; the assertion checks that the PLAN step wins.
+    """
     _insert_step(
         con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=100.0
     )
     _insert_step(con, 3, 1, StepState.PENDING, safe=True, implied_need=Need.PLAN, tail_time=1.0)
     ids = _get_runnable_ids(con)
-    assert ids == [3, 2]  # PLAN first despite lower tail_time
+    assert ids == [3]  # PLAN first despite lower tail_time
 
 
 def test_ordering_higher_tail_time_first(con):
-    """Within the same implied_need level, steps with higher _tail_time come first."""
+    """Within the same implied_need level, the step with higher _tail_time wins.
+
+    SELECT_RUNNABLE_STEPS carries a LIMIT 1, so only the top-priority candidate comes back.
+    """
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=5.0)
     _insert_step(con, 3, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=10.0)
     ids = _get_runnable_ids(con)
-    assert ids == [3, 2]
+    assert ids == [3]
 
 
 def test_ordering_label_tiebreaker(con):
-    """When tail_time and implied_need are equal, steps are sorted alphabetically by label."""
+    """When tail_time and implied_need are equal, the alphabetically first label wins.
+
+    SELECT_RUNNABLE_STEPS carries a LIMIT 1, so only the top-priority candidate comes back.
+    """
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=5.0)
     _insert_step(con, 3, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=5.0)
     # _insert_step labels these "echo 2" and "echo 3"; "echo 2" < "echo 3" alphabetically.
     ids = _get_runnable_ids(con)
-    assert ids == [2, 3]
+    assert ids == [2]
 
 
 # -----------------------------------------------------------------------

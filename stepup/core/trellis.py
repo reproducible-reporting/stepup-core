@@ -571,6 +571,9 @@ class Trellis:
         # - Split step.rescheduled_info into unavailable_inputs and unfresh_inputs columns,
         #   to distinguish amended inputs that are genuinely not built yet from ones that
         #   were built but failed the amend() start/stop-time freshness check.
+        # - Added a step_pending_ready partial index on step(state, _implied_need)
+        #   WHERE _safe AND unavailable_inputs = '', matching Scheduler._PENDING_STEP_WHERE,
+        #   to speed up SELECT_CHECKABLE_STEPS/SELECT_RUNNABLE_STEPS dispatch queries.
 
         return 5
 

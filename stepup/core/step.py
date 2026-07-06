@@ -87,6 +87,11 @@ CREATE INDEX IF NOT EXISTS step_implied_need ON step(_implied_need);
 -- index scan proportional to the flagged count instead of a full scan of the step table.
 CREATE INDEX IF NOT EXISTS step_check_safe ON step(node) WHERE _check_safe;
 CREATE INDEX IF NOT EXISTS step_check_after ON step(node) WHERE _check_after;
+-- Partial index matching Scheduler._PENDING_STEP_WHERE's static predicates, so
+-- SELECT_CHECKABLE_STEPS/SELECT_RUNNABLE_STEPS can jump to plausible dispatch
+-- candidates instead of scanning every PENDING step to test _safe/unavailable_inputs.
+CREATE INDEX IF NOT EXISTS step_pending_ready ON step(state, _implied_need)
+    WHERE _safe AND unavailable_inputs = '';
 
 -- Keep _check_after in sync with dependency-edge changes touching either endpoint.
 -- A no-op UPDATE (zero rows matched) is harmless when the other endpoint is not a step.

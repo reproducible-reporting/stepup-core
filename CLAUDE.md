@@ -204,6 +204,13 @@ The schema version is `Trellis.schema_version` (in `trellis.py`), written to the
 `PRAGMA user_version`. On a version mismatch, the database is **wiped and recreated** from
 scratch (`wipe_database`) — there is no `ALTER TABLE` migration path.
 
+Note that `DBSession.initialize()` re-executes the full schema (`CREATE TABLE IF NOT EXISTS`,
+`CREATE INDEX IF NOT EXISTS`, ...) via `executescript` on **every** database open, regardless of
+whether `user_version` matched. A purely additive change (e.g. a new index) is therefore applied
+lazily even to a database whose `schema_version` didn't change — bumping the version is a
+documentation/consistency convention for this project, not strictly required for such a change
+to take effect.
+
 **Policy: bump `schema_version` at most once per release.**
 During a pre-release refactor, many commits may change the schema,
 but they all share the single bumped version for the upcoming release;
