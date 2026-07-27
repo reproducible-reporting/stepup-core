@@ -115,11 +115,8 @@ class SupplyInfo:
     the current step precedes the stop time of the file's creator step.
     """
 
-    deferred: list[Node] = attrs.field()
-    """A list of MISSING file nodes whose existence and validity must be checked.
-
-    These are typically new matches of a static tree.
-    """
+    is_deferred: bool = attrs.field()
+    """True if the file attribute is MISSING and needs to be checked."""
 
     new_idep: int | None = attrs.field()
     """Dependency identifier when the relation is new, None otherwise."""
@@ -577,7 +574,7 @@ class Workflow(Trellis):
         new: bool,
         start_times: dict[int, int] | None = None,
         stop_times: dict[int, int] | None = None,
-    ) -> tuple[File, bool, bool, list[Node], bool]:
+    ) -> tuple[File, bool, bool, Node | None, bool]:
         """Find or create the file for a path and resolve its relation to node.
 
         This performs everything `_supply_files` needs except inserting the
@@ -607,8 +604,8 @@ class Workflow(Trellis):
             See `SupplyInfo.available`.
         unfresh
             See `SupplyInfo.unfresh`.
-        deferred
-            See `SupplyInfo.deferred`.
+        is_deferred
+            See `SupplyInfo.is_deferred`.
         new_relation
             `True` when the (file, node) dependency edge does not exist yet
             and still needs to be inserted by the caller.
@@ -622,14 +619,14 @@ class Workflow(Trellis):
         available = False
         unfresh = False
         file, detached = self.find_detached(File, path)
-        deferred = []
+        is_deferred = False
         if file is None or detached:
             st = self._matching_static_tree(path)
             if st is None:
                 file = self.create(File, None, path, state=FileState.AWAITED)
             else:
                 file = self.create(File, st, path, state=FileState.MISSING)
-                deferred.append(file)
+                is_deferred = True
                 available = True
             self.put_dir_queue(Path(path).parent)
         else:
@@ -638,7 +635,7 @@ class Workflow(Trellis):
                 raise GraphError(f"Input is volatile: {path}")
             available = state in (FileState.BUILT, FileState.STATIC, FileState.MISSING)
             if state == FileState.MISSING:
-                deferred.append(file)
+                is_deferred = True
             elif state == FileState.BUILT and start_times is not None:
                 producer = file.creator()
                 if isinstance(producer, Step):
@@ -654,7 +651,7 @@ class Workflow(Trellis):
         )
         if not new_relation and new:
             raise GraphError(f"Supplying file already exists: {path}")
-        return file, available, unfresh, deferred, new_relation
+        return file, available, unfresh, is_deferred, new_relation
 
     def _supply_files(
         self,
@@ -703,13 +700,18 @@ class Workflow(Trellis):
             self._resolve_supply_file(node, path, new, start_times, stop_times) for path in paths
         ]
         new_file_is = [file.i for file, _, _, _, new_relation in resolved if new_relation]
-        if new_file_is:
+        if len(new_file_is) > 0:
             node.check_no_cycle_batch(new_file_is)
-        results = []
-        for file, available, unfresh, deferred, new_relation in resolved:
-            new_idep = node.add_source(file, skip_cycle_check=True) if new_relation else None
-            results.append(SupplyInfo(file, available, unfresh, deferred, new_idep))
-        return results
+        return [
+            SupplyInfo(
+                file,
+                available,
+                unfresh,
+                is_deferred,
+                new_idep=(node.add_source(file, skip_cycle_check=True) if new_relation else None),
+            )
+            for file, available, unfresh, is_deferred, new_relation in resolved
+        ]
 
     def _declare_file(
         self, creator: Node, path: str, file_state: FileState
@@ -1074,7 +1076,8 @@ class Workflow(Trellis):
         for info in self._supply_files(step, inp_paths):
             # We do not care about the unavailable files here,
             # because the step will only be executed when all inputs are available.
-            deferred.update(info.deferred)
+            if info.is_deferred:
+                deferred.add(info.file)
 
         # Process vars
         step.add_env_deps(env_deps)
@@ -1165,14 +1168,15 @@ class Workflow(Trellis):
         infos = self._supply_files(
             step, inp_paths, new=False, start_times=start_times, stop_times=stop_times
         )
-        for inp_path, info in zip(inp_paths, infos, strict=True):
+        for info in infos:
             if not info.available:
-                unavailable.add(inp_path)
+                unavailable.add(info.file.path)
             elif info.unfresh:
-                unfresh.add(inp_path)
+                unfresh.add(info.file.path)
             if info.new_idep is not None:
                 amended_ideps.append((info.new_idep,))
-            deferred.update(info.deferred)
+            if info.is_deferred:
+                deferred.add(info.file)
 
         # Process vars
         step.amend_env_deps(env_deps)
