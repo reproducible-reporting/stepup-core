@@ -797,14 +797,11 @@ class Workflow(Trellis):
         logger.info("Reuse detached step: %s", old_step.label)
         return deferred
 
-    def _amend_dep(self, idep):
-        self.db.execute("INSERT INTO amended_dep VALUES (?)", (idep,))
-
     #
     # Build phase (low-level public API)
     #
 
-    def declare_missing(self, creator: Node, paths=Collection[str]) -> list[tuple[str, FileHash]]:
+    def declare_missing(self, creator: Node, paths: Collection[str]) -> list[tuple[str, FileHash]]:
         """Declare a files as missing, with the intention to later confirm them as static.
 
         Parameters
@@ -1043,6 +1040,7 @@ class Workflow(Trellis):
         unavailable = set()
         unfresh = set()
         deferred = set()
+        amended_ideps = []
 
         # Process inp_paths
         infos = self._supply_files(
@@ -1054,7 +1052,7 @@ class Workflow(Trellis):
             elif info.unfresh:
                 unfresh.add(inp_path)
             if info.new_idep is not None:
-                self._amend_dep(info.new_idep)
+                amended_ideps.append((info.new_idep,))
             deferred.update(info.deferred)
 
         # Process vars
@@ -1064,14 +1062,15 @@ class Workflow(Trellis):
         for out_path in out_paths:
             file = self._declare_file(step, out_path, FileState.AWAITED)
             new_idep = file.add_source(step)
-            self._amend_dep(new_idep)
+            amended_ideps.append((new_idep,))
 
         # Create vol_paths
         for vol_path in vol_paths:
             file = self._declare_file(step, vol_path, FileState.VOLATILE)
             new_idep = file.add_source(step)
-            self._amend_dep(new_idep)
+            amended_ideps.append((new_idep,))
 
+        self.db.executemany("INSERT INTO amended_dep VALUES (?)", amended_ideps)
         return False, unavailable, unfresh, self._build_to_check(deferred)
 
     def register_nglob(self, step: Step, nglob_multi: NGlobMulti):
