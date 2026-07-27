@@ -26,12 +26,16 @@ on:
 
 jobs:
   tests:
+    permissions:
+      contents: read
     strategy:
       matrix:
         python-version: ['3.11', '3.13']
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:

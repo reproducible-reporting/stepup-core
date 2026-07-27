@@ -31,9 +31,6 @@ on:
       - pyproject.toml
       - .github/workflows/mkdocs.yaml
 
-permissions:
-  contents: write
-
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
@@ -41,11 +38,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  check:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       # Get the source
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: 3.x
@@ -54,22 +55,41 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: pyproject.toml
+      - name: Install development version
+        run: uv pip install --system -e .[dev]
+      - name: Build mkdocs site
+        run: mkdocs build --strict
 
-      # Prepare the environment for building docs.
-      - name: Setup Pages
-        id: pages
-        uses: actions/configure-pages@v6
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      # Get the source
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: 3.x
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
       - name: Install development version
         run: uv pip install --system -e .[dev]
 
-      # Update the site using to the gh-pages branch with mike.
+      # Update the site using the gh-pages branch with mike.
       - name: Get the docs branch
         run: git fetch --depth=1 origin gh-pages
       - name: Configure Git user for documentation commit
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-      - name: Build mkdocs
+      - name: Build docs snapshot
         run: mike deploy dev
       - name: Push gh-pages branch with development version of docs
         if: github.ref == 'refs/heads/main'
