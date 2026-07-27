@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Unit tests for stepup.core.step."""
 
+import sqlite3
 from types import SimpleNamespace
 
 import pytest
@@ -190,6 +191,19 @@ def test_raw_sql_state_update_away_from_running_resets_holding(con):
     assert step_a.is_holding() is True
     con.execute("UPDATE step SET state = ? WHERE node = ?", (StepState.FAILED.value, 2))
     assert step_a.is_holding() is False
+
+
+def test_set_state_postponed_rejects_non_pending_state(con):
+    """`postponed=True` combined with a state other than PENDING is rejected by the
+    step table's postponed/state CHECK constraint (see STEP_SCHEMA).
+
+    `Step.set_state()` used to raise `ValueError` for this in Python; it no longer
+    duplicates the check, so this is now only caught at the database level.
+    """
+    _insert_step(con, 2, 1)
+    step_a = _make_step(con, 2)
+    with pytest.raises(sqlite3.IntegrityError):
+        step_a.set_state(StepState.FAILED, postponed=True)
 
 
 def test_state_update_to_checking_pending_does_not_disturb_zero_holding(con):

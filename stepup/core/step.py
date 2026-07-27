@@ -129,7 +129,13 @@ CREATE TABLE IF NOT EXISTS step (
     -- SELECT_SAFE_UPDATE's safe/safe_nh sub-expressions (stepup/core/scheduler.py) never
     -- silently diverge in the wrong direction, e.g. if a future third hold-bypass condition is
     -- added and one of the (then six-plus) sub-expressions is miscopied.
-    CHECK (_safe_ignoring_hold >= _safe)
+    CHECK (_safe_ignoring_hold >= _safe),
+    -- A step can only be postponed while it is PENDING (see StepState.PENDING). This is the
+    -- sole enforcement of that rule: Step.set_state() no longer duplicates it in Python.
+    -- Every write path that changes state also writes postponed in the same statement
+    -- (Step.set_state defaults it to False; the trigger-driven clears below only ever move
+    -- it to False), so this never goes transiently false mid-statement.
+    CHECK (NOT postponed OR state = {StepState.PENDING.value})
 ) WITHOUT ROWID;
 
 -- Indexes for efficient querying
@@ -261,9 +267,9 @@ END;
 -- among each other never have to touch this table at all.
 -- Deliberately a temp table (like path_list/node_list in FILE_SCHEMA), not persisted: that
 -- sidesteps ever having to migrate/backfill it for on-disk databases written before this
--- table existed. It starts empty on every fresh connection, so Workflow.check_consistency()
--- seeds it once from the steps that already exist before trusting the triggers below to
--- keep it in sync from then on.
+-- table existed. It starts empty on every fresh connection, so
+-- Workflow._rebuild_temp_tables() seeds it once from the steps that already exist before
+-- trusting the triggers below to keep it in sync from then on.
 CREATE TEMP TABLE IF NOT EXISTS step_need_count (
     implied_need INTEGER NOT NULL,
     succeeded INTEGER NOT NULL CHECK(succeeded IN (0, 1)),
@@ -824,8 +830,8 @@ class Step(Node):
         return StepState(row[0])
 
     def set_state(self, state: StepState, postponed: bool = False):
-        if postponed and not state == StepState.PENDING:
-            raise ValueError("postponed can only be True when setting state to PENDING")
+        # postponed=True combined with a state other than PENDING is rejected by the
+        # step table's postponed/state CHECK constraint (see STEP_SCHEMA).
         self.db.execute(
             "UPDATE step SET state = ?, postponed = ? WHERE node = ?",
             (state.value, postponed, self.i),

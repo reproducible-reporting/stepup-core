@@ -2518,7 +2518,7 @@ async def test_consistency_parent(wfp: Workflow):
         declare_static(wfp, wfp.find(Step, "./plan.py"), ["local.txt"])
         # Manually change local.txt to sub/local.txt
         wfp.db.execute("UPDATE node SET label = 'sub/local.txt' WHERE label = 'local.txt'")
-        wfp.check_consistency()
+        wfp._check_consistency()
         # Manually set it back, because wfp will get checked by fixture.
         wfp.db.execute("UPDATE node SET label = 'local.txt' WHERE label = 'sub/local.txt'")
 
@@ -2541,7 +2541,7 @@ async def test_consistency_succeeded_step(wfp: Workflow):
         async with wfp.db:
             out.set_state(FileState.AWAITED)
             file_hashes = wfp.get_file_hashes(["out.txt"])
-            wfp.check_consistency()
+            wfp._check_consistency()
     assert file_hashes == [("out.txt", FileHash.unknown())]
 
 
@@ -3042,7 +3042,7 @@ async def wfs_target(request) -> AsyncIterator[Workflow]:
         await workflow.initialize()
         yield workflow
         async with db:
-            workflow.check_consistency()
+            workflow._check_consistency()
 
 
 def _init_target_dir(workflow, *paths):
@@ -3087,9 +3087,11 @@ async def test_need_threshold_property_with_target_dirs_only():
 
 
 async def test_define_step_rejects_need_target(wfp: Workflow):
+    # need=Need.TARGET is rejected by the step table's need CHECK constraint (see
+    # STEP_SCHEMA); Workflow.define_step() no longer duplicates this check in Python.
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
-    with pytest.raises(GraphError):
+    with pytest.raises(sqlite3.IntegrityError):
         async with wfp.db:
             wfp.define_step(plan, "echo", need=Need.TARGET)
 
@@ -3190,6 +3192,76 @@ async def test_need_column_check_rejects_target(wfp: Workflow):
     with pytest.raises(sqlite3.IntegrityError):
         async with wfp.db:
             wfp.db.execute("UPDATE step SET need = 33 WHERE node = ?", (step.i,))
+
+
+async def test_node_creator_kind_check_rejects_file_creator_for_file(wfp: Workflow):
+    """A `file` node's creator must be a step, static tree or root, not another file.
+
+    This used to be rejected by `Workflow._check_creator` in Python; it is now only
+    caught by the `node_check_creator_kind_ins` trigger (WORKFLOW_SCHEMA, workflow.py).
+    """
+    async with wfp.db:
+        file_plan = wfp.find(File, "plan.py")
+    with pytest.raises(sqlite3.IntegrityError):
+        async with wfp.db:
+            wfp.db.execute(
+                "INSERT INTO node (kind, label, creator, detached) "
+                "VALUES ('file', 'bad.txt', ?, FALSE)",
+                (file_plan.i,),
+            )
+
+
+async def test_node_creator_kind_check_rejects_root_creator_for_static_tree(wfp: Workflow):
+    """A static tree's creator must be a step, not root directly."""
+    with pytest.raises(sqlite3.IntegrityError):
+        async with wfp.db:
+            wfp.db.execute(
+                "INSERT INTO node (kind, label, creator, detached) VALUES ('st', 'sub/', ?, FALSE)",
+                (wfp.root.i,),
+            )
+
+
+async def test_node_creator_kind_check_rejects_on_update(wfp: Workflow):
+    """The `_upd` variant of the trigger fires on a raw creator `UPDATE`, e.g. a detached
+    node reattached by code that bypasses `Node.recycle()`."""
+    async with wfp.db:
+        file_plan = wfp.find(File, "plan.py")
+        detached_file = wfp.create(File, None, "detached.txt", state=FileState.MISSING)
+        node_i = detached_file.i
+    with pytest.raises(sqlite3.IntegrityError):
+        async with wfp.db:
+            wfp.db.execute("UPDATE node SET creator = ? WHERE i = ?", (file_plan.i, node_i))
+
+
+async def test_dependency_kind_check_rejects_file_to_file(wfp: Workflow):
+    """A file -> file dependency edge is not one of the three allowed kind combinations.
+
+    This used to be rejected by `Workflow._check_source` in Python; it is now only caught
+    by the `dependency_check_kinds_ins` trigger (WORKFLOW_SCHEMA, workflow.py).
+    """
+    async with wfp.db:
+        file_a = wfp.create(File, None, "a.txt", state=FileState.MISSING)
+        file_b = wfp.create(File, None, "b.txt", state=FileState.MISSING)
+    with pytest.raises(sqlite3.IntegrityError):
+        async with wfp.db:
+            wfp.db.execute(
+                "INSERT INTO dependency (source, sink) VALUES (?, ?)", (file_a.i, file_b.i)
+            )
+
+
+async def test_dependency_kind_check_rejects_step_to_step(wfp: Workflow):
+    """A step -> step dependency edge is not one of the three allowed kind combinations."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "echo a")
+        wfp.define_step(plan, "echo b")
+        step_a = wfp.find(Step, "echo a")
+        step_b = wfp.find(Step, "echo b")
+    with pytest.raises(sqlite3.IntegrityError):
+        async with wfp.db:
+            wfp.db.execute(
+                "INSERT INTO dependency (source, sink) VALUES (?, ?)", (step_a.i, step_b.i)
+            )
 
 
 #
@@ -3377,7 +3449,7 @@ async def test_creator_chain_pending_detects_pending_ancestor(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")  # still PENDING (wfp's default)
         wfp.define_step(plan, "echo", out_paths=["out.txt"])
-        # FAILED (not SUCCEEDED): check_consistency() would flag a SUCCEEDED step with a
+        # FAILED (not SUCCEEDED): _check_consistency() would flag a SUCCEEDED step with a
         # non-BUILT output at fixture teardown, which is beside the point of this test.
         wfp.find(Step, "echo").set_state(StepState.FAILED)
         out_file = wfp.find(File, "out.txt")

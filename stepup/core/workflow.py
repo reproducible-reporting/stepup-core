@@ -39,6 +39,64 @@ __all__ = ("Workflow",)
 logger = logging.getLogger(__name__)
 
 
+# Enforce Workflow's creator-kind and dependency-kind rules at the database level, as a
+# backstop against a bug that writes directly to node/dependency (bypassing
+# Trellis.create()/Node.add_source()/Node.recycle()). These are the only Workflow-level
+# invariants that don't belong to a single node kind's own satellite schema (contrast with
+# STEP_SCHEMA's triggers on dependency/file/node, which all maintain a step-table column --
+# see the convention comment above STEP_SCHEMA's trigger block), so they live here instead.
+#
+# A node's creator must have a kind that depends on the node's own kind:
+# file <- {step, st, root}, step <- {step, root}, st <- {step}. A NULL creator
+# (detached-on-creation) is always allowed and is not covered by these triggers. The root
+# node is exempt (kind = 'root' in the WHEN clause): it is inserted once with creator = 1
+# (self) directly in SQL (Trellis.create()), which does not fit this per-kind table.
+WORKFLOW_SCHEMA = """
+CREATE TRIGGER IF NOT EXISTS node_check_creator_kind_ins AFTER INSERT ON node
+WHEN NEW.creator IS NOT NULL AND NEW.kind != 'root'
+BEGIN
+    SELECT RAISE(ABORT, 'invalid creator kind for new node')
+    FROM node AS c
+    WHERE c.i = NEW.creator
+        AND NOT (
+            (NEW.kind = 'file' AND c.kind IN ('step', 'st', 'root'))
+            OR (NEW.kind = 'step' AND c.kind IN ('step', 'root'))
+            OR (NEW.kind = 'st' AND c.kind = 'step')
+        );
+END;
+
+CREATE TRIGGER IF NOT EXISTS node_check_creator_kind_upd AFTER UPDATE OF creator ON node
+WHEN NEW.creator IS NOT NULL AND NEW.kind != 'root'
+BEGIN
+    SELECT RAISE(ABORT, 'invalid creator kind after recycle')
+    FROM node AS c
+    WHERE c.i = NEW.creator
+        AND NOT (
+            (NEW.kind = 'file' AND c.kind IN ('step', 'st', 'root'))
+            OR (NEW.kind = 'step' AND c.kind IN ('step', 'root'))
+            OR (NEW.kind = 'st' AND c.kind = 'step')
+        );
+END;
+
+-- A dependency edge's source/sink kinds must be one of file -> step, step -> file,
+-- st -> file. This also rules out self-loops, since source and sink always have
+-- different kinds under this rule. Edges are only ever inserted or bulk-deleted, never
+-- updated in place, and deletion cannot violate a kind-combination rule, so an _ins
+-- trigger is the only one needed here.
+CREATE TRIGGER IF NOT EXISTS dependency_check_kinds_ins AFTER INSERT ON dependency
+BEGIN
+    SELECT RAISE(ABORT, 'invalid dependency source/sink kind combination')
+    FROM node AS s, node AS k
+    WHERE s.i = NEW.source AND k.i = NEW.sink
+        AND NOT (
+            (s.kind = 'file' AND k.kind = 'step')
+            OR (s.kind = 'step' AND k.kind = 'file')
+            OR (s.kind = 'st' AND k.kind = 'file')
+        );
+END;
+"""
+
+
 # Find the UNCONFIRMED inputs of a step whose creator is a static tree.
 # No recursion through the dependency graph is needed:
 # file-to-file dependency edges no longer exist
@@ -196,20 +254,24 @@ class Workflow(Trellis):
     def default_node_classes() -> list[type[Node]]:
         return [*Trellis.default_node_classes(), File, Step, StaticTree]
 
+    @classmethod
+    def schema(cls) -> str:
+        """Return the SQL schema for the database, including Workflow's own triggers."""
+        return super().schema() + WORKFLOW_SCHEMA
+
     #
     # Initialization
     #
 
-    def check_consistency(self):
-        """Check whether the initial graph satisfies all constraints."""
-        strict = string_to_bool(os.getenv("STEPUP_DEBUG", "0"))
-        super().check_consistency()
+    def _rebuild_temp_tables(self):
+        """Seed `step_need_count` once per fresh connection, then chain to the base class."""
+        super()._rebuild_temp_tables()
 
         # step_need_count (see STEP_SCHEMA / get_counts()) is a temp table, empty on every
         # fresh connection, and only kept in sync with the step table going forward by
-        # triggers. check_consistency() can run more than once per connection (e.g. tests
-        # call it directly as a post-condition check), so it is unconditionally rebuilt from
-        # scratch here rather than assumed empty, to stay correct (and idempotent) either way.
+        # triggers. This can run more than once per connection (e.g. tests call
+        # initialize() more than once), so it is unconditionally rebuilt from scratch here
+        # rather than assumed empty, to stay correct (and idempotent) either way.
         self.db.execute("DELETE FROM step_need_count")
         self.db.execute(
             "INSERT INTO step_need_count (implied_need, succeeded, n) "
@@ -218,26 +280,10 @@ class Workflow(Trellis):
             (StepState.SUCCEEDED.value,),
         )
 
-        # Verify that all BUILT, OUTDATED and STATIC files have a hash.
-        sql = (
-            "SELECT i, state, label FROM node JOIN file ON node.i = file.node "
-            "WHERE state IN (?, ?, ?) and hash IS NULL"
-        )
-        data = (FileState.BUILT.value, FileState.OUTDATED.value, FileState.STATIC.value)
-        files = []
-        file_hashes = []
-        for i, file_state_value, path in self.db.execute(sql, data):
-            file_state = FileState(file_state_value)
-            if strict:
-                raise GraphError(f"{file_state.name} file without hash: {path}")
-            logger.error(f"{file_state.name} file without hash: %s", path)
-            files.append(File(self, i, path))
-            file_hashes.append((path, FileHash.unknown().regen(path)))
-        if len(file_hashes) > 0:
-            logger.error("Fixing %s file hashes", len(file_hashes))
-            self.update_file_hashes(file_hashes, HashUpdateCause.EXTERNAL)
-            for file in files:
-                self.mark_file_outdated(file)
+    def _check_consistency(self):
+        """Check whether the initial graph satisfies all constraints."""
+        strict = string_to_bool(os.getenv("STEPUP_DEBUG", "0"))
+        super()._check_consistency()
 
         # Verify that all succeeded steps only have BUILT outputs.
         sql = (
@@ -403,31 +449,6 @@ class Workflow(Trellis):
     #
     # Trellis extensions
     #
-
-    def _check_creator(self, node_type: type[Node], creator: Node | None) -> None:
-        super()._check_creator(node_type, creator)
-        if creator is None or node_type is Root:
-            return
-        if (
-            (node_type == File and not isinstance(creator, (Step, StaticTree, Root)))
-            or (node_type == Step and not isinstance(creator, (Step, Root)))
-            or (node_type == StaticTree and not isinstance(creator, Step))
-        ):
-            raise GraphError(
-                f"Cannot create {node_type.__name__} with creator {creator.key()!r}: "
-                "creator must be a step or static tree"
-            )
-
-    def _check_source(self, source: Node, sink: Node) -> None:
-        super()._check_source(source, sink)
-        if (
-            (isinstance(source, File) and not isinstance(sink, Step))
-            or (isinstance(source, Step) and not isinstance(sink, File))
-            or (isinstance(source, StaticTree) and not isinstance(sink, File))
-        ):
-            raise GraphError(
-                f"Node {sink.key()!r} (kind={sink.kind()!r}) cannot be a dependency sink"
-            )
 
     def clean(self):
         # Get rid of static tree files that are no longer used.
@@ -1117,12 +1138,6 @@ class Workflow(Trellis):
         to_check
             A list of paths and file_hashes.
         """
-        if need == Need.TARGET:
-            raise GraphError(
-                "need=Need.TARGET is reserved for derived elevation; "
-                "it cannot be passed to define_step."
-            )
-
         if creator.is_detached():
             # The creator has moved on without this call (see Step.detach()), so
             # defining a new child step for it is moot.

@@ -38,7 +38,16 @@ CREATE TABLE IF NOT EXISTS node (
     -- * To determine whether a node should be cleaned up.
     -- * To exclude detached steps from scheduling.
     -- * To keep metadata about detached nodes in case they are recycled later.
-    FOREIGN KEY (creator) REFERENCES node(i)
+    FOREIGN KEY (creator) REFERENCES node(i),
+    -- The root node is always node 1, is its own creator, is never detached,
+    -- and has an empty label. Non-root nodes have none of these properties.
+    CHECK (kind = 'root' OR i != 1),
+    CHECK (kind = 'root' OR creator IS NOT NULL OR detached),
+    CHECK (kind = 'root' OR creator IS NULL OR creator != i),
+    CHECK (kind != 'root' OR i = 1),
+    CHECK (kind != 'root' OR creator IS i),
+    CHECK (kind != 'root' OR NOT detached),
+    CHECK (kind != 'root' OR label = '')
 );
 CREATE INDEX IF NOT EXISTS node_creator_kind ON node (creator, kind);
 CREATE UNIQUE INDEX IF NOT EXISTS node_kind_label ON node (kind, label);
@@ -69,6 +78,28 @@ WITH RECURSIVE all_products(current, kind, label) AS (
     FROM node INNER JOIN all_products ON creator = current
 )
 UPDATE node SET detached = ? WHERE i IN (SELECT current FROM all_products)
+"""
+
+# Recursively find all nodes reachable from a given node by following creator -> product edges,
+# including the given node itself, then report every node whose detached flag disagrees with
+# that reachability. A purely local (single-hop) comparison of a node against its immediate
+# creator cannot detect such a mismatch in the presence of a longer cycle in the creator chain
+# (e.g. A creates B creates A), so this walks the full chain instead.
+# A node is consistent when it is detached and unreachable, or attached and reachable.
+# The returned detached flag doubles as the inconsistency kind:
+# TRUE means "detached but reachable", FALSE means "attached but unreachable".
+CHECK_DETACHED_REACHABILITY = """
+WITH RECURSIVE all_products(current) AS (
+    -- Initial: Set initial node
+    SELECT ? AS current
+    UNION
+    -- Recursion: Follow creator -> product edges by selecting products of current
+    SELECT node.i AS current
+    FROM node INNER JOIN all_products ON creator = current
+)
+SELECT node.i, node.kind, node.label, node.detached
+FROM node LEFT JOIN all_products ON node.i = all_products.current
+WHERE node.detached = (all_products.current IS NOT NULL)
 """
 
 RECURSE_SINKS_SINGLE = """
@@ -376,7 +407,6 @@ class Node:
             raise TypeError(f"Argument new_creator must be a Node, got {type(new_creator)}")
         if new_creator.is_detached():
             raise ValueError("New creator node must not be detached.")
-        self.graph._check_creator(type(self), new_creator)
         old_creator, old_creator_detached = self.creator_detached()
         self.db.execute(
             "UPDATE node SET creator = ?, detached = FALSE WHERE i = ?", (new_creator.i, self.i)
@@ -441,7 +471,6 @@ class Node:
         GraphError
             If the relation already exists.
         """
-        self.graph._check_source(source, self)
         if not skip_cycle_check:
             # Check whether the new edge would introduce a cyclic dependency.
             cur = self.db.execute(RECURSE_SINKS_SINGLE + SELECT_CYCLIC, (self.i, source.i))
@@ -603,7 +632,7 @@ class Trellis:
         #   from those that still need to be hash-checked.
         # - Added the step_need_count temp table (in STEP_SCHEMA) and its maintaining
         #   triggers, so Workflow.get_counts() no longer scans every step. Backfilled once
-        #   per connection by Workflow.check_consistency(), like path_list/node_list, so no
+        #   per connection by Workflow._rebuild_temp_tables(), like path_list/node_list, so no
         #   version bump is needed for this change on its own.
         # - Changed nglob_multi.data from a pickle blob to a JSON blob (via cattrs hooks for
         #   NGlobSingle/NGlobMulti in cattrs.py), for consistency with the rest of the
@@ -620,6 +649,25 @@ class Trellis:
         #   _holding cannot survive a transition away from RUNNING (e.g. a crash-recovery
         #   reset in startup.py). Purely additive, so no version bump is needed for this
         #   change on its own.
+        # - Added a CHECK on the step table requiring NOT postponed OR state = PENDING,
+        #   promoting the invariant Step.set_state() already enforced in Python to a
+        #   database-level constraint.
+        # - Added a CHECK on the node table requiring kind = 'root' OR creator IS NOT NULL
+        #   OR detached, catching an attached (non-detached) node with a NULL creator
+        #   immediately on write instead of only at the next full-graph consistency check.
+        # - Added node_check_creator_kind_ins/_upd and dependency_check_kinds_ins triggers
+        #   (in WORKFLOW_SCHEMA, workflow.py) enforcing Workflow's creator-kind and
+        #   dependency-kind rules at the database level. Purely additive, so no version bump
+        #   is needed for this change on its own. These triggers now fully subsume what were
+        #   previously Python-only checks; the redundant Python-side guards were removed:
+        #   Workflow._check_creator/_check_source, Step.set_state()'s postponed ValueError
+        #   (already covered by the postponed/state CHECK above), Workflow.define_step()'s
+        #   Need.TARGET rejection (already covered by the step.need CHECK), and
+        #   Trellis._check_creator's "only one root node" guard (already guaranteed by the
+        #   node.i PRIMARY KEY, since the root node is always inserted with i=1). With no
+        #   subclass left overriding them, the now-empty _check_creator/_check_source hook
+        #   methods (and their Node.recycle()/Node.add_source()/Trellis.create() call sites)
+        #   were removed from Trellis entirely, rather than kept as unused extension points.
 
         return 5
 
@@ -644,23 +692,29 @@ class Trellis:
                 self._root = self.create(Root, None)
             else:
                 self._root = self.find(Root, "")
-                self.check_consistency()
+                self._rebuild_temp_tables()
+                self._check_consistency()
 
-    def check_consistency(self):
+    def _rebuild_temp_tables(self):
+        """Rebuild scratch temp tables that need seeding once per fresh connection.
+
+        A no-op in the base class.
+        Subclasses that add trigger-maintained temp tables
+        (which start empty on every fresh connection)
+        override this to backfill them from the persistent tables they cache.
+        """
+
+    def _check_consistency(self):
         """Check whether the graph satisfies all constraints."""
-        if self._root.creator() != self._root:
-            raise GraphError("Invalid trellis: root node does not create itself")
-        if self._root.is_detached():
-            raise GraphError("Invalid trellis: root node cannot be detached")
+        # Root-node facts (id 1, self-creating, never detached, empty label) and non-root
+        # self-creation are enforced by CHECK constraints on the node table, so they no longer
+        # need a Python-side check here.
         sql = (
             "SELECT node.i, node.kind, node.label, node.creator, node.detached, cnode.detached "
             "FROM node LEFT JOIN node AS cnode ON node.creator = cnode.i"
         )
         for row in self.db.execute(sql):
             i, kind, label, creator_i, detached, creator_detached = row
-            if i > 1 and creator_i == i:
-                node = self._node_classes[kind](self, i, label)
-                raise GraphError(f"Non-root node is its own creator: {node.key()}")
             creator_detached = creator_i is None or creator_detached
             if detached:
                 if not creator_detached:
@@ -669,6 +723,22 @@ class Trellis:
             elif creator_detached:
                 node = self._node_classes[kind](self, i, label)
                 raise GraphError(f"Attached node has detached creator: {node.key()}")
+        # The per-row checks above only catch immediate (single-hop) inconsistencies between a
+        # node and its own creator. A longer cycle in the creator chain (e.g. A creates B creates
+        # A) can pass every one of those checks while never actually connecting to the root, so
+        # also verify global reachability from the root along creator -> product edges.
+        cur = self.db.execute(CHECK_DETACHED_REACHABILITY, (self._root.i,))
+        row = cur.fetchone()
+        if row is not None:
+            i, kind, label, detached = row
+            node = self._node_classes[kind](self, i, label)
+            if detached:
+                raise GraphError(
+                    f"Detached node is reachable from root via creator chain: {node.key()}"
+                )
+            raise GraphError(
+                f"Attached node is not reachable from root via creator chain: {node.key()}"
+            )
         for node in self.nodes():
             node.validate()
 
@@ -763,14 +833,6 @@ class Trellis:
     # Graph modifications
     #
 
-    def _check_creator(self, node_type: type[Node], creator: Node | None) -> None:
-        """Validate the creator before a node is created. Override in subclasses."""
-        if node_type is Root and self.db.execute("SELECT count(*) FROM node").fetchone()[0] > 0:
-            raise GraphError("Only one root node is allowed and it must be the first node.")
-
-    def _check_source(self, source: Node, sink: Node) -> None:
-        """Validate a source-sink edge before it is inserted. Override in subclasses."""
-
     def create(
         self, node_type: type[NodeType], creator: Node | None, label: str = "", **kwargs
     ) -> NodeType:
@@ -800,7 +862,6 @@ class Trellis:
             raise TypeError(f"Argument node_type must be a subclass of Node, got {node_type}")
         if not (isinstance(creator, Node) or creator is None):
             raise TypeError(f"Argument creator must be a Node or None, got {type(creator)}")
-        self._check_creator(node_type, creator)
         label = node_type.create_label(label, **kwargs)
 
         node, detached = self.find_detached(node_type, label)
@@ -832,6 +893,19 @@ class Trellis:
             # Since this node is recreated, it cannot have created other nodes (yet).
             for product in node.products():
                 product.detach()
+        elif node_type is Root:
+            # The node table's CHECK constraints forbid ever storing the root node with a
+            # NULL creator or as detached, even momentarily, so it must be its own creator
+            # from the single INSERT that creates it. A second attempt to create a root node
+            # (from anywhere, at any time) always retries this same i=1 INSERT, so the
+            # PRIMARY KEY constraint on node.i alone guarantees only one root ever exists --
+            # no Python-side "only one root" guard is needed.
+            self.db.execute(
+                "INSERT INTO node (i, kind, label, creator, detached) VALUES (1, ?, ?, 1, FALSE)",
+                (node_type.kind(), label),
+            )
+            node_i = 1
+            node = node_type(self, node_i, label)
         else:
             detached = True if creator is None else creator.is_detached()
             # Add new node
@@ -840,10 +914,6 @@ class Trellis:
                 (node_type.kind(), label, None if creator is None else creator.i, detached),
             )
             node_i = cur.lastrowid
-            if node_type is Root:
-                self.db.execute(
-                    "UPDATE node SET creator = ?, detached = FALSE WHERE i = ?", (node_i, node_i)
-                )
             node = node_type(self, node_i, label)
         node.initialize(**kwargs)
         node.validate()

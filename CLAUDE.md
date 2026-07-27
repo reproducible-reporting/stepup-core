@@ -262,12 +262,52 @@ do not bump the version again within the same release cycle.
 Record each individual schema change as a comment line in the `schema_version` docstring,
 even when the number itself does not change.
 
+**Claude Code must never bump `schema_version`.**
+Deciding when a release's schema changes are complete is a human judgment call,
+so only a human coder bumps the version number, never Claude Code acting on its own.
+When a schema change is made, add the comment line documenting it (see above),
+but leave the returned integer untouched unless the user explicitly asks for the bump itself.
+
+#### Consistency Checks: SQL First
+
+Enforce invariants at the SQL level whenever possible;
+fall back to Python only when SQL cannot express the check or cannot repair a violation:
+
+- A **single-row invariant** (what a column may hold given the other columns in the same row)
+  is a `CHECK` constraint on the table,
+  e.g. the `step` table's `CHECK (NOT postponed OR state = PENDING)`.
+- An invariant spanning **multiple rows** (e.g. a node's creator must have a compatible `kind`)
+  cannot be a `CHECK` constraint —
+  SQLite does not re-evaluate a `CHECK` when a *different* row changes.
+  Use a `RAISE(ABORT, ...)` trigger instead (see [Triggers](#triggers) below).
+- A **graph-wide** invariant (e.g. every attached node must be reachable from the root via
+  creator edges) can require recursing over an unbounded number of rows,
+  which a trigger cannot do either — a trigger only sees the row(s) touched by the statement
+  that fired it.
+  Check these in Python via a recursive SQL query,
+  run once at startup after opening an existing database (`Trellis._check_consistency()`),
+  not on every mutation:
+  since every write already goes through the CHECK/trigger-guarded path,
+  a startup-only pass is enough to catch whatever a crash could have left behind.
+- A startup check that also **repairs** what it finds
+  (e.g. `Workflow._check_consistency()` marking a succeeded step with a non-`BUILT` output
+  back to `PENDING`) belongs in Python regardless,
+  since a `CHECK`/trigger can only reject a write, not fix one up.
+- Remove a Python-side check once a `CHECK` constraint or trigger already covers the same write
+  path — it can no longer fire, so keeping it "for safety" just adds dead code
+  (e.g. the file-hash-missing check dropped from `Workflow._check_consistency()` once the
+  `file` table's own `CHECK (state NOT IN (...) OR hash IS NOT NULL)` made it unreachable).
+
 #### Triggers
 
 Invariant-preserving side effects (derived-column bookkeeping that would otherwise require
 a Python read-branch-write round trip on every mutation) are implemented as
 `AFTER INSERT/UPDATE/DELETE` triggers, colocated with the table they read from inside that
 node class's `*_SCHEMA` string.
+Triggers are also used for pure validation (`RAISE(ABORT, ...)`) of multi-row invariants that a
+`CHECK` constraint cannot express,
+e.g. `node_check_creator_kind_ins`/`_upd` and `dependency_check_kinds_ins` (`WORKFLOW_SCHEMA`,
+`workflow.py`), which replaced the Python-side `Workflow._check_creator`/`_check_source` hooks.
 Trigger names follow the same `<table>_<purpose>` convention as indexes, with no prefix.
 `WHEN` clauses that depend on enum values are generated via f-string interpolation against
 the enum (e.g. `{StepState.SUCCEEDED.value}`) rather than hardcoded literals,

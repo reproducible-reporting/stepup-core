@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Unit tests for stepup.core.trellis."""
 
+import sqlite3
 from collections.abc import Iterator
 
 import attrs
@@ -59,19 +60,21 @@ async def test_no_node_class(trellis):
 
 
 async def test_check_consistency_root1(trellis):
-    # Manually set creator field of root node to None
+    # Manually set creator field of root node to None.
+    # This is now rejected by a CHECK constraint, instead of being caught later
+    # by _check_consistency().
     async with trellis.db:
-        trellis.db.execute("UPDATE node SET creator = NULL WHERE i = 1")
-        with pytest.raises(GraphError):
-            trellis.check_consistency()
+        with pytest.raises(sqlite3.IntegrityError):
+            trellis.db.execute("UPDATE node SET creator = NULL WHERE i = 1")
 
 
 async def test_check_consistency_root2(trellis):
-    # Manually set root to detached
+    # Manually set root to detached.
+    # This is now rejected by a CHECK constraint, instead of being caught later
+    # by _check_consistency().
     async with trellis.db:
-        trellis.db.execute("UPDATE node SET detached = TRUE WHERE i = 1")
-        with pytest.raises(GraphError):
-            trellis.check_consistency()
+        with pytest.raises(sqlite3.IntegrityError):
+            trellis.db.execute("UPDATE node SET detached = TRUE WHERE i = 1")
 
 
 FOO_SCHEMA = """
@@ -706,11 +709,12 @@ f:4
 
 async def test_check_consistency_creator(lt):
     async with lt.db:
-        # Manually set creator field of foo0 node to None.
+        # Manually set creator field of foo0 node to None, without also detaching it.
+        # This is now rejected by a CHECK constraint, instead of being caught later
+        # by _check_consistency().
         foo0 = lt.create(Foo, lt.root, "0", value=0)
-        lt.db.execute("UPDATE node SET creator = NULL WHERE i = ?", (foo0.i,))
-        with pytest.raises(GraphError):
-            lt.check_consistency()
+        with pytest.raises(sqlite3.IntegrityError):
+            lt.db.execute("UPDATE node SET creator = NULL WHERE i = ?", (foo0.i,))
 
 
 async def test_check_consistency_detached(lt):
@@ -719,16 +723,17 @@ async def test_check_consistency_detached(lt):
         foo0 = lt.create(Foo, lt.root, "0", value=0)
         lt.db.execute("UPDATE node SET detached = TRUE WHERE i = ?", (foo0.i,))
         with pytest.raises(GraphError):
-            lt.check_consistency()
+            lt._check_consistency()
 
 
 async def test_check_consistency_second_root(lt):
     async with lt.db:
-        # Manually make foo0 its own creator
+        # Manually make foo0 its own creator.
+        # This is now rejected by a CHECK constraint, instead of being caught later
+        # by _check_consistency().
         foo0 = lt.create(Foo, lt.root, "0", value=0)
-        lt.db.execute("UPDATE node SET creator = ? WHERE i = ?", (foo0.i, foo0.i))
-        with pytest.raises(GraphError):
-            lt.check_consistency()
+        with pytest.raises(sqlite3.IntegrityError):
+            lt.db.execute("UPDATE node SET creator = ? WHERE i = ?", (foo0.i, foo0.i))
 
 
 RELOCATE_NESTED_FORMAT_STR = """\

@@ -153,7 +153,7 @@ async def wfs(request) -> AsyncIterator[Workflow]:
         await workflow.initialize()
         yield workflow
         async with db:
-            workflow.check_consistency()
+            workflow._check_consistency()
 
 
 @pytest_asyncio.fixture
@@ -179,7 +179,7 @@ async def wfp() -> AsyncIterator[Workflow]:
 
         yield workflow
         async with db:
-            workflow.check_consistency()
+            workflow._check_consistency()
 
 
 class TrippingEvent(threading.Event):
