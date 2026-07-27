@@ -927,8 +927,13 @@ class Workflow(Trellis):
             raise ValueError("Cannot create a MISSING file. It must be UNCONFIRMED first.")
         if file_state == FileState.VOLATILE and path.endswith(os.sep):
             raise GraphError("A volatile output cannot be a directory.")
-        if not (creator.kind() == "st" or self._find_matching_static_tree(path) is None):
-            raise GraphError("Cannot manually add a file that matches a static tree.")
+        if creator.kind() != "st":
+            static_tree = self._find_matching_static_tree(path)
+            if static_tree is not None:
+                raise GraphError(
+                    f"Cannot manually add a file ({path}) "
+                    f"that matches a static tree ({static_tree.label})."
+                )
         self._raise_if_forbidden_target(path, file_state)
 
         file = self.create(File, creator, path, state=file_state)
