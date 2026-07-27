@@ -91,6 +91,11 @@ def perf_data_path(suffix: str) -> Path:
     return Path(f"perf{suffix}.data")
 
 
+def joblog_path(suffix: str) -> Path:
+    """The path of the `--joblog` CSV file for a given suffix."""
+    return Path(f"joblog{suffix}.csv")
+
+
 def add_top_argument(parser: argparse.ArgumentParser, default: int) -> None:
     """Add the shared `--top` / `--min-pct` arguments to an argument parser."""
     parser.add_argument(

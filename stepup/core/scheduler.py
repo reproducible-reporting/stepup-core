@@ -12,7 +12,7 @@ from .hash import FileHash
 from .job import Job, RunJob, ValidateAmendedJob
 from .sqlite3 import DBSession
 from .step import Step
-from .utils import parse_resources
+from .utils import parse_resources, write_joblog_record
 from .workflow import Workflow
 
 logger = logging.getLogger(__name__)
@@ -425,6 +425,9 @@ class Scheduler:
     _job_counter: int = attrs.field(init=False, default=0)
     """Counter used to assign a unique `job_i` to each `Job` created by `_derive_job()`."""
 
+    do_joblog: bool = attrs.field(kw_only=True, default=False)
+    """Whether to record `--joblog` events."""
+
     #
     # Initialization
     #
@@ -667,12 +670,16 @@ class Scheduler:
             # and skip the job if not.
             # In all other cases, the job will be executed without skipping,
             # and the step hash will be updated after completion.
-            return RunJob(step, inp_hashes, env_deps, step_hash, job_i=job_i)
-        # If the initial inputs are ready, but the amended inputs are not,
-        # and there is a step hash, we need to validate the amended inputs first.
-        # If they are not available, and if the existing inputs have changed,
-        # they may also no longer be needed.
-        return ValidateAmendedJob(step, inp_hashes, env_deps, step_hash, job_i=job_i)
+            job = RunJob(step, inp_hashes, env_deps, step_hash, job_i=job_i)
+        else:
+            # If the initial inputs are ready, but the amended inputs are not,
+            # and there is a step hash, we need to validate the amended inputs first.
+            # If they are not available, and if the existing inputs have changed,
+            # they may also no longer be needed.
+            job = ValidateAmendedJob(step, inp_hashes, env_deps, step_hash, job_i=job_i)
+        if self.do_joblog:
+            write_joblog_record("CREATED", job_i, job.name)
+        return job
 
     async def job_completed(self, job):
         """Handle a completed job: drop its id -> step mapping and record its duration."""
@@ -680,6 +687,8 @@ class Scheduler:
         if self.use_duration:
             async with self.db:
                 job.step.set_duration(job.duration())
+        if self.do_joblog:
+            write_joblog_record("COMPLETED", job.job_i, job.name)
         logger.info("Done %s", job.name)
 
     #

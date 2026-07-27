@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 
 import attrs
 
+from .utils import write_joblog_record
+
 if TYPE_CHECKING:
     from .executor import Executor
     from .file import FileHash
@@ -71,9 +73,10 @@ class ValidateAmendedJob(Job):
         return f"VALIDATE: {self.step.label}"
 
     def coro(self, executor: "Executor"):
-        return executor.validate_amended_job(
+        inner = executor.validate_amended_job(
             self.job_i, self.step, self.inp_hashes, self.env_deps, self.step_hash
         )
+        return _run_job_with_log(self.job_i, self.name, inner) if executor.do_joblog else inner
 
 
 @attrs.define(frozen=True)
@@ -91,7 +94,18 @@ class RunJob(Job):
 
     def coro(self, executor: "Executor"):
         if self.step_hash is None:
-            return executor.execute_job(self.job_i, self.step, self.inp_hashes, self.env_deps)
-        return executor.try_skip_job(
-            self.job_i, self.step, self.inp_hashes, self.env_deps, self.step_hash
-        )
+            inner = executor.execute_job(self.job_i, self.step, self.inp_hashes, self.env_deps)
+        else:
+            inner = executor.try_skip_job(
+                self.job_i, self.step, self.inp_hashes, self.env_deps, self.step_hash
+            )
+        return _run_job_with_log(self.job_i, self.name, inner) if executor.do_joblog else inner
+
+
+async def _run_job_with_log(job_i: int, description: str, coro):
+    """Await `coro`, recording `--joblog` `STARTED`/`ENDED` events around it."""
+    write_joblog_record("STARTED", job_i, description)
+    try:
+        return await coro
+    finally:
+        write_joblog_record("ENDED", job_i, description)

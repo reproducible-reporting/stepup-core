@@ -78,6 +78,7 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
   once it has been postponed that many times in a row without succeeding.
   This acts as a livelock guard for `amend()`-driven postpones.
 - Added support for cgroup v2 memory accounting on Linux with `systemd-run`.
+- Added a `--joblog` option to `sb` to log the start and end of each job to a file.
 
 ### Changed
 

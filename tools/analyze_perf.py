@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Summarize director performance from a yappi profile, a SQL query log, and a perf.data file.
+"""Summarize director performance from a yappi profile, a SQL query log, a perf.data file,
+and a `--joblog` CSV file.
 
 Usage
 -----
@@ -10,8 +11,8 @@ python tools/analyze_perf.py [suffix] [--top N] [--min-pct PCT]
 ```
 
 `suffix` is appended to the default file names, e.g. with suffix `_v1`,
-the files read are `director_v1.prof`, `sqllog_v1.json`, and `perf_v1.data`
-in the current directory.
+the files read are `director_v1.prof`, `sqllog_v1.json`, `perf_v1.data`,
+and `joblog_v1.csv` in the current directory.
 
 The profile is expected in `pstats`-compatible format
 (as written by `yappi.get_func_stats().save(..., type="pstat")`,
@@ -27,11 +28,22 @@ The perf.data file is the raw output of a Linux `perf record` capture
 (as produced by `stepup build --perf`, which sets `STEPUP_BUILD_PERF`).
 It is analyzed in place via `perf report --stdio -g none`,
 so no manual `perf script` conversion step is needed.
+The job log is the CSV file written when running with `--joblog`:
+one row per scheduler/executor lifecycle event,
+`(time_ns, job_i, event, description)`,
+where `time_ns` is `time.monotonic_ns()` (only differences are meaningful,
+not the raw values), `job_i=0` with `event="INIT"` is a synthetic first row
+recording the `--jobs` concurrency limit, and `event` is one of
+`CREATED`, `STARTED`, `ENDED`, `COMPLETED`.
+`CREATED`/`COMPLETED` bracket a job's lifetime as seen by the scheduler
+(including dispatch and completion bookkeeping overhead);
+`STARTED`/`ENDED` bracket only the actual execution as seen by the executor.
 """
 
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import pstats
 import re
@@ -46,6 +58,7 @@ from common import (
     attribute_to_stepup,
     classify_plan_lines,
     flatten_query,
+    joblog_path,
     pct,
     perf_data_path,
     prof_path,
@@ -68,6 +81,14 @@ PERF_ROW_RE = re.compile(
     r"^\s*(?P<children>[\d.]+)%\s+(?P<self>[\d.]+)%\s+(?P<command>\S+)\s+"
     r"(?P<dso>.+?)\s+\[\.\]\s+(?P<symbol>.+?)\s*$"
 )
+
+# One row of the --joblog CSV: (time_ns, job_i, event, description).
+JoblogRow = tuple[int, int, str, str]
+# A maximal concurrency interval for one event-pair view:
+# (start_ns, end_ns, njob_active, active job_i's).
+JoblogInterval = tuple[int, int, int, frozenset[int]]
+
+JOBLOG_INIT_RE = re.compile(r"^maximum concurrent jobs: (?P<njob>\d+)$")
 
 
 def analyze_profile(prof_file: Path, top: int, min_pct: float | None) -> None:
@@ -231,6 +252,7 @@ def print_cumulative_table(
     Children time is therefore the only metric that meaningfully ranks Python frames.
     """
     print(f"\n-- Top {section_limit(top, min_pct)} {title} --")
+    print("(cov % can exceed 100% here: nested calls count toward multiple ancestors)")
     print(f"{'children %':>10} {'cov %':>6} {'self %':>8}  symbol")
     rows = [item for item in counts.items() if symbol_filter in item[0][1]]
     rows.sort(key=lambda kv: -kv[1][0])
@@ -288,8 +310,272 @@ def analyze_perf_data(perf_data_file: Path, top: int, min_pct: float | None) -> 
     )
 
 
+def read_joblog(joblog_file: Path) -> list[JoblogRow]:
+    """Parse a `--joblog` CSV file into `(time_ns, job_i, event, description)` rows."""
+    with open(joblog_file, newline="") as fh:
+        return [
+            (int(row["time_ns"]), int(row["job_i"]), row["event"], row["description"])
+            for row in csv.DictReader(fh)
+        ]
+
+
+def build_intervals(
+    rows: list[JoblogRow], start_event: str, end_event: str
+) -> tuple[list[JoblogInterval], frozenset[int]]:
+    """Build maximal concurrency intervals from a matched pair of lifecycle events.
+
+    Walks `rows` filtered to `start_event`/`end_event`, sorted by `time_ns`
+    (ties broken by processing `end_event` before `start_event`, so a same-instant
+    handoff never registers a spurious one-tick overshoot above the configured maximum).
+
+    Returns
+    -------
+    intervals
+        Consecutive `(start_ns, end_ns, njob_active, active_job_is)` covering
+        the time range from the first to the last matching event.
+    still_open
+        `job_i`'s that reached `start_event` but never `end_event`
+        (e.g. an interrupted build); these stay counted as active
+        through the end of `intervals`.
+    """
+    events = sorted(
+        (time_ns, 0 if event == end_event else 1, job_i, event)
+        for time_ns, job_i, event, _description in rows
+        if event in (start_event, end_event)
+    )
+    intervals: list[JoblogInterval] = []
+    active: set[int] = set()
+    prev_time_ns: int | None = None
+    for time_ns, _order, job_i, event in events:
+        if prev_time_ns is not None and time_ns > prev_time_ns:
+            intervals.append((prev_time_ns, time_ns, len(active), frozenset(active)))
+        if event == start_event:
+            active.add(job_i)
+        else:
+            active.discard(job_i)
+        prev_time_ns = time_ns
+    return intervals, frozenset(active)
+
+
+def collect_jobs(rows: list[JoblogRow]) -> tuple[dict[int, dict[str, int]], dict[int, str]]:
+    """Group event timestamps and descriptions by `job_i`.
+
+    Returns
+    -------
+    job_times
+        `{job_i: {event: time_ns}}`.
+    descriptions
+        `{job_i: description}`.
+    """
+    job_times: dict[int, dict[str, int]] = {}
+    descriptions: dict[int, str] = {}
+    for time_ns, job_i, event, description in rows:
+        job_times.setdefault(job_i, {})[event] = time_ns
+        descriptions[job_i] = description
+    return job_times, descriptions
+
+
+def print_dip_table(
+    title: str,
+    intervals: list[JoblogInterval],
+    njob: int,
+    t0_ns: int,
+    descriptions: dict[int, str],
+    top: int,
+    min_pct: float | None,
+) -> float:
+    """Print the ranked table of concurrency dips below `njob` for one view.
+
+    A dip is a maximal interval during which fewer than `njob` jobs are active.
+    Dips are ranked by lost job-seconds, `(njob - njob_active)` times the interval
+    duration, since a long dip that is only barely below `njob` and a short dip
+    that is far below `njob` can represent a comparable loss of throughput.
+
+    Returns
+    -------
+    total_lost
+        Lost job-seconds summed over all dips, not just the printed ones.
+    """
+    dips = [interval for interval in intervals if interval[2] < njob]
+    total_lost = sum(
+        (njob - njob_active) * (end_ns - start_ns) / 1e9
+        for start_ns, end_ns, njob_active, _active in dips
+    )
+    print(f"\n-- Top {section_limit(top, min_pct)} concurrency dips ({title}) --")
+    print(
+        f"{'start [s]':>10} {'dur [s]':>8} {'jobs':>4}/{'max':<4} {'lost [job-s]':>12} "
+        f"{'%':>6} {'cov %':>6}  detail"
+    )
+    dips.sort(key=lambda interval: -(njob - interval[2]) * (interval[1] - interval[0]))
+    for (start_ns, end_ns, njob_active, active), running_pct in ranked_rows(
+        dips,
+        top,
+        min_pct,
+        lambda interval: (njob - interval[2]) * (interval[1] - interval[0]) / 1e9,
+        total_lost,
+    ):
+        start_s = (start_ns - t0_ns) / 1e9
+        dur_s = (end_ns - start_ns) / 1e9
+        lost = (njob - njob_active) * dur_s
+        if len(active) == 1:
+            (job_i,) = active
+            detail = f"job {job_i}: {descriptions.get(job_i, '')[:60]}"
+        else:
+            detail = f"{len(active)} jobs active"
+        print(
+            f"{start_s:10.3f} {dur_s:8.3f} {njob_active:4d}/{njob:<4d} {lost:12.3f} "
+            f"{pct(lost, total_lost):6.1f} {running_pct:6.1f}  {detail}"
+        )
+    return total_lost
+
+
+def print_dip_histogram(
+    title: str,
+    intervals: list[JoblogInterval],
+    njob: int,
+    top: int,
+    min_pct: float | None,
+) -> None:
+    """Print concurrency dips grouped by active-job depth, ranked by aggregate lost job-seconds.
+
+    `print_dip_table` ranks individual dips, so a handful of large one-off dips
+    (e.g. the startup ramp-up) dominate the table and a dip depth that recurs very
+    often but briefly each time (e.g. a one-slot dispatch-latency gap on every job
+    completion) never appears, even though its total impact can be substantial.
+    Grouping by depth surfaces that pattern: a high `count` with a low `avg dur`
+    points at routine dispatch overhead rather than a one-off stall.
+    """
+    counts: dict[int, int] = {}
+    durs: dict[int, float] = {}
+    losts: dict[int, float] = {}
+    for start_ns, end_ns, njob_active, _active in intervals:
+        if njob_active < njob:
+            dur_s = (end_ns - start_ns) / 1e9
+            counts[njob_active] = counts.get(njob_active, 0) + 1
+            durs[njob_active] = durs.get(njob_active, 0.0) + dur_s
+            losts[njob_active] = losts.get(njob_active, 0.0) + (njob - njob_active) * dur_s
+    total_lost = sum(losts.values())
+    print(f"\n-- Top {section_limit(top, min_pct)} concurrency dip depths ({title}) --")
+    print(
+        f"{'jobs':>4}/{'max':<4} {'count':>7} {'tot dur [s]':>11} {'avg dur [ms]':>12} "
+        f"{'lost [job-s]':>12} {'%':>6} {'cov %':>6}"
+    )
+    rows = sorted(losts.items(), key=lambda item: -item[1])
+    for (njob_active, lost), running_pct in ranked_rows(
+        rows, top, min_pct, lambda item: item[1], total_lost
+    ):
+        count = counts[njob_active]
+        dur = durs[njob_active]
+        avg_ms = 1000 * dur / count
+        print(
+            f"{njob_active:4d}/{njob:<4d} {count:7d} {dur:11.3f} {avg_ms:12.3f} "
+            f"{lost:12.3f} {pct(lost, total_lost):6.1f} {running_pct:6.1f}"
+        )
+
+
+def print_slowest_jobs_table(
+    job_times: dict[int, dict[str, int]],
+    descriptions: dict[int, str],
+    top: int,
+    min_pct: float | None,
+) -> None:
+    """Print the jobs with the longest actual execution time (`STARTED` -> `ENDED`)."""
+    rows = [
+        (job_i, times["STARTED"], times["ENDED"], times.get("CREATED"))
+        for job_i, times in job_times.items()
+        if "STARTED" in times and "ENDED" in times
+    ]
+    total_exec = sum((ended - started) / 1e9 for _job_i, started, ended, _created in rows)
+    print(f"\n-- Top {section_limit(top, min_pct)} jobs by execution time (STARTED -> ENDED) --")
+    print(
+        f"{'exec [s]':>10} {'%':>6} {'cov %':>6} {'dispatch [ms]':>13}  {'job_i':>6}  description"
+    )
+    rows.sort(key=lambda row: -(row[2] - row[1]))
+    for (job_i, started, ended, created), running_pct in ranked_rows(
+        rows, top, min_pct, lambda row: (row[2] - row[1]) / 1e9, total_exec
+    ):
+        exec_s = (ended - started) / 1e9
+        dispatch_ms = f"{(started - created) / 1e6:13.3f}" if created is not None else f"{'-':>13}"
+        description = descriptions.get(job_i, "")[:60]
+        print(
+            f"{exec_s:10.3f} {pct(exec_s, total_exec):6.1f} {running_pct:6.1f} {dispatch_ms}  "
+            f"{job_i:6d}  {description}"
+        )
+
+
+def analyze_joblog(joblog_file: Path, top: int, min_pct: float | None) -> None:
+    """Print concurrency-dip and dispatch-latency diagnostics from a `--joblog` CSV file.
+
+    Two independent concurrency views are reported: the scheduler's view
+    (`CREATED` -> `COMPLETED`, a job's full lifetime including dispatch and
+    completion bookkeeping overhead) and the executor's view (`STARTED` -> `ENDED`,
+    the actual execution work). Comparing the two views' idle capacity separates
+    scheduling/dispatch overhead from genuine lack of parallelism in the workflow graph.
+    """
+    print(f"\n=== Job log: {joblog_file} ===")
+    rows = read_joblog(joblog_file)
+    if not rows or rows[0][1] != 0 or rows[0][2] != "INIT":
+        print("Job log is empty or does not start with an INIT record.")
+        return
+
+    t0_ns = rows[0][0]
+    match = JOBLOG_INIT_RE.match(rows[0][3])
+    if match is None:
+        print(f"Could not parse the INIT record: {rows[0][3]!r}")
+        return
+    njob = int(match.group("njob"))
+
+    job_rows = [row for row in rows if row[1] != 0]
+    if not job_rows:
+        print(f"Maximum concurrent jobs: {njob}")
+        print("No jobs were recorded.")
+        return
+
+    job_times, descriptions = collect_jobs(job_rows)
+    span_s = (max(row[0] for row in job_rows) - t0_ns) / 1e9
+    print(f"Maximum concurrent jobs: {njob}")
+    print(f"Jobs recorded: {len(job_times)}")
+    print(f"Build span: {span_s:.3f} s")
+
+    for title, start_event, end_event in (
+        ("scheduler: CREATED -> COMPLETED", "CREATED", "COMPLETED"),
+        ("executor: STARTED -> ENDED", "STARTED", "ENDED"),
+    ):
+        intervals, still_open = build_intervals(job_rows, start_event, end_event)
+        if still_open:
+            job_is = sorted(still_open)
+            shown = ", ".join(str(job_i) for job_i in job_is[:10])
+            more = f", + {len(job_is) - 10} more" if len(job_is) > 10 else ""
+            print(
+                f"\nWarning ({title}): {len(job_is)} job(s) never reached {end_event} "
+                f"(job_i: {shown}{more}) -- build interrupted?"
+            )
+        view_span_ns = intervals[-1][1] - intervals[0][0] if intervals else 0
+        view_span_s = view_span_ns / 1e9
+        mean_concurrency = (
+            sum(
+                njob_active * (end_ns - start_ns)
+                for start_ns, end_ns, njob_active, _active in intervals
+            )
+            / view_span_ns
+            if view_span_ns
+            else 0.0
+        )
+        print(
+            f"\n-- Concurrency summary ({title}) --\n"
+            f"Mean concurrency: {mean_concurrency:.2f} / {njob} "
+            f"({pct(mean_concurrency, njob):.1f}% saturation) over {view_span_s:.3f} s"
+        )
+        print_dip_table(title, intervals, njob, t0_ns, descriptions, top, min_pct)
+        print_dip_histogram(title, intervals, njob, top, min_pct)
+
+    print_slowest_jobs_table(job_times, descriptions, top, min_pct)
+
+
 def main() -> None:
-    """Parse command-line arguments and run the profile, SQL log, and perf.data analyses."""
+    """Parse command-line arguments and run the profile, perf.data, SQL log, and job log
+    analyses.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("suffix", nargs="?", default="", help="Suffix appended to file names.")
     add_top_argument(parser, 20)
@@ -298,6 +584,7 @@ def main() -> None:
     prof_file = prof_path(args.suffix)
     sqllog_file = sqllog_path(args.suffix)
     perf_data_file = perf_data_path(args.suffix)
+    joblog_file = joblog_path(args.suffix)
 
     total_profiled = None
     if prof_file.is_file():
@@ -321,6 +608,11 @@ def main() -> None:
     if total_profiled and total_sql:
         sql_pct = pct(total_sql, total_profiled)
         print(f"\n=== SQL share of total profiled self time: {sql_pct:.1f}% ===")
+
+    if joblog_file.is_file():
+        analyze_joblog(joblog_file, args.top, args.min_pct)
+    else:
+        print(f"Job log not found: {joblog_file}")
 
 
 if __name__ == "__main__":

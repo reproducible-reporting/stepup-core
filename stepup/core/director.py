@@ -25,7 +25,7 @@ except ImportError:
 from .asyncio import wait_for_events
 from .builder import Builder
 from .cgroups import get_ncore_from_cgroup
-from .constants import DIRECTOR_LOG, DIRECTOR_PROF, GRAPH_DB, SQLLOG_JSON
+from .constants import DIRECTOR_LOG, DIRECTOR_PROF, GRAPH_DB, JOBLOG_CSV, SQLLOG_JSON
 from .enums import HashUpdateCause, Need, ReturnCode, StepState
 from .exceptions import CgroupError
 from .executor import Executor
@@ -113,6 +113,7 @@ async def async_main(
                 explain_rerun=args.explain_rerun,
                 fix_epoch=args.fix_epoch,
                 show_perf=args.show_perf,
+                do_joblog=args.joblog,
                 live_progress=args.live_progress,
                 do_watch=args.watch,
                 do_watch_first=args.watch_first,
@@ -186,6 +187,13 @@ def parse_args() -> argparse.Namespace:
         help="Number of jobs running in parallel. "
         "When given as a real number with digits after the comma, "
         "it is multiplied with the number of available cores. [default=%(default)s]",
+    )
+    parser.add_argument(
+        "--joblog",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help=f"Record job-execution events (init, created, started, ended, completed) to "
+        f"{JOBLOG_CSV}, for diagnosing scheduler/executor dispatch overhead.",
     )
     parser.add_argument(
         "--fix-epoch",
@@ -323,6 +331,7 @@ async def serve(
     explain_rerun: bool,
     fix_epoch: bool,
     show_perf: bool,
+    do_joblog: bool,
     live_progress: bool,
     do_watch: bool,
     do_watch_first: bool,
@@ -354,6 +363,9 @@ async def serve(
         Show performance details after each completed step.
         Requires `live_progress`, since the performance details are printed inline with the
         live step-count reporting.
+    do_joblog
+        If True, record job-execution events (created, started, ended, completed) to
+        `JOBLOG_CSV`, for diagnosing scheduler/executor dispatch overhead.
     live_progress
         Whether the reporter is an interactive terminal that wants live step-count updates.
     do_watch
@@ -404,7 +416,7 @@ async def serve(
     dir_queue = asyncio.Queue() if do_watch else None
     workflow = Workflow(db, dir_queue=dir_queue, postpone_cap=postpone_cap)
     await workflow.initialize()
-    scheduler = Scheduler(workflow, db=db, use_duration=use_duration)
+    scheduler = Scheduler(workflow, db=db, use_duration=use_duration, do_joblog=do_joblog)
     if available_resources is not None:
         await reporter("DIRECTOR", f"Setting available resources: {available_resources}")
     await scheduler.initialize(available_resources)
@@ -419,6 +431,7 @@ async def serve(
         live_progress,
         mp_ctx=mp_ctx,
         infra_env=infra_env,
+        do_joblog=do_joblog,
     )
     builder = Builder(
         njob=njob,

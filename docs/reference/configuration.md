@@ -160,6 +160,18 @@ separated by slashes, where applicable.
     which reduces startup overhead.
     This is enabled by default on Linux.
 
+`joblog` / `STEPUP_BUILD_JOBLOG` / `--joblog`, `--no-joblog`
+
+:   Set to `true` to record job-execution events to `.stepup/joblog.csv`, one row per event,
+    with columns `time_ns`, `job_i`, `event`, `description`.
+    The file is truncated and rewritten at the start of every build phase.
+    Each job produces four events:
+    - `CREATED` (by the scheduler),
+    - `STARTED` and `ENDED` (by the executor),
+    - `COMPLETED` (observed by the scheduler, freeing a slot for the next job).
+    Comparing the timestamps across these events, and deriving the number of concurrently
+    running jobs from them, helps diagnose scheduler/executor dispatch overhead.
+
 `jobs` / `STEPUP_BUILD_JOBS` / `--jobs`, `-j`
 
 :   The maximum number of steps to run concurrently.

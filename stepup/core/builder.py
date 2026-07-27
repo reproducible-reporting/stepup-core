@@ -27,6 +27,7 @@ from .job import Job
 from .reporter import ReporterClient
 from .scheduler import Scheduler
 from .sqlite3 import DBSession
+from .utils import reset_joblog
 from .watcher import Watcher
 from .workflow import Workflow
 
@@ -118,6 +119,8 @@ class Builder:
                 step_counts = self.workflow.get_step_counts()
             await self.reporter.update_step_counts(step_counts)
         await self.reporter("PHASE", "build")
+        if self.executor.do_joblog:
+            reset_joblog(self.njob)
 
         # Get step jobs and run them as asyncio tasks.
         while True:

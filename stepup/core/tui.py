@@ -21,7 +21,7 @@ from path import Path
 from .asyncio import stoppable_iterator, wait_for_path
 from .cgroups import cgroup_scope_prefix
 from .config import ConfigLoader
-from .constants import DIRECTOR_LOG, PERF_DATA, SQLLOG_JSON, STEPUP_DIR
+from .constants import DIRECTOR_LOG, JOBLOG_CSV, PERF_DATA, SQLLOG_JSON, STEPUP_DIR
 from .director import interpret_jobs
 from .reporter import ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
@@ -142,6 +142,8 @@ async def async_build(args: argparse.Namespace, default_resources: str):
             argv.append(f"--resources={args.resources}")
         if args.sqllog:
             argv.append("--sqllog")
+        if args.joblog:
+            argv.append("--joblog")
         if WATCHER_AVAILABLE:
             if args.watch:
                 argv.append("--watch")
@@ -330,6 +332,13 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         help="Number of parallel jobs. "
         "When given as a real number with digits after the comma, "
         "it is multiplied with the number of available cores. [default=%(default)s]",
+    )
+    parser.add_argument(
+        "--joblog",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Record job-execution events (created, started, ended, completed) to "
+        f"{JOBLOG_CSV}, for diagnosing scheduler/executor dispatch overhead.",
     )
     parser.add_argument(
         "--fix-epoch",

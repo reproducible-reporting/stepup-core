@@ -669,6 +669,9 @@ class Executor:
     infra_env: dict = attrs.field(kw_only=True, factory=dict)
     """Environment variables from the director for step child processes, overriding `os.environ`."""
 
+    do_joblog: bool = attrs.field(kw_only=True, default=False)
+    """Whether to record `--joblog` events."""
+
     running: NoOverwriteDict[int, Run] = attrs.field(init=False, factory=NoOverwriteDict)
     """The `Run` instances whose command is currently running, keyed by `Run.job_i`."""
 
@@ -1027,15 +1030,15 @@ class Executor:
 
     async def run(self, run: Run):
         """Run the command of the step described by `run`."""
+        reporter_label = escape_command_display(run.step.label)
+        await self.reporter("START", reporter_label)
+        await self.reporter.start_step(reporter_label, run.step.i)
+
         command, workdir = run.step.command_workdir
         async with self.db:
             subshell = run.step.get_subshell()
             need = run.step.get_need()
             env_overrides = run.step.get_env_overrides()
-
-        label = escape_command_display(run.step.label)
-        await self.reporter("START", label)
-        await self.reporter.start_step(label, run.step.i)
 
         env = self.base_env
         # Apply step-specific overrides first, so the reserved variables below always win.

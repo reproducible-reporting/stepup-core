@@ -129,3 +129,10 @@ These instructions assume you are running on Linux and have the `perf` userspace
     uv pip install snakeviz
     snakeviz .stepup/director.prof
     ```
+
+- To diagnose scheduler/executor dispatch overhead set the `STEPUP_BUILD_JOBLOG`
+  environment variable to `1` or `yes`, or pass `--joblog` on the command line.
+  This will result in a file `.stepup/joblog.csv` with one row per job-execution event
+  (created, started, ended, completed), including a high-resolution timestamp.
+  See the `joblog` entry in the [configuration reference](reference/configuration.md)
+  for the column details.

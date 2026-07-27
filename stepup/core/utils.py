@@ -2,25 +2,31 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Small utilities used throughout."""
 
+import csv
 import logging
 import re
 import shlex
 import string
 from collections.abc import Iterable
+from time import monotonic_ns
 
 from path import Path
 
+from .constants import JOBLOG_CSV
 from .exceptions import PathError, StepUpError
 
 __all__ = (
+    "JOBLOG_COLUMNS",
     "CaseSensitiveTemplate",
     "escape_command_display",
     "format_command",
     "format_digest",
     "format_subprocess",
     "parse_resources",
+    "reset_joblog",
     "string_to_bool",
     "string_to_list",
+    "write_joblog_record",
 )
 
 
@@ -197,6 +203,54 @@ def parse_resources(s: str) -> dict[str, int]:
             raise StepUpError(f"Resource value cannot be negative: {item}")
         result[name] = value
     return result
+
+
+JOBLOG_COLUMNS = (
+    "time_ns",
+    "job_i",
+    "event",
+    "description",
+)
+"""Column names of the `--joblog` CSV file, in on-disk order."""
+
+
+def reset_joblog(njob: int) -> None:
+    """(Re)create `JOBLOG_CSV` and write its CSV header.
+
+    Called once at the start of each build phase, discarding recordings of any previous phase.
+    """
+    row = (monotonic_ns(), 0, "INIT", f"maximum concurrent jobs: {njob}")
+    with open(JOBLOG_CSV, "w", newline="") as fh:
+        csv.writer(fh, quoting=csv.QUOTE_NONNUMERIC).writerow(JOBLOG_COLUMNS)
+        csv.writer(fh, quoting=csv.QUOTE_NONNUMERIC).writerow(row)
+
+
+def write_joblog_record(event: str, job_i: int, description: str) -> None:
+    """Append one job-execution event to `JOBLOG_CSV` as a CSV row.
+
+    This is the single place that fixes the row format, so every call site
+    (in the scheduler and the executor) stays consistent.
+
+    Parameters
+    ----------
+    event
+        The kind of event, e.g. `"CREATED"`, `"STARTED"`, `"ENDED"`, `"COMPLETED"`.
+    job_i
+        The unique job identifier.
+    description
+        A human-readable description of the job or step, truncated to 100 characters.
+
+    Notes
+    -----
+    The file is opened and closed for every call, so the write reaches disk synchronously and
+    events stay correctly ordered even when jobs complete only milliseconds apart.
+    Fields are quoted with `QUOTE_NONNUMERIC`, so `event` and `description` are always quoted
+    (and thus unambiguous even if a description contains a comma or looks numeric),
+    while the numeric columns stay bare.
+    """
+    row = (monotonic_ns(), job_i, event, description[:100])
+    with open(JOBLOG_CSV, "a", newline="") as fh:
+        csv.writer(fh, quoting=csv.QUOTE_NONNUMERIC).writerow(row)
 
 
 def string_to_list(arg: Iterable[str] | str) -> list[str]:
