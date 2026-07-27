@@ -185,6 +185,10 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
       to avoid database corruption, e.g. due to race conditions.
     - When a step is detached while it is running (and not recreated before it ends),
       an explicit `DETACHED` warning is shown and its result is discarded.
+    - The `STEPUP_STEP_I` environment variable has been replaced by `STEPUP_JOB_I`.
+      Instead of a step's (stable) node index, it now holds a unique id for the current
+      job running the step, assigned by the scheduler when the job is created, so a
+      postponed step's earlier attempt cannot be confused with its later one.
     - Order of `StepInfo` attributes is made consistent with the `step()` API function.
     - The *run phase* has been renamed to *build phase* throughout the documentation and source code.
     - Runner has been renamed to Builder.

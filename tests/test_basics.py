@@ -95,11 +95,17 @@ file:foo
 """
 
 
+def _get_job_i() -> int:
+    """Read the job_i of the currently running boot step, written by `BUILD_UNTIL_DONE`."""
+    with open("STARTED.txt") as fh:
+        return int(fh.read())
+
+
 async def test_missing(client: AsyncRPCClient, path_tmp: Path):
     try:
         with open("foo", "w") as fh:
             fh.write("bar")
-        to_check = await client("declare_missing", 3, ["foo"])
+        to_check = await client("declare_missing", _get_job_i(), ["foo"])
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
@@ -154,9 +160,10 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
     try:
         with open("original.txt", "w") as fh:
             fh.write("Hello world!")
+        job_i = _get_job_i()
         await client(
             "step",
-            3,
+            job_i,
             "cp -v original.txt copy.txt",
             ["original.txt"],
             {},
@@ -167,7 +174,7 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
             {},
             True,
         )
-        to_check = await client("declare_missing", 3, ["original.txt"])
+        to_check = await client("declare_missing", job_i, ["original.txt"])
         assert to_check == [("original.txt", FileHash.unknown())]
         file_hash = FileHash.unknown().regen("original.txt")
         await client("confirm_hashes", [("original.txt", file_hash)])

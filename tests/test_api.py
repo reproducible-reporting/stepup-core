@@ -238,7 +238,7 @@ def test_step_env_overrides_overlap_with_env():
 
 def test_step_env_overrides_reserved_name():
     with pytest.raises(ValueError, match="set by StepUp cannot be overridden"):
-        step("./script.py", env_overrides={"STEPUP_STEP_I": "1"})
+        step("./script.py", env_overrides={"STEPUP_JOB_I": "1"})
 
 
 def test_shq_single(monkeypatch):

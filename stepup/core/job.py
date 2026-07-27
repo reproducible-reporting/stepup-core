@@ -35,6 +35,13 @@ class Job:
     create_time: float = attrs.field(factory=perf_counter)
     """The creation time of the job, used for scheduling optimization."""
 
+    job_i: int = attrs.field(kw_only=True)
+    """Unique id of this job, assigned by `Scheduler` when the job is created.
+
+    Unlike `step.i`, which stays the same across every (re)attempt of a postponed step, this
+    id is unique per job, so RPC calls can be matched to the attempt that made them.
+    """
+
     @property
     def name(self) -> str:
         """A human-readable name for the job."""
@@ -65,7 +72,7 @@ class ValidateAmendedJob(Job):
 
     def coro(self, executor: "Executor"):
         return executor.validate_amended_job(
-            self.step, self.inp_hashes, self.env_deps, self.step_hash
+            self.job_i, self.step, self.inp_hashes, self.env_deps, self.step_hash
         )
 
 
@@ -84,5 +91,7 @@ class RunJob(Job):
 
     def coro(self, executor: "Executor"):
         if self.step_hash is None:
-            return executor.execute_job(self.step, self.inp_hashes, self.env_deps)
-        return executor.try_skip_job(self.step, self.inp_hashes, self.env_deps, self.step_hash)
+            return executor.execute_job(self.job_i, self.step, self.inp_hashes, self.env_deps)
+        return executor.try_skip_job(
+            self.job_i, self.step, self.inp_hashes, self.env_deps, self.step_hash
+        )

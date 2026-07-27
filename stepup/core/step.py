@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # Environment variables that StepUp sets for each step (see Executor.run).
 # These are managed by StepUp and must not be amended as env dependencies or set as overrides.
 RESERVED_ENV_VARS = frozenset(
-    {"HERE", "ROOT", "STEPUP_STEP_I", "STEPUP_STEP_INP_DIGEST", "STEPUP_STEP_NEED"}
+    {"HERE", "ROOT", "STEPUP_JOB_I", "STEPUP_STEP_INP_DIGEST", "STEPUP_STEP_NEED"}
 )
 
 

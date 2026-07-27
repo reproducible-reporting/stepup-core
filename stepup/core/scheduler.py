@@ -415,6 +415,16 @@ class Scheduler:
     In-memory only, pruned by `job_finished()`. See `start_times`.
     """
 
+    jobs: dict[int, Step] = attrs.field(init=False, factory=dict)
+    """`Job.job_i` -> `Step`, for every job that has been created but not yet completed.
+
+    Populated by `_derive_job()`, pruned by `job_completed()`. Used by `get_step()` to
+    resolve RPC calls made by a step's child process back to the `Step` that made them.
+    """
+
+    _job_counter: int = attrs.field(init=False, default=0)
+    """Counter used to assign a unique `job_i` to each `Job` created by `_derive_job()`."""
+
     #
     # Initialization
     #
@@ -583,6 +593,18 @@ class Scheduler:
         i, label = row
         return Step(self.workflow, i, label)
 
+    def _next_job_i(self) -> int:
+        """Return a fresh, unique id for a new `Job`."""
+        self._job_counter += 1
+        return self._job_counter
+
+    def get_step(self, job_i: int) -> Step:
+        """Resolve an RPC call's `job_i` argument to the `Step` it belongs to."""
+        step = self.jobs.get(job_i)
+        if step is None:
+            raise ValueError(f"No job found for job_i={job_i}.")
+        return step
+
     def _derive_job(self, step: Step) -> RunJob | ValidateAmendedJob:
         """Derive a Job instance for a step that is ready to be queued."""
         amended_inputs_ready = True
@@ -637,21 +659,24 @@ class Scheduler:
         # Get a list of environment variables used, as these are needed to compute the new hash.
         env_deps = list(step.env_deps())
 
+        job_i = self._next_job_i()
+        self.jobs[job_i] = step
         if amended_inputs_ready or step_hash is None:
             # All (amended) inputs are ready, or the job is not skippable.
             # When there is a hash, this will check if any inputs have changed since the last run,
             # and skip the job if not.
             # In all other cases, the job will be executed without skipping,
             # and the step hash will be updated after completion.
-            return RunJob(step, inp_hashes, env_deps, step_hash)
+            return RunJob(step, inp_hashes, env_deps, step_hash, job_i=job_i)
         # If the initial inputs are ready, but the amended inputs are not,
         # and there is a step hash, we need to validate the amended inputs first.
         # If they are not available, and if the existing inputs have changed,
         # they may also no longer be needed.
-        return ValidateAmendedJob(step, inp_hashes, env_deps, step_hash)
+        return ValidateAmendedJob(step, inp_hashes, env_deps, step_hash, job_i=job_i)
 
     async def job_completed(self, job):
-        """Handle a completed job, which does not do anything for the moment."""
+        """Handle a completed job: drop its id -> step mapping and record its duration."""
+        del self.jobs[job.job_i]
         if self.use_duration:
             async with self.db:
                 job.step.set_duration(job.duration())

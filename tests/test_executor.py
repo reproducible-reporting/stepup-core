@@ -124,7 +124,7 @@ def test_env_form_without_interpreter_argument(monkeypatch, tmp_path):
 
 def _make_detached_run(*, success: bool) -> Run:
     step = SimpleNamespace(i=1, label="one", command_workdir=("echo hi", "."))
-    run = Run(step)
+    run = Run(step, job_i=1)
     run.success = success
     run.detached = True
     return run

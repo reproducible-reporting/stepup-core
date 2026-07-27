@@ -131,13 +131,13 @@ def static(*paths: StrPath | Iterable[StrPath]) -> None:
             # Translate paths to make them relative to the working directory of the director.
             tr_file_paths = sorted(translate(su_file_path) for su_file_path in su_file_paths)
             # Declare the missing and then confirm the files.
-            to_check = RPC_CLIENT.call.declare_missing(_get_step_i(), tr_file_paths)
+            to_check = RPC_CLIENT.call.declare_missing(_get_job_i(), tr_file_paths)
             _confirm_static(to_check)
         if len(su_dir_paths) > 0:
             # Translate paths to make them relative to the working directory of the director.
             tr_dir_paths = sorted(translate(su_dir_path) for su_dir_path in su_dir_paths)
             # Declare the missing and then confirm the directories.
-            to_check = RPC_CLIENT.call.static_trees(_get_step_i(), tr_dir_paths)
+            to_check = RPC_CLIENT.call.static_trees(_get_job_i(), tr_dir_paths)
             _confirm_deferred(to_check)
 
 
@@ -201,7 +201,7 @@ def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
     if len(static_paths) > 0:
         _check_inp_paths(static_paths)
         tr_static_paths = [translate(static_path) for static_path in static_paths]
-        to_check = RPC_CLIENT.call.declare_missing(_get_step_i(), tr_static_paths)
+        to_check = RPC_CLIENT.call.declare_missing(_get_job_i(), tr_static_paths)
         _confirm_static(to_check)
 
     # Translate all the nglob matches with matching paths and send to the director.
@@ -211,7 +211,7 @@ def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
         for paths in nglob_single.results.values()
         for path in paths
     ]
-    RPC_CLIENT.call.nglob(_get_step_i(), tr_patterns, subs, tr_all_paths)
+    RPC_CLIENT.call.nglob(_get_job_i(), tr_patterns, subs, tr_all_paths)
 
     # Done
     return nglob_multi
@@ -375,7 +375,7 @@ def step(
 
     # Finally create the step.
     to_check = RPC_CLIENT.call.step(
-        _get_step_i(),
+        _get_job_i(),
         command,
         tr_inp_paths,
         env_deps,
@@ -644,9 +644,9 @@ def amend(
         return
 
     # Finally, amend for real.
-    step_i = _get_step_i()
+    job_i = _get_job_i()
     amend_result = RPC_CLIENT.call.amend(
-        step_i,
+        job_i,
         tr_inp_paths,
         sorted(env_deps),
         tr_out_paths,
@@ -656,7 +656,7 @@ def amend(
         keep_going, to_check = amend_result
         if keep_going is False:
             raise InputNotFoundError("Amended inputs are not available yet.")
-        _confirm_deferred(to_check, step_i)
+        _confirm_deferred(to_check, job_i)
 
     # Double check that all inputs are indeed present.
     _check_inp_paths(su_inp_paths)
@@ -678,7 +678,7 @@ def getinfo() -> StepInfo:
         For consistency with other functions in this module, the `inp`, `out` and `vol`
         paths are relative to the working directory of the step.
     """
-    step_info = RPC_CLIENT.call.getinfo(_get_step_i())
+    step_info = RPC_CLIENT.call.getinfo(_get_job_i())
     # Update paths to make them relative to the working directory of the step.
     step_info.inp = sorted(translate_back(inp) for inp in step_info.inp)
     step_info.out = sorted(translate_back(out) for out in step_info.out)
@@ -1310,7 +1310,7 @@ def _confirm_static(to_check: Collection[tuple[str, FileHash]] | None):
             RPC_CLIENT.call.confirm_hashes(checked)
 
 
-def _confirm_deferred(to_check: Collection[tuple[str, FileHash]] | None, step_i: int | None = None):
+def _confirm_deferred(to_check: Collection[tuple[str, FileHash]] | None, job_i: int | None = None):
     """Check file, update hashes of existing ones, and send the updates to the director."""
     if to_check is not None and len(to_check) > 0:
         # Select matches of the static tree that exist and update their hashes.
@@ -1325,8 +1325,8 @@ def _confirm_deferred(to_check: Collection[tuple[str, FileHash]] | None, step_i:
         if len(checked) > 0:
             RPC_CLIENT.call.confirm_hashes(checked)
         if len(missing) > 0:
-            if step_i is not None:
-                RPC_CLIENT.call.postpone_step(step_i, missing)
+            if job_i is not None:
+                RPC_CLIENT.call.postpone_step(job_i, missing)
             raise DeferredNotConfirmedError(
                 ", ".join(str(translate_back(path)) for path in missing)
             )
@@ -1492,11 +1492,11 @@ def get_rpc_client(socket: str | None = None) -> DummySyncRPCClient | SocketSync
 RPC_CLIENT = get_rpc_client()
 
 
-def _get_step_i() -> int:
-    """Get the current step node index from the STEPUP_STEP_I environment variable."""
-    step_i = os.getenv("STEPUP_STEP_I")
-    if step_i is None:
+def _get_job_i() -> int:
+    """Get the current job id from the STEPUP_JOB_I environment variable."""
+    job_i = os.getenv("STEPUP_JOB_I")
+    if job_i is None:
         if not isinstance(RPC_CLIENT, SocketSyncRPCClient):
             return -1
-        raise RuntimeError("The STEPUP_STEP_I environment variable is not defined.")
-    return int(step_i)
+        raise RuntimeError("The STEPUP_JOB_I environment variable is not defined.")
+    return int(job_i)

@@ -21,8 +21,8 @@ run("./work.py")
 
 # The plan will be postponed as long as the counter is positive.
 if counter > 0:
-    step_i = int(os.getenv("STEPUP_STEP_I"))
-    RPC_CLIENT.call.postpone_step(step_i, ["never.txt"])
+    job_i = int(os.getenv("STEPUP_JOB_I"))
+    RPC_CLIENT.call.postpone_step(job_i, ["never.txt"])
 else:
     # The work script is waiting for this trigger.
     with open("trigger_plan.txt", "w") as f:

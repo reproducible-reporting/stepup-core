@@ -540,6 +540,13 @@ class Run:
     step: Step = attrs.field()
     """The step being executed."""
 
+    job_i: int = attrs.field()
+    """Unique id of this run attempt, assigned by `Scheduler` when the job was created.
+
+    Unlike `step.i`, which stays the same across every (re)attempt of a postponed step, this
+    id is unique per attempt, so RPC calls can be matched to the attempt that made them.
+    """
+
     stdout: str = attrs.field(init=False, default="")
     """The standard output captured from the command execution."""
 
@@ -663,7 +670,7 @@ class Executor:
     """Environment variables from the director for step child processes, overriding `os.environ`."""
 
     running: NoOverwriteDict[int, Run] = attrs.field(init=False, factory=NoOverwriteDict)
-    """The `Run` instances whose command is currently running, keyed by `Step.i`."""
+    """The `Run` instances whose command is currently running, keyed by `Run.job_i`."""
 
     step_accumulator: ResourceAccumulator = attrs.field(init=False, factory=ResourceAccumulator)
     """Running totals of CPU time and block-IO op counts for steps."""
@@ -718,6 +725,7 @@ class Executor:
 
     async def validate_amended_job(
         self,
+        job_i: int,
         step: Step,
         inp_hashes: list[tuple[str, FileHash]],
         env_deps: list[str],
@@ -728,7 +736,10 @@ class Executor:
         If the job can be validated, it is put back in the pending state,
         so that it can be re-queued when new inputs arrive.
         """
-        async with self.new_step(step, inp_hashes, env_deps, check_hash=False) as (run, new_hash):
+        async with self.new_step(job_i, step, inp_hashes, env_deps, check_hash=False) as (
+            run,
+            new_hash,
+        ):
             if not (new_hash is None or step_hash.inp_digest == new_hash.inp_digest):
                 await self.outdated_amended(run, step_hash, new_hash)
                 # Inputs have changed, so discard amended info
@@ -745,13 +756,14 @@ class Executor:
 
     async def try_skip_job(
         self,
+        job_i: int,
         step: Step,
         inp_hashes: list[tuple[str, FileHash]],
         env_deps: list[str],
         step_hash: StepHash,
     ):
         """Try skipping a step."""
-        async with self.new_step(step, inp_hashes, env_deps) as (run, new_hash):
+        async with self.new_step(job_i, step, inp_hashes, env_deps) as (run, new_hash):
             if new_hash is None:
                 # Failed to create the new step due to unexpected input changes.
                 return
@@ -783,13 +795,13 @@ class Executor:
             await self._report_step_counts()
 
     async def execute_job(
-        self, step: Step, inp_hashes: list[tuple[str, FileHash]], env_deps: list[str]
+        self, job_i: int, step: Step, inp_hashes: list[tuple[str, FileHash]], env_deps: list[str]
     ):
         """Execute a step (no skipping).
 
         When the postpone cap is exceeded, the step is marked as failed without execution.
         """
-        async with self.new_step(step, inp_hashes, env_deps) as (run, new_hash):
+        async with self.new_step(job_i, step, inp_hashes, env_deps) as (run, new_hash):
             if new_hash is None:
                 # Failed to create the new step due to unexpected input changes.
                 return
@@ -866,9 +878,21 @@ class Executor:
     # Step lifecycle helpers
     #
 
+    def _get_run(self, job_i: int) -> Run:
+        """Look up the `Run` for `job_i`, raising a clear error if it is not currently running.
+
+        A miss means `job_i` refers to an attempt that already finished (or never existed),
+        e.g. a stale RPC call from a step that has since been postponed and rescheduled.
+        """
+        run = self.running.get(job_i)
+        if run is None:
+            raise ValueError(f"No running step found for job_i={job_i}.")
+        return run
+
     @contextlib.asynccontextmanager
     async def new_step(
         self,
+        job_i: int,
         step: Step,
         inp_hashes: list[tuple[str, FileHash]],
         env_deps: list[str],
@@ -885,7 +909,7 @@ class Executor:
             The new hash of the step, with the input part already computed, if available.
             `None` if, unexpectedly, some inputs are missing or have changed.
         """
-        run = Run(step)
+        run = Run(step, job_i=job_i)
         new_step_hash = await self.compute_inp_step_hash(run, inp_hashes, env_deps, check_hash)
         if new_step_hash is None and check_hash:
             # The hashes of the input files on disk differ from those in the database,
@@ -909,7 +933,7 @@ class Executor:
         `run` is added to `self.running` for the duration of the hash computation,
         so its child is interruptible like a running step command.
         """
-        self.running[run.step.i] = run
+        self.running[run.job_i] = run
         try:
             if self.mp_ctx is not None:
                 outcome = await _run_in_forkserver(self.mp_ctx, hash_fork_entry, (task,), run)
@@ -929,7 +953,7 @@ class Executor:
                 raise RPCError(f"The hashes tool failed: {_decode(stderr)}")
             return pickle.loads(stdout)
         finally:
-            del self.running[run.step.i]
+            del self.running[run.job_i]
 
     async def compute_inp_step_hash(
         self,
@@ -1017,7 +1041,7 @@ class Executor:
         # Apply step-specific overrides first, so the reserved variables below always win.
         env.update(env_overrides)
         # For internal use in command:
-        env["STEPUP_STEP_I"] = str(run.step.i)
+        env["STEPUP_JOB_I"] = str(run.job_i)
         # Client code may use the following:
         env["STEPUP_STEP_INP_DIGEST"] = run.inp_digest.hex()
         env["STEPUP_STEP_NEED"] = need.name
@@ -1028,7 +1052,7 @@ class Executor:
         if self.show_perf:
             pt_initial = perf_counter()
 
-        self.running[run.step.i] = run
+        self.running[run.job_i] = run
         try:
             parts = shlex.split(command)
             if not parts:
@@ -1052,7 +1076,7 @@ class Executor:
             stderr = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
             outcome = ChildOutcome(payload=(returncode, "", stderr), usage=ResourceUsage())
         finally:
-            del self.running[run.step.i]
+            del self.running[run.job_i]
 
         returncode, stdout, stderr = outcome.payload
         usage = outcome.usage
@@ -1074,12 +1098,10 @@ class Executor:
             run.success = False
 
     def postpone(
-        self, step: Step, *, unavailable: set[str] | None = None, unfresh: set[str] | None = None
+        self, job_i: int, *, unavailable: set[str] | None = None, unfresh: set[str] | None = None
     ):
         """Mark a step as postponed for later execution due to unavailable or unfresh inputs."""
-        run = self.running.get(step.i)
-        if run is None:
-            raise ValueError(f"Step {step.i} is not currently running")
+        run = self._get_run(job_i)
         if unavailable is not None:
             run.unavailable.update(unavailable)
         if unfresh is not None:

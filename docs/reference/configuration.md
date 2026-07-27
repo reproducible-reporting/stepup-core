@@ -285,9 +285,11 @@ the internal environment variables described above.
 :   These are documented in the tutorial on
     [`HERE` and `ROOT` variables](../advanced_topics/here_and_root.md)
 
-`STEPUP_STEP_I`
+`STEPUP_JOB_I`
 
-:   A unique integer index for the current step.
+:   A unique integer id for the current job running the step.
+    Unlike a step's own (stable) index, this changes every time the step is (re)started,
+    e.g. after being postponed.
     This is mainly relevant for StepUp and has little significance for users implementing workflows.
 
 `STEPUP_STEP_INP_DIGEST`

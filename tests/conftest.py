@@ -39,10 +39,11 @@ def pytest_collection_modifyitems(items):
 
 BUILD_UNTIL_DONE = """\
 #!/usr/bin/env python3
+import os
 from path import Path
 from time import sleep
 with open("STARTED.txt", "w") as fh:
-    fh.write("started")
+    fh.write(os.environ["STEPUP_JOB_I"])
 while not Path("DONE.txt").is_file():
     sleep(0.1)
 print("Found DONE.txt. Stopping.")

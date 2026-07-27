@@ -139,7 +139,7 @@ def test_run_subprocess_env_overlay(monkeypatch):
 
 
 def test_record_subprocess_no_director(monkeypatch):
-    """Outside a running step (dummy client, step_i == -1), record_subprocess is a no-op."""
+    """Outside a running step (dummy client, job_i == -1), record_subprocess is a no-op."""
     calls = []
 
     class FakeCall:
@@ -150,7 +150,7 @@ def test_record_subprocess_no_director(monkeypatch):
     class FakeClient:
         call = FakeCall()
 
-    monkeypatch.setattr(api, "_get_step_i", lambda: -1)
+    monkeypatch.setattr(api, "_get_job_i", lambda: -1)
     monkeypatch.setattr(api, "RPC_CLIENT", FakeClient())
     record_subprocess("echo hi", 0)
     assert calls == []
@@ -158,7 +158,7 @@ def test_record_subprocess_no_director(monkeypatch):
 
 def test_run_subprocess_no_director_still_runs(monkeypatch):
     """run_subprocess executes the subprocess even when there is no director to record to."""
-    monkeypatch.setattr(api, "_get_step_i", lambda: -1)
+    monkeypatch.setattr(api, "_get_job_i", lambda: -1)
     cp = run_subprocess(shlex.join([sys.executable, "-c", ""]))
     assert cp.returncode == 0
 

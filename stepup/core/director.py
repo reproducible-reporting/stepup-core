@@ -36,7 +36,6 @@ from .rpc import allow_rpc, serve_socket_rpc
 from .scheduler import Scheduler
 from .sqlite3 import DBSession
 from .startup import startup_from_db
-from .step import Step
 from .stepinfo import StepInfo
 from .usage import CgroupMemorySampler, format_resource_usage
 from .watcher import WATCHER_AVAILABLE, Watcher
@@ -523,7 +522,7 @@ class DirectorHandler:
             return self.workflow.initialize_boot()
 
     @allow_rpc
-    async def declare_missing(self, creator_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
+    async def declare_missing(self, job_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
         """Add a list of absolute paths to the workflow, to become static.
 
         They are stored internally as paths relative to STEPUP_ROOT, initially set to misssing.
@@ -537,11 +536,11 @@ class DirectorHandler:
         In this case, the hash calculation is skipped and the old hash is reused.
         """
         async with self.db:
-            creator = self.workflow.node(Step, creator_i)
+            creator = self.scheduler.get_step(job_i)
             return self.workflow.declare_missing(creator, paths)
 
     @allow_rpc
-    async def static_trees(self, creator_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
+    async def static_trees(self, job_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
         """Register directories whose contents become static files when used.
 
         Returns
@@ -551,20 +550,18 @@ class DirectorHandler:
         """
         to_check = []
         async with self.db:
-            creator = self.workflow.node(Step, creator_i)
+            creator = self.scheduler.get_step(job_i)
             for path in paths:
                 to_check.extend(self.workflow.register_static_tree(creator, path))
         return to_check
 
     @allow_rpc
-    async def nglob(
-        self, creator_i: int, patterns: list[str], subs: dict[str, str], paths: list[str]
-    ):
+    async def nglob(self, job_i: int, patterns: list[str], subs: dict[str, str], paths: list[str]):
         """Register a glob patterns to be watched."""
         ngm = NGlobMulti.from_patterns(patterns, subs)
         ngm.extend(paths)
         async with self.db:
-            creator = self.workflow.node(Step, creator_i)
+            creator = self.scheduler.get_step(job_i)
             self.workflow.register_nglob(creator, ngm)
 
     @allow_rpc
@@ -586,7 +583,7 @@ class DirectorHandler:
     @allow_rpc
     async def step(
         self,
-        creator_i: int,
+        job_i: int,
         command: str,
         inp_paths: list[str],
         env_deps: list[str],
@@ -610,7 +607,7 @@ class DirectorHandler:
             A list of (path, file_hash) tuples to check and make static if valid.
         """
         async with self.db:
-            creator = self.workflow.node(Step, creator_i)
+            creator = self.scheduler.get_step(job_i)
             to_check = self.workflow.define_step(
                 creator,
                 command,
@@ -633,7 +630,7 @@ class DirectorHandler:
     @allow_rpc
     async def amend(
         self,
-        step_i: int,
+        job_i: int,
         inp_paths: list[str],
         env_deps: set[str],
         out_paths: list[str],
@@ -656,7 +653,7 @@ class DirectorHandler:
             the caller has to change `keep_going` to `False`.
         """
         async with self.db:
-            step = self.workflow.node(Step, step_i)
+            step = self.scheduler.get_step(job_i)
             is_detached, unavailable, unfresh, to_check = self.workflow.amend_step(
                 step,
                 inp_paths=inp_paths,
@@ -667,22 +664,20 @@ class DirectorHandler:
             )
         keep_going = len(unavailable) == 0 and len(unfresh) == 0
         if not keep_going:
-            self.executor.postpone(step, unavailable=unavailable, unfresh=unfresh)
+            self.executor.postpone(job_i, unavailable=unavailable, unfresh=unfresh)
         if is_detached:
             keep_going = False
         return keep_going, to_check
 
     @allow_rpc
-    async def postpone_step(self, step_i: int, missing: list[str]):
+    async def postpone_step(self, job_i: int, missing: list[str]):
         """Postpone a step due to unavailable dependencies."""
-        async with self.db:
-            step = self.workflow.node(Step, step_i)
-        self.executor.postpone(step, unavailable=missing)
+        self.executor.postpone(job_i, unavailable=missing)
 
     @allow_rpc
     async def record_subprocess(
         self,
-        step_i: int,
+        job_i: int,
         cmd: str,
         workdir: str,
         env_overrides: dict[str, str] | None,
@@ -700,7 +695,7 @@ class DirectorHandler:
         The recorded metadata is informative for archival and debugging, not authoritative.
         """
         async with self.db:
-            step = self.workflow.node(Step, step_i)
+            step = self.scheduler.get_step(job_i)
             step.record_subprocess(
                 cmd,
                 workdir,
@@ -713,13 +708,13 @@ class DirectorHandler:
             )
 
     @allow_rpc
-    async def getinfo(self, step_i: int) -> StepInfo:
+    async def getinfo(self, job_i: int) -> StepInfo:
         """Return step information, consistent with return values of functions in stepup.core.api.
 
         For the sake of consistency, amended step arguments are not included.
         """
         async with self.db:
-            step = self.workflow.node(Step, step_i)
+            step = self.scheduler.get_step(job_i)
             return step.get_step_info()
 
     #
