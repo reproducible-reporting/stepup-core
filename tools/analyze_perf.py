@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Summarize director performance from a yappi profile and a SQL query log.
+"""Summarize director performance from a yappi profile, a SQL query log, and a perf.data file.
 
 Usage
 -----
@@ -10,7 +10,8 @@ python tools/analyze_perf.py [suffix] [--top N] [--min-pct PCT]
 ```
 
 `suffix` is appended to the default file names, e.g. with suffix `_v1`,
-the files read are `director_v1.prof` and `sqllog_v1.json` in the current directory.
+the files read are `director_v1.prof`, `sqllog_v1.json`, and `perf_v1.data`
+in the current directory.
 
 The profile is expected in `pstats`-compatible format
 (as written by `yappi.get_func_stats().save(..., type="pstat")`,
@@ -22,6 +23,10 @@ where `module_name` / `line` identify the `db.execute()` / `db.executemany()` ca
 `wtime` is the summed wall time over all executions of that query at that call site,
 and `count` is the number of rows processed
 (1 per plain `execute()`, `n` per `executemany()` with `n` rows).
+The perf.data file is the raw output of a Linux `perf record` capture
+(as produced by `stepup build --perf`, which sets `STEPUP_BUILD_PERF`).
+It is analyzed in place via `perf report --stdio -g none`,
+so no manual `perf script` conversion step is needed.
 """
 
 from __future__ import annotations
@@ -29,6 +34,9 @@ from __future__ import annotations
 import argparse
 import json
 import pstats
+import re
+import shutil
+import subprocess
 from pathlib import Path
 
 from common import (
@@ -39,12 +47,26 @@ from common import (
     classify_plan_lines,
     flatten_query,
     pct,
+    perf_data_path,
     prof_path,
     ranked_rows,
     section_limit,
     sql_location,
     sqllog_path,
     strip_site_packages,
+)
+
+# A perf report row key: (shared object, symbol).
+PerfKey = tuple[str, str]
+# A perf report row's accumulated (children, self) event counts, summed across
+# hybrid-CPU event-group sections (e.g. cpu_atom/cycles and cpu_core/cycles).
+PerfCounts = tuple[float, float]
+
+PERF_SECTION_RE = re.compile(r"^# Samples: .* of event '(?P<event>[^']+)'\s*$")
+PERF_EVENT_COUNT_RE = re.compile(r"^# Event count \(approx\.\): (?P<count>\d+)\s*$")
+PERF_ROW_RE = re.compile(
+    r"^\s*(?P<children>[\d.]+)%\s+(?P<self>[\d.]+)%\s+(?P<command>\S+)\s+"
+    r"(?P<dso>.+?)\s+\[\.\]\s+(?P<symbol>.+?)\s*$"
 )
 
 
@@ -145,8 +167,129 @@ def analyze_sqllog(sqllog_file: Path, top: int, min_pct: float | None) -> float:
     return total_wtime
 
 
+def parse_perf_report(text: str) -> tuple[dict[PerfKey, PerfCounts], dict[str, float]]:
+    """Parse `perf report --stdio -g none` output into merged per-symbol counts.
+
+    On hybrid CPUs (e.g. Intel P-core/E-core), `perf` reports samples in separate
+    sections per hardware event group (`cpu_atom/cycles`, `cpu_core/cycles`, ...),
+    each with its own `Children` / `Self` percentages relative to that section's
+    `Event count (approx.)`. This merges all sections into one ranking by converting
+    each row's percentages back into weighted counts before summing across sections.
+
+    Returns
+    -------
+    counts
+        `{(dso, symbol): (children_count, self_count)}`, summed over all sections.
+    events
+        `{event_name: event_count}`, one entry per event-group section found.
+    """
+    counts: dict[PerfKey, PerfCounts] = {}
+    events: dict[str, float] = {}
+    event_name: str | None = None
+    event_count = 0.0
+    for line in text.splitlines():
+        section_match = PERF_SECTION_RE.match(line)
+        if section_match:
+            event_name = section_match.group("event")
+            event_count = 0.0
+            continue
+        count_match = PERF_EVENT_COUNT_RE.match(line)
+        if count_match:
+            event_count = float(count_match.group("count"))
+            if event_name is not None:
+                events[event_name] = event_count
+            continue
+        row_match = PERF_ROW_RE.match(line)
+        if not row_match or not event_count:
+            continue
+        key = (row_match.group("dso"), row_match.group("symbol"))
+        children = float(row_match.group("children")) / 100 * event_count
+        self_ = float(row_match.group("self")) / 100 * event_count
+        prev_children, prev_self = counts.get(key, (0.0, 0.0))
+        counts[key] = (prev_children + children, prev_self + self_)
+    return counts, events
+
+
+# Prefix `perf`'s CPython trampoline puts on every Python-frame symbol.
+PY_SYMBOL_PREFIX = "py::"
+
+
+def print_cumulative_table(
+    counts: dict[PerfKey, PerfCounts],
+    total_self: float,
+    top: int,
+    min_pct: float | None,
+    title: str,
+    symbol_filter: str,
+) -> None:
+    """Print a ranked table of symbols matching `symbol_filter`, by children (cumulative) time.
+
+    Self time is not used for ranking here:
+    `perf`'s CPython trampoline only marks call boundaries,
+    so a Python frame's self time is always close to zero
+    (its own bytecode work is attributed to the interpreter's C-level eval loop instead).
+    Children time is therefore the only metric that meaningfully ranks Python frames.
+    """
+    print(f"\n-- Top {section_limit(top, min_pct)} {title} --")
+    print(f"{'children %':>10} {'cov %':>6} {'self %':>8}  symbol")
+    rows = [item for item in counts.items() if symbol_filter in item[0][1]]
+    rows.sort(key=lambda kv: -kv[1][0])
+    for (key, (children, self_)), running_pct in ranked_rows(
+        rows, top, min_pct, lambda item: item[1][0], total_self
+    ):
+        _dso, symbol = key
+        print(
+            f"{pct(children, total_self):10.2f} {running_pct:6.1f} "
+            f"{pct(self_, total_self):8.2f}  {symbol}"
+        )
+
+
+def analyze_perf_data(perf_data_file: Path, top: int, min_pct: float | None) -> None:
+    """Print the hottest Python functions from a Linux `perf record` output file.
+
+    The file is analyzed with `perf report --stdio -g none`,
+    which produces one row per unique `(shared object, symbol)` pair,
+    together with a `Children` percentage (self + descendants) and a `Self` percentage.
+    See `parse_perf_report` for how hybrid-CPU event-group sections are merged.
+
+    Only `py::`-prefixed symbols (Python frames) are reported,
+    since native library and interpreter internals (e.g. SQLite, libpython)
+    are not directly actionable from StepUp's own Python code.
+    Percentages are relative to total self time across all sections,
+    and may not sum to 100% because `perf` cannot resolve every sample.
+    """
+    print(f"\n=== perf.data: {perf_data_file} ===")
+    if shutil.which("perf") is None:
+        print("Skipping: the `perf` command is not available on this system.")
+        return
+
+    result = subprocess.run(
+        ["perf", "report", "--stdio", "-g", "none", "-i", str(perf_data_file)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    counts, events = parse_perf_report(result.stdout)
+    if not counts:
+        print("No samples could be parsed from the `perf report` output.")
+        if result.stderr:
+            print(result.stderr.strip())
+        return
+
+    for event, count in events.items():
+        print(f"Event group {event!r}: approx. {count:,.0f} events")
+    total_self = sum(self_ for _children, self_ in counts.values())
+
+    print_cumulative_table(
+        counts, total_self, top, min_pct, "Python functions by cumulative time", PY_SYMBOL_PREFIX
+    )
+    print_cumulative_table(
+        counts, total_self, top, min_pct, "StepUp functions by cumulative time", STEPUP_MARKER
+    )
+
+
 def main() -> None:
-    """Parse command-line arguments and run the profile and SQL log analyses."""
+    """Parse command-line arguments and run the profile, SQL log, and perf.data analyses."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("suffix", nargs="?", default="", help="Suffix appended to file names.")
     add_top_argument(parser, 20)
@@ -154,6 +297,7 @@ def main() -> None:
 
     prof_file = prof_path(args.suffix)
     sqllog_file = sqllog_path(args.suffix)
+    perf_data_file = perf_data_path(args.suffix)
 
     total_profiled = None
     if prof_file.is_file():
@@ -162,6 +306,11 @@ def main() -> None:
         analyze_profile(prof_file, args.top, args.min_pct)
     else:
         print(f"Profile not found: {prof_file}")
+
+    if perf_data_file.is_file():
+        analyze_perf_data(perf_data_file, args.top, args.min_pct)
+    else:
+        print(f"perf.data not found: {perf_data_file}")
 
     total_sql = None
     if sqllog_file.is_file():

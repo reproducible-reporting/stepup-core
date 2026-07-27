@@ -86,6 +86,11 @@ def sqllog_path(suffix: str) -> Path:
     return Path(f"sqllog{suffix}.json")
 
 
+def perf_data_path(suffix: str) -> Path:
+    """The path of the `perf record` output file for a given suffix."""
+    return Path(f"perf{suffix}.data")
+
+
 def add_top_argument(parser: argparse.ArgumentParser, default: int) -> None:
     """Add the shared `--top` / `--min-pct` arguments to an argument parser."""
     parser.add_argument(
