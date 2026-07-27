@@ -24,7 +24,7 @@ FILE_SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS file (
   node INTEGER PRIMARY KEY,
   state INTEGER NOT NULL
-    CHECK(state >= {FileState.UNCONFIRMED.value} AND state <= {FileState.VOLATILE.value}),
+    CHECK(state >= {min(FileState)} AND state <= {max(FileState)}),
   hash TEXT,
   FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE,
   CHECK (

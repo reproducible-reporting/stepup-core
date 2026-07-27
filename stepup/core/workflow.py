@@ -463,7 +463,8 @@ class Workflow(Trellis):
 
         def raise_unexpected(path, old_state, fh):
             raise AssertionError(
-                f"Unexpected file hash update: cause={cause} path={path} state={old_state} "
+                f"Unexpected file hash update: cause={cause.name} path={path} "
+                f"state={old_state.name} "
                 f"digest={fmt_digest(fh.digest)} mode={stat.filemode(fh.mode)}"
             )
 
@@ -482,7 +483,7 @@ class Workflow(Trellis):
                 action_lists[action].append((i, path))
 
         # Actual update of the file hashes.
-        logger.info("Update file hashes: cause=%s new=%s", cause, new_states_hashes)
+        logger.info("Update file hashes: cause=%s new=%s", cause.name, new_states_hashes)
         if len(new_states_hashes) != len(file_hashes):
             raise AssertionError(
                 f"Inconsistent number of file hash updates: "
@@ -496,7 +497,7 @@ class Workflow(Trellis):
         # Call Workflow methods to further update the workflow.
         logger.info(
             "Update file hashes: cause=%s updated=%s deleted=%s completed=%s",
-            cause,
+            cause.name,
             action_lists["updated"],
             action_lists["deleted"],
             action_lists["completed"],
@@ -530,7 +531,7 @@ class Workflow(Trellis):
         File states and hashes have already been updated before this method is called.
         """
         state = file.get_state()
-        logger.info("Externally deleted %s file: %s", state, file.path)
+        logger.info("Externally deleted %s file: %s", state.name, file.path)
 
         if state == FileState.STATIC:
             file.set_state(FileState.MISSING)
@@ -588,11 +589,11 @@ class Workflow(Trellis):
     def mark_file_outdated(self, file: File):
         state = file.get_state()
         if state == FileState.BUILT:
-            logger.info("Mark %s file OUTDATED: %s", state, file.path)
+            logger.info("Mark %s file OUTDATED: %s", state.name, file.path)
             file.set_state(FileState.OUTDATED)
             self.mark_sinks_pending(file)
         elif state != FileState.OUTDATED:
-            raise ValueError(f"Cannot make file outdated when its state is {state}")
+            raise ValueError(f"Cannot make file outdated when its state is {state.name}")
 
     #
     # Build phase (helper methods)

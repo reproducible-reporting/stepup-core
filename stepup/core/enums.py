@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Enumerate objects used in other StepUp modules."""
 
-from enum import Enum, Flag, auto
+from enum import Flag, IntEnum, auto
 
 __all__ = (
     "REGULAR_OUTPUT_STATES",
@@ -36,7 +36,7 @@ class ReturnCode(Flag):
     """The scheduler is on hold. Pending steps are not reported."""
 
 
-class FileState(Enum):
+class FileState(IntEnum):
     """State of a file in the StepUp workflow.
 
     STATIC and BUILT files are ready to be used as inputs.
@@ -103,7 +103,7 @@ TARGET_FORBIDDEN_STATES = frozenset(
 """`FileState` values a `stepup build` target file may never be in."""
 
 
-class StepState(Enum):
+class StepState(IntEnum):
     PENDING = 21
     """The step still needs to be executed."""
 
@@ -125,7 +125,7 @@ class StepState(Enum):
     """The step has failed (exit code non-zero)."""
 
 
-class Need(Enum):
+class Need(IntEnum):
     """The degree to which a step is needed in the workflow."""
 
     OPTIONAL = 31
@@ -145,7 +145,7 @@ class Need(Enum):
     """
 
 
-class Change(Enum):
+class Change(IntEnum):
     UPDATED = 41
     """A file on disk has been added or changed."""
 
@@ -156,7 +156,7 @@ class Change(Enum):
     """A parent directory was deleted."""
 
 
-class HashUpdateCause(Enum):
+class HashUpdateCause(IntEnum):
     """The reason why file hashes are being updated in `Workflow.update_file_hashes`."""
 
     EXTERNAL = 51

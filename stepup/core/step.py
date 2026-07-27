@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS step (
     -- Main data
     node INTEGER PRIMARY KEY,
     -- The node of the step in the node table.
-    state INTEGER NOT NULL CHECK(state >= 21 AND state <= 25),
+    state INTEGER NOT NULL CHECK(state >= {min(StepState)} AND state <= {max(StepState)}),
     -- The state of the step, as defined in the StepState enum.
     need INTEGER NOT NULL CHECK(
         need IN ({Need.OPTIONAL.value}, {Need.DEFAULT.value}, {Need.PLAN.value})
@@ -80,7 +80,9 @@ CREATE TABLE IF NOT EXISTS step (
     -- are in a state that allows queuing this step (RUNNING or SUCCEEDED).
     _check_safe INTEGER NOT NULL CHECK(_check_safe IN (0, 1)),
     -- Whether recent changes to this step imply updates of the _safe metadata field of others.
-    _implied_need INTEGER NOT NULL CHECK(_implied_need >= 31 AND _implied_need <= 34),
+    _implied_need INTEGER NOT NULL CHECK(
+        _implied_need >= {min(Need)} AND _implied_need <= {max(Need)}
+    ),
     -- The need that is implied by sinks, as defined in the Need enum.
     _tail_time REAL NOT NULL CHECK(_tail_time >= 0) DEFAULT 1.0,
     -- The tail_time of this step, defined as the total duration of the critical path from this step
