@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """A `File` is StepUp's node for an input or output file of a step."""
 
-import logging
 import os
 from collections.abc import Iterator
 
@@ -15,9 +14,6 @@ from .trellis import Node
 from .utils import format_digest
 
 __all__ = ("File",)
-
-
-logger = logging.getLogger(__name__)
 
 
 FILE_SCHEMA = f"""
@@ -47,14 +43,6 @@ WHEN NEW.state IN ({FileState.MISSING.value}, {FileState.AWAITED.value}, {FileSt
 BEGIN
     UPDATE file SET hash = NULL WHERE node = NEW.node;
 END;
-
--- Reusable scratch tables for batch lookups keyed by a list of paths or node ids,
--- used instead of `json_each(...)`, which was found to be slow in performance tests.
--- Created once here and only ever cleared with `DELETE FROM` before reuse:
--- dropping and recreating a temp table on every call would invalidate SQLite's
--- prepared-statement cache (see `safe_update` in scheduler.py for the same convention).
-CREATE TEMP TABLE IF NOT EXISTS path_list (path TEXT PRIMARY KEY) WITHOUT ROWID;
-CREATE TEMP TABLE IF NOT EXISTS node_list (i INTEGER PRIMARY KEY) WITHOUT ROWID;
 """
 
 
@@ -72,7 +60,7 @@ class File(Node):
         return FILE_SCHEMA
 
     @classmethod
-    def create_label(cls, label: str, **kwargs):
+    def create_label(cls, label: str, **kwargs) -> str:
         """Do not allow certain filenames, just as a sanity check to detect problems early."""
         # These are not allowed but may pass "existence" checks
         if label in (".", "..", ""):
@@ -84,7 +72,17 @@ class File(Node):
         return str(label)
 
     def initialize(self, state: FileState):  # type: ignore
-        """Create extra information in the database about this node."""
+        """Create extra information in the database about this node.
+
+        Parameters
+        ----------
+        state
+            The state to initialize the file with.
+            If the file was previously `BUILT` or `OUTDATED`
+            and is being (re)created as `AWAITED`,
+            the previous state and hash are carried over instead
+            (see the comments below for why).
+        """
         hash_json = None
         # If the file was previously BUILT or OUTDATED, and created again as AWAITED,
         # it should copy that state (and hash).
@@ -112,7 +110,7 @@ class File(Node):
             self.graph.mark_file_outdated(self)
 
     def validate(self):
-        """Validate extra information about this node is present in the database."""
+        """Validate that extra information about this node is present in the database."""
         row = self.db.execute("SELECT 1 FROM file WHERE node = ?", (self.i,)).fetchone()
         if row is None:
             raise ValueError(f"File node {self.key()} has no row in the file table.")
@@ -121,8 +119,12 @@ class File(Node):
         """Iterate over key-value pairs that represent the properties of the node."""
         yield "state", str(self.get_state().name)
         file_hash = self.get_hash()
-        if len(file_hash.digest) > 1:
+        if not file_hash.is_unknown:
             yield "digest", format_digest(file_hash.digest)
+
+    def discard(self):
+        """Clean up a detached node because it loses a product node."""
+        raise AssertionError("A file node never has products, so it cannot be detached.")
 
     def clean(self):
         """Perform a cleanup right before the detached node is removed from the graph.
@@ -138,10 +140,6 @@ class File(Node):
             if not file_hash.is_unknown:
                 self.graph.to_be_deleted.append((self.path, file_hash))
 
-    def give_up(self):
-        """Clean up a detached node because it loses a product node."""
-        raise AssertionError("A file node never has products, so it cannot be detached.")
-
     #
     # Getters and setters
     #
@@ -151,13 +149,23 @@ class File(Node):
         return Path(self.label)
 
     def get_state(self) -> FileState:
+        """Return the current state of the file."""
         row = self.db.execute("SELECT state FROM file WHERE node = ?", (self.i,)).fetchone()
         return FileState(row[0])
 
     def set_state(self, state: FileState):
+        """Update the state of the file."""
         self.db.execute("UPDATE file SET state = ? WHERE node = ?", (state.value, self.i))
 
     def get_hash(self) -> FileHash:
+        """Return the hash of the file.
+
+        There is no corresponding `set_hash`:
+        the hash is only ever written by the upsert in `initialize()`
+        or by bulk SQL updates in `Workflow`,
+        and it is nulled out by the `file_clear_hash` trigger
+        (see `FILE_SCHEMA`) whenever the state moves to a hash-less state.
+        """
         sql = "SELECT hash FROM file WHERE node = ?"
         row = self.db.execute(sql, (self.i,)).fetchone()
         return FileHash.from_json(row[0])

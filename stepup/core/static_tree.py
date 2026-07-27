@@ -19,9 +19,10 @@ class StaticTree(Node):
         return "st"
 
     def add_source(self, source: Node, skip_cycle_check: bool = False) -> int:
+        """Always raise, since a static tree does not use sources."""
         raise NotImplementedError("A static tree does not use sources.")
 
-    def give_up(self):
+    def discard(self):
         """Clean up a detached node because it loses a product node.
 
         Completely remove this static tree, making reuse impossible.

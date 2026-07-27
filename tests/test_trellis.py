@@ -120,9 +120,9 @@ class Foo(Node):
         row = self.db.execute("SELECT value FROM foo WHERE node = ?", (self.i,)).fetchone()
         yield "value", str(row[0])
 
-    def give_up(self):
+    def discard(self):
         """Clean up a detached node because it loses a product node."""
-        self.db.execute("INSERT INTO log VALUES(?)", (f"give_up {self.key()}",))
+        self.db.execute("INSERT INTO log VALUES(?)", (f"discard {self.key()}",))
 
     def clean(self):
         """Perform a cleanup right before the detached node is removed from the graph."""
@@ -799,7 +799,7 @@ async def test_relocate_nested_detached(lt):
             "init f:2",
             "init f:3",
             "init f:4",
-            "give_up f:1",
+            "discard f:1",
             "clean f:3",
         ]
 

@@ -373,7 +373,7 @@ CREATE TABLE IF NOT EXISTS env_var (
     name TEXT NOT NULL,
     value TEXT,
     amended INTEGER NOT NULL CHECK(amended IN (0, 1)),
-    PRIMARY KEY (node, name)
+    PRIMARY KEY (node, name),
     -- The PRIMARY KEY above already indexes lookups by node (leftmost column),
     -- so no separate index on (node) is needed.
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
@@ -607,7 +607,7 @@ class Step(Node):
         Their `DEFAULT`s (0 and 1) are exactly the conservative "not yet known, must be recomputed"
         state a new/recycled step should start in.
 
-        `duration` falls back to the column's own `DEFAULT` (1.0) when not given,
+        `duration` falls back to `1.0` (matching the column's own `DEFAULT`) when not given,
         since a brand-new step has no prior measurement to seed it with.
 
         `_safe_ignoring_hold` is seeded to the same value as `_safe` (rather than left at its
@@ -644,7 +644,7 @@ class Step(Node):
         """Validate extra information about this node is present in the database."""
         row = self.db.execute("SELECT 1 FROM step WHERE node = ?", (self.i,)).fetchone()
         if row is None:
-            raise ValueError(f"Step node {self.key()} has no row in the file table.")
+            raise ValueError(f"Step node {self.key()} has no row in the step table.")
 
     def format_properties(self) -> Iterator[tuple[str, str]]:
         """Iterate over key-value pairs that represent the properties of the node."""
@@ -697,7 +697,7 @@ class Step(Node):
         for sink in self.sinks(include_detached=True):
             sink.del_sources([self])
 
-    def give_up(self):
+    def discard(self):
         """Clean up a detached node because it loses a product node.
 
         Completely remove this step, making reuse impossible.
@@ -781,6 +781,11 @@ class Step(Node):
         node_type: type[NodeType] = Self,
         do_sources: bool = True,
     ) -> Iterator[str]:
+        """Yield one formatted `"kind:label"` string per dependency edge.
+
+        Detached edges are wrapped in parentheses
+        and amended edges get an `" [amended]"` suffix.
+        """
         sql = (
             "SELECT kind, label, detached, dependency.i IN amended_dep "
             "FROM node JOIN dependency ON node.i = "
@@ -805,20 +810,30 @@ class Step(Node):
         parts = self.label.split("  # wd=", maxsplit=1)
         return parts[0], Path(parts[1] if len(parts) == 2 else ".")
 
+    def get_step_info(self) -> StepInfo:
+        """Return a `StepInfo` object with information about this step.
+
+        Amended information is not included for consistency with
+        the information that is available when defining a step.
+        """
+        if self.is_detached():
+            # This step's creator has moved on without it (see Step.detach()); its real
+            # info is moot.
+            return StepInfo("", [], [], [], [], Path("."))
+        command, workdir = self.command_workdir
+        return StepInfo(
+            command,
+            [r.path for r in self.inp_paths(amended=False)],
+            self.env_deps(amended=False),
+            [r.path for r in self.out_paths(amended=False)],
+            [r.path for r in self.vol_paths(amended=False)],
+            workdir,
+        )
+
     def get_subshell(self) -> bool:
         """Return whether this step runs the command via a subshell."""
         row = self.db.execute("SELECT subshell FROM step WHERE node = ?", (self.i,)).fetchone()
         return bool(row[0])
-
-    def get_env_overrides(self) -> dict[str, str]:
-        """Return the step-specific environment variable overrides."""
-        row = self.db.execute("SELECT env_overrides FROM step WHERE node = ?", (self.i,)).fetchone()
-        return {} if row[0] is None else json.loads(row[0])
-
-    def set_env_overrides(self, env_overrides: dict[str, str] | None):
-        """Set the step-specific environment variable overrides."""
-        value = None if not env_overrides else json.dumps(env_overrides)
-        self.db.execute("UPDATE step SET env_overrides = ? WHERE node = ?", (value, self.i))
 
     def get_need(self) -> Need:
         """Return the declared need of this step."""
@@ -826,10 +841,12 @@ class Step(Node):
         return Need(row[0])
 
     def get_state(self) -> StepState:
+        """Return the current state of this step."""
         row = self.db.execute("SELECT state FROM step WHERE node = ?", (self.i,)).fetchone()
         return StepState(row[0])
 
-    def set_state(self, state: StepState, postponed: bool = False):
+    def set_state(self, state: StepState, postponed: bool = False) -> None:
+        """Set the state of this step."""
         # postponed=True combined with a state other than PENDING is rejected by the
         # step table's postponed/state CHECK constraint (see STEP_SCHEMA).
         self.db.execute(
@@ -855,14 +872,8 @@ class Step(Node):
         sql = "SELECT postpone_count FROM step WHERE node = ?"
         return self.db.execute(sql, (self.i,)).fetchone()[0]
 
-    def _increment_postpone_count(self) -> int:
-        """Increment postpone_count and return the new value."""
-        self.db.execute(
-            "UPDATE step SET postpone_count = postpone_count + 1 WHERE node = ?", (self.i,)
-        )
-        return self.get_postpone_count()
-
-    def set_duration(self, duration: float):
+    def set_duration(self, duration: float) -> None:
+        """Set the estimated duration (in seconds) of this step."""
         self.db.execute("UPDATE step SET duration = ? WHERE node = ?", (duration, self.i))
 
     def is_holding(self) -> bool:
@@ -905,43 +916,63 @@ class Step(Node):
             self._check_with_products()
 
     #
-    # Get step information
-    #
-
-    def get_step_info(self) -> StepInfo:
-        """Return a `StepInfo` object with information about this step.
-
-        Amended information is not included for consistency with
-        the information that is available when defining a step.
-        """
-        if self.is_detached():
-            # This step's creator has moved on without it (see Step.detach()); its real
-            # info is moot.
-            return StepInfo("", [], [], [], [], Path("."))
-        command, workdir = self.command_workdir
-        return StepInfo(
-            command,
-            [r.path for r in self.inp_paths(amended=False)],
-            self.env_deps(amended=False),
-            [r.path for r in self.out_paths(amended=False)],
-            [r.path for r in self.vol_paths(amended=False)],
-            workdir,
-        )
-
-    #
     # Env vars
     #
 
-    def add_env_deps(self, env_deps):
+    def get_env_overrides(self) -> dict[str, str]:
+        """Return the step-specific environment variable overrides."""
+        row = self.db.execute("SELECT env_overrides FROM step WHERE node = ?", (self.i,)).fetchone()
+        return {} if row[0] is None else json.loads(row[0])
+
+    def set_env_overrides(self, env_overrides: dict[str, str] | None):
+        """Set the step-specific environment variable overrides."""
+        value = None if not env_overrides else json.dumps(env_overrides)
+        self.db.execute("UPDATE step SET env_overrides = ? WHERE node = ?", (value, self.i))
+
+    def set_resources(self, resources: dict[str, int] | None) -> None:
+        """Replace this step's claimed named-resource units used by the scheduler.
+
+        `resources` maps resource name (e.g. a GPU or license semaphore) to
+        the number of units claimed, or is `None` to clear all claims.
+        """
+        self.db.execute("DELETE FROM step_resource WHERE node = ?", (self.i,))
+        if resources is None:
+            return
+        rows = [(self.i, name, units) for name, units in resources.items()]
+        self.db.executemany("INSERT INTO step_resource VALUES (?, ?, ?)", rows)
+
+    def add_env_deps(self, env_deps: Collection[str]) -> None:
+        """Record environment variables read by this step, declared up front.
+
+        The current `os.getenv` value of each name is stored alongside it.
+        """
         rows = [(self.i, name, os.getenv(name)) for name in env_deps]
         self.db.executemany("INSERT OR REPLACE INTO env_var VALUES (?, ?, ?, 0)", rows)
 
-    def amend_env_deps(self, env_deps):
+    def amend_env_deps(self, env_deps: Collection[str]) -> None:
+        """Record environment variables read by this step, discovered while running.
+
+        The current `os.getenv` value of each name is stored alongside it.
+        Names already present in `env_overrides` are skipped,
+        since their value is fixed by the step
+        and they are therefore not external dependencies that can change between runs.
+        """
         # Ignore variables that this step overrides via env_overrides: their value is fixed by the
         # step, so they are not external dependencies that can change between runs.
         env_overrides = self.get_env_overrides()
         rows = [(self.i, name, os.getenv(name)) for name in env_deps if name not in env_overrides]
         self.db.executemany("INSERT OR IGNORE INTO env_var VALUES (?, ?, ?, 1)", rows)
+
+    def env_deps(self, *, amended: bool | None = None) -> Iterator[str]:
+        """Iterate over used environment variable names (not values)."""
+        sql = "SELECT name FROM env_var WHERE node = ?"
+        if amended is not None:
+            sql += " AND"
+            if not amended:
+                sql += " NOT"
+            sql += " amended = 1"
+        for row in self.db.execute(sql, (self.i,)):
+            yield row[0]
 
     #
     # Iterators
@@ -1049,19 +1080,8 @@ class Step(Node):
         """Iterate over missing paths created by this step."""
         yield from self._paths("product", filter_states=(FileState.MISSING,))
 
-    def env_deps(self, *, amended: bool | None = None):
-        """Iterate over used environment variable names (not values)."""
-        sql = "SELECT name FROM env_var WHERE node = ?"
-        if amended is not None:
-            sql += " AND"
-            if not amended:
-                sql += " NOT"
-            sql += " amended = 1"
-        for row in self.db.execute(sql, (self.i,)):
-            yield row[0]
-
     def nglob_multis(self) -> Iterator[NGlobMulti]:
-        """Iterate of nglob_multis used by this step."""
+        """Iterate over nglob_multis used by this step."""
         for row in self.db.execute("SELECT data FROM nglob_multi WHERE node = ?", (self.i,)):
             yield json_converter.structure(json.loads(row[0]), NGlobMulti)
 
@@ -1077,14 +1097,15 @@ class Step(Node):
         It is called both right before actually re-executing a step, and whenever
         a step is postponed and won't run again immediately.
 
-        The following are reset:
+        The following are dropped:
 
-        - amended inputs and (volatile outputs)
+        - amended inputs and (volatile) outputs
         - amended environment variables
+        - nglob_multis
+        - stored stdout/stderr and recorded subprocess invocations
 
         The following are detached:
 
-        - nglob_multis
         - created steps
         - static file definitions
         - static trees
@@ -1191,6 +1212,15 @@ class Step(Node):
         for i, label in self.db.execute(sql, (self.i,)):
             step = Step(self.graph, i, label)
             step.detach()
+
+    def _increment_postpone_count(self) -> int:
+        """Increment postpone_count and return the new value."""
+        row = self.db.execute(
+            "UPDATE step SET postpone_count = postpone_count + 1 WHERE node = ? "
+            "RETURNING postpone_count",
+            (self.i,),
+        ).fetchone()
+        return row[0]
 
     def completed(self, new_hash: StepHash | None, wants_postpone: bool) -> tuple[bool, bool]:
         """Set a step as completed (succeeded or failed) and trigger the consequences.
@@ -1381,14 +1411,8 @@ class Step(Node):
         """Remove all recorded subprocess rows for this step."""
         self.db.execute("DELETE FROM step_subprocess WHERE node = ?", (self.i,))
 
-    def set_resources(self, resources: dict[str, int] | None):
-        self.db.execute("DELETE FROM step_resource WHERE node = ?", (self.i,))
-        if resources is None:
-            return
-        rows = [(self.i, name, units) for name, units in resources.items()]
-        self.db.executemany("INSERT INTO step_resource VALUES (?, ?, ?)", rows)
-
-    def register_nglob(self, nglob_multi):
+    def register_nglob(self, nglob_multi: NGlobMulti) -> None:
+        """Store an `NGlobMulti` pattern set registered by this step."""
         data = (self.i, json.dumps(json_converter.unstructure(nglob_multi)))
         self.db.execute("INSERT INTO nglob_multi(node, data) VALUES (?, ?)", data)
 
@@ -1409,5 +1433,5 @@ class Step(Node):
         self._check_with_products()
 
     def _check_with_products(self):
-        """Flag if the _check_safe and _check_after fields of this step and its products."""
+        """Flag the _check_safe and _check_after fields of this step and its products."""
         self.db.execute(RECURSIVE_CHECK_WITH_PRODUCTS, (self.i,))

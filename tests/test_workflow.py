@@ -5,7 +5,6 @@
 import asyncio
 import hashlib
 import sqlite3
-from collections import Counter
 from collections.abc import AsyncIterator
 
 import pytest
@@ -328,7 +327,6 @@ async def test_simple_example(wfs: Workflow):
         # Declare the static input and check graph
         foo = declare_static(wfs, wfs.root, ["foo.txt"])[0]
         assert wfs.format_str() == TEST_SIMPLE_EXAMPLE_GRAPH2
-        assert wfs.get_file_counts() == {FileState.STATIC: 1, FileState.AWAITED: 1}
         assert wfs.get_counts() == (0, 1)
 
     # Verify things that should not be allowed
@@ -346,7 +344,6 @@ async def test_simple_example(wfs: Workflow):
         step_hash = step_hash.evolve_out(out_hashes)
         step.completed(step_hash, False)
         assert wfs.format_str() == TEST_SIMPLE_EXAMPLE_GRAPH3
-        assert wfs.get_file_counts() == Counter({FileState.STATIC: 1, FileState.BUILT: 1})
         assert wfs.get_counts() == (1, 1)
 
     # Check hashes
@@ -2849,16 +2846,16 @@ async def test_step_output_truncated_on_store(wfp: Workflow):
         )
 
 
-async def test_step_output_give_up_no_fk_error(wfp: Workflow):
-    """give_up() removes the step row (and implicitly its stdout/stderr columns)."""
+async def test_step_output_discard_no_fk_error(wfp: Workflow):
+    """discard() removes the step row (and implicitly its stdout/stderr columns)."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo hi")
         step = wfp.find(Step, "echo hi")
         step.store_output("data\n", "oops\n", 0)
         step_i = step.i
-        step.give_up()
-        # After give_up() deletes the node row, the step no longer exists in the database.
+        step.discard()
+        # After discard() deletes the node row, the step no longer exists in the database.
         assert wfp.db.execute("SELECT 1 FROM step WHERE node = ?", (step_i,)).fetchone() is None
 
 
@@ -2948,16 +2945,16 @@ async def test_step_subprocess_reset_for_rerun(wfp: Workflow):
         assert rows == []
 
 
-async def test_step_subprocess_give_up_no_fk_error(wfp: Workflow):
-    """give_up() removes recorded subprocesses (clean() runs before node deletion, no FK error)."""
+async def test_step_subprocess_discard_no_fk_error(wfp: Workflow):
+    """discard() removes recorded subprocesses (clean() runs before node deletion, no FK error)."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo hi")
         step = wfp.find(Step, "echo hi")
         step.record_subprocess("echo hi", ".", None, 0, False, "in", "out", "err")
-        # give_up() deletes the node row, and the step_subprocess rows are removed automatically
+        # discard() deletes the node row, and the step_subprocess rows are removed automatically
         # by the ON DELETE CASCADE foreign key.
-        step.give_up()
+        step.discard()
         query = "SELECT * FROM step_subprocess WHERE node = ? ORDER BY rowid"
         rows = wfp.db.execute(query, (step.i,)).fetchall()
         assert rows == []

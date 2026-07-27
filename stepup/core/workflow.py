@@ -94,6 +94,14 @@ BEGIN
             OR (s.kind = 'st' AND k.kind = 'file')
         );
 END;
+
+-- Reusable scratch tables for batch lookups keyed by a list of paths or node ids,
+-- used instead of `json_each(...)`, which was found to be slow in performance tests.
+-- Created once here and only ever cleared with `DELETE FROM` before reuse:
+-- dropping and recreating a temp table on every call would invalidate SQLite's
+-- prepared-statement cache (see `safe_update` in scheduler.py for the same convention).
+CREATE TEMP TABLE IF NOT EXISTS path_list (path TEXT PRIMARY KEY) WITHOUT ROWID;
+CREATE TEMP TABLE IF NOT EXISTS node_list (i INTEGER PRIMARY KEY) WITHOUT ROWID;
 """
 
 
@@ -191,13 +199,15 @@ _HASH_TRANSITIONS: dict[tuple[HashUpdateCause, FileState, bool], tuple[FileState
 class SupplyInfo:
     """Result of the `_supply_files` method, for internal use only."""
 
-    file: Node = attrs.field()
+    file: File = attrs.field()
     """A new or existing file."""
 
     available: bool = attrs.field()
-    """True if possibly available, False if the certainly unavailable.
+    """True if possibly available, False if certainly unavailable.
 
-    If False, the file is AWAITED, OUTDATED, VOLATILE or MISSING, and thus certainly unavailable.
+    If False, the file is AWAITED, OUTDATED or MISSING, and thus certainly unavailable.
+    (A VOLATILE file never reaches this point: `_resolve_supply_file` raises `GraphError`
+    for it before an `available` value is computed.)
     A MISSING file only becomes available again at a build boundary
     (watch phase or restart), never within the current build.
     If True, the file is BUILT, UNCONFIRMED or STATIC.
@@ -206,7 +216,7 @@ class SupplyInfo:
     """
 
     is_deferred: bool = attrs.field()
-    """True if the file attribute is UNCONFIRMED and needs to be checked."""
+    """True if the file's state is UNCONFIRMED and needs to be checked."""
 
     new_idep: int | None = attrs.field()
     """Dependency identifier when the relation is new, None otherwise."""
@@ -240,15 +250,20 @@ class Workflow(Trellis):
     were given."""
 
     to_be_deleted: list[tuple[str, FileHash | None]] = attrs.field(init=False, factory=list)
-    """A list of files and directories that can be deleted.
+    """A list of files that can be deleted, plus any parent directories left empty by that.
 
-    This list contains BUILT files node with file hashes that were removed from the graph.
+    This list contains BUILT/OUTDATED file nodes (with their file hash) and VOLATILE file
+    nodes (hash always `None`) that were removed from the graph.
     """
 
     @property
     def need_threshold(self) -> Need:
         """The need level above which a step's `_implied_need` makes it required."""
         return Need.DEFAULT if self.targets or self.target_dirs else Need.OPTIONAL
+
+    #
+    # Override from base class
+    #
 
     @staticmethod
     def default_node_classes() -> list[type[Node]]:
@@ -259,9 +274,14 @@ class Workflow(Trellis):
         """Return the SQL schema for the database, including Workflow's own triggers."""
         return super().schema() + WORKFLOW_SCHEMA
 
-    #
-    # Initialization
-    #
+    def clean(self):
+        # Get rid of static tree files that are no longer used.
+        for st in self.nodes(StaticTree):
+            files = sorted(st.products(), reverse=True, key=(lambda node: node.path))
+            for file in files:
+                if not any(file.sinks()):
+                    file.detach()
+        super().clean()
 
     def _rebuild_temp_tables(self):
         """Seed `step_need_count` once per fresh connection, then chain to the base class."""
@@ -310,6 +330,10 @@ class Workflow(Trellis):
         for step in to_mark_pending:
             self.mark_step_pending(step)
 
+    #
+    # Initialization
+    #
+
     def initialize_boot(self) -> bool:
         """Initialize the (new) boot script.
 
@@ -338,6 +362,82 @@ class Workflow(Trellis):
         self.update_file_hashes(checked, HashUpdateCause.CONFIRMED)
         self.define_step(self.root, command, inp_paths=["plan.py"], need=Need.PLAN, safe=True)
         return True
+
+    #
+    # Target reconciliation
+    #
+
+    def reconcile_targets(self):
+        """Validate targets against the loaded graph and flag affected steps for recompute.
+
+        Declaration-time validation (in `_declare_file` and `_resolve_supply_file`) only
+        runs when `define_step`/`amend_step`/`declare_unconfirmed` are actually called, which
+        does not happen for a database-resumed run against an unchanged `plan.py`. Call
+        this once at director startup, after the boot/resume step
+        (`DirectorHandler.initialize_boot`/`startup_from_db`) so that a changed `plan.py`
+        has already been marked `PENDING`, and before the first scheduler tick, and after
+        `Scheduler.initialize()` has created and populated the `target_dir` temp table.
+        It never computes elevation itself; elevation is derived, state-free
+        recomputation (see `scheduler.UPDATE_CHECK_AFTER`) that runs on the next
+        metadata pass for every step flagged here.
+
+        Directory targets (`self.target_dirs`) are handled separately from `self.targets`
+        below, by a single bulk range `UPDATE`. Unlike exact targets, directory-target
+        elevation is best-effort and never raises: the stale direction (a step that was
+        elevated by a directory target in a previous run) is already covered by the reset
+        below, since such a step also has `_implied_need = TARGET`; only the newly-matching
+        direction needs new code.
+
+        Raises
+        ------
+        GraphError
+            When an exact target matches a `VOLATILE`, `STATIC`, `MISSING` or `UNCONFIRMED`
+            file whose creator chain has no `PENDING` step, i.e. the declaration producing
+            that file state is not going to be re-evaluated. Never raised for directory
+            targets.
+        """
+        # Stale TARGET values in _implied_need (left behind by a previous run with a
+        # different target set) must be recomputed; over-flagging is always safe since
+        # recomputation is state-free.
+        self.db.execute(
+            f"UPDATE step SET _check_after = 1 WHERE _implied_need = {Need.TARGET.value}"
+        )
+        # One-time startup cost, several queries per target instead of one batched query.
+        # Accepted for now given small typical target counts; revisit if this shows up in
+        # profiling.
+        for path in sorted(self.targets):
+            file, detached = self.find_detached(File, path)
+            if file is None or detached:
+                # Not (yet) in the graph, or detached. Detached rows are deliberately
+                # skipped: they may be garbage from an abandoned plan, and raising on
+                # those would block legitimate builds. Declaration-time checks and the
+                # not-produced warning cover these.
+                continue
+            state = file.get_state()
+            if state in TARGET_FORBIDDEN_STATES:
+                # Only raise when the declaration producing this row is still current: a
+                # PENDING step in the creator chain may re-declare the file differently
+                # when it reruns, in which case declaration-time checks take over.
+                if not self._creator_chain_pending(file):
+                    self._raise_if_forbidden_target(path, state)
+                continue
+            creator = file.creator()
+            if isinstance(creator, Step):
+                self.db.execute("UPDATE step SET _check_after = 1 WHERE node = ?", (creator.i,))
+
+        # Directory targets: newly-matching outputs need a bulk range UPDATE.
+        # See RECONCILE_TARGET_DIRS above for the query and its rationale.
+        self.db.execute(RECONCILE_TARGET_DIRS)
+
+    def _creator_chain_pending(self, node: Node) -> bool:
+        """Return whether any step in the node's creator chain is PENDING."""
+        while True:
+            node = node.creator()
+            if node is None or isinstance(node, Root):
+                # Root.creator() returns Root itself, so this also terminates the walk.
+                return False
+            if isinstance(node, Step) and node.get_state() == StepState.PENDING:
+                return True
 
     #
     # Workflow introspection
@@ -386,14 +486,6 @@ class Workflow(Trellis):
             "OR (cnode.kind = 'file' AND cnode.label LIKE '%/'))",
         )
 
-    def get_file_counts(self) -> dict[FileState, int]:
-        """Return counters for FileState."""
-        sql = (
-            "SELECT file.state, count(*) FROM node JOIN file ON node.i = file.node "
-            "WHERE NOT node.detached GROUP BY file.state"
-        )
-        return {FileState(value): count for value, count in self.db.execute(sql)}
-
     def get_counts(self) -> tuple[int, int]:
         """Return completion counts (succeeded and total).
 
@@ -437,27 +529,41 @@ class Workflow(Trellis):
         for row in self.db.execute(sql, (FileState.MISSING.value,)):
             yield row[0]
 
-    def unconfirmed_paths(self) -> Iterator[str]:
-        """Iterate over unconfirmed files that are still present in the graph."""
-        sql = (
-            "SELECT label FROM node JOIN file ON node.i = file.node "
-            "WHERE state = ? AND NOT detached"
+    def is_regular_output(self, path: str) -> bool:
+        """Return whether `path` is currently a regular (non-volatile) output of a step."""
+        node, detached = self.find_detached(File, path)
+        return (
+            node is not None
+            and not detached
+            and isinstance(node.creator(), Step)
+            and node.get_state() in REGULAR_OUTPUT_STATES
         )
-        for row in self.db.execute(sql, (FileState.UNCONFIRMED.value,)):
-            yield row[0]
 
-    #
-    # Trellis extensions
-    #
+    def dir_has_regular_output(self, path: str) -> bool:
+        """Return whether any active step's regular (non-volatile) output falls under `path`.
 
-    def clean(self):
-        # Get rid of static tree files that are no longer used.
-        for st in self.nodes(StaticTree):
-            files = sorted(st.products(), reverse=True, key=(lambda node: node.path))
-            for file in files:
-                if not any(file.sinks()):
-                    file.detach()
-        super().clean()
+        `path` is a directory-target label (trailing slash). Backs the end-of-build
+        matched-nothing warning for directory targets (`builder.report_completion`). Unlike
+        `is_regular_output()`, this checks a label range instead of a single label, and
+        deliberately has no `step.need = DEFAULT` filter: the warning catches typos
+        ("nothing is ever produced here"), not policy surprises ("things are produced here
+        but you opted them out" -- an `OPTIONAL`-only directory is a correctly-spelled path).
+        `state != VOLATILE` with a dependency-sink join mirrors the elevation arm's
+        condition verbatim (`scheduler.UPDATE_CHECK_AFTER`), so warning and elevation can
+        never disagree about what counts as an output.
+        """
+        row = self.db.execute(
+            "SELECT EXISTS ("
+            "SELECT 1 FROM node AS onode "
+            "JOIN file AS ofile ON ofile.node = onode.i "
+            "JOIN dependency AS depo ON depo.sink = onode.i "
+            f"WHERE onode.kind = '{File.kind()}' "
+            "AND onode.label >= ? AND onode.label < ? "
+            "AND NOT onode.detached "
+            f"AND ofile.state != {FileState.VOLATILE.value})",
+            (path, dir_range_upper(path)),
+        ).fetchone()
+        return bool(row[0])
 
     #
     # State propagation
@@ -650,7 +756,7 @@ class Workflow(Trellis):
     # Build phase (helper methods)
     #
 
-    def _matching_static_tree(self, path: str) -> StaticTree | None:
+    def _find_matching_static_tree(self, path: str) -> StaticTree | None:
         srs = []
         sql = (
             "SELECT i, label FROM node WHERE kind = 'st' AND NOT detached AND "
@@ -722,7 +828,7 @@ class Workflow(Trellis):
         file, detached = self.find_detached(File, path)
         is_deferred = False
         if file is None or detached:
-            st = self._matching_static_tree(path)
+            st = self._find_matching_static_tree(path)
             if st is None:
                 file = self.create(File, None, path, state=FileState.AWAITED)
             else:
@@ -812,13 +918,12 @@ class Workflow(Trellis):
         path
             The (normalized path). Directories must have trailing slashes.
         file_state
-            The desired file state if any.
-            (None for supplying files, not None in all other cases)
+            The desired file state: `UNCONFIRMED`, `AWAITED` or `VOLATILE`.
 
         Returns
         -------
         file
-            The key of the created / recycled file.
+            The created or recycled file node.
         """
         # Consistency checks before creating the file.
         if file_state == FileState.BUILT:
@@ -829,7 +934,7 @@ class Workflow(Trellis):
             raise ValueError("Cannot create a MISSING file. It must be UNCONFIRMED first.")
         if file_state == FileState.VOLATILE and path.endswith(os.sep):
             raise GraphError("A volatile output cannot be a directory.")
-        if not (creator.kind() == "st" or self._matching_static_tree(path) is None):
+        if not (creator.kind() == "st" or self._find_matching_static_tree(path) is None):
             raise GraphError("Cannot manually add a file that matches a static tree.")
         self._raise_if_forbidden_target(path, file_state)
 
@@ -844,115 +949,7 @@ class Workflow(Trellis):
             self.put_dir_queue(Path(path).parent)
         return file
 
-    def reconcile_targets(self):
-        """Validate targets against the loaded graph and flag affected steps for recompute.
-
-        Declaration-time validation (in `_declare_file` and `_resolve_supply_file`) only
-        runs when `define_step`/`amend_step`/`declare_unconfirmed` are actually called, which
-        does not happen for a database-resumed run against an unchanged `plan.py`. Call
-        this once at director startup, after the boot/resume step
-        (`DirectorHandler.initialize_boot`/`startup_from_db`) so that a changed `plan.py`
-        has already been marked `PENDING`, and before the first scheduler tick, and after
-        `Scheduler.initialize()` has created and populated the `target_dir` temp table.
-        It never computes elevation itself; elevation is derived, state-free
-        recomputation (see `scheduler.UPDATE_CHECK_AFTER`) that runs on the next
-        metadata pass for every step flagged here.
-
-        Directory targets (`self.target_dirs`) are handled separately from `self.targets`
-        below, by a single bulk range `UPDATE`. Unlike exact targets, directory-target
-        elevation is best-effort and never raises: the stale direction (a step that was
-        elevated by a directory target in a previous run) is already covered by the reset
-        below, since such a step also has `_implied_need = TARGET`; only the newly-matching
-        direction needs new code.
-
-        Raises
-        ------
-        GraphError
-            When an exact target matches a `VOLATILE`, `STATIC`, `MISSING` or `UNCONFIRMED`
-            file whose creator chain has no `PENDING` step, i.e. the declaration producing
-            that file state is not going to be re-evaluated. Never raised for directory
-            targets.
-        """
-        # Stale TARGET values in _implied_need (left behind by a previous run with a
-        # different target set) must be recomputed; over-flagging is always safe since
-        # recomputation is state-free.
-        self.db.execute(
-            f"UPDATE step SET _check_after = 1 WHERE _implied_need = {Need.TARGET.value}"
-        )
-        # One-time startup cost, several queries per target instead of one batched query.
-        # Accepted for now given small typical target counts; revisit if this shows up in
-        # profiling.
-        for path in sorted(self.targets):
-            file, detached = self.find_detached(File, path)
-            if file is None or detached:
-                # Not (yet) in the graph, or detached. Detached rows are deliberately
-                # skipped: they may be garbage from an abandoned plan, and raising on
-                # those would block legitimate builds. Declaration-time checks and the
-                # not-produced warning cover these.
-                continue
-            state = file.get_state()
-            if state in TARGET_FORBIDDEN_STATES:
-                # Only raise when the declaration producing this row is still current: a
-                # PENDING step in the creator chain may re-declare the file differently
-                # when it reruns, in which case declaration-time checks take over.
-                if not self._creator_chain_pending(file):
-                    self._raise_if_forbidden_target(path, state)
-                continue
-            creator = file.creator()
-            if isinstance(creator, Step):
-                self.db.execute("UPDATE step SET _check_after = 1 WHERE node = ?", (creator.i,))
-
-        # Directory targets: newly-matching outputs need a bulk range UPDATE.
-        # See RECONCILE_TARGET_DIRS above for the query and its rationale.
-        self.db.execute(RECONCILE_TARGET_DIRS)
-
-    def _creator_chain_pending(self, node: Node) -> bool:
-        """Return whether any step in the node's creator chain is PENDING."""
-        while True:
-            node = node.creator()
-            if node is None or isinstance(node, Root):
-                # Root.creator() returns Root itself, so this also terminates the walk.
-                return False
-            if isinstance(node, Step) and node.get_state() == StepState.PENDING:
-                return True
-
-    def is_regular_output(self, path: str) -> bool:
-        """Return whether `path` is currently a regular (non-volatile) output of a step."""
-        node, detached = self.find_detached(File, path)
-        return (
-            node is not None
-            and not detached
-            and isinstance(node.creator(), Step)
-            and node.get_state() in REGULAR_OUTPUT_STATES
-        )
-
-    def dir_has_regular_output(self, path: str) -> bool:
-        """Return whether any active step's regular (non-volatile) output falls under `path`.
-
-        `path` is a directory-target label (trailing slash). Backs the end-of-build
-        matched-nothing warning for directory targets (`builder.report_completion`). Unlike
-        `is_regular_output()`, this checks a label range instead of a single label, and
-        deliberately has no `step.need = DEFAULT` filter: the warning catches typos
-        ("nothing is ever produced here"), not policy surprises ("things are produced here
-        but you opted them out" -- an `OPTIONAL`-only directory is a correctly-spelled path).
-        `state != VOLATILE` with a dependency-sink join mirrors the elevation arm's
-        condition verbatim (`scheduler.UPDATE_CHECK_AFTER`), so warning and elevation can
-        never disagree about what counts as an output.
-        """
-        row = self.db.execute(
-            "SELECT EXISTS ("
-            "SELECT 1 FROM node AS onode "
-            "JOIN file AS ofile ON ofile.node = onode.i "
-            "JOIN dependency AS depo ON depo.sink = onode.i "
-            f"WHERE onode.kind = '{File.kind()}' "
-            "AND onode.label >= ? AND onode.label < ? "
-            "AND NOT onode.detached "
-            f"AND ofile.state != {FileState.VOLATILE.value})",
-            (path, dir_range_upper(path)),
-        ).fetchone()
-        return bool(row[0])
-
-    def _build_to_check(self, deferred: Collection[Node]) -> list[tuple[str, FileHash]]:
+    def _build_to_check(self, deferred: Collection[File]) -> list[tuple[str, FileHash]]:
         """Convert a list of UNCONFIRMED file nodes to a list of (path, file_hash) tuples.
 
         This list is intended for the caller to submit as hash jobs
@@ -997,7 +994,7 @@ class Workflow(Trellis):
         Parameters
         ----------
         creator
-            The node creating this file (or None if not known).
+            The node creating this file.
         paths
             The locations of the files or directories (ending with /).
 
@@ -1045,7 +1042,7 @@ class Workflow(Trellis):
             # registering a static tree for it is moot.
             return []
         path = Path(path) / ""
-        if self._matching_static_tree(path) is not None:
+        if self._find_matching_static_tree(path) is not None:
             raise GraphError(f"Static tree is a subdirectory of an existing static tree: {path}")
         sql = "SELECT 1 FROM node WHERE kind = 'st' AND NOT detached AND label LIKE ? ESCAPE '\\'"
         pattern = f"{escape_like_pattern(path)}%"
@@ -1093,14 +1090,14 @@ class Workflow(Trellis):
         subshell: bool = False,
         env_overrides: dict[str, str] | None = None,
         duration: float | None = None,
-    ) -> list[tuple[File, FileState]]:
+    ) -> list[tuple[str, FileHash]]:
         """Define a new step.
 
         Parameters
         ----------
         creator
             The step that generated this step.
-            This is None for the boot script.
+            This is `self.root` for the boot script.
         command
             The command to execute.
         inp_paths
@@ -1251,7 +1248,7 @@ class Workflow(Trellis):
         out_paths: Collection[str] = (),
         vol_paths: Collection[str] = (),
         ran_concurrently: Callable[[int, int], bool],
-    ) -> tuple[bool, set[str], set[str], list[tuple[File, FileState]]]:
+    ) -> tuple[bool, set[str], set[str], list[tuple[str, FileHash]]]:
         """Amend step information.
 
         Parameters
@@ -1365,7 +1362,9 @@ class Workflow(Trellis):
         for (path,) in self.db.execute(sql, (pattern,)):
             yield path
 
-    def nglob_multis(self, yield_step: bool = False) -> Iterator[NGlobMulti]:
+    def nglob_multis(
+        self, yield_step: bool = False
+    ) -> Iterator[NGlobMulti | tuple[int, NGlobMulti, Step]]:
         sql = (
             "SELECT node.i, label, kind, nglob_multi.i, data "
             "FROM node JOIN nglob_multi ON node.i = nglob_multi.node"
@@ -1384,7 +1383,7 @@ class Workflow(Trellis):
         deleted
             The deleted files.
         added
-            The added.
+            The added files.
         """
         if deleted & added:
             raise ValueError("Deleted and added paths cannot overlap.")
