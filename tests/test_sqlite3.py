@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from stepup.core.sqlite3 import DBSession, _format_query_plan
+from stepup.core.sqlite3 import DBSession, _format_query_plan, connect
 
 # Rows as returned by `EXPLAIN QUERY PLAN`: (id, parent, notused, detail).
 # This mimics a query with a subquery scan feeding a search,
@@ -30,6 +30,12 @@ def test_format_query_plan():
 
 def test_format_query_plan_empty():
     assert _format_query_plan([]) == ""
+
+
+def test_connect_sets_recursive_triggers_off():
+    """step.py's triggers UPDATE the table they fire on, which requires this to stay OFF."""
+    con = connect(":memory:")
+    assert con.execute("PRAGMA recursive_triggers").fetchone()[0] == 0
 
 
 async def test_detect_nested_dblock_in_same_task():

@@ -90,6 +90,31 @@ def test_check_with_products_single_step(con):
     assert _flagged(con) == {2}
 
 
+def test_state_update_flags_check_safe(con):
+    """The step_flag_check_safe trigger sets _check_safe on any state write."""
+    _insert_step(con, 2, 1)
+    con.execute("UPDATE step SET state = ? WHERE node = ?", (StepState.RUNNING.value, 2))
+    check_safe = con.execute("SELECT _check_safe FROM step WHERE node = 2").fetchone()[0]
+    assert check_safe == 1
+
+
+def test_same_value_state_update_flags_check_safe(con):
+    """The trigger fires on assignment, not on an actual value change."""
+    _insert_step(con, 2, 1)
+    state = con.execute("SELECT state FROM step WHERE node = 2").fetchone()[0]
+    con.execute("UPDATE step SET state = ? WHERE node = ?", (state, 2))
+    check_safe = con.execute("SELECT _check_safe FROM step WHERE node = 2").fetchone()[0]
+    assert check_safe == 1
+
+
+def test_duration_update_flags_check_after(con):
+    """The step_flag_check_after_duration trigger sets _check_after on any duration write."""
+    _insert_step(con, 2, 1)
+    con.execute("UPDATE step SET duration = ? WHERE node = ?", (2.0, 2))
+    check_after = con.execute("SELECT _check_after FROM step WHERE node = 2").fetchone()[0]
+    assert check_after == 1
+
+
 def test_truncate_output_unlimited():
     """A non-positive max_size returns the content unchanged, even when large."""
     content = "x" * 10_000

@@ -803,14 +803,15 @@ class Workflow(Trellis):
 
         # We have a match!
 
-        # Update the need, subshell values and _check_* flags.
+        # Update the need and subshell values.
         self.db.execute(
-            "UPDATE step SET need = ?, subshell = ?, _check_safe = 1, _check_after = 1 "
-            "WHERE node = ?",
+            "UPDATE step SET need = ?, subshell = ? WHERE node = ?",
             (need.value, int(subshell), old_step.i),
         )
 
         # Restore the step and its products (recursively), and set resources and overrides.
+        # This also flags _check_safe/_check_after on old_step and all its recursive
+        # products, via RECURSIVE_CHECK_WITH_PRODUCTS.
         old_step.recycle(creator)
         old_step.set_resources(resources)
         old_step.set_env_overrides(env_overrides)

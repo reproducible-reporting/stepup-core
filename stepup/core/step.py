@@ -88,6 +88,14 @@ CREATE INDEX IF NOT EXISTS step_check_after ON step(node) WHERE _check_after;
 CREATE INDEX IF NOT EXISTS step_pending_ready ON step(state, _implied_need)
     WHERE _safe AND NOT postponed;
 
+-- Convention for this trigger block: single-row, same-table consequences of a column
+-- write live here as triggers. Multi-row / recursive graph consequences (e.g. flagging
+-- a step's recursive products, or steps reached across dependency edges two hops away)
+-- stay in explicit Python-invoked SQL instead: see RECURSIVE_CHECK_WITH_PRODUCTS and
+-- RECURSIVE_CHECK_AFTER_SOURCES below (used by Step.detach()/Step.recycle()), which
+-- together with the triggers here account for the complete _check_safe/_check_after
+-- bookkeeping story.
+
 -- Keep _check_after in sync with dependency-edge changes touching either endpoint.
 -- A no-op UPDATE (zero rows matched) is harmless when the other endpoint is not a step.
 CREATE TRIGGER IF NOT EXISTS step_dependency_check_after_ins AFTER INSERT ON dependency
@@ -97,6 +105,20 @@ END;
 CREATE TRIGGER IF NOT EXISTS step_dependency_check_after_del AFTER DELETE ON dependency
 BEGIN
     UPDATE step SET _check_after = 1 WHERE node IN (OLD.source, OLD.sink);
+END;
+
+-- Keep _check_after in sync with duration changes, so the scheduler recomputes
+-- _implied_need/_tail_time for this step (and, via propagation, its sources).
+CREATE TRIGGER IF NOT EXISTS step_flag_check_after_duration AFTER UPDATE OF duration ON step
+BEGIN
+    UPDATE step SET _check_after = 1 WHERE node = NEW.node;
+END;
+
+-- Keep _check_safe in sync with state changes, so the scheduler recomputes the _safe
+-- metadata of this step (and, via propagation, its products).
+CREATE TRIGGER IF NOT EXISTS step_flag_check_safe AFTER UPDATE OF state ON step
+BEGIN
+    UPDATE step SET _check_safe = 1 WHERE node = NEW.node;
 END;
 
 -- Clear postponed once a step reaches a completed state, so a
@@ -500,7 +522,7 @@ class Step(Node):
         if postponed and not state == StepState.PENDING:
             raise ValueError("postponed can only be True when setting state to PENDING")
         self.db.execute(
-            "UPDATE step SET state = ?, postponed = ?, _check_safe = 1 WHERE node = ?",
+            "UPDATE step SET state = ?, postponed = ? WHERE node = ?",
             (state.value, postponed, self.i),
         )
 
@@ -530,10 +552,7 @@ class Step(Node):
         return self.get_postpone_count()
 
     def set_duration(self, duration: float):
-        self.db.execute(
-            "UPDATE step SET duration = ?, _check_after = 1 WHERE node = ?",
-            (duration, self.i),
-        )
+        self.db.execute("UPDATE step SET duration = ? WHERE node = ?", (duration, self.i))
 
     #
     # Get step information

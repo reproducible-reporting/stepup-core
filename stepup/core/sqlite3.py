@@ -94,6 +94,10 @@ def connect(path: StrPath, read_only: bool = False, **kwargs: Any) -> sqlite3.Co
       This is ok because a few lost transactions are not critical for StepUp,
       as long as the database is not fully corrupted.
     - The auto_vacuum mode is set to INCREMENTAL to allow incremental vacuuming of the database.
+    - Recursive triggers are explicitly kept OFF (SQLite's default). Several triggers in
+      `step.py`'s `STEP_SCHEMA` (e.g. `step_flag_check_safe`) `UPDATE` the same table they
+      fire on; turning this `ON` would go against that design and cause them to re-fire on
+      their own writes.
     """
     kwargs = kwargs.copy()
     kwargs.setdefault("cached_statements", 1024)
@@ -113,6 +117,7 @@ def connect(path: StrPath, read_only: bool = False, **kwargs: Any) -> sqlite3.Co
         con.execute("PRAGMA journal_mode = WAL")
         con.execute("PRAGMA synchronous = OFF")
         con.execute("PRAGMA auto_vacuum = INCREMENTAL")
+        con.execute("PRAGMA recursive_triggers = OFF")
     return con
 
 

@@ -565,6 +565,11 @@ class Trellis:
         #   instead of four columns.
         # - Added DEFAULT clauses in the step table so Step.initialize() no longer
         #   needs to hardcode their initial values by column position.
+        # - Added step_flag_check_safe (AFTER UPDATE OF state) and
+        #   step_flag_check_after_duration (AFTER UPDATE OF duration) triggers, replacing
+        #   the corresponding Python-side flag writes in Step.set_state()/set_duration()
+        #   and the redundant explicit flags in Workflow._recreate_step()'s UPDATE, per the
+        #   trigger-vs-Python convention documented in STEP_SCHEMA.
 
         return 5
 
