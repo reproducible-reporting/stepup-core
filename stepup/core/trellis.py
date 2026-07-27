@@ -605,6 +605,10 @@ class Trellis:
         #   triggers, so Workflow.get_counts() no longer scans every step. Backfilled once
         #   per connection by Workflow.check_consistency(), like path_list/node_list, so no
         #   version bump is needed for this change on its own.
+        # - Changed nglob_multi.data from a pickle blob to a JSON blob (via cattrs hooks for
+        #   NGlobSingle/NGlobMulti in cattrs.py), for consistency with the rest of the
+        #   codebase and readability in external SQLite tools. The column type changed from
+        #   BLOB to TEXT accordingly.
 
         return 5
 

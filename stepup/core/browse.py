@@ -8,7 +8,6 @@ import html
 import importlib.resources
 import json
 import os
-import pickle
 import stat
 import threading
 import traceback
@@ -21,10 +20,12 @@ from urllib.parse import parse_qs, urlencode, urlparse
 import jinja2
 from path import Path
 
+from .cattrs import json_converter
 from .config import ConfigLoader
 from .constants import GRAPH_DB
 from .enums import FileState, Need, StepState
 from .hash import FileHash, fmt_digest
+from .nglob import NGlobMulti
 from .sqlite3 import connect
 from .step import Step
 from .utils import escape_command_display, format_subprocess
@@ -516,7 +517,7 @@ class GraphServer(BaseHTTPRequestHandler):
             if len(ngms) > 0:
                 yield "<h3>Defines NGlob Multis</h3>"
                 for row in ngms:
-                    ngm = pickle.loads(row[0])
+                    ngm = json_converter.structure(json.loads(row[0]), NGlobMulti)
                     yield f"<p>{[ngs.pattern for ngs in ngm.nglob_singles]} {ngm.subs}</p>"
 
             sql_output = "SELECT stdout, stderr FROM step_output WHERE node = ?"

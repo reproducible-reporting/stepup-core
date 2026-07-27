@@ -5,13 +5,13 @@
 import json
 import logging
 import os
-import pickle
 from collections.abc import Collection, Iterator
 from typing import Self
 
 import attrs
 from path import Path
 
+from .cattrs import json_converter
 from .enums import REGULAR_OUTPUT_STATES, FileState, Need, StepState
 from .file import File
 from .hash import FileHash, StepHash
@@ -286,10 +286,11 @@ END;
 -- step's node and are removed via ON DELETE CASCADE when the node row is deleted.
 
 -- Named glob patterns (with back-references) registered by this step; see NGlobMulti.
+-- data is a JSON blob, see json_converter hooks for NGlobMulti in cattrs.py.
 CREATE TABLE IF NOT EXISTS nglob_multi (
     i INTEGER PRIMARY KEY,
     node INTEGER NOT NULL,
-    data BLOB NOT NULL,
+    data TEXT NOT NULL,
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS nglob_multi_node ON nglob_multi(node);
@@ -607,7 +608,7 @@ class Step(Node):
             label = ""
 
         for row in self.db.execute("SELECT data FROM nglob_multi WHERE node = ?", (self.i,)):
-            ngm = pickle.loads(row[0])
+            ngm = json_converter.structure(json.loads(row[0]), NGlobMulti)
             yield "ngm", f"{[ngs.pattern for ngs in ngm.nglob_singles]} {ngm.subs}"
 
         for row in self.db.execute(
@@ -950,7 +951,7 @@ class Step(Node):
     def nglob_multis(self) -> Iterator[NGlobMulti]:
         """Iterate of nglob_multis used by this step."""
         for row in self.db.execute("SELECT data FROM nglob_multi WHERE node = ?", (self.i,)):
-            yield pickle.loads(row[0])
+            yield json_converter.structure(json.loads(row[0]), NGlobMulti)
 
     #
     # Build phase
@@ -1276,7 +1277,7 @@ class Step(Node):
         self.db.executemany("INSERT INTO step_resource VALUES (?, ?, ?)", rows)
 
     def register_nglob(self, nglob_multi):
-        data = (self.i, pickle.dumps(nglob_multi))
+        data = (self.i, json.dumps(json_converter.unstructure(nglob_multi)))
         self.db.execute("INSERT INTO nglob_multi(node, data) VALUES (?, ?)", data)
 
     #

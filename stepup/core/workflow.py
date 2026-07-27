@@ -6,7 +6,6 @@ import asyncio
 import json
 import logging
 import os
-import pickle
 import stat
 import textwrap
 from collections.abc import Callable, Collection, Iterator
@@ -14,6 +13,7 @@ from collections.abc import Callable, Collection, Iterator
 import attrs
 from path import Path
 
+from .cattrs import json_converter
 from .enums import (
     REGULAR_OUTPUT_STATES,
     TARGET_FORBIDDEN_STATES,
@@ -1350,7 +1350,7 @@ class Workflow(Trellis):
         for node_i, label, kind, ngm_i, data in self.db.execute(sql):
             if kind != "step":
                 raise ValueError("Only steps can define nglob_multis")
-            nglob_multi = pickle.loads(data)
+            nglob_multi = json_converter.structure(json.loads(data), NGlobMulti)
             yield (ngm_i, nglob_multi, Step(self, node_i, label)) if yield_step else nglob_multi
 
     def process_nglob_changes(self, deleted: Collection[str], added: Collection[str]):
@@ -1373,7 +1373,7 @@ class Workflow(Trellis):
             evolved = ngm.will_change(deleted, added)
             if evolved is not None:
                 step.delete_hash()
-                data = (pickle.dumps(evolved), i)
+                data = (json.dumps(json_converter.unstructure(evolved)), i)
                 self.db.execute("UPDATE nglob_multi SET data = ? WHERE i = ?", data)
                 self.mark_step_pending(step)
 

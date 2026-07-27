@@ -2,13 +2,14 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Startup sequence after opening the database and configuring internal data structures."""
 
+import json
 import logging
 import os
-import pickle
 
 from path import Path
 
 from .builder import Builder
+from .cattrs import json_converter
 from .enums import FileState, HashUpdateCause, StepState
 from .hash import FileHash, fmt_env_value, fmt_file_hash_diff
 from .hash_queue import gather_hashes
@@ -203,5 +204,6 @@ async def check_nglob_changes(workflow: Workflow, db: DBSession, reporter: Repor
         async with db:
             for i, step, fresh in changed:
                 step.delete_hash()
-                db.execute("UPDATE nglob_multi SET data = ? WHERE i = ?", (pickle.dumps(fresh), i))
+                data = (json.dumps(json_converter.unstructure(fresh)), i)
+                db.execute("UPDATE nglob_multi SET data = ? WHERE i = ?", data)
                 workflow.mark_step_pending(step)

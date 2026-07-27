@@ -8,13 +8,15 @@ import os
 from conftest import declare_static
 
 from stepup.core.builder import Builder
-from stepup.core.enums import HashUpdateCause
+from stepup.core.enums import HashUpdateCause, StepState
 from stepup.core.executor import Executor
 from stepup.core.file import File, FileState
-from stepup.core.hash import FileHash
+from stepup.core.hash import FileHash, StepHash
+from stepup.core.nglob import NGlobMulti
 from stepup.core.reporter import ReporterClient
 from stepup.core.scheduler import Scheduler
-from stepup.core.startup import check_file_changes
+from stepup.core.startup import check_file_changes, check_nglob_changes
+from stepup.core.step import Step
 from stepup.core.workflow import Workflow
 
 
@@ -168,3 +170,57 @@ async def test_check_file_changes_reports_externally_updated_static_file(wfs: Wo
         async with wfs.db:
             assert wfs.find(File, "foo.txt").get_state() == FileState.STATIC
             assert wfs.find(File, "foo.txt").get_hash() != old_hash
+
+
+async def test_check_nglob_changes_persists_readable_matches(wfp: Workflow, tmpdir):
+    """A restart-detected nglob change (files added/removed while the director was not
+    running) must persist matches in the same format later reads expect.
+
+    Regression test: `check_nglob_changes` used to persist the freshly scanned matches
+    with `pickle.dumps`, while every read path (`Workflow.nglob_multis`, `Step.nglob_multis`,
+    `browse.py`) expects the `nglob_multi.data` column to hold JSON, via `json_converter`
+    (see `stepup.core.cattrs`). That mismatch was invisible in the integration examples,
+    because the owning step (typically the perpetually-rerunning `PLAN` step) usually
+    re-registers its nglob with correct JSON before anything reads the row again -- but a
+    read in that window (e.g. a concurrent `stepup graph`, or a step that doesn't rerun
+    immediately) would hit a `json.JSONDecodeError` on the pickled bytes.
+    """
+    with contextlib.chdir(tmpdir):
+        with open("inp1.txt", "w"):
+            pass
+        with open("inp2.txt", "w"):
+            pass
+        async with wfp.db:
+            plan = wfp.find(Step, "./plan.py")
+            ngm = NGlobMulti.from_patterns(["inp*.txt"])
+            ngm.extend(["inp1.txt", "inp2.txt"])
+            wfp.register_nglob(plan, ngm)
+            plan.completed(StepHash(b"ok", None, b"inp_ok", None), False)
+            assert plan.get_state() == StepState.SUCCEEDED
+
+        # Simulate files changing while the director was not running:
+        # inp2.txt is deleted and inp3.txt appears.
+        os.remove("inp2.txt")
+        with open("inp3.txt", "w"):
+            pass
+
+        reporter = _FakeReporter()
+        await check_nglob_changes(wfp, wfp.db, reporter)
+
+        assert reporter.calls == [
+            ("STARTUP", "Checking 1 nglob(s) for new or deleted matches"),
+            ("DELETED", "inp2.txt"),
+            ("UPDATED", "inp3.txt"),
+        ]
+        async with wfp.db:
+            assert plan.get_state() == StepState.PENDING
+            assert plan.get_hash() is None
+            # The critical check: reading the persisted matches back must not raise,
+            # and must reflect the fresh scan, not the pickled (or stale) old one.
+            row = wfp.db.execute(
+                "SELECT data FROM nglob_multi WHERE node = ?", (plan.i,)
+            ).fetchone()
+            assert isinstance(row[0], str)
+            new_ngms = list(wfp.nglob_multis())
+            assert len(new_ngms) == 1
+            assert new_ngms[0].files() == ("inp1.txt", "inp3.txt")
