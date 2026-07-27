@@ -137,9 +137,9 @@ separated by slashes, where applicable.
 
 `duration` / `STEPUP_BUILD_DURATION` / `--duration`, `--no-duration`
 
-:   Set to `false` to disable the use of step duration information for scheduling decisions.
-    By default, StepUp uses the duration information of steps to prioritize the execution
-    of steps that are expected to take longer, which can lead to faster overall execution.
+:   Set to `false` to disable recording of step wall times as "duration" for future runs.
+    StepUp uses the duration information to prioritize the execution
+    of steps with the longest critical path (in time units) to any terminal node.
     While this is generally beneficial, it can result in non-deterministic execution order,
     which can be undesirable in some cases, such as testing.
 

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 INIT_SAFE_UPDATE = """
-CREATE TEMP TABLE IF NOT EXISTS safe_update(i INTEGER PRIMARY KEY, safe INTEGER)
+CREATE TEMP TABLE IF NOT EXISTS safe_update(i INTEGER PRIMARY KEY, safe INTEGER, safe_nh INTEGER)
 """
 
 
@@ -29,40 +29,62 @@ DELETE FROM safe_update
 """
 
 
-# Compute the new _safe value for every (recursive) product of a _check_safe-flagged step,
-# AND for the flagged step itself.
+# Compute the new _safe and _safe_ignoring_hold values for every (recursive) product of a
+# _check_safe-flagged step, AND for the flagged step itself.
 #
 # A product node can be reached through more than one flagged ancestor at once (e.g.
 # Step.detach()/recycle() flags a whole subtree via RECURSIVE_CHECK_WITH_PRODUCTS in step.py), so
-# duplicate rows for the same node id are possible and are resolved with MIN(safe): the value
-# derived through a longer (more ancestor-inclusive) chain is always <= the value from a shorter
-# chain, so MIN always recovers the correct, fully-chained answer rather than an arbitrary one.
+# duplicate rows for the same node id are possible and are resolved with MIN(safe)/MIN(safe_nh):
+# the value derived through a longer (more ancestor-inclusive) chain is always <= the value from
+# a shorter chain, so MIN always recovers the correct, fully-chained answer rather than an
+# arbitrary one.
 #
-# `trace` carries two values per node: `safe` is that node's own new _safe (what gets written
-# out) and depends only on its *ancestors'* states -- never its own, since a step's own state
-# must not affect its own _safe (e.g. `step_dispatch`'s partial index checks _safe against
-# PENDING steps, so folding this step's own state into _safe would make every PENDING step look
-# permanently unsafe). `chain` is `safe` with this node's own state additionally folded in, i.e.
-# exactly what its products need as their incoming ancestor-safety. Computing `chain` costs
-# nothing extra: the join that looks up a node's own state (`sp`) is already needed to identify
-# the node itself, so the two values fall out of the same row instead of requiring a second
-# downward pass (as an earlier version of this query did, broadcasting `safe` from creators to
-# products via a separate final CROSS JOIN).
+# `trace` carries four values per node: `safe`/`safe_nh` are that node's own new
+# _safe/_safe_ignoring_hold (what gets written out) and depend only on its *ancestors'*
+# states -- never its own, since a step's own state must not affect its own _safe (e.g.
+# `step_dispatch`'s partial index checks _safe against PENDING steps, so folding this step's
+# own state into _safe would make every PENDING step look permanently unsafe). `chain`/
+# `chain_nh` are `safe`/`safe_nh` with this node's own state additionally folded in, i.e.
+# exactly what its products need as their incoming ancestor-safety. Computing the "_nh"
+# ("no hold") twin costs nothing extra beyond the additional arithmetic: it walks the exact
+# same rows as `safe`/`chain`, just without ever consulting `_holding`, so no new traversal,
+# join, or index is needed for it. `chain` costs nothing extra either: the join that looks up
+# a node's own state (`sp`) is already needed to identify the node itself, so all four values
+# fall out of the same row instead of requiring a second downward pass (as an earlier version
+# of this query did, broadcasting `safe` from creators to products via a separate final CROSS
+# JOIN).
 SELECT_SAFE_UPDATE = f"""
-INSERT INTO safe_update(i, safe)
-WITH RECURSIVE trace(i, safe, chain) AS (
+INSERT INTO safe_update(i, safe, safe_nh)
+WITH RECURSIVE trace(i, safe, chain, safe_nh, chain_nh) AS (
     -- Seed directly at each _check_safe-flagged step, using its creator's already-computed
-    -- _safe and state (a root creator has no `step` row and is treated as trivially safe via
-    -- COALESCE).
+    -- _safe/_safe_ignoring_hold and state (a root creator has no `step` row and is treated as
+    -- trivially safe via COALESCE). creator_step._holding = 0 additionally excludes, for the
+    -- `safe`/`chain` (hold-respecting) pair only, a step whose creator has one or more open
+    -- `hold()` calls, so its children stay unsafe until the matching `release()` brings the
+    -- counter back to zero. The `safe_nh`/`chain_nh` pair mirrors this exactly but never
+    -- consults `_holding` at all, i.e. what `_safe` would be if nothing were ever held.
     SELECT
         s.node,
         COALESCE(
             creator_step._safe AND
-                creator_step.state IN ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value}),
+                creator_step.state IN ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value}) AND
+                creator_step._holding = 0,
             1
         ),
         COALESCE(
             creator_step._safe AND
+                creator_step.state IN ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value}) AND
+                creator_step._holding = 0,
+            1
+        ) AND s.state IN ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
+            AND s._holding = 0,
+        COALESCE(
+            creator_step._safe_ignoring_hold AND
+                creator_step.state IN ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value}),
+            1
+        ),
+        COALESCE(
+            creator_step._safe_ignoring_hold AND
                 creator_step.state IN ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value}),
             1
         ) AND s.state IN ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
@@ -73,23 +95,29 @@ WITH RECURSIVE trace(i, safe, chain) AS (
 
     UNION ALL
 
-    -- Follow (recursive) products: a product's own new _safe is simply the `chain` inherited
-    -- from its creator. `chain` is refreshed in the same row to also fold in the product's own
-    -- state, ready for use by *its* products in the next iteration.
+    -- Follow (recursive) products: a product's own new safe/safe_nh is simply the
+    -- chain/chain_nh inherited from its creator. Both are refreshed in the same row to also
+    -- fold in the product's own state (and, for chain only, its own _holding), ready for use
+    -- by *its* products in the next iteration.
     SELECT
         sp.node,
         trace.chain,
         trace.chain AND sp.state IN ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
+            AND sp._holding = 0,
+        trace.chain_nh,
+        trace.chain_nh AND sp.state IN ({StepState.RUNNING.value}, {StepState.SUCCEEDED.value})
     FROM trace
     JOIN node AS product ON product.creator = trace.i
     JOIN step AS sp ON sp.node = product.i
 )
-SELECT i, MIN(safe) FROM trace GROUP BY i
+SELECT i, MIN(safe), MIN(safe_nh) FROM trace GROUP BY i
 """
 
 
 APPLY_SAFE_UPDATE = """
-UPDATE step SET _safe = (SELECT safe FROM safe_update WHERE safe_update.i = step.node)
+UPDATE step SET
+    _safe = (SELECT safe FROM safe_update WHERE safe_update.i = step.node),
+    _safe_ignoring_hold = (SELECT safe_nh FROM safe_update WHERE safe_update.i = step.node)
 WHERE step.node IN (SELECT i FROM safe_update)
 """
 

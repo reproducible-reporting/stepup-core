@@ -13,6 +13,7 @@ from path import Path
 
 from .cattrs import json_converter
 from .enums import REGULAR_OUTPUT_STATES, FileState, Need, StepState
+from .exceptions import GraphError
 from .file import File
 from .hash import FileHash, StepHash
 from .nglob import NGlobMulti
@@ -40,8 +41,15 @@ RESERVED_ENV_VARS = frozenset(
 # node.detached and resource availability are deliberately excluded: both live outside the
 # step table (node/step_resource respectively), so a partial index on step cannot express
 # them; SELECT_NEXT_STEP re-checks them lazily per examined index row instead.
+#
+# The second disjunct lets a hash-checkable step bypass an active hold() on one of its
+# (recursive) creators: verifying a stored hash is cheap and "unlocks more work early" (see
+# SELECT_NEXT_STEP's `_has_hash DESC` ORDER BY term), and hold() exists to control the
+# dispatch *order* of real reruns, not to delay cheap checks. A hash mismatch still produces
+# a RunJob (Executor.try_skip_job -> _reset_step_to_pending -> delete_hash), which drops
+# _has_hash back to 0 and is therefore gated normally by _safe (including hold) from then on.
 STEP_DISPATCH_WHERE = f"""step.state = {StepState.PENDING.value} AND
-    step._safe AND
+    (step._safe OR (step._has_hash AND step._safe_ignoring_hold)) AND
     NOT step.postponed AND
     step._implied_need > {Need.OPTIONAL.value} AND
     step._ready"""
@@ -79,6 +87,19 @@ CREATE TABLE IF NOT EXISTS step (
     -- are in a state that allows queuing this step (RUNNING or SUCCEEDED).
     _check_safe INTEGER NOT NULL CHECK(_check_safe IN (0, 1)),
     -- Whether recent changes to this step imply updates of the _safe metadata field of others.
+    _holding INTEGER NOT NULL CHECK(_holding >= 0) DEFAULT 0,
+    -- Number of open (unmatched) `hold()` calls on this step, i.e. how many `release()`
+    -- calls are still owed. Nonzero means this step is holding back its (recursive)
+    -- children from dispatch. Consulted by SELECT_SAFE_UPDATE alongside creator.state
+    -- when computing a descendant's _safe.
+    _safe_ignoring_hold INTEGER NOT NULL CHECK(_safe_ignoring_hold IN (0, 1)) DEFAULT 0,
+    -- Like _safe, but computed as if no step anywhere in the (recursive) creator chain were
+    -- holding, i.e. the same ancestor RUNNING/SUCCEEDED walk without ever consulting
+    -- _holding. Computed alongside _safe by SELECT_SAFE_UPDATE. Used by STEP_DISPATCH_WHERE
+    -- to let hash-checkable (_has_hash) steps bypass an active hold: a step that is only
+    -- unsafe because of a hold (_safe_ignoring_hold true, _safe false) may still be verified
+    -- promptly, since checking is cheap and a hash mismatch falls back to the ordinary
+    -- hold-gated RunJob path (see STEP_DISPATCH_WHERE's comment).
     _implied_need INTEGER NOT NULL CHECK(
         _implied_need >= {min(Need)} AND _implied_need <= {max(Need)}
     ),
@@ -102,7 +123,13 @@ CREATE TABLE IF NOT EXISTS step (
     _check_ready INTEGER NOT NULL CHECK(_check_ready IN (0, 1)) DEFAULT 1,
     -- Whether _ready must be recomputed because something relevant to it changed.
 
-    FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
+    FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE,
+    -- "Ignoring hold" can never be a *stricter* condition than "respecting hold": every hold is
+    -- a restriction, never a relaxation, of dispatchability. This is a structural guarantee that
+    -- SELECT_SAFE_UPDATE's safe/safe_nh sub-expressions (stepup/core/scheduler.py) never
+    -- silently diverge in the wrong direction, e.g. if a future third hold-bypass condition is
+    -- added and one of the (then six-plus) sub-expressions is miscopied.
+    CHECK (_safe_ignoring_hold >= _safe)
 ) WITHOUT ROWID;
 
 -- Indexes for efficient querying
@@ -190,6 +217,22 @@ END;
 CREATE TRIGGER IF NOT EXISTS step_flag_check_safe AFTER UPDATE OF state ON step
 BEGIN
     UPDATE step SET _check_safe = 1 WHERE node = NEW.node;
+END;
+
+-- _holding only ever grows/shrinks while this step's own execution is live and RUNNING:
+-- hold()/release() (Director.hold()/Director.release() in director.py) resolve their job_i
+-- through Scheduler.get_step(), which only has an entry while a job is in flight. So a step
+-- leaving RUNNING for any reason -- normal completion, a hash-check rerun, mark_step_pending(),
+-- or a crash-recovery reset (startup.py resets RUNNING -> FAILED via a raw UPDATE, not
+-- through Step.set_state(), which is exactly why this lives in a trigger instead of being
+-- reset at each such call site) -- means the execution that owned the counter is gone, and any
+-- leftover count must not survive into the step's next attempt. Firing on every UPDATE OF
+-- state (rather than only the paths above) also makes this hold for call sites added later
+-- without anyone needing to remember _holding exists.
+CREATE TRIGGER IF NOT EXISTS step_reset_holding AFTER UPDATE OF state ON step
+WHEN NEW.state != {StepState.RUNNING.value} AND NEW._holding != 0
+BEGIN
+    UPDATE step SET _holding = 0 WHERE node = NEW.node;
 END;
 
 -- Clear postponed once a step reaches a completed state, so a
@@ -536,6 +579,7 @@ class Step(Node):
         safe: bool = False,
         need: Need = Need.DEFAULT,
         subshell: bool = False,
+        duration: float | None = None,
         **kwargs,  # workdir is consumed by create_label, not used here
     ):
         """Create extra information in the database about this node.
@@ -556,19 +600,32 @@ class Step(Node):
         `_ready`/`_check_ready` need no explicit value.
         Their `DEFAULT`s (0 and 1) are exactly the conservative "not yet known, must be recomputed"
         state a new/recycled step should start in.
+
+        `duration` falls back to the column's own `DEFAULT` (1.0) when not given,
+        since a brand-new step has no prior measurement to seed it with.
+
+        `_safe_ignoring_hold` is seeded to the same value as `_safe` (rather than left at its
+        own `DEFAULT 0`). A step created with `safe=True` -- in practice, only the root
+        `plan.py` step -- also gets `_check_safe = 0` at creation (not flagged for recompute),
+        unlike an ordinary step (`safe=False`, hence `check_safe = 1`, flagged immediately).
+        Without this seeding, the root step's `_safe_ignoring_hold` would sit at its unseeded
+        `DEFAULT 0` until its own state next changes and re-flags `_check_safe`. Every
+        top-level step's `_safe_ignoring_hold` chain is seeded from the root's, via
+        `creator_step._safe_ignoring_hold` in `SELECT_SAFE_UPDATE`.
         """
         self.db.execute("DELETE FROM step WHERE node = :node", {"node": self.i})
         self.db.execute(
             "INSERT INTO step "
-            "(node, state, need, subshell, _safe, _check_safe, _implied_need, _check_after, "
-            "_has_hash) "
-            "VALUES(:node, :state, :need, :subshell, :safe, :check_safe, "
+            "(node, state, need, duration, subshell, _safe, _check_safe, _safe_ignoring_hold, "
+            "_implied_need, _check_after, _has_hash) "
+            "VALUES(:node, :state, :need, :duration, :subshell, :safe, :check_safe, :safe, "
             ":implied_need, :check_need, "
             "(SELECT EXISTS(SELECT 1 FROM step_hash WHERE node = :node)))",
             {
                 "node": self.i,
                 "need": need.value,
                 "state": StepState.PENDING.value,
+                "duration": 1.0 if duration is None else duration,
                 "subshell": int(subshell),
                 "safe": int(safe),
                 "check_safe": int(not safe),
@@ -681,6 +738,7 @@ class Step(Node):
         subshell: bool = False,
         resources: dict[str, int] | None = None,
         env_overrides: dict[str, str] | None = None,
+        duration: float | None = None,
         **kwargs,
     ):
         """Update the mutable declared properties of this step after a full recycle.
@@ -691,13 +749,22 @@ class Step(Node):
         the path lists were verified by `can_recycle`
         and the `_safe` metadata is recomputed by the scheduler
         via the `_check_safe` flag set by `Step.recycle`.
+
+        `duration`, when `None`, deliberately leaves the recycled step's existing duration
+        (its previous measurement, if any) untouched, unlike a brand-new step's default.
+
+        `_holding` is always reset to 0: a recycled step cannot still be inside a `hold()`
+        block from a previous run, since that block would have released it (or failed)
+        before the step could be recycled.
         """
         self.db.execute(
-            "UPDATE step SET need = ?, subshell = ? WHERE node = ?",
+            "UPDATE step SET need = ?, subshell = ?, _holding = 0 WHERE node = ?",
             (need.value, int(subshell), self.i),
         )
         self.set_resources(resources)
         self.set_env_overrides(env_overrides)
+        if duration is not None:
+            self.set_duration(duration)
 
     #
     # Getters and setters
@@ -791,6 +858,45 @@ class Step(Node):
 
     def set_duration(self, duration: float):
         self.db.execute("UPDATE step SET duration = ? WHERE node = ?", (duration, self.i))
+
+    def is_holding(self) -> bool:
+        """Return whether this step is currently holding back its children from dispatch."""
+        row = self.db.execute("SELECT _holding FROM step WHERE node = ?", (self.i,)).fetchone()
+        return row[0] > 0
+
+    def hold(self):
+        """Hold back this step's (recursive) children from dispatch until a matching `release()`.
+
+        Re-entrant: nested `hold()` calls on the same step increment a counter, and children
+        stay held back until the outermost `release()` brings the counter back to zero.
+        """
+        row = self.db.execute(
+            "UPDATE step SET _holding = _holding + 1 WHERE node = ? RETURNING _holding", (self.i,)
+        ).fetchone()
+        if row[0] == 1:
+            # Only a 0 -> 1 transition can newly block any descendant's dispatch eligibility;
+            # nested hold() calls on an already-holding step change nothing observable.
+            self._check_with_products()
+
+    def release(self):
+        """Release one `hold()` on this step, decrementing its open-hold counter.
+
+        Raises
+        ------
+        GraphError
+            If this step is not currently holding, i.e. `release()` was called more often
+            than `hold()`.
+        """
+        row = self.db.execute(
+            "UPDATE step SET _holding = _holding - 1 WHERE node = ? AND _holding > 0 "
+            "RETURNING _holding",
+            (self.i,),
+        ).fetchone()
+        if row is None:
+            raise GraphError(f"Step {self.key()} is not holding; release() has no matching hold().")
+        if row[0] == 0:
+            # Only a 1 -> 0 transition can newly unblock any descendant's dispatch eligibility.
+            self._check_with_products()
 
     #
     # Get step information

@@ -70,7 +70,9 @@ def _insert_step(
     state,
     *,
     safe=False,
+    safe_ignoring_hold=None,
     check_safe=False,
+    holding=False,
     need=Need.DEFAULT,
     implied_need=None,
     duration=1.0,
@@ -88,9 +90,16 @@ def _insert_step(
     that set up dependencies/input files and want to exercise the real readiness
     computation: after wiring up the inputs, call `_recompute_ready(con)` before querying
     SELECT_NEXT_STEP.
+
+    `safe_ignoring_hold` defaults to `safe`, mirroring `Step.initialize()`'s seeding of
+    `_safe_ignoring_hold` from the same `safe` value; pass it explicitly to set up a step
+    that is only unsafe because of an active hold
+    (`safe=False, safe_ignoring_hold=True`).
     """
     if implied_need is None:
         implied_need = need
+    if safe_ignoring_hold is None:
+        safe_ignoring_hold = safe
     con.execute(
         "INSERT INTO node (i, kind, label, creator, detached) VALUES (?, 'step', ?, ?, ?)",
         (node_id, f"echo {node_id}", creator_id, detached),
@@ -98,9 +107,9 @@ def _insert_step(
     con.execute(
         "INSERT INTO step"
         " (node, state, need, duration, postpone_count,"
-        " subshell, _safe, _check_safe, _implied_need, _tail_time, _check_after,"
-        " _ready, _check_ready)"
-        " VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?)",
+        " subshell, _safe, _check_safe, _safe_ignoring_hold, _holding, _implied_need,"
+        " _tail_time, _check_after, _ready, _check_ready)"
+        " VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             node_id,
             state.value,
@@ -108,6 +117,8 @@ def _insert_step(
             duration,
             safe,
             check_safe,
+            safe_ignoring_hold,
+            holding,
             implied_need.value,
             tail_time,
             check_after,
@@ -202,6 +213,11 @@ def _get_runnable_ids(con, need_threshold=Need.OPTIONAL):
 def _get_safe(con):
     """Return a dict mapping step node id -> _safe value."""
     return dict(con.execute("SELECT node, _safe FROM step").fetchall())
+
+
+def _get_safe_ignoring_hold(con):
+    """Return a dict mapping step node id -> _safe_ignoring_hold value."""
+    return dict(con.execute("SELECT node, _safe_ignoring_hold FROM step").fetchall())
 
 
 def _run_update_meta_safe(con):
@@ -351,6 +367,102 @@ def test_double_flagged_ancestor_chain_computes_correct_safe(con):
     safe = _get_safe(con)
     assert safe[3] == 0  # C is unsafe: its real creator S failed
     assert safe[4] == 0  # P is unsafe: the old query incorrectly produced 1 here
+
+
+def test_holding_creator_keeps_child_unsafe(con):
+    """A child of a RUNNING but holding creator stays unsafe, unlike the non-holding case."""
+    _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True, holding=True)
+    _insert_step(con, 3, 2, StepState.PENDING)
+    _run_update_meta_safe(con)
+    assert _get_safe(con)[3] == 0
+
+
+def test_holding_counter_above_one_keeps_child_unsafe(con):
+    """A `_holding` counter above 1 (nested `hold()` calls) still keeps children unsafe,
+    confirming SELECT_SAFE_UPDATE's `_holding = 0` check, not a boolean truthiness check.
+    """
+    _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True, holding=2)
+    _insert_step(con, 3, 2, StepState.PENDING)
+    _run_update_meta_safe(con)
+    assert _get_safe(con)[3] == 0
+
+
+def test_release_makes_previously_held_child_safe(con):
+    """A child of a RUNNING creator becomes safe once the creator stops holding."""
+    _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True, holding=False)
+    _insert_step(con, 3, 2, StepState.PENDING)
+    _run_update_meta_safe(con)
+    assert _get_safe(con)[3] == 1
+
+
+def test_holding_grandchild_blocks_only_its_own_children(con):
+    """Holding only affects the holding step's own children, not itself nor siblings.
+
+    Chain: root -> A(RUNNING) -> B(RUNNING, holding) -> C(PENDING). B itself is safe (its
+    creator A is RUNNING and not holding), but C is unsafe because its creator B is holding.
+    """
+    _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True)
+    _insert_step(con, 3, 2, StepState.RUNNING, holding=True)
+    _insert_step(con, 4, 3, StepState.PENDING)
+    _run_update_meta_safe(con)
+    safe = _get_safe(con)
+    assert safe[3] == 1  # B is safe: creator A is RUNNING and not holding
+    assert safe[4] == 0  # C is unsafe: its creator B is holding
+
+
+def test_grandchild_safe_again_after_grandparent_stops_holding(con):
+    """Once an ancestor's `_holding` clears, a previously blocked grandchild becomes safe."""
+    _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True)
+    _insert_step(con, 3, 2, StepState.RUNNING, holding=False)
+    _insert_step(con, 4, 3, StepState.PENDING)
+    _run_update_meta_safe(con)
+    safe = _get_safe(con)
+    assert safe[3] == 1
+    assert safe[4] == 1
+
+
+def test_holding_creator_keeps_child_safe_ignoring_hold(con):
+    """A child of a RUNNING but holding creator is _safe=0 but _safe_ignoring_hold=1.
+
+    Same setup as `test_holding_creator_keeps_child_unsafe`, but also checks the "no hold"
+    twin computed by the same SELECT_SAFE_UPDATE pass: the only thing that makes the child
+    unsafe here is the hold, so ignoring it must flip the answer back to safe.
+    """
+    _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True, holding=True)
+    _insert_step(con, 3, 2, StepState.PENDING)
+    _run_update_meta_safe(con)
+    assert _get_safe(con)[3] == 0
+    assert _get_safe_ignoring_hold(con)[3] == 1
+
+
+def test_failed_creator_keeps_child_unsafe_ignoring_hold_too(con):
+    """A child of a FAILED (not holding) creator is unsafe both with and without hold.
+
+    Confirms _safe_ignoring_hold is not simply "always safe": it still respects the
+    ordinary RUNNING/SUCCEEDED ancestor requirement, just not _holding.
+    """
+    _insert_step(con, 2, 1, StepState.FAILED, check_safe=True)
+    _insert_step(con, 3, 2, StepState.PENDING)
+    _run_update_meta_safe(con)
+    assert _get_safe(con)[3] == 0
+    assert _get_safe_ignoring_hold(con)[3] == 0
+
+
+def test_holding_grandchild_safe_ignoring_hold_propagates(con):
+    """_safe_ignoring_hold propagates down a chain exactly like _safe, minus the hold term.
+
+    Chain: root -> A(RUNNING) -> B(RUNNING, holding) -> C(PENDING). C is unsafe (its
+    creator B is holding) but safe-ignoring-hold, since both A and B are otherwise
+    RUNNING/not-failed.
+    """
+    _insert_step(con, 2, 1, StepState.RUNNING, check_safe=True)
+    _insert_step(con, 3, 2, StepState.RUNNING, holding=True)
+    _insert_step(con, 4, 3, StepState.PENDING)
+    _run_update_meta_safe(con)
+    safe = _get_safe(con)
+    safe_nh = _get_safe_ignoring_hold(con)
+    assert safe[4] == 0
+    assert safe_nh[4] == 1
 
 
 # -----------------------------------------------------------------------
@@ -2006,6 +2118,75 @@ def test_checkable_step_no_hash_not_checkable(con):
     assert _get_checkable_ids(con) == []
 
 
+def test_checkable_step_bypasses_hold(con):
+    """A PENDING step with a stored hash is checkable even while _safe=0 due to a hold,
+    as long as _safe_ignoring_hold is 1 (i.e. the hold is the *only* reason it's unsafe).
+
+    This exercises STEP_DISPATCH_WHERE's `_safe OR (_has_hash AND _safe_ignoring_hold)`
+    disjunct, which lets a cheap hash check bypass an active hold().
+    """
+    _insert_step(
+        con,
+        2,
+        1,
+        StepState.PENDING,
+        safe=False,
+        safe_ignoring_hold=True,
+        implied_need=Need.DEFAULT,
+    )
+    _insert_step_hash(con, 2)
+    assert _get_checkable_ids(con) == [2]
+
+
+def test_unsafe_for_other_reasons_step_not_checkable_despite_hash(con):
+    """A PENDING step with a stored hash but _safe_ignoring_hold=0 stays uncheckable.
+
+    Confirms the bypass only exempts the hold itself: if the step would be unsafe even
+    ignoring any hold (e.g. a real ancestor failure), it must not be dispatched.
+    """
+    _insert_step(
+        con,
+        2,
+        1,
+        StepState.PENDING,
+        safe=False,
+        safe_ignoring_hold=False,
+        implied_need=Need.DEFAULT,
+    )
+    _insert_step_hash(con, 2)
+    assert _get_checkable_ids(con) == []
+
+
+def test_runjob_stays_gated_by_hold_despite_checkable_sibling(con):
+    """A hash-less (must-run) step stays blocked by an active hold, even alongside a
+    checkable sibling that bypasses it -- SELECT_NEXT_STEP's LIMIT 1 must not confuse the
+    two: the checkable one is returned, the runnable one is not (yet) a candidate.
+    """
+    _insert_step(
+        con,
+        2,
+        1,
+        StepState.PENDING,
+        safe=False,
+        safe_ignoring_hold=True,
+        implied_need=Need.DEFAULT,
+        tail_time=100.0,
+    )
+    _insert_step_hash(con, 2)
+    _insert_step(
+        con,
+        3,
+        1,
+        StepState.PENDING,
+        safe=False,
+        safe_ignoring_hold=True,
+        implied_need=Need.DEFAULT,
+        tail_time=1.0,
+    )
+    assert _get_checkable_ids(con) == [2]
+    assert _get_runnable_ids(con) == []
+
+
 def test_running_step_not_checkable(con):
     """A RUNNING step is excluded — only PENDING steps are candidates."""
     _insert_step(con, 2, 1, StepState.RUNNING, safe=True, implied_need=Need.DEFAULT)
@@ -2353,9 +2534,11 @@ async def test_child_of_running_step_dispatched_as_soon_as_created(wfp: Workflow
     # with `_safe=0` like any other step. Root has no `step` row, so `_update_meta_safe()`
     # can never derive the boot step's own `_safe` from its creator. Bring it in line with
     # the real bootstrap so the scheduler can dispatch it in the first place.
+    # `_safe_ignoring_hold` is set alongside `_safe`, matching `Step.create()`'s own seeding
+    # of a `safe=True` step, and to satisfy the `_safe_ignoring_hold >= _safe` table CHECK.
     async with wfp.db:
         wfp.db.execute(
-            "UPDATE step SET _safe = 1, _check_safe = 0 WHERE node = ?",
+            "UPDATE step SET _safe = 1, _safe_ignoring_hold = 1, _check_safe = 0 WHERE node = ?",
             (wfp.find(Step, "./plan.py").i,),
         )
 

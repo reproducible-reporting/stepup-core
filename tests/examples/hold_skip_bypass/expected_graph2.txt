@@ -1,0 +1,52 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   root:
+              source   file:plan.py
+             product   file:work.py
+             product   step:./work.py --sleep=1.0 rerun rerun.txt
+             product   step:./work.py cached cached.txt
+
+file:work.py
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:./work.py --sleep=1.0 rerun rerun.txt
+                sink   step:./work.py cached cached.txt
+
+step:./work.py cached cached.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./plan.py
+              source   file:work.py
+             product   file:cached.txt
+                sink   file:cached.txt
+
+file:cached.txt
+               state = BUILT
+             creator   step:./work.py cached cached.txt
+              source   step:./work.py cached cached.txt
+
+step:./work.py --sleep=1.0 rerun rerun.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./plan.py
+              source   file:work.py
+             product   file:rerun.txt
+                sink   file:rerun.txt
+
+file:rerun.txt
+               state = BUILT
+             creator   step:./work.py --sleep=1.0 rerun rerun.txt
+              source   step:./work.py --sleep=1.0 rerun rerun.txt

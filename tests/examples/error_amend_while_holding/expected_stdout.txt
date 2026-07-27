@@ -1,0 +1,16 @@
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+     FAIL │ ./plan.py
+──────────────────────────────── Failed command ────────────────────────────────
+./plan.py  # exit=1
+──────────────────────────────── Standard error ────────────────────────────────
+(stripped)
+────────────────────────────────────────────────────────────────────────────────
+ DIRECTOR │ Ran 1 job(s).
+  WARNING │ 1 step(s) failed.
+  WARNING │ Scheduler is put on hold. Not reporting pending steps.
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

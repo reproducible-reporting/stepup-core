@@ -1,0 +1,68 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   root:
+              source   file:plan.py
+             product   file:work.py
+             product   step:./work.py fast fast.txt
+             product   step:./work.py medium medium.txt
+             product   step:./work.py slow slow.txt
+
+file:work.py
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:./work.py fast fast.txt
+                sink   step:./work.py medium medium.txt
+                sink   step:./work.py slow slow.txt
+
+step:./work.py fast fast.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./plan.py
+              source   file:work.py
+             product   file:fast.txt
+                sink   file:fast.txt
+
+file:fast.txt
+               state = BUILT
+             creator   step:./work.py fast fast.txt
+              source   step:./work.py fast fast.txt
+
+step:./work.py medium medium.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./plan.py
+              source   file:work.py
+             product   file:medium.txt
+                sink   file:medium.txt
+
+file:medium.txt
+               state = BUILT
+             creator   step:./work.py medium medium.txt
+              source   step:./work.py medium medium.txt
+
+step:./work.py slow slow.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./plan.py
+              source   file:work.py
+             product   file:slow.txt
+                sink   file:slow.txt
+
+file:slow.txt
+               state = BUILT
+             creator   step:./work.py slow slow.txt
+              source   step:./work.py slow slow.txt

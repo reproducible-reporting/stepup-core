@@ -49,6 +49,7 @@ def captured(monkeypatch):
         need=Need.DEFAULT,
         resources=None,
         shell=False,
+        duration=None,
     ):
         calls.append(
             {
@@ -60,6 +61,7 @@ def captured(monkeypatch):
                 "workdir": workdir,
                 "need": need,
                 "resources": resources,
+                "duration": duration,
             }
         )
         return StepInfo(command, list(inp), list(env), list(out), list(vol), workdir)
@@ -516,6 +518,11 @@ def test_vol_in_step(captured):
 def test_resources_in_step(captured):
     call("./s.py", "fn", resources={"cpu": 2})
     assert captured[0]["resources"] == {"cpu": 2}
+
+
+def test_duration_in_step(captured):
+    call("./s.py", "fn", duration=3.5)
+    assert captured[0]["duration"] == 3.5
 
 
 def test_env_tracked(captured):

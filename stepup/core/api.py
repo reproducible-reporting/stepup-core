@@ -20,12 +20,14 @@ pass a `str` or a `path.Path` to preserve them.
 import contextlib
 import json
 import keyword
+import logging
+import math
 import os
 import re
 import shlex
 import sys
 import tomllib
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from runpy import run_path
 from types import SimpleNamespace
 from typing import Any
@@ -36,6 +38,7 @@ from path import Path
 from .cattrs import json_converter, yaml_converter
 from .enums import Need
 from .exceptions import (
+    AmendWhileHoldingError,
     EnvVarError,
     InputNotFoundError,
     PathError,
@@ -70,6 +73,7 @@ __all__ = (
     "getinfo",
     "glob",
     "graph",
+    "hold",
     "loadns",
     "plan",
     "render_jinja",
@@ -79,6 +83,8 @@ __all__ = (
     "static",
     "step",
 )
+
+logger = logging.getLogger(__name__)
 
 
 #
@@ -226,6 +232,7 @@ def step(
     resources: dict[str, int] | str | None = None,
     shell: bool = False,
     env_overrides: dict[str, str] | None = None,
+    duration: float | None = None,
 ) -> StepInfo:
     """Add a step to the build graph.
 
@@ -281,6 +288,12 @@ def step(
         [`run()`][stepup.core.api.run] and [`plan()`][stepup.core.api.plan] populate this
         automatically from leading `VAR=value` assignments in `command`;
         callers of `step()` directly must pass this argument explicitly.
+    duration
+        An initial estimate of the step's wall time in seconds, used by the scheduler
+        (when `--duration` is enabled) to prioritize execution order before any measurement
+        is available. Once the step has run, the scheduler overwrites this with the measured
+        duration. When not given, a new step starts with a default estimate of `1.0`; a
+        recycled step keeps its previously measured (or given) duration.
 
     Returns
     -------
@@ -291,8 +304,8 @@ def step(
     ------
     StepUpError
         When `command` is empty, when an env override collides with an `env` dependency
-        or a reserved variable name, or when a resource quantity is not a strictly
-        positive integer.
+        or a reserved variable name, when a resource quantity is not a strictly
+        positive integer, or when `duration` is not a finite non-negative number.
     PathError
         When `inp`, `out`, or `vol` contain a directory.
 
@@ -315,6 +328,20 @@ def step(
     # Validate the command
     if len(command.strip()) == 0:
         raise StepUpError("The command must not be empty.")
+
+    # Validate the duration.
+    # `bool` is a subclass of `int`, so it is excluded explicitly to catch callers confusing
+    # this keyword-only argument for one of `step()`'s several `bool` flags (e.g. `optional`).
+    # `inf` is rejected too: an infinite duration estimate cannot be a genuine measurement
+    # and almost certainly indicates a caller bug, e.g. an unguarded division.
+    if duration is not None and (
+        isinstance(duration, bool)
+        or not isinstance(duration, int | float)
+        or math.isnan(duration)
+        or math.isinf(duration)
+        or duration < 0
+    ):
+        raise StepUpError(f"Invalid duration: {duration!r}. Must be a non-negative number.")
 
     # Validate the environment overrides against the env dependencies and reserved names.
     if env_overrides is not None:
@@ -351,8 +378,10 @@ def step(
     elif not isinstance(resources, dict):
         raise TypeError("The resources argument must be a dict, a string or None.")
     # At this stage, we do not allow non-positive quantities of resources.
+    # `bool` is a subclass of `int` and is excluded explicitly, for the same reason as
+    # the `duration` check above.
     for resource, quantity in resources.items():
-        if not isinstance(quantity, int) or quantity <= 0:
+        if isinstance(quantity, bool) or not isinstance(quantity, int) or quantity <= 0:
             raise StepUpError(
                 f"Invalid quantity for resource '{resource}': {quantity}. "
                 "Must be a strictly positive integer."
@@ -383,6 +412,7 @@ def step(
         resources,
         shell,
         env_overrides,
+        duration,
     )
 
     # Return a StepInfo instance to facilitate the definition of follow-up steps
@@ -402,6 +432,7 @@ def call(
     planning: bool = False,
     resources: dict[str, int] | str | None = None,
     args_file: StrPath | None = None,
+    duration: float | None = None,
     **kwargs: Any,
 ) -> StepInfo:
     """Register a step that calls a named function in an executable.
@@ -441,6 +472,8 @@ def call(
         When given, arguments are written to this file (format inferred from extension)
         and passed via `--inp=<args_file>`; when absent, a JSON string is embedded
         directly in the command.
+    duration
+        See [`step()`][stepup.core.api.step] for more information.
     **kwargs
         Additional keyword arguments forwarded to the function.
         Must be serializable to JSON by the `cattrs` JSON converter.
@@ -535,6 +568,7 @@ def call(
         workdir=workdir,
         need=need,
         resources=resources,
+        duration=duration,
     )
 
 
@@ -546,6 +580,19 @@ AMEND_HISTORY = {
     "out": set(),
     "vol": set(),
 }
+
+
+class _HoldState:
+    """How many `hold()` blocks the current process is nested inside of.
+
+    Incremented/decremented by `hold()`'s `__enter__`/`__exit__`. `amend()` only checks
+    `holding > 0`, so re-entrant nesting is transparent to it.
+    """
+
+    holding = 0
+
+
+_HOLD_STATE = _HoldState()
 
 
 def amend(
@@ -586,6 +633,17 @@ def amend(
         The director postpones the step once the missing inputs become available.
         Note this call blocks until any amended input still matching an unconfirmed static
         tree entry is hashed, so it may take a while for large files.
+    AmendWhileHoldingError
+        When `inp` is non-empty and this is called anywhere in the calling step's execution
+        while a `with hold():` block of that same step is still open.
+        This holds even for an input that would have resolved instantly and harmlessly:
+        the check does not look at whether the input is actually available, only at whether
+        the calling step is holding.
+        `env`, `out`, and `vol` are never involved in this check: unlike `inp`, none of them
+        can depend on a held-back step's output, so an `env`/`out`/`vol`-only amend can never
+        deadlock and is always allowed, even while holding.
+        Move the code that calls `amend(inp=...)` before entering the `with hold():` block
+        instead.
 
     Notes
     -----
@@ -614,7 +672,22 @@ def amend(
     out_paths = coerce_paths(out)
     vol_paths = coerce_paths(vol)
     if all(len(collection) == 0 for collection in [inp_paths, env_deps, out_paths, vol_paths]):
+        # Nothing is actually being amended: e.g. `run.py`/`render_jinja.py` call
+        # `amend(inp=get_local_import_paths())` unconditionally after a Python step runs,
+        # and that list can be empty. Such a no-op call must not trip the hold() guard
+        # below, or an unrelated held step could fail through no fault of its own code.
         return
+    if _HOLD_STATE.holding > 0 and len(inp_paths) > 0:
+        # Only `inp` can deadlock a hold(): the director can only postpone an amend() over
+        # unavailable/unfresh *inputs* (see `Workflow.amend_step`), and the input's producer
+        # could be a step held back by this same `hold()` block. `env`, `out`, and `vol` are
+        # never checked against another step's output, so they can never trigger that
+        # postponement and are safe to amend while holding, e.g. internal callers such as
+        # `getenv()` (env-only) and `dumpns()` (out-only).
+        raise AmendWhileHoldingError(
+            "amend() cannot be called with `inp` while this step has an open hold() block. "
+            "Call the amend-triggering code before entering the `with hold():` block."
+        )
     env_deps = set(env_deps)
     with subs_env_vars() as subs:
         su_inp_paths = {subs(inp_path).normpath() for inp_path in inp_paths}
@@ -662,6 +735,58 @@ def amend(
     AMEND_HISTORY["env"].update(env_deps)
     AMEND_HISTORY["out"].update(tr_out_paths)
     AMEND_HISTORY["vol"].update(tr_vol_paths)
+
+
+@contextlib.contextmanager
+def hold() -> Iterator[None]:
+    """Hold back steps declared within this block and schedule them after the block exits.
+
+    Use this to wrap a batch of `run()`/`step()`/`plan()` calls (typically in a `plan.py`)
+    so the whole batch becomes simultaneously eligible for dispatch once the block closes,
+    instead of each child being dispatched as soon as it is declared. This lets the existing
+    duration-based scheduling order the batch by cost, rather than by declaration order.
+
+    `hold()` is re-entrant: nesting `with hold():` blocks (directly, or through a helper
+    function called while already holding) is safe. Children declared anywhere in the nested
+    scopes stay held back until the **outermost** block exits, not the innermost one.
+
+    No `amend(inp=...)` call may be made anywhere in the calling step's execution while any
+    `hold()` block is open, not even one that would resolve instantly and harmlessly: it would
+    risk a deadlock, since the step cannot release the hold without the amended input, and the
+    input's producer cannot run until the hold is released. See `amend()`'s
+    `AmendWhileHoldingError`. `amend(env=..., out=..., vol=...)` carries no such risk and
+    remains allowed while holding, since none of those can depend on a held-back step's output.
+
+    If the block raises, releasing the hold is still attempted, but a failure of that release
+    call never replaces the original exception: it is logged instead, so the real cause of the
+    failure is not masked by an unrelated RPC problem. `_HOLD_STATE.holding` is only decremented
+    once `release()` is confirmed to have succeeded, so `amend()`'s guard correctly stays active
+    if the release call could not be confirmed.
+    """
+    job_i = _get_job_i()
+    RPC_CLIENT.call.hold(job_i)
+    _HOLD_STATE.holding += 1
+    try:
+        yield
+    finally:
+        # Capture this before the nested try/except below: once that except clause catches a
+        # release() failure, sys.exc_info() would reflect that new exception instead of one
+        # already propagating from `yield`.
+        had_exception = sys.exc_info()[0] is not None
+        try:
+            RPC_CLIENT.call.release(job_i)
+        except Exception:
+            if had_exception:
+                logger.warning(
+                    "release() failed while another exception was propagating from a "
+                    "`with hold():` block; suppressing the release() failure to avoid "
+                    "masking the original error.",
+                    exc_info=True,
+                )
+            else:
+                raise
+        else:
+            _HOLD_STATE.holding -= 1
 
 
 def getinfo() -> StepInfo:
@@ -734,6 +859,7 @@ def run(
     optional: bool = False,
     shell: bool = False,
     resources: dict[str, int] | str | None = None,
+    duration: float | None = None,
 ) -> StepInfo:
     """Add a command to the build graph.
 
@@ -777,7 +903,7 @@ def run(
 
         Use [`shq()`][stepup.core.api.shq] to embed `inp`, `out`, or `vol` paths in the
         command, e.g. `run(f"./script.py {shq(inp)}", inp=inp)`.
-    inp, env, out, vol, workdir, optional, resources
+    inp, env, out, vol, workdir, optional, resources, duration
         See [`step()`][stepup.core.api.step] for more information.
 
     Returns
@@ -801,6 +927,7 @@ def run(
         resources=resources,
         shell=shell,
         env_overrides=env_overrides,
+        duration=duration,
     )
 
 
@@ -813,6 +940,7 @@ def plan(
     vol: Iterable[StrPath] | StrPath = (),
     workdir: StrPath = ".",
     resources: dict[str, int] | str | None = None,
+    duration: float | None = None,
 ) -> StepInfo:
     """Run a planning script.
 
@@ -845,7 +973,7 @@ def plan(
 
         Use [`shq()`][stepup.core.api.shq] to embed `inp`, `out`, or `vol` paths in the
         command, e.g. `plan(f"./plan.py {shq(inp)}", inp=inp)`.
-    inp, env, out, vol, workdir, resources
+    inp, env, out, vol, workdir, resources, duration
         See [`step()`][stepup.core.api.step] for more information.
 
     Returns
@@ -867,6 +995,7 @@ def plan(
         resources=resources,
         shell=False,
         env_overrides=env_overrides,
+        duration=duration,
     )
 
 
@@ -876,6 +1005,7 @@ def copy(
     *,
     optional: bool = False,
     resources: dict[str, int] | str | None = None,
+    duration: float | None = None,
 ) -> StepInfo:
     """Add a step that copies a file.
 
@@ -889,7 +1019,7 @@ def copy(
         and `src` will be copied inside it with its original name.
         Note that the trailing slash is not supported by `pathlib.Path`.
         It is recommended to use a string or `path.Path` for `dst` in this case.
-    optional, resources
+    optional, resources, duration
         See [`step()`][stepup.core.api.step] for more information.
 
     Returns
@@ -917,6 +1047,7 @@ def copy(
         need=Need.OPTIONAL if optional else Need.DEFAULT,
         resources=resources,
         shell=False,
+        duration=duration,
     )
 
 
@@ -1014,6 +1145,7 @@ def script(
     workdir: StrPath = ".",
     optional: bool = False,
     resources: dict[str, int] | str | None = None,
+    duration: float | None = None,
 ) -> StepInfo:
     """Run the executable with a single argument `plan` in a working directory.
 
@@ -1036,7 +1168,7 @@ def script(
         When given, the steps generated in the plan part of the executable are written
         to this `step_info` file. (See [stepup.core.stepinfo][] module for the file format.)
         This filename is relative to the work directory.
-    inp, env, out, vol, workdir, optional, resources
+    inp, env, out, vol, workdir, optional, resources, duration
         See [`step()`][stepup.core.api.step] for more information.
 
     Returns
@@ -1076,6 +1208,7 @@ def script(
         "workdir": workdir,
         "need": Need.PLAN,
         "resources": resources,
+        "duration": duration,
     }
     # Note that we do not use `run()` here because we need to set `need=Need.PLAN`.
     return step(command, **step_kwargs)
@@ -1199,6 +1332,7 @@ def render_jinja(
     mode: str = "auto",
     optional: bool = False,
     resources: dict[str, int] | str | None = None,
+    duration: float | None = None,
 ) -> StepInfo:
     """Render the template with Jinja2.
 
@@ -1223,7 +1357,7 @@ def render_jinja(
           based on the extension of the output file.
         - The `plain` format is the default Jinja style with curly brackets: `{{ }}` etc.
         - The `latex` style replaces curly brackets by angle brackets: `<< >>` etc.
-    optional, resources
+    optional, resources, duration
         See [`step()`][stepup.core.api.step] for more information.
 
     Returns
@@ -1285,6 +1419,7 @@ def render_jinja(
         out=path_out,
         need=Need.OPTIONAL if optional else Need.DEFAULT,
         resources=resources,
+        duration=duration,
     )
 
 

@@ -11,6 +11,17 @@ class CyclicError(GraphError):
     """Adding a new relation would introduce a cyclic dependency."""
 
 
+class AmendWhileHoldingError(GraphError):
+    """`amend(inp=...)` was called while the calling step has an open `hold()` block.
+
+    An `amend(inp=...)` inside a `hold()` block can deadlock:
+    the step cannot release the hold without the amended input,
+    and the input's producer cannot run until the hold is released.
+    Call the amend-triggering code before entering the `with hold():` block.
+    `amend(env=..., out=..., vol=...)` cannot deadlock this way and does not raise this error.
+    """
+
+
 class RPCError(Exception):
     """A remote procedure call could not be interpreted correctly."""
 

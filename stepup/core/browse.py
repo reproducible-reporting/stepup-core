@@ -440,7 +440,8 @@ class GraphServer(BaseHTTPRequestHandler):
             sql_props = (
                 "SELECT state, need, duration, postponed,"
                 "postpone_count, subshell,"
-                "env_overrides, _safe, _check_safe, _implied_need, _tail_time, _check_after "
+                "env_overrides, _safe, _check_safe, _holding, "
+                "_implied_need, _check_after "
                 "FROM step WHERE node = ?"
             )
             (
@@ -453,8 +454,8 @@ class GraphServer(BaseHTTPRequestHandler):
                 env_overrides,
                 safe,
                 check_safe,
+                holding,
                 implied_need_id,
-                tail_time,
                 check_after,
             ) = self.con.execute(sql_props, (node_i,)).fetchone()
             state = StepState(state_i)
@@ -471,7 +472,6 @@ class GraphServer(BaseHTTPRequestHandler):
             else:
                 yield (f"<p><b>Need:</b> {implied_need.name} (implied by sinks > {need.name})</p>")
             yield f"<p><b>Duration:</b> {duration:.2f} s</p>"
-            yield f"<p><b>Tail time:</b> {tail_time:.2f} s</p>"
             if not safe:
                 yield (
                     "<p><b>This step is not safe to run:</b> "
@@ -486,6 +486,11 @@ class GraphServer(BaseHTTPRequestHandler):
                 yield (
                     "<p><b>The need of this step has not been propagated to the "
                     "<code>_implied_need</code> field of this step and its sources yet.</b></p>"
+                )
+            if holding:
+                yield (
+                    "<p><b>This step is holding:</b> "
+                    "its children are not safe to run until it calls <code>release()</code>.</p>"
                 )
 
             sql_env = "SELECT name, amended FROM env_var WHERE node = ?"
@@ -518,7 +523,11 @@ class GraphServer(BaseHTTPRequestHandler):
                 yield "<h3>Defines NGlob Multis</h3>"
                 for row in ngms:
                     ngm = json_converter.structure(json.loads(row[0]), NGlobMulti)
-                    yield f"<p>{[ngs.pattern for ngs in ngm.nglob_singles]} {ngm.subs}</p>"
+                    line = f"<pre>{[ngs.pattern for ngs in ngm.nglob_singles]}"
+                    if len(ngm.subs) > 0:
+                        line += f" {ngm.subs}"
+                    line += "</pre>"
+                    yield line
 
             sql_output = "SELECT stdout, stderr FROM step_output WHERE node = ?"
             row = self.con.execute(sql_output, (node_i,)).fetchone()

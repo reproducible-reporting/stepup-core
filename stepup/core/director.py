@@ -678,6 +678,7 @@ class DirectorHandler:
         resources: dict[str, int],
         subshell: bool = False,
         env_overrides: dict[str, str] | None = None,
+        duration: float | None = None,
     ) -> None:
         """Create a step in the workflow.
 
@@ -699,10 +700,41 @@ class DirectorHandler:
                 resources=resources,
                 subshell=subshell,
                 env_overrides=env_overrides,
+                duration=duration,
             )
         self._submit_to_check(to_check)
         # The new step may already be runnable, but the builder's job loop may be parked,
         # waiting for a running task to finish.
+        # Wake it up so it re-polls the scheduler instead of waiting for an unrelated task.
+        self.builder.wake_job_loop.set()
+
+    @allow_rpc
+    async def hold(self, job_i: int) -> None:
+        """Hold back this step's children from dispatch until a matching `release()`.
+
+        Notes
+        -----
+        This is an RPC wrapper for `Step.hold`, which is re-entrant: nested `hold()` calls
+        increment a counter, and children stay held back until the outermost `release()`.
+        No job-loop wake-up is needed here: holding never creates new runnable work.
+        """
+        async with self.db:
+            step = self.scheduler.get_step(job_i)
+            step.hold()
+
+    @allow_rpc
+    async def release(self, job_i: int) -> None:
+        """Release one `hold()` on this step, decrementing its open-hold counter.
+
+        Notes
+        -----
+        This is an RPC wrapper for `Step.release`.
+        """
+        async with self.db:
+            step = self.scheduler.get_step(job_i)
+            step.release()
+        # Previously held-back children may now be runnable, but the builder's job loop
+        # may be parked, waiting for a running task to finish.
         # Wake it up so it re-polls the scheduler instead of waiting for an unrelated task.
         self.builder.wake_job_loop.set()
 

@@ -2,20 +2,31 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Tests for stepup.core.api."""
 
+import logging
 import pathlib
 
 import pytest
 from path import Path
 
+from stepup.core import api
 from stepup.core.api import (
     _extract_env_overrides,
     _prepare_run_command,
+    amend,
+    copy,
+    dumpns,
     get_rpc_client,
     getenv,
+    hold,
     loadns,
+    plan,
+    render_jinja,
+    run,
+    script,
     shq,
     step,
 )
+from stepup.core.exceptions import AmendWhileHoldingError
 from stepup.core.rpc import DummySyncRPCClient
 
 
@@ -241,6 +252,69 @@ def test_step_env_overrides_reserved_name():
         step("./script.py", env_overrides={"STEPUP_JOB_I": "1"})
 
 
+def test_step_negative_duration():
+    with pytest.raises(ValueError, match="Invalid duration"):
+        step("./script.py", duration=-1.0)
+
+
+def test_step_nan_duration():
+    with pytest.raises(ValueError, match="Invalid duration"):
+        step("./script.py", duration=float("nan"))
+
+
+def test_step_inf_duration():
+    with pytest.raises(ValueError, match="Invalid duration"):
+        step("./script.py", duration=float("inf"))
+
+
+def test_step_bool_duration():
+    with pytest.raises(ValueError, match="Invalid duration"):
+        step("./script.py", duration=True)
+
+
+def test_step_bool_resource_quantity():
+    with pytest.raises(ValueError, match="Invalid quantity"):
+        step("./script.py", resources={"gpu": True})
+
+
+@pytest.fixture
+def captured_step_kwargs(monkeypatch):
+    """Mock `stepup.core.api.step` and return the kwargs of its last call."""
+    calls = []
+
+    def mock_step(command, **kwargs):
+        calls.append(kwargs)
+
+    monkeypatch.setattr("stepup.core.api.step", mock_step)
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    return calls
+
+
+def test_run_forwards_duration(captured_step_kwargs):
+    run("echo hello", duration=3.5)
+    assert captured_step_kwargs[-1]["duration"] == 3.5
+
+
+def test_plan_forwards_duration(captured_step_kwargs):
+    plan("./plan.py", duration=3.5)
+    assert captured_step_kwargs[-1]["duration"] == 3.5
+
+
+def test_copy_forwards_duration(captured_step_kwargs):
+    copy("a.txt", "b.txt", duration=3.5)
+    assert captured_step_kwargs[-1]["duration"] == 3.5
+
+
+def test_script_forwards_duration(captured_step_kwargs):
+    script("./script.py", duration=3.5)
+    assert captured_step_kwargs[-1]["duration"] == 3.5
+
+
+def test_render_jinja_forwards_duration(captured_step_kwargs):
+    render_jinja("template.txt", {"x": 1}, "out.txt", duration=3.5)
+    assert captured_step_kwargs[-1]["duration"] == 3.5
+
+
 def test_shq_single(monkeypatch):
     monkeypatch.setattr("stepup.core.api.amend", noop_amend)
     assert shq("a.txt") == "a.txt"
@@ -257,3 +331,130 @@ def test_shq_env_var(monkeypatch):
     monkeypatch.setattr("stepup.core.api.amend", noop_amend)
     monkeypatch.setenv("MYVAR", "sub")
     assert shq("${MYVAR}/a.txt") == "sub/a.txt"
+
+
+def test_amend_raises_while_holding(monkeypatch):
+    """The hold() guard is blanket: it fires for any non-trivial `amend()` call made while
+    holding, even one that would have resolved instantly and harmlessly. It does not need
+    the director/DB, since it is purely a same-process fact tracked by `_HOLD_STATE.holding`.
+    """
+    monkeypatch.setattr("stepup.core.api._HOLD_STATE.holding", True)
+    with pytest.raises(AmendWhileHoldingError):
+        amend(inp="some/already_resolved.txt")
+
+
+def test_amend_noop_does_not_raise_while_holding(monkeypatch):
+    """An `amend()` call with nothing to amend must not trip the hold() guard.
+
+    `run.py`/`render_jinja.py` call `amend(inp=get_local_import_paths())` unconditionally
+    after a Python step runs, and that list can be empty. If such a no-op call tripped the
+    guard, an unrelated held step could fail through no fault of its own code.
+    """
+    monkeypatch.setattr("stepup.core.api._HOLD_STATE.holding", True)
+    amend()
+
+
+def test_amend_inp_with_out_and_vol_still_raises_while_holding(monkeypatch):
+    """A non-empty `inp` still trips the guard even when combined with `out`/`vol`: `inp` is
+    the only argument whose producer could plausibly be a step held back by the same
+    `hold()` block.
+    """
+    monkeypatch.setattr("stepup.core.api._HOLD_STATE.holding", True)
+    with pytest.raises(AmendWhileHoldingError):
+        amend(
+            inp="some/already_resolved.txt",
+            out="some/new_output.txt",
+            vol="some/new_volatile.txt",
+        )
+
+
+def test_amend_env_only_does_not_raise_while_holding(monkeypatch):
+    """An `env`-only amend can never depend on a held-back step's output, so it must remain
+    allowed inside a `hold()` block. This is what makes `getenv()` inside `hold()` safe.
+    """
+    monkeypatch.setattr("stepup.core.api._HOLD_STATE.holding", True)
+    amend(env="SOME_HOLD_TEST_VAR")
+
+
+def test_amend_out_only_does_not_raise_while_holding(monkeypatch):
+    """An `out`-only amend declares a file the calling step itself produces, so it can never
+    depend on a held-back step. This is what makes `dumpns()` inside `hold()` safe.
+    """
+    monkeypatch.setattr("stepup.core.api._HOLD_STATE.holding", True)
+    amend(out="some/new_output.txt")
+
+
+def test_amend_vol_only_does_not_raise_while_holding(monkeypatch):
+    """A `vol`-only amend, like `out`, declares a file the calling step itself produces."""
+    monkeypatch.setattr("stepup.core.api._HOLD_STATE.holding", True)
+    amend(vol="some/new_volatile.txt")
+
+
+def test_getenv_does_not_raise_while_holding(monkeypatch):
+    """`getenv()` calls `amend(env=...)` internally.
+
+    It must keep working inside a `hold()` block, since it is exactly the kind of call the
+    `hold()` docstring's "batch of `run()`/`step()` calls" use case expects to work.
+    """
+    monkeypatch.setattr("stepup.core.api._HOLD_STATE.holding", True)
+    monkeypatch.setenv("SOME_HOLD_TEST_VAR", "1")
+    assert getenv("SOME_HOLD_TEST_VAR") == "1"
+
+
+def test_dumpns_does_not_raise_while_holding(path_tmp, monkeypatch):
+    """`dumpns()` calls `amend(out=...)` internally and must keep working while holding."""
+    monkeypatch.setattr("stepup.core.api._HOLD_STATE.holding", True)
+    path_out = path_tmp / "held.json"
+    dumpns(path_out, {"a": 1})
+    assert path_out.exists()
+
+
+class _ReleaseFailsClient(DummySyncRPCClient):
+    """A dummy RPC client whose `release` call raises, to simulate an RPC failure."""
+
+    def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
+        if name == "release":
+            raise RuntimeError("simulated release() RPC failure")
+        return super().__call__(name, *args, _rpc_timeout=_rpc_timeout, **kwargs)
+
+
+def test_hold_release_success_decrements_holding(monkeypatch):
+    """The happy path: `release()` succeeds, so `_HOLD_STATE.holding` returns to its
+    pre-block value once the `with hold():` block exits.
+    """
+    monkeypatch.setattr(api._HOLD_STATE, "holding", 0)
+    with hold():
+        assert api._HOLD_STATE.holding == 1
+    assert api._HOLD_STATE.holding == 0
+
+
+def test_hold_release_failure_alone_propagates_and_stays_held(monkeypatch):
+    """A `release()` RPC failure with no other exception in flight must still raise:
+    a release failure on its own is a real error and must not be silently swallowed.
+
+    `_HOLD_STATE.holding` must not be decremented, since the release was never confirmed:
+    `amend()`'s guard must stay fail-closed to avoid reintroducing the deadlock risk it
+    exists to prevent.
+    """
+    monkeypatch.setattr(api._HOLD_STATE, "holding", 0)
+    monkeypatch.setattr(api, "RPC_CLIENT", _ReleaseFailsClient())
+    with pytest.raises(RuntimeError, match="simulated release"), hold():
+        pass
+    assert api._HOLD_STATE.holding == 1
+
+
+def test_hold_genuine_exception_not_masked_by_release_failure(monkeypatch, caplog):
+    """If code inside `with hold():` raises and `release()` then also fails while unwinding,
+    the caller must see the original exception, not the release failure. The release failure
+    is logged instead of silently dropped.
+    """
+    monkeypatch.setattr(api._HOLD_STATE, "holding", 0)
+    monkeypatch.setattr(api, "RPC_CLIENT", _ReleaseFailsClient())
+    with (
+        caplog.at_level(logging.WARNING, logger="stepup.core.api"),
+        pytest.raises(ValueError, match="boom"),
+        hold(),
+    ):
+        raise ValueError("boom")
+    assert api._HOLD_STATE.holding == 1
+    assert any("release" in record.message for record in caplog.records)

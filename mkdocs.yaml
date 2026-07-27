@@ -92,6 +92,7 @@ nav:
     - advanced_topics/optional_steps.md
     - advanced_topics/build_targets.md
     - advanced_topics/resources.md
+    - advanced_topics/duration_and_hold.md
     - advanced_topics/blocked_steps.md
     - advanced_topics/environment_variables.md
     - advanced_topics/volatile_outputs.md

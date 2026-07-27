@@ -19,6 +19,8 @@ may undergo larger changes and are not intended to be API stable.
 
 ### ::: stepup.core.api.amend
 
+### ::: stepup.core.api.hold
+
 ### ::: stepup.core.api.getinfo
 
 ### ::: stepup.core.api.graph

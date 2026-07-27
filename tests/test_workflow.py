@@ -1556,6 +1556,60 @@ async def test_step_recycle(wfp: Workflow):
         assert hash1.out_digest == hash2.out_digest
 
 
+def _get_duration(wfx: Workflow, step: Step) -> float:
+    return wfx.db.execute("SELECT duration FROM step WHERE node = ?", (step.i,)).fetchone()[0]
+
+
+async def test_define_step_duration_default(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "echo")
+        step = wfp.find(Step, "echo")
+        assert _get_duration(wfp, step) == 1.0
+
+
+async def test_define_step_duration_given(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "echo", duration=3.5)
+        step = wfp.find(Step, "echo")
+        assert _get_duration(wfp, step) == 3.5
+
+
+async def test_define_step_recycle_keeps_duration_by_default(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "echo foo > bar", out_paths=["bar"])
+        echo = wfp.find(Step, "echo foo > bar")
+        echo.set_duration(7.0)
+
+        # Detach and recycle without an explicit duration: the measured value survives.
+        echo.detach()
+        wfp.define_step(plan, "echo foo > bar", out_paths=["bar"])
+        assert _get_duration(wfp, echo) == 7.0
+
+
+async def test_define_step_recycle_overrides_duration(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "echo foo > bar", out_paths=["bar"], duration=2.0)
+        echo = wfp.find(Step, "echo foo > bar")
+        assert _get_duration(wfp, echo) == 2.0
+
+        # Detach and recycle with a new explicit duration: it overrides the old one.
+        echo.detach()
+        wfp.define_step(plan, "echo foo > bar", out_paths=["bar"], duration=9.0)
+        assert _get_duration(wfp, echo) == 9.0
+
+
+async def test_define_step_invalid_duration(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+    with pytest.raises(sqlite3.IntegrityError):
+        async with wfp.db:
+            wfp.define_step(plan, "echo", duration=-1.0)
+
+
 async def test_output_clean_nested(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")

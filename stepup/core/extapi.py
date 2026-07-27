@@ -103,7 +103,8 @@ def subs_env_vars() -> Iterator[Callable[[StrPath | None], Path | None]]:
         return Path(path if len(mapping) == 0 else template.substitute(mapping))
 
     yield subs
-    amend(env=used_env)
+    if len(used_env) > 0:
+        amend(env=used_env)
 
 
 def record_subprocess(

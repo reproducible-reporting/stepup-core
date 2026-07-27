@@ -215,3 +215,53 @@ async def test_amend_reports_missing_static_tree_match(client: AsyncRPCClient):
         with open("DONE.txt", "w") as fh:
             fh.write("done")
     await client("wait")
+
+
+async def test_hold_release_rpc_smoke(client: AsyncRPCClient):
+    """`hold()`/`release()` RPCs round-trip: children declared while holding still run."""
+    try:
+        job_i = _get_job_i()
+        await client("hold", job_i)
+        await client(
+            "step", job_i, "touch a.txt", [], {}, ["a.txt"], [], ".", Need.DEFAULT.value, {}, True
+        )
+        await client(
+            "step", job_i, "touch b.txt", [], {}, ["b.txt"], [], ".", Need.DEFAULT.value, {}, True
+        )
+        await client("release", job_i)
+    finally:
+        with open("DONE.txt", "w") as fh:
+            fh.write("done")
+    await client("wait")
+    assert Path("a.txt").is_file()
+    assert Path("b.txt").is_file()
+
+
+async def test_hold_nested_rpc_smoke(client: AsyncRPCClient):
+    """A second `hold()` without an intervening `release()` is a re-entrant nested hold, not
+    an error: it takes two matching `release()` calls to round-trip cleanly. See
+    `test_hold_release_rpc_smoke` for the non-nested case, and the `hold_nested` example for
+    proof that children stay held until the outermost `release()`.
+    """
+    try:
+        job_i = _get_job_i()
+        await client("hold", job_i)
+        await client("hold", job_i)
+        await client("release", job_i)
+        await client("release", job_i)
+    finally:
+        with open("DONE.txt", "w") as fh:
+            fh.write("done")
+    await client("wait")
+
+
+async def test_release_without_hold_raises_rpc_error(client: AsyncRPCClient):
+    """`release()` with no matching `hold()` raises rather than corrupting scheduler state."""
+    try:
+        job_i = _get_job_i()
+        with pytest.raises(RPCError):
+            await client("release", job_i)
+    finally:
+        with open("DONE.txt", "w") as fh:
+            fh.write("done")
+    await client("wait")

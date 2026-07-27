@@ -1,0 +1,68 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   root:
+              source   file:plan.py
+             product   file:work.py
+             product   step:./work.py fast a_fast.txt
+             product   step:./work.py medium b_medium.txt
+             product   step:./work.py slow a_slow.txt
+
+file:work.py
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:./work.py fast a_fast.txt
+                sink   step:./work.py medium b_medium.txt
+                sink   step:./work.py slow a_slow.txt
+
+step:./work.py fast a_fast.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./plan.py
+              source   file:work.py
+             product   file:a_fast.txt
+                sink   file:a_fast.txt
+
+file:a_fast.txt
+               state = BUILT
+             creator   step:./work.py fast a_fast.txt
+              source   step:./work.py fast a_fast.txt
+
+step:./work.py slow a_slow.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./plan.py
+              source   file:work.py
+             product   file:a_slow.txt
+                sink   file:a_slow.txt
+
+file:a_slow.txt
+               state = BUILT
+             creator   step:./work.py slow a_slow.txt
+              source   step:./work.py slow a_slow.txt
+
+step:./work.py medium b_medium.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./plan.py
+              source   file:work.py
+             product   file:b_medium.txt
+                sink   file:b_medium.txt
+
+file:b_medium.txt
+               state = BUILT
+             creator   step:./work.py medium b_medium.txt
+              source   step:./work.py medium b_medium.txt

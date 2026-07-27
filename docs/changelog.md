@@ -65,6 +65,20 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
   which is otherwise impossible without a shell.
   The overrides are part of the step hash, so changing a value reruns the step.
   A variable cannot be both an override and an `env` dependency.
+- `step()` accepts a new `duration` argument:
+  an initial estimate (in seconds) of the step's wall time,
+  used by the scheduler (when `--duration` is enabled) to prioritize execution order
+  before any measurement is available.
+  All step-generating API functions (`run()`, `script()`, `call()`, `render_jinja()`, etc.)
+  also accept a `duration` argument.
+- New `hold()` context manager in `stepup.core.api`, for a step (typically a `plan.py`) to
+  wrap a batch of declarations so its children are held back from dispatch until the block
+  closes, instead of each being dispatched as soon as it is declared.
+  This lets the whole batch become simultaneously eligible and get sorted by `_tail_time`
+  once released, so slow children declared late no longer lose the race for job slots to
+  fast children declared early. `hold()` is re-entrant: nested `with hold():` blocks for the
+  same step (e.g. through a shared helper function) compose correctly, with children staying
+  held back until the outermost block exits.
 - New `stepup.core.extapi` module for StepUp extension developers,
   collecting utilities previously scattered across `stepup.core.api` and `stepup.core.utils`.
   See [stepup.core.extapi](reference/stepup.core.extapi.md) for the full reference

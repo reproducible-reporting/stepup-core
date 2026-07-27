@@ -415,6 +415,18 @@ pytest tests/test_examples.py -k "test_example[no_static] or test_example[restar
 These are two simple examples that run quickly and will fail when the core system is broken.
 A full run with all integration tests takes several minutes and is best run as a final check only.
 
+Never invoke two `pytest` runs concurrently
+(e.g. one in the background while another runs in the foreground),
+such as separately running the example suite
+with `STEPUP_BUILD_FORKSERVER=0` and `=1`.
+Each invocation already parallelizes internally via `pytest-xdist`
+(`-n auto --dist worksteal`);
+running a second invocation at the same time doubles up worker processes and overloads the
+system, which is a real cause of flaky failures in timing-sensitive examples
+(e.g. `hold_orders_by_duration`, which relies on real `time.sleep()` calls to prove
+non-dispatch).
+Run `pytest` invocations one after another instead.
+
 ### Release Process
 
 1. Update `docs/changelog.md`.

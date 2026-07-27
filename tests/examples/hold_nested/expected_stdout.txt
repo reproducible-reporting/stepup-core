@@ -1,0 +1,14 @@
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+    START │ ./work.py slow a_slow.txt
+  SUCCESS │ ./plan.py
+    START │ ./work.py medium b_medium.txt
+  SUCCESS │ ./work.py slow a_slow.txt
+    START │ ./work.py fast a_fast.txt
+  SUCCESS │ ./work.py medium b_medium.txt
+  SUCCESS │ ./work.py fast a_fast.txt
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

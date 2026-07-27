@@ -609,6 +609,17 @@ class Trellis:
         #   NGlobSingle/NGlobMulti in cattrs.py), for consistency with the rest of the
         #   codebase and readability in external SQLite tools. The column type changed from
         #   BLOB to TEXT accordingly.
+        # - Added the step._holding column: a counter of open (unmatched) `hold()` calls on
+        #   a step, supporting re-entrant nesting on the same step. Consulted by
+        #   SELECT_SAFE_UPDATE to keep held-back children unsafe until the matching
+        #   `release()` brings the counter back to zero.
+        # - Added the step._safe_ignoring_hold column, computed alongside _safe by
+        #   SELECT_SAFE_UPDATE, so hash-checkable steps can bypass an active hold() in
+        #   STEP_DISPATCH_WHERE while ordinary reruns stay gated by _safe as before.
+        # - Added the step_reset_holding trigger (AFTER UPDATE OF state), so a step's
+        #   _holding cannot survive a transition away from RUNNING (e.g. a crash-recovery
+        #   reset in startup.py). Purely additive, so no version bump is needed for this
+        #   change on its own.
 
         return 5
 

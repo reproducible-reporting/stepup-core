@@ -1071,6 +1071,7 @@ class Workflow(Trellis):
         safe: bool = False,
         subshell: bool = False,
         env_overrides: dict[str, str] | None = None,
+        duration: float | None = None,
     ) -> list[tuple[File, FileState]]:
         """Define a new step.
 
@@ -1099,6 +1100,11 @@ class Workflow(Trellis):
         env_overrides
             Step-specific environment variable overrides, e.g. {"OMP_NUM_THREADS": "4"}.
             These keys must not overlap with `env_deps`.
+        duration
+            An initial estimate of the step's wall time in seconds, used by the scheduler to
+            prioritize execution order before any measurement is available.
+            When `None`, a new step gets the column's default (1.0), while a recycled step
+            keeps its previously measured (or given) duration.
         safe
             The initial value for the `safe` field of the step.
             This is an internal field, not controlled by the end user.
@@ -1166,6 +1172,7 @@ class Workflow(Trellis):
             subshell=subshell,
             resources=resources,
             env_overrides=env_overrides,
+            duration=duration,
             inp_paths=inp_paths,
             env_deps=env_deps,
             out_paths=out_paths,
@@ -1188,6 +1195,7 @@ class Workflow(Trellis):
             need=need,
             safe=safe,
             subshell=subshell,
+            duration=duration,
         )
         step.set_resources(resources)
         step.set_env_overrides(env_overrides)
