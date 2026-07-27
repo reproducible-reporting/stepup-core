@@ -6,8 +6,6 @@
      FAIL │ cat line.txt >> log.txt; exit 1
 ──────────────────────────────── Failed command ────────────────────────────────
 cat line.txt >> log.txt; exit 1  # exit=1
-──────────────────────────────── Standard error ────────────────────────────────
-(stripped)
 ────────────────────────────────────────────────────────────────────────────────
  DIRECTOR │ Ran 2 job(s).
   WARNING │ 1 step(s) failed.

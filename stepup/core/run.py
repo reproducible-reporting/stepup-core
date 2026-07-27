@@ -22,6 +22,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 import traceback
 from collections.abc import Callable
 from importlib.metadata import entry_points
@@ -33,8 +34,8 @@ from path import Path
 from .asyncio import await_fd_readable
 from .exceptions import RunError
 from .extapi import get_local_import_paths
+from .outcome import ChildOutcome, ResourceUsage
 from .step import Step
-from .usage import ResourceUsage
 from .utils import escape_command_display
 
 __all__ = (
@@ -225,14 +226,7 @@ class Run:
     def _default_description(self) -> str:
         return escape_command_display(self.step.label)
 
-    stdout: str = attrs.field(init=False, default="")
-    """The standard output captured from the command execution."""
-
-    stderr: str = attrs.field(init=False, default="")
-    """The standard error captured from the command execution."""
-
-    perf_info: str = attrs.field(init=False, default="")
-    """Performance information collected during the command execution."""
+    outcome: ChildOutcome | None = attrs.field(init=False, default=None)
 
     inp_messages: list[str] = attrs.field(init=False, factory=list)
     """Messages related to input validation issues: unexpected changes and deleted inputs."""
@@ -256,9 +250,6 @@ class Run:
     """Set to True when `Step.completed()` found this step had already been detached by
     its creator (see `Step.detach()`) when it finished, regardless of success or failure.
     """
-
-    returncode: int | None = attrs.field(init=False, default=None)
-    """The return code from the command."""
 
     success: bool = attrs.field(init=False, default=True)
     """Flag indicating whether the step was handled successfully.
@@ -492,26 +483,13 @@ def _decode(data: bytes) -> str:
 #
 
 
-@attrs.define(frozen=True)
-class ChildOutcome:
-    """What a child (subprocess or forkserver) produced, plus the resources it used."""
-
-    payload: tuple[int, str, str] = attrs.field()
-    """The `(returncode, stdout, stderr)` tuple produced by the child,
-    with `stdout` and `stderr` decoded to `str`.
-    """
-
-    usage: ResourceUsage = attrs.field(factory=ResourceUsage)
-    """The CPU time and block-IO ops consumed while producing `payload`."""
-
-
 def _communicate_wait4(
-    proc: subprocess.Popen, stdin_data: bytes | None
+    proc: subprocess.Popen, stdin_data: bytes | None, wtime_start: float
 ) -> tuple[bytes, bytes, ResourceUsage]:
     """Communicate with `proc` and return `(stdout, stderr, usage)`.
 
     Reads stdout and stderr concurrently in threads to avoid pipe-full deadlock,
-    then calls `os.wait4` to reap the child and capture its individual CPU and block-IO usage.
+    then calls `os.wait4` to reap the child and capture its individual CPU usage.
     """
     stdout_join = _start_drain(proc.stdout.read) if proc.stdout is not None else None
     stderr_join = _start_drain(proc.stderr.read) if proc.stderr is not None else None
@@ -532,8 +510,7 @@ def _communicate_wait4(
     usage = ResourceUsage(
         utime=rusage.ru_utime,
         stime=rusage.ru_stime,
-        inblock=rusage.ru_inblock,
-        oublock=rusage.ru_oublock,
+        wtime=time.perf_counter() - wtime_start,
     )
     return stdout, stderr, usage
 
@@ -542,8 +519,6 @@ async def _exec_subprocess(
     cmd, *, shell: bool, env: dict, cwd: Path, stdin_data: bytes | None, run: Run
 ) -> ChildOutcome:
     """Run `cmd` as a subprocess and return a `ChildOutcome`.
-
-    `outcome.payload` is `(returncode, stdout, stderr)`, with `stdout`/`stderr` decoded to `str`.
 
     The process is created synchronously so that `run.worker` can be set immediately for
     interrupts.
@@ -555,6 +530,7 @@ async def _exec_subprocess(
     so our `os.wait4` call captures per-process CPU time without racing against the watcher.
     """
     stdin = subprocess.PIPE if stdin_data is not None else subprocess.DEVNULL
+    wtime_start = time.perf_counter()
     try:
         proc = subprocess.Popen(
             cmd,
@@ -566,16 +542,16 @@ async def _exec_subprocess(
             cwd=cwd,
         )
     except OSError as exc:
-        return ChildOutcome(payload=(1, "", f"Failed to launch command {cmd!r}: {exc}\n"))
+        return ChildOutcome(1, "", f"Failed to launch command {cmd!r}: {exc}\n")
     run.worker = SubprocessWorker(proc, job_i=run.job_i)
     try:
         loop = asyncio.get_running_loop()
         stdout, stderr, usage = await loop.run_in_executor(
-            None, _communicate_wait4, proc, stdin_data
+            None, _communicate_wait4, proc, stdin_data, wtime_start
         )
     finally:
         run.worker = None
-    return ChildOutcome(payload=(proc.returncode, _decode(stdout), _decode(stderr)), usage=usage)
+    return ChildOutcome(proc.returncode, _decode(stdout), _decode(stderr), usage)
 
 
 async def _run_subprocess(
@@ -595,17 +571,12 @@ async def _run_subprocess(
     Actual execution is performed by `_exec_subprocess`.
     """
     first_arg = shlex.split(cmd)[0] if isinstance(cmd, str) else cmd[0]
-    cmd_str = cmd if isinstance(cmd, str) else shlex.join(cmd)
     message = _check_executable(cwd / Path(first_arg))
     if message is not None:
-        return ChildOutcome(payload=(1, "", message + "\n"))
-    outcome = await _exec_subprocess(
+        return ChildOutcome(1, "", message + "\n")
+    return await _exec_subprocess(
         cmd, shell=shell, env=env, cwd=cwd, stdin_data=stdin_data, run=run
     )
-    rc, out, err = outcome.payload
-    if rc != 0:
-        err += f"Command failed with return code {rc}: {cmd_str}\n"
-    return ChildOutcome(payload=(rc, out, err), usage=outcome.usage)
 
 
 #
@@ -641,7 +612,7 @@ async def _exec_in_forkserver(
     child_conn.close()
     run.worker = ForkserverWorker(proc.pid, job_i=run.job_i)
     try:
-        outcome: ChildOutcome = await _recv_conn(parent_conn)
+        outcome = await _recv_conn(parent_conn)
     finally:
         await _wait_proc(proc)
         parent_conn.close()
@@ -706,13 +677,14 @@ def _forkserver_entry(
     When `ep_value` is a `module:attr` string, the corresponding console_script function
     is imported and called directly without import tracking.
     """
+    # Note that the time needed to start/stop the forkserver child is not counted,
+    # which is a minor accepted discrepancy with the subprocess path.
+    wtime_start = time.perf_counter()
     stdout_buf = io.StringIO()
     stderr_buf = io.StringIO()
     returncode = 0
     ru_self_start = resource.getrusage(resource.RUSAGE_SELF)
     ru_children_start = resource.getrusage(resource.RUSAGE_CHILDREN)
-    ru_self_end = ru_self_start
-    ru_children_end = ru_children_start
     # The inner try/except must run inside the `with` block, so that the fd restore and
     # append (in the `with` block's teardown) happen after the traceback (if any) has
     # already been written to stderr_buf, not before.
@@ -751,19 +723,23 @@ def _forkserver_entry(
                     from stepup.core.api import amend  # noqa: PLC0415
 
                     amend(inp=get_local_import_paths(script_path=Path(cmd)))
-            ru_self_end = resource.getrusage(resource.RUSAGE_SELF)
-            ru_children_end = resource.getrusage(resource.RUSAGE_CHILDREN)
         except BaseException:  # noqa: BLE001
             # All exceptions must be caught here, to be able to send the corresponding
             # output and return code back to the director process.
             # Otherwise, the parent process would just see a connection error.
             traceback.print_exc(file=stderr_buf)
             returncode = 1
-    usage = ResourceUsage.from_rusage_diff(
-        ru_self_start, ru_self_end, ru_children_start, ru_children_end
+        finally:
+            # Snapshot in a `finally`: a step failing with an uncaught exception skips the
+            # tail of the `try` body, which would otherwise leave the usage at zero even
+            # though the step did consume CPU time.
+            ru_self_end = resource.getrusage(resource.RUSAGE_SELF)
+            ru_children_end = resource.getrusage(resource.RUSAGE_CHILDREN)
+    wtime_end = time.perf_counter()
+    usage = ResourceUsage.from_diff(
+        ru_self_start, ru_self_end, ru_children_start, ru_children_end, wtime_start, wtime_end
     )
-    payload = (returncode, stdout_buf.getvalue(), stderr_buf.getvalue())
-    result_conn.send(ChildOutcome(payload=payload, usage=usage))
+    result_conn.send(ChildOutcome(returncode, stdout_buf.getvalue(), stderr_buf.getvalue(), usage))
 
 
 PYCODE_WRAPPER = """\
@@ -792,7 +768,7 @@ async def _run_python_script(
     """Run a Python script, amending its local imports as inputs."""
     message = _check_executable(cwd / Path(script), shebang="#!/usr/bin/env python3")
     if message is not None:
-        return ChildOutcome(payload=(1, "", message + "\n"))
+        return ChildOutcome(1, "", message + "\n")
     if mp_ctx is not None:
         return await _exec_in_forkserver(
             mp_ctx, _forkserver_entry, (script, args, env, str(cwd), None), run
@@ -870,7 +846,7 @@ async def launch_command(
     try:
         ep_value = _detect_python_entrypoint(parts[0])
     except RunError as exc:
-        return ChildOutcome(payload=(1, "", str(exc) + "\n"))
+        return ChildOutcome(1, "", str(exc) + "\n")
     if ep_value is not None:
         return await _run_python_entrypoint(parts[0], parts[1:], ep_value, env, cwd, mp_ctx, run)
     return await _run_subprocess(parts, shell=False, env=env, cwd=cwd, run=run)

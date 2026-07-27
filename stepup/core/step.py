@@ -17,6 +17,7 @@ from .exceptions import GraphError
 from .file import File
 from .hash import FileHash, StepHash
 from .nglob import NGlobMulti
+from .outcome import ChildOutcome, ResourceUsage
 from .static_tree import StaticTree
 from .stepinfo import StepInfo
 from .trellis import Node, NodeType
@@ -366,7 +367,7 @@ BEGIN
     WHERE node = (SELECT sink FROM dependency WHERE i = OLD.i);
 END;
 
--- Environment variable names this step depends on, and the value observed when recorded
+-- Environment variable names each step depends on, and the value observed when recorded
 -- (declared up front or amended during the run).
 CREATE TABLE IF NOT EXISTS env_var (
     node INTEGER NOT NULL,
@@ -379,7 +380,7 @@ CREATE TABLE IF NOT EXISTS env_var (
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 ) WITHOUT ROWID;
 
--- The stored hash of the step's last successful run, used to decide whether a rerun can be
+-- The stored hash of each step's last successful run, used to decide whether a rerun can be
 -- skipped.
 CREATE TABLE IF NOT EXISTS step_hash (
     node INTEGER PRIMARY KEY,
@@ -402,13 +403,19 @@ BEGIN
     UPDATE step SET _has_hash = 0 WHERE node = OLD.node;
 END;
 
--- Captured standard output/error of the step's command, for the "show output" feature.
-CREATE TABLE IF NOT EXISTS step_output (
+-- Outcome of the step's command, captured when it runs.
+CREATE TABLE IF NOT EXISTS step_outcome (
     node INTEGER PRIMARY KEY,
+    returncode INTEGER NOT NULL,
+    -- The exit code of the step's command.
     stdout TEXT NOT NULL DEFAULT '',
     stderr TEXT NOT NULL DEFAULT '',
     -- Captured standard output/error of the step's command.
     -- Absence of a row means no output has been recorded for this run.
+    utime REAL NOT NULL CHECK(utime >= 0) DEFAULT 0.0,
+    stime REAL NOT NULL CHECK(stime >= 0) DEFAULT 0.0,
+    wtime REAL NOT NULL CHECK(wtime >= 0) DEFAULT 0.0,
+    -- Resource usage of the step's command: user/system/wall time in seconds.
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 );
 
@@ -446,7 +453,7 @@ CREATE TABLE IF NOT EXISTS step_subprocess (
     stderr TEXT,
     -- The captured standard error of the subprocess, or NULL if not captured.
     -- ON DELETE CASCADE removes these rows when the node row is deleted, matching the
-    -- other satellite tables (env_var / step_hash / step_output / step_resource).
+    -- other satellite tables (env_var / step_hash / step_outcome / step_resource).
     -- Step.reset_for_rerun() still clears them explicitly between runs of a surviving step.
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 );
@@ -596,7 +603,7 @@ class Step(Node):
         instead of being silently skipped by `REPLACE`'s implicit conflict-delete
         (which never fires delete triggers).
 
-        The `step_hash`/`step_output` satellite rows are untouched by either `DELETE` or `INSERT`,
+        The `step_hash`/`step_outcome` satellite rows are untouched by either `DELETE` or `INSERT`,
         since both only ever reference `node`, not `step`,
         so a recycled step's stored hash remains available for
         skip-checking after redeclaration instead of being discarded.
@@ -687,7 +694,7 @@ class Step(Node):
     def clean(self):
         """Perform a cleanup right before the detached node is removed from the graph.
 
-        The satellite rows (step, env_var, nglob_multi, step_hash, step_output,
+        The satellite rows (step, env_var, nglob_multi, step_hash, step_outcome,
         step_resource, step_subprocess) are removed automatically by `ON DELETE CASCADE`
         when the node row is deleted, so only the dependency edges are handled here.
         """
@@ -1189,7 +1196,7 @@ class Step(Node):
             self.graph.mark_file_outdated(file)
 
         # Drop any output stored by a previous run.
-        self.delete_outputs()
+        self.delete_outcome()
 
         # Drop any subprocess invocations recorded by a previous run.
         self.delete_subprocesses()
@@ -1320,38 +1327,49 @@ class Step(Node):
         """Clear the stored step hash, if any."""
         self.db.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))
 
-    def store_output(self, stdout: str, stderr: str, max_size: int) -> None:
-        """Persist captured stdout/stderr for this step in a single update.
+    def store_outcome(self, outcome: ChildOutcome, max_size: int) -> None:
+        """Persist captured child process outcome for this step in a single update.
 
         Parameters
         ----------
-        stdout
-            The captured standard output of the step's command (untruncated).
-        stderr
-            The captured standard error of the step's command (untruncated).
+        outcome
+            The child outcome to store.
         max_size
             Maximum number of UTF-8 bytes to store per stream, or `0` for unlimited.
             See `truncate_output`.
         """
         self.db.execute(
-            "INSERT OR REPLACE INTO step_output VALUES (?, ?, ?)",
+            "INSERT OR REPLACE INTO step_outcome VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
                 self.i,
-                truncate_output(stdout, max_size),
-                truncate_output(stderr, max_size),
+                outcome.returncode,
+                truncate_output(outcome.stdout, max_size),
+                truncate_output(outcome.stderr, max_size),
+                outcome.usage.utime,
+                outcome.usage.stime,
+                outcome.usage.wtime,
             ),
         )
 
-    def get_output(self) -> tuple[str, str]:
-        """Return the stored (stdout, stderr) for this step, as empty strings if absent."""
+    def get_outcome(self) -> ChildOutcome | None:
+        """Return the stored child outcome for this step."""
         row = self.db.execute(
-            "SELECT stdout, stderr FROM step_output WHERE node = ?", (self.i,)
+            "SELECT returncode, stdout, stderr, utime, stime, wtime "
+            "FROM step_outcome WHERE node = ?",
+            (self.i,),
         ).fetchone()
-        return ("", "") if row is None else row
+        if row is None:
+            return None
+        return ChildOutcome(
+            returncode=row[0],
+            stdout=row[1],
+            stderr=row[2],
+            usage=ResourceUsage(utime=row[3], stime=row[4], wtime=row[5]),
+        )
 
-    def delete_outputs(self) -> None:
-        """Remove the stored stdout/stderr for this step."""
-        self.db.execute("DELETE FROM step_output WHERE node = ?", (self.i,))
+    def delete_outcome(self) -> None:
+        """Remove the stored child outcome for this step."""
+        self.db.execute("DELETE FROM step_outcome WHERE node = ?", (self.i,))
 
     def record_subprocess(
         self,

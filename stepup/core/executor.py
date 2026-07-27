@@ -18,7 +18,6 @@ import os
 import threading
 from collections.abc import Callable, Mapping
 from contextlib import contextmanager
-from time import perf_counter
 from typing import Any
 
 import attrs
@@ -36,7 +35,7 @@ from .hash import (
 )
 from .hash_queue import HashJob
 from .reporter import PROGRESS_REFRESH_DELAY, ReporterClient
-from .run import Run, ThreadWorker, launch_command
+from .run import ChildOutcome, Run, ThreadWorker, launch_command
 from .scheduler import Scheduler
 from .sqlite3 import DBSession
 from .step import Step
@@ -102,9 +101,6 @@ class Executor:
 
     # Boolean configuration flags
 
-    show_perf: bool = attrs.field(kw_only=True)
-    """Flag to enable detailed CPU usage of each step."""
-
     explain_rerun: bool = attrs.field(kw_only=True)
     """Flag to explain why a step is rerun rather than skipped, or vice versa."""
 
@@ -132,7 +128,7 @@ class Executor:
     """
 
     step_accumulator: ResourceAccumulator = attrs.field(init=False, factory=ResourceAccumulator)
-    """Running totals of CPU time and block-IO op counts for steps."""
+    """Running totals of CPU time for steps."""
 
     _base_env_cache: dict | None = attrs.field(init=False, default=None)
     """Cache for `base_env`, populated lazily on first access."""
@@ -305,16 +301,18 @@ class Executor:
                 # The step's creator moved on without it before/when it finished (see
                 # Step.detach()): the raw result is moot, report() shows a dedicated
                 # explanatory page instead of the raw error/success info.
-                run.stderr = ""
+                run.outcome = None
             elif wants_postpone and not run.interrupted_postpone:
                 # Erase error info to keep the screen output concise.
-                run.stderr = ""
-            # Persist the captured output in the same transaction as completed(),
-            # so a crash cannot leave a completed step without its output (or vice
-            # versa). run.stdout/run.stderr stay untruncated; store_output truncates a
-            # copy internally, so report() below still forwards the full text to the TUI.
-            max_output_size = int(os.getenv("STEPUP_MAX_OUTPUT_SIZE", "0"))
-            step.store_output(run.stdout, run.stderr, max_output_size)
+                run.outcome = None
+            if run.outcome is not None:
+                # Persist the captured output in the same transaction as completed(),
+                # so a crash cannot leave a completed step without its output (or vice versa).
+                # outcome.stdout/outcome.stderr stay untruncated.
+                # store_output truncates a copy internally,
+                # so report() below still forwards the full text to the TUI.
+                max_size = int(os.getenv("STEPUP_MAX_OUTPUT_SIZE", "0"))
+                step.store_outcome(run.outcome, max_size=max_size)
         self._report_step_counts()
 
         # Report the result of running the step
@@ -500,9 +498,15 @@ class Executor:
                 return await worker.run_in_thread()
             except HashCancelledError:
                 run.success = False
-                run.stderr += (
-                    "\n" if run.stderr else ""
-                ) + "Hash computation was cancelled because the build is shutting down."
+                if run.outcome is None:
+                    run.outcome = ChildOutcome(
+                        1, "", "Hash computation was cancelled because the build is shutting down."
+                    )
+                else:
+                    stderr = run.outcome.stderr
+                    stderr += "\n" if run.outcome.stderr else ""
+                    stderr += "Hash computation was cancelled because the build is shutting down."
+                    run.outcome = attrs.evolve(run.outcome, stderr=stderr)
                 return None
             finally:
                 run.worker = None
@@ -522,7 +526,7 @@ class Executor:
         """Compute one file hash in a thread, apply it to the workflow, resolve the future.
 
         Does not reuse `_run_work_thread`: that helper requires a `Run` (step-bound) and
-        writes failure text into `run.stderr`, neither of which applies to a `HashJob`.
+        writes a child outcome into `run.outcome`, neither of which applies to a `HashJob`.
         """
         worker = ThreadWorker(
             work=functools.partial(FileHash.regen, hash_job.old_hash, hash_job.path),
@@ -699,31 +703,14 @@ class Executor:
         env["HERE"] = str(Path(workdir).relpath())
         # Note: the variables defined here should be listed in stepup.core.api.getenv
 
-        if self.show_perf:
-            pt_initial = perf_counter()
-
         with self._track_running(run):
             outcome = await launch_command(
                 command, subshell=subshell, env=env, cwd=workdir, mp_ctx=self.mp_ctx, run=run
             )
 
-        returncode, stdout, stderr = outcome.payload
-        usage = outcome.usage
-        self.step_accumulator.add_usage(usage)
-        run.returncode = returncode
-        run.stdout = stdout
-        run.stderr = stderr
-
-        if self.show_perf:
-            wtime = perf_counter() - pt_initial
-            ru_lines = [
-                f"User CPU time [s]:   {usage.utime:9.4f}",
-                f"System CPU time [s]: {usage.stime:9.4f}",
-                f"Total CPU time [s]:  {usage.utime + usage.stime:9.4f}",
-                f"Wall time [s]:       {wtime:9.4f}",
-            ]
-            run.perf_info = "\n".join(ru_lines)
-        if run.returncode != 0:
+        self.step_accumulator.add_usage(outcome.usage)
+        run.outcome = outcome
+        if run.outcome.returncode != 0:
             run.success = False
 
     #
@@ -762,11 +749,15 @@ class Executor:
                     f"Postponed more than {self.workflow.postpone_cap} times"
                     if run.interrupted_postpone
                     else "Failed command",
-                    format_subprocess(command, str(workdir), None, run.returncode, shell=subshell),
+                    format_subprocess(
+                        command,
+                        str(workdir),
+                        None,
+                        None if run.outcome is None else run.outcome.returncode,
+                        shell=subshell,
+                    ),
                 )
             )
-        if len(run.perf_info) > 0:
-            pages.append(("Performance details", run.perf_info))
         if len(run.unavailable) > 0:
             pages.append(("Unavailable amended inputs", "\n".join(sorted(run.unavailable))))
         if len(run.unfresh) > 0:
@@ -779,12 +770,13 @@ class Executor:
             # postponing, or when the step was detached.
             run.out_missing.sort()
             pages.append(("Expected outputs not created", "\n".join(run.out_missing)))
-        stdout = run.stdout.rstrip()
-        if len(stdout) > 0:
-            pages.append(("Standard output", stdout))
-        stderr = run.stderr.rstrip()
-        if len(stderr) > 0:
-            pages.append(("Standard error", stderr))
+        if run.outcome is not None:
+            stdout = run.outcome.stdout.rstrip()
+            if len(stdout) > 0:
+                pages.append(("Standard output", stdout))
+            stderr = run.outcome.stderr.rstrip()
+            if len(stderr) > 0:
+                pages.append(("Standard error", stderr))
         return pages
 
     def _determine_action(self, run: Run) -> str:

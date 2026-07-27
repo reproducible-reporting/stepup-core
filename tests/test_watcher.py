@@ -22,7 +22,6 @@ def _make_watcher(workflow: Workflow) -> Watcher:
         workflow=workflow,
         db=workflow.db,
         reporter=ReporterClient(),
-        show_perf=False,
         explain_rerun=False,
         keep_going=False,
         live_progress=False,

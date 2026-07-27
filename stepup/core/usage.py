@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Resource-usage accounting for the director process and its children.
 
-Aggregates CPU time, block-IO operation counts, and peak cgroup memory across the director
-process and step-executed subprocess/forkserver children,
+Aggregates CPU time and peak cgroup memory across the director process
+and step-executed subprocess/forkserver children,
 for a compact summary report printed at director shutdown.
 """
 
@@ -17,65 +17,18 @@ import attrs
 from path import Path
 
 from .cgroups import find_own_memory_cgroup
+from .outcome import ResourceUsage
 
 __all__ = (
     "CgroupMemorySampler",
     "ResourceAccumulator",
-    "ResourceUsage",
     "format_resource_usage",
 )
 
 
-@attrs.define(frozen=True)
-class ResourceUsage:
-    """CPU time and block-IO op counts consumed by one process (or a process + its children)."""
-
-    utime: float = attrs.field(default=0.0)
-    """User CPU time [s]."""
-
-    stime: float = attrs.field(default=0.0)
-    """System CPU time [s]."""
-
-    inblock: int = attrs.field(default=0)
-    """Block input operations."""
-
-    oublock: int = attrs.field(default=0)
-    """Block output operations."""
-
-    @classmethod
-    def from_rusage_diff(
-        cls, ru_self_start, ru_self_end, ru_children_start, ru_children_end
-    ) -> "ResourceUsage":
-        """Build from before/after `resource.getrusage()` snapshots.
-
-        Parameters
-        ----------
-        ru_self_start, ru_self_end
-            `resource.getrusage(resource.RUSAGE_SELF)` snapshots taken before and after
-            the measured work.
-        ru_children_start, ru_children_end
-            `resource.getrusage(resource.RUSAGE_CHILDREN)` snapshots taken before and after
-            the measured work.
-
-        Returns
-        -------
-        usage
-            The resource usage consumed between the two snapshots.
-        """
-        utime = ru_self_end.ru_utime - ru_self_start.ru_utime
-        stime = ru_self_end.ru_stime - ru_self_start.ru_stime
-        inblock = ru_self_end.ru_inblock - ru_self_start.ru_inblock
-        oublock = ru_self_end.ru_oublock - ru_self_start.ru_oublock
-        utime += ru_children_end.ru_utime - ru_children_start.ru_utime
-        stime += ru_children_end.ru_stime - ru_children_start.ru_stime
-        inblock += ru_children_end.ru_inblock - ru_children_start.ru_inblock
-        oublock += ru_children_end.ru_oublock - ru_children_start.ru_oublock
-        return cls(utime=utime, stime=stime, inblock=inblock, oublock=oublock)
-
-
 @attrs.define
 class ResourceAccumulator:
-    """Running totals of CPU time and block-IO op counts for child processes."""
+    """Running totals of CPU time for child processes."""
 
     utime: float = attrs.field(init=False, default=0.0)
     """Total accumulated user CPU time [s]."""
@@ -83,35 +36,28 @@ class ResourceAccumulator:
     stime: float = attrs.field(init=False, default=0.0)
     """Total accumulated system CPU time [s]."""
 
-    inblock: int = attrs.field(init=False, default=0)
-    """Total accumulated block input operations."""
-
-    oublock: int = attrs.field(init=False, default=0)
-    """Total accumulated block output operations."""
-
-    def add(self, utime: float, stime: float, inblock: int, oublock: int) -> None:
+    def add(self, utime: float, stime: float) -> None:
         """Add one child process's resource usage to the running totals."""
         self.utime += utime
         self.stime += stime
-        self.inblock += inblock
-        self.oublock += oublock
 
     def add_usage(self, usage: ResourceUsage) -> None:
         """Add one child process's resource usage (as a `ResourceUsage`) to the running totals."""
-        self.add(usage.utime, usage.stime, usage.inblock, usage.oublock)
+        self.add(usage.utime, usage.stime)
 
 
 @attrs.define
 class CgroupMemorySampler:
     """Periodically sample aggregate cgroup memory across the director's process tree.
 
-    Tracks the peak aggregate memory observed across the director process and every
-    process descending from it (step/hash subprocess children, forkserver children,
-    and any further processes those in turn spawn). This relies on `cgroup_dir` being
-    a cgroup dedicated to that process tree (see `find_own_memory_cgroup()`), so that
-    `memory.current`/`memory.peak` are not polluted by unrelated processes and every
-    descendant is covered automatically, including short-lived ones and grandchildren
-    a step's own command might spawn, without any cooperation from the executor.
+    Tracks the peak aggregate memory observed across the director process
+    and every process descending from it
+    (step subprocess children, forkserver children, and any further processes those in turn spawn).
+    This relies on `cgroup_dir` being a cgroup dedicated to that process tree
+    (see `find_own_memory_cgroup()`), so that `memory.current`/`memory.peak` are not polluted
+    by unrelated processes and every descendant is covered automatically,
+    including short-lived ones and grandchildren a step's own command might spawn,
+    without any cooperation from the executor.
 
     Note that the sampling loop is only needed for kernels older than 5.19,
     where `memory.peak` is not available.
@@ -188,8 +134,6 @@ def format_resource_usage(
         director_stime=ru_self.ru_stime,
         step_utime=step_accumulator.utime,
         step_stime=step_accumulator.stime,
-        director_block_io=f"{ru_self.ru_inblock} / {ru_self.ru_oublock}",
-        step_block_io=f"{step_accumulator.inblock} / {step_accumulator.oublock}",
         director_mib=director_maxrss_mib,
     )
     sampler_reported = False
@@ -215,9 +159,6 @@ Times in seconds                 user         sys       wall
   Elapsed                           -           - {wall_time:10.3f}
   Director                 {director_utime:10.3f}  {director_stime:10.3f}          -
   Steps                    {step_utime:10.3f}  {step_stime:10.3f}          -
-────────────────────────────────────────────────────────────
-Director Blocked I/O ops (In / Out) {director_block_io:>24}
-Steps Blocked I/O ops (In / Out)    {step_block_io:>24}
 ────────────────────────────────────────────────────────────
 Director Peak Memory (incl. shared libs)       {director_mib:9.1f} MiB"""
 

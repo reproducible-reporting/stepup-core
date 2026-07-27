@@ -173,9 +173,6 @@ async def async_build(args: argparse.Namespace, default_resources: str) -> None:
         # Set up the reporter monitor
         stop_event = asyncio.Event()
         reporter_handler = ReporterHandler(args.progress, stop_event)
-        if args.show_perf > 0 and not reporter_handler.console.is_terminal:
-            print("Error: --show-perf requires an interactive terminal.", file=sys.stderr)
-            sys.exit(1)
         task_reporter = asyncio.create_task(
             serve_socket_rpc(reporter_handler, reporter_socket_path, stop_event),
             name="reporter-rpc",
@@ -217,8 +214,6 @@ async def async_build(args: argparse.Namespace, default_resources: str) -> None:
             argv.append("--keep-going")
         if not args.fix_epoch:
             argv.append("--no-fix-epoch")
-        if args.show_perf > 1:
-            argv.append("--show-perf")
         if args.progress and reporter_handler.console.is_terminal:
             argv.append("--live-progress")
         args.resources = merge_resources(default_resources, args.resources)
@@ -493,13 +488,6 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         default=None,
         help="Available resources for steps, e.g. 'cpu:4,gpu:1,memgb:16'. "
         "Merged with (not overriding) config files and STEPUP_BUILD_RESOURCES env var.",
-    )
-    parser.add_argument(
-        "--show-perf",
-        "-s",
-        default=0,
-        action="count",
-        help="Show the performance info on each line. Repeat for more detailed info.",
     )
     parser.add_argument(
         "--sqllog",

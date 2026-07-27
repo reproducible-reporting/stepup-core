@@ -6,54 +6,46 @@ from types import SimpleNamespace
 
 import pytest
 
-from stepup.core.usage import (
-    CgroupMemorySampler,
-    ResourceAccumulator,
-    ResourceUsage,
-)
+from stepup.core.outcome import ResourceUsage
+from stepup.core.usage import CgroupMemorySampler, ResourceAccumulator
 
 
 def test_resource_accumulator_add():
     acc = ResourceAccumulator()
-    acc.add(1.5, 0.5, 3, 4)
-    acc.add(2.5, 1.5, 5, 6)
+    acc.add(1.5, 0.5)
+    acc.add(2.5, 1.5)
     assert acc.utime == pytest.approx(4.0)
     assert acc.stime == pytest.approx(2.0)
-    assert acc.inblock == 8
-    assert acc.oublock == 10
 
 
 def test_resource_usage_defaults():
     usage_ = ResourceUsage()
     assert usage_.utime == 0.0
     assert usage_.stime == 0.0
-    assert usage_.inblock == 0
-    assert usage_.oublock == 0
 
 
-def test_resource_usage_from_rusage_diff_self_and_children():
-    ru_self_start = SimpleNamespace(ru_utime=1.0, ru_stime=2.0, ru_inblock=3, ru_oublock=4)
-    ru_self_end = SimpleNamespace(ru_utime=1.5, ru_stime=2.25, ru_inblock=5, ru_oublock=9)
-    ru_children_start = SimpleNamespace(ru_utime=0.1, ru_stime=0.2, ru_inblock=1, ru_oublock=1)
-    ru_children_end = SimpleNamespace(ru_utime=0.4, ru_stime=0.5, ru_inblock=4, ru_oublock=2)
-    usage_ = ResourceUsage.from_rusage_diff(
-        ru_self_start, ru_self_end, ru_children_start, ru_children_end
+def test_resource_usage_from_diff_self_and_children():
+    ru_self_start = SimpleNamespace(ru_utime=1.0, ru_stime=2.0)
+    ru_self_end = SimpleNamespace(ru_utime=1.5, ru_stime=2.25)
+    ru_children_start = SimpleNamespace(ru_utime=0.1, ru_stime=0.2)
+    ru_children_end = SimpleNamespace(ru_utime=0.4, ru_stime=0.5)
+    wtime_start = 1.5
+    wtime_end = 2.0
+    usage_ = ResourceUsage.from_diff(
+        ru_self_start, ru_self_end, ru_children_start, ru_children_end, wtime_start, wtime_end
     )
-    # self diff (0.5, 0.25, 2, 5) + children diff (0.3, 0.3, 3, 1)
+    # self diff (0.5, 0.25) + children diff (0.3, 0.3)
     assert usage_.utime == pytest.approx(0.8)
     assert usage_.stime == pytest.approx(0.55)
-    assert usage_.inblock == 5
-    assert usage_.oublock == 6
+    assert usage_.wtime == pytest.approx(0.5)
 
 
 def test_resource_accumulator_add_usage():
     acc = ResourceAccumulator()
-    acc.add_usage(ResourceUsage(utime=1.5, stime=0.5, inblock=3, oublock=4))
-    acc.add_usage(ResourceUsage(utime=2.5, stime=1.5, inblock=5, oublock=6))
+    acc.add_usage(ResourceUsage(utime=1.5, stime=0.5))
+    acc.add_usage(ResourceUsage(utime=2.5, stime=1.5))
     assert acc.utime == pytest.approx(4.0)
     assert acc.stime == pytest.approx(2.0)
-    assert acc.inblock == 8
-    assert acc.oublock == 10
 
 
 def test_cgroup_memory_sampler_tracks_peak(path_tmp):

@@ -17,6 +17,7 @@ from stepup.core.exceptions import GraphError
 from stepup.core.file import File
 from stepup.core.hash import FileHash, StepHash
 from stepup.core.nglob import NGlobMulti
+from stepup.core.outcome import ChildOutcome
 from stepup.core.path import dir_range_upper
 from stepup.core.sqlite3 import DBSession
 from stepup.core.static_tree import StaticTree
@@ -2807,42 +2808,47 @@ async def test_define_step_invalid_resources(wfp: Workflow, resources: dict):
             wfp.define_step(plan, "echo", resources=resources)
 
 
-async def test_step_output_roundtrip(wfp: Workflow):
-    """store_output / get_output / delete_outputs round-trip stdout and stderr together."""
+async def test_step_outcome_roundtrip(wfp: Workflow):
+    """store_outcome / get_outcome / delete_outcome round-trip a `ChildOutcome`."""
     async with wfp.db:
         step = wfp.find(Step, "./plan.py")
 
-        # Empty content stores nothing.
-        step.store_output("", "", 0)
-        assert step.get_output() == ("", "")
+        # No outcome stored yet.
+        assert step.get_outcome() is None
+
+        # Empty content round-trips like any other outcome.
+        step.store_outcome(ChildOutcome(0, "", ""), 0)
+        assert step.get_outcome() == ChildOutcome(0, "", "")
 
         # Non-empty content for both streams round-trips in one call.
-        step.store_output("hello out\n", "hello err\n", 0)
-        assert step.get_output() == ("hello out\n", "hello err\n")
+        outcome = ChildOutcome(1, "hello out\n", "hello err\n")
+        step.store_outcome(outcome, 0)
+        assert step.get_outcome() == outcome
 
-        # delete_outputs clears both streams.
-        step.delete_outputs()
-        assert step.get_output() == ("", "")
+        # delete_outcome clears the stored outcome.
+        step.delete_outcome()
+        assert step.get_outcome() is None
 
 
-async def test_step_output_truncated_on_store(wfp: Workflow):
-    """store_output applies the byte budget independently per stream."""
+async def test_step_outcome_truncated_on_store(wfp: Workflow):
+    """store_outcome applies the byte budget independently per stream."""
     async with wfp.db:
         step = wfp.find(Step, "./plan.py")
-        step.store_output("abcdefghij", "klmnopqrst", 5)
-        assert step.get_output() == (
+        step.store_outcome(ChildOutcome(0, "abcdefghij", "klmnopqrst"), 5)
+        assert step.get_outcome() == ChildOutcome(
+            0,
             "abcde\n[output truncated at 5 bytes]\n",
             "klmno\n[output truncated at 5 bytes]\n",
         )
 
 
-async def test_step_output_discard_no_fk_error(wfp: Workflow):
-    """discard() removes the step row (and implicitly its stdout/stderr columns)."""
+async def test_step_outcome_discard_no_fk_error(wfp: Workflow):
+    """discard() removes the step row (and implicitly its outcome columns)."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo hi")
         step = wfp.find(Step, "echo hi")
-        step.store_output("data\n", "oops\n", 0)
+        step.store_outcome(ChildOutcome(0, "data\n", "oops\n"), 0)
         step_i = step.i
         step.discard()
         # After discard() deletes the node row, the step no longer exists in the database.
@@ -2983,7 +2989,7 @@ async def test_clean_cascades_satellite_rows(wfs: Workflow):
         step = wfs.find(Step, "do something")
         out_file = wfs.find(File, "out.txt")
         step.set_hash(StepHash(b"inp", None, b"out", None))
-        step.store_output("hello\n", "", 0)
+        step.store_outcome(ChildOutcome(0, "hello\n", ""), 0)
         step.record_subprocess("do something", ".", None, 0, False, "in", "out", "err")
         wfs.register_nglob(step, NGlobMulti.from_patterns(["*.txt"]))
         step_i = step.i

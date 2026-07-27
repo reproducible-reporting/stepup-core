@@ -43,7 +43,6 @@ def _make_builder(workflow: Workflow) -> Builder:
         workflow=workflow,
         db=workflow.db,
         reporter=ReporterClient(),
-        show_perf=False,
         explain_rerun=False,
         keep_going=False,
         live_progress=False,

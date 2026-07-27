@@ -16,6 +16,7 @@ from stepup.core.executor import Executor, NoOverwriteDict, Run
 from stepup.core.file import File, FileState
 from stepup.core.hash import FileHash, StepHash, compute_inp_hashes
 from stepup.core.hash_queue import HashJob
+from stepup.core.outcome import ChildOutcome, ResourceUsage
 from stepup.core.run import ThreadWorker
 from stepup.core.step import Step
 from stepup.core.workflow import Workflow
@@ -30,7 +31,6 @@ def _make_executor(
         workflow=workflow,
         db=db,
         reporter=reporter,
-        show_perf=False,
         explain_rerun=False,
         keep_going=keep_going,
         live_progress=False,
@@ -73,6 +73,7 @@ def _make_failed_run() -> Run:
     )
     run = Run(step, job_i=1)
     run.success = False
+    run.outcome = ChildOutcome(1, "", "")
     return run
 
 
@@ -219,7 +220,7 @@ async def testnew_run_cancelled_reports_failure_instead_of_raising(wfs: Workflow
 
     assert new_hash is None
     assert run.success is False
-    assert "cancelled" in run.stderr
+    assert "cancelled" in run.outcome.stderr
     async with wfs.db:
         assert step.get_state() == StepState.FAILED
     assert reporter.calls[-1][0] == "FAIL"
@@ -242,7 +243,7 @@ async def test_compute_out_step_hash_cancelled_reports_failure(wfs: Workflow, mo
     assert new_hash is None
     assert new_out_hashes == {}
     assert run.success is False
-    assert "cancelled" in run.stderr
+    assert "cancelled" in run.outcome.stderr
 
 
 async def test_compute_full_step_hash_cancelled_returns_sentinel_without_raising(
@@ -267,11 +268,53 @@ async def test_compute_full_step_hash_cancelled_returns_sentinel_without_raising
     assert new_inp_hashes == {}
     assert new_out_hashes == {}
     assert run.success is False
-    assert "cancelled" in run.stderr
+    assert "cancelled" in run.outcome.stderr
     # _compute_full_step_hash must not finalize the step or report anything itself.
     async with wfs.db:
         assert step.get_state() == state_before
     assert reporter.calls == []
+
+
+@pytest.mark.parametrize(
+    ("stderr_before", "separator"),
+    [("warning\n", "\n"), ("", "")],
+)
+async def test_compute_full_step_hash_cancelled_keeps_command_outcome(
+    wfs: Workflow, monkeypatch, stderr_before: str, separator: str
+):
+    """A cancellation after the command ran must not discard what the command produced.
+
+    `_compute_full_step_hash` is the only `_run_work_thread` call site that runs after
+    `_run_command` (see `execute_job`), so `run.outcome` already holds the child's real
+    return code, output and resource usage. The cancellation note is appended to its
+    stderr instead of replacing the whole outcome, which would otherwise report and
+    persist an empty stdout and a fabricated `returncode=1` in `step_outcome`.
+    The separating newline is only added when there is stderr to separate it from.
+    """
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo hi")
+        step = wfs.find(Step, "echo hi")
+
+    monkeypatch.setattr(ThreadWorker, "run_in_thread", _raise_hash_cancelled)
+    executor = _make_executor(reporter=_FakeReporter(), db=wfs.db)
+    run = Run(step, job_i=1)
+    usage = ResourceUsage(utime=1.0, stime=0.5, wtime=2.0)
+    run.outcome = ChildOutcome(0, "hi\n", stderr_before, usage)
+
+    new_hash, new_inp_hashes, new_out_hashes = await executor._compute_full_step_hash(run)
+
+    assert new_hash is None
+    assert new_inp_hashes == {}
+    assert new_out_hashes == {}
+    assert run.success is False
+    # The command's own outcome survives, only stderr gains the cancellation note.
+    assert run.outcome.returncode == 0
+    assert run.outcome.stdout == "hi\n"
+    assert run.outcome.usage == usage
+    assert run.outcome.stderr == (
+        stderr_before + separator + "Hash computation was cancelled because the build is shutting "
+        "down."
+    )
 
 
 async def test_try_skip_job_bails_out_when_out_hash_cancelled(wfs: Workflow, monkeypatch):

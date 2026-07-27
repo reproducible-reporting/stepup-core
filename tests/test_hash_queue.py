@@ -144,7 +144,6 @@ def _make_executor(workflow: Workflow) -> Executor:
         workflow=workflow,
         db=workflow.db,
         reporter=ReporterClient(),
-        show_perf=False,
         explain_rerun=False,
         keep_going=False,
         live_progress=False,

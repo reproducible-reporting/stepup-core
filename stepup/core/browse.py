@@ -183,6 +183,10 @@ HTML_TEMPLATE = """\
       margin-top: 5px;
       margin-bottom: 5px;
     }
+    ul, ol {
+      margin-top: 5px;
+      margin-bottom: 5px;
+    }
     pre {
       background-color: var(--pre-color);
       margin-left: 10px;
@@ -529,15 +533,25 @@ class GraphServer(BaseHTTPRequestHandler):
                     line += "</pre>"
                     yield line
 
-            sql_output = "SELECT stdout, stderr FROM step_output WHERE node = ?"
-            row = self.con.execute(sql_output, (node_i,)).fetchone()
-            stdout, stderr = ("", "") if row is None else row
-            if stdout != "":
-                yield "<h3>Standard Output</h3>"
-                yield f"<pre>{html.escape(stdout)}</pre>"
-            if stderr != "":
-                yield "<h3>Standard Error</h3>"
-                yield f"<pre>{html.escape(stderr)}</pre>"
+            sql_outcome = (
+                "SELECT returncode, stdout, stderr, utime, stime, wtime "
+                "FROM step_outcome WHERE node = ?"
+            )
+            row = self.con.execute(sql_outcome, (node_i,)).fetchone()
+            if row is not None:
+                yield "<h3>Child Outcome</h3>"
+                yield f"<p><b>Return Code:</b> {row[0]}</p>"
+                if row[1] != "":
+                    yield "<p><b>Standard Output</b></p>"
+                    yield f"<pre>{html.escape(row[1])}</pre>"
+                if row[2] != "":
+                    yield "<p><b>Standard Error</b></p>"
+                    yield f"<pre>{html.escape(row[2])}</pre>"
+                yield "<p><b>Resource Usage</b></p><ul>"
+                yield f"<li>User CPU Time: {row[3]:.3f} s</li>"
+                yield f"<li>System CPU Time: {row[4]:.3f} s</li>"
+                yield f"<li>Wall Clock Time: {row[5]:.3f} s</li>"
+                yield "</ul>"
 
             sql_sub = (
                 "SELECT cmd, workdir, env_overrides, returncode, shell, stdin, stdout, stderr "

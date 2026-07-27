@@ -2,20 +2,26 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Unit tests for stepup.core.run"""
 
+import os
+import shlex
 import shutil
 import sys
+from types import SimpleNamespace
 
 import pytest
+from path import Path
 
 import stepup.core.run as run_mod
 from stepup.core.exceptions import RunError
+from stepup.core.outcome import ResourceUsage
 from stepup.core.run import (
     ChildOutcome,
+    Run,
     _detect_python_entrypoint,
     _executable_compatible_with_current_python,
     _executable_uses_same_python,
+    launch_command,
 )
-from stepup.core.usage import ResourceUsage
 
 
 def test_missing_file(tmp_path):
@@ -103,10 +109,38 @@ def test_env_form_without_interpreter_argument(monkeypatch, tmp_path):
 
 
 def test_child_outcome_fields():
-    usage_ = ResourceUsage(utime=1.0, stime=0.5, inblock=2, oublock=3)
-    outcome = ChildOutcome(payload=(0, "out", "err"), usage=usage_)
-    assert outcome.payload == (0, "out", "err")
+    usage_ = ResourceUsage(utime=1.0, stime=0.5)
+    outcome = ChildOutcome(0, "out", "err", usage=usage_)
+    assert outcome.returncode == 0
+    assert outcome.stdout == "out"
+    assert outcome.stderr == "err"
     assert outcome.usage is usage_
+
+
+async def test_launch_command_measures_resource_usage(tmp_path):
+    """A real child's CPU and wall time end up in the returned `ChildOutcome`.
+
+    This covers the measurement plumbing itself (`os.wait4` in `_communicate_wait4` plus the
+    `perf_counter` bracket around `Popen`), which the pure `ResourceUsage` unit tests in
+    test_usage.py cannot exercise because they feed in synthetic `rusage` snapshots.
+    """
+    step = SimpleNamespace(i=1, label="burn", command_workdir=("burn", "."))
+    run = Run(step, job_i=1)
+    command = f"{shlex.quote(sys.executable)} -c 'print(sum(range(2000000)))'"
+
+    outcome = await launch_command(
+        command, subshell=True, env=dict(os.environ), cwd=Path(tmp_path), mp_ctx=None, run=run
+    )
+
+    assert outcome.returncode == 0
+    assert outcome.stdout.strip() == "1999999000000"
+    # Interpreter startup plus the loop always costs measurable user CPU and wall time.
+    assert outcome.usage.utime > 0.0
+    assert outcome.usage.stime >= 0.0
+    assert outcome.usage.wtime > 0.0
+    # The wall time brackets the whole child, so it cannot be shorter than the CPU time
+    # of this single-threaded child.
+    assert outcome.usage.wtime >= outcome.usage.utime
 
 
 def _set_env_bins(monkeypatch, prefix, base_prefix=None):

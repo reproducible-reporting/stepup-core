@@ -6,8 +6,6 @@
      FAIL │ false
 ──────────────────────────────── Failed command ────────────────────────────────
 false  # exit=1
-──────────────────────────────── Standard error ────────────────────────────────
-(stripped)
 ────────────────────────────────────────────────────────────────────────────────
     START │ touch independent.txt
   SUCCESS │ touch independent.txt

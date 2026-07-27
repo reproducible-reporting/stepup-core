@@ -35,13 +35,13 @@ stepup join
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq 0 ]] || exit 1
 
-# With the director shut down, assert the captured output is persisted in step_output.
+# With the director shut down, assert the captured output is persisted in step_outcome.
 # The stderr page in expected_stdout is stripped before comparison, so the persisted
 # stderr is asserted here via the database instead. The output stored during the first
 # real execution must still be present after the skip.
 ./checkdb.py
 
-# Restart StepUp from scratch and confirm the step_output rows survive a full restart.
+# Restart StepUp from scratch and confirm the step_outcome rows survive a full restart.
 rm .stepup/*.log
 sb -j 1 -w & # > current_stdout2.txt &
 PID=$!
@@ -54,5 +54,5 @@ stepup join
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq 0 ]] || exit 1
 
-# Assert the captured output is persisted in step_output after a full restart.
+# Assert the captured output is persisted in step_outcome after a full restart.
 ./checkdb.py

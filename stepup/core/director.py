@@ -122,7 +122,6 @@ async def async_main(
                 explain_rerun=args.explain_rerun,
                 keep_going=args.keep_going,
                 fix_epoch=args.fix_epoch,
-                show_perf=args.show_perf,
                 do_joblog=args.joblog,
                 live_progress=args.live_progress,
                 do_watch=args.watch,
@@ -259,12 +258,6 @@ def parse_args() -> argparse.Namespace:
         "a step is failed instead of parked. A livelock guard. [default=%(default)s]",
     )
     parser.add_argument(
-        "--show-perf",
-        default=False,
-        action=argparse.BooleanOptionalAction,
-        help="Add performance details after completed step.",
-    )
-    parser.add_argument(
         "--resources",
         default=None,
         help="Available resources for steps, e.g. 'cpu:4,gpu:1,memgb:16'.",
@@ -372,7 +365,6 @@ async def serve(
     explain_rerun: bool,
     keep_going: bool,
     fix_epoch: bool,
-    show_perf: bool,
     do_joblog: bool,
     live_progress: bool,
     do_watch: bool,
@@ -410,10 +402,6 @@ async def serve(
     fix_epoch
         If True, set the `SOURCE_DATE_EPOCH` environment variable for step child
         processes (unless already set in the environment), for reproducible builds.
-    show_perf
-        Show performance details after each completed step.
-        Requires `live_progress`, since the performance details are printed inline with the
-        live step-count reporting.
     do_joblog
         If True, record job-execution events (created, started, ended, completed) to
         `JOBLOG_CSV`, for diagnosing scheduler/executor dispatch overhead.
@@ -447,17 +435,17 @@ async def serve(
     Returns
     -------
     result
-        The exit code of the director process, together with a resource-usage summary
-        collected over the lifetime of this call (wall time, CPU time, block-IO op counts,
-        and peak memory for the director and its step/hash child processes).
+        The exit code of the director process, together with a resource-usage summary collected
+        over the lifetime of this call:
+        - wall time
+        - CPU time (user/system)
+        - peak memory for the director (and optionally its step child processes).
     """
     time_start = time.perf_counter()
     if njob < 1:
         raise ValueError(f"Number of parallel tasks must be strictly positive, got {njob}")
     if do_watch_first and not do_watch:
         raise ValueError("do_watch_first cannot be set without do_watch.")
-    if show_perf and not live_progress:
-        raise ValueError("show_perf requires live_progress (an interactive terminal reporter).")
     _check_plan("plan.py")
 
     # Environment variables exported to step child processes (and forkserver children).
@@ -492,7 +480,6 @@ async def serve(
         db=db,
         reporter=reporter,
         mp_ctx=mp_ctx,
-        show_perf=show_perf,
         explain_rerun=explain_rerun,
         keep_going=keep_going,
         live_progress=live_progress,

@@ -168,7 +168,6 @@ The following diagram illustrates how different components of StepUp interact. L
       when you run the `stepup` command.
     - The **director** holds the workflow data structure and is responsible
       for scheduling steps and watching for file changes.
-    - Per step, there is a subprocess to compute **file hashes**.
     - Per step, there is a subprocess to execute the **step command**.
 - Brown arrows: standard input and standard output.
 - Yellow arrows: startup of subprocesses

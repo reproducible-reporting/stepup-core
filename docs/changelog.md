@@ -193,7 +193,7 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
       for steps that are being hash-checked for possible skipping.
     - The files state `UNCONFIRMED` has been added to distinguish truly missing files
       from those who still need to be hash-checked.
-    - `step_output` and `step_subprocess` tables were added.
+    - `step_outcome` and `step_subprocess` tables were added.
     - The `step` table now tracks re-entrant `hold()`/`release()` calls,
       needed for the new `hold()` context manager (see above).
     - SQLite's `ON DELETE CASCADE` feature is now used for all satellite tables of the `step` table.
@@ -225,8 +225,9 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
       "detach" (verb, state change) and "detached" (state).
     - The "action" abstraction layer introduced in StepUp 3 has been completely removed,
       as it was no longer needed after the introduction of the forkserver.
-    - Worker subprocesses have been replaced by asyncio tasks running inside the director.
-      File hashing is offloaded to a dedicated subprocess (`_stepup_hasher` or a forkserver child).
+    - Worker subprocesses have been replaced by asyncio tasks launching subprocesses,
+      optionally through a forkserver for reduced overhead.
+      File hashing is offloaded to dedicated threads.
     - Strict database sessions management and transaction correctness has been implemented
       to avoid database corruption, e.g. due to race conditions.
     - When a step is detached while it is running (and not recreated before it ends),
@@ -248,10 +249,6 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
 - The script interface for calling user Python scripts from `plan.py` has been deprecated
   in favor of the new [Call](getting_started/call.md) interface.
   You are encouraged to migrate your `plan.py` files to the new API.
-- `--show-perf` (and `-s`) now requires an interactive terminal and errors out otherwise,
-  since the performance details it prints are no longer conveyed in non-interactive/redirected
-  output. This flag will be removed in a future release; step timings will instead be recorded
-  as metadata in the workflow database, inspectable through `stepup browse`.
 
 ### Removed
 
@@ -268,6 +265,9 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
       will remove empty directories after having removed outdated output files they contained.
     - StepUp now limits its insistence on path affixes (like trailing slashes)
       to only those cases where it is absolutely necessary to avoid ambiguity.
+- `--show-perf` has been removed.
+  Per-step usage information is stored in the workflow database instead
+  and can be viewed with `stepup browse`.
 - The `${inp}` and `${out}` placeholders have been removed from the `run()` and `step()` functions.
   Use the `shq()` helper function instead, together with Python's built-in f-strings.
 - The `glob()` function no longer accepts `_defer` and `_required` keyword arguments.

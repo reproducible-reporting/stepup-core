@@ -599,7 +599,7 @@ class Trellis:
         #   Python (`Workflow._check_creator`/`_check_source`, `Trellis._check_creator`,
         #   and their `Node`/`Trellis` call sites, all removed) into node/dependency CHECK
         #   constraints and triggers.
-        # - Added `step_output` (stdout/stderr) and `step_subprocess` (subprocess
+        # - Added `step_outcome` (stdout/stderr) and `step_subprocess` (subprocess
         #   invocations, keyed by rowid instead of an explicit seq column) tables.
         # - `nglob_multi.data` changed from a pickle blob to JSON.
         # - `ON DELETE CASCADE` added to all satellite tables; indexes tuned; `auto_vacuum`

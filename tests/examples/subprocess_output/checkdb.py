@@ -3,8 +3,8 @@ import sqlite3
 
 con = sqlite3.connect(".stepup/graph.db")
 stdout, stderr = con.execute(
-    "SELECT stdout, stderr FROM step_output "
-    "JOIN node ON node.i = step_output.node WHERE node.label = './work.py'"
+    "SELECT stdout, stderr FROM step_outcome "
+    "JOIN node ON node.i = step_outcome.node WHERE node.label = './work.py'"
 ).fetchone()
 con.close()
 assert "python-stdout-line" in stdout, stdout
