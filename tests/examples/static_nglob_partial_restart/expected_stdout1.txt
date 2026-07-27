@@ -4,6 +4,7 @@
    SUCCESS │ ./plan.py
      START │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
    SUCCESS │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

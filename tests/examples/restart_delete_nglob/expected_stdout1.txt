@@ -10,6 +10,7 @@
    SUCCESS │ cp -p out1.txt foo1.txt
      START │ cp -p out2.txt foo2.txt
    SUCCESS │ cp -p out2.txt foo2.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 5 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

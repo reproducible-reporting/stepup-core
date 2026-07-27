@@ -9,6 +9,7 @@
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Ran 2 job(s).
    WARNING │ 1 step(s) failed.
    WARNING │ Scheduler is put on hold. Not reporting pending steps.
    WARNING │ Skipping file cleanup due to incomplete build
@@ -18,6 +19,7 @@
      PHASE │ build
      START │ ./work.py
    SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 1 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

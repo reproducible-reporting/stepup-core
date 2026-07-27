@@ -9,6 +9,7 @@ ls --this-option-does-not-exist  # exit=2
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Ran 2 job(s).
    WARNING │ 1 step(s) failed.
    WARNING │ Scheduler is put on hold. Not reporting pending steps.
    WARNING │ Skipping file cleanup due to incomplete build

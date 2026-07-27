@@ -7,6 +7,7 @@
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Ran 2 job(s).
    WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  never.txt
@@ -27,6 +28,7 @@ Inputs        STATIC  trigger.txt
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Ran 1 job(s).
    WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  never.txt
@@ -47,6 +49,7 @@ Inputs        STATIC  trigger.txt
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Ran 1 job(s).
    WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  never.txt
@@ -71,6 +74,7 @@ never.txt
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Ran 1 job(s).
    WARNING │ 1 step(s) failed.
    WARNING │ Scheduler is put on hold. Not reporting pending steps.
    WARNING │ Skipping file cleanup due to incomplete build

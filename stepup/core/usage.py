@@ -194,7 +194,7 @@ def format_resource_usage(
     step_accumulator: ResourceAccumulator,
     hash_accumulator: ResourceAccumulator,
     memory_sampler: CgroupMemorySampler | None,
-) -> str:
+) -> tuple[str, str]:
     """Format a resource usage report as a table-like multi-line string for stderr."""
     # `ru_maxrss` is reported in kilobytes on Linux, but in bytes on macOS.
     ru_self = resource.getrusage(resource.RUSAGE_SELF)
@@ -202,8 +202,9 @@ def format_resource_usage(
         ru_self.ru_maxrss / 1024 if sys.platform == "linux" else ru_self.ru_maxrss / 1048576
     )
 
-    result = REPORT_TEMPLATE.format(
-        wall_time=time.perf_counter() - time_start,
+    wall_time = time.perf_counter() - time_start
+    report = REPORT_TEMPLATE.format(
+        wall_time=wall_time,
         director_utime=ru_self.ru_utime,
         director_stime=ru_self.ru_stime,
         step_utime=step_accumulator.utime,
@@ -215,13 +216,20 @@ def format_resource_usage(
         hash_block_io=f"{hash_accumulator.inblock} / {hash_accumulator.oublock}",
         director_mib=director_maxrss_mib,
     )
+    sampler_reported = False
     if memory_sampler is not None:
         memory_sampler.sample_once()
         if memory_sampler.peak_mib is not None:
-            result += "\n" + CGROUP_PEAK_MEM.format(aggregate_mib=memory_sampler.peak_mib)
-            return result
-    result += "\n" + CGROUP_UNAVAILABLE
-    return result
+            report += "\n" + CGROUP_PEAK_MEM.format(aggregate_mib=memory_sampler.peak_mib)
+            sampler_reported = True
+    if not sampler_reported:
+        report += "\n" + CGROUP_UNAVAILABLE
+    summary = (
+        f"Wall {wall_time:.1f}s, Director {ru_self.ru_utime:.1f}u/{ru_self.ru_stime:.1f}s, "
+        f"Steps {step_accumulator.utime:.1f}u/{step_accumulator.stime:.1f}s, "
+        f"Hashing {hash_accumulator.utime:.1f}u/{hash_accumulator.stime:.1f}s"
+    )
+    return report, summary
 
 
 REPORT_TEMPLATE = """\

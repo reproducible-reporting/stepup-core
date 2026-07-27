@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 6 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files
    STARTUP │ Scanning initial database for new nglob matches
    UPDATED │ tail_y.txt
@@ -13,6 +11,7 @@
    SUCCESS │ paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
      START │ paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
    SUCCESS │ paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

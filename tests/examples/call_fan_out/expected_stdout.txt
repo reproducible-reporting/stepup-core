@@ -10,6 +10,7 @@
    SUCCESS │ ./work.py run '{"inp": ["input_b.txt"], "out": ["output_b.txt"]}'
      START │ ./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
    SUCCESS │ ./work.py run '{"inp": ["input_c.txt"], "out": ["output_c.txt"]}'
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 5 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

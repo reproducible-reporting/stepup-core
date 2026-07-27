@@ -6,6 +6,7 @@
    SUCCESS │ echo 1 > original.txt
      START │ cp -p original.txt copy.txt
    SUCCESS │ cp -p original.txt copy.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 10 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files
    UPDATED │ inp1.txt (digest 87428fc5 ➜ 02638299)
    UPDATED │ inp3.txt (digest 87428fc5 ➜ 02638299)
@@ -8,8 +6,10 @@
      PHASE │ build
      START │ ./work1.py
    SUCCESS │ ./work1.py
-  DIRECTOR │ Trying to delete 2 outdated output(s)
-     CLEAN │ out3.txt
-     CLEAN │ out2.txt
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 2 outdated output(s)
+    REMOVE │ out3.txt
+    REMOVE │ out2.txt
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

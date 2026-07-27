@@ -12,6 +12,7 @@
 Input changed unexpectedly: f1.txt (digest 98ea6e4f ➜ 58ca930f, size 3 ➜ 15)
 ────────────────────────────────────────────────────────────────────────────────
      ERROR │ The scheduler has been put on hold due to unexpected input changes.
+  DIRECTOR │ Ran 3 job(s).
    WARNING │ 1 step(s) failed.
    WARNING │ Scheduler is put on hold. Not reporting pending steps.
    WARNING │ Skipping file cleanup due to incomplete build

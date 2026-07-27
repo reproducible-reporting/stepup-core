@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 3 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files
    DELETED │ test2.txt
    STARTUP │ Scanning initial database for new nglob matches
@@ -8,6 +6,7 @@
      START │ echo test2 > test2.txt
    SUCCESS │ echo test2 > test2.txt
       SKIP │ cat test2.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

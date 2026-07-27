@@ -6,6 +6,7 @@
    SUCCESS │ cp -p static/foo.txt foo.txt
      START │ cp -p static/bar.txt bar.txt
    SUCCESS │ cp -p static/bar.txt bar.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 7 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files
    DELETED │ inp1.txt
    STARTUP │ Scanning initial database for new nglob matches
@@ -15,8 +13,10 @@ Same step hash       compact, inp_digest ce2b09cd, out_digest 9e7bd348
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       compact, inp_digest 3139b420, out_digest 810dcef4
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 2 outdated output(s)
-     CLEAN │ out1.txt
-     CLEAN │ foo1.txt
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 2 outdated output(s)
+    REMOVE │ out1.txt
+    REMOVE │ foo1.txt
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

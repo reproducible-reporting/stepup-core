@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 5 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files
    DELETED │ inp2.txt
    STARTUP │ Scanning initial database for new nglob matches
@@ -16,7 +14,9 @@ Same out hash        out3.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ cp -p inp4.txt out4.txt
    SUCCESS │ cp -p inp4.txt out4.txt
-  DIRECTOR │ Trying to delete 1 outdated output(s)
-     CLEAN │ out2.txt
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 1 outdated output(s)
+    REMOVE │ out2.txt
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

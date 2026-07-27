@@ -4,10 +4,12 @@
    SUCCESS │ ./plan.py
      START │ cp input.txt output.txt
    SUCCESS │ cp input.txt output.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    DELETED │ input.txt
      PHASE │ build
+  DIRECTOR │ Ran 0 job(s).
    WARNING │ 1 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  input.txt
@@ -24,6 +26,7 @@ Outputs     OUTDATED  output.txt
      PHASE │ build
      START │ cp input.txt output.txt
    SUCCESS │ cp input.txt output.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

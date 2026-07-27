@@ -10,7 +10,8 @@
    SUCCESS │ cp -p report.txt copy.txt
      START │ echo All is fine. > script.log
    SUCCESS │ echo All is fine. > script.log
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 5 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    UPDATED │ config.json
      PHASE │ build
@@ -22,7 +23,9 @@
    SUCCESS │ cp -p report.txt copy.txt
      START │ echo All is fine. > other.log
    SUCCESS │ echo All is fine. > other.log
-  DIRECTOR │ Trying to delete 1 outdated output(s)
-     CLEAN │ script.log
+  DIRECTOR │ Ran 6 job(s).
+  DIRECTOR │ Trying to remove 1 outdated output(s)
+    REMOVE │ script.log
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

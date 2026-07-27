@@ -12,6 +12,7 @@ inp2.txt
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 inp1.txt
 ────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Ran 3 job(s).
    WARNING │ 4 step(s) remained pending ...
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                creator is not RUNNING or SUCCEEDED

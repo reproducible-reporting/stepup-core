@@ -10,6 +10,7 @@
    SUCCESS │ cp -p c_input.txt out/c.txt
      START │ ./gen.py run '{"out": ["out/result.txt"]}'
    SUCCESS │ ./gen.py run '{"out": ["out/result.txt"]}'
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 5 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

@@ -30,7 +30,8 @@ Planning sec 1 summary
    SUCCESS │ cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/compiled.md
      START │ cat ch-1-intro/compiled.md ch-2-theory/compiled.md ch-3-conclusions/compiled.md > book.md
    SUCCESS │ cat ch-1-intro/compiled.md ch-2-theory/compiled.md ch-3-conclusions/compiled.md > book.md
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 11 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    DELETED │ ch-2-theory/sec-2-2-advanced.txt
    UPDATED │ ch-2-theory/sec-2-2-original.txt
@@ -58,7 +59,9 @@ Planning sec 1 summary
    SUCCESS │ cat ch-2-theory/sec-2-1-basics.md ch-2-theory/sec-2-2-original.md > ch-2-theory/compiled.md
      START │ cat ch-1-intro/compiled.md ch-2-theory/compiled.md ch-3-conclusions/compiled.md > book.md
    SUCCESS │ cat ch-1-intro/compiled.md ch-2-theory/compiled.md ch-3-conclusions/compiled.md > book.md
-  DIRECTOR │ Trying to delete 1 outdated output(s)
-     CLEAN │ ch-2-theory/sec-2-2-advanced.md
+  DIRECTOR │ Ran 12 job(s).
+  DIRECTOR │ Trying to remove 1 outdated output(s)
+    REMOVE │ ch-2-theory/sec-2-2-advanced.md
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

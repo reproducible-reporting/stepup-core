@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 10 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    UPDATED │ ENV_VAR_TEST_STEPUP_IDX ='1' ➜ ='3'
    STARTUP │ Scanning initial database for changed files
    STARTUP │ Scanning initial database for new nglob matches
@@ -28,9 +26,10 @@ Same inp hash        raw3.txt
    SUCCESS │ cp -p raw3.txt converted3.txt
      START │ cp -p converted3.txt used.txt
    SUCCESS │ cp -p converted3.txt used.txt
+  DIRECTOR │ Ran 5 job(s).
    WARNING │ Reverted 0 optional step(s) to PENDING and marked 1 output/volatile file(s) for deletion.
-  DIRECTOR │ Trying to delete 1 outdated output(s)
-     CLEAN │ converted1.txt
+  DIRECTOR │ Trying to remove 1 outdated output(s)
+    REMOVE │ converted1.txt
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

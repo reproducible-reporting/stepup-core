@@ -8,6 +8,7 @@
    SUCCESS │ cp -p inp1.txt out1.txt  # wd=sub
      START │ cp -p inp2.txt out2.txt  # wd=sub
    SUCCESS │ cp -p inp2.txt out2.txt  # wd=sub
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

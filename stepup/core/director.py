@@ -54,8 +54,11 @@ class ServeResult:
     returncode: ReturnCode = attrs.field()
     """The exit code of the director process."""
 
-    resource_report: str = attrs.field()
+    usage_report: str = attrs.field()
     """A snapshot of CPU/IO/memory usage collected during this `serve()` call."""
+
+    usage_summary: str = attrs.field()
+    """A one-line summary of the resource usage, for screen display."""
 
 
 def main():
@@ -105,7 +108,7 @@ async def async_main(
         await reporter.set_njob(njob)
         version = get_version("stepup")
         await reporter("DIRECTOR", f"Listening on {args.director_socket} (StepUp Core {version})")
-        serve_result: ServeResult | None = None
+        serve_result = None
         try:
             serve_result = await serve(
                 director_socket_path=args.director_socket,
@@ -135,6 +138,8 @@ async def async_main(
             await reporter("ERROR", "The director raised an exception.", pages)
             raise
         finally:
+            if serve_result is not None and len(serve_result.usage_summary) > 0:
+                await reporter("DIRECTOR", serve_result.usage_summary)
             await reporter("DIRECTOR", "See you!")
             await reporter.shutdown()
             if args.yappi and yappi is not None:
@@ -142,7 +147,7 @@ async def async_main(
                 stats = yappi.get_func_stats()
                 stats.save(DIRECTOR_PROF, type="pstat")
             if serve_result is not None:
-                print(serve_result.resource_report, file=sys.stderr)
+                print(serve_result.usage_report, file=sys.stderr)
         sys.exit(serve_result.returncode.value)
 
 
@@ -518,15 +523,7 @@ async def serve(
         except GraphError as exc:
             await reporter("ERROR", f"Invalid build target: {exc}")
             await reporter.check_logs()
-            return ServeResult(
-                returncode=ReturnCode.FAILED,
-                resource_report=format_resource_usage(
-                    time_start,
-                    builder.executor.step_accumulator,
-                    builder.executor.hash_accumulator,
-                    memory_sampler,
-                ),
-            )
+            return ServeResult(returncode=ReturnCode.FAILED, usage_report="", usage_summary="")
 
     # Start tasks and wait for them to complete
     exit_event = asyncio.Event()
@@ -554,14 +551,15 @@ async def serve(
         await rpc_server
         director_socket_path.remove_p()
 
+    usage_report, usage_summary = format_resource_usage(
+        time_start,
+        builder.executor.step_accumulator,
+        builder.executor.hash_accumulator,
+        memory_sampler,
+    )
+
     return ServeResult(
-        returncode=builder.returncode,
-        resource_report=format_resource_usage(
-            time_start,
-            builder.executor.step_accumulator,
-            builder.executor.hash_accumulator,
-            memory_sampler,
-        ),
+        returncode=builder.returncode, usage_report=usage_report, usage_summary=usage_summary
     )
 
 

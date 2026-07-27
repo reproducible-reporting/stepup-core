@@ -5,7 +5,8 @@
    SUCCESS │ ./plan.py
      START │ cp -p input.txt output.txt
    SUCCESS │ cp -p input.txt output.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    UPDATED │ input.txt
   DIRECTOR │ See you!

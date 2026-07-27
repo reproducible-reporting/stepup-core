@@ -13,7 +13,8 @@ conv1.txt
    SUCCESS │ ./work.py subs1.txt > subs2.txt
      START │ ./work.py subs2.txt > subs3.txt
    SUCCESS │ ./work.py subs2.txt > subs3.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 5 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    DELETED │ inp1.txt
@@ -49,8 +50,9 @@ Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
      START │ ./work.py subs2.txt > subs3.txt
    SUCCESS │ ./work.py subs2.txt > subs3.txt
-  DIRECTOR │ Trying to delete 1 outdated output(s)
-     CLEAN │ conv1.txt
+  DIRECTOR │ Ran 7 job(s).
+  DIRECTOR │ Trying to remove 1 outdated output(s)
+    REMOVE │ conv1.txt
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

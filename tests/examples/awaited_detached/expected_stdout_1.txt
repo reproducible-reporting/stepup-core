@@ -2,6 +2,7 @@
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
+  DIRECTOR │ Ran 1 job(s).
    WARNING │ 2 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  src1.txt

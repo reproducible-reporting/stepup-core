@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 6 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files
    UPDATED │ inp2.txt (digest e44a31c3 ➜ 7f6f8bd5, size 6 ➜ 16)
    STARTUP │ Scanning initial database for new nglob matches
@@ -22,7 +20,8 @@ Same env var         STEPUP_PATH_FILTER (unset)
 Same out hash        out1.txt
 Same out hash        out2.txt
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

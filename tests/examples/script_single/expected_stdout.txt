@@ -8,6 +8,7 @@
    SUCCESS │ ./generate.py run  # wd=work
      START │ cp -p work/test.csv work/copy.csv
    SUCCESS │ cp -p work/test.csv work/copy.csv
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

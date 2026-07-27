@@ -4,6 +4,7 @@
    SUCCESS │ ./plan.py
      START │ echo soon gone > bye.txt
    SUCCESS │ echo soon gone > bye.txt
+  DIRECTOR │ Ran 2 job(s).
    WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  missing.txt

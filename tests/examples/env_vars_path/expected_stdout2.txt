@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 3 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    UPDATED │ ENV_VAR_TEST_STEPUP_PREFIX ='README' ➜ ='FOO'
    STARTUP │ Scanning initial database for changed files
    STARTUP │ Scanning initial database for new nglob matches
@@ -17,9 +15,10 @@ Same env var         STEPUP_PATH_FILTER (unset)
    SUCCESS │ ./plan.py
      START │ grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
    SUCCESS │ grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
-  DIRECTOR │ Trying to delete 2 outdated output(s)
-     CLEAN │ README-stdout.txt
-     CLEAN │ README-stderr.txt
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 2 outdated output(s)
+    REMOVE │ README-stdout.txt
+    REMOVE │ README-stderr.txt
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

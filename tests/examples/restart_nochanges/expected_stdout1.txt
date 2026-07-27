@@ -8,6 +8,7 @@
    SUCCESS │ cat single.txt single.txt > double.txt
      START │ cat double.txt double.txt > quadruple.txt
    SUCCESS │ cat double.txt double.txt > quadruple.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

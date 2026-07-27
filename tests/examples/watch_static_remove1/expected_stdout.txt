@@ -6,7 +6,8 @@
    SUCCESS │ cp -p foo.txt bar.txt
      START │ cp -p README.txt backup.txt
    SUCCESS │ cp -p README.txt backup.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    UPDATED │ plan.py
    DELETED │ foo.txt
@@ -14,7 +15,9 @@
      START │ ./plan.py
    SUCCESS │ ./plan.py
       SKIP │ cp -p README.txt backup.txt
-  DIRECTOR │ Trying to delete 1 outdated output(s)
-     CLEAN │ bar.txt
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 1 outdated output(s)
+    REMOVE │ bar.txt
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

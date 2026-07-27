@@ -8,6 +8,7 @@
    SUCCESS │ cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
      START │ './script is cool.py' run
    SUCCESS │ './script is cool.py' run
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

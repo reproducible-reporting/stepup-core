@@ -8,6 +8,7 @@
    SUCCESS │ ./work2.py
      START │ ./work3.py
    SUCCESS │ ./work3.py
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

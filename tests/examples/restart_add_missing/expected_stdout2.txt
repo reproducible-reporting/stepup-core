@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 3 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files
    UPDATED │ inp.txt (digest UNKNOWN ➜ 5891b5b5, size 0 ➜ 6, mode ?--------- ➜ -rw-r--r--)
    STARTUP │ Scanning initial database for new nglob matches
@@ -13,7 +11,8 @@ Modified step hash   compact ➜ explained, inp_digest 7e0d6b72, out_digest b193
 ────────────────────────────────────────────────────────────────────────────────
      START │ cp -p inp.txt out.txt
    SUCCESS │ cp -p inp.txt out.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

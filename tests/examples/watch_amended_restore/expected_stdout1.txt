@@ -4,7 +4,8 @@
    SUCCESS │ ./plan.py
      START │ ./work.py
    SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    DELETED │ inp.txt
      PHASE │ build
@@ -13,6 +14,7 @@
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 inp.txt
 ────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Ran 2 job(s).
    WARNING │ 1 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  inp.txt
@@ -30,6 +32,7 @@ Outputs     OUTDATED  out.txt [amended]
      PHASE │ build
      START │ ./work.py
    SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 1 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

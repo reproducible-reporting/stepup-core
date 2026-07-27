@@ -6,7 +6,8 @@
    SUCCESS │ echo "test 1" > first.txt
      START │ cp first.txt final.txt
    SUCCESS │ cp first.txt final.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    UPDATED │ plan.py
      PHASE │ build
@@ -16,7 +17,9 @@
    SUCCESS │ echo "test 2" > second.txt
      START │ cp second.txt final.txt
    SUCCESS │ cp second.txt final.txt
-  DIRECTOR │ Trying to delete 1 outdated output(s)
-     CLEAN │ first.txt
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 1 outdated output(s)
+    REMOVE │ first.txt
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

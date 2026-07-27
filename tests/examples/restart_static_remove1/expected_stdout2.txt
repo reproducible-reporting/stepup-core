@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 5 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files
    UPDATED │ plan.py (digest 9b42ddbc ➜ 052600b0, size 157 ➜ 119)
    DELETED │ foo.txt
@@ -16,8 +14,9 @@ Modified step hash   compact ➜ explained, inp_digest 9beae1cd ➜ 315b8e75, ou
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       compact, inp_digest 6a185d90, out_digest 463361ab
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 1 outdated output(s)
-     CLEAN │ bar.txt
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 1 outdated output(s)
+    REMOVE │ bar.txt
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

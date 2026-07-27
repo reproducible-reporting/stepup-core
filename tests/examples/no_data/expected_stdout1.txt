@@ -10,7 +10,8 @@
 A bunch of foos walk into a bar,
 and watch some football.
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    DELETED │ data.txt
      PHASE │ build
@@ -21,6 +22,7 @@ and watch some football.
 Same step hash       explained, inp_digest 342904cd, out_digest e3b0c442
 Same inp hash        analyzed.txt
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

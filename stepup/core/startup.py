@@ -29,7 +29,6 @@ async def startup_from_db(
     builder: Builder,
 ):
     """Initialize internal datastructures by loading relevant parts from the database."""
-    await reporter("STARTUP", "Making failed steps pending")
     # Make steps pending if they are RUNNING, CHECKING, or FAILED.
     # RUNNING/CHECKING are uncommon, but can happen if the director crashes.
     async with db:
@@ -45,7 +44,11 @@ async def startup_from_db(
             (StepState.PENDING.value, StepState.CHECKING.value),
         )
         # Make all failed steps pending again, as they can be retried.
+        _first_failed = True
         for step in workflow.steps(StepState.FAILED):
+            if _first_failed:
+                await reporter("STARTUP", "Making failed steps pending")
+                _first_failed = False
             workflow.mark_step_pending(step)
 
     # Populate dir queue
@@ -57,7 +60,6 @@ async def startup_from_db(
             "SELECT node, label, name, value FROM env_var JOIN node ON env_var.node = node.i"
         ).fetchall()
     if len(env_var_uses) > 0:
-        await reporter("STARTUP", "Making steps pending that use changed environment variables")
         to_mark_pending = []
         seen = set()
         for i, label, name, value in env_var_uses:
@@ -94,12 +96,10 @@ async def populate_dir_queue(workflow: Workflow, db: DBSession, reporter: Report
     async with db:
         rows = db.execute(sql).fetchall()
     if len(rows) > 0:
-        await reporter(
-            "STARTUP", f"Watching directories for {len(rows)} files from initial database"
-        )
         parents = set()
         for (path,) in rows:
             parents.add(str(Path(path).parent))
+        await reporter("STARTUP", f"Watching {len(parents)} director(y|ies) from initial database")
         for path in parents:
             workflow.put_dir_queue(path)
 

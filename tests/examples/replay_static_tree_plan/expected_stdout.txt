@@ -4,19 +4,22 @@
    SUCCESS │ ./plan.py
      START │ cp -p data/inp.txt out.txt
    SUCCESS │ cp -p data/inp.txt out.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    UPDATED │ plan.py
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    UPDATED │ plan.py
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
       SKIP │ cp -p data/inp.txt out.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

@@ -13,7 +13,8 @@ tmp1.txt
    SUCCESS │ echo Contents of inp2.txt > inp2.txt
      START │ ./work.py > log.txt
    SUCCESS │ ./work.py > log.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 5 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    DELETED │ inp2.txt
@@ -36,7 +37,8 @@ Same inp hash        tmp1.txt
 Same inp hash        work.py
 Same out hash        log.txt
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    UPDATED │ inp0.txt
@@ -60,7 +62,8 @@ Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
      START │ ./work.py > log.txt
    SUCCESS │ ./work.py > log.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

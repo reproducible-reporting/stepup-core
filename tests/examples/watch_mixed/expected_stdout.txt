@@ -6,13 +6,15 @@
    SUCCESS │ cp orig.txt copy1.txt
      START │ cp copy1.txt copy2.txt
    SUCCESS │ cp copy1.txt copy2.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    UPDATED │ plan.py
    DELETED │ orig.txt
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
+  DIRECTOR │ Ran 2 job(s).
    WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
             OUTDATED  copy1.txt

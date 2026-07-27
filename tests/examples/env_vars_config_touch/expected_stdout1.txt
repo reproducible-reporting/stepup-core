@@ -6,11 +6,13 @@
    SUCCESS │ ./demovars.py
      START │ ./printvars.py
    SUCCESS │ ./printvars.py
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    UPDATED │ variables.json
  UNCHANGED │ variables.json
      PHASE │ build
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 0 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

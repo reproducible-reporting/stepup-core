@@ -29,6 +29,33 @@ __all__ = ("ReporterClient", "ReporterHandler")
 
 PROGRESS_REFRESH_DELAY = 0.5
 PROGRESS_REFRESH_INTERVAL = 1.0
+ACTION_COLORS = {
+    # blue
+    "START": "blue",
+    # red
+    "FAIL": "red",
+    "ERROR": "red",
+    # green
+    "SUCCESS": "green",
+    # yellow
+    "REMOVE": "yellow",
+    "DELETED": "yellow",
+    "UPDATED": "yellow",
+    "NOSKIP": "yellow",
+    "POSTPONED": "yellow",
+    "DETACHED": "yellow",
+    "DROPAMEND": "yellow",
+    "WARNING": "yellow",
+    # cyan
+    "SKIP": "cyan",
+    "UNCHANGED": "cyan",
+    # magenta
+    "DIRECTOR": "magenta",
+    "KEYBOARD": "magenta",
+    "STARTUP": "magenta",
+    # white
+    "PHASE": "",
+}
 
 
 @attrs.define
@@ -220,22 +247,7 @@ class ReporterHandler:
                 self.progress_bar.request_refresh()
 
         # Action info
-        action_color = {
-            "START": "blue",
-            "FAIL": "red",
-            "ERROR": "red",
-            "SUCCESS": "green",
-            "DELETED": "yellow",
-            "UPDATED": "yellow",
-            "SKIP": "cyan",
-            "NOSKIP": "yellow",
-            "POSTPONED": "yellow",
-            "DETACHED": "yellow",
-            "DROPAMEND": "yellow",
-            "WARNING": "yellow",
-            "UNCHANGED": "cyan",
-            "PHASE": "",
-        }.get(action, "magenta")
+        action_color = ACTION_COLORS[action]
 
         # Print action with extra info
         description = escape_markup(description)

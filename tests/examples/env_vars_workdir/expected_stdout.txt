@@ -4,6 +4,7 @@
    SUCCESS │ ./plan.py
      START │ cat input.txt > output.txt  # wd=sub
    SUCCESS │ cat input.txt > output.txt  # wd=sub
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

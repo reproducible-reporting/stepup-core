@@ -150,8 +150,9 @@ class Builder:
 
     async def finalize(self):
         """Final steps after the builder has executed a bunch of jobs."""
+        await self.reporter("DIRECTOR", f"Ran {self.scheduler.job_counter} job(s).")
         async with self.db:
-            self.scheduler.flush_durations()
+            self.scheduler.build_completed()
         await revert_optional(self.db, self.workflow, self.reporter)
         self.returncode = await report_completion(
             self.db, self.workflow, self.scheduler, self.reporter
@@ -210,7 +211,7 @@ class Builder:
         # Never let a flush failure mask the original error or block shutdown.
         try:
             async with self.db:
-                self.scheduler.flush_durations()
+                self.scheduler.build_completed()
         except Exception:  # noqa: BLE001
             logger.warning("Failed to flush step durations during shutdown.", exc_info=True)
 
@@ -435,7 +436,7 @@ async def remove_outdated_outputs(workflow: Workflow, db: DBSession, reporter: R
     """Remove outdated outputs from the file system and reset their state in the database."""
     await reporter(
         "DIRECTOR",
-        f"Trying to delete {len(workflow.to_be_deleted)} outdated output(s)",
+        f"Trying to remove {len(workflow.to_be_deleted)} outdated output(s)",
     )
     workflow.to_be_deleted.sort(reverse=True)
     # Remove the files from the file system.
@@ -443,7 +444,7 @@ async def remove_outdated_outputs(workflow: Workflow, db: DBSession, reporter: R
     for path, file_hash in workflow.to_be_deleted:
         path = Path(path)
         if (file_hash is None or file_hash.regen(path) == file_hash) and _remove_file(path):
-            await reporter("CLEAN", path)
+            await reporter("REMOVE", path)
             parents.add(path.parent)
 
     # Clean up empty parent directories.
@@ -451,7 +452,7 @@ async def remove_outdated_outputs(workflow: Workflow, db: DBSession, reporter: R
     while len(parents) > 0:
         parent = parents.pop()
         if parent.is_dir() and not any(parent.iterdir()) and _remove_dir(parent):
-            await reporter("CLEAN", parent)
+            await reporter("REMOVE", parent)
             parent = parent.parent
             if parent.name not in ("..", ".", ""):
                 parents.append(parent)

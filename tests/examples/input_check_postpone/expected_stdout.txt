@@ -12,6 +12,7 @@ Input changed unexpectedly: trigger.txt (digest 84325551 ➜ 92e78d0b, size 3 �
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
      ERROR │ The scheduler has been put on hold due to unexpected input changes.
+  DIRECTOR │ Ran 2 job(s).
    WARNING │ 1 step(s) failed.
    WARNING │ Scheduler is put on hold. Not reporting pending steps.
    WARNING │ Skipping file cleanup due to incomplete build

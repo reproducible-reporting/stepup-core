@@ -2,6 +2,7 @@
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
+  DIRECTOR │ Ran 1 job(s).
    WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  inp.txt
@@ -15,6 +16,7 @@ Outputs      AWAITED  out.txt
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
      PHASE │ build
+  DIRECTOR │ Ran 0 job(s).
    WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  inp.txt

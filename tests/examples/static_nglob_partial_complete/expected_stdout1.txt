@@ -4,7 +4,8 @@
    SUCCESS │ ./plan.py
      START │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
    SUCCESS │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    UPDATED │ tail_y.txt
    UPDATED │ head_z.txt
@@ -14,6 +15,7 @@
       SKIP │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
      START │ paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
    SUCCESS │ paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

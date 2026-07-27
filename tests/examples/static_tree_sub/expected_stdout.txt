@@ -6,6 +6,7 @@
    SUCCESS │ ./plan.py  # wd=sub
      START │ cp -p data/used.txt copy.txt  # wd=sub
    SUCCESS │ cp -p data/used.txt copy.txt  # wd=sub
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

@@ -11,7 +11,8 @@ inp2.txt
    SUCCESS │ echo word2 > inp2.txt
      START │ ./work.py
    SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    UPDATED │ inp2.txt
@@ -33,7 +34,8 @@ Same env var         STEPUP_PATH_FILTER (unset)
 Same out hash        out1.txt
 Same out hash        out2.txt
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

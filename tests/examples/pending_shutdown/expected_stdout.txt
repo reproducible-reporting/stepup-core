@@ -5,6 +5,7 @@
      START │ stepup shutdown; sleep 3; echo hello > msg.txt
   DIRECTOR │ Waiting for steps to complete before shutdown.
    SUCCESS │ stepup shutdown; sleep 3; echo hello > msg.txt
+  DIRECTOR │ Ran 2 job(s).
    WARNING │ Scheduler is put on hold. Not reporting pending steps.
    WARNING │ Skipping file cleanup due to incomplete build
    WARNING │ Check logs: .stepup/warning.log

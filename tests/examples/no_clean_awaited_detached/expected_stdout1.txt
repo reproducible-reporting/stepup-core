@@ -2,6 +2,7 @@
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
+  DIRECTOR │ Ran 1 job(s).
    WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  bogus.txt

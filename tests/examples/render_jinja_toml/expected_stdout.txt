@@ -6,6 +6,7 @@
    SUCCESS │ sc-render-jinja template.txt trip1.toml rendered-trip1.txt
      START │ sc-render-jinja template.txt trip2.toml rendered-trip2.txt
    SUCCESS │ sc-render-jinja template.txt trip2.toml rendered-trip2.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

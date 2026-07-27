@@ -15,6 +15,7 @@ pong.txt
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 pong.txt
 ────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Ran 4 job(s).
    WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  pong.txt

@@ -520,7 +520,7 @@ class Scheduler:
     resolve RPC calls made by a step's child process back to the `Step` that made them.
     """
 
-    _job_counter: int = attrs.field(init=False, default=0)
+    job_counter: int = attrs.field(init=False, default=0)
     """Counter used to assign a unique `job_i` to each `Job` created by `_derive_job()`."""
 
     do_joblog: bool = attrs.field(kw_only=True, default=False)
@@ -740,8 +740,8 @@ class Scheduler:
 
     def _next_job_i(self) -> int:
         """Return a fresh, unique id for a new `Job`."""
-        self._job_counter += 1
-        return self._job_counter
+        self.job_counter += 1
+        return self.job_counter
 
     def get_step(self, job_i: int) -> Step:
         """Resolve an RPC call's `job_i` argument to the `Step` it belongs to."""
@@ -832,21 +832,24 @@ class Scheduler:
             write_joblog_record("COMPLETED", job.job_i, job.name)
         logger.info("Done %s", job.name)
 
-    def flush_durations(self):
-        """Write accumulated step durations to the database and clear the buffer.
+    def build_completed(self):
+        """Perform some finalization after the build has completed.
 
-        Skips writes whose new value is within 10% of the currently stored value, so that
-        `step_flag_check_after_duration` is not re-triggered by measurement noise
-        (see `job_completed`). Must be called while holding the database lock.
+        - Reset the job counter.
+        - Write accumulated step durations to the database and clear the buffer.
+        - Clear the start/stop time buffers used to detect unfresh inputs.
         """
-        if not self.new_durations:
-            return
-        self.db.executemany(
-            "UPDATE step SET duration = :duration WHERE node = :node "
-            "AND ABS(duration - :duration) > 0.1 * duration",
-            [{"node": node, "duration": duration} for node, duration in self.new_durations.items()],
-        )
-        self.new_durations.clear()
+        self.job_counter = 0
+        if len(self.new_durations) > 0:
+            self.db.executemany(
+                "UPDATE step SET duration = :duration WHERE node = :node "
+                "AND ABS(duration - :duration) > 0.1 * duration",
+                [
+                    {"node": node, "duration": duration}
+                    for node, duration in self.new_durations.items()
+                ],
+            )
+            self.new_durations.clear()
         # Also clear the timings used to detect unfresh inputs (see ran_concurrently).
         # This is safe to do here because the builder is guaranteed to have no RUNNING steps.
         self.start_times.clear()

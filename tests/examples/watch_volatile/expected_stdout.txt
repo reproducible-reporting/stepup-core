@@ -4,9 +4,11 @@
    SUCCESS │ ./plan.py
      START │ echo blub blub > vol.txt
    SUCCESS │ echo blub blub > vol.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
      PHASE │ build
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 0 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

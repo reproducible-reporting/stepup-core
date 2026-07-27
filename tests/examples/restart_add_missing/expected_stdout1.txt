@@ -4,11 +4,13 @@
    SUCCESS │ ./plan.py
      START │ cp -p inp.txt out.txt
    SUCCESS │ cp -p inp.txt out.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    DELETED │ inp.txt
    DELETED │ out.txt
      PHASE │ build
+  DIRECTOR │ Ran 0 job(s).
    WARNING │ 1 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  inp.txt

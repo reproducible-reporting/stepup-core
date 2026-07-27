@@ -1,14 +1,14 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 4 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files
    DELETED │ inp2.txt
    STARTUP │ Scanning initial database for new nglob matches
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
-  DIRECTOR │ Trying to delete 2 outdated output(s)
-     CLEAN │ out2.txt
-     CLEAN │ foo2.txt
+  DIRECTOR │ Ran 1 job(s).
+  DIRECTOR │ Trying to remove 2 outdated output(s)
+    REMOVE │ out2.txt
+    REMOVE │ foo2.txt
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

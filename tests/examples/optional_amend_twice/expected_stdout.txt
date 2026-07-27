@@ -18,7 +18,8 @@ optional2.txt
    SUCCESS │ cp -p data2.txt optional2.txt
      START │ ./work.py
    SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 6 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    UPDATED │ data2.txt
@@ -27,6 +28,7 @@ optional2.txt
    SUCCESS │ cp -p data2.txt optional2.txt
      START │ ./work.py
    SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

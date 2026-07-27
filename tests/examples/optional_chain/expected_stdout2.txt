@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 5 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files
    UPDATED │ plan.py (digest 1553f340 ➜ 9db5ea86, size 418 ➜ 491)
    STARTUP │ Scanning initial database for new nglob matches
@@ -24,7 +22,8 @@ Same env var         STEPUP_PATH_FILTER (unset)
    SUCCESS │ cat bar.txt > egg.txt
      START │ cat egg.txt > spam.txt
    SUCCESS │ cat egg.txt > spam.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 7 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

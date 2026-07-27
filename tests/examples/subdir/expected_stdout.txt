@@ -19,6 +19,7 @@ static("sub/plan.py")
 copy("example.txt", "sub/")
 plan("./plan.py", workdir="sub")
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 5 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

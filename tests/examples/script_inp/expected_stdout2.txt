@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 5 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files
    UPDATED │ config.txt (digest f66ab398 ➜ 291423c4, size 9 ➜ 11)
    STARTUP │ Scanning initial database for new nglob matches
@@ -11,8 +9,10 @@
    SUCCESS │ ./script.py run egg
      START │ ./script.py run spam
    SUCCESS │ ./script.py run spam
-  DIRECTOR │ Trying to delete 2 outdated output(s)
-     CLEAN │ out_foo.txt
-     CLEAN │ out_bar.txt
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 2 outdated output(s)
+    REMOVE │ out_foo.txt
+    REMOVE │ out_bar.txt
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

@@ -8,6 +8,7 @@
    SUCCESS │ cp -p b_input.txt out/b.txt
      START │ cp -p a_input.txt other.txt
    SUCCESS │ cp -p a_input.txt other.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

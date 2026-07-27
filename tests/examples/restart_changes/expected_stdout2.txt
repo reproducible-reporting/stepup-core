@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 5 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files
    UPDATED │ plan.py (digest f320c2d4 ➜ 9cb549e9)
    STARTUP │ Scanning initial database for new nglob matches
@@ -18,9 +16,10 @@ Same env var         STEPUP_PATH_FILTER (unset)
    SUCCESS │ cp source_both.txt copy_both2.txt
      START │ cp source2.txt copy2.txt
    SUCCESS │ cp source2.txt copy2.txt
-  DIRECTOR │ Trying to delete 2 outdated output(s)
-     CLEAN │ copy_both1.txt
-     CLEAN │ copy1.txt
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 2 outdated output(s)
+    REMOVE │ copy_both1.txt
+    REMOVE │ copy1.txt
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

@@ -6,6 +6,7 @@
    SUCCESS │ ./first.py transform '{"inp": ["data.txt"], "out": ["intermediate.txt"]}'
      START │ ./second.py finalize '{"inp": ["intermediate.txt"], "out": ["final.txt"]}'
    SUCCESS │ ./second.py finalize '{"inp": ["intermediate.txt"], "out": ["final.txt"]}'
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

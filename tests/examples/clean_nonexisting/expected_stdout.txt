@@ -4,6 +4,7 @@
    SUCCESS │ ./plan.py
      START │ echo foo > bar.txt
    SUCCESS │ echo foo > bar.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

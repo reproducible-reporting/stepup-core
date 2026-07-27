@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 3 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 2 director(y|ies) from initial database
    UPDATED │ ENV_VAR_TEST_STEPUP_INP ='static/sub/foo.txt' ➜ ='static/sub/bar.txt'
    STARTUP │ Scanning initial database for changed files
    STARTUP │ Scanning initial database for new nglob matches
@@ -9,6 +7,7 @@
    SUCCESS │ ./plan.py
      START │ cp -p static/sub/bar.txt copy.txt
    SUCCESS │ cp -p static/sub/bar.txt copy.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

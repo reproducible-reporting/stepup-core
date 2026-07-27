@@ -11,6 +11,7 @@ cp input.txt wrong.txt
 ───────────────────────── Expected outputs not created ─────────────────────────
 output.txt
 ────────────────────────────────────────────────────────────────────────────────
+  DIRECTOR │ Ran 3 job(s).
    WARNING │ 1 step(s) failed.
    WARNING │ Scheduler is put on hold. Not reporting pending steps.
    WARNING │ Skipping file cleanup due to incomplete build

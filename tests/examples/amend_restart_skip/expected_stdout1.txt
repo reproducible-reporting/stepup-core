@@ -11,7 +11,8 @@ inp2.txt
    SUCCESS │ echo word2 > inp2.txt
      START │ ./work.py
    SUCCESS │ ./work.py
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

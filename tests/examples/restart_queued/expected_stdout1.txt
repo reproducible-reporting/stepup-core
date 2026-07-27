@@ -6,7 +6,8 @@
    SUCCESS │ cp -p inp.txt out.txt
      START │ cp -p out.txt final.txt
    SUCCESS │ cp -p out.txt final.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    UPDATED │ inp.txt
   DIRECTOR │ See you!

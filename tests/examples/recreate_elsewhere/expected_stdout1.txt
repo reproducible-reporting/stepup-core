@@ -6,6 +6,7 @@
    SUCCESS │ ./outer.py foo
      START │ ./inner.py
    SUCCESS │ ./inner.py
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 3 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

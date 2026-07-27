@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 5 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    UPDATED │ ENV_VAR_TEST_STEPUP_AWDFTD ='AAAA' ➜ (unset)
    STARTUP │ Scanning initial database for changed files
    STARTUP │ Scanning initial database for new nglob matches
@@ -16,7 +14,8 @@ Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
      START │ ./printvars.py
    SUCCESS │ ./printvars.py
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

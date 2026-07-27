@@ -1,6 +1,4 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching directories for 4 files from initial database
-   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Watching 1 director(y|ies) from initial database
    STARTUP │ Scanning initial database for changed files
    STARTUP │ Scanning initial database for new nglob matches
      PHASE │ build
@@ -18,7 +16,8 @@ Modified inp hash    out.txt (digest de3b107b ➜ 26725e7b)
 ────────────────────────────────────────────────────────────────────────────────
      START │ cp -p out.txt final.txt
    SUCCESS │ cp -p out.txt final.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

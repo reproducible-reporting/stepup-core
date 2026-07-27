@@ -4,11 +4,13 @@
    SUCCESS │ ./plan.py
      START │ cat data/sub/inp.txt > data/sub/out.txt
    SUCCESS │ cat data/sub/inp.txt > data/sub/out.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 2 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
    DELETED │ data/sub/inp.txt
    DELETED │ data/sub/out.txt
      PHASE │ build
+  DIRECTOR │ Ran 0 job(s).
    WARNING │ 1 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  data/sub/inp.txt
@@ -24,6 +26,7 @@ Outputs      AWAITED  data/sub/out.txt
    UPDATED │ data/sub/inp.txt
      PHASE │ build
       SKIP │ cat data/sub/inp.txt > data/sub/out.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 1 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

@@ -10,6 +10,7 @@
 Input changed unexpectedly: cases.txt (digest ba246937 ➜ b7bf4c7e)
 ────────────────────────────────────────────────────────────────────────────────
      ERROR │ The scheduler has been put on hold due to unexpected input changes.
+  DIRECTOR │ Ran 2 job(s).
    WARNING │ 1 step(s) failed.
    WARNING │ Scheduler is put on hold. Not reporting pending steps.
    WARNING │ Skipping file cleanup due to incomplete build
@@ -23,7 +24,9 @@ Input changed unexpectedly: cases.txt (digest ba246937 ➜ b7bf4c7e)
    SUCCESS │ ./work.py case3.txt
      START │ ./work.py case4.txt
    SUCCESS │ ./work.py case4.txt
-  DIRECTOR │ Trying to delete 1 outdated output(s)
-     CLEAN │ case1.txt
+  DIRECTOR │ Ran 4 job(s).
+  DIRECTOR │ Trying to remove 1 outdated output(s)
+    REMOVE │ case1.txt
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

@@ -12,7 +12,8 @@ inp2.txt
      START │ ./work1.py
    SUCCESS │ ./work1.py
       SKIP │ ./work2.py
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 5 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
    WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

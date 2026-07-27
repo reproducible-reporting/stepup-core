@@ -107,6 +107,8 @@ async def run_example(srcdir: Path, tmpdir: Path, overwrite_expected=False):
                 cur,
                 flags=re.DOTALL,
             )
+            # - Timings are not deterministic
+            cur = re.sub(r"  DIRECTOR │ Wall .*\n", "", cur)
 
             # Perform the comparison
             if overwrite_expected:

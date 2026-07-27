@@ -4,6 +4,7 @@
    SUCCESS │ ./plan.py
      START │ cp -p initial.txt input.txt
    SUCCESS │ cp -p initial.txt input.txt
+  DIRECTOR │ Ran 2 job(s).
    WARNING │ 2 step(s) remained pending ...
 ───────────────────────────────── PENDING Step ─────────────────────────────────
 Reason                required resources exceed maximum available
@@ -33,6 +34,7 @@ The initial file.
 ────────────────────────────────────────────────────────────────────────────────
      START │ cp -p output.txt final.txt
    SUCCESS │ cp -p output.txt final.txt
-  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ Ran 5 job(s).
+  DIRECTOR │ Trying to remove 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!
