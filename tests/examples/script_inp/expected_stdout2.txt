@@ -12,6 +12,5 @@
   DIRECTOR │ Trying to remove 2 outdated output(s)
     REMOVE │ out_foo.txt
     REMOVE │ out_bar.txt
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

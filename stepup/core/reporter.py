@@ -33,22 +33,22 @@ ACTION_COLORS = {
     # blue
     "START": "blue",
     # red
-    "FAIL": "red",
     "ERROR": "red",
+    "FAIL": "red",
     # green
     "SUCCESS": "green",
     # yellow
-    "REMOVE": "yellow",
-    "DELETED": "yellow",
-    "UPDATED": "yellow",
-    "NOSKIP": "yellow",
-    "POSTPONED": "yellow",
-    "DETACHED": "yellow",
-    "DROPAMEND": "yellow",
     "WARNING": "yellow",
     # cyan
+    "DELETED": "cyan",
+    "DETACHED": "cyan",
+    "DROPAMEND": "cyan",
+    "NOSKIP": "cyan",
+    "POSTPONED": "cyan",
+    "REMOVE": "cyan",
     "SKIP": "cyan",
     "UNCHANGED": "cyan",
+    "UPDATED": "cyan",
     # magenta
     "DIRECTOR": "magenta",
     "KEYBOARD": "magenta",

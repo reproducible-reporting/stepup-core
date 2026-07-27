@@ -15,7 +15,6 @@ tmp1.txt
    SUCCESS │ ./work.py > log.txt
   DIRECTOR │ Ran 5 job(s).
   DIRECTOR │ Trying to remove 0 outdated output(s)
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    DELETED │ inp2.txt
      PHASE │ build
@@ -39,7 +38,6 @@ Same out hash        log.txt
 ────────────────────────────────────────────────────────────────────────────────
   DIRECTOR │ Ran 3 job(s).
   DIRECTOR │ Trying to remove 0 outdated output(s)
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    UPDATED │ inp0.txt
    UPDATED │ inp1.txt
@@ -64,6 +62,5 @@ Same inp hash        work.py
    SUCCESS │ ./work.py > log.txt
   DIRECTOR │ Ran 4 job(s).
   DIRECTOR │ Trying to remove 0 outdated output(s)
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

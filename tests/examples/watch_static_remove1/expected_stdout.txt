@@ -18,6 +18,5 @@
   DIRECTOR │ Ran 3 job(s).
   DIRECTOR │ Trying to remove 1 outdated output(s)
     REMOVE │ bar.txt
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

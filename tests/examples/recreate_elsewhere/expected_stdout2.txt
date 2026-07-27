@@ -22,6 +22,5 @@ Same out hash        out.txt
 ────────────────────────────────────────────────────────────────────────────────
   DIRECTOR │ Ran 4 job(s).
   DIRECTOR │ Trying to remove 0 outdated output(s)
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

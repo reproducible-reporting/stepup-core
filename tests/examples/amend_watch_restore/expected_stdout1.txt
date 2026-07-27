@@ -13,7 +13,6 @@ inp2.txt
    SUCCESS │ ./work.py
   DIRECTOR │ Ran 4 job(s).
   DIRECTOR │ Trying to remove 0 outdated output(s)
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    UPDATED │ inp2.txt
      PHASE │ build
@@ -36,6 +35,5 @@ Same out hash        out2.txt
 ────────────────────────────────────────────────────────────────────────────────
   DIRECTOR │ Ran 3 job(s).
   DIRECTOR │ Trying to remove 0 outdated output(s)
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

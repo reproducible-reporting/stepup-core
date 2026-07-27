@@ -20,7 +20,6 @@ optional2.txt
    SUCCESS │ ./work.py
   DIRECTOR │ Ran 6 job(s).
   DIRECTOR │ Trying to remove 0 outdated output(s)
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    UPDATED │ data2.txt
      PHASE │ build

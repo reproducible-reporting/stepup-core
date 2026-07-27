@@ -16,7 +16,6 @@
   DIRECTOR │ Ran 2 job(s).
   DIRECTOR │ Trying to remove 1 outdated output(s)
     REMOVE │ out.txt
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    UPDATED │ plan.py
      PHASE │ build

@@ -26,6 +26,5 @@
   DIRECTOR │ Ran 6 job(s).
   DIRECTOR │ Trying to remove 1 outdated output(s)
     REMOVE │ script.log
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

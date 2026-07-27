@@ -16,6 +16,5 @@ Same env var         STEPUP_PATH_FILTER (unset)
    SUCCESS │ ./work.py
   DIRECTOR │ Ran 2 job(s).
   DIRECTOR │ Trying to remove 0 outdated output(s)
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

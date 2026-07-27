@@ -18,5 +18,5 @@ grep hello data.txt
 
 # The consumer step must have been postponed exactly once (unfresh amended input),
 # and must converge to SUCCESS without ever failing outright.
-grep "Unfresh amended inputs" .stepup/warning.log || exit 1
+grep "Unfresh amended inputs" .stepup/success.log || exit 1
 [[ ! -f .stepup/fail.log ]] || exit 1

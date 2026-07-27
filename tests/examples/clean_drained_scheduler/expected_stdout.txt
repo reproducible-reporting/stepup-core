@@ -28,6 +28,5 @@ Input changed unexpectedly: cases.txt (digest ba246937 ➜ b7bf4c7e)
   DIRECTOR │ Ran 4 job(s).
   DIRECTOR │ Trying to remove 1 outdated output(s)
     REMOVE │ case1.txt
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

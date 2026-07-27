@@ -62,6 +62,5 @@ Planning sec 1 summary
   DIRECTOR │ Ran 12 job(s).
   DIRECTOR │ Trying to remove 1 outdated output(s)
     REMOVE │ ch-2-theory/sec-2-2-advanced.md
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

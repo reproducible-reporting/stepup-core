@@ -12,6 +12,5 @@ Modified step hash   compact ➜ explained, inp_digest 7e0d6b72, out_digest b193
    SUCCESS │ cp -p inp.txt out.txt
   DIRECTOR │ Ran 2 job(s).
   DIRECTOR │ Trying to remove 0 outdated output(s)
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

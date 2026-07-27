@@ -17,6 +17,5 @@ Modified inp hash    out.txt (digest de3b107b ➜ 26725e7b)
    SUCCESS │ cp -p out.txt final.txt
   DIRECTOR │ Ran 4 job(s).
   DIRECTOR │ Trying to remove 0 outdated output(s)
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

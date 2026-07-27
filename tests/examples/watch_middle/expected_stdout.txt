@@ -35,6 +35,5 @@ Inputs       MISSING  plan.py
   DIRECTOR │ Ran 4 job(s).
   DIRECTOR │ Trying to remove 1 outdated output(s)
     REMOVE │ copy.txt
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

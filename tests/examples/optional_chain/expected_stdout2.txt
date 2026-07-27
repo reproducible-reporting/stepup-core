@@ -23,6 +23,5 @@ Same env var         STEPUP_PATH_FILTER (unset)
    SUCCESS │ cat egg.txt > spam.txt
   DIRECTOR │ Ran 7 job(s).
   DIRECTOR │ Trying to remove 0 outdated output(s)
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

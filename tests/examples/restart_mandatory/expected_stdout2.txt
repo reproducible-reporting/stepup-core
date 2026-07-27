@@ -14,6 +14,5 @@ Modified step hash   compact ➜ explained, inp_digest e1ecada0 ➜ e45e1817, ou
    SUCCESS │ cp -p foo.txt bar.txt
   DIRECTOR │ Ran 4 job(s).
   DIRECTOR │ Trying to remove 0 outdated output(s)
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

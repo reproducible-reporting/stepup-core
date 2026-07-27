@@ -25,6 +25,5 @@ Same out hash        out2.txt
   DIRECTOR │ Ran 3 job(s).
   DIRECTOR │ Trying to remove 1 outdated output(s)
     REMOVE │ out1.txt
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

@@ -20,6 +20,6 @@ grep hello data.txt
 # Exactly one unfresh postpone, and --- crucially --- none of the pre-existing
 # unavailable-input postponed: this build converges purely via the new,
 # self-resolving mechanism, without ever touching the old push-based one.
-grep "Unfresh amended inputs" .stepup/warning.log || exit 1
-! grep "Unavailable amended inputs" .stepup/warning.log || exit 1
+grep "Unfresh amended inputs" .stepup/success.log || exit 1
+! grep "Unavailable amended inputs" .stepup/success.log || exit 1
 ! grep "Failed command" .stepup/fail.log || exit 1

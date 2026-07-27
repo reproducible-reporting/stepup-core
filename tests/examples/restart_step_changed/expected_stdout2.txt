@@ -22,6 +22,5 @@ Modified inp hash    original.txt (digest 4355a46b ➜ 53c234e5)
    SUCCESS │ cp -p original.txt copy.txt
   DIRECTOR │ Ran 5 job(s).
   DIRECTOR │ Trying to remove 0 outdated output(s)
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

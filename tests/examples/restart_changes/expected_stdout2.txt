@@ -19,6 +19,5 @@ Same env var         STEPUP_PATH_FILTER (unset)
   DIRECTOR │ Trying to remove 2 outdated output(s)
     REMOVE │ copy_both1.txt
     REMOVE │ copy1.txt
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

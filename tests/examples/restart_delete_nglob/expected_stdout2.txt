@@ -18,6 +18,5 @@ Same step hash       compact, inp_digest 3139b420, out_digest 810dcef4
   DIRECTOR │ Trying to remove 2 outdated output(s)
     REMOVE │ out1.txt
     REMOVE │ foo1.txt
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

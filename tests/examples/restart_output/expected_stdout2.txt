@@ -15,6 +15,5 @@ Same inp hash        original.txt
    SUCCESS │ cp -p original.txt copy.txt
   DIRECTOR │ Ran 2 job(s).
   DIRECTOR │ Trying to remove 0 outdated output(s)
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

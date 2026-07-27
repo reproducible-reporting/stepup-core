@@ -17,7 +17,7 @@ wait
 
 [[ -f data.txt ]] || exit 1
 grep hello data.txt
-grep "Unfresh amended inputs" .stepup/warning.log || exit 1
+grep "Unfresh amended inputs" .stepup/success.log || exit 1
 
 # Phase 2: restart the director (fresh Scheduler => empty start_times/stop_times).
 # Force consumer.py to re-attempt via an edit to its ordinary (non-amended) input,
@@ -38,5 +38,5 @@ wait
 
 [[ -f data.txt ]] || exit 1
 grep hello data.txt
-! grep POSTPONED .stepup/warning.log || exit 1
+! grep POSTPONED .stepup/success.log || exit 1
 ! grep "Failed command" .stepup/fail.log || exit 1
