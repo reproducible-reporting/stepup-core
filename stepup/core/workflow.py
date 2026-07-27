@@ -39,24 +39,18 @@ __all__ = ("Workflow",)
 logger = logging.getLogger(__name__)
 
 
-# Find all inputs of steps (recursively through creator-product relations) that are
-# unconfirmed, and whose creator is a static tree.
-RECURSE_DEFERRED_INPUTS = f"""
-WITH RECURSIVE unconfirmed(i, label, creator_kind) AS (
-    SELECT node.i, node.label, cnode.kind FROM node
-    JOIN node AS cnode ON node.creator = cnode.i
-    JOIN file ON node.i = file.node
-    JOIN dependency ON node.i = source
-    WHERE sink = ? AND node.kind = 'file' AND file.state = {FileState.UNCONFIRMED.value}
-    UNION
-    SELECT node.i, node.label, cnode.kind FROM node
-    JOIN node AS cnode ON node.creator = cnode.i
-    JOIN file ON node.i = file.node
-    JOIN dependency ON node.i = source
-    JOIN unconfirmed ON sink = unconfirmed.i
-    WHERE node.kind = 'file' AND file.state = {FileState.UNCONFIRMED.value}
-)
-SELECT i, label FROM unconfirmed WHERE creator_kind = 'st'
+# Find the UNCONFIRMED inputs of a step whose creator is a static tree.
+# No recursion through the dependency graph is needed:
+# file-to-file dependency edges no longer exist
+# since directory nodes were removed from the graph (schema version 5),
+# so a step's deferred inputs are always among its direct inputs.
+DEFERRED_INPUTS = f"""
+SELECT node.i, node.label FROM node
+JOIN node AS cnode ON node.creator = cnode.i
+JOIN file ON node.i = file.node
+JOIN dependency ON node.i = source
+WHERE sink = ? AND node.kind = 'file' AND file.state = {FileState.UNCONFIRMED.value}
+    AND cnode.kind = 'st'
 """
 
 # Flags the check_after bit of every step with an in-scope (declared-DEFAULT or not; see
@@ -642,7 +636,7 @@ class Workflow(Trellis):
         Parameters
         ----------
         node
-            The file or step node to supply to.
+            The step node to supply to.
         path
             The path of the file that should supply to the node.
         new
@@ -717,7 +711,7 @@ class Workflow(Trellis):
         Parameters
         ----------
         node
-            The file or step node to supply to.
+            The step node to supply to.
         paths
             The paths of the files that should supply to the node.
         new
@@ -1150,8 +1144,7 @@ class Workflow(Trellis):
             # needs to be checked by the client and ideally confirmed as existing in a
             # follow-up call to `confirm_hashes`.
             deferred = {
-                File(self, i, label)
-                for i, label in self.db.execute(RECURSE_DEFERRED_INPUTS, (old_step.i,))
+                File(self, i, label) for i, label in self.db.execute(DEFERRED_INPUTS, (old_step.i,))
             }
             return self._build_to_check(deferred)
 

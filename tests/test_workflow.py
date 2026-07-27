@@ -23,7 +23,7 @@ from stepup.core.sqlite3 import DBSession
 from stepup.core.static_tree import StaticTree
 from stepup.core.step import Step
 from stepup.core.stepinfo import StepInfo
-from stepup.core.workflow import RECURSE_DEFERRED_INPUTS, Workflow
+from stepup.core.workflow import DEFERRED_INPUTS, Workflow
 
 
 def _amend(wfx: Workflow, step: Step, **kwargs) -> tuple[bool, list]:
@@ -2515,13 +2515,13 @@ async def test_sql_recurse_products_pending_tree(wfp: Workflow):
 
 
 @pytest.mark.parametrize("inp_path", ["data/foo.txt", "data/sub/deep.txt", "data/sub/a/deep.txt"])
-async def test_recurse_deferred_inputs1(wfp: Workflow, inp_path: str):
+async def test_deferred_inputs(wfp: Workflow, inp_path: str):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "prog", inp_paths=[inp_path])
         prog = wfp.find(Step, "prog")
         wfp.register_static_tree(plan, "data")
-        rows = wfp.db.execute(RECURSE_DEFERRED_INPUTS, (prog.i,)).fetchall()
+        rows = wfp.db.execute(DEFERRED_INPUTS, (prog.i,)).fetchall()
         assert len(rows) == 1
         data = wfp.find(File, inp_path)
         assert File(wfp, *rows[0]) == data
