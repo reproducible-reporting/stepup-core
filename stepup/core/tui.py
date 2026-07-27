@@ -65,8 +65,7 @@ def _normalize_targets(raw_targets: list[str], stepup_root: Path) -> tuple[list[
     Raises
     ------
     TUIError
-        If a target is an empty string, falls outside `stepup_root`, or is a directory
-        target that normalizes to the project root.
+        If a target is an empty string.
     """
     targets = []
     target_dirs = []
@@ -113,7 +112,7 @@ def _resolve_root_and_targets(
     return stepup_root, targets, target_dirs
 
 
-def build_tool(args: argparse.Namespace, default_resources: str):
+def build_tool(args: argparse.Namespace, default_resources: str) -> None:
     try:
         asyncio.run(async_build(args, default_resources))
     except TUIError as exc:
@@ -125,7 +124,7 @@ def _handle_terminal_signal(
     reporter_handler: ReporterHandler,
     process_director: asyncio.subprocess.Process,
     sig: signal.Signals,
-):
+) -> None:
     """Print a warning message and forward the signal to the director."""
     reporter_handler.report("ERROR", f"TUI killed by {sig.name}. Immediate shutdown.", [])
     reporter_handler.shutdown()
@@ -133,7 +132,7 @@ def _handle_terminal_signal(
     sys.exit()
 
 
-async def async_build(args: argparse.Namespace, default_resources: str):
+async def async_build(args: argparse.Namespace, default_resources: str) -> None:
     if WATCHER_AVAILABLE and args.watch_first:
         args.watch = True
     stepup_root, targets, target_dirs = _resolve_root_and_targets(args.targets)
@@ -239,7 +238,7 @@ async def async_build(args: argparse.Namespace, default_resources: str):
         if args.cgroup:
             cgroup_argv = cgroup_scope_prefix()
             argv = [*cgroup_argv, *argv, "--cgroup"]
-        returncode = 1  # Internal error unless it is overriden later by the director subprocess
+        returncode = 1  # Internal error unless it is overridden later by the director subprocess
         try:
             with open(DIRECTOR_LOG, "w") as log_file:
                 process_director = await asyncio.create_subprocess_exec(
@@ -322,7 +321,7 @@ async def keyboard(
     director_socket_path: Path,
     reporter_handler: ReporterHandler,
     stop_event: asyncio.Event,
-):
+) -> None:
     async with iter_keystrokes(stop_event) as keys:
         async for ch in keys:
             if ch in "qjdrg":
@@ -430,8 +429,8 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         "-j",
         type=Decimal,
         default=Decimal("1.0"),
-        help="Number of parallel jobs. "
-        "When given as a real number with digits after the comma, "
+        help="Number of jobs running in parallel. "
+        "When given as a real number with digits after the decimal point, "
         "it is multiplied with the number of available cores. [default=%(default)s]",
     )
     parser.add_argument(
@@ -517,7 +516,7 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
             default=False,
             action=argparse.BooleanOptionalAction,
             help="StepUp will watch for file changes after all runnable steps have been executed. "
-            "By pressing r, it will rerun steps  that have become pending due to the file changes. "
+            "By pressing r, it will rerun steps that have become pending due to the file changes. "
             "(Only supported on Linux.)",
         )
         parser.add_argument(
@@ -572,7 +571,7 @@ def boot_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     return partial(_deprecated_boot_tool, default_resources=default_resources)
 
 
-def _deprecated_boot_tool(args: argparse.Namespace, default_resources: str):
+def _deprecated_boot_tool(args: argparse.Namespace, default_resources: str) -> None:
     print(
         "Warning: 'stepup boot' is deprecated; use 'stepup build' instead.",
         file=sys.stderr,

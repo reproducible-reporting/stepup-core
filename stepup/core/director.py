@@ -93,7 +93,7 @@ async def async_main(
     print(f"SOCKET {args.director_socket}", file=sys.stderr)
     print(f"PID {os.getpid()}", file=sys.stderr)
     print(f"LOG_LEVEL {args.log_level}", file=sys.stderr)
-    # To detect invalid usage of the RPCCLIENT in stepup.core.api  within the director process,
+    # To detect invalid usage of RPC_CLIENT in stepup.core.api within the director process,
     # we set the STEPUP_DIRECTOR_SOCKET to an invalid value.
     os.environ["STEPUP_DIRECTOR_SOCKET"] = "_invalid_socket_for_director_process_"
     if args.yappi:
@@ -114,7 +114,7 @@ async def async_main(
         try:
             serve_result = await serve(
                 director_socket_path=args.director_socket,
-                njob=args.jobs,
+                njob=njob,
                 reporter=reporter,
                 do_cgroup=args.cgroup,
                 do_clean=args.clean,
@@ -206,7 +206,7 @@ def parse_args() -> argparse.Namespace:
         type=Decimal,
         default=Decimal("1.0"),
         help="Number of jobs running in parallel. "
-        "When given as a real number with digits after the comma, "
+        "When given as a real number with digits after the decimal point, "
         "it is multiplied with the number of available cores. [default=%(default)s]",
     )
     parser.add_argument(
@@ -302,7 +302,7 @@ def parse_args() -> argparse.Namespace:
             default=False,
             action=argparse.BooleanOptionalAction,
             help="Watch file changes after completing the build phase. "
-            "When not given, the director exists after completing the build phase.",
+            "When not given, the director exits after completing the build phase.",
         )
         parser.add_argument(
             "--watch-first",
@@ -382,7 +382,7 @@ async def serve(
     targets: list[Path],
     target_dirs: list[Path],
     db: DBSession,
-    mp_ctx=None,
+    mp_ctx: multiprocessing.context.BaseContext | None = None,
 ) -> ServeResult:
     """Server program.
 
@@ -407,6 +407,9 @@ async def serve(
         If True, keep dispatching new steps after another step has failed
         (like `make -k`). If False (default), the scheduler is put on hold after
         the first failure; steps already running are still allowed to finish.
+    fix_epoch
+        If True, set the `SOURCE_DATE_EPOCH` environment variable for step child
+        processes (unless already set in the environment), for reproducible builds.
     show_perf
         Show performance details after each completed step.
         Requires `live_progress`, since the performance details are printed inline with the
@@ -423,11 +426,20 @@ async def serve(
     do_watch_first
         If True, the builder restarts after the watcher sees the first file change.
     available_resources
-        A dictionary of named resources and their available quantities,
-        e.g. `{"cpu": 4, "gpu": 1}`. Defaults to an empty dict.
+        Named resources and their available quantities, e.g. `"cpu:4,gpu:1"`, or `None`
+        to declare no resources at all (any step that requests a named resource then
+        never becomes runnable).
     postpone_cap
         Maximum number of consecutive postpones (since a step last succeeded) before
         it is failed instead of parked pending again. A livelock guard.
+    targets
+        Restrict the build to steps needed to produce these output files.
+        An empty list builds the full default workflow.
+    target_dirs
+        Restrict the build to declared-DEFAULT steps whose output falls under one of
+        these directories.
+    db
+        The database session backing the workflow graph.
     mp_ctx
         A `multiprocessing` forkserver context for Python step execution and file hashing,
         or `None` to use plain subprocesses.
@@ -657,8 +669,10 @@ class DirectorHandler:
         self._submit_to_check(to_check)
 
     @allow_rpc
-    async def nglob(self, job_i: int, patterns: list[str], subs: dict[str, str], paths: list[str]):
-        """Register a glob patterns to be watched."""
+    async def nglob(
+        self, job_i: int, patterns: list[str], subs: dict[str, str], paths: list[str]
+    ) -> None:
+        """Register glob patterns to be watched."""
         ngm = NGlobMulti.from_patterns(patterns, subs)
         ngm.extend(paths)
         async with self.db:
@@ -758,7 +772,7 @@ class DirectorHandler:
         this call blocks until they are resolved to `STATIC` or `MISSING`,
         running their hash jobs immediately rather than through the builder's queue:
         the calling step already occupies a slot and is idle while it waits,
-        so promoting its hash jobs  outside the `--jobs` budget keeps real concurrency at `njob`,
+        so promoting its hash jobs outside the `--jobs` budget keeps real concurrency at `njob`,
         instead of deadlocking when every slot holds a step blocked here.
 
         Returns
@@ -794,7 +808,7 @@ class DirectorHandler:
         return carry_on
 
     @allow_rpc
-    async def postpone_step(self, job_i: int, missing: list[str]):
+    async def postpone_step(self, job_i: int, missing: list[str]) -> None:
         """Postpone a step due to unavailable dependencies."""
         self.executor.postpone(job_i, unavailable=missing)
 
@@ -810,7 +824,7 @@ class DirectorHandler:
         stdin: str,
         stdout: str,
         stderr: str,
-    ):
+    ) -> None:
         """Record a subprocess invocation made by a wrapper step.
 
         Notes
@@ -846,8 +860,14 @@ class DirectorHandler:
     #
 
     @allow_rpc
-    async def shutdown(self):
-        """Shut down the director and stop all running tasks."""
+    async def shutdown(self) -> None:
+        """Shut down the director, escalating if called repeatedly.
+
+        The first call puts the scheduler on hold and stops the build/watch loops
+        gracefully: steps already running are left to finish on their own.
+        A second call interrupts running steps with `SIGINT`;
+        a third and any further call escalates to `SIGTERM`.
+        """
         self.scheduler.on_hold = True
         if self.stop_event.is_set():
             signal_name, signal_number = (
@@ -867,7 +887,7 @@ class DirectorHandler:
             self.watcher.interrupt.set()
 
     @allow_rpc
-    async def drain(self):
+    async def drain(self) -> None:
         """Do not start new steps and switch to the watch phase after the build phase completes.
 
         Notes
@@ -881,7 +901,7 @@ class DirectorHandler:
             )
 
     @allow_rpc
-    async def join(self):
+    async def join(self) -> None:
         """Block until the builder completed all (runnable) steps and shut down."""
         if self.watcher is not None:
             await wait_for_events(
@@ -890,7 +910,7 @@ class DirectorHandler:
             await self.shutdown()
 
     @allow_rpc
-    async def graph(self, prefix: str):
+    async def graph(self, prefix: str) -> None:
         """Write out the graph in text format."""
         async with self.db:
             with open(f"{prefix}.txt", "w") as fh:
@@ -901,7 +921,7 @@ class DirectorHandler:
                 print(self.workflow.format_dot_dependency(), file=fh)
 
     @allow_rpc
-    async def run(self):
+    async def run(self) -> None:
         """Run pending steps (based on file changes observed in the watch phase).
 
         Notes
@@ -922,7 +942,7 @@ class DirectorHandler:
         self.builder.resume.set()
 
     @allow_rpc
-    async def watch_update(self, path: str):
+    async def watch_update(self, path: str) -> None:
         """Block until the watcher observed an update of the file."""
         if self.watcher is None:
             return
@@ -942,7 +962,7 @@ class DirectorHandler:
             self.watcher.files_changed_events.discard(event)
 
     @allow_rpc
-    async def watch_delete(self, path: str):
+    async def watch_delete(self, path: str) -> None:
         """Block until the watcher observed the deletion of the file."""
         if self.watcher is None:
             return
@@ -962,7 +982,7 @@ class DirectorHandler:
             self.watcher.files_changed_events.discard(event)
 
     @allow_rpc
-    async def wait(self):
+    async def wait(self) -> None:
         """Block until the builder completed all (runnable) steps."""
         if self.watcher is None:
             return
