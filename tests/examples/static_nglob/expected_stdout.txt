@@ -14,14 +14,14 @@ Planning sec 1 summary
    SUCCESS │ cp -p ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
      START │ cp -p ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
    SUCCESS │ cp -p ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
-     START │ cp -p ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
-   SUCCESS │ cp -p ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
      START │ cp -p ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
    SUCCESS │ cp -p ch-2-theory/sec-2-2-advanced.txt ch-2-theory/sec-2-2-advanced.md
-     START │ cp -p ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
-   SUCCESS │ cp -p ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
+     START │ cp -p ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
+   SUCCESS │ cp -p ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
      START │ cp -p ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
    SUCCESS │ cp -p ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+     START │ cp -p ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
+   SUCCESS │ cp -p ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
      START │ cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/compiled.md
    SUCCESS │ cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/compiled.md
      START │ cat ch-2-theory/sec-2-2-advanced.md ch-2-theory/sec-2-1-basics.md > ch-2-theory/compiled.md
@@ -48,8 +48,8 @@ Planning sec 1 summary
       SKIP │ cp -p ch-1-intro/sec-1-1-blabla.txt ch-1-intro/sec-1-1-blabla.md
       SKIP │ cp -p ch-1-intro/sec-1-2-some-more.txt ch-1-intro/sec-1-2-some-more.md
       SKIP │ cp -p ch-2-theory/sec-2-1-basics.txt ch-2-theory/sec-2-1-basics.md
-      SKIP │ cp -p ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
       SKIP │ cp -p ch-3-conclusions/sec-3-2-outlook.txt ch-3-conclusions/sec-3-2-outlook.md
+      SKIP │ cp -p ch-3-conclusions/sec-3-1-summary.txt ch-3-conclusions/sec-3-1-summary.md
       SKIP │ cat ch-1-intro/sec-1-1-blabla.md ch-1-intro/sec-1-2-some-more.md > ch-1-intro/compiled.md
       SKIP │ cat ch-3-conclusions/sec-3-2-outlook.md ch-3-conclusions/sec-3-1-summary.md > ch-3-conclusions/compiled.md
      START │ cp -p ch-2-theory/sec-2-2-original.txt ch-2-theory/sec-2-2-original.md

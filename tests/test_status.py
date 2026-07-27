@@ -18,8 +18,10 @@ def con():
     """In-memory SQLite connection with the trellis + step + file schemas and a root node."""
     c = connect(":memory:")
     c.executescript(TRELLIS_SCHEMA.format(application_id=0, schema_version=0))
-    c.executescript(STEP_SCHEMA)
+    # FILE_SCHEMA must load before STEP_SCHEMA: STEP_SCHEMA's step_file_check_ready_*
+    # triggers are declared ON file, which requires the file table to already exist.
     c.executescript(FILE_SCHEMA)
+    c.executescript(STEP_SCHEMA)
     c.execute("INSERT INTO node (i, kind, label, creator, detached) VALUES (1, 'root', '', 1, 0)")
     return c
 
@@ -117,8 +119,10 @@ def test_status_tool_reads_graph_db(tmp_path, monkeypatch, capsys):
     path_db.parent.mkdir(parents=True)
     c = connect(path_db)
     c.executescript(TRELLIS_SCHEMA.format(application_id=0, schema_version=0))
-    c.executescript(STEP_SCHEMA)
+    # FILE_SCHEMA must load before STEP_SCHEMA: STEP_SCHEMA's step_file_check_ready_*
+    # triggers are declared ON file, which requires the file table to already exist.
     c.executescript(FILE_SCHEMA)
+    c.executescript(STEP_SCHEMA)
     c.execute("INSERT INTO node (i, kind, label, creator, detached) VALUES (1, 'root', '', 1, 0)")
     _insert_step(c, 2, "echo one", StepState.SUCCEEDED)
     c.commit()

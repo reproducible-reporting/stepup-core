@@ -19,6 +19,7 @@ from stepup.core.scheduler import (
     PROPAGATE_UPDATE_CHECK_AFTER,
     PRUNE_DETACHED_CHECK_AFTER,
     PRUNE_REDUNDANT_CHECK_AFTER,
+    RECOMPUTE_READY,
     SELECT_INPUTS,
     SELECT_NEXT_STEP,
     SELECT_PENDING_REASONS,
@@ -39,8 +40,10 @@ def con():
     """In-memory SQLite connection with trellis + step + file schemas and a root node."""
     c = connect(":memory:")
     c.executescript(TRELLIS_SCHEMA.format(application_id=0, schema_version=0))
-    c.executescript(STEP_SCHEMA)
+    # FILE_SCHEMA must load before STEP_SCHEMA: STEP_SCHEMA's step_file_check_ready_*
+    # triggers are declared ON file, which requires the file table to already exist.
     c.executescript(FILE_SCHEMA)
+    c.executescript(STEP_SCHEMA)
     # available_resource is normally a temp table created by Scheduler.initialize.
     c.execute(
         "CREATE TEMPORARY TABLE IF NOT EXISTS available_resource"
@@ -65,8 +68,18 @@ def _insert_step(
     tail_time=1.0,
     check_after=False,
     detached=False,
+    ready=True,
 ):
-    """Insert a node row and a step row for a fictitious step."""
+    """Insert a node row and a step row for a fictitious step.
+
+    `ready` controls the new step._ready/_check_ready columns. By default (`True`) the
+    step is inserted immediately dispatchable (`_ready=1, _check_ready=0`), matching the
+    old live-EXISTS query's behavior for steps with no blocking inputs -- the common case
+    for tests that don't exercise input-availability logic. Pass `ready=False` for tests
+    that set up dependencies/input files and want to exercise the real readiness
+    computation: after wiring up the inputs, call `_recompute_ready(con)` before querying
+    SELECT_NEXT_STEP.
+    """
     if implied_need is None:
         implied_need = need
     con.execute(
@@ -76,8 +89,9 @@ def _insert_step(
     con.execute(
         "INSERT INTO step"
         " (node, state, need, duration, postpone_count,"
-        " subshell, _safe, _check_safe, _implied_need, _tail_time, _check_after)"
-        " VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?)",
+        " subshell, _safe, _check_safe, _implied_need, _tail_time, _check_after,"
+        " _ready, _check_ready)"
+        " VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?)",
         (
             node_id,
             state.value,
@@ -88,8 +102,15 @@ def _insert_step(
             implied_need.value,
             tail_time,
             check_after,
+            ready,
+            not ready,
         ),
     )
+
+
+def _recompute_ready(con):
+    """Run RECOMPUTE_READY directly, mirroring Scheduler._update_meta_inputs()."""
+    con.execute(RECOMPUTE_READY)
 
 
 def _insert_file(con, node_id, creator_id):
@@ -689,84 +710,94 @@ def test_postponed_step_not_runnable(con):
 
 def test_volatile_input_blocks_step(con):
     """A VOLATILE input always blocks a step, regardless of initial/amended status."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.VOLATILE)
     _add_dep(con, 3, 2)
+    _recompute_ready(con)
     assert _get_runnable_ids(con) == []
 
 
 def test_initial_input_awaited_blocks_step(con):
     """An initial dependency on an AWAITED file blocks the step."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.AWAITED)
     _add_dep(con, 3, 2)
+    _recompute_ready(con)
     assert _get_runnable_ids(con) == []
 
 
 def test_initial_input_outdated_blocks_step(con):
     """An initial dependency on an OUTDATED file blocks the step."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.OUTDATED)
     _add_dep(con, 3, 2)
+    _recompute_ready(con)
     assert _get_runnable_ids(con) == []
 
 
 def test_initial_input_missing_blocks_step(con):
     """An initial dependency on a MISSING file blocks the step."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.MISSING)
     _add_dep(con, 3, 2)
+    _recompute_ready(con)
     assert _get_runnable_ids(con) == []
 
 
 def test_initial_input_detached_node_blocks_step(con):
     """An initial dependency on a detached file node blocks the step, regardless of file state."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.BUILT, detached=True)
     _add_dep(con, 3, 2)
+    _recompute_ready(con)
     assert _get_runnable_ids(con) == []
 
 
 def test_initial_input_built_allows_step(con):
     """An initial dependency on a BUILT file does not block the step."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.BUILT)
     _add_dep(con, 3, 2)
+    _recompute_ready(con)
     assert _get_runnable_ids(con) == [2]
 
 
 def test_initial_input_static_allows_step(con):
     """An initial dependency on a STATIC file does not block the step."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.STATIC)
     _add_dep(con, 3, 2)
+    _recompute_ready(con)
     assert _get_runnable_ids(con) == [2]
 
 
 def test_amended_input_awaited_blocks_step(con):
     """An amended, attached input in AWAITED state blocks the step."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.AWAITED)
     dep_id = _add_dep_returning_id(con, 3, 2)
     _mark_dep_amended(con, dep_id)
+    _recompute_ready(con)
     assert _get_runnable_ids(con) == []
 
 
 def test_amended_input_outdated_blocks_step(con):
     """An amended, attached input in OUTDATED state blocks the step."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.OUTDATED)
     dep_id = _add_dep_returning_id(con, 3, 2)
     _mark_dep_amended(con, dep_id)
+    _recompute_ready(con)
     assert _get_runnable_ids(con) == []
 
 
 def test_amended_input_built_allows_step(con):
     """An amended, attached input in BUILT state does not block the step."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.BUILT)
     dep_id = _add_dep_returning_id(con, 3, 2)
     _mark_dep_amended(con, dep_id)
+    _recompute_ready(con)
     assert _get_runnable_ids(con) == [2]
 
 
@@ -776,10 +807,11 @@ def test_amended_input_missing_allows_step(con):
     MISSING is neither AWAITED nor OUTDATED, so case 1 of the blocking condition does not apply.
     The step proceeds and will validate its amended inputs before running.
     """
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.MISSING)
     dep_id = _add_dep_returning_id(con, 3, 2)
     _mark_dep_amended(con, dep_id)
+    _recompute_ready(con)
     assert _get_runnable_ids(con) == [2]
 
 
@@ -789,20 +821,22 @@ def test_amended_input_detached_allows_step(con):
     Case 1 requires NOT input_node.detached, and case 2 only covers initial (non-amended) deps,
     so a detached amended input is not a blocking condition.
     """
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.MISSING, detached=True)
     dep_id = _add_dep_returning_id(con, 3, 2)
     _mark_dep_amended(con, dep_id)
+    _recompute_ready(con)
     assert _get_runnable_ids(con) == [2]
 
 
 def test_one_ready_one_blocking_input_excludes_step(con):
     """When at least one input is blocking, the step is excluded even if others are ready."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_input_file(con, 3, 1, FileState.BUILT)  # ready
     _insert_input_file(con, 4, 1, FileState.AWAITED)  # blocking
     _add_dep(con, 3, 2)
     _add_dep(con, 4, 2)
+    _recompute_ready(con)
     assert _get_runnable_ids(con) == []
 
 
@@ -872,16 +906,37 @@ def test_ordering_higher_tail_time_first(con):
     assert ids == [3]
 
 
-def test_ordering_label_tiebreaker(con):
-    """When tail_time and implied_need are equal, the alphabetically first label wins.
+def test_ordering_node_tiebreaker(con):
+    """When tail_time and implied_need are equal, the tie is broken by step.node order --
+    the step_dispatch index's implicit primary-key suffix -- not by label.
+
+    Node 10 is inserted before node 9 and gets the lexically *smaller* label ("echo 10" <
+    "echo 9"), so this distinguishes the current node-based tie-break from the dropped
+    label-based one: the old rule would have picked node 10 ("echo 10" first
+    alphabetically); the current rule picks node 9 (lower step.node).
 
     SELECT_NEXT_STEP carries a LIMIT 1, so only the top-priority candidate comes back.
     """
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=5.0)
-    _insert_step(con, 3, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=5.0)
-    # _insert_step labels these "echo 2" and "echo 3"; "echo 2" < "echo 3" alphabetically.
+    _insert_step(con, 10, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=5.0)
+    _insert_step(con, 9, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=5.0)
     ids = _get_runnable_ids(con)
-    assert ids == [2]
+    assert ids == [9]
+
+
+def test_select_next_step_uses_dispatch_index(con):
+    """SELECT_NEXT_STEP walks step_dispatch in order and never sorts the candidate set.
+
+    This is the whole point of materializing _has_hash/_ready: without it, SQLite falls
+    back to scanning and sorting every matching row on each dispatch, which is exactly the
+    hotspot this design removes. Regression-test the query plan directly so a future change
+    that breaks the index match (e.g. an ORDER BY term outside the index) fails loudly here
+    instead of only showing up as a production slowdown.
+    """
+    plan = "\n".join(
+        row[3] for row in con.execute(f"EXPLAIN QUERY PLAN {SELECT_NEXT_STEP}").fetchall()
+    )
+    assert "USING INDEX step_dispatch" in plan
+    assert "TEMP B-TREE FOR ORDER BY" not in plan
 
 
 # -----------------------------------------------------------------------
@@ -1555,10 +1610,11 @@ def test_checking_step_not_checkable(con):
 
 def test_checkable_step_blocked_by_unavailable_initial_input(con):
     """A step with a hash but an unavailable initial (non-amended) input is NOT checkable."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_step_hash(con, 2)
     _insert_input_file(con, 3, 1, FileState.AWAITED)
     _add_dep(con, 3, 2)
+    _recompute_ready(con)
     assert _get_checkable_ids(con) == []
 
 
@@ -1568,7 +1624,7 @@ def test_checkable_step_with_ready_initial_and_unready_amended_input(con):
     This is the ValidateAmendedJob case: amended inputs not yet ready, but we can
     still validate that the initial inputs haven't changed (without resource slots).
     """
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, ready=False)
     _insert_step_hash(con, 2)
     # Ready initial input
     _insert_input_file(con, 3, 1, FileState.STATIC)
@@ -1577,6 +1633,7 @@ def test_checkable_step_with_ready_initial_and_unready_amended_input(con):
     _insert_input_file(con, 4, 1, FileState.MISSING)
     dep_id = _add_dep_returning_id(con, 4, 2)
     _mark_dep_amended(con, dep_id)
+    _recompute_ready(con)
     # MISSING amended inputs are NOT blocked by UNAVAILABLE_INPUT
     # (case 1 only blocks AWAITED/OUTDATED),
     # so both the runnable and checkable paths of SELECT_NEXT_STEP allow them.

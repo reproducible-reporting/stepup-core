@@ -570,6 +570,10 @@ class Trellis:
         #   the corresponding Python-side flag writes in Step.set_state()/set_duration()
         #   and the redundant explicit flags in Workflow._recreate_step()'s UPDATE, per the
         #   trigger-vs-Python convention documented in STEP_SCHEMA.
+        # - Added step._has_hash/_ready/_check_ready columns, the step_dispatch partial
+        #   index (replacing step_pending_ready) and the step_check_ready partial index,
+        #   and trigger-maintained bookkeeping for _has_hash/_ready via new triggers on
+        #   file, dependency, amended_dep, node(detached), and step_hash.
 
         return 5
 

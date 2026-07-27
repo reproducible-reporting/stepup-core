@@ -34,6 +34,19 @@ RESERVED_ENV_VARS = frozenset(
 )
 
 
+# Step-only predicates for the step_dispatch partial index (see STEP_SCHEMA below) and for
+# scheduler.SELECT_NEXT_STEP's WHERE clause, which must stay textually identical to this
+# fragment -- SQLite matches partial-index eligibility structurally against the query text.
+# node.detached and resource availability are deliberately excluded: both live outside the
+# step table (node/step_resource respectively), so a partial index on step cannot express
+# them; SELECT_NEXT_STEP re-checks them lazily per examined index row instead.
+STEP_DISPATCH_WHERE = f"""step.state = {StepState.PENDING.value} AND
+    step._safe AND
+    NOT step.postponed AND
+    step._implied_need > {Need.OPTIONAL.value} AND
+    step._ready"""
+
+
 STEP_SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS step (
     -- Main data
@@ -70,6 +83,18 @@ CREATE TABLE IF NOT EXISTS step (
     _check_after INTEGER NOT NULL CHECK(_check_after IN (0, 1)),
     -- Whether recent changes to this step require the recalculation of the _implied_need
     -- metadata of this step and its sources.
+    _has_hash INTEGER NOT NULL CHECK(_has_hash IN (0, 1)) DEFAULT 0,
+    -- Whether a step_hash row exists for this step. Trigger-maintained mirror of
+    -- EXISTS(SELECT 1 FROM step_hash WHERE node = step.node), used by the step_dispatch
+    -- index so SELECT_NEXT_STEP does not need a correlated EXISTS per candidate row.
+    _ready INTEGER NOT NULL CHECK(_ready IN (0, 1)) DEFAULT 0,
+    -- Cached negation of the "unavailable input" test: whether all inputs of this step are
+    -- currently available. Recomputed for _check_ready-flagged steps by
+    -- Scheduler._update_meta_ready(). The conservative default 0 (paired with
+    -- _check_ready = 1 below) means a new or recycled step is never dispatched before its
+    -- readiness has been computed at least once.
+    _check_ready INTEGER NOT NULL CHECK(_check_ready IN (0, 1)) DEFAULT 1,
+    -- Whether _ready must be recomputed because something relevant to it changed.
 
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 ) WITHOUT ROWID;
@@ -82,29 +107,69 @@ CREATE INDEX IF NOT EXISTS step_implied_need ON step(_implied_need);
 -- index scan proportional to the flagged count instead of a full scan of the step table.
 CREATE INDEX IF NOT EXISTS step_check_safe ON step(node) WHERE _check_safe;
 CREATE INDEX IF NOT EXISTS step_check_after ON step(node) WHERE _check_after;
--- Partial index matching Scheduler._PENDING_STEP_WHERE's static predicates,
--- so SELECT_NEXT_STEP can jump to plausible dispatch candidates
--- instead of scanning every PENDING step to test _safe/postponed.
-CREATE INDEX IF NOT EXISTS step_pending_ready ON step(state, _implied_need)
-    WHERE _safe AND NOT postponed;
+CREATE INDEX IF NOT EXISTS step_check_ready ON step(node) WHERE _check_ready;
+-- The dispatch index for SELECT_NEXT_STEP. Key order matches that query's ORDER BY
+-- exactly, and the WHERE clause matches STEP_DISPATCH_WHERE above exactly, so the query
+-- can walk this index in priority order and stop at the first eligible row (LIMIT 1)
+-- without materializing or sorting the candidate set. SQLite's planner does not pick this
+-- index voluntarily (even after ANALYZE), so the query pins it with INDEXED BY.
+CREATE INDEX IF NOT EXISTS step_dispatch ON step(
+    _has_hash DESC,
+    (_implied_need = {Need.PLAN.value}) DESC,
+    (_tail_time / (1 + postpone_count)) DESC
+) WHERE {STEP_DISPATCH_WHERE};
 
 -- Convention for this trigger block: single-row, same-table consequences of a column
--- write live here as triggers. Multi-row / recursive graph consequences (e.g. flagging
--- a step's recursive products, or steps reached across dependency edges two hops away)
--- stay in explicit Python-invoked SQL instead: see RECURSIVE_CHECK_WITH_PRODUCTS and
--- RECURSIVE_CHECK_AFTER_SOURCES below (used by Step.detach()/Step.recycle()), which
--- together with the triggers here account for the complete _check_safe/_check_after
--- bookkeeping story.
+-- write live here as triggers, colocated with the table whose column they maintain
+-- regardless of which table's event fires them (e.g. the dependency/file/node/step_hash
+-- triggers below all live here because they maintain step._check_after/_check_ready).
+-- Multi-row / recursive graph consequences (e.g. flagging a step's recursive products, or
+-- steps reached across dependency edges two hops away) stay in explicit Python-invoked SQL
+-- instead: see RECURSIVE_CHECK_WITH_PRODUCTS and RECURSIVE_CHECK_AFTER_SOURCES below (used
+-- by Step.detach()/Step.recycle()), which together with the triggers here account for the
+-- complete _check_safe/_check_after/_check_ready bookkeeping story.
 
--- Keep _check_after in sync with dependency-edge changes touching either endpoint.
--- A no-op UPDATE (zero rows matched) is harmless when the other endpoint is not a step.
+-- Keep _check_after/_check_ready in sync with dependency-edge changes touching either
+-- endpoint. Only the sink side is relevant to _check_ready (a step's inputs are the
+-- dependencies where it is the sink). A no-op UPDATE (zero rows matched) is harmless when
+-- the other endpoint is not a step.
 CREATE TRIGGER IF NOT EXISTS step_dependency_check_after_ins AFTER INSERT ON dependency
 BEGIN
     UPDATE step SET _check_after = 1 WHERE node IN (NEW.source, NEW.sink);
+    UPDATE step SET _check_ready = 1 WHERE node = NEW.sink;
 END;
 CREATE TRIGGER IF NOT EXISTS step_dependency_check_after_del AFTER DELETE ON dependency
 BEGIN
     UPDATE step SET _check_after = 1 WHERE node IN (OLD.source, OLD.sink);
+    UPDATE step SET _check_ready = 1 WHERE node = OLD.sink;
+END;
+
+-- Keep _check_ready in sync with file state changes, so the scheduler recomputes
+-- readiness for every step that consumes this file as an input. File.set_state issues a
+-- plain UPDATE (fires the _upd trigger); File.initialize's upsert fires the _upd trigger on
+-- its conflict/update arm and the _ins trigger on its fresh-insert arm. The _ins arm
+-- matters for recycled file nodes that may already have dependency edges.
+CREATE TRIGGER IF NOT EXISTS step_file_check_ready_upd AFTER UPDATE OF state ON file
+WHEN OLD.state != NEW.state
+BEGIN
+    UPDATE step SET _check_ready = 1
+    WHERE node IN (SELECT sink FROM dependency WHERE source = NEW.node);
+END;
+CREATE TRIGGER IF NOT EXISTS step_file_check_ready_ins AFTER INSERT ON file
+BEGIN
+    UPDATE step SET _check_ready = 1
+    WHERE node IN (SELECT sink FROM dependency WHERE source = NEW.node);
+END;
+
+-- Keep _check_ready in sync with node.detached flips (set by RECURSIVELY_SET_DETACHED in
+-- trellis.py, a bulk UPDATE that still fires this row trigger once per affected row). Only
+-- *consumers* of the flipped node need flagging: a step's own node.detached is checked
+-- lazily in SELECT_NEXT_STEP itself, the same treatment as the resource check.
+CREATE TRIGGER IF NOT EXISTS step_node_check_ready_detached AFTER UPDATE OF detached ON node
+WHEN OLD.detached != NEW.detached
+BEGIN
+    UPDATE step SET _check_ready = 1
+    WHERE node IN (SELECT sink FROM dependency WHERE source = NEW.i);
 END;
 
 -- Keep _check_after in sync with duration changes, so the scheduler recomputes
@@ -158,6 +223,21 @@ CREATE TABLE IF NOT EXISTS amended_dep (
     FOREIGN KEY (i) REFERENCES dependency(i) ON DELETE CASCADE
 ) WITHOUT ROWID;
 
+-- Keep _check_ready in sync with amended-dependency changes: an amended/un-amended
+-- dependency edge is evaluated differently by the "unavailable input" test (see
+-- scheduler.UNAVAILABLE_INPUT), so flag the sink step whenever a dependency's amended
+-- status changes.
+CREATE TRIGGER IF NOT EXISTS amended_dep_check_ready_ins AFTER INSERT ON amended_dep
+BEGIN
+    UPDATE step SET _check_ready = 1
+    WHERE node = (SELECT sink FROM dependency WHERE i = NEW.i);
+END;
+CREATE TRIGGER IF NOT EXISTS amended_dep_check_ready_del AFTER DELETE ON amended_dep
+BEGIN
+    UPDATE step SET _check_ready = 1
+    WHERE node = (SELECT sink FROM dependency WHERE i = OLD.i);
+END;
+
 -- Environment variable names this step depends on, and the value observed when recorded
 -- (declared up front or amended during the run).
 CREATE TABLE IF NOT EXISTS env_var (
@@ -181,6 +261,18 @@ CREATE TABLE IF NOT EXISTS step_hash (
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE,
     CHECK (json_valid(hash))
 );
+
+-- Keep _has_hash in sync with step_hash rows. Step.set_hash uses INSERT OR REPLACE, whose
+-- implicit conflict-delete does not fire delete triggers but whose insert arm does, so
+-- step_hash_ins alone correctly re-asserts _has_hash = 1 on overwrite.
+CREATE TRIGGER IF NOT EXISTS step_hash_ins AFTER INSERT ON step_hash
+BEGIN
+    UPDATE step SET _has_hash = 1 WHERE node = NEW.node;
+END;
+CREATE TRIGGER IF NOT EXISTS step_hash_del AFTER DELETE ON step_hash
+BEGIN
+    UPDATE step SET _has_hash = 0 WHERE node = OLD.node;
+END;
 
 -- Captured standard output/error of the step's command, for the "show output" feature.
 CREATE TABLE IF NOT EXISTS step_output (
@@ -372,13 +464,20 @@ class Step(Node):
         If a step with this node already exists (i.e. a detached step is being
         recycled), its `step_hash`/`step_output` satellite rows are untouched by this
         `INSERT OR REPLACE`, so a recycled step's stored hash remains available for
-        skip-checking after redeclaration instead of being discarded.
+        skip-checking after redeclaration instead of being discarded. `_has_hash` must
+        therefore be set explicitly here (rather than left to its `DEFAULT 0`): the
+        `REPLACE` wipes the column without firing any `step_hash` trigger, since this
+        statement never touches the `step_hash` table itself. `_ready`/`_check_ready` need
+        no explicit value -- their `DEFAULT`s (0 and 1) are exactly the conservative
+        "not yet known, must be recomputed" state a new/recycled step should start in.
         """
         self.db.execute(
             "INSERT OR REPLACE INTO step "
-            "(node, state, need, subshell, _safe, _check_safe, _implied_need, _check_after) "
+            "(node, state, need, subshell, _safe, _check_safe, _implied_need, _check_after, "
+            "_has_hash) "
             "VALUES(:node, :state, :need, :subshell, :safe, :check_safe, "
-            ":implied_need, :check_need)",
+            ":implied_need, :check_need, "
+            "(SELECT EXISTS(SELECT 1 FROM step_hash WHERE node = :node)))",
             {
                 "node": self.i,
                 "need": need.value,

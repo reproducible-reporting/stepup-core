@@ -2,12 +2,6 @@
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
-     START │ ./work.py
- POSTPONED │ ./work.py
-────────────────────────── Unavailable amended inputs ──────────────────────────
-ping.txt
-pong.txt
-────────────────────────────────────────────────────────────────────────────────
      START │ echo ping > ping.txt
    SUCCESS │ echo ping > ping.txt
      START │ echo pong > pong.txt
@@ -15,7 +9,6 @@ pong.txt
      START │ ./work.py
    SUCCESS │ ./work.py
   DIRECTOR │ Trying to delete 0 outdated output(s)
-   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
    DELETED │ ping.txt
    DELETED │ pong.txt

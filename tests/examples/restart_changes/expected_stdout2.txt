@@ -14,10 +14,10 @@ Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
      START │ ./plan.py
    SUCCESS │ ./plan.py
-     START │ cp source2.txt copy2.txt
-   SUCCESS │ cp source2.txt copy2.txt
      START │ cp source_both.txt copy_both2.txt
    SUCCESS │ cp source_both.txt copy_both2.txt
+     START │ cp source2.txt copy2.txt
+   SUCCESS │ cp source2.txt copy2.txt
   DIRECTOR │ Trying to delete 2 outdated output(s)
      CLEAN │ copy_both1.txt
      CLEAN │ copy1.txt

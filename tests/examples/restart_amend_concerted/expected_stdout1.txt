@@ -4,10 +4,16 @@
    SUCCESS │ ./plan.py
      START │ ./prep.py plan
    SUCCESS │ ./prep.py plan
+     START │ ./work.py
+ POSTPONED │ ./work.py
+────────────────────────── Unavailable amended inputs ──────────────────────────
+out1.txt
+────────────────────────────────────────────────────────────────────────────────
      START │ ./prep.py run
    SUCCESS │ ./prep.py run
      START │ ./work.py
    SUCCESS │ ./work.py
   DIRECTOR │ Trying to delete 0 outdated output(s)
+   WARNING │ Check logs: .stepup/warning.log
      PHASE │ watch
   DIRECTOR │ See you!

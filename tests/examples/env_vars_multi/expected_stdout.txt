@@ -4,10 +4,10 @@
    SUCCESS │ ./plan.py
      START │ ./plan.py  # wd=bar
    SUCCESS │ ./plan.py  # wd=bar
-     START │ cp -p ../foo/inp.txt ../foo/out.txt  # wd=bar
-   SUCCESS │ cp -p ../foo/inp.txt ../foo/out.txt  # wd=bar
      START │ cp -p ../inp.txt ../out.txt  # wd=bar
    SUCCESS │ cp -p ../inp.txt ../out.txt  # wd=bar
+     START │ cp -p ../foo/inp.txt ../foo/out.txt  # wd=bar
+   SUCCESS │ cp -p ../foo/inp.txt ../foo/out.txt  # wd=bar
   DIRECTOR │ Trying to delete 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

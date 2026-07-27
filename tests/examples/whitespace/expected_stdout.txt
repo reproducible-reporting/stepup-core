@@ -4,10 +4,10 @@
    SUCCESS │ ./plan.py
      START │ './script is cool.py' plan
    SUCCESS │ './script is cool.py' plan
-     START │ './script is cool.py' run
-   SUCCESS │ './script is cool.py' run
      START │ cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
    SUCCESS │ cp -p 'README NOW.txt' 'white space leaves a lot of room for mistakes.txt'
+     START │ './script is cool.py' run
+   SUCCESS │ './script is cool.py' run
   DIRECTOR │ Trying to delete 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

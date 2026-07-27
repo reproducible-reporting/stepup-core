@@ -6,6 +6,8 @@
    SUCCESS │ ./plan.py  # wd=sub
      START │ cp -p example.txt sub/example.txt
    SUCCESS │ cp -p example.txt sub/example.txt
+     START │ tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub
+   SUCCESS │ tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub
      START │ cat ../plan.py  # wd=sub
    SUCCESS │ cat ../plan.py  # wd=sub
 ─────────────────────────────── Standard output ────────────────────────────────
@@ -17,8 +19,6 @@ static("sub/plan.py")
 copy("example.txt", "sub/")
 plan("./plan.py", workdir="sub")
 ────────────────────────────────────────────────────────────────────────────────
-     START │ tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub
-   SUCCESS │ tr '[:lower:]' '[:upper:]' < example.txt > upper.txt  # wd=sub
   DIRECTOR │ Trying to delete 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

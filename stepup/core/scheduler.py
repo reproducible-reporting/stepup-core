@@ -11,7 +11,7 @@ from .enums import FileState, Need, StepState
 from .hash import FileHash
 from .job import Job, RunJob, ValidateAmendedJob
 from .sqlite3 import DBSession
-from .step import Step
+from .step import STEP_DISPATCH_WHERE, Step
 from .utils import parse_resources, write_joblog_record
 from .workflow import Workflow
 
@@ -38,7 +38,7 @@ DELETE FROM safe_update
 #
 # `trace` carries two values per node: `safe` is that node's own new _safe (what gets written
 # out) and depends only on its *ancestors'* states -- never its own, since a step's own state
-# must not affect its own _safe (e.g. `step_pending_ready`'s partial index checks _safe against
+# must not affect its own _safe (e.g. `step_dispatch`'s partial index checks _safe against
 # PENDING steps, so folding this step's own state into _safe would make every PENDING step look
 # permanently unsafe). `chain` is `safe` with this node's own state additionally folded in, i.e.
 # exactly what its products need as their incoming ancestor-safety. Computing `chain` costs
@@ -240,38 +240,53 @@ WHERE NOT source_node.detached
 # Subquery body for EXISTS checks: matches input files that block a step from running.
 # The amended_dep data is brought in via LEFT JOIN
 # to distinguish between initial and amended dependencies.
-UNAVAILABLE_INPUT = f"""
-SELECT node.i
-FROM dependency AS dep
-JOIN file AS input_file ON input_file.node = dep.source
-JOIN node AS input_node ON input_node.i = dep.source
-LEFT JOIN amended_dep ON amended_dep.i = dep.i
-WHERE dep.sink = node.i AND (
-    input_file.state = {FileState.VOLATILE.value} OR
-    (
-        -- Case 1: Is an amended dependency
-        amended_dep.i IS NOT NULL AND
-        NOT input_node.detached AND
-        input_file.state IN ({FileState.AWAITED.value}, {FileState.OUTDATED.value})
-    ) OR
-    (
-        -- Case 2: Is an initial dependency
-        amended_dep.i IS NULL AND
+# `correlate` is the SQL expression identifying "this step's node id" in the enclosing
+# query -- `node.i` when joined against `node`/`step` (SELECT_PENDING_REASONS), or
+# `step.node` when there is no `node` table in scope (RECOMPUTE_READY, a bare
+# `UPDATE step ...`). The two instantiations below share this one body so they can never
+# drift apart.
+def _unavailable_input_sql(correlate: str) -> str:
+    # Only ever used inside EXISTS(...)/NOT EXISTS(...), so the projected column is
+    # irrelevant to the result -- `SELECT 1` avoids depending on an outer `node` alias that
+    # may not be in scope (e.g. RECOMPUTE_READY's bare `UPDATE step ...`).
+    return f"""
+    SELECT 1
+    FROM dependency AS dep
+    JOIN file AS input_file ON input_file.node = dep.source
+    JOIN node AS input_node ON input_node.i = dep.source
+    LEFT JOIN amended_dep ON amended_dep.i = dep.i
+    WHERE dep.sink = {correlate} AND (
+        input_file.state = {FileState.VOLATILE.value} OR
         (
-            input_node.detached OR
-            input_file.state NOT IN ({FileState.BUILT.value}, {FileState.STATIC.value})
+            -- Case 1: Is an amended dependency
+            amended_dep.i IS NOT NULL AND
+            NOT input_node.detached AND
+            input_file.state IN ({FileState.AWAITED.value}, {FileState.OUTDATED.value})
+        ) OR
+        (
+            -- Case 2: Is an initial dependency
+            amended_dep.i IS NULL AND
+            (
+                input_node.detached OR
+                input_file.state NOT IN ({FileState.BUILT.value}, {FileState.STATIC.value})
+            )
         )
     )
-)
+    """
+
+
+# Used by SELECT_PENDING_REASONS, correlated on the outer node.i.
+UNAVAILABLE_INPUT = _unavailable_input_sql("node.i")
+
+
+# Recompute step._ready for every _check_ready-flagged step. See Scheduler._update_meta_ready.
+RECOMPUTE_READY = f"""
+UPDATE step SET
+    _ready = NOT EXISTS ({_unavailable_input_sql("step.node")}),
+    _check_ready = 0
+WHERE _check_ready
 """
 
-
-# Building blocks shared by step-selection queries.
-_PENDING_STEP_WHERE = f"""step.state = {StepState.PENDING.value} AND
-    step._safe AND
-    step.postponed = FALSE AND
-    step._implied_need > {Need.OPTIONAL.value} AND
-    NOT node.detached"""
 
 # Priority WHERE clause:
 # - Planning steps run first to unlock more work early.
@@ -322,34 +337,40 @@ WHERE req.node = node.i
 # otherwise a step ready to execute (subject to resource availability).
 # Checkable steps always take priority over runnable ones --
 # checking is cheap and unlocks more work early --
-# regardless of relative _tail_time, hence `has_hash DESC` leads the ORDER BY.
+# regardless of relative _tail_time, hence `_has_hash DESC` leads the ORDER BY.
 #
-# This merges what used to be two separate queries
-# (SELECT_CHECKABLE_STEPS, SELECT_RUNNABLE_STEPS)
-# to avoid evaluating the shared UNAVAILABLE_INPUT correlated subquery --
-# and sorting the whole PENDING candidate set -- twice per dispatch.
-# In practice that happened on nearly every call:
-# a step only carries a stored hash after it has run once before,
-# so whenever nothing is currently checkable
-# (the common case, not just on from-scratch builds),
-# the old first query always scanned everything only to come back empty.
+# This walks the step_dispatch partial index (defined in STEP_SCHEMA next to
+# STEP_DISPATCH_WHERE) in priority order and stops at the first eligible row, instead of
+# materializing and sorting the whole PENDING candidate set on every dispatch. That is only
+# possible because step._has_hash and step._ready are materialized, trigger-maintained
+# columns (see STEP_SCHEMA and Scheduler._update_meta_ready/RECOMPUTE_READY) -- the
+# correlated UNAVAILABLE_INPUT/step_hash EXISTS checks this query used to run per candidate
+# row are gone from here entirely.
+#
+# node.detached and the resource check are intentionally NOT part of step_dispatch's WHERE
+# clause (a partial index can only reference columns of the indexed table), so they are
+# re-checked lazily per examined index row instead -- cheap in practice since both rarely
+# reject, so this stays effectively O(1) even though it is not, strictly speaking, index-only.
+#
+# `INDEXED BY` is required: SQLite's planner does not pick step_dispatch voluntarily, even
+# after ANALYZE (measured separately). It pins the plan and fails loudly (query error) if
+# the index is ever missing -- acceptable since the index is part of the schema executed on
+# every database open. Do not add node.label or node.i to the ORDER BY: any term outside
+# the index forces a temp B-tree sort of all matching rows, defeating this query's purpose.
+# The tie-break is therefore the index's implicit `step.node ASC` primary-key suffix
+# (deterministic, but a different order than the dropped `label ASC`).
 SELECT_NEXT_STEP = f"""
-SELECT i, label, has_hash FROM (
-    SELECT
-        node.i AS i,
-        node.label AS label,
-        EXISTS (SELECT 1 FROM step_hash WHERE step_hash.node = node.i) AS has_hash,
-        NOT EXISTS ({RESOURCE_UNAVAILABLE}) AS resource_ok,
-        (step._implied_need = {Need.PLAN.value}) AS is_plan,
-        step._tail_time / (1 + step.postpone_count) AS priority
-    FROM node
-    JOIN step ON node.i = step.node
-    WHERE
-        {_PENDING_STEP_WHERE} AND
-        NOT EXISTS ({UNAVAILABLE_INPUT})
-) AS candidate
-WHERE has_hash OR resource_ok
-ORDER BY has_hash DESC, is_plan DESC, priority DESC, label ASC
+SELECT node.i, node.label, step._has_hash
+FROM step INDEXED BY step_dispatch
+JOIN node ON node.i = step.node
+WHERE
+    {STEP_DISPATCH_WHERE} AND
+    NOT node.detached AND
+    (step._has_hash OR NOT EXISTS ({RESOURCE_UNAVAILABLE}))
+ORDER BY
+    step._has_hash DESC,
+    (step._implied_need = {Need.PLAN.value}) DESC,
+    step._tail_time / (1 + step.postpone_count) DESC
 LIMIT 1
 """
 
@@ -501,6 +522,7 @@ class Scheduler:
             # which are set to True when something relevant in the step has changed.
             self._update_meta_safe()
             self._update_meta_after()
+            self._update_meta_ready()
 
             # B) Identify the highest priority PENDING step that is ready for dispatch:
             #    a checkable step (stored hash, no resource check needed) if one exists,
@@ -610,6 +632,14 @@ class Scheduler:
         logger.debug("Finished updating 'after' metadata fields")
         cur = db.execute("UPDATE step SET _check_after = 0 WHERE _check_after")
         logger.debug(f"Updated {cur.rowcount} _check_after metadata field(s) for steps")
+
+    def _update_meta_ready(self):
+        """Update the `_ready` metadata field where needed."""
+        db = self.workflow.db
+        if not db.execute("SELECT EXISTS(SELECT 1 FROM step WHERE _check_ready)").fetchone()[0]:
+            return
+        cur = db.execute(RECOMPUTE_READY)
+        logger.debug(f"Updated {cur.rowcount} _ready metadata field(s) for steps")
 
     def _get_next_step(self) -> tuple[Step, bool] | None:
         """Fetch the single best PENDING step to dispatch, if any.

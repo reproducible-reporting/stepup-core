@@ -4,10 +4,10 @@
    SUCCESS │ ./plan.py
      START │ ./work.py plan --step-info=current_step_info.json
    SUCCESS │ ./work.py plan --step-info=current_step_info.json
-     START │ ./work.py run +7.0
-   SUCCESS │ ./work.py run +7.0
      START │ ./work.py run -- -5.0
    SUCCESS │ ./work.py run -- -5.0
+     START │ ./work.py run +7.0
+   SUCCESS │ ./work.py run +7.0
   DIRECTOR │ Trying to delete 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!

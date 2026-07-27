@@ -2,10 +2,10 @@
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
-     START │ cp source1.txt copy1.txt
-   SUCCESS │ cp source1.txt copy1.txt
      START │ cp source_both.txt copy_both1.txt
    SUCCESS │ cp source_both.txt copy_both1.txt
+     START │ cp source1.txt copy1.txt
+   SUCCESS │ cp source1.txt copy1.txt
   DIRECTOR │ Trying to delete 0 outdated output(s)
      PHASE │ watch
   DIRECTOR │ See you!
