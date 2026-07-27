@@ -732,79 +732,6 @@ class Workflow(Trellis):
         )
         return [(path, FileHash.from_json(hash_value)) for path, hash_value in db.execute(sql)]
 
-    def _recreate_step(
-        self,
-        command: str,
-        workdir: str,
-        inp_paths: list[str],
-        env_deps: list[str],
-        out_paths: list[str],
-        vol_paths: list[str],
-        need: Need,
-        resources: dict[str, int] | None,
-        creator: Node,
-        subshell: bool = False,
-        env_overrides: dict[str, str] | None = None,
-    ) -> set[Node] | None:
-        """Recreate a step if it was detached and the step arguments are compatible.
-
-        Returns
-        -------
-        deferred
-            If the step can be reused, a possibly empty list is returned with
-            MISSING file nodes that match a static tree and need to be confirmed.
-        """
-        label = Step.create_label(command, workdir=workdir)
-        old_step, detached = self.find_detached(Step, label)
-
-        # Check whether the step can be reused.
-        if old_step is None or not detached:
-            return None
-        old_inp_paths = sorted(
-            r.path for r in old_step.inp_paths(amended=False, include_detached=True)
-        )
-        if old_inp_paths != inp_paths:
-            return None
-        old_env_vars = sorted(old_step.env_deps(amended=False))
-        if old_env_vars != env_deps:
-            return None
-        old_out_paths = sorted(
-            r.path for r in old_step.out_paths(amended=False, include_detached=True)
-        )
-        if old_out_paths != out_paths:
-            return None
-        old_vol_paths = sorted(
-            r.path for r in old_step.vol_paths(amended=False, include_detached=True)
-        )
-        if old_vol_paths != vol_paths:
-            return None
-
-        # We have a match!
-
-        # Update the need and subshell values.
-        self.db.execute(
-            "UPDATE step SET need = ?, subshell = ? WHERE node = ?",
-            (need.value, int(subshell), old_step.i),
-        )
-
-        # Restore the step and its products (recursively), and set resources and overrides.
-        # This also flags _check_safe/_check_after on old_step and all its recursive
-        # products, via RECURSIVE_CHECK_WITH_PRODUCTS.
-        old_step.recycle(creator)
-        old_step.set_resources(resources)
-        old_step.set_env_overrides(env_overrides)
-
-        # Look for MISSING inputs and determine which were matching a static tree.
-        # Their existence still needs to be checked by the client and ideally confirmed as existing
-        # in a follow-up call to `confirm_hashes`.
-        deferred = {
-            File(self, i, label)
-            for i, label in self.db.execute(RECURSE_DEFERRED_INPUTS, (old_step.i,))
-        }
-
-        logger.info("Reuse detached step: %s", old_step.label)
-        return deferred
-
     #
     # Build phase (low-level public API)
     #
@@ -956,7 +883,7 @@ class Workflow(Trellis):
             # The creator has moved on without this call (see Step.detach()), so
             # defining a new child step for it is moot.
             # (This also sidesteps Node.recycle()'s "new creator must not be detached"
-            # check, which _recreate_step() below could otherwise hit.)
+            # check, which Trellis.recycle() below could otherwise hit.)
             return []
 
         # If it is a boot step, check that there was no boot step yet.
@@ -982,22 +909,32 @@ class Workflow(Trellis):
                     "Variable(s) set by StepUp cannot be overridden: " + ", ".join(sorted(reserved))
                 )
 
-        # If a matching detached step is found, reuse it, instead of creating a new one.
-        old_deferred = self._recreate_step(
-            command,
-            workdir,
-            inp_paths,
-            env_deps,
-            out_paths,
-            vol_paths,
-            need,
-            resources,
+        # If a compatible detached step is found, fully recycle it, instead of creating
+        # a new one. This restores the step and its products (recursively), preserving
+        # its edges, state and stored hash.
+        old_step = self.recycle(
+            Step,
             creator,
-            subshell,
-            env_overrides,
+            command,
+            workdir=workdir,
+            need=need,
+            subshell=subshell,
+            resources=resources,
+            env_overrides=env_overrides,
+            inp_paths=inp_paths,
+            env_deps=env_deps,
+            out_paths=out_paths,
+            vol_paths=vol_paths,
         )
-        if old_deferred is not None:
-            return self._build_to_check(old_deferred)
+        if old_step is not None:
+            # Look for MISSING inputs that match a static tree. Their existence still
+            # needs to be checked by the client and ideally confirmed as existing in a
+            # follow-up call to `confirm_hashes`.
+            deferred = {
+                File(self, i, label)
+                for i, label in self.db.execute(RECURSE_DEFERRED_INPUTS, (old_step.i,))
+            }
+            return self._build_to_check(deferred)
 
         # Create new step
         step = self.create(

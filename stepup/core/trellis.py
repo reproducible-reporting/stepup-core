@@ -121,6 +121,8 @@ class Node:
     - `format_properties` to define the properties of the node.
     - `give_up` is called when a detached node must be cleaned up because it loses a product node.
     - `clean` to decide if a detached node can be removed and to release resources.
+    - `can_recycle` to decide if a detached node can be fully recycled by `Trellis.recycle`.
+    - `update_recycled` to update the mutable declared properties after a full recycle.
     """
 
     graph: "Trellis" = attrs.field(repr=False)
@@ -183,6 +185,20 @@ class Node:
 
     def clean(self):
         """Perform a cleanup right before the detached node is removed from the graph."""
+
+    def can_recycle(self, **kwargs) -> bool:
+        """Decide whether this detached node may be fully recycled by `Trellis.recycle`.
+
+        A full recycle keeps the node's edges, products and satellite data,
+        so it is only allowed when the given arguments are compatible
+        with the information already stored for this node.
+        The default is to never recycle fully,
+        in which case `Trellis.create` falls back to reusing only the node row.
+        """
+        return False
+
+    def update_recycled(self, **kwargs):
+        """Update the mutable declared properties of this node after a full recycle."""
 
     #
     # Getters and Iterators
@@ -805,6 +821,45 @@ class Trellis:
             node = node_type(self, node_i, label)
         node.initialize(**kwargs)
         node.validate()
+        return node
+
+    def recycle(
+        self, node_type: type[NodeType], creator: Node, label: str = "", **kwargs
+    ) -> NodeType | None:
+        """Fully recycle a compatible detached node, if there is one.
+
+        Unlike the fallback in `create`, which reuses only the node row,
+        a fully recycled node keeps its sources, sinks, products and satellite data.
+        Whether the given arguments are compatible with the detached node
+        is decided by the node's `can_recycle` method.
+
+        Parameters
+        ----------
+        node_type
+            Subclass of Node.
+        creator
+            The node that recreates the node to be recycled.
+        label
+            The label of the node.
+        kwargs
+            Additional node-specific arguments,
+            passed to `can_recycle` and `update_recycled`.
+
+        Returns
+        -------
+        node
+            The fully recycled node,
+            or `None` when there is no compatible detached node with this label.
+        """
+        label = node_type.create_label(label, **kwargs)
+        node, detached = self.find_detached(node_type, label)
+        if node is None or not detached or not node.can_recycle(**kwargs):
+            return None
+        # Node.recycle validates the new creator and cleans up the old one.
+        node.recycle(creator)
+        node.update_recycled(**kwargs)
+        node.validate()
+        logger.info("Recycle node: %s", node.key())
         return node
 
     def clean(self):

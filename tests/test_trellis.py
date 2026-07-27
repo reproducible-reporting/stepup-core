@@ -126,6 +126,14 @@ class Foo(Node):
         self.db.execute("DELETE FROM foo WHERE node = ?", (self.i,))
         self.db.execute("INSERT INTO log VALUES(?)", (f"clean {self.key()}",))
 
+    def can_recycle(self, value: int | None = None, **kwargs) -> bool:
+        """Decide whether this detached node may be fully recycled by `Trellis.recycle`."""
+        return value == self.get_value()
+
+    def update_recycled(self, **kwargs):
+        """Update the mutable declared properties of this node after a full recycle."""
+        self.db.execute("INSERT INTO log VALUES(?)", (f"update_recycled {self.key()}",))
+
     def act(self, message: str):
         self.db.execute("INSERT INTO log VALUES(?)", (f"act {self.key()} {message}",))
 
@@ -789,3 +797,42 @@ async def test_relocate_nested_detached(lt):
             "give_up f:1",
             "clean f:3",
         ]
+
+
+async def test_trellis_recycle(lt):
+    async with lt.db:
+        # Create a LogTrellis with the following topology:
+        # root +-> foo0 --> foo1 --> foo2
+        #      +-> foo3 (source of foo1)
+        foo0 = lt.create(Foo, lt.root, "0", value=0)
+        foo1 = lt.create(Foo, foo0, "1", value=1)
+        foo2 = lt.create(Foo, foo1, "2", value=2)
+        foo3 = lt.create(Foo, lt.root, "3", value=3)
+        foo1.add_source(foo3)
+
+        # No detached node with this label.
+        assert lt.recycle(Foo, lt.root, "9", value=9) is None
+        # The node exists but is not detached.
+        assert lt.recycle(Foo, lt.root, "1", value=1) is None
+
+        foo1.detach()
+        assert foo1.is_detached()
+        assert foo2.is_detached()
+
+        # The node is detached but the arguments are incompatible: can_recycle refuses.
+        assert lt.recycle(Foo, lt.root, "1", value=42) is None
+        assert foo1.is_detached()
+
+        # Compatible arguments: the node is fully recycled with a new creator,
+        # keeping its sources, products and satellite data.
+        assert lt.recycle(Foo, lt.root, "1", value=1) == foo1
+        assert not foo1.is_detached()
+        assert not foo2.is_detached()
+        assert foo1.creator() == lt.root
+        assert list(foo1.sources()) == [foo3]
+        assert list(foo1.products()) == [foo2]
+        assert foo1.get_value() == 1
+
+        # The update_recycled hook was invoked exactly once.
+        rows = lt.db.execute("SELECT msg FROM log WHERE msg LIKE 'update_recycled %'").fetchall()
+        assert rows == [("update_recycled f:1",)]

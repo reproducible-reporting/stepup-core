@@ -6,7 +6,7 @@ import json
 import logging
 import os
 import pickle
-from collections.abc import Iterator
+from collections.abc import Collection, Iterator
 from typing import Self
 
 import attrs
@@ -559,6 +559,58 @@ class Step(Node):
         self.detach()
         self.clean()
         self.db.execute("DELETE FROM node WHERE i = ?", (self.i,))
+
+    def can_recycle(
+        self,
+        *,
+        inp_paths: Collection[str] = (),
+        env_deps: Collection[str] = (),
+        out_paths: Collection[str] = (),
+        vol_paths: Collection[str] = (),
+        **kwargs,
+    ) -> bool:
+        """Decide whether this detached step may be fully recycled by `Trellis.recycle`.
+
+        A detached step can only be recycled when the declared (non-amended) inputs,
+        environment variables and (volatile) outputs of the new declaration
+        match those of the detached step exactly.
+        """
+        old_inp_paths = sorted(r.path for r in self.inp_paths(amended=False, include_detached=True))
+        if old_inp_paths != sorted(inp_paths):
+            return False
+        old_env_vars = sorted(self.env_deps(amended=False))
+        if old_env_vars != sorted(env_deps):
+            return False
+        old_out_paths = sorted(r.path for r in self.out_paths(amended=False, include_detached=True))
+        if old_out_paths != sorted(out_paths):
+            return False
+        old_vol_paths = sorted(r.path for r in self.vol_paths(amended=False, include_detached=True))
+        return old_vol_paths == sorted(vol_paths)
+
+    def update_recycled(
+        self,
+        *,
+        need: Need = Need.DEFAULT,
+        subshell: bool = False,
+        resources: dict[str, int] | None = None,
+        env_overrides: dict[str, str] | None = None,
+        **kwargs,
+    ):
+        """Update the mutable declared properties of this step after a full recycle.
+
+        The step keeps its state and stored hash,
+        so it can still be skipped when its inputs have not changed.
+        Other declaration arguments (`safe` and the path lists) are deliberately ignored:
+        the path lists were verified by `can_recycle`
+        and the `_safe` metadata is recomputed by the scheduler
+        via the `_check_safe` flag set by `Step.recycle`.
+        """
+        self.db.execute(
+            "UPDATE step SET need = ?, subshell = ? WHERE node = ?",
+            (need.value, int(subshell), self.i),
+        )
+        self.set_resources(resources)
+        self.set_env_overrides(env_overrides)
 
     #
     # Getters and setters
