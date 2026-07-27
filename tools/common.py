@@ -71,7 +71,9 @@ def classify_plan_lines(plan: str) -> set[str]:
             issues.add("full_scan")
         if line.startswith("USE TEMP B-TREE"):
             issues.add("temp_btree")
-        if line.startswith(("CO-ROUTINE", "SCALAR SUBQUERY")):
+        if line.startswith("CO-ROUTINE") or "SCALAR SUBQUERY" in line:
+            # Catches both the bare "SCALAR SUBQUERY N" (CO-ROUTINE-style) label and
+            # SQLite's "CORRELATED SCALAR SUBQUERY N" prefix used for correlated subqueries.
             issues.add("correlated_subquery")
     return issues
 

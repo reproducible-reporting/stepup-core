@@ -6,7 +6,7 @@ import pytest
 
 from stepup.core.enums import FileState, Need, StepState
 from stepup.core.file import FILE_SCHEMA
-from stepup.core.hash import FileHash
+from stepup.core.hash import FileHash, StepHash
 from stepup.core.scheduler import (
     APPLY_SAFE_UPDATE,
     APPLY_UPDATE_CHECK_AFTER,
@@ -19,11 +19,10 @@ from stepup.core.scheduler import (
     PROPAGATE_UPDATE_CHECK_AFTER,
     PRUNE_DETACHED_CHECK_AFTER,
     PRUNE_REDUNDANT_CHECK_AFTER,
-    SELECT_CHECKABLE_STEPS,
     SELECT_INPUTS,
+    SELECT_NEXT_STEP,
     SELECT_PENDING_REASONS,
     SELECT_RESOURCE_COUNTS,
-    SELECT_RUNNABLE_STEPS,
     SELECT_SAFE_UPDATE,
     SELECT_UPDATE_CHECK_AFTER,
     UNAVAILABLE_INPUT,
@@ -144,8 +143,19 @@ def _mark_dep_amended(con, dep_id):
 
 
 def _get_runnable_ids(con):
-    """Run SELECT_RUNNABLE_STEPS and return the list of node ids in result order."""
-    return [row[0] for row in con.execute(SELECT_RUNNABLE_STEPS).fetchall()]
+    """Run SELECT_NEXT_STEP and return the ids of results
+    dispatched via the runnable (non-checkable) path.
+
+    Every scenario using this helper inserts at most one PENDING step,
+    so filtering SELECT_NEXT_STEP's (at most one) result by NOT has_hash
+    is equivalent to running the old standalone SELECT_RUNNABLE_STEPS query.
+    A test with multiple simultaneously-eligible PENDING steps
+    should query SELECT_NEXT_STEP directly instead of relying on this helper,
+    since SELECT_NEXT_STEP's LIMIT 1 only ever returns
+    the single highest-priority candidate overall (checkable steps always win),
+    not the best candidate per path.
+    """
+    return [row[0] for row in con.execute(SELECT_NEXT_STEP).fetchall() if not row[2]]
 
 
 def _get_safe(con):
@@ -580,7 +590,7 @@ def test_propagate_sources_fork_no_duplicates(con):
 
 
 # -----------------------------------------------------------------------
-# Tests for SELECT_RUNNABLE_STEPS
+# Tests for SELECT_NEXT_STEP's runnable (non-checkable) path
 # -----------------------------------------------------------------------
 
 
@@ -804,8 +814,9 @@ def test_resource_exactly_at_limit_allows_step(con):
 def test_ordering_plan_before_default(con):
     """PLAN steps are ordered before DEFAULT steps, regardless of tail_time.
 
-    SELECT_RUNNABLE_STEPS carries a LIMIT 1 (only fetchone() is ever used on it), so only
-    the top-priority candidate comes back; the assertion checks that the PLAN step wins.
+    SELECT_NEXT_STEP carries a LIMIT 1 (only fetchone() is ever used on it),
+    so only the top-priority candidate comes back;
+    the assertion checks that the PLAN step wins.
     """
     _insert_step(
         con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=100.0
@@ -818,7 +829,7 @@ def test_ordering_plan_before_default(con):
 def test_ordering_higher_tail_time_first(con):
     """Within the same implied_need level, the step with higher _tail_time wins.
 
-    SELECT_RUNNABLE_STEPS carries a LIMIT 1, so only the top-priority candidate comes back.
+    SELECT_NEXT_STEP carries a LIMIT 1, so only the top-priority candidate comes back.
     """
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=5.0)
     _insert_step(con, 3, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=10.0)
@@ -829,7 +840,7 @@ def test_ordering_higher_tail_time_first(con):
 def test_ordering_label_tiebreaker(con):
     """When tail_time and implied_need are equal, the alphabetically first label wins.
 
-    SELECT_RUNNABLE_STEPS carries a LIMIT 1, so only the top-priority candidate comes back.
+    SELECT_NEXT_STEP carries a LIMIT 1, so only the top-priority candidate comes back.
     """
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=5.0)
     _insert_step(con, 3, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=5.0)
@@ -1222,8 +1233,10 @@ def test_pending_reasons_resource_undefined(con):
 def test_pending_reasons_resource_total_below_required(con):
     """Total available units strictly below required units sets has_resource_issue=1.
 
-    Unlike SELECT_RUNNABLE_STEPS, this query compares total capacity against the requirement,
-    not the remaining capacity.  A resource that is temporarily over-committed is not flagged.
+    Unlike SELECT_NEXT_STEP's resource check (RESOURCE_UNAVAILABLE),
+    this query compares total capacity against the requirement,
+    not the remaining capacity.
+    A resource that is temporarily over-committed is not flagged.
     """
     _insert_step(con, 2, 1, StepState.PENDING, safe=True)
     con.execute("INSERT INTO available_resource (name, units) VALUES ('gpu', 1)")
@@ -1444,7 +1457,7 @@ def test_checking_in_chain_blocks_safe(con):
 
 
 # -----------------------------------------------------------------------
-# Tests for SELECT_CHECKABLE_STEPS and UNAVAILABLE_INPUT
+# Tests for SELECT_NEXT_STEP's checkable (hash-checking) path, and UNAVAILABLE_INPUT
 # -----------------------------------------------------------------------
 
 
@@ -1454,8 +1467,19 @@ def _insert_step_hash(con, node_id):
 
 
 def _get_checkable_ids(con):
-    """Run SELECT_CHECKABLE_STEPS and return the list of node ids in result order."""
-    return [row[0] for row in con.execute(SELECT_CHECKABLE_STEPS).fetchall()]
+    """Run SELECT_NEXT_STEP and return the ids of results
+    dispatched via the checkable (hash-checking) path.
+
+    Every scenario in this section inserts at most one PENDING step,
+    so filtering SELECT_NEXT_STEP's (at most one) result by has_hash
+    is equivalent to running the old standalone SELECT_CHECKABLE_STEPS query.
+    A test with multiple simultaneously-eligible PENDING steps
+    should query SELECT_NEXT_STEP directly instead of relying on this helper,
+    since SELECT_NEXT_STEP's LIMIT 1 only ever returns
+    the single highest-priority candidate overall (checkable steps always win),
+    not the best candidate per path.
+    """
+    return [row[0] for row in con.execute(SELECT_NEXT_STEP).fetchall() if row[2]]
 
 
 def _has_unavailable_input(con, sink_id):
@@ -1518,24 +1542,27 @@ def test_checkable_step_with_ready_initial_and_unready_amended_input(con):
     _insert_input_file(con, 4, 1, FileState.MISSING)
     dep_id = _add_dep_returning_id(con, 4, 2)
     _mark_dep_amended(con, dep_id)
-    # MISSING amended inputs are NOT blocked by UNAVAILABLE_INPUT (case 1 only blocks
-    # AWAITED/OUTDATED), so both SELECT_RUNNABLE_STEPS and SELECT_CHECKABLE_STEPS allow them.
+    # MISSING amended inputs are NOT blocked by UNAVAILABLE_INPUT
+    # (case 1 only blocks AWAITED/OUTDATED),
+    # so both the runnable and checkable paths of SELECT_NEXT_STEP allow them.
     assert _get_checkable_ids(con) == [2]
 
 
 def test_checkable_step_with_hash_and_missing_resource(con):
     """A step with a hash is checkable even when its resource is NOT available.
 
-    This is the core property: SELECT_CHECKABLE_STEPS does not check resource availability,
-    so PENDING steps with hashes are scheduled for CHECKING without waiting for resources.
+    This is the core property: the checkable path of SELECT_NEXT_STEP
+    does not check resource availability,
+    so PENDING steps with hashes are scheduled for CHECKING
+    without waiting for resources.
     This ensures skipping is never blocked by named resource restrictions.
     """
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
     _insert_step_hash(con, 2)
     con.execute("INSERT INTO step_resource (node, name, units) VALUES (2, 'gpu', 1)")
-    # No row in available_resource → resource is undefined → SELECT_RUNNABLE_STEPS would block
+    # No row in available_resource → resource is undefined → the runnable path would block
     assert _get_runnable_ids(con) == []
-    # But SELECT_CHECKABLE_STEPS ignores resources → step is still checkable
+    # But the checkable path ignores resources → step is still checkable
     assert _get_checkable_ids(con) == [2]
 
 
@@ -1547,9 +1574,9 @@ def test_checkable_step_with_hash_and_exhausted_resource(con):
     con.execute("INSERT INTO available_resource (name, units) VALUES ('gpu', 1)")
     con.execute("INSERT INTO step_resource (node, name, units) VALUES (2, 'gpu', 1)")
     con.execute("INSERT INTO step_resource (node, name, units) VALUES (3, 'gpu', 1)")
-    # SELECT_RUNNABLE_STEPS would block: available(1) - running(1) = 0 < required(1)
+    # The runnable path would block: available(1) - running(1) = 0 < required(1)
     assert _get_runnable_ids(con) == []
-    # But SELECT_CHECKABLE_STEPS ignores resources → step is checkable
+    # But the checkable path ignores resources → step is checkable
     assert _get_checkable_ids(con) == [2]
 
 
@@ -1741,3 +1768,28 @@ async def test_child_of_running_step_dispatched_as_soon_as_created(wfp: Workflow
     job = await scheduler.pop_runnable_job()
     assert job is not None
     assert job.step.i == sub.i
+
+
+async def test_pop_runnable_job_dispatches_checkable_step_to_checking(wfs: Workflow):
+    """A PENDING step with a stored hash is dispatched
+    via `pop_runnable_job()` straight to `CHECKING`.
+
+    The raw-SQL unit tests above cover `SELECT_NEXT_STEP`'s
+    checkable-path eligibility rules directly,
+    but none of them drive `pop_runnable_job()` itself through this branch end-to-end --
+    this closes that gap for the exact method production code calls.
+    """
+    scheduler = Scheduler(wfs, db=wfs.db)
+    await scheduler.initialize(None)
+
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo", safe=True)
+        step = wfs.find(Step, "echo")
+        assert step.get_state() == StepState.PENDING
+        step.set_hash(StepHash(b"deadbeef"))
+
+    job = await scheduler.pop_runnable_job()
+    assert job is not None
+    assert job.step.i == step.i
+    async with wfs.db:
+        assert step.get_state() == StepState.CHECKING

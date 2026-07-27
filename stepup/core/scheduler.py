@@ -281,55 +281,68 @@ _ORDER_BY_PRIORITY = f"""ORDER BY
     node.label ASC"""
 
 
-# Select the highest priority PENDING step that can be hash-checked for possible skipping.
-# Unlike SELECT_RUNNABLE_STEPS, this query:
-# - requires a stored hash (a row in step_hash), because a hash is needed to check for skipping
-# - does NOT check resource availability, as hash checking and skipping never needs named resources
-SELECT_CHECKABLE_STEPS = f"""
-SELECT
-    node.i AS i,
-    node.label AS label
-FROM node
-JOIN step ON node.i = step.node
-WHERE
-    {_PENDING_STEP_WHERE} AND
-    NOT EXISTS ({UNAVAILABLE_INPUT}) AND
-    EXISTS (SELECT 1 FROM step_hash WHERE step_hash.node = node.i)
-{_ORDER_BY_PRIORITY}
-LIMIT 1
+# Whether a step has at least one required resource that is currently undefined
+# or over-committed (i.e. cannot be run right now).
+# Named resources are only relevant to actual execution,
+# never to hash-checking -- see SELECT_NEXT_STEP.
+# Not shared with SELECT_PENDING_REASONS's similarly-shaped resource check:
+# that one omits the currently-RUNNING subtraction
+# because it documents "assumed no RUNNING steps at this point"
+# (it runs after the builder has stopped),
+# so the two have different semantics despite the surface resemblance.
+RESOURCE_UNAVAILABLE = f"""
+SELECT 1 FROM step_resource AS req
+LEFT JOIN available_resource AS avail ON avail.name = req.name
+WHERE req.node = node.i
+  AND (
+      avail.name IS NULL
+      OR (
+          avail.units
+          - COALESCE((
+              SELECT SUM(r2.units)
+              FROM step_resource AS r2
+              JOIN step AS s2 ON s2.node = r2.node
+              WHERE r2.name = req.name
+                AND s2.state = {StepState.RUNNING.value}
+          ), 0)
+      ) < req.units
+  )
 """
 
 
-# Select the highest priority PENDING step that is ready to be executed.
-SELECT_RUNNABLE_STEPS = f"""
-SELECT
-    node.i AS i,
-    node.label AS label
-FROM node
-JOIN step ON node.i = step.node
-WHERE
-    {_PENDING_STEP_WHERE} AND
-    NOT EXISTS ({UNAVAILABLE_INPUT}) AND
-    NOT EXISTS (
-        -- Exclude the step if any required resource is undefined or over-committed.
-        SELECT 1 FROM step_resource AS req
-        LEFT JOIN available_resource AS avail ON avail.name = req.name
-        WHERE req.node = node.i
-          AND (
-              avail.name IS NULL
-              OR (
-                  avail.units
-                  - COALESCE((
-                      SELECT SUM(r2.units)
-                      FROM step_resource AS r2
-                      JOIN step AS s2 ON s2.node = r2.node
-                      WHERE r2.name = req.name
-                        AND s2.state = {StepState.RUNNING.value}
-                  ), 0)
-              ) < req.units
-          )
-    )
-{_ORDER_BY_PRIORITY}
+# Select the single highest-priority PENDING step ready for dispatch:
+# a hash-checkable step (no resource check needed) if one exists,
+# otherwise a step ready to execute (subject to resource availability).
+# Checkable steps always take priority over runnable ones --
+# checking is cheap and unlocks more work early --
+# regardless of relative _tail_time, hence `has_hash DESC` leads the ORDER BY.
+#
+# This merges what used to be two separate queries
+# (SELECT_CHECKABLE_STEPS, SELECT_RUNNABLE_STEPS)
+# to avoid evaluating the shared UNAVAILABLE_INPUT correlated subquery --
+# and sorting the whole PENDING candidate set -- twice per dispatch.
+# In practice that happened on nearly every call:
+# a step only carries a stored hash after it has run once before,
+# so whenever nothing is currently checkable
+# (the common case, not just on from-scratch builds),
+# the old first query always scanned everything only to come back empty.
+SELECT_NEXT_STEP = f"""
+SELECT i, label, has_hash FROM (
+    SELECT
+        node.i AS i,
+        node.label AS label,
+        EXISTS (SELECT 1 FROM step_hash WHERE step_hash.node = node.i) AS has_hash,
+        NOT EXISTS ({RESOURCE_UNAVAILABLE}) AS resource_ok,
+        (step._implied_need = {Need.PLAN.value}) AS is_plan,
+        step._tail_time / (1 + step.postpone_count) AS priority
+    FROM node
+    JOIN step ON node.i = step.node
+    WHERE
+        {_PENDING_STEP_WHERE} AND
+        NOT EXISTS ({UNAVAILABLE_INPUT})
+) AS candidate
+WHERE has_hash OR resource_ok
+ORDER BY has_hash DESC, is_plan DESC, priority DESC, label ASC
 LIMIT 1
 """
 
@@ -475,27 +488,25 @@ class Scheduler:
             self._update_meta_safe()
             self._update_meta_after()
 
-            # B) Identify the highest priority PENDING step that is ready for execution.
-            #    Checkable steps (those with a stored hash) are scheduled first without a
-            #    resource check, because hash-checking never needs named resources.
-            #    Executable steps (no stored hash) are scheduled next, subject to resources.
-            step = self._get_step(SELECT_CHECKABLE_STEPS)
-            if step is not None:
-                job = self._derive_job(step)
+            # B) Identify the highest priority PENDING step that is ready for dispatch:
+            #    a checkable step (stored hash, no resource check needed) if one exists,
+            #    otherwise a runnable step (subject to resources).
+            result = self._get_next_step()
+            if result is None:
+                logger.debug("No runnable steps found")
+                return None
+            step, has_hash = result
+            job = self._derive_job(step)
+            if has_hash:
                 logger.debug("Derived checkable job: %s", job)
                 logger.info("Pop %s", job.name)
                 step.set_state(StepState.CHECKING)
-                return job
-            step = self._get_step(SELECT_RUNNABLE_STEPS)
-            if step is None:
-                logger.debug("No runnable steps found")
-                return None
-            logger.debug("Queueing step %s", step)
-            job = self._derive_job(step)
-            logger.debug("Derived job: %s", job)
-            logger.info("Pop %s", job.name)
-            step.set_state(StepState.RUNNING)
-            self.start_times[step.i] = time.monotonic_ns()
+            else:
+                logger.debug("Queueing step %s", step)
+                logger.debug("Derived job: %s", job)
+                logger.info("Pop %s", job.name)
+                step.set_state(StepState.RUNNING)
+                self.start_times[step.i] = time.monotonic_ns()
             return job
 
     def job_finished(self, step_i: int, *, succeeded: bool) -> None:
@@ -589,12 +600,22 @@ class Scheduler:
         cur = db.execute("UPDATE step SET _check_after = 0 WHERE _check_after")
         logger.debug(f"Updated {cur.rowcount} _check_after metadata field(s) for steps")
 
-    def _get_step(self, sql: str) -> Step | None:
-        row = self.workflow.db.execute(sql).fetchone()
+    def _get_next_step(self) -> tuple[Step, bool] | None:
+        """Fetch the single best PENDING step to dispatch, if any.
+
+        Returns
+        -------
+        step_and_has_hash
+            The step and whether it was selected via the hash-checkable path
+            (`True`, transitions to `CHECKING`)
+            or the runnable path (`False`, transitions to `RUNNING`).
+            `None` if no PENDING step is currently eligible.
+        """
+        row = self.workflow.db.execute(SELECT_NEXT_STEP).fetchone()
         if row is None:
             return None
-        i, label = row
-        return Step(self.workflow, i, label)
+        i, label, has_hash = row
+        return Step(self.workflow, i, label), bool(has_hash)
 
     def _next_job_i(self) -> int:
         """Return a fresh, unique id for a new `Job`."""
