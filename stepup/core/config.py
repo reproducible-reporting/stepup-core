@@ -93,7 +93,7 @@ class ConfigLoader:
     _prefix: str = attrs.field()
     _config_paths: list[str] = attrs.field(factory=list, kw_only=True)
     _environ: dict[str, str] | None = attrs.field(default=None)
-    _configs: list[dict] = attrs.field(init=False, factory=list)
+    _configs: list[tuple[Path, dict]] = attrs.field(init=False, factory=list)
     _env: dict[str, str] = attrs.field(init=False, factory=dict)
     _patches: list[tuple[str | None, dict[str, argparse.Action]]] = attrs.field(
         init=False, factory=list
@@ -339,13 +339,13 @@ class ConfigLoader:
         use_section
             Set to `False` for the top-level parser.
             If `True`, the last word of the parser's `prog` is used as section name
-            for config files (e.g., `"stepup.build."`) and env vars (e.g., `"STEPUP_BUILD_"`).
+            for config files (e.g., the `[build]` section) and env vars (e.g., `STEPUP_BUILD_`).
             Argparse prefixes a subparser's `prog` with its parent's,
             so `"stepup build"` and `"build"` both select the `"build"` section.
             A subcommand that is an alias of another must therefore set its `prog`
             to that of the subcommand it aliases, to share its configuration.
-            If `False`, the top-level config section (e.g., `"stepup"`) and
-            env vars are used (e.g., `"STEPUP_"`).
+            If `False`, top-level config keys (no section) and
+            env vars with no section infix (e.g., `STEPUP_`) are used.
         merge_handlers
             Per-dest callables `fn(accumulated, incoming) -> merged` called
             when both an accumulated value and a new value are available.
@@ -402,6 +402,9 @@ class ConfigLoader:
 
             if value is not None:
                 if action.nargs == "?":
+                    # nargs="?" options (e.g. --perf) have two fallback slots: `default`
+                    # (flag absent) and `const` (flag given bare). A config/env value should
+                    # win in both cases, not just when the flag is omitted entirely.
                     action.const = value
                     action.default = value
                 else:

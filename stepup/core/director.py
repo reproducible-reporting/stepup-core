@@ -1067,7 +1067,7 @@ class DirectorHandler:
         )
 
 
-def get_socket() -> str:
+def get_socket() -> Path:
     """Block until the director socket is known and return it."""
     stepup_root = Path(os.getenv("STEPUP_ROOT", "."))
     path_director_log = stepup_root / DIRECTOR_LOG

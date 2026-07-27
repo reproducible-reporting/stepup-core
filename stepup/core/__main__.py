@@ -5,6 +5,7 @@
 import argparse
 import os
 import sys
+from collections.abc import Callable
 from importlib.metadata import entry_points
 from importlib.metadata import version as get_version
 
@@ -30,7 +31,7 @@ def sb_main():
     main()
 
 
-def build_parser() -> tuple[argparse.ArgumentParser, list[callable]]:
+def build_parser() -> tuple[argparse.ArgumentParser, dict[str, Callable]]:
     # Configuration loader
     stepup_root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
     loader = ConfigLoader(

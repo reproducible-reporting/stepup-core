@@ -12,7 +12,7 @@ import sys
 import tempfile
 import termios
 import threading
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
 from decimal import Decimal
 from functools import partial
 
@@ -43,6 +43,7 @@ so that killing steps and reporting the outcome is tried first.
 
 
 def merge_resources(base: str | None, override: str | None) -> str:
+    """Merge two comma-separated resource specs; *override* wins per resource name."""
     merged = {**parse_resources(base or ""), **parse_resources(override or "")}
     return ",".join(f"{k}:{v}" for k, v in merged.items())
 
@@ -386,7 +387,7 @@ async def async_build(args: argparse.Namespace, default_resources: str) -> None:
 
 
 @contextlib.asynccontextmanager
-async def iter_keystrokes(stop_event: asyncio.Event):
+async def iter_keystrokes(stop_event: asyncio.Event) -> AsyncIterator[AsyncGenerator[str, None]]:
     """Yield keystrokes from stdin, one at a time, in raw mode, until `stop_event` is set.
 
     Reads happen in a background thread because putting stdin in non-blocking mode
