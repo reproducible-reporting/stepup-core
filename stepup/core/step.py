@@ -912,7 +912,7 @@ class Step(Node):
             for file in self.products(File):
                 if file.get_state() == FileState.OUTDATED:
                     file.set_state(FileState.BUILT)
-                    self.graph.file_completed(file)
+                    self.graph.mark_sinks_pending(file)
             self.set_hash(new_hash)
         return False, interrupted_postpone
 

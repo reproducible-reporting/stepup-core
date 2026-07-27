@@ -433,7 +433,7 @@ class Workflow(Trellis):
         for i, path in action_lists["deleted"]:
             self.file_externally_deleted(File(self, i, path))
         for i, path in action_lists["completed"]:
-            self.file_completed(File(self, i, path))
+            self.mark_sinks_pending(File(self, i, path))
 
     def file_externally_updated(self, file: File):
         """Modify the graph to account for the external changes to this file.
@@ -478,13 +478,10 @@ class Workflow(Trellis):
             for sink_file in file.sinks(File):
                 self.file_externally_deleted(sink_file)
 
-    def file_completed(self, file: File):
-        """Check and if necessary, mark all sink steps pending."""
-        state = file.get_state()
-        if state in [FileState.STATIC, FileState.BUILT]:
-            logger.info("Completed %s file: %s", state, file.path)
-            for step in file.sinks(Step, include_detached=True):
-                self.mark_step_pending(step)
+    def mark_sinks_pending(self, file: File):
+        """Mark all sink steps pending."""
+        for step in file.sinks(Step, include_detached=True):
+            self.mark_step_pending(step)
 
     def mark_step_pending(self, step: Step):
         """Set SUCCEEDED or FAILED step pending (again).
@@ -520,8 +517,7 @@ class Workflow(Trellis):
         if state == FileState.BUILT:
             logger.info("Mark %s file OUTDATED: %s", state, file.path)
             file.set_state(FileState.OUTDATED)
-            for step in file.sinks(Step, include_detached=True):
-                self.mark_step_pending(step)
+            self.mark_sinks_pending(file)
         elif state != FileState.OUTDATED:
             raise ValueError(f"Cannot make file outdated when its state is {state}")
 
