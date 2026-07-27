@@ -23,7 +23,7 @@ source .venv/bin/activate    # or: direnv allow (uses .envrc)
 pre-commit install
 ```
 
-The `.envrc` sets `STEPUP_DEBUG=1`, `STEPUP_DURATION=0`,
+The `.envrc` sets `STEPUP_DEBUG=1`, `STEPUP_BUILD_DURATION=0`,
 and `STEPUP_SYNC_RPC_TIMEOUT=30` for development.
 
 ### Linting
@@ -77,6 +77,16 @@ Commit the updated `stdout.txt` alongside any source changes.
 
 ## Coding Conventions
 
+### Semantic Line Breaks
+
+All English text in this repo — comments (including SQL comments), docstrings,
+Markdown documentation, commit messages, etc. — is wrapped using **semantic line breaks**:
+break after sentences or logical units, not at a fixed character count.
+See <https://sembr.org/>.
+This makes diffs to prose easier to review,
+since editing one sentence doesn't reflow unrelated lines.
+The 100-character line length (see Linting below) is a hard cap, not a target to fill.
+
 ### Linting (ruff)
 
 Ruff's rule selection is configured in `pyproject.toml` under `[tool.ruff.lint]`.
@@ -98,9 +108,8 @@ Some conventions specific to this codebase:
     - Use single backticks for inline code and parameter names, not double backticks.
     - Use triple backticks for code blocks,
       and specify the language for syntax highlighting (e.g., ```python).
-- Wrap lines using semantic breaks (e.g., after sentences or logical units),
-  not hard-wrapping at a specific character limit.
-  See <https://sembr.org/>
+- Lines are wrapped using semantic breaks, per
+  [Semantic Line Breaks](#semantic-line-breaks) above.
 - Use the imperative mood for function descriptions
   (e.g., "Compute the hash of a file."),
   except for `@property` getters where the description should be a noun phrase
@@ -163,7 +172,9 @@ StepUp runs as two process types:
 
 - **Director** (`director.py`):
   An asyncio process that owns the workflow graph and SQLite database.
-  It exposes an RPC server over a Unix socket (`.stepup/sockets/director`).
+  It exposes an RPC server over a Unix socket, whose path is handed to it by the TUI
+  (a per-run temp directory, e.g. `tempfile.TemporaryDirectory(prefix="stepup-")` — not under
+  `.stepup/`).
   Manages `Builder`, `Watcher`, and `Scheduler`.
   Steps run *inside* the director's event loop as asyncio tasks.
 - **Executor** (`executor.py`):
@@ -176,7 +187,9 @@ StepUp runs as two process types:
   File/step hashing — the only blocking work — is offloaded to a separate process: a
   forkserver child when `--forkserver` is on, otherwise a `_stepup_hasher` subprocess.
 - **TUI** (`tui.py`):
-  Boots the director as a subprocess and connects to it via the reporter RPC socket.
+  Spawns the director as a subprocess and connects to its RPC socket as a client
+  (e.g. to forward keyboard commands). It also serves the reporter RPC socket itself —
+  the director connects to *that* as a client to report progress.
   Renders progress to the terminal.
 
 The entry point `stepup build` (in `tui.py`) is what users run.
@@ -191,12 +204,13 @@ The core data structure is a combined **provenance** and **dependency** graph st
 - **`File`** (`file.py`):
   Tracks files with states `STATIC | AWAITED | BUILT | OUTDATED | MISSING | VOLATILE`.
 - **`Step`** (`step.py`):
-  A build step (command + inputs/outputs). States: `PENDING | RUNNING | SUCCEEDED | FAILED`.
+  A build step (command + inputs/outputs).
+  States: `PENDING | RUNNING | CHECKING | SUCCEEDED | FAILED`.
 - **`StaticTree`** (`static_tree.py`):
   Static tree node, used for inputs that are automatically declared as static (e.g., source files).
 
 All graph mutations happen inside SQLite transactions.
-The `DBSession` in `utils.py` serializes writes.
+The `DBSession` in `sqlite3.py` serializes writes.
 
 #### Database schema versioning
 
@@ -245,27 +259,30 @@ which `pathlib` normalizes away. The `path` module preserves these affixes.
 The affixes are currently used in the places in StepUp:
 
 - The `dst` argument of the `copy()` function in `stepup.core.api`, with
-  a reusable mechanism for output path construction in `make_path_out()` in `stepup.core.utils`.
+  a reusable mechanism for output path construction in `make_path_out()` in `stepup.core.path`.
 - A local executable must contain at least one slash, e.g., `./script.sh` or `bin/script.sh`.
-- The `getenv()` function in `stepup.core.utils` preserves path affixes
+- The `getenv()` function in `stepup.core.api` preserves path affixes
   when reading environment variables must be treated as paths.
 - A static tree path in the database is always stored with a trailing slash.
 
-The `get_affixes()` and `apply_affixes()` functions in `stepup.core.utils` are used to
+The `get_affixes()` and `apply_affixes()` functions in `stepup.core.path` are used to
 extract and re-apply the affixes when needed.
 
 ### User-Facing API (`api.py`)
 
 `plan.py` scripts call functions in `api.py` (e.g., `static()`, `step()`, `glob()`)
 which send RPC calls to the director.
-The module must not be imported by other `stepup.core` modules
-except `interact.py`, `call.py`, `script.py`, and `extapi.py` (local imports only).
+The module must not be imported by other `stepup.core` modules,
+except `interact.py` (top-level import) and `call.py`, `script.py`, `executor.py`,
+`render_jinja.py`, and `extapi.py` (local, inside-function imports only).
 
 ### Extension Developer API (`extapi.py`)
 
 `extapi.py` collects utilities for authors of StepUp extension packages:
-`subs_env_vars`, `get_rpc_client`, `filter_dependencies`, and `get_local_import_paths`.
-These are re-exported from `api.py` and `utils.py` for backward compatibility.
+`subs_env_vars`, `record_subprocess`, `run_subprocess`, `filter_dependencies`,
+and `get_local_import_paths`.
+`get_rpc_client` lives in `api.py`, not `extapi.py`.
+`subs_env_vars` is re-exported from `api.py` for backward compatibility.
 `extapi.py` imports from `api.py` only via local (inside-function) imports to avoid
 circular dependencies at module load time.
 
@@ -290,10 +307,17 @@ Used in the API for dynamic file discovery with consistency constraints across p
 | Variable | Purpose |
 | --- | --- |
 | `STEPUP_DEBUG` | Enable debug logging |
-| `STEPUP_DURATION` | Measure step durations to optimize scheduling (set `0` to disable in tests) |
+| `STEPUP_BUILD_DURATION` | Measure step durations to optimize scheduling (set `0` to disable in tests) |
 | `STEPUP_SYNC_RPC_TIMEOUT` | Timeout for sync RPC calls (seconds) |
-| `STEPUP_PERF` | Frequency (Hz) for Linux `perf` profiling of director |
-| `STEPUP_YAPPI` | Enable Yappi profiling of director |
+| `STEPUP_BUILD_PERF` | Frequency (Hz) for Linux `perf` profiling of director |
+| `STEPUP_BUILD_YAPPI` | Enable Yappi profiling of director |
+
+Several other `STEPUP_*` / `STEPUP_BUILD_*` variables exist for configuration
+(e.g. `STEPUP_BUILD_JOBS`, `STEPUP_BUILD_RESOURCES`, `STEPUP_RESOURCES`, `STEPUP_LOG_LEVEL`,
+`STEPUP_MAX_OUTPUT_SIZE`, `STEPUP_PATH_FILTER`, `STEPUP_RENDER_JINJA`) — see
+`docs/reference/configuration.md` for the full list.
+Most StepUp-3-era `STEPUP_*` variables gained a `STEPUP_BUILD_` prefix in the 4.0 migration;
+see `docs/migration/from_3x_to_40.md` before assuming an old name still applies.
 
 ### Test Structure
 
