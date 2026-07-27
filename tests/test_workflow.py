@@ -18,7 +18,7 @@ from stepup.core.nglob import NGlobMulti
 from stepup.core.static_tree import StaticTree
 from stepup.core.step import Step
 from stepup.core.stepinfo import StepInfo
-from stepup.core.workflow import RECURSE_DEFERRED_INPUTS, RECURSE_OUTDATED_STEPS, Workflow
+from stepup.core.workflow import RECURSE_DEFERRED_INPUTS, Workflow
 
 
 def _amend(wfx: Workflow, step: Step, **kwargs) -> tuple[bool, list]:
@@ -2297,32 +2297,6 @@ async def test_sql_recurse_products_pending_tree(wfp: Workflow):
         foo.set_state(StepState.RUNNING)
         bar.set_state(StepState.SUCCEEDED)
         spam.set_state(StepState.RUNNING)
-
-
-async def test_recurse_outdated_steps1(wfp: Workflow):
-    async with wfp.db:
-        plan = wfp.find(Step, "./plan.py")
-        wfp.define_step(plan, "prog", inp_paths=["data.txt"])
-        prog = wfp.find(Step, "prog")
-        rows = wfp.db.execute(RECURSE_OUTDATED_STEPS, (prog.i,)).fetchall()
-        assert len(rows) == 1
-        assert Step(wfp, *rows[0]) == prog
-
-
-async def test_recurse_outdated_steps2(wfp: Workflow):
-    async with wfp.db:
-        plan = wfp.find(Step, "./plan.py")
-        wfp.define_step(plan, "prog1", inp_paths=["data1.txt"])
-        prog1 = wfp.find(Step, "prog1")
-        wfp.define_step(prog1, "prog2", inp_paths=["data2.txt"])
-        prog2 = wfp.find(Step, "prog2")
-        wfp.define_step(prog1, "prog3", inp_paths=["data3.txt"])
-        declare_static(wfp, plan, ["data3.txt"])
-
-        rows = wfp.db.execute(RECURSE_OUTDATED_STEPS, (prog1.i,)).fetchall()
-        assert len(rows) == 2
-        assert Step(wfp, *rows[0]) == prog1
-        assert Step(wfp, *rows[1]) == prog2
 
 
 @pytest.mark.parametrize("inp_path", ["data/foo.txt", "data/sub/deep.txt", "data/sub/a/deep.txt"])

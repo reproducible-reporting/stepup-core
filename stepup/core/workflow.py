@@ -51,22 +51,6 @@ WITH RECURSIVE missing(i, label, creator_kind) AS (
 SELECT i, label FROM missing WHERE creator_kind = 'st'
 """
 
-# Recursively find all product steps and finally select those whose inputs are awaited or outdated.
-RECURSE_OUTDATED_STEPS = f"""
-WITH RECURSIVE outdated(i, label) AS (
-    SELECT node.i, node.label FROM node
-    WHERE node.i = ?
-    UNION
-    SELECT product_node.i, product_node.label FROM node AS product_node
-    JOIN outdated ON product_node.creator = outdated.i
-    WHERE product_node.kind = 'step'
-)
-SELECT DISTINCT outdated.i, outdated.label FROM outdated
-JOIN dependency ON dependency.sink = outdated.i
-JOIN file ON dependency.source = file.node
-WHERE file.state IN ({FileState.AWAITED.value}, {FileState.OUTDATED.value})
-"""
-
 # (cause, old_state, hash_known) -> (new_state, action) for `Workflow.update_file_hashes`.
 # action is one of "updated", "deleted", "completed", or None (state/hash change only).
 # A missing key means the combination is unexpected and raises (see `raise_unexpected` there).
@@ -815,11 +799,6 @@ class Workflow(Trellis):
         old_step.recycle(creator)
         old_step.set_resources(resources)
         old_step.set_env_overrides(env_overrides)
-
-        # If inputs of the recreated steps are AWAITED or OUTDATED, these steps must be postponed.
-        for i, label in self.db.execute(RECURSE_OUTDATED_STEPS, (old_step.i,)):
-            step = Step(self, i, label)
-            self.mark_step_pending(step)
 
         # Look for MISSING inputs and determine which were matching a static tree.
         # Their existence still needs to be checked by the client and ideally confirmed as existing
