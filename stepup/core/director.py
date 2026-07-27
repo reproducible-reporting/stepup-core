@@ -486,14 +486,11 @@ async def serve(
         do_joblog=do_joblog,
         infra_env=infra_env,
     )
-    # Builder is constructed with watcher=None and patched below, once the watcher exists:
-    # the watcher needs builder.hash_queue,
-    # so both share the wake event that a hash-job submission uses to nudge a parked job_loop,
-    # which means the watcher cannot be built first either.
-    # Builder is a plain mutable attrs class, so patching .watcher after construction is fine.
+    # Builder is agnostic of watch mode; it is built first because the watcher needs
+    # builder.hash_queue, sharing the wake event that a hash-job submission uses to
+    # nudge a parked job_loop.
     builder = Builder(
         njob=njob,
-        watcher=None,
         scheduler=scheduler,
         workflow=workflow,
         db=db,
@@ -515,7 +512,6 @@ async def serve(
         if do_watch
         else None
     )
-    builder.watcher = watcher
     memory_sampler = CgroupMemorySampler() if do_cgroup else None
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(
@@ -550,7 +546,7 @@ async def serve(
         serve_socket_rpc(director_handler, director_socket_path, exit_event)
     )
     coroutines = [
-        builder.loop(stop_event),
+        build_loop(builder, watcher, stop_event),
         db.database_maintenance_loop(stop_event),
     ]
     if memory_sampler is not None:
@@ -968,6 +964,20 @@ def get_socket() -> str:
             print("Trying to contact StepUp director process.", file=sys.stderr)
         secs += 0.1
         print(f"{message}  Waiting {secs:.1f} seconds.", file=sys.stderr)
+
+
+async def build_loop(builder: Builder, watcher: Watcher | None, stop_event: asyncio.Event):
+    """Repeatedly run build phases until `stop_event` fires.
+
+    `Builder` itself has no notion of watch mode, so this is where that policy lives:
+    after each phase, hand off to `watcher` to resume file-system monitoring, or,
+    without a watcher, stop after a single phase.
+    """
+    while await builder.run_phase(stop_event):
+        if watcher is None:
+            stop_event.set()
+        else:
+            watcher.resume.set()
 
 
 async def watch_first_loop(watcher: Watcher, director: DirectorHandler, stop_event: asyncio.Event):

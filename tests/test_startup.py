@@ -52,7 +52,6 @@ def _make_builder(workflow: Workflow) -> Builder:
     )
     return Builder(
         njob=2,
-        watcher=None,
         scheduler=scheduler,
         workflow=workflow,
         db=workflow.db,

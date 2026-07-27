@@ -42,7 +42,6 @@ def _make_builder(scheduler: Scheduler, workflow: Workflow) -> Builder:
     )
     return Builder(
         njob=1,
-        watcher=None,
         scheduler=scheduler,
         workflow=workflow,
         db=workflow.db,
@@ -115,7 +114,6 @@ def _make_job(*, prefix: str, job_i: int, label: str, coro):
 def _make_progress_builder(reporter: _FakeReporter) -> Builder:
     return Builder(
         njob=1,
-        watcher=None,
         scheduler=None,
         workflow=None,
         db=None,
@@ -219,7 +217,6 @@ async def test_job_loop_dispatches_hash_jobs_before_runnable_steps(wfs: Workflow
     )
     builder = Builder(
         njob=1,
-        watcher=None,
         scheduler=scheduler,
         workflow=wfs,
         db=wfs.db,
@@ -276,7 +273,6 @@ async def test_run_promoted_hash_jobs_applies_result(wfs: Workflow, tmpdir):
         )
         builder = Builder(
             njob=1,
-            watcher=None,
             scheduler=scheduler,
             workflow=wfs,
             db=wfs.db,

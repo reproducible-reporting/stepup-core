@@ -2,11 +2,12 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """The `Builder` drives the build by pulling runnable jobs and sending them to the executor.
 
-Each **build phase** starts when the `resume` event is set,
-executes all currently runnable jobs via `job_loop`,
-and ends with `finalize`, which reverts optional steps,
-reports pending/failed steps, removes outdated outputs,
-and notifies the `Watcher` to resume file-system monitoring.
+`Builder` always runs a single **build phase** per `run_phase()` call: it waits for the
+`resume` event, executes all currently runnable jobs via `job_loop`, and ends with
+`finalize`, which reverts optional steps, reports pending/failed steps, and removes
+outdated outputs. `Builder` has no notion of watch mode; repeating build phases and
+deciding what happens between them (e.g. handing control to a `Watcher`) is the caller's
+responsibility, see `build_loop` in `director.py`.
 
 The module also contains the standalone helpers `revert_optional`, `report_completion`,
 and `remove_outdated_outputs` that are called during finalization.
@@ -30,7 +31,6 @@ from .reporter import ReporterClient
 from .scheduler import Scheduler
 from .sqlite3 import DBSession
 from .utils import reset_joblog
-from .watcher import Watcher
 from .workflow import Workflow
 
 __all__ = ("Builder",)
@@ -52,9 +52,6 @@ class Builder:
     - A new step was defined, which may already be runnable.
     - Files were confirmed static, meaning depending steps may start.
     """
-
-    watcher: Watcher | None = attrs.field(kw_only=True)
-    """The watcher instance, used to start the watcher when the builder becomes idle."""
 
     scheduler: Scheduler = attrs.field(kw_only=True)
     """The scheduler providing jobs to the builder."""
@@ -96,30 +93,28 @@ class Builder:
     def _default_hash_queue(self) -> HashQueue:
         return HashQueue(wake=self.wake_job_loop)
 
-    async def loop(self, stop_event: asyncio.Event):
-        """The main builder loop.
+    async def run_phase(self, stop_event: asyncio.Event) -> bool:
+        """Wait for `resume`, then run a single build phase (`job_loop` + `finalize`).
 
         Parameters
         ----------
         stop_event
-            The main builder loop is interrupted by this event.
+            If set before `resume`, no phase is run.
 
-        Notes
-        -----
-        One iteration in the main builder loop consists of running a bunch of jobs:
-        All runnable jobs are executed unless the user interrupts the builder (drain command).
+        Returns
+        -------
+        ran
+            `False` if `stop_event` fired before `resume` was set, meaning no phase ran.
+            `True` otherwise, meaning a phase was run and the caller may call `run_phase`
+            again to run another one.
         """
-        # Loop through build phases.
-        while True:
-            await wait_for_events(self.resume, stop_event, return_when=asyncio.FIRST_COMPLETED)
-            if stop_event.is_set():
-                return
-            await self.job_loop()
-            await self.finalize()
-            self.resume.clear()
-            # If there is no watcher, the builder stops after one iteration.
-            if self.watcher is None:
-                stop_event.set()
+        await wait_for_events(self.resume, stop_event, return_when=asyncio.FIRST_COMPLETED)
+        if stop_event.is_set():
+            return False
+        self.resume.clear()
+        await self.job_loop()
+        await self.finalize()
+        return True
 
     async def job_loop(self):
         """Run all runnable jobs until there are non left or the scheduler is on hold."""
@@ -191,8 +186,6 @@ class Builder:
                 nsuccess, ntotal = self.workflow.get_counts()
             await self.reporter.update_counts(nsuccess, ntotal)
         await self.reporter.check_logs()
-        if self.watcher is not None:
-            self.watcher.resume.set()
 
     async def start_task(self, job: Job):
         """Start an asyncio task that runs the job in the executor."""
