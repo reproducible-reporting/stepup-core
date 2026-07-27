@@ -1,31 +1,45 @@
 # SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""File and step hashing."""
+"""File and step hashing.
+
+Hash computation is the only blocking work the director does. `ThreadWorker` runs it in a
+dedicated thread, one per hash computation, so the director's event loop stays responsive;
+`compute_inp_hashes` / `compute_out_hashes` / `compute_both_hashes` are the pure functions run
+inside such a thread.
+"""
 
 import hashlib
 import json
 import os
 import stat
+import threading
 from typing import Self
 
 import attrs
 from path import Path
 
 from .cattrs import json_converter
+from .exceptions import HashCancelledError
 
 __all__ = (
+    "HASH_CHUNK_SIZE",
     "FileHash",
     "HashWords",
     "InpInfo",
     "OutInfo",
     "StepHash",
     "compare_step_hashes",
+    "compute_both_hashes",
     "compute_file_digest",
+    "compute_inp_hashes",
+    "compute_out_hashes",
     "fmt_digest",
     "fmt_env_value",
     "fmt_file_hash_diff",
-    "report_file_hash_diff",
 )
+
+
+HASH_CHUNK_SIZE = 1 << 18  # 256 KiB — matches hashlib.file_digest's own internal buffer size.
 
 
 @attrs.define
@@ -48,7 +62,9 @@ class HashWords:
         return self._hash.digest()
 
 
-def compute_file_digest(path: str, follow_symlinks=True) -> bytes:
+def compute_file_digest(
+    path: str, follow_symlinks: bool = True, cancel_event: threading.Event | None = None
+) -> bytes:
     """Compute the SHA-256 digest of a file or a symbolic link.
 
     Parameters
@@ -59,28 +75,43 @@ def compute_file_digest(path: str, follow_symlinks=True) -> bytes:
         If True (default) and the path is a symbolic link,
         try to hash the contents of the destination file.
         If False, the destination path itself is hashed.
+    cancel_event
+        When given, the event is checked between chunks of `HASH_CHUNK_SIZE` bytes,
+        so an in-progress hash of a large file can be aborted promptly.
 
     Returns
     -------
     digest
         A 32 bytes SHA-256 hash.
+
+    Raises
+    ------
+    HashCancelledError
+        When `cancel_event` was set before the whole file was hashed.
     """
+    # Cheap part:
     path = Path(path)
     if path.islink() and not follow_symlinks:
         return hashlib.sha256(path.readlink().encode("utf-8")).digest()
     if path.is_dir():
         raise OSError("File digests of directories are not supported.")
-    with open(path, "rb") as fh:
-        return hashlib.file_digest(fh, hashlib.sha256).digest()
-
-
-def report_file_hash_diff(
-    label: str, path: str, old_hash: "FileHash", new_hash: "FileHash"
-) -> tuple[bool, tuple[str, str]]:
-    change = fmt_file_hash_diff(old_hash, new_hash)
-    if change is None:
-        return False, (f"Same {label} hash", path)
-    return True, (f"Modified {label} hash", f"{path} {change}")
+    # Expensive part:
+    # Not using hashlib.file_digest, same algorithm reimplemented here with a cancellation check.
+    digest = hashlib.sha256()
+    buf = bytearray(HASH_CHUNK_SIZE)
+    view = memoryview(buf)
+    # With buffering=0, readinto performs at most one syscall,
+    # so nread may be smaller than the buffer for pipes or network filesystems;
+    # only nread == 0 means EOF.
+    with open(path, "rb", buffering=0) as fh:
+        while True:
+            if cancel_event is not None and cancel_event.is_set():
+                raise HashCancelledError(path)
+            nread = fh.readinto(buf)
+            if nread == 0:
+                break
+            digest.update(view[:nread])
+    return digest.digest()
 
 
 def fmt_file_hash_diff(old_hash: "FileHash", new_hash: "FileHash") -> str | None:
@@ -147,9 +178,9 @@ class FileHash:
 
     @classmethod
     def unknown(cls):
-        return FileHash(b"u", 0, 0.0, 0, 0)
+        return cls(b"u", 0, 0.0, 0, 0)
 
-    def regen(self, path: str) -> Self:
+    def regen(self, path: str, cancel_event: threading.Event | None = None) -> Self:
         """Regenerate and return a new instance for the given file on disk.
 
         Parameters
@@ -158,6 +189,9 @@ class FileHash:
             Path to a file or directory.
             If the file or directory does not exist, the hash is set to "unknown",
             i.e. the digest is set to b"u" and the mode to 0.
+        cancel_event
+            When given, passed on to `compute_file_digest`
+            so a digest computation in progress can be aborted promptly.
 
         Returns
         -------
@@ -166,36 +200,38 @@ class FileHash:
             For a proper comparison between hashes, use the `==` operator, not the `is` operator.
             Two hashes are considered the same if their content, size and mode are the same,
             but timestamps and inodes may differ.
+
+        Raises
+        ------
+        HashCancelledError
+            When `cancel_event` was set before the whole file was hashed.
         """
-        # Perform the cheap part of the hash computation
+        # Check for cancellation early.
+        if cancel_event is not None and cancel_event.is_set():
+            raise HashCancelledError(path)
+        # Check if the file exists and is a regular file.
         path = Path(path)
         if not path.exists():
-            digest = b"u"
-            mode = 0
-            mtime = 0.0
-            size = 0
-            inode = 0
-            if self.is_unknown:
-                return self
-        else:
-            st = path.stat()
-            mode = st.st_mode
-            if path.is_dir():
-                raise ValueError(f"File digests of directories are not supported: {path}")
-            if path.endswith(os.sep):
-                raise ValueError(f"File digests of directories are not supported: {path}")
-            mtime = st.st_mtime
-            size = st.st_size
-            inode = st.st_ino
-            # Decide if the digest computation can be skipped
-            if (
-                self._mode == mode
-                and self._mtime == mtime
-                and self._size == size
-                and self._inode == inode
-            ):
-                return self
-            digest = compute_file_digest(path)
+            return self if self.is_unknown else self.unknown()
+        # Check if the hash computation can be skipped.
+        st = path.stat()
+        mode = st.st_mode
+        if path.is_dir():
+            raise ValueError(f"File digests of directories are not supported: {path}")
+        if path.endswith(os.sep):
+            raise ValueError(f"File digests of directories are not supported: {path}")
+        mtime = st.st_mtime
+        size = st.st_size
+        inode = st.st_ino
+        # Decide if the digest computation can be skipped
+        if (
+            self._mode == mode
+            and self._mtime == mtime
+            and self._size == size
+            and self._inode == inode
+        ):
+            return self
+        digest = compute_file_digest(path, cancel_event=cancel_event)
         return self.__class__(digest, mode, mtime, size, inode)
 
     @property
@@ -289,7 +325,7 @@ class StepHash:
             hw.update(value)
         # Only mix in env_overrides when present, so steps without overrides keep their digest.
         if env_overrides:
-            hw.update("__setenv__")
+            hw.update("__env_overrides__")
             for name, value in sorted(env_overrides.items()):
                 hw.update(name)
                 hw.update(value)
@@ -321,15 +357,12 @@ class StepHash:
         return self._inp_info
 
     @property
-    def out_digest(self) -> bytes:
+    def out_digest(self) -> bytes | None:
         return self._out_digest
 
     @property
     def out_info(self) -> OutInfo | None:
         return self._out_info
-
-    def reduced(self) -> Self:
-        return StepHash(self._inp_digest, None, self._out_digest, None)
 
     def to_json(self) -> str:
         """Serialize to the JSON representation stored in `step.hash`."""
@@ -403,8 +436,10 @@ def _compare_inp_info(
     chl: list[tuple[str, str]], sml: list[tuple[str, str]], old_info: InpInfo, new_info: InpInfo
 ):
     _explain_hash_changes("inp", chl, sml, old_info.inp_hashes, new_info.inp_hashes)
-    _explain_env_changes(chl, sml, old_info.env_values, new_info.env_values)
-    _explain_env_overrides_changes(chl, sml, old_info.env_overrides, new_info.env_overrides)
+    _explain_env_dict_changes(chl, sml, old_info.env_values, new_info.env_values, "env var")
+    _explain_env_dict_changes(
+        chl, sml, old_info.env_overrides, new_info.env_overrides, "env override"
+    )
 
 
 def _compare_out_info(
@@ -423,7 +458,7 @@ def _explain_hash_changes(
     for path in sorted(set(old_hashes) | set(new_hashes)):
         if path in old_hashes:
             if path in new_hashes:
-                changed, line = report_file_hash_diff(
+                changed, line = _report_file_hash_diff(
                     label, path, old_hashes[path], new_hashes[path]
                 )
                 if changed:
@@ -436,6 +471,15 @@ def _explain_hash_changes(
             chl.append((f"Added {label} hash", path))
         else:
             raise AssertionError("This should never happen.")
+
+
+def _report_file_hash_diff(
+    label: str, path: str, old_hash: "FileHash", new_hash: "FileHash"
+) -> tuple[bool, tuple[str, str]]:
+    change = fmt_file_hash_diff(old_hash, new_hash)
+    if change is None:
+        return False, (f"Same {label} hash", path)
+    return True, (f"Modified {label} hash", f"{path} {change}")
 
 
 def _explain_env_dict_changes(
@@ -463,19 +507,134 @@ def _explain_env_dict_changes(
             raise AssertionError("This should never happen.")
 
 
-def _explain_env_changes(
-    chl: list[tuple[str, str]],
-    sml: list[tuple[str, str]],
-    old_env: dict[str, str | None],
-    new_env: dict[str, str | None],
-):
-    _explain_env_dict_changes(chl, sml, old_env, new_env, "env var")
+#
+# Pure functions for threaded hash computation
+#
 
 
-def _explain_env_overrides_changes(
-    chl: list[tuple[str, str]],
-    sml: list[tuple[str, str]],
-    old_setenv: dict[str, str],
-    new_setenv: dict[str, str],
-):
-    _explain_env_dict_changes(chl, sml, old_setenv, new_setenv, "env_overrides override")
+@attrs.define
+class HashComputeResult:
+    """The result of a hash computation.
+
+    This is used as a return value of the `compute_...` functions below.
+    """
+
+    messages: list[str] = attrs.field()
+    """Messages about unexpected input changes or vanished inputs."""
+
+    new_hashes: list[tuple[str, FileHash]] = attrs.field()
+    """A list of tuples `(path, new_file_hash)` for inputs/outputs whose hash changed."""
+
+    all_hashes: list[tuple[str, FileHash]] = attrs.field()
+    """A list of tuples `(path, new_file_hash)` for all inputs/outputs, regardless of changes."""
+
+
+def compute_inp_hashes(
+    inp_hashes: list[tuple[str, FileHash]], cancel_event: threading.Event
+) -> HashComputeResult:
+    """Compute the new hashes of the inputs.
+
+    Parameters
+    ----------
+    inp_hashes
+        A list of tuples `(path, old_file_hash)` for each input file.
+    cancel_event
+        Set this event to cancel the hash computation.
+
+    Returns
+    -------
+    HashComputeResult
+        The result of the hash computation.
+        The messages attribute contains a list of unexpected input changes or vanished inputs.
+
+    Raises
+    ------
+    HashCancelledError
+        When `cancel_event` was set before the whole file was hashed.
+    """
+    messages = []
+    new_inp_hashes = []
+    all_inp_hashes = []
+    for path, old_file_hash in sorted(inp_hashes):
+        new_file_hash = old_file_hash.regen(path, cancel_event)
+        all_inp_hashes.append((path, new_file_hash))
+        if new_file_hash != old_file_hash:
+            new_inp_hashes.append((path, new_file_hash))
+            if new_file_hash.is_unknown:
+                messages.append(f"Input vanished unexpectedly: {path} ")
+            else:
+                messages.append(
+                    f"Input changed unexpectedly: {path} "
+                    + fmt_file_hash_diff(old_file_hash, new_file_hash)
+                )
+
+    return HashComputeResult(messages, new_inp_hashes, all_inp_hashes)
+
+
+def compute_out_hashes(
+    out_hashes: list[tuple[str, FileHash]], cancel_event: threading.Event
+) -> HashComputeResult:
+    """Compute the new hashes of the outputs.
+
+    Parameters
+    ----------
+    out_hashes
+        A list of tuples `(path, old_file_hash)` for each output file.
+    cancel_event
+        Set this event to cancel the hash computation.
+
+    Returns
+    -------
+    HashComputeResult
+        The result of the hash computation.
+        The messages attribute contains a list of missing output paths.
+
+    Raises
+    ------
+    HashCancelledError
+        When `cancel_event` was set before the whole file was hashed.
+    """
+    out_missing = []
+    new_out_hashes = []
+    all_out_hashes = []
+    for path, old_file_hash in sorted(out_hashes):
+        new_file_hash = old_file_hash.regen(path, cancel_event)
+        all_out_hashes.append((path, new_file_hash))
+        if new_file_hash != old_file_hash:
+            new_out_hashes.append((path, new_file_hash))
+        if new_file_hash.is_unknown:
+            out_missing.append(path)
+
+    return HashComputeResult(out_missing, new_out_hashes, all_out_hashes)
+
+
+def compute_both_hashes(
+    inp_hashes: list[tuple[str, FileHash]],
+    out_hashes: list[tuple[str, FileHash]],
+    cancel_event: threading.Event,
+) -> tuple[HashComputeResult, HashComputeResult]:
+    """Compute input and output hashes.
+
+    Parameters
+    ----------
+    inp_hashes
+        A list of tuples `(path, file_hash)` for each input file.
+    out_hashes
+        A list of tuples `(path, file_hash)` for each output file.
+    cancel_event
+        Set this event to cancel the hash computation.
+
+    Returns
+    -------
+    inp_results, out_results
+        The results of `compute_inp_hashes` and `compute_out_hashes`, respectively.
+
+    Raises
+    ------
+    HashCancelledError
+        When `cancel_event` was set before the whole file was hashed.
+    """
+    return (
+        compute_inp_hashes(inp_hashes, cancel_event),
+        compute_out_hashes(out_hashes, cancel_event),
+    )

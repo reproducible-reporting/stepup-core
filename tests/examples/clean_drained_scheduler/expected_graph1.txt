@@ -8,7 +8,7 @@ file:plan.py
                 sink   step:./plan.py
 
 step:./plan.py
-               state = SUCCEEDED
+               state = PENDING
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
              creator   root:

@@ -17,6 +17,7 @@ Input changed unexpectedly: cases.txt (digest ba246937 ➜ b7bf4c7e)
    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
      PHASE │ watch
    UPDATED │ cases.txt
+ UNCHANGED │ cases.txt
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py

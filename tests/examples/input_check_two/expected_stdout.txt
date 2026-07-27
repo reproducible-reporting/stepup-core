@@ -18,4 +18,5 @@ Input changed unexpectedly: f1.txt (digest 98ea6e4f ➜ 58ca930f, size 3 ➜ 15)
    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
      PHASE │ watch
    UPDATED │ f1.txt
+ UNCHANGED │ f1.txt
   DIRECTOR │ See you!

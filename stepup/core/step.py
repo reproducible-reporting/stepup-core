@@ -28,7 +28,7 @@ __all__ = ("RESERVED_ENV_VARS", "Step", "truncate_output")
 logger = logging.getLogger(__name__)
 
 
-# Environment variables that StepUp sets for each step (see Executor.run).
+# Environment variables that StepUp sets for each step (see Executor._run_command).
 # These are managed by StepUp and must not be amended as env dependencies or set as overrides.
 RESERVED_ENV_VARS = frozenset(
     {"HERE", "ROOT", "STEPUP_JOB_I", "STEPUP_STEP_INP_DIGEST", "STEPUP_STEP_NEED"}
@@ -1072,11 +1072,10 @@ class Step(Node):
             # Check that there are no unconfirmed static files left behind by the step.
             sql = (
                 "SELECT label FROM node JOIN file ON node.i = file.node "
-                "WHERE creator = ? AND kind = 'file' AND state = ? AND NOT detached"
+                f"WHERE creator = ? AND kind = 'file' AND state = {FileState.UNCONFIRMED.value} "
+                "AND NOT detached"
             )
-            unconfirmed_paths = [
-                path for (path,) in self.db.execute(sql, (self.i, FileState.UNCONFIRMED.value))
-            ]
+            unconfirmed_paths = [path for (path,) in self.db.execute(sql, (self.i,))]
             if unconfirmed_paths:
                 # Note: this should never happen. When it does, it must have been caused by a bug.
                 raise GraphError(

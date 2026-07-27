@@ -66,7 +66,7 @@ def main():
     mp_ctx = None
     if args.forkserver:
         mp_ctx = multiprocessing.get_context("forkserver")
-        preload = ["stepup.core.executor", "stepup.core.hasher"]
+        preload = ["stepup.core.executor"]
         if args.preload_modules:
             preload.extend(m.strip() for m in args.preload_modules.split(",") if m.strip())
         mp_ctx.set_forkserver_preload(preload)
@@ -474,17 +474,17 @@ async def serve(
     await scheduler.initialize(available_resources)
     watcher = Watcher(workflow, db, reporter, dir_queue) if do_watch else None
     executor = Executor(
-        scheduler,
-        workflow,
-        db,
-        reporter,
-        show_perf,
-        explain_rerun,
-        keep_going,
-        live_progress,
+        scheduler=scheduler,
+        workflow=workflow,
+        db=db,
+        reporter=reporter,
         mp_ctx=mp_ctx,
-        infra_env=infra_env,
+        show_perf=show_perf,
+        explain_rerun=explain_rerun,
+        keep_going=keep_going,
+        live_progress=live_progress,
         do_joblog=do_joblog,
+        infra_env=infra_env,
     )
     builder = Builder(
         njob=njob,
@@ -554,7 +554,6 @@ async def serve(
     usage_report, usage_summary = format_resource_usage(
         time_start,
         builder.executor.step_accumulator,
-        builder.executor.hash_accumulator,
         memory_sampler,
     )
 

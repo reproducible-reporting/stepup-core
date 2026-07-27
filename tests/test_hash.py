@@ -2,12 +2,22 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Unit tests for stepup.core.hash"""
 
+import os
+import threading
 from hashlib import sha256
 
 import pytest
+from conftest import TrippingEvent
 from path import Path
 
-from stepup.core.hash import FileHash, compute_file_digest
+from stepup.core.exceptions import HashCancelledError
+from stepup.core.hash import (
+    HASH_CHUNK_SIZE,
+    FileHash,
+    compute_file_digest,
+    compute_inp_hashes,
+    compute_out_hashes,
+)
 
 
 def test_new():
@@ -63,6 +73,53 @@ def test_hash_symbolic_link_dir(path_tmp: Path):
     assert compute_file_digest(path_symlink, follow_symlinks=False) == sha256(b"sub").digest()
 
 
+def test_digest_cancelled_before_reading(path_tmp: Path):
+    path = path_tmp / "small.txt"
+    path.write_bytes(b"tiny")
+    cancel_event = threading.Event()
+    cancel_event.set()
+    with pytest.raises(HashCancelledError):
+        compute_file_digest(path, cancel_event=cancel_event)
+
+
+def test_digest_cancelled_mid_file(path_tmp: Path):
+    path = path_tmp / "big.bin"
+    path.write_bytes(os.urandom(HASH_CHUNK_SIZE * 3 + 123))
+    # The chunked loop polls once per chunk, so this trips before EOF.
+    cancel_event = TrippingEvent(2)
+    with pytest.raises(HashCancelledError):
+        compute_file_digest(path, cancel_event=cancel_event)
+    assert cancel_event.polls > cancel_event.trip_after
+
+
+def test_digest_with_and_without_cancel_event(path_tmp: Path):
+    data = os.urandom(HASH_CHUNK_SIZE * 3 + 123)
+    path = path_tmp / "big.bin"
+    path.write_bytes(data)
+    expected = sha256(data).digest()
+    assert compute_file_digest(path) == expected
+    assert compute_file_digest(path, cancel_event=threading.Event()) == expected
+
+
+def test_regen_cancelled_changed_file(path_tmp: Path):
+    path = path_tmp / "file.txt"
+    path.write_bytes(b"content")
+    cancel_event = threading.Event()
+    cancel_event.set()
+    with pytest.raises(HashCancelledError):
+        FileHash.unknown().regen(path, cancel_event)
+
+
+def test_regen_cancelled_unchanged_file(path_tmp: Path):
+    path = path_tmp / "file.txt"
+    path.write_bytes(b"content")
+    file_hash = FileHash.unknown().regen(path)
+    cancel_event = threading.Event()
+    cancel_event.set()
+    with pytest.raises(HashCancelledError):
+        file_hash.regen(path, cancel_event)
+
+
 def test_to_json_unknown():
     assert FileHash.unknown().to_json() is None
 
@@ -78,3 +135,56 @@ def test_to_json_from_json_round_trip():
     # `==` on FileHash ignores mtime and inode (eq=False), so check those explicitly too.
     assert restored.mtime == file_hash.mtime
     assert restored.inode == file_hash.inode
+
+
+def test_compute_inp_hashes_cancelled_during_second_file(path_tmp: Path):
+    path1 = path_tmp / "inp1.bin"
+    path1.write_bytes(b"small input")
+    path2 = path_tmp / "inp2.bin"
+    path2.write_bytes(os.urandom(HASH_CHUNK_SIZE * 3 + 123))
+    # The first file consumes two polls in its digest loop (it fits in one chunk, plus
+    # the EOF read), so this trips inside the digest loop of the second file.
+    cancel_event = TrippingEvent(4)
+    with pytest.raises(HashCancelledError):
+        compute_inp_hashes(
+            [(str(path1), FileHash.unknown()), (str(path2), FileHash.unknown())],
+            cancel_event=cancel_event,
+        )
+    assert cancel_event.polls > cancel_event.trip_after
+
+
+def test_compute_inp_hashes_uncancelled(path_tmp: Path):
+    path = path_tmp / "inp.bin"
+    path.write_bytes(b"some input")
+    inp_result = compute_inp_hashes(
+        [(str(path), FileHash.unknown())], cancel_event=threading.Event()
+    )
+    # The file was unknown before, so its (now known) hash is reported as an unexpected change.
+    assert len(inp_result.messages) == 1
+    assert str(path) in inp_result.messages[0]
+    assert inp_result.new_hashes == inp_result.all_hashes
+    assert [path for path, _ in inp_result.all_hashes] == [str(path)]
+    assert not inp_result.all_hashes[0][1].is_unknown
+
+
+def test_compute_inp_and_out_hashes(path_tmp: Path):
+    path_inp = path_tmp / "inp.txt"
+    path_inp.write_bytes(b"input")
+    path_out = path_tmp / "out.txt"
+    path_out.write_bytes(b"output")
+
+    inp_result = compute_inp_hashes(
+        [(str(path_inp), FileHash.unknown())], cancel_event=threading.Event()
+    )
+    # The file was unknown before, so its (now known) hash is reported as an unexpected change.
+    assert len(inp_result.messages) == 1
+    assert str(path_inp) in inp_result.messages[0]
+    assert inp_result.new_hashes == inp_result.all_hashes
+    assert [path for path, _ in inp_result.new_hashes] == [str(path_inp)]
+
+    out_result = compute_out_hashes(
+        [(str(path_out), FileHash.unknown())], cancel_event=threading.Event()
+    )
+    assert out_result.messages == []
+    assert [path for path, _ in out_result.new_hashes] == [str(path_out)]
+    assert [path for path, _ in out_result.all_hashes] == [str(path_out)]

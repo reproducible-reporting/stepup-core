@@ -158,6 +158,11 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
   instead of `stepup render-jinja ...`.
   This matches the recommended pattern for extensions that do not need low-level access to
   StepUp internals.
+- File hashing now runs in threads inside the director process
+  instead of subprocesses or forkserver children,
+  which lowers overhead while remaining promptly interruptible.
+  As a result, the "Hashing" row is gone from the resource-usage summary;
+  that time is now counted under "Director".
 - The database schema version has been incremented to 5 because:
     - Directories are no longer stored in the database
       (except for static trees, which are stored as special nodes in the graph.)

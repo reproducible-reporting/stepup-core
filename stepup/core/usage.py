@@ -3,8 +3,8 @@
 """Resource-usage accounting for the director process and its children.
 
 Aggregates CPU time, block-IO operation counts, and peak cgroup memory across the director
-process, step-executed subprocess/forkserver children, and file-hashing subprocess/forkserver
-children, for a compact summary report printed at director shutdown.
+process and step-executed subprocess/forkserver children,
+for a compact summary report printed at director shutdown.
 """
 
 import asyncio
@@ -20,7 +20,6 @@ from .cgroups import find_own_memory_cgroup
 
 __all__ = (
     "CgroupMemorySampler",
-    "ChildOutcome",
     "ResourceAccumulator",
     "ResourceUsage",
     "format_resource_usage",
@@ -45,7 +44,7 @@ class ResourceUsage:
 
     @classmethod
     def from_rusage_diff(
-        cls, ru_self_start, ru_self_end, ru_children_start=None, ru_children_end=None
+        cls, ru_self_start, ru_self_end, ru_children_start, ru_children_end
     ) -> "ResourceUsage":
         """Build from before/after `resource.getrusage()` snapshots.
 
@@ -56,8 +55,7 @@ class ResourceUsage:
             the measured work.
         ru_children_start, ru_children_end
             `resource.getrusage(resource.RUSAGE_CHILDREN)` snapshots taken before and after
-            the measured work. Pass both (or neither): omit for pure-Python work that never
-            spawns subprocesses, pass when the measured work may spawn subprocess children.
+            the measured work.
 
         Returns
         -------
@@ -68,29 +66,11 @@ class ResourceUsage:
         stime = ru_self_end.ru_stime - ru_self_start.ru_stime
         inblock = ru_self_end.ru_inblock - ru_self_start.ru_inblock
         oublock = ru_self_end.ru_oublock - ru_self_start.ru_oublock
-        if ru_children_start is not None and ru_children_end is not None:
-            utime += ru_children_end.ru_utime - ru_children_start.ru_utime
-            stime += ru_children_end.ru_stime - ru_children_start.ru_stime
-            inblock += ru_children_end.ru_inblock - ru_children_start.ru_inblock
-            oublock += ru_children_end.ru_oublock - ru_children_start.ru_oublock
+        utime += ru_children_end.ru_utime - ru_children_start.ru_utime
+        stime += ru_children_end.ru_stime - ru_children_start.ru_stime
+        inblock += ru_children_end.ru_inblock - ru_children_start.ru_inblock
+        oublock += ru_children_end.ru_oublock - ru_children_start.ru_oublock
         return cls(utime=utime, stime=stime, inblock=inblock, oublock=oublock)
-
-
-@attrs.define(frozen=True)
-class ChildOutcome:
-    """What a child (subprocess or forkserver) produced, plus the resources it used."""
-
-    payload: object = attrs.field()
-    """The result on success, or the raised exception on failure.
-
-    For command execution this is a `(returncode, stdout, stderr)` tuple;
-    for hashing (`hash_fork_entry`) this is a `HashResult`.
-    Callers that want to propagate a failure as an exception
-    check `isinstance(payload, BaseException)`.
-    """
-
-    usage: ResourceUsage = attrs.field()
-    """The CPU time and block-IO ops consumed while producing `payload`."""
 
 
 @attrs.define
@@ -192,7 +172,6 @@ class CgroupMemorySampler:
 def format_resource_usage(
     time_start: float,
     step_accumulator: ResourceAccumulator,
-    hash_accumulator: ResourceAccumulator,
     memory_sampler: CgroupMemorySampler | None,
 ) -> tuple[str, str]:
     """Format a resource usage report as a table-like multi-line string for stderr."""
@@ -209,11 +188,8 @@ def format_resource_usage(
         director_stime=ru_self.ru_stime,
         step_utime=step_accumulator.utime,
         step_stime=step_accumulator.stime,
-        hash_utime=hash_accumulator.utime,
-        hash_stime=hash_accumulator.stime,
         director_block_io=f"{ru_self.ru_inblock} / {ru_self.ru_oublock}",
         step_block_io=f"{step_accumulator.inblock} / {step_accumulator.oublock}",
-        hash_block_io=f"{hash_accumulator.inblock} / {hash_accumulator.oublock}",
         director_mib=director_maxrss_mib,
     )
     sampler_reported = False
@@ -226,8 +202,7 @@ def format_resource_usage(
         report += "\n" + CGROUP_UNAVAILABLE
     summary = (
         f"Wall {wall_time:.1f}s, Director {ru_self.ru_utime:.1f}u/{ru_self.ru_stime:.1f}s, "
-        f"Steps {step_accumulator.utime:.1f}u/{step_accumulator.stime:.1f}s, "
-        f"Hashing {hash_accumulator.utime:.1f}u/{hash_accumulator.stime:.1f}s"
+        f"Steps {step_accumulator.utime:.1f}u/{step_accumulator.stime:.1f}s"
     )
     return report, summary
 
@@ -240,11 +215,9 @@ Times in seconds                 user         sys       wall
   Elapsed                           -           - {wall_time:10.3f}
   Director                 {director_utime:10.3f}  {director_stime:10.3f}          -
   Steps                    {step_utime:10.3f}  {step_stime:10.3f}          -
-  Hashing                  {hash_utime:10.3f}  {hash_stime:10.3f}          -
 ────────────────────────────────────────────────────────────
 Director Blocked I/O ops (In / Out) {director_block_io:>24}
 Steps Blocked I/O ops (In / Out)    {step_block_io:>24}
-Hashing Blocked I/O ops (In / Out)  {hash_block_io:>24}
 ────────────────────────────────────────────────────────────
 Director Peak Memory (incl. shared libs)       {director_mib:9.1f} MiB"""
 

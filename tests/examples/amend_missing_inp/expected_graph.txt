@@ -31,14 +31,14 @@ step:./work.py
               source   file:work.py
 
 step:echo Will be deleted by accident > missing.txt
-               state = SUCCEEDED
+               state = PENDING
                 need = DEFAULT
              creator   step:./plan.py
              product   file:missing.txt
                 sink   file:missing.txt
 
 file:missing.txt
-               state = BUILT
+               state = AWAITED
              creator   step:echo Will be deleted by accident > missing.txt
               source   step:echo Will be deleted by accident > missing.txt
                 sink   step:./work.py

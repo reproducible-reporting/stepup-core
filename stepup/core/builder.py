@@ -176,9 +176,24 @@ class Builder:
     async def start_task(self, job: Job):
         """Start an asyncio task that runs the job in the executor."""
         logger.info("Run %s", job.name)
-        task = asyncio.create_task(job.coro(self.executor), name=job.name)
+        task = asyncio.create_task(self._run_with_progress(job), name=job.name)
         self.running_tasks[task] = job
         task.add_done_callback(self._task_done)
+
+    async def _run_with_progress(self, job: Job):
+        """Run `job` on the executor, bracketed by progress-bar start/stop calls.
+
+        The bracket lives here, around the whole job coroutine, rather than at the
+        individual start/stop points inside `Executor`: that guarantees a `stop_job` for
+        every `start_job`, regardless of which internal path the job takes (skip, rerun,
+        early failure, ...), and it shows the job as running from the moment its task
+        begins, including input hash computation, not just once the command itself starts.
+        """
+        await self.reporter.start_job(job.prefix, job.step.label, job.step.i)
+        try:
+            return await job.coro(self.executor)
+        finally:
+            await self.reporter.stop_job(job.step.i)
 
     def _task_done(self, task: asyncio.Task):
         job = self.running_tasks.pop(task)

@@ -25,14 +25,14 @@ file:work.py
                 sink   step:./work.py
 
 step:echo hi > f1.txt
-               state = SUCCEEDED
+               state = PENDING
                 need = DEFAULT
              creator   step:./plan.py
              product   file:f1.txt
                 sink   file:f1.txt
 
 file:f1.txt
-               state = BUILT
+               state = OUTDATED
              creator   step:echo hi > f1.txt
               source   step:echo hi > f1.txt
                 sink   step:cat f1.txt f3.txt > f4.txt

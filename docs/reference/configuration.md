@@ -159,7 +159,7 @@ separated by slashes, where applicable.
 
 `forkserver` / `STEPUP_BUILD_FORKSERVER` / `--forkserver`, `--no-forkserver`
 
-:   Set to `true` to use a forkserver for Python step execution and file hashing,
+:   Set to `true` to use a forkserver for Python step execution,
     which reduces startup overhead.
     This is enabled by default on Linux.
 

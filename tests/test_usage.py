@@ -8,7 +8,6 @@ import pytest
 
 from stepup.core.usage import (
     CgroupMemorySampler,
-    ChildOutcome,
     ResourceAccumulator,
     ResourceUsage,
 )
@@ -32,16 +31,6 @@ def test_resource_usage_defaults():
     assert usage_.oublock == 0
 
 
-def test_resource_usage_from_rusage_diff_self_only():
-    ru_start = SimpleNamespace(ru_utime=1.0, ru_stime=2.0, ru_inblock=3, ru_oublock=4)
-    ru_end = SimpleNamespace(ru_utime=1.5, ru_stime=2.25, ru_inblock=5, ru_oublock=9)
-    usage_ = ResourceUsage.from_rusage_diff(ru_start, ru_end)
-    assert usage_.utime == pytest.approx(0.5)
-    assert usage_.stime == pytest.approx(0.25)
-    assert usage_.inblock == 2
-    assert usage_.oublock == 5
-
-
 def test_resource_usage_from_rusage_diff_self_and_children():
     ru_self_start = SimpleNamespace(ru_utime=1.0, ru_stime=2.0, ru_inblock=3, ru_oublock=4)
     ru_self_end = SimpleNamespace(ru_utime=1.5, ru_stime=2.25, ru_inblock=5, ru_oublock=9)
@@ -55,13 +44,6 @@ def test_resource_usage_from_rusage_diff_self_and_children():
     assert usage_.stime == pytest.approx(0.55)
     assert usage_.inblock == 5
     assert usage_.oublock == 6
-
-
-def test_child_outcome_fields():
-    usage_ = ResourceUsage(utime=1.0, stime=0.5, inblock=2, oublock=3)
-    outcome = ChildOutcome(payload=("ok", 42), usage=usage_)
-    assert outcome.payload == ("ok", 42)
-    assert outcome.usage is usage_
 
 
 def test_resource_accumulator_add_usage():

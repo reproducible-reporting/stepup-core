@@ -99,8 +99,12 @@ _HASH_TRANSITIONS: dict[tuple[HashUpdateCause, FileState, bool], tuple[FileState
     (HashUpdateCause.EXTERNAL, FileState.OUTDATED, False): (FileState.AWAITED, "deleted"),
     (HashUpdateCause.SUCCEEDED, FileState.OUTDATED, True): (FileState.BUILT, "completed"),
     (HashUpdateCause.SUCCEEDED, FileState.AWAITED, True): (FileState.BUILT, "completed"),
+    (HashUpdateCause.FAILED, FileState.STATIC, True): (FileState.STATIC, "updated"),
+    (HashUpdateCause.FAILED, FileState.BUILT, True): (FileState.OUTDATED, "updated"),
     (HashUpdateCause.FAILED, FileState.OUTDATED, True): (FileState.OUTDATED, None),
     (HashUpdateCause.FAILED, FileState.AWAITED, True): (FileState.OUTDATED, None),
+    (HashUpdateCause.FAILED, FileState.STATIC, False): (FileState.MISSING, "deleted"),
+    (HashUpdateCause.FAILED, FileState.BUILT, False): (FileState.AWAITED, "deleted"),
     (HashUpdateCause.FAILED, FileState.OUTDATED, False): (FileState.AWAITED, None),
     (HashUpdateCause.FAILED, FileState.AWAITED, False): (FileState.AWAITED, None),
     (HashUpdateCause.CONFIRMED, FileState.UNCONFIRMED, True): (FileState.STATIC, "completed"),
@@ -513,7 +517,7 @@ class Workflow(Trellis):
             # Mark all sinks pending.
             for step in file.sinks(Step):
                 self.mark_step_pending(step)
-        elif state == FileState.AWAITED:
+        elif state in (FileState.AWAITED, FileState.OUTDATED):
             # Mark the creator pending, as to make sure the file is rebuilt.
             creator = file.creator()
             if creator is not None and creator.kind() == "step":

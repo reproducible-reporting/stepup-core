@@ -21,6 +21,7 @@ from rich.theme import Theme
 from .constants import FAIL_LOG, SUCCESS_LOG, WARNING_LOG
 from .enums import StepState
 from .rpc import AsyncRPCClient, BaseAsyncRPCClient, DummyAsyncRPCClient, allow_rpc
+from .utils import escape_command_display
 
 logger = logging.getLogger(__name__)
 
@@ -84,13 +85,13 @@ class ReporterClient:
         if self.client is not None:
             await self.client.call.set_njob(njob)
 
-    async def start_step(self, description: str, step_i: int):
+    async def start_job(self, prefix: str, description: str, step_i: int):
         if self.client is not None:
-            await self.client.call.start_step(description, step_i)
+            await self.client.call.start_job(prefix, description, step_i)
 
-    async def stop_step(self, step_i: int):
+    async def stop_job(self, step_i: int):
         if self.client is not None:
-            await self.client.call.stop_step(step_i)
+            await self.client.call.stop_job(step_i)
 
     async def update_step_counts(self, step_counter: dict[StepState, int]):
         if self.client is not None:
@@ -152,13 +153,13 @@ class StepUpProgressBar(ProgressBar):
         self._njob = njob
         self.request_refresh()
 
-    def start_step(self, start: float, description: str, step_i: int):
-        """Start a step in the progress bar."""
-        self._running[step_i] = (start, description)
+    def start_job(self, start: float, prefix: str, description: str, step_i: int):
+        """Start a job in the progress bar."""
+        self._running[step_i] = (start, prefix, description)
         self.request_refresh()
 
-    def stop_step(self, step_i: int):
-        """Stop a step in the progress bar."""
+    def stop_job(self, step_i: int):
+        """Stop a job in the progress bar."""
         self._running.pop(step_i, None)
         self.request_refresh()
 
@@ -169,13 +170,14 @@ class StepUpProgressBar(ProgressBar):
             if len(running) < len(self._running):
                 rule_message += f" ({len(running)} shown)"
             yield Rule(rule_message, style="bold")
-            for start, description in running:
+            for start, prefix, description in running:
                 elapsed = perf_counter() - start
                 text = Text(
                     no_wrap=True,
                     overflow="crop",
                 )
-                text.append(f"{elapsed:10.0f}", "bold gray50")
+                text.append(f"{elapsed:6.0f} ", "bold gray50")
+                text.append(f"{prefix:>3s}", "bold gray50")
                 text.append(f" │ {description}")
                 yield text
         yield from super().get_renderables()
@@ -189,7 +191,7 @@ class ReporterHandler:
     _step_counts: dict[StepState, int] = attrs.field(init=False, factory=dict)
     _num_digits: int = attrs.field(init=False, default=3)
     console: Console = attrs.field(init=False)
-    progress_bar: ProgressBar | None = attrs.field(init=False)
+    progress_bar: StepUpProgressBar | None = attrs.field(init=False)
     task_id_step: TaskID | None = attrs.field(init=False)
     start: float = attrs.field(init=False, factory=perf_counter)
 
@@ -298,14 +300,15 @@ class ReporterHandler:
             self.progress_bar.set_njob(njob)
 
     @allow_rpc
-    def start_step(self, description: str, step_i: int):
+    def start_job(self, prefix: str, description: str, step_i: int):
         if self.progress_bar is not None:
-            self.progress_bar.start_step(perf_counter(), description, step_i)
+            description = escape_command_display(description)
+            self.progress_bar.start_job(perf_counter(), prefix, description, step_i)
 
     @allow_rpc
-    def stop_step(self, step_i: int):
+    def stop_job(self, step_i: int):
         if self.progress_bar is not None:
-            self.progress_bar.stop_step(step_i)
+            self.progress_bar.stop_job(step_i)
 
     @allow_rpc
     def update_step_counts(self, step_counts: dict[StepState, int]):

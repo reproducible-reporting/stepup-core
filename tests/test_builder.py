@@ -3,6 +3,9 @@
 """Unit tests for stepup.core.builder."""
 
 import logging
+from types import SimpleNamespace
+
+import pytest
 
 from stepup.core.builder import Builder
 from stepup.core.executor import Executor
@@ -28,6 +31,8 @@ def _make_builder(scheduler: Scheduler, workflow: Workflow) -> Builder:
         explain_rerun=False,
         keep_going=False,
         live_progress=False,
+        do_joblog=False,
+        infra_env={},
     )
     return Builder(
         njob=1,
@@ -81,3 +86,69 @@ async def test_stop_swallows_flush_failure(wfs: Workflow, caplog, monkeypatch):
         await builder.stop()  # must not raise
 
     assert "Failed to flush step durations" in caplog.text
+
+
+class _FakeReporter:
+    """Records `start_job()`/`stop_job()` calls instead of sending them anywhere."""
+
+    def __init__(self):
+        self.events = []
+
+    async def start_job(self, prefix, description, step_i):
+        self.events.append(("start", prefix, description, step_i))
+
+    async def stop_job(self, step_i):
+        self.events.append(("stop", step_i))
+
+
+def _make_job(*, prefix: str, step_i: int, label: str, coro):
+    """A minimal stand-in for `Job`, sufficient for `_run_with_progress()`."""
+    return SimpleNamespace(prefix=prefix, step=SimpleNamespace(i=step_i, label=label), coro=coro)
+
+
+def _make_progress_builder(reporter: _FakeReporter) -> Builder:
+    return Builder(
+        njob=1,
+        watcher=None,
+        scheduler=None,
+        workflow=None,
+        db=None,
+        reporter=reporter,
+        live_progress=False,
+        executor=None,
+    )
+
+
+async def test_run_with_progress_brackets_a_successful_job():
+    """`start_job`/`stop_job` must fire, in order, around the job's own coroutine."""
+    reporter = _FakeReporter()
+    builder = _make_progress_builder(reporter)
+
+    async def inner(executor):
+        assert ("start", "RUN", "echo hi", 1) in reporter.events
+        return "done"
+
+    job = _make_job(prefix="RUN", step_i=1, label="echo hi", coro=inner)
+
+    result = await builder._run_with_progress(job)
+
+    assert result == "done"
+    assert reporter.events == [("start", "RUN", "echo hi", 1), ("stop", 1)]
+
+
+async def test_run_with_progress_still_stops_when_job_raises():
+    """`stop_job` must fire even when the job coroutine fails, so a step can never be left
+    stuck in the progress bar (this is the guarantee that motivated moving the bracket here
+    instead of leaving scattered start/stop calls inside `Executor`)."""
+    reporter = _FakeReporter()
+    builder = _make_progress_builder(reporter)
+
+    async def inner(executor):
+        raise ValueError("boom")
+
+    job = _make_job(prefix="SKP", step_i=2, label="false", coro=inner)
+
+    with pytest.raises(ValueError, match="boom"):
+        await builder._run_with_progress(job)
+
+    assert reporter.events == [("start", "SKP", "false", 2), ("stop", 2)]

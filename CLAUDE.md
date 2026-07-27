@@ -177,14 +177,20 @@ StepUp runs as two process types:
   Manages `Builder`, `Watcher`, and `Scheduler`.
   Steps run *inside* the director's event loop as asyncio tasks.
 - **Executor** (`executor.py`):
-  Runs each step as an asyncio task. Commands run as asyncio subprocesses (shell / direct
-  exec) or in a forkserver child (Python scripts and console-script entry points).
+  Runs each step as an asyncio task, tying the step lifecycle (skip/run/postpone decisions,
+  hash bookkeeping, reporting) together.
   A single `Executor` instance serves all concurrent steps; `--jobs` is the
   concurrency limit. Step child processes call back into the director over its RPC socket
   (e.g. `amend()`, `step()`).
-- **Hashing** (`hasher.py`):
-  File/step hashing — the only blocking work — is offloaded to a separate process: a
-  forkserver child when `--forkserver` is on, otherwise a `_stepup_hasher` subprocess.
+  Launching the step's command and hashing its files are delegated to `run.py` and
+  `hash.py` respectively (see below).
+- **Hashing** (`hash.py`):
+  File/step hashing — the only blocking work — runs in a dedicated `ThreadWorker`,
+  one thread per hash computation inside the director process, see `run.py`.
+  The chunked digest loop releases the GIL and checks a cancel event between 256 KiB chunks,
+  so hashes are concurrent and promptly interruptible.
+  The pure functions `compute_inp_hashes` / `compute_out_hashes` / `compute_both_hashes` are
+  what actually runs inside a `ThreadWorker`; `Executor` wraps them via `_run_work_thread`.
 - **TUI** (`tui.py`):
   Spawns the director as a subprocess and connects to its RPC socket as a client
   (e.g. to forward keyboard commands). It also serves the reporter RPC socket itself —
@@ -203,6 +209,21 @@ Naming gotcha — two similar flags with different meanings:
   whether a running step may continue after amending its inputs,
   or must abort because some amended inputs are not yet available.
 
+### Step Launching and Interruption (`run.py`)
+
+`run.py` owns "run a step's command as a child process and return a `ChildOutcome`,"
+independent of the step lifecycle in `executor.py`:
+command classification (subshell vs. `*.py` script vs. console-script entry point vs. plain
+exec), spawning the subprocess or forkserver child, and capturing its output/return code/
+resource usage. `launch_command()` is its single dispatch entry point, called from
+`Executor.run()`.
+
+`run.py` also defines `Worker`, the base class for anything that is the in-flight work of a
+`Run` and can be interrupted by `Executor.interrupt()`: `SubprocessWorker` and
+`ForkserverWorker` signal the underlying OS process; `ThreadWorker`
+cancels a computation instead, so it overrides `interrupt()` directly
+rather than using `Worker`'s signal-delivery template.
+
 ### Workflow Graph (`trellis.py`, `workflow.py`)
 
 The core data structure is a combined **provenance** and **dependency** graph stored in SQLite.
@@ -210,7 +231,8 @@ The core data structure is a combined **provenance** and **dependency** graph st
 `Workflow` (in `workflow.py`) extends it with concrete node types:
 
 - **`File`** (`file.py`):
-  Tracks files with states `STATIC | AWAITED | BUILT | OUTDATED | MISSING | VOLATILE`.
+  Tracks files with states
+  `UNCONFIRMED | MISSING | STATIC | AWAITED | BUILT | OUTDATED | VOLATILE`.
 - **`Step`** (`step.py`):
   A build step (command + inputs/outputs).
   States: `PENDING | RUNNING | CHECKING | SUCCEEDED | FAILED`.
@@ -224,7 +246,7 @@ The `DBSession` in `sqlite3.py` serializes writes.
 
 The schema version is `Trellis.schema_version` (in `trellis.py`), written to the database via
 `PRAGMA user_version`. On a version mismatch, the database is **wiped and recreated** from
-scratch (`wipe_database`) — there is no `ALTER TABLE` migration path.
+scratch (`_wipe_database`) — there is no `ALTER TABLE` migration path.
 
 Note that `DBSession.initialize()` re-executes the full schema (`CREATE TABLE IF NOT EXISTS`,
 `CREATE INDEX IF NOT EXISTS`, ...) via `executescript` on **every** database open, regardless of
@@ -281,7 +303,7 @@ extract and re-apply the affixes when needed.
 `plan.py` scripts call functions in `api.py` (e.g., `static()`, `step()`, `glob()`)
 which send RPC calls to the director.
 The module must not be imported by other `stepup.core` modules,
-except `interact.py` (top-level import) and `call.py`, `script.py`, `executor.py`,
+except `interact.py` (top-level import) and `call.py`, `script.py`, `run.py`,
 `render_jinja.py`, and `extapi.py` (local, inside-function imports only).
 
 ### Extension Developer API (`extapi.py`)
@@ -302,7 +324,7 @@ circular dependencies at module load time.
    concurrency limit, starts it as an asyncio task on the shared `Executor`.
 3. `Executor` (`executor.py`) runs the step's command (subprocess or forkserver child),
    which may produce more RPC calls back to the director.
-4. The executor computes file hashes in a separate process and updates
+4. The executor computes file hashes in a background thread and updates
    `FileState` and `StepState` in the workflow.
 
 ### Named Globs (`nglob.py`)
@@ -327,8 +349,8 @@ Profiling output (`perf`, sqllog, joblog) can be analyzed with `tools/analyze_pe
 
 Several other `STEPUP_*` / `STEPUP_BUILD_*` variables exist for configuration
 (e.g. `STEPUP_BUILD_JOBS`, `STEPUP_BUILD_RESOURCES`, `STEPUP_BUILD_KEEP_GOING`,
-`STEPUP_RESOURCES`, `STEPUP_LOG_LEVEL`, `STEPUP_MAX_OUTPUT_SIZE`, `STEPUP_PATH_FILTER`,
-`STEPUP_RENDER_JINJA`) — see `docs/reference/configuration.md` for the full list.
+`STEPUP_LOG_LEVEL`, `STEPUP_MAX_OUTPUT_SIZE`, `STEPUP_PATH_FILTER`)
+— see `docs/reference/configuration.md` for the full list.
 Most StepUp-3-era `STEPUP_*` variables gained a `STEPUP_BUILD_` prefix in the 4.0 migration;
 see `docs/migration/from_3x_to_40.md` before assuming an old name still applies.
 

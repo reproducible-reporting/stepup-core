@@ -24,14 +24,14 @@ file:work.py
                 sink   step:./work.py
 
 step:echo hi > f1.txt
-               state = SUCCEEDED
+               state = PENDING
                 need = DEFAULT
              creator   step:./plan.py
              product   file:f1.txt
                 sink   file:f1.txt
 
 file:f1.txt
-               state = BUILT
+               state = AWAITED
              creator   step:echo hi > f1.txt
               source   step:echo hi > f1.txt
                 sink   step:./work.py

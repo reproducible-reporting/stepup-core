@@ -19,4 +19,5 @@ Input changed unexpectedly: trigger.txt (digest 84325551 ➜ 92e78d0b, size 3 �
    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
      PHASE │ watch
    UPDATED │ trigger.txt
+ UNCHANGED │ trigger.txt
   DIRECTOR │ See you!

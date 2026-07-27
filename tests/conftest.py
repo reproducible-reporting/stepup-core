@@ -7,6 +7,7 @@ import contextlib
 import hashlib
 import os
 import stat
+import threading
 from collections.abc import AsyncGenerator, AsyncIterator
 
 import pytest
@@ -179,3 +180,18 @@ async def wfp() -> AsyncIterator[Workflow]:
         yield workflow
         async with db:
             workflow.check_consistency()
+
+
+class TrippingEvent(threading.Event):
+    """A cancel event whose `is_set` starts returning True after `trip_after` polls."""
+
+    def __init__(self, trip_after: int):
+        super().__init__()
+        self.trip_after = trip_after
+        self.polls = 0
+
+    def is_set(self) -> bool:
+        self.polls += 1
+        if self.polls > self.trip_after:
+            self.set()
+        return super().is_set()

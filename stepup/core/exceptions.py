@@ -52,3 +52,11 @@ class TUIError(RuntimeError):
     (`ERROR: ...` on stderr) instead of a full traceback, then exit with
     `ReturnCode.INTERNAL`.
     """
+
+
+class RunError(RuntimeError):
+    """An error raised by the `run` module while executing a command."""
+
+
+class HashCancelledError(Exception):
+    """Raised from `FileHash.regen` when `cancel_event` was set."""

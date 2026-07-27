@@ -46,7 +46,12 @@ class Job:
 
     @property
     def name(self) -> str:
-        """A human-readable name for the job."""
+        """A name for the job for logging purposes."""
+        return f"{self.prefix}: {self.step.label}"
+
+    @property
+    def prefix(self) -> str:
+        """A 3-letter code for the kind of job, shown in the progress bar."""
         raise NotImplementedError
 
     def coro(self, executor: "Executor"):
@@ -69,8 +74,8 @@ class ValidateAmendedJob(Job):
     """
 
     @property
-    def name(self) -> str:
-        return f"VALIDATE: {self.step.label}"
+    def prefix(self) -> str:
+        return "VAL"
 
     def coro(self, executor: "Executor"):
         inner = executor.validate_amended_job(
@@ -88,9 +93,8 @@ class RunJob(Job):
     """
 
     @property
-    def name(self) -> str:
-        prefix = "EXECUTE" if self.step_hash is None else "SKIP"
-        return f"{prefix}: {self.step.label}"
+    def prefix(self) -> str:
+        return "RUN" if self.step_hash is None else "SKP"
 
     def coro(self, executor: "Executor"):
         if self.step_hash is None:
