@@ -2043,7 +2043,7 @@ async def test_skip_amend_detached_inputs(wfp: Workflow):
         assert {(r.path, r.detached, r.amended) for r in step.inp_paths(include_detached=True)} == {
             ("foo", False, True)
         }
-        assert set(step.env_deps(yield_amended=True)) == {("AAA", True)}
+        assert set(step.env_deps()) == {"AAA"}
         assert {(r.path, r.detached, r.amended) for r in step.out_paths(include_detached=True)} == {
             ("bar", False, False),
         }
@@ -2062,7 +2062,7 @@ async def test_skip_amend_detached_inputs(wfp: Workflow):
         assert {(r.path, r.detached, r.amended) for r in step.inp_paths(include_detached=True)} == {
             ("foo", True, True)
         }
-        assert set(step.env_deps(yield_amended=True)) == {("AAA", True)}
+        assert set(step.env_deps()) == {"AAA"}
         assert {(r.path, r.detached, r.amended) for r in step.out_paths(include_detached=True)} == {
             ("bar", False, False),
         }

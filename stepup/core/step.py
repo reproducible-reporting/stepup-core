@@ -680,22 +680,16 @@ class Step(Node):
         """Iterate over missing paths created by this step."""
         yield from self._paths("product", filter_states=(FileState.MISSING,))
 
-    def env_deps(self, *, amended: bool | None = None, yield_amended: bool = False):
+    def env_deps(self, *, amended: bool | None = None):
         """Iterate over used environment variable names (not values)."""
-        if yield_amended:
-            sql = "SELECT name, amended FROM env_var WHERE node = ?"
-        else:
-            sql = "SELECT name FROM env_var WHERE node = ?"
+        sql = "SELECT name FROM env_var WHERE node = ?"
         if amended is not None:
             sql += " AND"
             if not amended:
                 sql += " NOT"
             sql += " amended = 1"
         for row in self.db.execute(sql, (self.i,)):
-            if yield_amended:
-                yield row[0], bool(row[1])
-            else:
-                yield row[0]
+            yield row[0]
 
     def nglob_multis(self) -> Iterator[NGlobMulti]:
         """Iterate of nglob_multis used by this step."""
