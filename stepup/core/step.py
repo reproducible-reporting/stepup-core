@@ -13,6 +13,7 @@ import attrs
 from path import Path
 
 from .enums import REGULAR_OUTPUT_STATES, FileState, Need, StepState
+from .exceptions import GraphError
 from .file import File
 from .hash import FileHash, StepHash
 from .nglob import NGlobMulti
@@ -940,9 +941,14 @@ class Step(Node):
         # Detach static file definitions
         sql = (
             "SELECT i, label FROM node JOIN file ON node.i = file.node "
-            "WHERE creator = ? AND state in (?, ?)"
+            "WHERE creator = ? AND state in (?, ?, ?)"
         )
-        data = (self.i, FileState.STATIC.value, FileState.MISSING.value)
+        data = (
+            self.i,
+            FileState.STATIC.value,
+            FileState.MISSING.value,
+            FileState.UNCONFIRMED.value,
+        )
         for i, label in self.db.execute(sql, data):
             file = File(self.graph, i, label)
             file.detach()
@@ -1061,6 +1067,21 @@ class Step(Node):
             # An unsuccessful step is not skippable, so we're removing its hash.
             self.delete_hash()
         else:
+            # Check that there are no unconfirmed static files left behind by the step.
+            sql = (
+                "SELECT label FROM node JOIN file ON node.i = file.node "
+                "WHERE creator = ? AND kind = 'file' AND state = ? AND NOT detached"
+            )
+            unconfirmed_paths = [
+                path for (path,) in self.db.execute(sql, (self.i, FileState.UNCONFIRMED.value))
+            ]
+            if unconfirmed_paths:
+                # Note: this should never happen. When it does, it must have been caused by a bug.
+                raise GraphError(
+                    f"Step completed with unconfirmed static file(s): {self.label} -> "
+                    + ", ".join(unconfirmed_paths)
+                )
+
             logger.info("Succeeded step: %s", self.label)
             self.set_state(StepState.SUCCEEDED)
             # Update states, needed for files that have not changed since previous run.

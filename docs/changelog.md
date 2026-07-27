@@ -170,6 +170,8 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
     - The step state `QUEUED` has been removed, as it is no longer needed.
     - A new step state `CHECKING` has been added
       for steps that are being hash-checked for possible skipping.
+    - The files state `UNCONFIRMED` has been added to distinguish truly missing files
+      from those who still need to be hash-checked.
     - `step_output` and `step_subprocess` tables were added.
     - SQLite's `ON DELETE CASCADE` feature is now used for all satellite tables of the `step` table.
     - SQLite triggers are used to replace some of the Python logic by lower-level database logic.

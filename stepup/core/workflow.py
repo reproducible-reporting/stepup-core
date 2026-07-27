@@ -39,24 +39,24 @@ __all__ = ("Workflow",)
 logger = logging.getLogger(__name__)
 
 
-# Find all inputs of steps (recursively through creator-product relations) that are missing,
-# and whose creator is a static tree.
+# Find all inputs of steps (recursively through creator-product relations) that are
+# unconfirmed, and whose creator is a static tree.
 RECURSE_DEFERRED_INPUTS = f"""
-WITH RECURSIVE missing(i, label, creator_kind) AS (
+WITH RECURSIVE unconfirmed(i, label, creator_kind) AS (
     SELECT node.i, node.label, cnode.kind FROM node
     JOIN node AS cnode ON node.creator = cnode.i
     JOIN file ON node.i = file.node
     JOIN dependency ON node.i = source
-    WHERE sink = ? AND node.kind = 'file' AND file.state = {FileState.MISSING.value}
+    WHERE sink = ? AND node.kind = 'file' AND file.state = {FileState.UNCONFIRMED.value}
     UNION
     SELECT node.i, node.label, cnode.kind FROM node
     JOIN node AS cnode ON node.creator = cnode.i
     JOIN file ON node.i = file.node
     JOIN dependency ON node.i = source
-    JOIN missing ON sink = missing.i
-    WHERE node.kind = 'file' AND file.state = {FileState.MISSING.value}
+    JOIN unconfirmed ON sink = unconfirmed.i
+    WHERE node.kind = 'file' AND file.state = {FileState.UNCONFIRMED.value}
 )
-SELECT i, label FROM missing WHERE creator_kind = 'st'
+SELECT i, label FROM unconfirmed WHERE creator_kind = 'st'
 """
 
 # Flags the check_after bit of every step with an in-scope (declared-DEFAULT or not; see
@@ -109,11 +109,22 @@ _HASH_TRANSITIONS: dict[tuple[HashUpdateCause, FileState, bool], tuple[FileState
     (HashUpdateCause.FAILED, FileState.AWAITED, True): (FileState.OUTDATED, None),
     (HashUpdateCause.FAILED, FileState.OUTDATED, False): (FileState.AWAITED, None),
     (HashUpdateCause.FAILED, FileState.AWAITED, False): (FileState.AWAITED, None),
-    (HashUpdateCause.CONFIRMED, FileState.MISSING, True): (FileState.STATIC, "completed"),
+    (HashUpdateCause.CONFIRMED, FileState.UNCONFIRMED, True): (FileState.STATIC, "completed"),
+    (HashUpdateCause.CONFIRMED, FileState.UNCONFIRMED, False): (FileState.MISSING, "completed"),
     # Two steps can race to be the first to use the same static-tree file: both get told to
     # check and confirm it before either confirmation is processed. The second confirmation to
     # arrive is a harmless duplicate of the first; it re-stores the hash but takes no action.
     (HashUpdateCause.CONFIRMED, FileState.STATIC, True): (FileState.STATIC, None),
+    (HashUpdateCause.CONFIRMED, FileState.MISSING, False): (FileState.MISSING, None),
+    # The corresponding cross-outcome races: the two confirmations disagree because the
+    # file's existence changed on disk between them. Trust the later report.
+    (HashUpdateCause.CONFIRMED, FileState.MISSING, True): (FileState.STATIC, "completed"),
+    (HashUpdateCause.CONFIRMED, FileState.STATIC, False): (FileState.MISSING, "deleted"),
+    # Only the changed/deleted flavors of crash recovery for a stray UNCONFIRMED file
+    # are handled here; the unchanged flavor goes through a step rerun instead
+    # (see startup.py: scan_file_changes and the RUNNING -> FAILED reset).
+    (HashUpdateCause.EXTERNAL, FileState.UNCONFIRMED, True): (FileState.STATIC, "updated"),
+    (HashUpdateCause.EXTERNAL, FileState.UNCONFIRMED, False): (FileState.MISSING, "deleted"),
 }
 
 
@@ -127,14 +138,16 @@ class SupplyInfo:
     available: bool = attrs.field()
     """True if possibly available, False if the certainly unavailable.
 
-    If False, the file is AWAITED, OUTDATED or VOLATILE, and thus certainly unavailable.
-    If True, the file is BUILT, MISSING or STATIC.
-    In case of a MISSING file, it still needs to be confirmed as STATIC,
+    If False, the file is AWAITED, OUTDATED, VOLATILE or MISSING, and thus certainly unavailable.
+    A MISSING file only becomes available again at a build boundary
+    (watch phase or restart), never within the current build.
+    If True, the file is BUILT, UNCONFIRMED or STATIC.
+    In case of an UNCONFIRMED file, it still needs to be confirmed as STATIC (or MISSING),
     but we cannot report it as unavailable yet, hence the True value.
     """
 
     is_deferred: bool = attrs.field()
-    """True if the file attribute is MISSING and needs to be checked."""
+    """True if the file attribute is UNCONFIRMED and needs to be checked."""
 
     new_idep: int | None = attrs.field()
     """Dependency identifier when the relation is new, None otherwise."""
@@ -260,7 +273,7 @@ class Workflow(Trellis):
         # Need to (re)initialize the boot steps.
         for node in nodes.values():
             node.detach()
-        to_check = self.declare_missing(self.root, ["plan.py"])
+        to_check = self.declare_unconfirmed(self.root, ["plan.py"])
         checked = [(path, file_hash.regen(path)) for path, file_hash in to_check]
         self.update_file_hashes(checked, HashUpdateCause.CONFIRMED)
         self.define_step(self.root, command, inp_paths=["plan.py"], need=Need.PLAN, safe=True)
@@ -349,7 +362,7 @@ class Workflow(Trellis):
             yield row[0], FileState(row[1])
 
     def missing_paths(self) -> Iterator[str]:
-        """Iterate over static files that have been deleted or were never confirmed."""
+        """Iterate over static files that are confirmed absent (deleted or never present)."""
         sql = (
             "SELECT label FROM node JOIN file ON node.i = file.node "
             "WHERE state = ? AND NOT detached"
@@ -661,8 +674,8 @@ class Workflow(Trellis):
             if st is None:
                 file = self.create(File, None, path, state=FileState.AWAITED)
             else:
-                self._raise_if_forbidden_target(path, FileState.MISSING)
-                file = self.create(File, st, path, state=FileState.MISSING)
+                self._raise_if_forbidden_target(path, FileState.UNCONFIRMED)
+                file = self.create(File, st, path, state=FileState.UNCONFIRMED)
                 is_deferred = True
                 available = True
             self.put_dir_queue(Path(path).parent)
@@ -671,8 +684,8 @@ class Workflow(Trellis):
             if state == FileState.VOLATILE:
                 raise GraphError(f"Input is volatile: {path}")
             self._raise_if_forbidden_target(path, state)
-            available = state in (FileState.BUILT, FileState.STATIC, FileState.MISSING)
-            if state == FileState.MISSING:
+            available = state in (FileState.BUILT, FileState.STATIC, FileState.UNCONFIRMED)
+            if state == FileState.UNCONFIRMED:
                 is_deferred = True
         new_relation = (
             self.db.execute(
@@ -738,7 +751,7 @@ class Workflow(Trellis):
         ]
 
     def _declare_file(self, creator: Node, path: str, file_state: FileState) -> File:
-        """Create (or recycle) a file with a MISSING, AWAITED or VOLATILE file state.
+        """Create (or recycle) a file with an UNCONFIRMED, AWAITED or VOLATILE file state.
 
         Parameters
         ----------
@@ -759,7 +772,9 @@ class Workflow(Trellis):
         if file_state == FileState.BUILT:
             raise ValueError("Cannot create a BUILT file. It must be AWAITED first.")
         if file_state == FileState.STATIC:
-            raise ValueError("Cannot create a STATIC file. It must be MISSING first.")
+            raise ValueError("Cannot create a STATIC file. It must be UNCONFIRMED first.")
+        if file_state == FileState.MISSING:
+            raise ValueError("Cannot create a MISSING file. It must be UNCONFIRMED first.")
         if file_state == FileState.VOLATILE and path.endswith(os.sep):
             raise GraphError("A volatile output cannot be a directory.")
         if not (creator.kind() == "st" or self._matching_static_tree(path) is None):
@@ -781,7 +796,7 @@ class Workflow(Trellis):
         """Validate targets against the loaded graph and flag affected steps for recompute.
 
         Declaration-time validation (in `_declare_file` and `_resolve_supply_file`) only
-        runs when `define_step`/`amend_step`/`declare_missing` are actually called, which
+        runs when `define_step`/`amend_step`/`declare_unconfirmed` are actually called, which
         does not happen for a database-resumed run against an unchanged `plan.py`. Call
         this once at director startup, after the boot/resume step
         (`DirectorHandler.initialize_boot`/`startup_from_db`) so that a changed `plan.py`
@@ -801,9 +816,10 @@ class Workflow(Trellis):
         Raises
         ------
         GraphError
-            When an exact target matches a `VOLATILE`, `STATIC` or `MISSING` file whose
-            creator chain has no `PENDING` step, i.e. the declaration producing that file
-            state is not going to be re-evaluated. Never raised for directory targets.
+            When an exact target matches a `VOLATILE`, `STATIC`, `MISSING` or `UNCONFIRMED`
+            file whose creator chain has no `PENDING` step, i.e. the declaration producing
+            that file state is not going to be re-evaluated. Never raised for directory
+            targets.
         """
         # Stale TARGET values in _implied_need (left behind by a previous run with a
         # different target set) must be recomputed; over-flagging is always safe since
@@ -885,7 +901,7 @@ class Workflow(Trellis):
         return bool(row[0])
 
     def _build_to_check(self, deferred: Collection[Node]) -> list[tuple[str, FileHash]]:
-        """Convert a list of MISSING file nodes to a list of (path, file_hash) tuples.
+        """Convert a list of UNCONFIRMED file nodes to a list of (path, file_hash) tuples.
 
         This list is intended to be returned to the caller, so the validity of the files
         can be checked and confirmed as static in a follow-up RPC call.
@@ -893,7 +909,7 @@ class Workflow(Trellis):
         Parameters
         ----------
         deferred
-            MISSING file nodes that match a static tree.
+            UNCONFIRMED file nodes that match a static tree.
 
         Returns
         -------
@@ -917,8 +933,13 @@ class Workflow(Trellis):
     # Build phase (low-level public API)
     #
 
-    def declare_missing(self, creator: Node, paths: Collection[str]) -> list[tuple[str, FileHash]]:
-        """Declare a files as missing, with the intention to later confirm them as static.
+    def declare_unconfirmed(
+        self, creator: Node, paths: Collection[str]
+    ) -> list[tuple[str, FileHash]]:
+        """Declare files as unconfirmed static candidates, to be confirmed shortly after.
+
+        A file declared here becomes STATIC once confirmed present, or MISSING once
+        confirmed absent (see `confirm_hashes`).
 
         Parameters
         ----------
@@ -943,9 +964,9 @@ class Workflow(Trellis):
         # Sort paths to make the operation deterministic.
         paths = sorted(set(paths))
         # Define the files and create a list of (path, file_hash) tuples.
-        missing = [self._declare_file(creator, path, FileState.MISSING) for path in paths]
+        unconfirmed = [self._declare_file(creator, path, FileState.UNCONFIRMED) for path in paths]
         # Collect a list of paths and file hashes to be checked.
-        return self._build_to_check(missing)
+        return self._build_to_check(unconfirmed)
 
     def register_static_tree(self, creator: Node, path: str) -> list[tuple[str, FileHash]]:
         """Install a static tree.
@@ -985,14 +1006,17 @@ class Workflow(Trellis):
         st = self.create(StaticTree, creator, path)
         # Check for matches in existing files.
         # For example previously defined inputs whose origin was not determined yet.
+        # UNCONFIRMED and MISSING files are excluded: both are already attached to whatever
+        # creator declared them, so matching them here would make declare_unconfirmed try to
+        # reattach an already-attached node and raise a GraphError.
         pattern = f"{escape_like_pattern(path)}%"
         sql = (
             "SELECT label FROM node JOIN file ON node.i = file.node "
-            f"WHERE state != {FileState.MISSING.value} "
+            f"WHERE state NOT IN ({FileState.UNCONFIRMED.value}, {FileState.MISSING.value}) "
             "AND node.label LIKE ?"
         )
         matching_paths = [path for (path,) in self.db.execute(sql, (pattern,))]
-        return self.declare_missing(st, matching_paths)
+        return self.declare_unconfirmed(st, matching_paths)
 
     def register_nglob(self, step: Step, nglob_multi: NGlobMulti):
         if not isinstance(step, Step):
@@ -1121,7 +1145,7 @@ class Workflow(Trellis):
             vol_paths=vol_paths,
         )
         if old_step is not None:
-            # Look for MISSING inputs that match a static tree. Their existence still
+            # Look for UNCONFIRMED inputs that match a static tree. Their existence still
             # needs to be checked by the client and ideally confirmed as existing in a
             # follow-up call to `confirm_hashes`.
             deferred = {
@@ -1234,7 +1258,8 @@ class Workflow(Trellis):
         # - unavailable = certainly not available
         # - unfresh = available, but fails the amend() freshness check.
         # - deferred = possibly available but need to be checked.
-        #   For example, these can be MISSING files that need to be confirmed as STATIC.
+        #   For example, these can be UNCONFIRMED files that need to be confirmed as STATIC
+        #   (or MISSING).
         unavailable = set()
         unfresh = set()
         deferred = set()

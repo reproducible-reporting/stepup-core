@@ -73,6 +73,13 @@ async def test_invalid_path(wfs):
             declare_static(wfs, wfs.root, ["foo/bar/.."])
 
 
+async def test_declare_file_rejects_missing(wfs: Workflow):
+    """`_declare_file` must reject `MISSING`: callers must go through `UNCONFIRMED` first."""
+    async with wfs.db:
+        with pytest.raises(ValueError):
+            wfs._declare_file(wfs.root, "foo.txt", FileState.MISSING)
+
+
 TEST_STEP_GRAPH = """\
 root:
              product   step:cp foo.txt sub/bar.txt
@@ -552,14 +559,14 @@ async def test_detach_marks_is_detached_regardless_of_state(wfp: Workflow):
         assert sub2.is_detached()
 
 
-async def test_declare_missing_detached_creator_is_noop(wfp: Workflow):
-    """A detached creator's `declare_missing()` call must be a silent no-op."""
+async def test_declare_unconfirmed_detached_creator_is_noop(wfp: Workflow):
+    """A detached creator's `declare_unconfirmed()` call must be a silent no-op."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "sub")
         sub = wfp.find(Step, "sub")
         sub.detach()
-        assert wfp.declare_missing(sub, ["ghost.txt"]) == []
+        assert wfp.declare_unconfirmed(sub, ["ghost.txt"]) == []
         assert wfp.find_detached(File, "ghost.txt") == (None, None)
 
 
@@ -1717,7 +1724,7 @@ async def test_static_tree_basic(wfp: Workflow):
         assert to_check_h == [("head/one.txt", FileHash.unknown())]
         assert to_check_t == []
         head1 = wfp.find(File, "head/one.txt")
-        assert head1.get_state() == FileState.MISSING
+        assert head1.get_state() == FileState.UNCONFIRMED
 
         # Check if head_1.txt is static after confirming
         wfp.update_file_hashes(
@@ -1729,13 +1736,15 @@ async def test_static_tree_basic(wfp: Workflow):
         to_check = wfp.define_step(plan, "cat tail/one.txt", inp_paths=["tail/one.txt"])
         assert to_check == [("tail/one.txt", FileHash.unknown())]
         tail1 = wfp.find(File, "tail/one.txt")
-        assert tail1.get_state() == FileState.MISSING
-    with pytest.raises(AssertionError):
-        async with wfp.db:
-            wfp.update_file_hashes(to_check, HashUpdateCause.CONFIRMED)
+        assert tail1.get_state() == FileState.UNCONFIRMED
     async with wfp.db:
+        # Confirming with an unknown hash means the file was checked and found absent.
+        wfp.update_file_hashes(to_check, HashUpdateCause.CONFIRMED)
+        assert tail1.get_state() == FileState.MISSING
+    async with wfp.db:
+        # The file appears later, e.g. detected by the watcher.
         wfp.update_file_hashes(
-            [("tail/one.txt", fake_hash("tail/one.txt"))], HashUpdateCause.CONFIRMED
+            [("tail/one.txt", fake_hash("tail/one.txt"))], HashUpdateCause.EXTERNAL
         )
         assert tail1.get_state() == FileState.STATIC
 
@@ -1894,7 +1903,7 @@ async def test_static_tree_race_condition(wfp: Workflow):
         assert to_check_a == [("data/foo.txt", FileHash.unknown())]
         assert to_check_b == [("data/foo.txt", FileHash.unknown())]
 
-        # Client A confirms first: MISSING -> STATIC.
+        # Client A confirms first: UNCONFIRMED -> STATIC.
         wfp.update_file_hashes(
             [("data/foo.txt", fake_hash("data/foo.txt"))], HashUpdateCause.CONFIRMED
         )
@@ -2156,23 +2165,225 @@ async def test_step_static_tree(wfp: Workflow):
         for path in "sub/boom.txt", "sub/README.md":
             file, detached = wfp.find_detached(File, path)
             assert not detached
-            assert file.get_state() == FileState.MISSING
+            assert file.get_state() == FileState.UNCONFIRMED
 
 
-async def test_confirm_missing(wfp: Workflow):
+async def test_confirm_unconfirmed(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "cat ${inp}", inp_paths=["test.txt"])
-        to_check = wfp.declare_missing(plan, ["test.txt", "other.txt"])
+        to_check = wfp.declare_unconfirmed(plan, ["test.txt", "other.txt"])
         assert to_check == [("other.txt", FileHash.unknown()), ("test.txt", FileHash.unknown())]
         # static other.txt
-        assert wfp.find(File, "other.txt").get_state() == FileState.MISSING
+        assert wfp.find(File, "other.txt").get_state() == FileState.UNCONFIRMED
         wfp.update_file_hashes([("other.txt", fake_hash("other.txt"))], HashUpdateCause.CONFIRMED)
         assert wfp.find(File, "other.txt").get_state() == FileState.STATIC
         # static test.txt
-        assert wfp.find(File, "test.txt").get_state() == FileState.MISSING
+        assert wfp.find(File, "test.txt").get_state() == FileState.UNCONFIRMED
         wfp.update_file_hashes([("test.txt", fake_hash("test.txt"))], HashUpdateCause.CONFIRMED)
         assert wfp.find(File, "test.txt").get_state() == FileState.STATIC
+
+
+async def test_recycle_preserves_hash_across_rerun(wfp: Workflow):
+    """A redeclared static file must keep its old hash, not have it nulled by recycling."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        (foo,) = declare_static(wfp, plan, ["foo.txt"])
+        old_hash = foo.get_hash()
+        assert not old_hash.is_unknown
+
+        # Simulate a step rerun: detach the previously declared static file.
+        foo.detach()
+        assert wfp.find_detached(File, "foo.txt") == (foo, True)
+
+        # Redeclare the same path: the recycled node must keep its old hash, not lose it
+        # to the file_clear_hash trigger (which only fires for MISSING/AWAITED/VOLATILE).
+        to_check = wfp.declare_unconfirmed(plan, ["foo.txt"])
+        assert to_check == [("foo.txt", old_hash)]
+        assert foo.get_state() == FileState.UNCONFIRMED
+        assert foo.get_hash() == old_hash
+
+        # Confirming with the same (unchanged) hash must still flip the state: the second
+        # RPC call always fires client-side, even when regen() finds no change.
+        wfp.update_file_hashes([("foo.txt", old_hash)], HashUpdateCause.CONFIRMED)
+        assert foo.get_state() == FileState.STATIC
+        assert foo.get_hash() == old_hash
+
+
+async def test_confirm_unconfirmed_absent(wfp: Workflow):
+    """Confirming an UNCONFIRMED file as absent must transition it to MISSING."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        to_check = wfp.declare_unconfirmed(plan, ["ghost.txt"])
+        assert to_check == [("ghost.txt", FileHash.unknown())]
+        ghost = wfp.find(File, "ghost.txt")
+        assert ghost.get_state() == FileState.UNCONFIRMED
+        wfp.update_file_hashes([("ghost.txt", FileHash.unknown())], HashUpdateCause.CONFIRMED)
+        assert ghost.get_state() == FileState.MISSING
+
+
+async def test_confirm_missing_duplicate(wfp: Workflow):
+    """A second, duplicate absent-confirmation for an already-MISSING file must not crash."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.declare_unconfirmed(plan, ["ghost.txt"])
+        wfp.update_file_hashes([("ghost.txt", FileHash.unknown())], HashUpdateCause.CONFIRMED)
+        ghost = wfp.find(File, "ghost.txt")
+        assert ghost.get_state() == FileState.MISSING
+
+        # A second confirmation for the same (still absent) path must be a harmless no-op.
+        wfp.update_file_hashes([("ghost.txt", FileHash.unknown())], HashUpdateCause.CONFIRMED)
+        assert ghost.get_state() == FileState.MISSING
+
+
+async def test_confirm_missing_then_present(wfp: Workflow):
+    """A confirmation finding the file present after a prior absent-confirmation must not crash."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.declare_unconfirmed(plan, ["ghost.txt"])
+        wfp.update_file_hashes([("ghost.txt", FileHash.unknown())], HashUpdateCause.CONFIRMED)
+        ghost = wfp.find(File, "ghost.txt")
+        assert ghost.get_state() == FileState.MISSING
+
+        # A later confirmation for the same path that now finds it present must win.
+        wfp.update_file_hashes([("ghost.txt", fake_hash("ghost.txt"))], HashUpdateCause.CONFIRMED)
+        assert ghost.get_state() == FileState.STATIC
+        assert ghost.get_hash() == fake_hash("ghost.txt")
+
+
+async def test_confirm_static_then_absent(wfp: Workflow):
+    """A confirmation finding the file absent after a prior present-confirmation must not crash."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["foo.txt"])
+        foo = wfp.find(File, "foo.txt")
+        assert foo.get_state() == FileState.STATIC
+
+        # A later confirmation for the same path that now finds it absent must win.
+        wfp.update_file_hashes([("foo.txt", FileHash.unknown())], HashUpdateCause.CONFIRMED)
+        assert foo.get_state() == FileState.MISSING
+        assert foo.get_hash() == FileHash.unknown()
+
+
+async def test_hash_update_external_unconfirmed(wfp: Workflow):
+    """Drive the (EXTERNAL, UNCONFIRMED, True/False) rows exercised by startup recovery.
+
+    These are what let a stray UNCONFIRMED file (left over from a director killed between
+    `declare_unconfirmed` and `confirm_hashes`) get resolved by `startup.scan_file_changes`.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.declare_unconfirmed(plan, ["a.txt", "b.txt"])
+        a = wfp.find(File, "a.txt")
+        b = wfp.find(File, "b.txt")
+        assert a.get_state() == FileState.UNCONFIRMED
+        assert b.get_state() == FileState.UNCONFIRMED
+
+        wfp.update_file_hashes(
+            [("a.txt", fake_hash("a.txt")), ("b.txt", FileHash.unknown())],
+            HashUpdateCause.EXTERNAL,
+        )
+        assert a.get_state() == FileState.STATIC
+        assert b.get_state() == FileState.MISSING
+
+
+async def test_step_completed_raises_on_unconfirmed_product(wfp: Workflow):
+    """Step.completed() must reject a step whose declared static file was never confirmed.
+
+    This should be structurally unreachable in normal operation, since both RPC calls in
+    the declare/confirm round trip are synchronous. Seeing it means the step's own process
+    was killed mid-round-trip: a real bug, not a state to self-correct silently.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.declare_unconfirmed(plan, ["ghost.txt"])
+        assert wfp.find(File, "ghost.txt").get_state() == FileState.UNCONFIRMED
+    with pytest.raises(GraphError):
+        async with wfp.db:
+            plan.completed(StepHash(b"p" * 32, None, b"p" * 32, None), False)
+
+
+async def test_step_completed_does_not_raise_on_unconfirmed_product_when_failed(wfp: Workflow):
+    """Step.completed(None, False) must not raise even with a pending UNCONFIRMED product.
+
+    A step process killed mid-round-trip (e.g. a second Ctrl-C during a long client-side
+    hash) reaches `completed(None, False)` with a still-UNCONFIRMED declared file. This is
+    expected on the failed path, not a protocol violation: `reset_for_rerun()` detaches the
+    leftover cleanly on the next run.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.declare_unconfirmed(plan, ["ghost.txt"])
+        assert wfp.find(File, "ghost.txt").get_state() == FileState.UNCONFIRMED
+    async with wfp.db:
+        plan.completed(None, False)
+        assert plan.get_state() == StepState.FAILED
+
+
+async def test_step_completed_ignores_detached_unconfirmed_product(wfp: Workflow):
+    """Step.completed() must ignore a detached UNCONFIRMED product, even on success.
+
+    A detached product is no longer this step's responsibility, e.g. because it was left
+    behind by a killed run and then orphaned when the plan.py source line that declared it
+    was edited away.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        wfp.declare_unconfirmed(sub, ["ghost.txt"])
+        assert wfp.find(File, "ghost.txt").get_state() == FileState.UNCONFIRMED
+        sub.reset_for_rerun()
+    async with wfp.db:
+        sub.completed(StepHash(b"s" * 32, None, b"s" * 32, None), False)
+        assert sub.get_state() == StepState.SUCCEEDED
+
+
+async def test_reset_for_rerun_detaches_unconfirmed(wfp: Workflow):
+    """`reset_for_rerun()` must detach a still-UNCONFIRMED static file declaration."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        wfp.declare_unconfirmed(sub, ["ghost.txt"])
+        ghost = wfp.find(File, "ghost.txt")
+        assert ghost.get_state() == FileState.UNCONFIRMED
+        sub.reset_for_rerun()
+        assert wfp.find_detached(File, "ghost.txt") == (ghost, True)
+
+
+async def test_register_static_tree_excludes_unconfirmed_and_missing(wfp: Workflow):
+    """register_static_tree() must not try to reattach UNCONFIRMED or MISSING files.
+
+    Both stay attached to whatever creator originally declared them; sweeping them into a
+    newly-registered, overlapping static tree would make `declare_unconfirmed` try to
+    reattach an already-attached node and raise a `GraphError`.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+
+        # An UNCONFIRMED file declared (but not yet confirmed) by another creator.
+        wfp.declare_unconfirmed(sub, ["data/unconfirmed.txt"])
+        unconfirmed = wfp.find(File, "data/unconfirmed.txt")
+        assert unconfirmed.get_state() == FileState.UNCONFIRMED
+
+        # A MISSING (confirmed absent) file declared by another creator.
+        wfp.declare_unconfirmed(sub, ["data/missing.txt"])
+        wfp.update_file_hashes(
+            [("data/missing.txt", FileHash.unknown())], HashUpdateCause.CONFIRMED
+        )
+        missing = wfp.find(File, "data/missing.txt")
+        assert missing.get_state() == FileState.MISSING
+
+        # Registering an overlapping static tree must not try to reattach either file.
+        to_check = wfp.register_static_tree(plan, "data")
+        assert to_check == []
+        assert unconfirmed.creator() == sub
+        assert missing.creator() == sub
+        assert not unconfirmed.is_detached()
+        assert not missing.is_detached()
 
 
 async def test_step_try_clean(wfp: Workflow):
@@ -2201,7 +2412,7 @@ async def test_step_lost_child(wfp: Workflow):
         assert step.is_detached()
 
         # Simulate creation of new data.txt
-        to_check = wfp.declare_missing(wfp.root, ["data.txt"])
+        to_check = wfp.declare_unconfirmed(wfp.root, ["data.txt"])
         assert to_check == [("data.txt", FileHash.unknown())]
         data = wfp.find(File, "data.txt")
         assert data.creator() == wfp.root
@@ -2228,9 +2439,10 @@ async def test_static_tree_lost_child(wfp: Workflow):
         prog.detach()
         assert prog.is_detached()
 
-        # Simulate creation of new data/foo.txt
-        to_check = wfp.declare_missing(wfp.root, ["data/foo.txt"])
-        assert to_check == [("data/foo.txt", FileHash.unknown())]
+        # Redeclaring the same path must keep its previously confirmed hash (recycled node),
+        # not lose it the way FileState.MISSING would.
+        to_check = wfp.declare_unconfirmed(wfp.root, ["data/foo.txt"])
+        assert to_check == [("data/foo.txt", fake_hash("data/foo.txt"))]
         wfp.update_file_hashes(
             [("data/foo.txt", fake_hash("data/foo.txt"))], HashUpdateCause.CONFIRMED
         )
@@ -2363,7 +2575,7 @@ async def test_get_file_hashes(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         paths = ["data.txt", "other.txt"]
-        wfp.declare_missing(plan, paths)
+        wfp.declare_unconfirmed(plan, paths)
         assert wfp.get_file_hashes(paths) == [
             ("data.txt", FileHash.unknown()),
             ("other.txt", FileHash.unknown()),
@@ -2521,7 +2733,7 @@ async def test_large_inode(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         large_inode = 0x8000000000000001
-        wfp.declare_missing(plan, ["foo.txt"])
+        wfp.declare_unconfirmed(plan, ["foo.txt"])
         wfp.update_file_hashes(
             [("foo.txt", FileHash(hashlib.sha256(b"foo").digest(), 0o644, 1.0, 10, large_inode))],
             HashUpdateCause.CONFIRMED,
@@ -2833,7 +3045,7 @@ async def test_define_step_target_volatile_output(wfs_target: Workflow):
 async def test_define_step_target_static_output(wfs_target: Workflow):
     with pytest.raises(GraphError):
         async with wfs_target.db:
-            wfs_target.declare_missing(wfs_target.root, ["out.txt"])
+            wfs_target.declare_unconfirmed(wfs_target.root, ["out.txt"])
 
 
 @pytest.mark.parametrize("wfs_target", [["out.txt"]], indirect=True)

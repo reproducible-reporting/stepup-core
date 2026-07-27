@@ -40,41 +40,49 @@ class FileState(Enum):
     """State of a file in the StepUp workflow.
 
     STATIC and BUILT files are ready to be used as inputs.
-    AWAITED, MISSING, VOLATILE and OUTDATED files are not.
+    UNCONFIRMED, MISSING, AWAITED, VOLATILE and OUTDATED files are not.
 
     The availability and purpose of file hashes depend on the file state:
 
     - File hashes are available for STATIC, OUTDATED and BUILT files.
-      They are not for AWAITED, MISSING and VOLATILE files.
+    - They are not for AWAITED, MISSING and VOLATILE files.
+    - They may be present for UNCONFIRMED files, but are not guaranteed to be up-to-date.
 
-    - In case of STATIC files, the hash is computed when the file is declared static,
-      or when StepUp starts and checks the state of all files in the database.
-      The hashes of BUILT files are computed when the step completes.
-      OUTDATED files maintain the same hash from their BUILT state.
+    Hashes are computed for STATIC files when they are declared.
+    Such files are first declared as UNCONFIRMED and then evolve to STATIC or MISSING,
+    depending on the confirmation outcome at the client side where the file was declared.
+
+    The hashes of BUILT files are computed when the step completes.
+    OUTDATED files maintain the same hash from their BUILT state.
     """
 
-    MISSING = 11
-    """A file declared static by the user, but then deleted by the user."""
+    UNCONFIRMED = 11
+    """A file that is declared static, but whose existence (and hash) needs to be confirmed."""
 
-    STATIC = 12
+    MISSING = 12
+    """A file declared static, but confirmed to be absent
+    (never present, or deleted by the user).
+    """
+
+    STATIC = 13
     """A file that is declared static by the user.
 
-    These are user-provided and will never be overwritten are deleted by StepUp.
+    These are user-provided and will never be overwritten or deleted by StepUp.
     """
 
-    AWAITED = 13
+    AWAITED = 14
     """A file that has never been seen or built before.
 
     If it exists, it was created externally and not (yet) known to be static or built.
     """
 
-    BUILT = 14
+    BUILT = 15
     """An output of a step and step has completed."""
 
-    OUTDATED = 15
+    OUTDATED = 16
     """An old output of a step that is no longer up-to-date."""
 
-    VOLATILE = 16
+    VOLATILE = 17
     """A file declared as volatile output of a step.
 
     This means the following:
@@ -89,7 +97,9 @@ class FileState(Enum):
 REGULAR_OUTPUT_STATES = (FileState.AWAITED, FileState.BUILT, FileState.OUTDATED)
 """`FileState` values of a regular (non-volatile) output, at any point in its build lifecycle."""
 
-TARGET_FORBIDDEN_STATES = frozenset({FileState.VOLATILE, FileState.STATIC, FileState.MISSING})
+TARGET_FORBIDDEN_STATES = frozenset(
+    {FileState.VOLATILE, FileState.STATIC, FileState.MISSING, FileState.UNCONFIRMED}
+)
 """`FileState` values a `stepup build` target file may never be in."""
 
 

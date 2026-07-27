@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 FILE_SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS file (
   node INTEGER PRIMARY KEY,
-  state INTEGER NOT NULL CHECK(state >= 11 AND state <= 16),
+  state INTEGER NOT NULL
+    CHECK(state >= {FileState.UNCONFIRMED.value} AND state <= {FileState.VOLATILE.value}),
   hash TEXT,
   FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE,
   CHECK (
@@ -36,6 +37,10 @@ CREATE TABLE IF NOT EXISTS file (
 -- A hash is only meaningful for a file whose content is known and trusted
 -- (STATIC/BUILT/OUTDATED); null it out whenever the state moves to MISSING, AWAITED or
 -- VOLATILE, so File.set_state does not have to special-case the reset itself.
+-- UNCONFIRMED is deliberately excluded: a file being redeclared static must keep whatever
+-- hash it already had (if any), so FileHash.regen() can skip recomputing it when the file
+-- on disk is unchanged. Do not add UNCONFIRMED here, and do not add `hash` to the `SET`
+-- clause of the upsert in File.initialize() -- both would silently defeat that optimization.
 CREATE TRIGGER IF NOT EXISTS file_clear_hash AFTER UPDATE OF state ON file
 WHEN NEW.state IN ({FileState.MISSING.value}, {FileState.AWAITED.value}, {FileState.VOLATILE.value})
      AND NEW.hash IS NOT NULL
@@ -86,6 +91,11 @@ class File(Node):
         # Note: SQLite checks the file table's CHECK constraint against the literal VALUES(...),
         # even when the row already exists and the DO UPDATE branch never touches the hash column.
         # So a real hash must be supplied here whenever the final state requires one.
+        #
+        # The `SET state = :state` upsert below never touches the hash column on the reuse
+        # (recycle) path, so a recycled file's previous hash survives unless the
+        # file_clear_hash trigger nulls it afterward. This is what lets a redeclared
+        # UNCONFIRMED file keep its old hash for FileHash.regen()'s cheap-skip check.
         if state == FileState.AWAITED:
             sql = "SELECT state, hash FROM file WHERE node = ?"
             row = self.db.execute(sql, (self.i,)).fetchone()

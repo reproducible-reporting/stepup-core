@@ -603,11 +603,11 @@ class DirectorHandler:
             return self.workflow.initialize_boot()
 
     @allow_rpc
-    async def declare_missing(self, job_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
+    async def declare_unconfirmed(self, job_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
         """Add a list of absolute paths to the workflow, to become static.
 
-        They are stored internally as paths relative to STEPUP_ROOT, initially set to misssing.
-        A list of available (cached) paths with file hashes is returned,
+        They are stored internally as paths relative to STEPUP_ROOT, initially set to
+        unconfirmed. A list of available (cached) paths with file hashes is returned,
         which need to be updated on the client-side.
         The client then calls confirm with the updated hashes.
 
@@ -618,7 +618,7 @@ class DirectorHandler:
         """
         async with self.db:
             creator = self.scheduler.get_step(job_i)
-            return self.workflow.declare_missing(creator, paths)
+            return self.workflow.declare_unconfirmed(creator, paths)
 
     @allow_rpc
     async def static_trees(self, job_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
@@ -647,7 +647,8 @@ class DirectorHandler:
 
     @allow_rpc
     async def confirm_hashes(self, checked: list[tuple[str, FileHash]]):
-        """Mark missing files as static with up-to-date file hashes.
+        """Mark unconfirmed files as static, or missing if confirmed absent,
+        with up-to-date file hashes.
 
         Parameters
         ----------

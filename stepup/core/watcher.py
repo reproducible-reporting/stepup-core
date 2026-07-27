@@ -138,7 +138,7 @@ class Watcher:
             while not change_queue.empty():
                 change, path = change_queue.get_nowait()
                 file = self.workflow.find(File, path)
-                if file is not None and file.get_state() == FileState.STATIC:
+                if file is not None and file.get_state() in (FileState.STATIC, FileState.MISSING):
                     await self.record_change(change, path)
 
         # Wait for new changes to show up.

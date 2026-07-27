@@ -24,14 +24,14 @@ async def test_missing_argument(client: AsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
-        await client("declare_missing")
+        await client("declare_unconfirmed")
 
 
 async def test_wrong_type(client: AsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
-        await client("declare_missing", 5)
+        await client("declare_unconfirmed", 5)
 
 
 FROM_SCRATCH_GRAPH = """\
@@ -89,7 +89,7 @@ step:./plan.py
              product   file:foo
 
 file:foo
-               state = MISSING
+               state = STATIC
              creator   step:./plan.py
 
 """
@@ -101,18 +101,20 @@ def _get_job_i() -> int:
         return int(fh.read())
 
 
-async def test_missing(client: AsyncRPCClient, path_tmp: Path):
+async def test_static(client: AsyncRPCClient, path_tmp: Path):
     try:
         with open("foo", "w") as fh:
             fh.write("bar")
-        to_check = await client("declare_missing", _get_job_i(), ["foo"])
+        to_check = await client("declare_unconfirmed", _get_job_i(), ["foo"])
+        assert to_check == [("foo", FileHash.unknown())]
+        file_hash = FileHash.unknown().regen("foo")
+        await client("confirm_hashes", [("foo", file_hash)])
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
     await client("wait")
     prefix_graph = path_tmp / "graph"
     await client("graph", prefix_graph)
-    assert to_check == [("foo", FileHash.unknown())]
     _check_graph(prefix_graph + ".txt", STATIC_GRAPH)
 
 
@@ -174,7 +176,7 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
             {},
             True,
         )
-        to_check = await client("declare_missing", job_i, ["original.txt"])
+        to_check = await client("declare_unconfirmed", job_i, ["original.txt"])
         assert to_check == [("original.txt", FileHash.unknown())]
         file_hash = FileHash.unknown().regen("original.txt")
         await client("confirm_hashes", [("original.txt", file_hash)])

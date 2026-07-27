@@ -130,13 +130,13 @@ def static(*paths: StrPath | Iterable[StrPath]) -> None:
         if len(su_file_paths) > 0:
             # Translate paths to make them relative to the working directory of the director.
             tr_file_paths = sorted(translate(su_file_path) for su_file_path in su_file_paths)
-            # Declare the missing and then confirm the files.
-            to_check = RPC_CLIENT.call.declare_missing(_get_job_i(), tr_file_paths)
+            # Declare the files unconfirmed and then confirm them.
+            to_check = RPC_CLIENT.call.declare_unconfirmed(_get_job_i(), tr_file_paths)
             _confirm_static(to_check)
         if len(su_dir_paths) > 0:
             # Translate paths to make them relative to the working directory of the director.
             tr_dir_paths = sorted(translate(su_dir_path) for su_dir_path in su_dir_paths)
-            # Declare the missing and then confirm the directories.
+            # Declare the static trees and then confirm matching awaited files.
             to_check = RPC_CLIENT.call.static_trees(_get_job_i(), tr_dir_paths)
             _confirm_deferred(to_check)
 
@@ -201,7 +201,7 @@ def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
     if len(static_paths) > 0:
         _check_inp_paths(static_paths)
         tr_static_paths = [translate(static_path) for static_path in static_paths]
-        to_check = RPC_CLIENT.call.declare_missing(_get_job_i(), tr_static_paths)
+        to_check = RPC_CLIENT.call.declare_unconfirmed(_get_job_i(), tr_static_paths)
         _confirm_static(to_check)
 
     # Translate all the nglob matches with matching paths and send to the director.
@@ -1298,32 +1298,32 @@ def render_jinja(
 
 
 def _confirm_static(to_check: Collection[tuple[str, FileHash]] | None):
-    """Confirm initially missing files and send the updates to the director."""
+    """Confirm unconfirmed files and send the updates to the director."""
     # When the RPC_CLIENT is a dummy, to_check may be `None`.
     if to_check is not None and len(to_check) > 0:
-        checked = []
-        for tr_path, old_file_hash in to_check:
-            new_file_hash = old_file_hash.regen(translate_back(tr_path))
-            if new_file_hash != old_file_hash:
-                checked.append((tr_path, new_file_hash))
-        if len(checked) > 0:
-            RPC_CLIENT.call.confirm_hashes(checked)
+        # Every path is reported back, even when its hash is unchanged: the director must
+        # still flip the file out of UNCONFIRMED, and only this call does that.
+        checked = [
+            (tr_path, old_file_hash.regen(translate_back(tr_path)))
+            for tr_path, old_file_hash in to_check
+        ]
+        RPC_CLIENT.call.confirm_hashes(checked)
 
 
 def _confirm_deferred(to_check: Collection[tuple[str, FileHash]] | None, job_i: int | None = None):
     """Check file, update hashes of existing ones, and send the updates to the director."""
     if to_check is not None and len(to_check) > 0:
         # Select matches of the static tree that exist and update their hashes.
+        # Every path is reported back, even when its hash is unchanged: the director must
+        # still flip the file out of UNCONFIRMED, and only this call does that.
         checked = []
         missing = []
         for tr_path, old_file_hash in to_check:
             new_file_hash = old_file_hash.regen(translate_back(tr_path))
-            if new_file_hash != old_file_hash:
-                checked.append((tr_path, new_file_hash))
+            checked.append((tr_path, new_file_hash))
             if new_file_hash.is_unknown:
                 missing.append(tr_path)
-        if len(checked) > 0:
-            RPC_CLIENT.call.confirm_hashes(checked)
+        RPC_CLIENT.call.confirm_hashes(checked)
         if len(missing) > 0:
             if job_i is not None:
                 RPC_CLIENT.call.postpone_step(job_i, missing)

@@ -599,6 +599,8 @@ class Trellis:
         #   landing exclusively in _implied_need). Redundant with the Python-level
         #   rejection in Workflow.define_step, so no version bump is needed for this
         #   change on its own.
+        # - Added the FileState.UNCONFIRMED state to distinguish truly MISSING files
+        #   from those that still need to be hash-checked.
 
         return 5
 

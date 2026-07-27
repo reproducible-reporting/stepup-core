@@ -71,41 +71,45 @@ The nodes of the graph can be instances of the following two main classes:
    A step can also be in one of the following states:
 
     - `PENDING`:
-      the step cannot yet be scheduled
-      because some inputs have not been declared or built yet.
+      The step has not been executed yet.
+      It will be considered for execution when all requirements are met
+      (e.g. input files, named resources, ...)
     - `RUNNING`:
-      the step is currently executing.
+      The step is currently executing.
     - `CHECKING`:
-      the step has a stored hash from a previous successful run and is being compared
+      The step has a stored hash from a previous successful run and is being compared
       against its current inputs and outputs to determine if execution can be skipped.
       Named resource restrictions do not apply in this state.
     - `SUCCEEDED`:
-      the step has been successfully completed.
+      The step has been successfully completed.
     - `FAILED`:
-      the step failed because the subprocess exited with a non-zero exit code,
+      The step failed because the subprocess exited with a non-zero exit code,
       or expected output files were not created.
 
 2. A `File` defines a path and a status, which can be any of the following:
 
+    - `UNCONFIRMED`:
+      A file that should become a static file after its hash has been computed and stored.
+      This is a transient state that evolves either to `MISSING` or `STATIC`.
+    - `MISSING`:
+      A static file that does not exist or has been removed.
+    - `STATIC`:
+      A file provided by you, not created by any step.
+      It can only be used as an input to a step, never as an output.
     - `AWAITED`:
-      the file is the output of a step that has never been executed so far.
-      (Such files are never deleted when cleaning up outputs.)
+      An input file to a step whose origin is yet unclear.
+      It can be produced by a step that has not been declared yet
+      or it can also be declared as a static file later.
     - `BUILT`:
-      the file is the output of a step that has been successfully executed.
+      The output of a step that has been successfully executed.
     - `OUTDATED`:
-      the file is the output of a step that has been executed,
-      but inputs of the step have been modified since then.
+      An output of a step that has been executed,
+      but that needs to be rebuilt,
+      typically because the step's inputs have changed since it last ran.
     - `VOLATILE`:
-      the file is (or can be) created by a step, but it is volatile.
+      A file created by a step, but whose contents are not deterministic.
       It cannot be used as input, no hashes are computed for it.
       These files are only registered so that they can be removed when appropriate.
-      They are typically different every time they are created,
-      even with the same inputs.
-    - `STATIC`:
-      the file is written by you and can only be an input to a step.
-      (Note that step inputs can also be outputs of previous steps.)
-    - `MISSING`:
-      a static file that has gone missing.
 
 There are also a few special nodes:
 

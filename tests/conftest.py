@@ -119,8 +119,8 @@ def declare_static(workflow, creator, paths):
     This a heavily simplified version of the stepup.core.api.static function.
     This is solely used for testing the workflow.
     """
-    missing = workflow.declare_missing(creator, paths)
-    checked = [(path, fake_hash(path)) for path, _ in missing]
+    unconfirmed = workflow.declare_unconfirmed(creator, paths)
+    checked = [(path, fake_hash(path)) for path, _ in unconfirmed]
     workflow.update_file_hashes(checked, HashUpdateCause.CONFIRMED)
     return [workflow.find(File, path) for path in paths]
 

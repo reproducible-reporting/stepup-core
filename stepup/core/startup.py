@@ -33,6 +33,10 @@ async def startup_from_db(
     # RUNNING/CHECKING are uncommon, but can happen if the director crashes.
     async with db:
         # Steps that were running are considered failed.
+        # This reset is also what recovers a stray UNCONFIRMED file left behind by a
+        # director killed between declare_unconfirmed and confirm_hashes: rerunning the
+        # step redeclares and confirms the file. Do not remove or narrow this without
+        # another way to confirm such rows (see the guard in scan_file_changes below).
         db.execute(
             "UPDATE step SET state = ? WHERE state = ?",
             (StepState.FAILED.value, StepState.RUNNING.value),
@@ -125,6 +129,9 @@ async def scan_file_changes(
         state = FileState(state)
         old_file_hash = FileHash.from_json(hash_value)
         new_file_hash = old_file_hash.regen(path)
+        # An unchanged UNCONFIRMED row is deliberately left alone here: it is confirmed
+        # instead by the RUNNING -> FAILED -> PENDING reset in startup_from_db,
+        # which reruns the declaring step.
         if old_file_hash != new_file_hash:
             if new_file_hash.is_unknown:
                 await reporter("DELETED", path)
@@ -133,7 +140,7 @@ async def scan_file_changes(
                 await reporter(
                     "UPDATED", path + " " + fmt_file_hash_diff(old_file_hash, new_file_hash)
                 )
-                if state in (FileState.MISSING, FileState.AWAITED):
+                if state in (FileState.MISSING, FileState.UNCONFIRMED, FileState.AWAITED):
                     added.add(path)
             changed_hashes.append((path, new_file_hash))
 
@@ -170,8 +177,8 @@ async def scan_nglob_changes(
             # lets the correlated subquery's planner use the `node_kind_label` covering
             # index instead of a full scan of `node` for every candidate path.
             "WHERE node.kind = 'file' AND label = path AND "
-            "NOT detached AND state != ?)",
-            (FileState.MISSING.value,),
+            "NOT detached AND state NOT IN (?, ?))",
+            (FileState.MISSING.value, FileState.UNCONFIRMED.value),
         ).fetchall()
     new_paths = [row[0] for row in rows]
     new_paths.sort()

@@ -25,6 +25,6 @@ st:subdir/
               source   file:subdir
 
 file:subdir
-               state = MISSING
+               state = UNCONFIRMED
              creator   st:subdir/
                 sink   (step:cat subdir)
