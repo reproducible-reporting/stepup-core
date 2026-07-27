@@ -6,7 +6,7 @@ from stepup.core.api import amend
 with open("trigger.txt", "w") as fh:
     print("tampered", file=fh)
 
-# never.txt is never created, so this always requests a reschedule
-# (unless the reschedule cap has been exceeded).
+# never.txt is never created, so this always postpones the step
+# (unless the postpone cap has been exceeded).
 amend(inp=["never.txt"])
 print("never.txt is now available.")

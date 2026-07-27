@@ -3,7 +3,7 @@
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ ./work.py
-RESCHEDULE │ ./work.py
+ POSTPONED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
@@ -23,7 +23,7 @@ Inputs        STATIC  trigger.txt
    UPDATED │ trigger.txt
      PHASE │ build
      START │ ./work.py
-RESCHEDULE │ ./work.py
+ POSTPONED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ Inputs        STATIC  trigger.txt
    UPDATED │ trigger.txt
      PHASE │ build
      START │ ./work.py
-RESCHEDULE │ ./work.py
+ POSTPONED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ Inputs        STATIC  trigger.txt
      PHASE │ build
      START │ ./work.py
       FAIL │ ./work.py
-──────────────────────── Rescheduled more than 3 times ─────────────────────────
+───────────────────────── Postponed more than 3 times ──────────────────────────
 ./work.py  # exit=1
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 never.txt

@@ -262,22 +262,22 @@ WHERE dep.sink = node.i AND (
 # Building blocks shared by step-selection queries.
 _PENDING_STEP_WHERE = f"""step.state = {StepState.PENDING.value} AND
     step._safe AND
-    step.unavailable_inputs = '' AND
+    step.postponed = FALSE AND
     step._implied_need > {Need.OPTIONAL.value} AND
     NOT node.detached"""
 
 # Priority WHERE clause:
 # - Planning steps run first to unlock more work early.
 # - Within each group, higher tail_time steps go first.
-#   A step that has been rescheduled (multiple times) gets its tail_time divided by
-#   1 + reschedule_count, to reduce the risk of too early dispatching after rescheduling.
+#   A step that has been postponed (multiple times) gets its tail_time divided by
+#   1 + postpone_count, to reduce the risk of too early dispatching after postponing.
 #   Dividing (rather than subtracting a fixed penalty) keeps the demotion proportional
 #   to the step's own tail_time, so it behaves consistently regardless of the time
 #   scale of the workflow.
 # - Label provides a deterministic tie-breaker.
 _ORDER_BY_PRIORITY = f"""ORDER BY
     (step._implied_need = {Need.PLAN.value}) DESC,
-    step._tail_time / (1 + step.reschedule_count) DESC,
+    step._tail_time / (1 + step.postpone_count) DESC,
     node.label ASC"""
 
 
@@ -370,8 +370,8 @@ SELECT
     node.i,
     node.label,
     step._safe,
-    (step.unavailable_inputs != '' OR step.unfresh_inputs != '') AS rescheduled,
-    EXISTS ({UNAVAILABLE_INPUT}) AS hasUNAVAILABLE_INPUTs,
+    step.postponed AS postponed,
+    EXISTS ({UNAVAILABLE_INPUT}) AS has_unavailable_inputs,
     EXISTS (
         SELECT 1 FROM step_resource AS req
         LEFT JOIN available_resource AS avail ON avail.name = req.name
@@ -472,10 +472,6 @@ class Scheduler:
                 logger.debug("Derived checkable job: %s", job)
                 logger.info("Pop %s", job.name)
                 step.set_state(StepState.CHECKING)
-                step.clear_unavailable_inputs()
-                # Not that skip jobs record not start time, because skipping does not produce
-                # new outputs, and thus have no risk of race conditions related to amend()'s
-                # freshness check.
                 return job
             step = self._get_step(SELECT_RUNNABLE_STEPS)
             if step is None:
@@ -487,7 +483,6 @@ class Scheduler:
             logger.info("Pop %s", job.name)
             step.set_state(StepState.RUNNING)
             self.start_times[step.i] = time.monotonic_ns()
-            step.clear_unavailable_inputs()
             return job
 
     def job_finished(self, step_i: int, *, succeeded: bool) -> None:
@@ -671,11 +666,11 @@ class Scheduler:
         """
         results = []
         cur = self.workflow.db.execute(SELECT_PENDING_REASONS)
-        for i, label, safe, rescheduled, unavailable_inputs, resource_issue in cur:
+        for i, label, safe, postponed, unavailable_inputs, resource_issue in cur:
             step = Step(self.workflow, i, label)
             if not safe:
                 reason = "unsafe"
-            elif rescheduled or unavailable_inputs:
+            elif postponed or unavailable_inputs:
                 reason = "inputs"
             elif resource_issue:
                 reason = "resources"

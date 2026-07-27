@@ -6,7 +6,9 @@ import asyncio
 import sys
 from types import SimpleNamespace
 
-from stepup.core.executor import Executor, Run, _executable_uses_same_python
+import pytest
+
+from stepup.core.executor import Executor, NoOverwriteDict, Run, _executable_uses_same_python
 
 
 def _make_executor(*, reporter=None) -> Executor:
@@ -152,3 +154,13 @@ def test_report_marks_detached_step_that_failed_as_detached():
     action, _label, pages = reporter.calls[0]
     assert action == "DETACHED"
     assert pages[0][0] == "Step detached"
+
+
+def test_no_overwrite_dict_allows_insertion_of_new_keys():
+    d = NoOverwriteDict()
+    d[1] = "a"
+    d[2] = "b"
+    assert d[1] == "a"
+    assert d[2] == "b"
+    with pytest.raises(KeyError):
+        d[2] = "c"

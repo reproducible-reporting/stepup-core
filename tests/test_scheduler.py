@@ -76,9 +76,9 @@ def _insert_step(
     )
     con.execute(
         "INSERT INTO step"
-        " (node, state, need, duration, unavailable_inputs, unfresh_inputs, reschedule_count,"
+        " (node, state, need, duration, postpone_count,"
         " subshell, _safe, _check_safe, _implied_need, _tail_time, _check_after)"
-        " VALUES (?, ?, ?, ?, '', '', 0, 0, ?, ?, ?, ?, ?)",
+        " VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?)",
         (
             node_id,
             state.value,
@@ -596,6 +596,12 @@ def test_running_step_not_runnable(con):
     assert _get_runnable_ids(con) == []
 
 
+def test_checking_step_not_runnable(con):
+    """A CHECKING step is excluded — only PENDING steps are candidates."""
+    _insert_step(con, 2, 1, StepState.CHECKING, safe=True, implied_need=Need.DEFAULT)
+    assert _get_runnable_ids(con) == []
+
+
 def test_succeeded_step_not_runnable(con):
     """A SUCCEEDED step is excluded."""
     _insert_step(con, 2, 1, StepState.SUCCEEDED, safe=True, implied_need=Need.DEFAULT)
@@ -626,10 +632,10 @@ def test_optional_step_not_runnable(con):
     assert _get_runnable_ids(con) == []
 
 
-def test_rescheduled_step_not_runnable(con):
-    """A PENDING step with non-empty unavailable_inputs is excluded."""
+def test_postponed_step_not_runnable(con):
+    """A PENDING step with postponed=1 is excluded."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
-    con.execute("UPDATE step SET unavailable_inputs = 'some reason' WHERE node = 2")
+    con.execute("UPDATE step SET postponed = 1 WHERE node = 2")
     assert _get_runnable_ids(con) == []
 
 
@@ -1034,7 +1040,7 @@ def test_resource_counts_resource_not_in_available_excluded(con):
 
 def _get_pending_reasons(con):
     """Run SELECT_PENDING_REASONS and return a dict mapping node id -> row dict."""
-    keys = ("i", "label", "safe", "rescheduled", "has_unavailable_inputs", "has_resource_issue")
+    keys = ("i", "label", "safe", "postponed", "has_unavailable_inputs", "has_resource_issue")
     return {
         row[0]: dict(zip(keys, row, strict=True))
         for row in con.execute(SELECT_PENDING_REASONS).fetchall()
@@ -1049,7 +1055,7 @@ def test_pending_reasons_basic_row(con):
     r = rows[2]
     assert r["label"] == "echo 2"
     assert r["safe"] == 1
-    assert r["rescheduled"] == 0
+    assert r["postponed"] == 0
     assert r["has_unavailable_inputs"] == 0
     assert r["has_resource_issue"] == 0
 
@@ -1091,21 +1097,12 @@ def test_pending_reasons_safe_flag_false(con):
     assert rows[2]["safe"] == 0
 
 
-def test_pending_reasons_rescheduled_flag(con):
-    """A step with non-empty unavailable_inputs returns rescheduled=1."""
+def test_pending_reasons_postponed_flag(con):
+    """A step with postponed=1 returns postponed=1."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
-    con.execute("UPDATE step SET unavailable_inputs = 'some reason' WHERE node = 2")
+    con.execute("UPDATE step SET postponed = 1 WHERE node = 2")
     rows = _get_pending_reasons(con)
-    assert rows[2]["rescheduled"] == 1
-
-
-def test_pending_reasons_rescheduled_flag_unfresh(con):
-    """A step with non-empty unfresh_inputs (but empty unavailable_inputs) also
-    returns rescheduled=1 --- both columns feed the same `rescheduled` flag."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
-    con.execute("UPDATE step SET unfresh_inputs = 'some reason' WHERE node = 2")
-    rows = _get_pending_reasons(con)
-    assert rows[2]["rescheduled"] == 1
+    assert rows[2]["postponed"] == 1
 
 
 # -- has_unavailable_inputs ----------------------------------------------
@@ -1480,6 +1477,20 @@ def test_checkable_step_no_inputs_with_hash(con):
 def test_checkable_step_no_hash_not_checkable(con):
     """A PENDING safe step without a stored hash is NOT checkable (must execute)."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    assert _get_checkable_ids(con) == []
+
+
+def test_running_step_not_checkable(con):
+    """A RUNNING step is excluded — only PENDING steps are candidates."""
+    _insert_step(con, 2, 1, StepState.RUNNING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step_hash(con, 2)
+    assert _get_checkable_ids(con) == []
+
+
+def test_checking_step_not_checkable(con):
+    """A CHECKING step is excluded — only PENDING steps are candidates."""
+    _insert_step(con, 2, 1, StepState.CHECKING, safe=True, implied_need=Need.DEFAULT)
+    _insert_step_hash(con, 2)
     assert _get_checkable_ids(con) == []
 
 

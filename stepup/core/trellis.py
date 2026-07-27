@@ -545,7 +545,7 @@ class Trellis:
         #   - _dependency_check_after_ins/del triggers on the dependency table
         #     (in STEP_SCHEMA) to flag step._check_after when a source/sink
         #     edge touching a step is inserted or deleted.
-        #   - Added a step_clear_rescheduled trigger to clear step.rescheduled_info when a step's
+        #   - Added a step_clear_postponed trigger to clear step.postponed when a step's
         #     state moves to SUCCEEDED or FAILED.
         #   - The file table's CHECK constraint no longer requires `hash IS NULL` for
         #     MISSING/AWAITED/VOLATILE. The reverse is still checked.

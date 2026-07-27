@@ -137,7 +137,7 @@ class HashUpdateCause(Enum):
     """A step succeeded; its outputs should be marked BUILT."""
 
     FAILED = 53
-    """A step failed or rescheduled; outputs remain OUTDATED or AWAITED."""
+    """A step failed or postponed; outputs remain OUTDATED or AWAITED."""
 
     CONFIRMED = 54
     """Client confirmed missing files exist; mark them STATIC."""

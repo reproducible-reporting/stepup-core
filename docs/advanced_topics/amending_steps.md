@@ -9,7 +9,7 @@ or environment variables it uses, or of additional (volatile) outputs it creates
 However, defining an amended input will fail
 when that file is not yet built nor known as a static file.
 In this case, the step will exit early
-and will be rescheduled by the director process when the amended input becomes available.
+and will be postponed by the director process until the amended input becomes available.
 
 The [`amend()`][stepup.core.api.amend] function implements this feature
 and is convenient in various scenarios:
@@ -37,7 +37,7 @@ and is convenient in various scenarios:
 (or an output file already written):
 if a file turns out to be missing, or to have been built too recently to be trusted
 (e.g. a producer step was still writing it while it was being read),
-the step is rescheduled instead of failing outright.
+the step is postponed instead of failing outright.
 Still, use `amend()` as early as possible,
 before accessing additional input files or creating unforeseen output files,
 whenever that is practical.
@@ -66,22 +66,22 @@ This will avoid the following problems:
   > This is particularly important when the step is time-consuming
   > or when it uses `stepup.core.api` functions to extend the workflow.
 
-- Rescheduling a step multiple times.
+- Postponing a step multiple times.
 
-  > As a safety net, a step that is rescheduled too many times in a row without
-  > succeeding will eventually fail instead of being rescheduled forever.
-  > The limit is configurable with the `--reschedule-cap` option,
+  > As a safety net, a step that is postponed too many times in a row without
+  > succeeding will eventually fail instead of being postponed forever.
+  > The limit is configurable with the `--postpone-cap` option,
   > see [Configuration](../reference/configuration.md).
   >
-  > Note that there are two different rescheduling mechanisms in StepUp:
+  > Note that there are two different postponing mechanisms in StepUp:
   > 1. The `amend(inp=...)` hits a file that has not been built yet.
   >    (This is an "unavailable input".)
   > 2. The `amend(inp=...)` hits a file that has been built by another step
   >    that completed after the current step started.
   >    If the `amend()` call is made after the file has been read,
-  >    StepUp cannot guarantee correctness and will therefore reschedule the step.
+  >    StepUp cannot guarantee correctness and will therefore postpone the step.
   >
-  > Both types of rescheduling are counted towards the reschedule cap.
+  > Both types of postponing are counted towards the postpone cap.
 
 To the best of our knowledge, there is no equivalent of `amend()` in other build tools.
 Some features in Ninja cover what can be achieved with `amend()`.
@@ -137,4 +137,4 @@ After `input.txt` has been created, StepUp runs `./step.py` again.
 - Modify the `plan.py` file to include a second amended input, for example, `other.txt`.
   Run StepUp with these changes.
   Because `sources.txt` contains a new file, StepUp will try re-running
-  `./step.py`, which will amend new inputs that require the step to be rescheduled again.
+  `./step.py`, which will amend the step with new inputs that require the step to be postponed again.

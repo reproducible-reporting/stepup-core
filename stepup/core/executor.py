@@ -558,14 +558,14 @@ class Run:
     out_missing: list = attrs.field(init=False, factory=list)
     """List of expected output files that were not created."""
 
-    unavailable_inputs: str = attrs.field(init=False, default="")
-    """Amended input paths that were genuinely not built yet, if the step was rescheduled."""
+    unavailable: set[str] = attrs.field(init=False, factory=set)
+    """Amended input paths that were genuinely not built yet, if the step was postponed."""
 
-    unfresh_inputs: str = attrs.field(init=False, default="")
-    """Amended input paths that failed the freshness check, if the step was rescheduled."""
+    unfresh: set[str] = attrs.field(init=False, factory=set)
+    """Amended input paths that failed the freshness check, if the step was postponed."""
 
-    interrupted_reschedule: bool = attrs.field(init=False, default=False)
-    """Set to True when the step has reached its reschedule cap."""
+    interrupted_postpone: bool = attrs.field(init=False, default=False)
+    """Set to True when the step has reached its postpone cap."""
 
     detached: bool = attrs.field(init=False, default=False)
     """Set to True when `Step.completed()` found this step had already been detached by
@@ -600,6 +600,18 @@ class Run:
             self.success = False
         if result.inp_digest:
             self.inp_digest = result.inp_digest
+
+
+#
+# Helper class to block accidental overwrites in the running steps dict
+#
+
+
+class NoOverwriteDict(dict):
+    def __setitem__(self, key, value):
+        if key in self:
+            raise KeyError(f"Cannot overwrite key '{key}'. Keys in this dictionary are write-once.")
+        super().__setitem__(key, value)
 
 
 #
@@ -650,8 +662,8 @@ class Executor:
     infra_env: dict = attrs.field(kw_only=True, factory=dict)
     """Environment variables from the director for step child processes, overriding `os.environ`."""
 
-    running: set = attrs.field(init=False, factory=set)
-    """The set of `Run` instances whose command is currently running."""
+    running: NoOverwriteDict[int, Run] = attrs.field(init=False, factory=NoOverwriteDict)
+    """The `Run` instances whose command is currently running, keyed by `Step.i`."""
 
     step_accumulator: ResourceAccumulator = attrs.field(init=False, factory=ResourceAccumulator)
     """Running totals of CPU time and block-IO op counts for steps."""
@@ -763,7 +775,7 @@ class Executor:
             await self.skip(run, step_hash)
             async with self.db:
                 self.workflow.update_file_hashes(new_out_hashes, HashUpdateCause.SUCCEEDED)
-                step.completed(new_hash)
+                step.completed(new_hash, False)
                 # Note that we do not call `scheduler.job_finished` here,
                 # because the step was never actually run.
                 # That would record a stop time while no outputs were written
@@ -775,7 +787,7 @@ class Executor:
     ):
         """Execute a step (no skipping).
 
-        When the reschedule cap is exceeded, the step is marked as failed without execution.
+        When the postpone cap is exceeded, the step is marked as failed without execution.
         """
         async with self.new_step(step, inp_hashes, env_deps) as (run, new_hash):
             if new_hash is None:
@@ -795,9 +807,7 @@ class Executor:
 
             async with self.db:
                 # Gather information about the step to determine how to handle it.
-                unavailable_inputs = step.get_unavailable_inputs()
-                unfresh_inputs = step.get_unfresh_inputs()
-                wants_reschedule = unavailable_inputs != "" or unfresh_inputs != ""
+                wants_postpone = len(run.unavailable) > 0 or len(run.unfresh) > 0
 
                 # Handling logic
                 if len(new_inp_hashes) > 0:
@@ -807,12 +817,10 @@ class Executor:
                     run.success = False
                     new_hash = None
                     # Clear the amended inputs to mark the step as failed instead of pending.
-                    step.clear_unavailable_inputs()
-                    step.clear_unfresh_inputs()
-                elif wants_reschedule:
-                    # The inputs are not ready yet, so reschedule the step for later.
-                    run.unavailable_inputs = unavailable_inputs
-                    run.unfresh_inputs = unfresh_inputs
+                    run.unavailable.clear()
+                    run.unfresh.clear()
+                    wants_postpone = False
+                elif wants_postpone:
                     # Rescheduling in the completed() method needs the new hash to be None,
                     # so the step is not marked as succeeded.
                     run.success = False
@@ -824,13 +832,13 @@ class Executor:
                     new_out_hashes,
                     HashUpdateCause.SUCCEEDED if run.success else HashUpdateCause.FAILED,
                 )
-                run.detached, run.interrupted_reschedule = step.completed(new_hash)
+                run.detached, run.interrupted_postpone = step.completed(new_hash, wants_postpone)
                 if run.detached:
                     # The step's creator moved on without it before/when it finished (see
                     # Step.detach()): the raw result is moot, report() shows a dedicated
                     # explanatory page instead of the raw error/success info.
                     run.stderr = ""
-                elif wants_reschedule and not run.interrupted_reschedule:
+                elif wants_postpone and not run.interrupted_postpone:
                     # Erase error info to keep the screen output concise.
                     run.stderr = ""
                 # Record the stop time.
@@ -883,7 +891,7 @@ class Executor:
             # The hashes of the input files on disk differ from those in the database,
             # or some inputs were deleted. This breaks the workflow, so flag the step as failed.
             async with self.db:
-                step.completed(None)
+                step.completed(None, False)
                 self.scheduler.job_finished(step.i, succeeded=False)
             await self._report_step_counts()
             await self.report(run)
@@ -901,7 +909,7 @@ class Executor:
         `run` is added to `self.running` for the duration of the hash computation,
         so its child is interruptible like a running step command.
         """
-        self.running.add(run)
+        self.running[run.step.i] = run
         try:
             if self.mp_ctx is not None:
                 outcome = await _run_in_forkserver(self.mp_ctx, hash_fork_entry, (task,), run)
@@ -921,7 +929,7 @@ class Executor:
                 raise RPCError(f"The hashes tool failed: {_decode(stderr)}")
             return pickle.loads(stdout)
         finally:
-            self.running.discard(run)
+            del self.running[run.step.i]
 
     async def compute_inp_step_hash(
         self,
@@ -1022,7 +1030,7 @@ class Executor:
         if self.show_perf:
             pt_initial = perf_counter()
 
-        self.running.add(run)
+        self.running[run.step.i] = run
         try:
             parts = shlex.split(command)
             if not parts:
@@ -1046,7 +1054,7 @@ class Executor:
             stderr = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
             outcome = ChildOutcome(payload=(returncode, "", stderr), usage=ResourceUsage())
         finally:
-            self.running.discard(run)
+            del self.running[run.step.i]
 
         returncode, stdout, stderr = outcome.payload
         usage = outcome.usage
@@ -1067,9 +1075,22 @@ class Executor:
         if run.returncode != 0:
             run.success = False
 
+    def postpone(
+        self, step: Step, *, unavailable: set[str] | None = None, unfresh: set[str] | None = None
+    ):
+        """Mark a step as postponed for later execution due to unavailable or unfresh inputs."""
+        run = self.running.get(step.i)
+        if run is None:
+            raise ValueError(f"Step {step.i} is not currently running")
+        if unavailable is not None:
+            run.unavailable.update(unavailable)
+        if unfresh is not None:
+            run.unfresh.update(unfresh)
+        run.success = False
+
     def interrupt(self, sig: int):
         """Send a signal to all currently running step commands."""
-        for run in list(self.running):
+        for run in list(self.running.values()):
             proc = run.proc
             pid = run.pid
             if proc is not None:
@@ -1084,9 +1105,8 @@ class Executor:
     async def report(self, run: Run):
         command, workdir = run.step.command_workdir
         pages = []
-        needs_reschedule = not (
-            (run.unavailable_inputs == "" and run.unfresh_inputs == "")
-            or run.interrupted_reschedule
+        needs_postpone = not (
+            (len(run.unavailable) == 0 and len(run.unfresh) == 0) or run.interrupted_postpone
         )
         if run.detached:
             pages.append(
@@ -1096,31 +1116,31 @@ class Executor:
                     "Its result has been discarded, and it will be executed again if recreated.",
                 )
             )
-        elif not (run.success or needs_reschedule):
+        elif not (run.success or needs_postpone):
             # Format command for display (can be copied and pasted into a shell); a non-zero
             # return code is appended as a trailing `# exit=N` comment by format_subprocess.
             async with self.db:
                 subshell = run.step.get_subshell()
             pages.append(
                 (
-                    f"Rescheduled more than {self.workflow.reschedule_cap} times"
-                    if run.interrupted_reschedule
+                    f"Postponed more than {self.workflow.postpone_cap} times"
+                    if run.interrupted_postpone
                     else "Failed command",
                     format_subprocess(command, str(workdir), None, run.returncode, shell=subshell),
                 )
             )
         if len(run.perf_info) > 0:
             pages.append(("Performance details", run.perf_info))
-        if run.unavailable_inputs != "":
-            pages.append(("Unavailable amended inputs", run.unavailable_inputs))
-        if run.unfresh_inputs != "":
-            pages.append(("Unfresh amended inputs", run.unfresh_inputs))
+        if len(run.unavailable) > 0:
+            pages.append(("Unavailable amended inputs", "\n".join(sorted(run.unavailable))))
+        if len(run.unfresh) > 0:
+            pages.append(("Unfresh amended inputs", "\n".join(sorted(run.unfresh))))
         if len(run.inp_messages) > 0:
             run.inp_messages.sort()
             pages.append(("Invalid inputs", "\n".join(run.inp_messages)))
-        if not (needs_reschedule or run.detached) and len(run.out_missing) > 0:
+        if not (needs_postpone or run.detached) and len(run.out_missing) > 0:
             # Do not show missing outputs, as they are fairly normal and harmless when
-            # rescheduling, or when the step was detached.
+            # postponing, or when the step was detached.
             run.out_missing.sort()
             pages.append(("Expected outputs not created", "\n".join(run.out_missing)))
         stdout = run.stdout.rstrip()
@@ -1131,10 +1151,10 @@ class Executor:
             pages.append(("Standard error", stderr))
         if run.detached:
             action = "DETACHED"
-        elif run.interrupted_reschedule:
+        elif run.interrupted_postpone:
             action = "FAIL"
-        elif run.unavailable_inputs != "" or run.unfresh_inputs != "":
-            action = "RESCHEDULE"
+        elif len(run.unavailable) > 0 or len(run.unfresh) > 0:
+            action = "POSTPONED"
         elif run.success:
             action = "SUCCESS"
         else:

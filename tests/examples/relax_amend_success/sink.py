@@ -6,7 +6,7 @@ yet), so its own start_time is recorded well before producer.sh's stop_time. It 
 for data.txt to appear, reads it, and only then calls amend(). On the first attempt,
 this is unconditionally flagged "unfresh" (regardless of whether the read actually saw
 complete content) because the check is based on step dispatch/completion timestamps,
-not file content --- so the step is rescheduled. On the next attempt, its start_time is
+not file content --- so the step is postponed. On the next attempt, its start_time is
 long past producer.sh's completion, so the amended input is accepted.
 """
 

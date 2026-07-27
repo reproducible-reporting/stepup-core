@@ -4,10 +4,10 @@ source ../example.rc
 echo v0 > trigger.txt
 
 # Run the example
-sb -j 1 -w --reschedule-cap=3 & # > current_stdout.txt &
+sb -j 1 -w --postpone-cap=3 & # > current_stdout.txt &
 PID=$!
 
-# Dispatch 1: never.txt missing -> reschedule (count=1), parks PENDING.
+# Dispatch 1: never.txt missing -> postpone (count=1), parks PENDING.
 stepup wait
 
 # Editing trigger.txt (an ordinary, already-STATIC input) makes X eligible again
@@ -16,13 +16,13 @@ echo v1 > trigger.txt
 stepup watch-update trigger.txt
 stepup run
 stepup wait
-# Dispatch 2 -> reschedule (count=2).
+# Dispatch 2 -> postpone (count=2).
 
 echo v2 > trigger.txt
 stepup watch-update trigger.txt
 stepup run
 stepup wait
-# Dispatch 3 -> reschedule (count=3, still <= cap).
+# Dispatch 3 -> postpone (count=3, still <= cap).
 
 echo v3 > trigger.txt
 stepup watch-update trigger.txt

@@ -16,7 +16,7 @@ wait
 [[ -f data.txt ]] || exit 1
 grep hello data.txt
 
-# The consumer step must have been rescheduled exactly once (unfresh amended input),
+# The consumer step must have been postponed exactly once (unfresh amended input),
 # and must converge to SUCCESS without ever failing outright.
 grep "Unfresh amended inputs" .stepup/warning.log || exit 1
 [[ ! -f .stepup/fail.log ]] || exit 1

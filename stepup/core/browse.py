@@ -249,7 +249,7 @@ HTML_TEMPLATE = """\
     .failed { color: var(--red); }
     .yes { color: var(--green); }
     .no { color: var(--red); }
-    .rescheduled { color: var(--orange); }
+    .postponed { color: var(--orange); }
     .clean { color: var(--green); }
     .required { color: var(--blue); }
     table.list tr td {
@@ -437,8 +437,8 @@ class GraphServer(BaseHTTPRequestHandler):
         # Format the state (if a file or a step)
         if kind == "step":
             sql_props = (
-                "SELECT state, need, duration, unavailable_inputs, unfresh_inputs,"
-                "reschedule_count, subshell,"
+                "SELECT state, need, duration, postponed,"
+                "postpone_count, subshell,"
                 "env_overrides, _safe, _check_safe, _implied_need, _tail_time, _check_after "
                 "FROM step WHERE node = ?"
             )
@@ -446,9 +446,8 @@ class GraphServer(BaseHTTPRequestHandler):
                 state_i,
                 need_id,
                 duration,
-                unavailable_inputs,
-                unfresh_inputs,
-                reschedule_count,
+                postponed,
+                postpone_count,
                 subshell,
                 env_overrides,
                 safe,
@@ -460,18 +459,10 @@ class GraphServer(BaseHTTPRequestHandler):
             state = StepState(state_i)
             yield f"<p><b>Subshell:</b> {'yes' if subshell else 'no'}</p>"
             yield f'<p><b>State:</b> <span class="{state.name.lower()}">{state.name}</span></p>'
-            if unavailable_inputs != "":
-                yield (
-                    '<p><b>Unavailable inputs:</b> <span class="rescheduled">'
-                    f"{unavailable_inputs}</span></p>"
-                )
-            if unfresh_inputs != "":
-                yield (
-                    '<p><b>Unfresh inputs:</b> <span class="rescheduled">'
-                    f"{unfresh_inputs}</span></p>"
-                )
-            if reschedule_count > 0:
-                yield f"<p><b>Reschedule count:</b> {reschedule_count}</p>"
+            if postponed:
+                yield ('<p><b>Postponed:</b> <span class="postponed">yes</span></p>')
+            if postpone_count > 0:
+                yield f"<p><b>Postpone count:</b> {postpone_count}</p>"
             need = Need(need_id)
             implied_need = Need(implied_need_id)
             if need == implied_need:

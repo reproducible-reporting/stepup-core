@@ -3,12 +3,12 @@
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ ./work1.py
-RESCHEDULE │ ./work1.py
+ POSTPONED │ ./work1.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 inp2.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ ./work2.py
-RESCHEDULE │ ./work2.py
+ POSTPONED │ ./work2.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 inp1.txt
 ────────────────────────────────────────────────────────────────────────────────

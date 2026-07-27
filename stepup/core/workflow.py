@@ -109,8 +109,8 @@ class Workflow(Trellis):
     dir_queue: asyncio.Queue | None = attrs.field(kw_only=True)
     """Directories to be (un)watched can be added to this queue."""
 
-    reschedule_cap: int = attrs.field(kw_only=True, default=100)
-    """Maximum number of consecutive reschedules (since the last SUCCEEDED) before a
+    postpone_cap: int = attrs.field(kw_only=True, default=100)
+    """Maximum number of consecutive postpones (since the last SUCCEEDED) before a
     step is failed instead of parked in PENDING again. A livelock guard, not expected
     to bind in normal use; see `Step.completed()`."""
 
@@ -168,19 +168,6 @@ class Workflow(Trellis):
             logger.error(
                 "%s output of succeeded step: path_out=%s step=%s", file_state.name, flabel, slabel
             )
-            to_mark_pending.add(Step(self, si, slabel))
-
-        # Verify that succeeded steps have no rescheduled info.
-        sql = (
-            "SELECT step.node, node.label FROM step JOIN node ON step.node = node.i "
-            "WHERE step.state = ? AND (step.unavailable_inputs != '' OR step.unfresh_inputs != '')"
-            " AND NOT node.detached"
-        )
-        data = (StepState.SUCCEEDED.value,)
-        for si, slabel in self.db.execute(sql, data):
-            if strict:
-                raise GraphError(f"Rescheduled succeeded step: step={slabel}")
-            logger.error("Rescheduled succeeded step: step=%s", slabel)
             to_mark_pending.add(Step(self, si, slabel))
 
         # Mark steps pending to rerun steps that seem to be out of date,
@@ -730,7 +717,7 @@ class Workflow(Trellis):
                 else:
                     raise_unexpected(path, old_state, new_fh)
         elif cause == HashUpdateCause.FAILED:
-            # This branch is relevant for when a step has failed or rescheduled
+            # This branch is relevant for when a step has failed or postponed
             # and its outputs should be marked as OUTDATED.
             for i, path, new_fh, old_state in records:
                 if old_state in (FileState.OUTDATED, FileState.AWAITED):
@@ -990,7 +977,7 @@ class Workflow(Trellis):
         old_step.set_resources(resources)
         old_step.set_env_overrides(env_overrides)
 
-        # If inputs of the recreated steps are AWAITED or OUTDATED, these steps must be rescheduled.
+        # If inputs of the recreated steps are AWAITED or OUTDATED, these steps must be postponed.
         for i, label in self.db.execute(RECURSE_OUTDATED_STEPS, (old_step.i,)):
             step = Step(self, i, label)
             step.mark_pending()
@@ -1016,7 +1003,7 @@ class Workflow(Trellis):
         vol_paths: Collection[str] = (),
         start_times: dict[int, int] | None = None,
         stop_times: dict[int, int] | None = None,
-    ) -> tuple[bool, list[tuple[File, FileState]]]:
+    ) -> tuple[bool, set[str], set[str], list[tuple[File, FileState]]]:
         """Amend step information.
 
         Parameters
@@ -1037,9 +1024,12 @@ class Workflow(Trellis):
 
         Returns
         -------
-        keep_going
-            True when known inputs are readily available and fresh.
-            False otherwise, meaning the step needs to be rescheduled.
+        is_detached
+            `True` if the step is detached and its amendments are moot.
+        unavailable
+            A set of input paths that are not available.
+        unfresh
+            A set of input paths that are available but fail the amend() freshness check.
         to_check
             A list of paths and file_hashes.
             These must be sent back to the client where the hashes can be checked
@@ -1052,7 +1042,7 @@ class Workflow(Trellis):
         if step.is_detached():
             # The step's creator has moved on without it (see Step.detach()), so
             # its amendments are moot.
-            return True, []
+            return True, set(), set(), []
 
         # Normalize arguments
         inp_paths = sorted(set(inp_paths))
@@ -1098,12 +1088,7 @@ class Workflow(Trellis):
             new_idep = file.add_source(step)
             self._amend_dep(new_idep)
 
-        if len(unavailable) > 0:
-            step.add_unavailable_inputs("\n".join(sorted(unavailable)))
-        if len(unfresh) > 0:
-            step.add_unfresh_inputs("\n".join(sorted(unfresh)))
-
-        return len(unavailable) == 0 and len(unfresh) == 0, self._build_to_check(deferred)
+        return False, unavailable, unfresh, self._build_to_check(deferred)
 
     def _amend_dep(self, idep):
         self.db.execute("INSERT INTO amended_dep VALUES (?)", (idep,))

@@ -223,9 +223,7 @@ even when the number itself does not change.
 Invariant-preserving side effects (derived-column bookkeeping that would otherwise require
 a Python read-branch-write round trip on every mutation) are implemented as
 `AFTER INSERT/UPDATE/DELETE` triggers, colocated with the table they read from inside that
-node class's `*_SCHEMA` string
-(e.g. `step_clear_rescheduled` and the `step_dependency_check_after_*` pair in
-`STEP_SCHEMA`).
+node class's `*_SCHEMA` string.
 Trigger names follow the same `<table>_<purpose>` convention as indexes, with no prefix.
 `WHEN` clauses that depend on enum values are generated via f-string interpolation against
 the enum (e.g. `{StepState.SUCCEEDED.value}`) rather than hardcoded literals,

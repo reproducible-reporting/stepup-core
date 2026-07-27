@@ -3,7 +3,7 @@
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ ./work.py subs1.txt > subs2.txt
-RESCHEDULE │ ./work.py subs1.txt > subs2.txt
+ POSTPONED │ ./work.py subs1.txt > subs2.txt
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 conv1.txt
 ────────────────────────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ Modified inp hash    subs1.txt (digest 5f2c85fe ➜ 2d0abe4a)
 Same inp hash        work.py
 ────────────────────────────────────────────────────────────────────────────────
      START │ ./work.py subs1.txt > subs2.txt
-RESCHEDULE │ ./work.py subs1.txt > subs2.txt
+ POSTPONED │ ./work.py subs1.txt > subs2.txt
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 conv2.txt
 ────────────────────────────────────────────────────────────────────────────────

@@ -9,7 +9,7 @@ stepup wait
 stepup graph current_graph1
 grep hello out.txt
 
-# Delete the amended input and rerun. The step is not rescheduled and out.txt is unaffected.
+# Delete the amended input and rerun. The step is not scheduled and out.txt is unaffected.
 rm inp.txt
 stepup watch-delete inp.txt
 stepup run

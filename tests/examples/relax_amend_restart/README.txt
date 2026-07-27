@@ -1,6 +1,6 @@
 Exercises the director-restart case for the start/stop-timestamp freshness check.
 
-In phase 1, source.sh and sink.py race once (unfresh reschedule) and converge.
+In phase 1, source.sh and sink.py race once (unfresh postpone) and converge.
 In phase 2, the director is restarted with a fresh (empty) Scheduler;
 source.sh stays SUCCEEDED from phase 1 and is never re-dispatched,
 so it has no start_times/stop_times entry in the new invocation.

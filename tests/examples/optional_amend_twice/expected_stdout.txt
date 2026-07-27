@@ -3,14 +3,14 @@
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ ./work.py
-RESCHEDULE │ ./work.py
+ POSTPONED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 optional1.txt
 ────────────────────────────────────────────────────────────────────────────────
      START │ cp -p data1.txt optional1.txt
    SUCCESS │ cp -p data1.txt optional1.txt
      START │ ./work.py
-RESCHEDULE │ ./work.py
+ POSTPONED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 optional2.txt
 ────────────────────────────────────────────────────────────────────────────────

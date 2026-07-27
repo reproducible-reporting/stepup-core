@@ -3,7 +3,7 @@
      START │ ./plan.py
    SUCCESS │ ./plan.py
      START │ ./work.py
-RESCHEDULE │ ./work.py
+ POSTPONED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 inp.txt
 ────────────────────────────────────────────────────────────────────────────────

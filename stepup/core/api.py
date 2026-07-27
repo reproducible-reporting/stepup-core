@@ -588,7 +588,7 @@ def amend(
     InputNotFoundError
         When amended inputs are not yet available.
         Let this exception propagate — do not catch it.
-        The director reschedules the step once the missing inputs become available.
+        The director postpones the step once the missing inputs become available.
 
     Notes
     -----
@@ -601,9 +601,9 @@ def amend(
     it is also safe to call `amend()` afterward.
     A file that is missing, or that was built too recently to be trusted
     (e.g. still being written by its producer step while it was read),
-    causes the step to be rescheduled rather than to fail outright.
+    causes the step to be postponed rather than to fail outright.
     Calling `amend()` early remains preferable where practical,
-    since it avoids the wasted work of a reschedule.
+    since it avoids the wasted work of a postponed step.
 
     For additional output files, `amend(out=...)` or `amend(vol=...)` is required before writing.
     These will raise an exception if the amended outputs collide with files declared elsewhere
@@ -1324,10 +1324,11 @@ def _confirm_deferred(to_check: Collection[tuple[str, FileHash]] | None, step_i:
         if len(checked) > 0:
             RPC_CLIENT.call.confirm_hashes(checked)
         if len(missing) > 0:
-            message = "\n".join(missing)
             if step_i is not None:
-                RPC_CLIENT.call.reschedule_step(step_i, message)
-            raise DeferredNotConfirmedError(message)
+                RPC_CLIENT.call.postpone_step(step_i, missing)
+            raise DeferredNotConfirmedError(
+                ", ".join(str(translate_back(path)) for path in missing)
+            )
 
 
 def _check_inp_paths(

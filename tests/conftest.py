@@ -80,7 +80,7 @@ async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
                     do_watch=True,
                     do_watch_first=False,
                     available_resources=None,
-                    reschedule_cap=100,
+                    postpone_cap=100,
                     db=db,
                 )
             )
@@ -124,16 +124,16 @@ def declare_static(workflow, creator, paths):
 async def wfs(request) -> AsyncIterator[Workflow]:
     """A workflow from scratch, no plan.py
 
-    Supports indirect parametrization to override `reschedule_cap`, e.g.
+    Supports indirect parametrization to override `postpone_cap`, e.g.
     `@pytest.mark.parametrize("wfs", [3], indirect=True)`.
     """
-    reschedule_cap = getattr(request, "param", 100)
+    postpone_cap = getattr(request, "param", 100)
     dir_queue = asyncio.Queue()
     # The `with` opens the connection for the fixture lifetime.
     # Tests using this fixture can use `async with db:`
     # to acquire the lock for the duration of their test.
     with DBSession.open(":memory:") as db:
-        workflow = Workflow(db, makedirs=False, dir_queue=dir_queue, reschedule_cap=reschedule_cap)
+        workflow = Workflow(db, makedirs=False, dir_queue=dir_queue, postpone_cap=postpone_cap)
         await workflow.initialize()
         yield workflow
         async with db:

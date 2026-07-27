@@ -5,7 +5,7 @@
      START │ cp -p asource1.txt data1.txt
    SUCCESS │ cp -p asource1.txt data1.txt
      START │ ./work.py > log.txt
-RESCHEDULE │ ./work.py > log.txt
+ POSTPONED │ ./work.py > log.txt
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 data2.txt
 ────────────────────────────────────────────────────────────────────────────────

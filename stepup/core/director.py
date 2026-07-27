@@ -118,7 +118,7 @@ async def async_main(
                 do_watch=args.watch,
                 do_watch_first=args.watch_first,
                 available_resources=args.resources,
-                reschedule_cap=args.reschedule_cap,
+                postpone_cap=args.postpone_cap,
                 db=db,
                 mp_ctx=mp_ctx,
             )
@@ -224,10 +224,10 @@ def parse_args() -> argparse.Namespace:
         help="Socket to send reporter updates to, if any.",
     )
     parser.add_argument(
-        "--reschedule-cap",
+        "--postpone-cap",
         type=int,
         default=100,
-        help="Maximum number of consecutive reschedules (since the last success) before "
+        help="Maximum number of consecutive postpones (since the last success) before "
         "a step is failed instead of parked. A livelock guard. [default=%(default)s]",
     )
     parser.add_argument(
@@ -328,7 +328,7 @@ async def serve(
     do_watch: bool,
     do_watch_first: bool,
     available_resources: str | None,
-    reschedule_cap: int,
+    postpone_cap: int,
     db: DBSession,
     mp_ctx=None,
 ) -> ServeResult:
@@ -366,8 +366,8 @@ async def serve(
     available_resources
         A dictionary of named resources and their available quantities,
         e.g. `{"cpu": 4, "gpu": 1}`. Defaults to an empty dict.
-    reschedule_cap
-        Maximum number of consecutive reschedules (since a step last succeeded) before
+    postpone_cap
+        Maximum number of consecutive postpones (since a step last succeeded) before
         it is failed instead of parked pending again. A livelock guard.
     mp_ctx
         A `multiprocessing` forkserver context for Python step execution and file hashing,
@@ -403,7 +403,7 @@ async def serve(
 
     # Create basic components
     dir_queue = asyncio.Queue() if do_watch else None
-    workflow = Workflow(db, dir_queue=dir_queue, reschedule_cap=reschedule_cap)
+    workflow = Workflow(db, dir_queue=dir_queue, postpone_cap=postpone_cap)
     await workflow.initialize()
     scheduler = Scheduler(workflow, db=db, use_duration=use_duration)
     if available_resources is not None:
@@ -435,7 +435,7 @@ async def serve(
     memory_sampler = CgroupMemorySampler() if do_cgroup else None
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(
-        scheduler, workflow, db, reporter, builder, watcher, stop_event
+        scheduler, workflow, db, reporter, executor, builder, watcher, stop_event
     )
 
     # Initialize the workflow
@@ -501,6 +501,7 @@ class DirectorHandler:
     workflow: Workflow = attrs.field()
     db: DBSession = attrs.field()
     reporter: ReporterClient = attrs.field()
+    executor: Executor = attrs.field()
     builder: Builder = attrs.field()
     watcher: Watcher | None = attrs.field()
     stop_event: asyncio.Event = attrs.field()
@@ -656,7 +657,7 @@ class DirectorHandler:
         """
         async with self.db:
             step = self.workflow.node(Step, step_i)
-            return self.workflow.amend_step(
+            is_detached, unavailable, unfresh, to_check = self.workflow.amend_step(
                 step,
                 inp_paths=inp_paths,
                 env_deps=env_deps,
@@ -665,13 +666,19 @@ class DirectorHandler:
                 start_times=self.scheduler.start_times,
                 stop_times=self.scheduler.stop_times,
             )
+        keep_going = len(unavailable) == 0 and len(unfresh) == 0
+        if not keep_going:
+            self.executor.postpone(step, unavailable=unavailable, unfresh=unfresh)
+        if is_detached:
+            keep_going = False
+        return keep_going, to_check
 
     @allow_rpc
-    async def reschedule_step(self, step_i: int, reason: str):
-        """Reschedule a step for the given reason."""
+    async def postpone_step(self, step_i: int, missing: list[str]):
+        """Postpone a step due to unavailable dependencies."""
         async with self.db:
             step = self.workflow.node(Step, step_i)
-            step.add_unavailable_inputs(reason)
+        self.executor.postpone(step, unavailable=missing)
 
     @allow_rpc
     async def record_subprocess(

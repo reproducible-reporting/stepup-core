@@ -20,6 +20,17 @@ from stepup.core.step import Step
 from stepup.core.stepinfo import StepInfo
 from stepup.core.workflow import RECURSE_DEFERRED_INPUTS, RECURSE_OUTDATED_STEPS, Workflow
 
+
+def _amend(wfx: Workflow, step: Step, **kwargs) -> tuple[bool, list]:
+    """Amend a step and collapse the result into (keep_going, to_check).
+
+    Mirrors `DirectorHandler.handle_amend` in `stepup/core/director.py`.
+    """
+    is_detached, unavailable, unfresh, to_check = wfx.amend_step(step, **kwargs)
+    keep_going = not is_detached and not unavailable and not unfresh
+    return keep_going, to_check
+
+
 TEST_FILE_GRAPH = """\
 root:
              product   file:script.sh
@@ -147,12 +158,16 @@ async def test_step(wfs: Workflow):
     # (The extra inputs and outputs are not meant to be sensible for the copy command.)
     async with wfs.db:
         step.set_state(StepState.RUNNING)
-        assert step.get_unavailable_inputs() == ""
+        assert not step.has_unavailable_amended_input()
     async with wfs.db:
-        keep_going, to_check = wfs.amend_step(step, inp_paths=["spam.txt"], out_paths=["egg.csv"])
+        is_detached, unavailable, unfresh, to_check = wfs.amend_step(
+            step, inp_paths=["spam.txt"], out_paths=["egg.csv"]
+        )
         assert to_check == []
-        assert not keep_going
-        assert step.get_unavailable_inputs().splitlines() == ["spam.txt"]
+        assert not is_detached
+        assert unavailable == {"spam.txt"}
+        assert not unfresh
+        assert step.has_unavailable_amended_input()
         assert set(step.inp_paths(yield_detached=True)) == {
             ("foo.txt", True),
             ("spam.txt", True),
@@ -315,7 +330,7 @@ async def test_simple_example(wfs: Workflow):
         env_values = {"A": "B"}
         step_hash = StepHash.from_inp(step.key(), True, inp_hashes, env_values)
         step_hash = step_hash.evolve_out(out_hashes)
-        step.completed(step_hash)
+        step.completed(step_hash, False)
         assert wfs.format_str() == TEST_SIMPLE_EXAMPLE_GRAPH3
         assert wfs.get_file_counts() == Counter({FileState.STATIC: 1, FileState.BUILT: 1})
         assert wfs.get_step_counts() == Counter({StepState.SUCCEEDED: 1})
@@ -342,7 +357,7 @@ async def test_simple_example(wfs: Workflow):
         assert step.get_state() == StepState.PENDING
 
         # simulate a skip
-        step.completed(step_hash)
+        step.completed(step_hash, False)
         assert wfs.format_str() == TEST_SIMPLE_EXAMPLE_GRAPH3
         assert step.get_state() == StepState.SUCCEEDED
 
@@ -469,7 +484,27 @@ async def test_rerun_creator_detaches_running_child(wfp: Workflow):
 
         # The next RPC call made by `sub`'s still-alive child process is a harmless
         # no-op instead of a crash.
-        assert wfp.amend_step(sub, inp_paths=["some_new_input"]) == (True, [])
+        assert wfp.amend_step(sub, inp_paths=["some_new_input"]) == (True, set(), set(), [])
+
+
+async def test_mark_pending_noop_when_running(wfs: Workflow):
+    """`mark_pending()` must leave a RUNNING step's state untouched."""
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        echo = wfs.find(Step, "echo")
+        echo.set_state(StepState.RUNNING)
+        echo.mark_pending()
+        assert echo.get_state() == StepState.RUNNING
+
+
+async def test_mark_pending_noop_when_checking(wfs: Workflow):
+    """`mark_pending()` must leave a CHECKING step's state untouched."""
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        echo = wfs.find(Step, "echo")
+        echo.set_state(StepState.CHECKING)
+        echo.mark_pending()
+        assert echo.get_state() == StepState.CHECKING
 
 
 async def test_detach_marks_is_detached_regardless_of_state(wfp: Workflow):
@@ -543,17 +578,6 @@ async def test_define_step_detached_creator_is_noop(wfp: Workflow):
         assert wfp.find_detached(Step, "echo ghost") == (None, None)
 
 
-async def test_add_unavailable_inputs_detached_step_is_noop(wfp: Workflow):
-    """A detached step's `add_unavailable_inputs()` call must be a silent no-op."""
-    async with wfp.db:
-        plan = wfp.find(Step, "./plan.py")
-        wfp.define_step(plan, "sub")
-        sub = wfp.find(Step, "sub")
-        sub.detach()
-        sub.add_unavailable_inputs("ghost input")
-        assert sub.get_unavailable_inputs() == ""
-
-
 async def test_record_subprocess_detached_step_is_noop(wfp: Workflow):
     """A detached step's `record_subprocess()` call must be a silent no-op."""
     async with wfp.db:
@@ -615,7 +639,7 @@ async def test_define_step_volatile_input(wfp: Workflow):
             # Volatile files are not allowed as inputs
             wfp.define_step(plan, "cat given", inp_paths=["given"])
     async with wfp.db:
-        touch.completed(StepHash(b"mock", None, b"zzz", None))
+        touch.completed(StepHash(b"mock", None, b"zzz", None), False)
         assert touch.get_state() == StepState.SUCCEEDED
         assert file.get_state() == FileState.VOLATILE
     with pytest.raises(GraphError):
@@ -652,8 +676,8 @@ async def test_file_state_static_overlap(wfp: Workflow):
         wfp.define_step(plan, "echo", inp_paths=["some"], out_paths=["other"])
         step = wfp.find(Step, "echo")
         step.set_state(StepState.RUNNING)
-        keep_going, to_check = wfp.amend_step(
-            step, inp_paths=["inp"], out_paths=["out"], vol_paths=["vol"]
+        keep_going, to_check = _amend(
+            wfp, step, inp_paths=["inp"], out_paths=["out"], vol_paths=["vol"]
         )
         assert not keep_going
         assert to_check == []
@@ -681,8 +705,8 @@ async def test_file_state_output_overlap(wfp: Workflow):
         wfp.define_step(plan, "echo", inp_paths=["some"], out_paths=["other"])
         step = wfp.find(Step, "echo")
         step.set_state(StepState.RUNNING)
-        keep_going, to_check = wfp.amend_step(
-            step, inp_paths=["inp", "given"], out_paths=["out"], vol_paths=["vol"]
+        keep_going, to_check = _amend(
+            wfp, step, inp_paths=["inp", "given"], out_paths=["out"], vol_paths=["vol"]
         )
         assert not keep_going
         assert to_check == []
@@ -708,8 +732,8 @@ async def test_file_state_volatile_overlap(wfp: Workflow):
         wfp.define_step(plan, "echo", inp_paths=["some"], out_paths=["other"])
         step = wfp.find(Step, "echo")
         step.set_state(StepState.RUNNING)
-        keep_going, to_check = wfp.amend_step(
-            step, inp_paths=["inp"], out_paths=["out"], vol_paths=["vol"]
+        keep_going, to_check = _amend(
+            wfp, step, inp_paths=["inp"], out_paths=["out"], vol_paths=["vol"]
         )
         assert not keep_going
         assert to_check == []
@@ -777,7 +801,7 @@ async def test_define_pending_step_skip(wfp: Workflow):
 
         # Simulate run (first get the plan step and ignore it)
         wfp.update_file_hashes([("out", fake_hash("out"))], HashUpdateCause.SUCCEEDED)
-        step.completed(StepHash(b"a" * 32, None, b"b" * 32, None))
+        step.completed(StepHash(b"a" * 32, None, b"b" * 32, None), False)
 
         # Check run
         assert step.get_state() == StepState.SUCCEEDED
@@ -794,7 +818,7 @@ async def test_define_pending_step_skip(wfp: Workflow):
 
         # Simulate rerun
         assert step.get_state() == StepState.PENDING
-        step.completed(StepHash(b"a" * 32, None, b"b" * 32, None))
+        step.completed(StepHash(b"a" * 32, None, b"b" * 32, None), False)
         assert wfp.format_str() == PENDING_STEP_SKIP_GRAPH
         assert step.get_state() == StepState.SUCCEEDED
         step.delete_hash()
@@ -812,19 +836,19 @@ async def test_define_pending_step_skip_extra(wfp: Workflow):
         wfp.define_step(foo, "bar > spam", inp_paths=["log"], env_deps=["X"], vol_paths=["spam"])
         bar = wfp.find(Step, "bar > spam")
         assert bar.get_state() == StepState.PENDING
-        plan.completed(StepHash(b"plan_ok", None, b"zzz", None))
+        plan.completed(StepHash(b"plan_ok", None, b"zzz", None), False)
 
         # Simulate run
         # foo
-        keep_going, to_check = wfp.amend_step(
-            foo, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"]
+        keep_going, to_check = _amend(
+            wfp, foo, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"]
         )
         assert keep_going
         assert to_check == []
         wfp.update_file_hashes(
             [("log", fake_hash("log")), ("aout", fake_hash("aout"))], HashUpdateCause.SUCCEEDED
         )
-        foo.completed(StepHash(b"foo_ok", None, b"zzz", None))
+        foo.completed(StepHash(b"foo_ok", None, b"zzz", None), False)
         assert foo.get_state() == StepState.SUCCEEDED
         assert bar.get_state() == StepState.PENDING
         # bar
@@ -833,7 +857,7 @@ async def test_define_pending_step_skip_extra(wfp: Workflow):
         wfp.amend_step(bar, inp_paths=["ainp2"], out_paths=["aout2"], vol_paths=["avol2"])
         assert wfp.find(File, "ainp2") in set(bar.sources())
         wfp.update_file_hashes([("aout2", fake_hash("aout2"))], HashUpdateCause.SUCCEEDED)
-        bar.completed(StepHash(b"bar_ok", None, b"zzz", None))
+        bar.completed(StepHash(b"bar_ok", None, b"zzz", None), False)
         assert bar.get_state() == StepState.SUCCEEDED
         txt = wfp.format_str()
 
@@ -856,11 +880,11 @@ async def test_define_pending_step_skip_extra(wfp: Workflow):
         assert foo.get_state() == StepState.PENDING
         assert bar.get_state() == StepState.PENDING
         # This simulation assumes that no files have changed and we can just skip foo.
-        foo.completed(StepHash(b"foo_ok", None, b"zzz", None))
+        foo.completed(StepHash(b"foo_ok", None, b"zzz", None), False)
         assert foo.get_state() == StepState.SUCCEEDED
         assert bar.get_state() == StepState.PENDING
         # This simulation assumes that no files have changed and we can just skip bar
-        bar.completed(StepHash(b"bar_ok", None, b"zzz", None))
+        bar.completed(StepHash(b"bar_ok", None, b"zzz", None), False)
         assert bar.get_state() == StepState.SUCCEEDED
         assert wfp.format_str() == txt
 
@@ -880,7 +904,7 @@ async def test_skip_step_amended_detached_input(wfp: Workflow):
         wfp.update_file_hashes(
             [("log", fake_hash("log")), ("aout", fake_hash("aout"))], HashUpdateCause.SUCCEEDED
         )
-        foo.completed(StepHash(b"foo_ok", None, b"zzz", None))
+        foo.completed(StepHash(b"foo_ok", None, b"zzz", None), False)
         assert foo.get_state() == StepState.SUCCEEDED
 
         # Detach ainp and check state
@@ -906,13 +930,13 @@ async def test_skip_ngm(wfp: Workflow):
         wfp.define_step(plan, "foo")
         foo = wfp.find(Step, "foo")
         assert foo.get_state() == StepState.PENDING
-        plan.completed(StepHash(b"plan_ok", None, b"ee", None))
+        plan.completed(StepHash(b"plan_ok", None, b"ee", None), False)
         assert plan.get_state() == StepState.SUCCEEDED
 
         # Simulate run
         ngm = NGlobMulti.from_patterns(["${*prefix}_data.txt"], subs={"prefix": "n???"})
         wfp.register_nglob(foo, ngm)
-        foo.completed(StepHash(b"foo_ok", None, b"zzz", None))
+        foo.completed(StepHash(b"foo_ok", None, b"zzz", None), False)
         assert foo.get_hash() is not None
         assert foo.get_state() == StepState.SUCCEEDED
 
@@ -923,7 +947,7 @@ async def test_skip_ngm(wfp: Workflow):
 
         # Skip
         assert foo.get_state() == StepState.PENDING
-        foo.completed(StepHash(b"foo_ok", None, b"zzz", None))
+        foo.completed(StepHash(b"foo_ok", None, b"zzz", None), False)
         assert foo.get_state() == StepState.SUCCEEDED
         nglob_multis = list(foo.nglob_multis())
         assert len(nglob_multis) == 1
@@ -939,7 +963,7 @@ async def test_hash_completed_success(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "cp foo bar", inp_paths=["foo"], out_paths=["bar"])
         step_hash = StepHash(b"p" * 32, None, b"p" * 32, None)
-        plan.completed(step_hash)
+        plan.completed(step_hash, False)
         assert step_hash == plan.get_hash()
 
 
@@ -949,8 +973,8 @@ async def test_amend_step(wfp: Workflow):
         wfp.define_step(plan, "blub > log", vol_paths=["log"])
         step = wfp.find(Step, "blub > log")
         assert wfp.amend_step(step)
-        keep_going, to_check = wfp.amend_step(
-            step, inp_paths=["inp1", "inp2"], out_paths=["out3"], vol_paths=["vol4"]
+        keep_going, to_check = _amend(
+            wfp, step, inp_paths=["inp1", "inp2"], out_paths=["out3"], vol_paths=["vol4"]
         )
         assert not keep_going
         assert to_check == []
@@ -960,7 +984,7 @@ async def test_amend_step(wfp: Workflow):
         }
         assert set(step.out_paths(amended=True)) == {"out3"}
         assert set(step.vol_paths(amended=True)) == {"vol4"}
-        step.completed(None)
+        step.completed(None, True)
         step.set_state(StepState.PENDING)
         declare_static(wfp, plan, ["inp1"])
         step.set_state(StepState.PENDING)
@@ -983,7 +1007,7 @@ def _build_producer_sink(wfs: Workflow) -> tuple[Step, Step]:
     wfs.update_file_hashes(out_hashes, HashUpdateCause.SUCCEEDED)
     step_hash = StepHash.from_inp(producer.key(), True, [], {})
     step_hash = step_hash.evolve_out(out_hashes)
-    producer.completed(step_hash)
+    producer.completed(step_hash, False)
 
     wfs.define_step(plan, "sink")
     sink = wfs.find(Step, "sink")
@@ -995,10 +1019,10 @@ async def test_amend_step_no_dicts_skips_freshness_check(wfs: Workflow):
     check existed: a BUILT input is always accepted, regardless of any race."""
     async with wfs.db:
         _, sink = _build_producer_sink(wfs)
-        keep_going, _ = wfs.amend_step(sink, inp_paths=["data.txt"])
-        assert keep_going
-        assert sink.get_unfresh_inputs() == ""
-        assert sink.get_unavailable_inputs() == ""
+        is_detached, unavailable, unfresh, _ = wfs.amend_step(sink, inp_paths=["data.txt"])
+        assert not is_detached
+        assert not unavailable
+        assert not unfresh
 
 
 async def test_amend_step_freshness_fresh(wfs: Workflow):
@@ -1007,11 +1031,12 @@ async def test_amend_step_freshness_fresh(wfs: Workflow):
         producer, sink = _build_producer_sink(wfs)
         start_times = {producer.i: 100, sink.i: 200}
         stop_times = {producer.i: 100}
-        keep_going, _ = wfs.amend_step(
+        is_detached, unavailable, unfresh, _ = wfs.amend_step(
             sink, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
         )
-        assert keep_going
-        assert sink.get_unfresh_inputs() == ""
+        assert not is_detached
+        assert not unavailable
+        assert not unfresh
 
 
 async def test_amend_step_freshness_unfresh(wfs: Workflow):
@@ -1020,12 +1045,12 @@ async def test_amend_step_freshness_unfresh(wfs: Workflow):
         producer, sink = _build_producer_sink(wfs)
         start_times = {producer.i: 200, sink.i: 100}
         stop_times = {producer.i: 200}
-        keep_going, _ = wfs.amend_step(
+        is_detached, unavailable, unfresh, _ = wfs.amend_step(
             sink, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
         )
-        assert not keep_going
-        assert sink.get_unfresh_inputs().splitlines() == ["data.txt"]
-        assert sink.get_unavailable_inputs() == ""
+        assert not is_detached
+        assert not unavailable
+        assert unfresh == {"data.txt"}
 
 
 async def test_amend_step_freshness_tie_is_unfresh(wfs: Workflow):
@@ -1034,11 +1059,12 @@ async def test_amend_step_freshness_tie_is_unfresh(wfs: Workflow):
         producer, sink = _build_producer_sink(wfs)
         start_times = {producer.i: 150, sink.i: 150}
         stop_times = {producer.i: 150}
-        keep_going, _ = wfs.amend_step(
+        is_detached, unavailable, unfresh, _ = wfs.amend_step(
             sink, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
         )
-        assert not keep_going
-        assert sink.get_unfresh_inputs().splitlines() == ["data.txt"]
+        assert not is_detached
+        assert not unavailable
+        assert unfresh == {"data.txt"}
 
 
 async def test_amend_step_freshness_producer_stop_time_missing(wfs: Workflow):
@@ -1048,11 +1074,12 @@ async def test_amend_step_freshness_producer_stop_time_missing(wfs: Workflow):
         _, sink = _build_producer_sink(wfs)
         start_times = {sink.i: 100}
         stop_times = {}
-        keep_going, _ = wfs.amend_step(
+        is_detached, unavailable, unfresh, _ = wfs.amend_step(
             sink, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
         )
-        assert keep_going
-        assert sink.get_unfresh_inputs() == ""
+        assert not is_detached
+        assert not unavailable
+        assert not unfresh
 
 
 PENDING_STEP_SKIP_AMENDED_GRAPH = """\
@@ -1143,7 +1170,7 @@ async def test_define_pending_step_skip_amended(wfp: Workflow):
         wfp.update_file_hashes(
             [("out", fake_hash("out")), ("aout", fake_hash("aout"))], HashUpdateCause.SUCCEEDED
         )
-        step.completed(StepHash(b"c" * 32, None, b"d" * 32, None))
+        step.completed(StepHash(b"c" * 32, None, b"d" * 32, None), False)
         assert wfp.format_str() == PENDING_STEP_SKIP_AMENDED_GRAPH
         assert step.get_state() == StepState.SUCCEEDED
 
@@ -1161,7 +1188,7 @@ async def test_define_pending_step_skip_amended(wfp: Workflow):
 
         # Simulate and check rerun
         assert step.get_state() == StepState.PENDING
-        step.completed(StepHash(b"c" * 32, None, b"d" * 32, None))
+        step.completed(StepHash(b"c" * 32, None, b"d" * 32, None), False)
         assert {node.key() for node in step.sources(include_detached=True)} == {
             "file:ainp",
             "file:inp",
@@ -1259,13 +1286,13 @@ async def test_externally_updated1(wfp: Workflow):
             plan, "work", inp_paths=["aa1_foo.txt"], out_paths=["aa1_bar.txt"], vol_paths=["log"]
         )
         work = wfp.find(Step, "work")
-        plan.completed(StepHash(b"ok", None, b"inp_ok", None))
+        plan.completed(StepHash(b"ok", None, b"inp_ok", None), False)
         aa1_bar = wfp.find(File, "aa1_bar.txt")
         assert aa1_bar.creator() == work
         assert aa1_bar.get_state() == FileState.AWAITED
         assert work.get_state() == StepState.PENDING
         wfp.update_file_hashes([("aa1_bar.txt", fake_hash("ok"))], HashUpdateCause.SUCCEEDED)
-        work.completed(None)
+        work.completed(None, False)
         assert work.get_state() == StepState.FAILED
         assert aa1_bar.get_state() == FileState.OUTDATED
         assert list(wfp.steps(StepState.SUCCEEDED)) == [plan]
@@ -1409,7 +1436,7 @@ async def test_to_be_deleted(wfp: Workflow):
             [("built", built_file_hash), ("gone", gone_file_hash), ("sub/foo", foo_file_hash)],
             HashUpdateCause.SUCCEEDED,
         )
-        blub1.completed(StepHash(b"aaa", None, b"zzz", None))
+        blub1.completed(StepHash(b"aaa", None, b"zzz", None), False)
         plan.detach()
         assert wfp.to_be_deleted == []
         assert wfp.find_detached(Step, "./plan.py") == (plan, True)
@@ -1449,8 +1476,8 @@ async def test_externally_deleted(wfp: Workflow):
     async with wfp.db:
         assert prr.get_state() == FileState.AWAITED
         wfp.update_file_hashes([("prr", fake_hash("prr"))], HashUpdateCause.SUCCEEDED)
-        step1.completed(StepHash(b"11", None, b"zzz", None))
-        step2.completed(None)
+        step1.completed(StepHash(b"11", None, b"zzz", None), False)
+        step2.completed(None, False)
         assert prr.get_state() == FileState.BUILT
         wfp.update_file_hashes([("prr", FileHash.unknown())], HashUpdateCause.EXTERNAL)
         assert prr.get_state() == FileState.AWAITED
@@ -1470,7 +1497,7 @@ async def test_externally_updated2(wfp: Workflow):
         step2 = wfp.find(Step, "bla2")
 
         # Static
-        cat.completed(StepHash(b"sfdsafds", None, b"zzz", None))
+        cat.completed(StepHash(b"sfdsafds", None, b"zzz", None), False)
         wfp.update_file_hashes([("tst", FileHash.unknown())], HashUpdateCause.EXTERNAL)
         assert tst.get_state() == FileState.MISSING
         assert cat.get_state() == StepState.PENDING
@@ -1482,8 +1509,8 @@ async def test_externally_updated2(wfp: Workflow):
         prr = wfp.find(File, "prr")
         assert prr.get_state() == FileState.AWAITED
         wfp.update_file_hashes([("prr", fake_hash("prr"))], HashUpdateCause.SUCCEEDED)
-        step1.completed(StepHash(b"11", None, b"zzz", None))
-        step2.completed(None)
+        step1.completed(StepHash(b"11", None, b"zzz", None), False)
+        step2.completed(None, False)
         assert prr.get_state() == FileState.BUILT
         assert step2.get_state() == StepState.FAILED
         wfp.update_file_hashes([("prr", FileHash.unknown())], HashUpdateCause.EXTERNAL)
@@ -1499,7 +1526,7 @@ async def test_step_recycle(wfp: Workflow):
         echo = wfp.find(Step, "echo foo > bar")
         step_hash = StepHash(b"bsfssfdsdfsdfasdfasa", None, b"zzz", None)
         wfp.update_file_hashes([("bar", fake_hash("bar"))], HashUpdateCause.SUCCEEDED)
-        echo.completed(step_hash)
+        echo.completed(step_hash, False)
         hash1 = echo.get_hash()
         assert hash1 is not None
 
@@ -1723,8 +1750,8 @@ async def test_static_tree_clean(wfp: Workflow):
         assert wfp.find(File, "static/foo/bar.txt").get_state() == FileState.STATIC
 
         # Simulate the execution of the steps
-        plan.completed(StepHash(b"sthp", None, b"zzz", None))
-        step.completed(StepHash(b"sths", None, b"zzz", None))
+        plan.completed(StepHash(b"sthp", None, b"zzz", None), False)
+        step.completed(StepHash(b"sths", None, b"zzz", None), False)
 
         # Check the hashes
         assert plan.get_hash().inp_digest == b"sthp"
@@ -1806,11 +1833,11 @@ async def test_static_tree_amend_inp(wfp: Workflow):
         )
         assert to_check == [("static/initial.md", FileHash.unknown())]
         prog = wfp.find(Step, "prog")
-        keep_going, to_check = wfp.amend_step(prog, inp_paths=["static/other.md"])
+        keep_going, to_check = _amend(wfp, prog, inp_paths=["static/other.md"])
         assert keep_going
         assert to_check == [("static/other.md", FileHash.unknown())]
-        keep_going, to_check = wfp.amend_step(
-            prog, inp_paths=["static/amended.md", "other/amended.md"]
+        keep_going, to_check = _amend(
+            wfp, prog, inp_paths=["static/amended.md", "other/amended.md"]
         )
         assert not keep_going
         assert to_check == [("static/amended.md", FileHash.unknown())]
@@ -2018,7 +2045,7 @@ async def test_skip_amend_detached_inputs(wfp: Workflow):
             ("bbb", False, True),
         }
         wfp.update_file_hashes([("bar", fake_hash("bar"))], HashUpdateCause.SUCCEEDED)
-        step.completed(StepHash(b"step_ok", None, b"zzz", None))
+        step.completed(StepHash(b"step_ok", None, b"zzz", None), False)
         assert step.get_state() == StepState.SUCCEEDED
         assert step.get_hash() is not None
 
@@ -2140,7 +2167,7 @@ async def test_step_try_clean(wfp: Workflow):
 
         # Simulate execution of plan to get a hash
         step_hash = StepHash(b"p" * 32, None, b"p" * 32, None)
-        plan.completed(step_hash)
+        plan.completed(step_hash, False)
 
         # Check presence of hash
         assert plan.get_hash() == step_hash
@@ -2216,7 +2243,7 @@ async def test_consistency_succeeded_step(wfp: Workflow):
         wfp.define_step(plan, "prog", out_paths=["out.txt"])
         step = wfp.find(Step, "prog")
         wfp.update_file_hashes([("out.txt", fake_hash("out.txt"))], HashUpdateCause.SUCCEEDED)
-        step.completed(StepHash(b"prog", None, b"zzz", None))
+        step.completed(StepHash(b"prog", None, b"zzz", None), False)
         assert step.get_state() == StepState.SUCCEEDED
         out = wfp.find(File, "out.txt")
         assert out.get_state() == FileState.BUILT
@@ -2337,8 +2364,8 @@ async def test_recreate_step_to_check_amend(wfp: Workflow):
             vol_paths=["vol1.txt"],
         )
         assert to_check == []
-        keep_going, to_check = wfp.amend_step(
-            prog, inp_paths=["other/inp2.txt"], out_paths=["out2.txt"], vol_paths=["vol2.txt"]
+        keep_going, to_check = _amend(
+            wfp, prog, inp_paths=["other/inp2.txt"], out_paths=["out2.txt"], vol_paths=["vol2.txt"]
         )
         assert not keep_going
         assert to_check == []
@@ -2360,70 +2387,36 @@ async def test_get_file_hashes(wfp: Workflow):
         ]
 
 
-async def test_add_unavailable_inputs(wfs: Workflow):
-    async with wfs.db:
-        wfs.define_step(wfs.root, "echo")
-        echo = wfs.find(Step, "echo")
-        echo.add_unavailable_inputs("because, like...\n...you know, right")
-        assert echo.get_unavailable_inputs().splitlines() == [
-            "because, like...",
-            "...you know, right",
-        ]
-        echo.add_unavailable_inputs("you know what...\n...I mean, come on!")
-        assert echo.get_unavailable_inputs().splitlines() == [
-            "because, like...",
-            "...you know, right",
-            "you know what...",
-            "...I mean, come on!",
-        ]
-
-
-async def test_add_unfresh_inputs(wfs: Workflow):
-    async with wfs.db:
-        wfs.define_step(wfs.root, "echo")
-        echo = wfs.find(Step, "echo")
-        echo.add_unfresh_inputs("data.txt")
-        assert echo.get_unfresh_inputs().splitlines() == ["data.txt"]
-        echo.add_unfresh_inputs("other.txt")
-        assert echo.get_unfresh_inputs().splitlines() == ["data.txt", "other.txt"]
-        # Independent of unavailable_inputs.
-        assert echo.get_unavailable_inputs() == ""
-
-
 @pytest.mark.parametrize("wfs", [3], indirect=True)
-async def test_reschedule_cap(wfs: Workflow):
+async def test_postpone_cap(wfs: Workflow):
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         echo = wfs.find(Step, "echo")
         wfs.define_step(echo, "sub")
         sub = wfs.find(Step, "sub")
 
-        # Reschedule 3 times (== cap): stays PENDING each time, count increments,
-        # and the opportunistically-created child stays attached (accepted reschedule).
+        # Postponed 3 times (== cap): stays PENDING each time, count increments,
+        # and the opportunistically-created child stays attached (accepted postpone).
         for expected_count in [1, 2, 3]:
-            echo.add_unavailable_inputs("still waiting")
-            detached, interrupted_reschedule = echo.completed(None)
+            detached, interrupted_postpone = echo.completed(None, True)
             assert detached is False
-            assert interrupted_reschedule is False
+            assert interrupted_postpone is False
             assert echo.get_state() == StepState.PENDING
-            assert echo.get_reschedule_count() == expected_count
+            assert echo.get_postpone_count() == expected_count
             assert not sub.is_detached()
 
-        # 4th reschedule (cap + 1): FAILED instead of PENDING, a genuine terminal
+        # 4th postpone (cap + 1): FAILED instead of PENDING, a genuine terminal
         # outcome, so the child is now detached too.
-        echo.add_unavailable_inputs("still waiting")
-        detached, interrupted_reschedule = echo.completed(None)
+        detached, interrupted_postpone = echo.completed(None, True)
         assert detached is False
-        assert interrupted_reschedule is True
+        assert interrupted_postpone is True
         assert echo.get_state() == StepState.FAILED
-        assert echo.get_reschedule_count() == 4
-        # unavailable_inputs is still cleared on FAILED, same as any other FAILED step.
-        assert echo.get_unavailable_inputs() == ""
+        assert echo.get_postpone_count() == 4
         assert sub.is_detached()
 
 
 async def test_completed_detaches_child_only_on_genuine_failure(wfs: Workflow):
-    """An accepted reschedule leaves opportunistically-created children attached;
+    """An accepted postpone leaves opportunistically-created children attached;
     only a genuine terminal failure detaches them."""
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
@@ -2432,110 +2425,68 @@ async def test_completed_detaches_child_only_on_genuine_failure(wfs: Workflow):
         sub = wfs.find(Step, "sub")
         assert not sub.is_detached()
 
-        # Accepted reschedule: child must stay attached.
-        echo.add_unavailable_inputs("still waiting")
-        detached, interrupted_reschedule = echo.completed(None)
+        # Accepted postpone: child must stay attached.
+        detached, interrupted_postpone = echo.completed(None, True)
         assert not detached
-        assert not interrupted_reschedule
+        assert not interrupted_postpone
         assert echo.get_state() == StepState.PENDING
         assert not sub.is_detached()
 
-        # Genuine terminal failure (no unavailable/unfresh inputs): child is detached.
+        # Genuine terminal failure (no postpone requested): child is detached.
         echo.set_state(StepState.RUNNING)
-        detached, interrupted_reschedule = echo.completed(None)
+        detached, interrupted_postpone = echo.completed(None, False)
         assert not detached
-        assert not interrupted_reschedule
+        assert not interrupted_postpone
         assert echo.get_state() == StepState.FAILED
         assert sub.is_detached()
 
 
 @pytest.mark.parametrize("wfs", [3], indirect=True)
-async def test_reschedule_count_reset_on_success(wfs: Workflow):
+async def test_postpone_count_reset_on_success(wfs: Workflow):
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         echo = wfs.find(Step, "echo")
 
-        echo.add_unavailable_inputs("still waiting")
-        echo.completed(None)
-        assert echo.get_reschedule_count() == 1
+        echo.completed(None, True)
+        assert echo.get_postpone_count() == 1
 
         # A genuine success resets the counter to 0.
         step_hash = StepHash(b"h" * 32, None, b"h" * 32, None)
-        echo.completed(step_hash)
+        echo.completed(step_hash, False)
         assert echo.get_state() == StepState.SUCCEEDED
-        assert echo.get_reschedule_count() == 0
+        assert echo.get_postpone_count() == 0
 
-        # Next reschedule cycle starts back at 1, not 2.
+        # Next postpone cycle starts back at 1, not 2.
         echo.set_state(StepState.PENDING)
-        echo.add_unavailable_inputs("waiting again")
-        echo.completed(None)
-        assert echo.get_reschedule_count() == 1
+        echo.completed(None, True)
+        assert echo.get_postpone_count() == 1
 
 
-async def test_reschedule_clear_independent_of_count(wfs: Workflow):
-    # Uses the default cap (100): a single genuine (non-reschedule) FAILED step
-    # still clears unavailable_inputs via step_clear_rescheduled, independent of
-    # reschedule_count, which stays untouched by a plain FAILED (only SUCCEEDED resets it).
+async def test_postpone_clear_independent_of_count(wfs: Workflow):
+    # Uses the default cap (100): a single genuine (non-postpone) FAILED step
+    # still leaves postpone_count untouched (only SUCCEEDED resets it).
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         echo = wfs.find(Step, "echo")
-        echo.add_unavailable_inputs("still waiting")
-        echo.completed(None)
-        assert echo.get_reschedule_count() == 1
-        # Simulate mark_pending() having cleared unavailable_inputs (e.g. because the
-        # previously-missing input became available), followed by a genuine, unrelated
-        # command failure on the next run (unavailable_inputs empty this time).
-        echo.clear_unavailable_inputs()
+        echo.completed(None, True)
+        assert echo.get_postpone_count() == 1
+        # A genuine, unrelated command failure on the next run (no postpone requested).
         echo.set_state(StepState.PENDING)
-        _detached, interrupted_reschedule = echo.completed(None)
-        assert interrupted_reschedule is False  # plain FAILED, not a cap-exceeded reschedule
+        _detached, interrupted_postpone = echo.completed(None, False)
+        assert interrupted_postpone is False  # plain FAILED, not a cap-exceeded postpone
         assert echo.get_state() == StepState.FAILED
-        assert echo.get_reschedule_count() == 1  # unchanged by a plain FAILED
-
-
-async def test_completed_unfresh_only_reschedules(wfs: Workflow):
-    """Step.completed() reschedules on unfresh_inputs alone, and clears it unconditionally."""
-    async with wfs.db:
-        wfs.define_step(wfs.root, "echo")
-        echo = wfs.find(Step, "echo")
-        echo.add_unfresh_inputs("data.txt")
-        echo.completed(None)
-        assert echo.get_state() == StepState.PENDING
-        assert echo.get_reschedule_count() == 1
-        assert echo.get_unfresh_inputs() == ""
-        assert echo.get_unavailable_inputs() == ""
-
-
-async def test_completed_mixed_unavailable_and_unfresh(wfs: Workflow):
-    """When both buckets are populated, only unfresh_inputs is cleared unconditionally.
-
-    unavailable_inputs is left alone as long as the amended input is genuinely still
-    unavailable. See `test_completed_reclaims_unavailable_input_available_during_run`
-    for the case where it has since become available.
-    """
-    async with wfs.db:
-        wfs.define_step(wfs.root, "plan")
-        plan = wfs.find(Step, "plan")
-        wfs.define_step(plan, "echo")
-        echo = wfs.find(Step, "echo")
-        keep_going, _ = wfs.amend_step(echo, inp_paths=["other.txt"])
-        assert not keep_going
-        assert echo.get_unavailable_inputs() == "other.txt"
-        echo.add_unfresh_inputs("data.txt")
-        echo.completed(None)
-        assert echo.get_state() == StepState.PENDING
-        assert echo.get_unfresh_inputs() == ""
-        assert echo.get_unavailable_inputs() == "other.txt"
+        assert echo.get_postpone_count() == 1  # unchanged by a plain FAILED
 
 
 async def test_completed_reclaims_unavailable_input_available_during_run(wfs: Workflow):
     """`completed()` re-derives amended-input availability directly from the graph,
-    instead of trusting the `unavailable_inputs` memo alone.
+    instead of trusting a stale amend-time snapshot.
 
     This matters because a producer may complete (and call `mark_pending()`) while the
     consuming step is still RUNNING: `mark_pending()` is then a no-op (see
-    `Step.mark_pending()`), and the file will never transition state again, so nothing
-    else would ever clear the memo.
+    `Step.mark_pending()`), and the file will never transition state again through that
+    path. `completed()` must still notice the input is available by re-querying the
+    graph, rather than trusting the caller's stale `wants_postpone` judgment.
     """
     async with wfs.db:
         wfs.define_step(wfs.root, "plan")
@@ -2546,22 +2497,27 @@ async def test_completed_reclaims_unavailable_input_available_during_run(wfs: Wo
         sink = wfs.find(Step, "sink")
 
         sink.set_state(StepState.RUNNING)
-        keep_going, _ = wfs.amend_step(sink, inp_paths=["data.txt"])
-        assert not keep_going
-        assert sink.get_unavailable_inputs() == "data.txt"
+        is_detached, unavailable, unfresh, _ = wfs.amend_step(sink, inp_paths=["data.txt"])
+        assert not is_detached
+        assert unavailable == {"data.txt"}
+        assert not unfresh
 
         # `producer` completes while `sink` is still RUNNING: mark_pending() on a
-        # RUNNING step is a no-op, so the memo is not cleared through that path.
+        # RUNNING step is a no-op, so nothing clears the (would-be) memo through that path.
         out_hashes = [("data.txt", fake_hash("data.txt"))]
         wfs.update_file_hashes(out_hashes, HashUpdateCause.SUCCEEDED)
         step_hash = StepHash.from_inp(producer.key(), True, [], {})
         step_hash = step_hash.evolve_out(out_hashes)
-        producer.completed(step_hash)
-        assert sink.get_unavailable_inputs() == "data.txt"
+        producer.completed(step_hash, False)
 
-        sink.completed(None)
+        # completed() re-derives availability from the graph, so even though wants_postpone
+        # is stale True, the postponed flag reflects the input's current availability.
+        sink.completed(None, True)
         assert sink.get_state() == StepState.PENDING
-        assert sink.get_unavailable_inputs() == ""
+        postponed = wfs.db.execute(
+            "SELECT postponed FROM step WHERE node = ?", (sink.i,)
+        ).fetchone()[0]
+        assert not postponed
 
 
 async def test_clean_stepup_root_parents(wfs: Workflow):

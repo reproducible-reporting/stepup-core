@@ -6,7 +6,7 @@ BUILT. Under the old single-bucket rescheduled_info scheme, the dependency edge 
 data.txt would be created only now, *after* producer.sh's own File.completed() already
 ran --- so nothing would ever call mark_pending() on this step again, and it would sit
 in PENDING forever. With the unavailable_inputs/unfresh_inputs split, this step's
-freshness-only reschedule self-resolves on its own next dispatch, with no push needed.
+freshness-only postoned step self-resolves on its own next dispatch, with no push needed.
 """
 
 import time

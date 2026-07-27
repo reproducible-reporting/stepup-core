@@ -187,10 +187,10 @@ separated by slashes, where applicable.
 :   Set to `false` to disable the progress bar in the terminal user interface.
     This can be useful to simplify and reduce the output.
 
-`reschedule_cap` / `STEPUP_BUILD_RESCHEDULE_CAP` / `--reschedule-cap`
+`postpone_cap` / `STEPUP_BUILD_POSTPONE_CAP` / `--postpone-cap`
 
-:   Maximum number of consecutive reschedules a step can undergo (since it last
-    succeeded) before it is reported as failed instead of parked pending again.
+:   Maximum number of times a step can be postponed (since it last succeeded)
+    before it is reported as failed instead of parked pending again.
     This guards against livelocks where a step's amended inputs keep flapping.
     The default is `100`, deliberately generous.
 

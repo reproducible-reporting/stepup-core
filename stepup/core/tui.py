@@ -117,7 +117,7 @@ async def async_build(args: argparse.Namespace, default_resources: str):
                 director_socket_path,
                 f"--reporter={reporter_socket_path}",
                 f"--jobs={njob}",
-                f"--reschedule-cap={args.reschedule_cap}",
+                f"--postpone-cap={args.postpone_cap}",
                 f"--log-level={args.log_level}",
             ]
         )
@@ -368,10 +368,10 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         "(This can be useful to simplify and reduce the output.)",
     )
     parser.add_argument(
-        "--reschedule-cap",
+        "--postpone-cap",
         type=int,
         default=100,
-        help="Maximum number of consecutive reschedules (since the last success) before "
+        help="Maximum number of consecutive postpones (since the last success) before "
         "a step is failed instead of parked. A livelock guard. [default=%(default)s]",
     )
     resources_action = parser.add_argument(

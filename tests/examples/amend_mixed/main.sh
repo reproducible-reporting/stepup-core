@@ -5,7 +5,7 @@ source ../example.rc
 echo "Something old" > inp0.txt
 echo "First inp1.txt" > inp1.txt
 # Prepare a stray output file, which should get overwritten.
-# It is intended to confuse the rescheduling.
+# It is intended to confuse the scheduler.
 echo "Stray output" > tmp1.txt
 
 # Run the plan.

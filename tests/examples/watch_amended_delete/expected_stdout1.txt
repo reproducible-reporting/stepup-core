@@ -9,7 +9,7 @@
    DELETED │ inp.txt
      PHASE │ build
      START │ ./work.py
-RESCHEDULE │ ./work.py
+ POSTPONED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 inp.txt
 ────────────────────────────────────────────────────────────────────────────────

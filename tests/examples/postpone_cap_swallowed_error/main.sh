@@ -4,10 +4,10 @@ source ../example.rc
 echo v0 > trigger.txt
 
 # Run the example
-sb -j 1 -w --reschedule-cap=1 & # > current_stdout.txt &
+sb -j 1 -w --postpone-cap=1 & # > current_stdout.txt &
 PID=$!
 
-# Dispatch 1: never.txt missing -> reschedule (count=1, == cap), parks PENDING.
+# Dispatch 1: never.txt missing -> postpone (count=1, == cap), parks PENDING.
 stepup wait
 
 # Editing trigger.txt (an ordinary, already-STATIC input) makes X eligible again
@@ -28,4 +28,4 @@ set +e; wait -fn $PID; RETURNCODE=$?; set -e
 
 # The FAIL report must explain *why* the step failed, even though the step's own
 # exit code is 0 (the swallowed InputNotFoundError does not make ./work.py exit non-zero).
-grep "Rescheduled more than 1 times" .stepup/fail.log || exit 1
+grep "Postponed more than 1 times" .stepup/fail.log || exit 1

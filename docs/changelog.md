@@ -74,9 +74,9 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
 - A resource usage report is shown ad the end of the file `.stepup/director.log`.
   Part of the analysis relies on Linux control groups, which are only available on this OS.
 - An SQL debug log option, to check query plans and execution times.
-- Added a `--reschedule-cap` option (default 100) that fails a step
-  once it has been rescheduled that many times in a row without succeeding.
-  This acts as a livelock guard for `amend()`-driven reschedules.
+- Added a `--postpone-cap` option (default 100) that fails a step
+  once it has been postponed that many times in a row without succeeding.
+  This acts as a livelock guard for `amend()`-driven postpones.
 - Added support for cgroup v2 memory accounting on Linux with `systemd-run`.
 
 ### Changed
@@ -126,6 +126,7 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
     - The `pool` feature has been removed and
       is now replaced by the more powerful `resources` feature.
     - The `optional` feature has become more robust.
+    - The "rescheduling" mechanism has been refactored by a simpler "postpone" mechanism.
 - The "deferred glob" has been replaced by a simpler "static tree" concept.
   Files in a static tree become static only when they are used as inputs.
   This allows for huge static data directories, of which only some are used,
