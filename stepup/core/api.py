@@ -653,8 +653,8 @@ def amend(
         tr_vol_paths,
     )
     if amend_result is not None:
-        keep_going, to_check = amend_result
-        if keep_going is False:
+        carry_on, to_check = amend_result
+        if carry_on is False:
             raise InputNotFoundError("Amended inputs are not available yet.")
         _confirm_deferred(to_check, job_i)
 

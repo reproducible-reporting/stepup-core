@@ -1082,8 +1082,8 @@ class Workflow(Trellis):
             A list of paths and file_hashes.
             These must be sent back to the client where the hashes can be checked
             and which then calls `confirm_hashes` with the updated hashes.
-            (This is only relevant when keep_going is True.
-            If some to_check files turn out to be missing, keep_going should be changed to False.)
+            (This is only relevant when carry_on is True.
+            If some to_check files turn out to be missing, carry_on should be changed to False.)
         """
         if not isinstance(step, Step):
             raise TypeError(f"step must be a Step instance, got: {step!r}")

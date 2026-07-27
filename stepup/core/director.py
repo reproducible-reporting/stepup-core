@@ -662,13 +662,13 @@ class DirectorHandler:
 
         Returns
         -------
-        keep_going
+        carry_on
             Whether the step is still runnable after amending.
         to_check
             A list of `(path, file_hash)` tuples to check and make static if valid.
-            This is only relevant when `keep_going` is `True`.
+            This is only relevant when `carry_on` is `True`.
             If some of the static tree matches cannot be confirmed,
-            the caller has to change `keep_going` to `False`.
+            the caller has to change `carry_on` to `False`.
         """
         async with self.db:
             step = self.scheduler.get_step(job_i)
@@ -680,12 +680,12 @@ class DirectorHandler:
                 vol_paths=vol_paths,
                 ran_concurrently=self.scheduler.ran_concurrently,
             )
-        keep_going = len(unavailable) == 0 and len(unfresh) == 0
-        if not keep_going:
+        carry_on = len(unavailable) == 0 and len(unfresh) == 0
+        if not carry_on:
             self.executor.postpone(job_i, unavailable=unavailable, unfresh=unfresh)
         if is_detached:
-            keep_going = False
-        return keep_going, to_check
+            carry_on = False
+        return carry_on, to_check
 
     @allow_rpc
     async def postpone_step(self, job_i: int, missing: list[str]):

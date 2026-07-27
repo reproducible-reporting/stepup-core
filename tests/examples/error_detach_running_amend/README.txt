@@ -8,7 +8,7 @@ it is still running.
 Unlike error_detach_running, work.py itself calls amend() after being detached
 (simulating the automatic amend() call every Python step makes, e.g. via getenv() or
 the end-of-run import-tracking amend()). `DirectorHandler.amend()` forces
-`keep_going = False` for a detached step, so this call raises `InputNotFoundError`
+`carry_on = False` for a detached step, so this call raises `InputNotFoundError`
 inside work.py, aborting it before it can write late.txt. This confirms that a
 detached-but-running step is made to abort early instead of running to completion
 pointlessly.

@@ -19,7 +19,7 @@ time.sleep(2.0)
 Path("extra_input.txt").write_text("extra")
 
 # By now, plan.py has failed and detached this step (see plan.py and README.txt).
-# `DirectorHandler.amend()` forces `keep_going = False` for a detached step, so this
+# `DirectorHandler.amend()` forces `carry_on = False` for a detached step, so this
 # call must raise `InputNotFoundError`, aborting the step before it reaches the
 # `late.txt` marker below instead of running to completion.
 amend(inp="extra_input.txt")

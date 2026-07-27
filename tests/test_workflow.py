@@ -22,13 +22,13 @@ from stepup.core.workflow import RECURSE_DEFERRED_INPUTS, Workflow
 
 
 def _amend(wfx: Workflow, step: Step, **kwargs) -> tuple[bool, list]:
-    """Amend a step and collapse the result into (keep_going, to_check).
+    """Amend a step and collapse the result into (carry_on, to_check).
 
     Mirrors `DirectorHandler.handle_amend` in `stepup/core/director.py`.
     """
     is_detached, unavailable, unfresh, to_check = amend_step(wfx, step, **kwargs)
-    keep_going = not is_detached and not unavailable and not unfresh
-    return keep_going, to_check
+    carry_on = not is_detached and not unavailable and not unfresh
+    return carry_on, to_check
 
 
 TEST_FILE_GRAPH = """\
@@ -678,10 +678,10 @@ async def test_file_state_static_overlap(wfp: Workflow):
         wfp.define_step(plan, "echo", inp_paths=["some"], out_paths=["other"])
         step = wfp.find(Step, "echo")
         step.set_state(StepState.RUNNING)
-        keep_going, to_check = _amend(
+        carry_on, to_check = _amend(
             wfp, step, inp_paths=["inp"], out_paths=["out"], vol_paths=["vol"]
         )
-        assert not keep_going
+        assert not carry_on
         assert to_check == []
         # Amending an existing input is tolerated.
         amend_step(wfp, step, inp_paths=["some"])
@@ -707,10 +707,10 @@ async def test_file_state_output_overlap(wfp: Workflow):
         wfp.define_step(plan, "echo", inp_paths=["some"], out_paths=["other"])
         step = wfp.find(Step, "echo")
         step.set_state(StepState.RUNNING)
-        keep_going, to_check = _amend(
+        carry_on, to_check = _amend(
             wfp, step, inp_paths=["inp", "given"], out_paths=["out"], vol_paths=["vol"]
         )
-        assert not keep_going
+        assert not carry_on
         assert to_check == []
     with pytest.raises(GraphError):
         async with wfp.db:
@@ -734,10 +734,10 @@ async def test_file_state_volatile_overlap(wfp: Workflow):
         wfp.define_step(plan, "echo", inp_paths=["some"], out_paths=["other"])
         step = wfp.find(Step, "echo")
         step.set_state(StepState.RUNNING)
-        keep_going, to_check = _amend(
+        carry_on, to_check = _amend(
             wfp, step, inp_paths=["inp"], out_paths=["out"], vol_paths=["vol"]
         )
-        assert not keep_going
+        assert not carry_on
         assert to_check == []
     with pytest.raises(GraphError):
         async with wfp.db:
@@ -842,10 +842,10 @@ async def test_define_pending_step_skip_extra(wfp: Workflow):
 
         # Simulate run
         # foo
-        keep_going, to_check = _amend(
+        carry_on, to_check = _amend(
             wfp, foo, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"]
         )
-        assert keep_going
+        assert carry_on
         assert to_check == []
         wfp.update_file_hashes(
             [("log", fake_hash("log")), ("aout", fake_hash("aout"))], HashUpdateCause.SUCCEEDED
@@ -975,10 +975,10 @@ async def test_amend_step(wfp: Workflow):
         wfp.define_step(plan, "blub > log", vol_paths=["log"])
         step = wfp.find(Step, "blub > log")
         assert amend_step(wfp, step)
-        keep_going, to_check = _amend(
+        carry_on, to_check = _amend(
             wfp, step, inp_paths=["inp1", "inp2"], out_paths=["out3"], vol_paths=["vol4"]
         )
-        assert not keep_going
+        assert not carry_on
         assert to_check == []
         assert {
             (r.path, r.detached) for r in step.inp_paths(include_detached=True, amended=True)
@@ -1838,13 +1838,11 @@ async def test_static_tree_amend_inp(wfp: Workflow):
         )
         assert to_check == [("static/initial.md", FileHash.unknown())]
         prog = wfp.find(Step, "prog")
-        keep_going, to_check = _amend(wfp, prog, inp_paths=["static/other.md"])
-        assert keep_going
+        carry_on, to_check = _amend(wfp, prog, inp_paths=["static/other.md"])
+        assert carry_on
         assert to_check == [("static/other.md", FileHash.unknown())]
-        keep_going, to_check = _amend(
-            wfp, prog, inp_paths=["static/amended.md", "other/amended.md"]
-        )
-        assert not keep_going
+        carry_on, to_check = _amend(wfp, prog, inp_paths=["static/amended.md", "other/amended.md"])
+        assert not carry_on
         assert to_check == [("static/amended.md", FileHash.unknown())]
 
 
@@ -2349,10 +2347,10 @@ async def test_recreate_step_to_check_amend(wfp: Workflow):
             vol_paths=["vol1.txt"],
         )
         assert to_check == []
-        keep_going, to_check = _amend(
+        carry_on, to_check = _amend(
             wfp, prog, inp_paths=["other/inp2.txt"], out_paths=["out2.txt"], vol_paths=["vol2.txt"]
         )
-        assert not keep_going
+        assert not carry_on
         assert to_check == []
 
 
