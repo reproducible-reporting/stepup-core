@@ -360,6 +360,7 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         default=None,
         nargs="?",
         const="500",
+        metavar="FREQ",
         help="Profile the director with perf, by default at a frequency of %(const)s Hz. "
         "(Only supported on Linux with perf installed.)",
     )
