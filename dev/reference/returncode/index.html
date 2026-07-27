@@ -29,7 +29,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
       
       <link rel="icon" href="../../logo.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1014,6 +1014,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
+      <a href="../../advanced_topics/build_targets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../advanced_topics/resources/" class="md-nav__link">
         
   
@@ -1022,6 +1050,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     
   
     Resources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/duration_and_hold/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duration and hold
   
 
     
@@ -2274,7 +2330,9 @@ It can be a sum of the following codes:</p>
 <li><code>2</code> = at least one step failed</li>
 <li><code>4</code> = at least one step remained pending</li>
 <li><code>8</code> = at least one step was still runnable</li>
-<li><code>16</code> = the scheduler was on hold (not reporting pending steps)</li>
+<li><code>16</code> = at least one target was not produced by any step</li>
+<li><code>32</code> = the scheduler was on hold (not reporting pending steps)</li>
+<li><code>64</code> = the build was aborted by Ctrl-C or <code>SIGTERM</code></li>
 </ul>
 <p>A few example combinations are:</p>
 <ul>
@@ -2282,6 +2340,8 @@ It can be a sum of the following codes:</p>
 <li><code>1</code> = internal error (never combined with other codes).</li>
 <li><code>6</code> = at least one step failed and at least one step remained pending.</li>
 <li><code>12</code> = some steps remain pending and some steps are runnable when StepUp is restarted.</li>
+<li><code>98</code> = the build was aborted by Ctrl-C (<code>64</code>) while a step was running,
+  so that step counted as failed (<code>2</code>) and the scheduler was put on hold (<code>32</code>).</li>
 </ul>
 <p>To test for a specific flag in Bash, use the bitwise AND operator <code>&amp;</code>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env bash</span>
@@ -2296,6 +2356,9 @@ It can be a sum of the following codes:</p>
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="k">$((</span><span class="nv">$RET</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="m">8</span><span class="k">))</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 </span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;At least one step was still runnable&quot;</span>
 </span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="k">fi</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="k">$((</span><span class="nv">$RET</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="m">16</span><span class="k">))</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;At least one target was not produced by any step&quot;</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="k">fi</span>
 </span></code></pre></div>
 
 
@@ -2353,7 +2416,7 @@ It can be a sum of the following codes:</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

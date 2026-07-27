@@ -29,7 +29,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
       
       <link rel="icon" href="../../logo.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1014,6 +1014,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
+      <a href="../../advanced_topics/build_targets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../advanced_topics/resources/" class="md-nav__link">
         
   
@@ -1022,6 +1050,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     
   
     Resources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/duration_and_hold/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duration and hold
   
 
     
@@ -2847,7 +2903,7 @@ End users only need to specify such &ldquo;path affixes&rdquo; in two places to 
   This is needed to avoid ambiguity with executables found in the PATH.</li>
 </ul>
 <h2 id="distributed-plans">Distributed Plans<a class="headerlink" href="#distributed-plans" title="Permanent link">&para;</a></h2>
-<p>The function <a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='.', resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> now works very differently:
+<p>The function <a class="autorefs autorefs-internal" title="stepup.core.api.plan(command, *, inp=(), env=(), out=(), vol=(), workdir='.', resources=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.plan"><code>plan()</code></a> now works very differently:
 it behaves almost like the <code>run()</code> function,
 except for a few small differences:</p>
 <ul>
@@ -2960,7 +3016,7 @@ You are encouraged to migrate your <code>plan.py</code> files to the new API.</p
 <h2 id="optional-migration-from-script-to-call">Optional Migration from <code>script()</code> to <code>call()</code><a class="headerlink" href="#optional-migration-from-script-to-call" title="Permanent link">&para;</a></h2>
 <p>The old script interface still works
 (until it is removed, see <a href="#deprecated-features">Deprecated Features</a> above),
-but switching to <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> is recommended.
+but switching to <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> is recommended.
 See <a href="../../getting_started/call/">Function Calls</a> for a full introduction to the new interface.</p>
 <p>The translation is mechanical:</p>
 <ul>
@@ -3217,7 +3273,7 @@ the following utilities have moved to the new
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

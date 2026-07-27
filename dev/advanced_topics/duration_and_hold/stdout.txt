@@ -1,0 +1,17 @@
+ DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc9.post0)
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+    START │ sleep 4.1
+    START │ sleep 4.0
+  SUCCESS │ ./plan.py
+    START │ sleep 2.1
+  SUCCESS │ sleep 2.1
+    START │ sleep 2.0
+  SUCCESS │ sleep 4.0
+  SUCCESS │ sleep 4.1
+  SUCCESS │ sleep 2.0
+ DIRECTOR │ Ran 5 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+ DIRECTOR │ Wall 4.4s, Director 0.3u/0.0s, Steps 0.0u/0.0s
+ DIRECTOR │ See you!

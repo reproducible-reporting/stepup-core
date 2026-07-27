@@ -29,7 +29,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
       
       <link rel="icon" href="../../logo.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1016,6 +1016,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
+      <a href="../build_targets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../resources/" class="md-nav__link">
         
   
@@ -1024,6 +1052,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     
   
     Resources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../duration_and_hold/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duration and hold
   
 
     
@@ -2381,7 +2437,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 <p><a href="https://jinja.palletsprojects.com/en/stable/">Jinja</a> is a popular templating engine for Python.
 Given a template file and a set of variables, Jinja renders the template, i.e. it inserts the variables.
 It allows you to create dynamic content by embedding Python-like expressions in your templates.</p>
-<p>This section will show you how to use <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a>.
+<p>This section will show you how to use <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a>.
 Internally, it uses StepUp&rsquo;s <a class="autorefs autorefs-internal" title="stepup.core.api.loadns(*paths_variables, dir_out=None, do_amend=True)" href="../../reference/stepup.core.api/#stepup.core.api.loadns"><code>loadns()</code></a> function to load variables,
 then uses Jinja2 to render a template, and finally writes the result to an output file.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
@@ -2432,7 +2488,7 @@ written to <code>email.txt</code>:</p>
 </span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>Spammer
 </span></code></pre></div>
 <h2 id="supported-delimiters">Supported Delimiters<a class="headerlink" href="#supported-delimiters" title="Permanent link">&para;</a></h2>
-<p>With the <code>mode</code> option, <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a>
+<p>With the <code>mode</code> option, <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a>
 supports the following delimiters for Jinja templates:</p>
 <ul>
 <li>The default Jinja delimiters (<code>mode="plain"</code>):<ul>
@@ -2462,10 +2518,10 @@ For all other templates, <code>mode="plain"</code> (the standard Jinja delimiter
 </li>
 <li>
 <p>You can also separate the loading of variables and the rendering of the template.
-  The <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a> also accepts a dictionary of variables
+  The <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a> also accepts a dictionary of variables
   instead of (or in addition to) filenames with variables.
   Use this to load the variables with <a class="autorefs autorefs-internal" title="stepup.core.api.loadns(*paths_variables, dir_out=None, do_amend=True)" href="../../reference/stepup.core.api/#stepup.core.api.loadns"><code>loadns()</code></a> first,
-  then pass the loaded variables to <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a>.</p>
+  then pass the loaded variables to <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a>.</p>
 </li>
 </ul>
 
@@ -2524,7 +2580,7 @@ For all other templates, <code>mode="plain"</code> (the standard Jinja delimiter
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

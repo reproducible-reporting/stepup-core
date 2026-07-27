@@ -29,7 +29,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
       
       <link rel="icon" href="../../logo.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1014,6 +1014,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
+      <a href="../../advanced_topics/build_targets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../advanced_topics/resources/" class="md-nav__link">
         
   
@@ -1022,6 +1050,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     
   
     Resources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/duration_and_hold/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duration and hold
   
 
     
@@ -2566,7 +2622,7 @@ which makes it easier to share and reuse these functions.</p>
 <li>
 <p><a href="../../reference/stepup.core.api/"><code>stepup.core.api</code></a> provides
   Basic (and Composite) API functions.</p>
-<p>For example, the <a class="autorefs autorefs-internal" title="stepup.core.api.run(command, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, shell=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.run"><code>run()</code></a> function,
+<p>For example, the <a class="autorefs autorefs-internal" title="stepup.core.api.run(command, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, shell=False, resources=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.run"><code>run()</code></a> function,
 also used by end users to define new steps in their <code>plan.py</code> files,
 is convenient for extension developers.
 It can be used to write a specialized function to submit a step for a specific software package,
@@ -2592,7 +2648,7 @@ with some extra logic to handle the software package&rsquo;s specific requiremen
 </ul>
 <p>A few things to keep in mind:</p>
 <ul>
-<li>API functions that (indirectly) call the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False, env_overrides=None)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function
+<li>API functions that (indirectly) call the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False, env_overrides=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> function
   should always return the resulting <a class="autorefs autorefs-internal" href="../../reference/stepup.core.stepinfo/#stepup.core.stepinfo.StepInfo"><code>StepInfo</code></a> object.</li>
 <li>Keep the computational cost of the API function low.
   They should only be used to plan the execution of a step
@@ -2603,7 +2659,7 @@ with some extra logic to handle the software package&rsquo;s specific requiremen
 </ul>
 <h2 id="command-dispatch">Command Dispatch<a class="headerlink" href="#command-dispatch" title="Permanent link">&para;</a></h2>
 <p>When a step executes, StepUp&rsquo;s executor automatically selects how to run the command.
-The dispatch logic depends on the <code>shell</code> flag passed to <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False, env_overrides=None)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a>
+The dispatch logic depends on the <code>shell</code> flag passed to <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False, env_overrides=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a>
 and the form of the command string:</p>
 <ul>
 <li>
@@ -2728,7 +2784,7 @@ path, an optional destination, and an optional new extension.
 The destination may be omitted (only the extension changes), a directory (trailing <code>/</code>),
 or an explicit file.
 This is the reusable mechanism behind the <code>dst</code> argument of
-<a class="autorefs autorefs-internal" title="stepup.core.api.copy(src, dst, *, optional=False, resources=None)" href="../../reference/stepup.core.api/#stepup.core.api.copy"><code>copy()</code></a>, and it is handy whenever an API function turns one input
+<a class="autorefs autorefs-internal" title="stepup.core.api.copy(src, dst, *, optional=False, resources=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.copy"><code>copy()</code></a>, and it is handy whenever an API function turns one input
 file into a derived output.</p>
 <h3 id="director-relative-translation">Director-relative translation<a class="headerlink" href="#director-relative-translation" title="Permanent link">&para;</a></h3>
 <p>Steps run in their own working directory, while the director tracks paths relative to the
@@ -2793,7 +2849,7 @@ Use them when an API function exchanges paths with the director on the user&rsqu
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

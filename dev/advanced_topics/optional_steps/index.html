@@ -22,14 +22,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
         <link rel="prev" href="../static_named_glob/">
       
       
-        <link rel="next" href="../resources/">
+        <link rel="next" href="../build_targets/">
       
       
         
       
       
       <link rel="icon" href="../../logo.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1085,6 +1085,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
+      <a href="../build_targets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../resources/" class="md-nav__link">
         
   
@@ -1093,6 +1121,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     
   
     Resources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../duration_and_hold/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duration and hold
   
 
     
@@ -2358,16 +2414,19 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 <h1 id="optional-steps">Optional Steps<a class="headerlink" href="#optional-steps" title="Permanent link">&para;</a></h1>
 <p>By default, StepUp will build all steps.
 As an exception, steps can be made optional by adding the <code>optional=True</code> option.
-This is the opposite of most build tools, where steps are only executed when they are <em>targets</em>.</p>
+This is the opposite of most build tools,
+where a step only runs when it is needed, directly or indirectly,
+by a <em>target</em> given on the command line.</p>
 <p>The reason for this difference is that conventional build tools work with rigid predefined graphs.
 They introduce some flexibility
 by allowing users to specify which steps are <em>targets</em> on the command line.
-This gives the user some control over which part of the graph is executed.</p>
-<p>StepUp offers such flexibility differently.
-The basic premise is that all outdated or missing outputs need to be (re)built.
-It is the responsibility of the build tool to figure out which steps need executing.
-This responsibility should not be shifted to users by expecting them to specify targets.
-That said, some legitimate exceptions exist, in which ignoring steps is a desirable feature.
+This gives the user some control over which part of the graph is executed,
+but also shifts to them the responsibility of knowing which targets a given task actually needs.</p>
+<p>StepUp keeps this responsibility with the build tool instead.
+The basic premise is that all outdated or missing outputs need to be (re)built,
+and it is StepUp&rsquo;s job to figure out which steps that requires.
+That said, several legitimate mechanisms exist
+for running only part of the workflow when this is genuinely useful.
 These are supported by StepUp as follows:</p>
 <ul>
 <li>
@@ -2385,8 +2444,27 @@ These are supported by StepUp as follows:</p>
   Defining thousands of steps when only a few are actually used, is obviously inefficient.</p>
 </li>
 <li>
-<p>As shown in the <a href="../blocked_steps/">next tutorial</a>, one may also <strong>block steps</strong>,
-  as a temporary measure to speed up the edit-build cycle.</p>
+<p>One can <strong>build a subset of targets</strong>,
+  by listing one or more output paths on the command line,
+  as shown in <a href="../build_targets/">the next tutorial</a>.
+  This is an <em>inclusion</em> mechanism:
+  only the steps needed to produce the given targets run, and the rest stay <code>PENDING</code>.
+  It is useful when you temporarily want to work on
+  a small part of a much larger workflow, e.g., for debugging purposes.
+  An exact-file target reaches an <code>optional</code> step just like any other step:
+  naming its output explicitly is enough to build it, regardless of its declared need.
+  A <a href="../build_targets/#directory-targets">directory target</a> is more conservative:
+  it only elevates steps whose declared need is <code>DEFAULT</code>,
+  so an <code>optional</code> step&rsquo;s output sitting under a targeted directory is not, by itself,
+  a reason to build it.</p>
+</li>
+<li>
+<p>One can also <strong>block steps</strong>, as shown in <a href="../blocked_steps/">a later tutorial</a>.
+  This acts more as a longer-term <em>exclusion</em> filter:
+  it keeps one or more steps pending indefinitely,
+  e.g., while a downstream part of the workflow is still under development
+  or too expensive to run on every iteration,
+  until you explicitly unblock them again.</p>
 </li>
 </ul>
 <p>Steps that define other steps, declare static files, or otherwise extend the workflow,
@@ -2395,7 +2473,7 @@ Until such steps are executed, StepUp has no idea what output these steps will g
 which it would need to decide that an optional step is required by another step.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/optional_steps"><code>docs/advanced_topics/optional_steps/</code></a></p>
-<p>The example below uses the <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> feature introduced in
+<p>The example below uses the <a class="autorefs autorefs-internal" title="stepup.core.api.call(executable_, function_, *, inp=(), env=(), out=(), vol=(), workdir='.', optional=False, planning=False, resources=None, args_file=None, duration=None, **kwargs)" href="../../reference/stepup.core.api/#stepup.core.api.call"><code>call()</code></a> feature introduced in
 the <a href="../../getting_started/call/">Call</a> tutorial
 to create a somewhat entertaining example.
 However, practically all step-generating functions support the <code>optional</code> argument,
@@ -2548,7 +2626,7 @@ In such situations, optional steps can be convenient.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

@@ -19,7 +19,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
         <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/blocked_steps/">
       
       
-        <link rel="prev" href="../resources/">
+        <link rel="prev" href="../duration_and_hold/">
       
       
         <link rel="next" href="../environment_variables/">
@@ -29,7 +29,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
       
       <link rel="icon" href="../../logo.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1016,6 +1016,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
+      <a href="../build_targets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../resources/" class="md-nav__link">
         
   
@@ -1024,6 +1052,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     
   
     Resources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../duration_and_hold/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duration and hold
   
 
     
@@ -2356,9 +2412,9 @@ SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 <h1 id="blocked-steps">Blocked Steps<a class="headerlink" href="#blocked-steps" title="Permanent link">&para;</a></h1>
-<p>As discussed in a previous tutorial on <a href="../optional_steps/">Optional Steps</a>,
+<p>As discussed in a previous tutorials on <a href="../optional_steps/">Optional Steps</a> and <a href="../build_targets/">Build Targets</a>,
 StepUp has several mechanisms to ignore certain steps.
-As a rule, StepUp will always try to execute all steps, and not doing so is the exception.</p>
+As a rule, however, StepUp will always try to execute all steps, and not doing so is the exception.</p>
 <p>A valid reason for ignoring some steps is illustrated in the following schematic:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>     File          In development           File                Costly
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>╔═════════════╗     ┌──────────┐     ╔═════════════════╗     ┌──────────┐
@@ -2380,7 +2436,9 @@ and to be reverted once you&rsquo;re done with <code>Step 1</code>.</p>
 <ul>
 <li>A blocked step remains in the <code>PENDING</code> state,
   meaning that outdated output files are not cleaned up automatically.</li>
-<li>At the end of the <strong>build phase</strong>, all currently blocked steps are listed as a reminder.</li>
+<li>At the end of the <strong>build phase</strong>, all currently blocked steps are listed as a reminder.
+  When <a href="../build_targets/">build targets</a> are in use and the blocked step is not needed
+  to produce any of the given targets, it stays silently <code>PENDING</code> like any other unneeded step.</li>
 <li>Subsequent steps, which use outputs of blocked or pending steps, also remain pending.</li>
 </ul>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
@@ -2495,7 +2553,7 @@ so this is just an example illustrating the mechanism.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

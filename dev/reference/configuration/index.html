@@ -29,7 +29,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
       
       <link rel="icon" href="../../logo.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1014,6 +1014,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
+      <a href="../../advanced_topics/build_targets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../advanced_topics/resources/" class="md-nav__link">
         
   
@@ -1022,6 +1050,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     
   
     Resources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/duration_and_hold/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duration and hold
   
 
     
@@ -1850,13 +1906,52 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
       
         <li class="md-nav__item">
-  <a href="#settings-for-sb" class="md-nav__link">
+  <a href="#settings-for-sb-or-stepup-build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Settings for sb
+        Settings for sb or stepup build
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Settings for sb or stepup build">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#build-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build Control
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#execution-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution Environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diagnostics-and-profiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnostics and Profiling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2371,13 +2466,52 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
       
         <li class="md-nav__item">
-  <a href="#settings-for-sb" class="md-nav__link">
+  <a href="#settings-for-sb-or-stepup-build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Settings for sb
+        Settings for sb or stepup build
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Settings for sb or stepup build">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#build-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build Control
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#execution-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution Environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diagnostics-and-profiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnostics and Profiling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2461,10 +2595,10 @@ it will load its settings in the following order, with later settings overriding
 <li>Environment variables (<code>STEPUP_*</code>)</li>
 <li>Command-line options</li>
 </ul>
-<p>Settings for all subcommands are placed at the top level of the config file
+<p>Settings shared by all subcommands are placed at the top level of the config file
 (or under <code>[tool.stepup]</code> in <code>pyproject.toml</code>).
-Settings specific to the <code>build</code> subcommand go under a <code>[build]</code> section
-(or <code>[tool.stepup.build]</code> in <code>pyproject.toml</code>).</p>
+Settings specific to a subcommand, e.g. <code>build</code>, go under a subcommand-specific section,
+e.g. <code>[build]</code> (or <code>[tool.stepup.build]</code> in <code>pyproject.toml</code>).</p>
 <p>Example <code>stepup.toml</code>:</p>
 <div class="language-toml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">log_level</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
@@ -2477,6 +2611,8 @@ StepUp provides a <code>stepup show-config</code> tool to help you understand wh
 This tool reads all the configuration files and environment variables,
 and shows the merged settings as a single, informative TOML file,
 including comments about the source of each setting.</p>
+<p>Positional command-line arguments (targets to build or paths to clean)
+cannot be set through configuration files or environment variables.</p>
 <h2 id="internal-environment-variables">Internal environment variables<a class="headerlink" href="#internal-environment-variables" title="Permanent link">&para;</a></h2>
 <p>Some environment variables affect StepUp&rsquo;s internals even when it is just imported as a Python library.
 These can only be set via environment variables,
@@ -2549,21 +2685,15 @@ Possible values are <code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>,
 The default is <code>WARNING</code>.</p>
 </dd>
 </dl>
-<h2 id="settings-for-sb">Settings for <code>sb</code><a class="headerlink" href="#settings-for-sb" title="Permanent link">&para;</a></h2>
+<h2 id="settings-for-sb-or-stepup-build">Settings for <code>sb</code> or <code>stepup build</code><a class="headerlink" href="#settings-for-sb-or-stepup-build" title="Permanent link">&para;</a></h2>
 <p>These settings are stored under the <code>[build]</code> section in config files
 (or <code>[tool.stepup.build]</code> in <code>pyproject.toml</code>).
 Each entry below lists the config file key, environment variable, and command-line option
-separated by slashes, where applicable.</p>
+separated by slashes, where applicable.
+The settings are grouped as in the output of <code>stepup build --help</code>,
+alphabetically within each group.</p>
+<h3 id="build-control">Build Control<a class="headerlink" href="#build-control" title="Permanent link">&para;</a></h3>
 <dl>
-<dt><code>cgroup</code> / <code>STEPUP_BUILD_CGROUP</code> / <code>--cgroup</code>, <code>--no-cgroup</code></dt>
-<dd>
-<p>This setting controls whether StepUp will run the director
-(and all its child processes running steps) use cgroup isolation.
-When enabled, peak memory usage of the director process and all its child processes is measured.
-Only available on Linux with cgroup v2 enabled and if <code>systemd-run</code> is available.
-Exceptions are raised if cgroup isolation is requested but not working.
-Off by default.</p>
-</dd>
 <dt><code>clean</code> / <code>STEPUP_BUILD_CLEAN</code> / <code>--clean</code>, <code>--no-clean</code></dt>
 <dd>
 <p>Set to <code>false</code> to disable automatic cleaning of outdated output files.
@@ -2572,9 +2702,9 @@ by any step in the workflow.</p>
 </dd>
 <dt><code>duration</code> / <code>STEPUP_BUILD_DURATION</code> / <code>--duration</code>, <code>--no-duration</code></dt>
 <dd>
-<p>Set to <code>false</code> to disable the use of step duration information for scheduling decisions.
-By default, StepUp uses the duration information of steps to prioritize the execution
-of steps that are expected to take longer, which can lead to faster overall execution.
+<p>Set to <code>false</code> to disable recording of step wall times as &ldquo;duration&rdquo; for future runs.
+StepUp uses the duration information to prioritize the execution
+of steps with the longest critical path (in time units) to any terminal node.
 While this is generally beneficial, it can result in non-deterministic execution order,
 which can be undesirable in some cases, such as testing.</p>
 </dd>
@@ -2592,45 +2722,30 @@ Many tools and libraries recognize <code>SOURCE_DATE_EPOCH</code> and
 use it instead of the current time for timestamps in generated files.
 If the variable is already set in the environment, it will be used as-is.</p>
 </dd>
-<dt><code>forkserver</code> / <code>STEPUP_BUILD_FORKSERVER</code> / <code>--forkserver</code>, <code>--no-forkserver</code></dt>
-<dd>
-<p>Set to <code>true</code> to use a forkserver for Python step execution and file hashing,
-which reduces startup overhead.
-This is enabled by default on Linux.</p>
-</dd>
 <dt><code>jobs</code> / <code>STEPUP_BUILD_JOBS</code> / <code>--jobs</code>, <code>-j</code></dt>
 <dd>
 <p>The maximum number of steps to run concurrently.
 When given as a floating point number, the value is multiplied by the number of available CPU cores.
 The default is <code>1.0</code>.</p>
 </dd>
-<dt><code>perf</code> / <code>STEPUP_BUILD_PERF</code> / <code>--perf</code></dt>
+<dt><code>keep_going</code> / <code>STEPUP_BUILD_KEEP_GOING</code> / <code>--keep-going</code>, <code>-k</code>, <code>--no-keep-going</code></dt>
 <dd>
-<p>Set to a frequency in Hz to enable performance monitoring of the director process
-with the <a href="https://perfwiki.github.io/main/">Linux perf profiler</a>.
-See the section on <a href="../../development/#profiling">Profiling</a>
-in the development documentation for more details.</p>
+<p>Set to <code>true</code> to keep dispatching new steps after another step has failed,
+as long as their own inputs remain available (like <code>make -k</code>).
+By default (<code>false</code>), the scheduler is put on hold after the first failure:
+steps already running are still allowed to finish, but no new steps are started.</p>
 </dd>
-<dt><code>preload_modules</code> / <code>STEPUP_BUILD_PRELOAD_MODULES</code> / <code>--preload-modules</code></dt>
+<dt><code>postpone_cap</code> / <code>STEPUP_BUILD_POSTPONE_CAP</code> / <code>--postpone-cap</code></dt>
 <dd>
-<p>A comma-separated list of Python modules to pre-load into the forkserver.
-Only has effect when <code>forkserver = true</code>.
-Use this to reduce per-step startup time when all (or most) steps import the same large modules.
-For example, <code>preload_modules = "numpy,scipy"</code> pre-loads NumPy and SciPy into the forkserver
-so that each Python step forked from it inherits them at zero import cost.
-By default, no additional modules are pre-loaded (only internal StepUp modules are pre-loaded).</p>
+<p>Maximum number of times a step can be postponed (since it last succeeded)
+before it is reported as failed instead of parked pending again.
+This guards against livelocks where a step&rsquo;s amended inputs keep flapping.
+The default is <code>100</code>, deliberately generous.</p>
 </dd>
 <dt><code>progress</code> / <code>STEPUP_BUILD_PROGRESS</code> / <code>--progress</code>, <code>--no-progress</code></dt>
 <dd>
 <p>Set to <code>false</code> to disable the progress bar in the terminal user interface.
 This can be useful to simplify and reduce the output.</p>
-</dd>
-<dt><code>reschedule_cap</code> / <code>STEPUP_BUILD_RESCHEDULE_CAP</code> / <code>--reschedule-cap</code></dt>
-<dd>
-<p>Maximum number of consecutive reschedules a step can undergo (since it last
-succeeded) before it is reported as failed instead of parked pending again.
-This guards against livelocks where a step&rsquo;s amended inputs keep flapping.
-The default is <code>100</code>, deliberately generous.</p>
 </dd>
 <dt><code>resources</code> / <code>STEPUP_BUILD_RESOURCES</code> / <code>--resources</code>, <code>-r</code></dt>
 <dd>
@@ -2638,13 +2753,8 @@ The default is <code>100</code>, deliberately generous.</p>
 to be used for scheduling decisions.
 For example, <code>resources = "gpu:2,cpu:4"</code> indicates that there are 2 GPUs and 4 CPUs available.
 Any resource labels can be used, and the available quantity can be any positive integer.
-Note that resource specifications from config files, the environment variable, and the CLI option
-are merged together, with the CLI option taking precedence over the environment variable.</p>
-</dd>
-<dt><code>sqllog</code> / <code>STEPUP_BUILD_SQLLOG</code> / <code>--sqllog</code>, <code>--no-sqllog</code></dt>
-<dd>
-<p>Set to <code>true</code> to enable SQLite debug logging.
-The recorded log is written to <code>.stepup/sqllog.json</code> when the director exits.</p>
+Note that resource specifications from config files, the environment variable,
+and one ore more CLI options (from left to right, e.g. <code>-r gpu:2 -r cpu:4</code>) are merged together.</p>
 </dd>
 <dt><code>watch</code> / <code>STEPUP_BUILD_WATCH</code> / <code>--watch</code>, <code>-w</code>, <code>--no-watch</code></dt>
 <dd>
@@ -2661,6 +2771,63 @@ without needing to press the <code>r</code> key.
 This implies <code>watch = true</code>.
 Only supported on Linux.</p>
 </dd>
+</dl>
+<h3 id="execution-environment">Execution Environment<a class="headerlink" href="#execution-environment" title="Permanent link">&para;</a></h3>
+<dl>
+<dt><code>cgroup</code> / <code>STEPUP_BUILD_CGROUP</code> / <code>--cgroup</code>, <code>--no-cgroup</code></dt>
+<dd>
+<p>This setting controls whether StepUp will run the director
+(and all its child processes running steps) use cgroup isolation.
+When enabled, peak memory usage of the director process and all its child processes is measured.
+Only available on Linux with cgroup v2 enabled and if <code>systemd-run</code> is available.
+Exceptions are raised if cgroup isolation is requested but not working.
+Off by default.</p>
+</dd>
+<dt><code>forkserver</code> / <code>STEPUP_BUILD_FORKSERVER</code> / <code>--forkserver</code>, <code>--no-forkserver</code></dt>
+<dd>
+<p>Set to <code>true</code> to use a forkserver for Python step execution,
+which reduces startup overhead.
+This is enabled by default on Linux.</p>
+</dd>
+<dt><code>preload_modules</code> / <code>STEPUP_BUILD_PRELOAD_MODULES</code> / <code>--preload-modules</code></dt>
+<dd>
+<p>A comma-separated list of Python modules to pre-load into the forkserver.
+Only has effect when <code>forkserver = true</code>.
+Use this to reduce per-step startup time when all (or most) steps import the same large modules.
+For example, <code>preload_modules = "numpy,scipy"</code> pre-loads NumPy and SciPy into the forkserver
+so that each Python step forked from it inherits them at zero import cost.
+By default, no additional modules are pre-loaded (only internal StepUp modules are pre-loaded).</p>
+</dd>
+</dl>
+<h3 id="diagnostics-and-profiling">Diagnostics and Profiling<a class="headerlink" href="#diagnostics-and-profiling" title="Permanent link">&para;</a></h3>
+<dl>
+<dt><code>joblog</code> / <code>STEPUP_BUILD_JOBLOG</code> / <code>--joblog</code>, <code>--no-joblog</code></dt>
+<dd>
+<p>Set to <code>true</code> to record job-execution events to <code>.stepup/joblog.csv</code>, one row per event,
+with columns <code>time_ns</code>, <code>job_i</code>, <code>event</code>, <code>description</code>.
+The file is truncated and rewritten at the start of every build phase.
+Each job produces four events:
+- <code>CREATED</code> (by the scheduler),
+- <code>STARTED</code> and <code>ENDED</code> (by the executor),
+- <code>COMPLETED</code> (observed by the scheduler, freeing a slot for the next job).
+Comparing the timestamps across these events, and deriving the number of concurrently
+running jobs from them, helps diagnose scheduler/executor dispatch overhead.</p>
+</dd>
+<dt><code>perf</code> / <code>STEPUP_BUILD_PERF</code> / <code>--perf</code></dt>
+<dd>
+<p>Set to a frequency in Hz to enable performance monitoring of the director process
+with the <a href="https://perfwiki.github.io/main/">Linux perf profiler</a>.
+See the section on <a href="../../development/#profiling">Profiling</a>
+in the development documentation for more details.</p>
+</dd>
+<dt><code>sqllog</code> / <code>STEPUP_BUILD_SQLLOG</code> / <code>--sqllog</code>, <code>--no-sqllog</code></dt>
+<dd>
+<p>Set to <code>true</code> to enable SQLite debug logging.
+Each <code>execute()</code> / <code>executemany()</code> call appends a timing row to <code>.stepup/sqllog.csv</code>
+as it happens.
+A <code>.stepup/sqllog.json</code> index (query text, call site, query plan, and the <code>query_i</code> id
+referenced by the CSV rows) is written when the director exits.</p>
+</dd>
 <dt><code>yappi</code> / <code>STEPUP_BUILD_YAPPI</code> / <code>--yappi</code>, <code>--no-yappi</code></dt>
 <dd>
 <p>Set to <code>true</code> to profile the director process with the <a href="https://github.com/sumerc/yappi">Yappi profiler</a>.
@@ -2668,6 +2835,10 @@ See the section on <a href="../../development/#profiling">Profiling</a>
 in the development documentation for more details.</p>
 </dd>
 </dl>
+<p>The targets to build (see <a href="../../advanced_topics/build_targets/">Build Targets</a>)
+are positional command-line arguments
+and cannot be set through config files or environment variables.
+When no targets are given, the full default workflow is built.</p>
 <h2 id="settings-for-stepup-clean">Settings for <code>stepup clean</code><a class="headerlink" href="#settings-for-stepup-clean" title="Permanent link">&para;</a></h2>
 <p>These settings are stored under the <code>[clean]</code> section in config files
 (or <code>[tool.stepup.clean]</code> in <code>pyproject.toml</code>).
@@ -2722,9 +2893,11 @@ the internal environment variables described above.</p>
 <p>These are documented in the tutorial on
 <a href="../../advanced_topics/here_and_root/"><code>HERE</code> and <code>ROOT</code> variables</a></p>
 </dd>
-<dt><code>STEPUP_STEP_I</code></dt>
+<dt><code>STEPUP_JOB_I</code></dt>
 <dd>
-<p>A unique integer index for the current step.
+<p>A unique integer id for the current job running the step.
+Unlike a step&rsquo;s own (stable) index, this changes every time the step is (re)started,
+e.g. after being postponed.
 This is mainly relevant for StepUp and has little significance for users implementing workflows.</p>
 </dd>
 <dt><code>STEPUP_STEP_INP_DIGEST</code></dt>
@@ -2801,7 +2974,7 @@ such as registering a planning step (<code>need=Need.PLAN</code>) from inside a 
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

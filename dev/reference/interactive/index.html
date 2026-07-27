@@ -29,7 +29,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
       
       <link rel="icon" href="../../logo.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1014,6 +1014,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
+      <a href="../../advanced_topics/build_targets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../advanced_topics/resources/" class="md-nav__link">
         
   
@@ -1022,6 +1050,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     
   
     Resources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/duration_and_hold/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duration and hold
   
 
     
@@ -2432,10 +2488,12 @@ You can use StepUp interactively by adding
 When a key is pressed on the keyboard, StepUp responds by executing a corresponding command.
 If the key is not associated with a command, the following help message appears:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>───────────────────────────────────── Keys ─────────────────────────────────────
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>   r = run     q = shutdown     d = drain     j = join     g = graph
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>────────────────────────────────────────────────────────────────────────────────
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  g = graph       Write the workflow graph to graph.txt.
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  d = drain       Put the scheduler on hold. (Leaves build phase.)
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  j = join        Wait for all steps to complete before shutting down.
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  q = shutdown    Shut down the system. (1st is graceful. 2nd kills steps.)
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  r = run         Restart the builder. (Leaves watch phase.)
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>────────────────────────────────────────────────────────────────────────────────
 </span></code></pre></div>
 <p>These commands are defined as follows:</p>
 <ul>
@@ -2458,7 +2516,13 @@ If the key is not associated with a command, the following help message appears:
 </ul>
 <p>Note that these interactive keys also work without the <code>-w</code> or <code>-W</code> option,
 except for <code>r</code> which only has an effect during the <em>watch phase</em>.</p>
-<p>Note that the <code>SIGINT</code> signal (pressing <code>Ctrl+C</code>) are also supported to stop StepUp.</p>
+<p>Pressing <code>Ctrl+C</code> (or sending <code>SIGTERM</code>) also stops StepUp, but more abruptly than <code>q</code>:
+it aborts the build instead of waiting for running steps.
+Every running step is interrupted with <code>SIGINT</code>,
+and whatever is still running a few seconds later is killed with <code>SIGKILL</code>,
+so a single <code>Ctrl+C</code> is always enough to get your shell prompt back.
+(Pressing <code>Ctrl+C</code> again just skips the waiting.)
+An aborted build sets the <code>64</code> bit in the <a href="../returncode/">return code</a>.</p>
 <h2 id="interacting-with-a-background-stepup-process">Interacting With a Background StepUp Process<a class="headerlink" href="#interacting-with-a-background-stepup-process" title="Permanent link">&para;</a></h2>
 <p>You can run StepUp in the background in several ways:</p>
 <ul>
@@ -2599,7 +2663,7 @@ which will automatically rerun the build as soon as you delete, save or add a re
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

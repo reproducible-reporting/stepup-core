@@ -29,7 +29,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
       
       <link rel="icon" href="../../logo.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1152,6 +1152,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
+      <a href="../../advanced_topics/build_targets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../advanced_topics/resources/" class="md-nav__link">
         
   
@@ -1160,6 +1188,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     
   
     Resources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/duration_and_hold/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duration and hold
   
 
     
@@ -2542,43 +2598,48 @@ which comprise the same nodes.</p>
    A step can also be in one of the following states:</p>
 <ul>
 <li><code>PENDING</code>:
-  the step cannot yet be scheduled
-  because some inputs have not been declared or built yet.</li>
+  The step has not been executed yet.
+  It will be considered for execution when all requirements are met
+  (e.g. input files, named resources, &hellip;)</li>
 <li><code>RUNNING</code>:
-  the step is currently executing.</li>
+  The step is currently executing.</li>
 <li><code>CHECKING</code>:
-  the step has a stored hash from a previous successful run and is being compared
+  The step has a stored hash from a previous successful run and is being compared
   against its current inputs and outputs to determine if execution can be skipped.
   Named resource restrictions do not apply in this state.</li>
 <li><code>SUCCEEDED</code>:
-  the step has been successfully completed.</li>
+  The step has been successfully completed.</li>
 <li><code>FAILED</code>:
-  the step failed because the subprocess exited with a non-zero exit code,
+  The step failed because the subprocess exited with a non-zero exit code,
   or expected output files were not created.</li>
 </ul>
 </li>
 <li>
 <p>A <code>File</code> defines a path and a status, which can be any of the following:</p>
 <ul>
-<li><code>AWAITED</code>:
-  the file is the output of a step that has never been executed so far.
-  (Such files are never deleted when cleaning up outputs.)</li>
-<li><code>BUILT</code>:
-  the file is the output of a step that has been successfully executed.</li>
-<li><code>OUTDATED</code>:
-  the file is the output of a step that has been executed,
-  but inputs of the step have been modified since then.</li>
-<li><code>VOLATILE</code>:
-  the file is (or can be) created by a step, but it is volatile.
-  It cannot be used as input, no hashes are computed for it.
-  These files are only registered so that they can be removed when appropriate.
-  They are typically different every time they are created,
-  even with the same inputs.</li>
-<li><code>STATIC</code>:
-  the file is written by you and can only be an input to a step.
-  (Note that step inputs can also be outputs of previous steps.)</li>
+<li><code>UNCONFIRMED</code>:
+  A file that should become a static file after its hash has been computed and stored.
+  This is a transient state that evolves either to <code>MISSING</code> or <code>STATIC</code>.
+  This logic sits entirely in the director, so you don&rsquo;t need to worry about it.</li>
 <li><code>MISSING</code>:
-  a static file that has gone missing.</li>
+  A static file that does not exist or has been removed.</li>
+<li><code>STATIC</code>:
+  A file provided by you, not created by any step.
+  It can only be used as an input to a step, never as an output.</li>
+<li><code>AWAITED</code>:
+  An input file to a step whose origin is yet unclear.
+  It can be produced by a step that has not been declared yet
+  or it can also be declared as a static file later.</li>
+<li><code>BUILT</code>:
+  The output of a step that has been successfully executed.</li>
+<li><code>OUTDATED</code>:
+  An output of a step that has been executed,
+  but that needs to be rebuilt,
+  typically because the step&rsquo;s inputs have changed since it last ran.</li>
+<li><code>VOLATILE</code>:
+  A file created by a step, but whose contents are not deterministic.
+  It cannot be used as input, no hashes are computed for it.
+  These files are only registered so that they can be removed when appropriate.</li>
 </ul>
 </li>
 </ol>
@@ -2636,7 +2697,6 @@ illustrates this type of edge.
   when you run the <code>stepup</code> command.</li>
 <li>The <strong>director</strong> holds the workflow data structure and is responsible
   for scheduling steps and watching for file changes.</li>
-<li>Per step, there is a subprocess to compute <strong>file hashes</strong>.</li>
 <li>Per step, there is a subprocess to execute the <strong>step command</strong>.</li>
 </ul>
 </li>
@@ -2703,7 +2763,7 @@ illustrates this type of edge.
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

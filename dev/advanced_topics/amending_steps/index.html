@@ -29,7 +29,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
       
       <link rel="icon" href="../../logo.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1016,6 +1016,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
+      <a href="../build_targets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../resources/" class="md-nav__link">
         
   
@@ -1024,6 +1052,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     
   
     Resources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../duration_and_hold/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duration and hold
   
 
     
@@ -2361,7 +2417,7 @@ or environment variables it uses, or of additional (volatile) outputs it creates
 However, defining an amended input will fail
 when that file is not yet built nor known as a static file.
 In this case, the step will exit early
-and will be rescheduled by the director process when the amended input becomes available.</p>
+and will be postponed by the director process until the amended input becomes available.</p>
 <p>The <a class="autorefs autorefs-internal" title="stepup.core.api.amend(*, inp=(), env=(), out=(), vol=())" href="../../reference/stepup.core.api/#stepup.core.api.amend"><code>amend()</code></a> function implements this feature
 and is convenient in various scenarios:</p>
 <ul>
@@ -2390,7 +2446,7 @@ and is convenient in various scenarios:</p>
 (or an output file already written):
 if a file turns out to be missing, or to have been built too recently to be trusted
 (e.g. a producer step was still writing it while it was being read),
-the step is rescheduled instead of failing outright.
+the step is postponed instead of failing outright.
 Still, use <code>amend()</code> as early as possible,
 before accessing additional input files or creating unforeseen output files,
 whenever that is practical.
@@ -2425,21 +2481,21 @@ This is particularly important when the step is time-consuming
 or when it uses <code>stepup.core.api</code> functions to extend the workflow.</p>
 </blockquote>
 <ul>
-<li>Rescheduling a step multiple times.</li>
+<li>Postponing a step multiple times.</li>
 </ul>
 <blockquote>
-<p>As a safety net, a step that is rescheduled too many times in a row without
-succeeding will eventually fail instead of being rescheduled forever.
-The limit is configurable with the <code>--reschedule-cap</code> option,
+<p>As a safety net, a step that is postponed too many times in a row without
+succeeding will eventually fail instead of being postponed forever.
+The limit is configurable with the <code>--postpone-cap</code> option,
 see <a href="../../reference/configuration/">Configuration</a>.</p>
-<p>Note that there are two different rescheduling mechanisms in StepUp:
+<p>Note that there are two different postponing mechanisms in StepUp:
 1. The <code>amend(inp=...)</code> hits a file that has not been built yet.
    (This is an &ldquo;unavailable input&rdquo;.)
 2. The <code>amend(inp=...)</code> hits a file that has been built by another step
    that completed after the current step started.
    If the <code>amend()</code> call is made after the file has been read,
-   StepUp cannot guarantee correctness and will therefore reschedule the step.</p>
-<p>Both types of rescheduling are counted towards the reschedule cap.</p>
+   StepUp cannot guarantee correctness and will therefore postpone the step.</p>
+<p>Both types of postponing are counted towards the postpone cap.</p>
 </blockquote>
 <p>To the best of our knowledge, there is no equivalent of <code>amend()</code> in other build tools.
 Some features in Ninja cover what can be achieved with <code>amend()</code>.</p>
@@ -2523,7 +2579,7 @@ After <code>input.txt</code> has been created, StepUp runs <code>./step.py</code
 <p>Modify the <code>plan.py</code> file to include a second amended input, for example, <code>other.txt</code>.
   Run StepUp with these changes.
   Because <code>sources.txt</code> contains a new file, StepUp will try re-running
-  <code>./step.py</code>, which will amend new inputs that require the step to be rescheduled again.</p>
+  <code>./step.py</code>, which will amend the step with new inputs that require the step to be postponed again.</p>
 </li>
 </ul>
 
@@ -2582,7 +2638,7 @@ After <code>input.txt</code> has been created, StepUp runs <code>./step.py</code
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

@@ -19,17 +19,17 @@ SPDX-License-Identifier: CC-BY-SA-4.0
         <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/resources/">
       
       
-        <link rel="prev" href="../optional_steps/">
+        <link rel="prev" href="../build_targets/">
       
       
-        <link rel="next" href="../blocked_steps/">
+        <link rel="next" href="../duration_and_hold/">
       
       
         
       
       
       <link rel="icon" href="../../logo.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1013,6 +1013,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../build_targets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -1101,6 +1129,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../duration_and_hold/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duration and hold
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -2393,7 +2449,7 @@ Requesting non-positive quantity of a resource (e.g. <code>resources={"gpu": 0}<
 is not allowed and will raise an error,
 but one can specify a resource with zero quantity in <code>STEPUP_RESOURCES</code>
 to make it unavailable (e.g. <code>STEPUP_RESOURCES="gpu:0"</code>).
-More details can be found in the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False, env_overrides=None)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> API documentation.</p>
+More details can be found in the <a class="autorefs autorefs-internal" title="stepup.core.api.step(command, *, inp=(), env=(), out=(), vol=(), workdir='.', need=Need.DEFAULT, resources=None, shell=False, env_overrides=None, duration=None)" href="../../reference/stepup.core.api/#stepup.core.api.step"><code>step()</code></a> API documentation.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/resources"><code>docs/advanced_topics/resources/</code></a></p>
 <p>The example illustrates three steps with different resource requirements.</p>
@@ -2446,7 +2502,7 @@ because it needs 2 CPUs and 1 GPU at the same time.</p>
 <ul>
 <li>
 <p>Run <code>sb -j 4</code> again without making changes.
-  Skipping steps requires hash computations, which are done by a dedicated hashing subprocess
+  Skipping steps requires hash computations, which are done by dedicated hashing threads
   and are never subject to resource restrictions.</p>
 </li>
 <li>
@@ -2516,7 +2572,7 @@ because it needs 2 CPUs and 1 GPU at the same time.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["search.highlight", "search.suggest", "search.share", "navigation.instant", "navigation.instant.prefetch", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

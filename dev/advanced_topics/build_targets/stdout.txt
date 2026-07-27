@@ -1,0 +1,9 @@
+  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc8.post10)
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cp -p input.txt report.txt
+   SUCCESS │ cp -p input.txt report.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+  DIRECTOR │ See you!
