@@ -9,13 +9,12 @@ from stepup.core.file import FILE_SCHEMA
 from stepup.core.hash import FileHash, StepHash
 from stepup.core.scheduler import (
     APPLY_SAFE_UPDATE,
-    APPLY_UPDATE_CHECK_AFTER,
+    EMPTY_CHANGED_AFTER,
     EMPTY_CHECK_AFTER,
     EMPTY_SAFE_UPDATE,
-    EMPTY_UPDATE_CHECK_AFTER,
+    INIT_CHANGED_AFTER,
     INIT_CHECK_AFTER,
     INIT_SAFE_UPDATE,
-    INIT_UPDATE_CHECK_AFTER,
     PROPAGATE_UPDATE_CHECK_AFTER,
     PRUNE_DETACHED_CHECK_AFTER,
     PRUNE_REDUNDANT_CHECK_AFTER,
@@ -24,8 +23,8 @@ from stepup.core.scheduler import (
     SELECT_PENDING_REASONS,
     SELECT_RESOURCE_COUNTS,
     SELECT_SAFE_UPDATE,
-    SELECT_UPDATE_CHECK_AFTER,
     UNAVAILABLE_INPUT,
+    UPDATE_CHECK_AFTER,
     Scheduler,
 )
 from stepup.core.sqlite3 import connect
@@ -174,19 +173,20 @@ def _run_update_meta_safe(con):
 def _run_update_meta_after(con):
     """Run the full update_meta_after logic against a bare SQLite connection."""
     con.execute(INIT_CHECK_AFTER)
-    con.execute(INIT_UPDATE_CHECK_AFTER)
+    con.execute(INIT_CHANGED_AFTER)
     con.execute(EMPTY_CHECK_AFTER)
     con.execute(PRUNE_DETACHED_CHECK_AFTER)
     con.execute(PRUNE_REDUNDANT_CHECK_AFTER)
     ncheck = con.execute("SELECT COUNT(*) FROM check_after").fetchone()[0]
     first = True
     while ncheck > 0:
-        con.execute(EMPTY_UPDATE_CHECK_AFTER)
-        con.execute(SELECT_UPDATE_CHECK_AFTER, {"first": first})
-        con.execute(APPLY_UPDATE_CHECK_AFTER)
+        cur = con.execute(UPDATE_CHECK_AFTER, {"first": first})
+        changed_ids = cur.fetchall()
         con.execute(EMPTY_CHECK_AFTER)
-        con.execute(PROPAGATE_UPDATE_CHECK_AFTER)
-        ncheck = con.execute("SELECT COUNT(*) FROM check_after").fetchone()[0]
+        con.execute(EMPTY_CHANGED_AFTER)
+        con.executemany("INSERT INTO changed_after(i) VALUES (?)", changed_ids)
+        cur = con.execute(PROPAGATE_UPDATE_CHECK_AFTER)
+        ncheck = cur.rowcount
         first = False
     con.execute("UPDATE step SET _check_after = 0 WHERE _check_after = 1")
 
@@ -391,6 +391,43 @@ def test_no_check_after_skips_update(con):
     assert row[0] == pytest.approx(1.0)  # unchanged
 
 
+def test_update_meta_after_then_dispatch_order_by_tail_time(con):
+    """A derived (not manually pre-set) _tail_time still drives SELECT_NEXT_STEP's dispatch order.
+
+    test_tail_time_is_maximum_over_parallel_sinks (above) checks the propagated value in
+    isolation; test_ordering_higher_tail_time_first (below) checks SELECT_NEXT_STEP's ordering
+    against manually pre-set _tail_time values. This chains the two: A and B both feed C, A's
+    branch has the longer duration, and after _run_update_meta_after derives real _tail_time
+    values for A and B, SELECT_NEXT_STEP must dispatch A (the longer critical path) first.
+    """
+    # A (node 2): longer branch.
+    _insert_step(
+        con, 2, 1, StepState.PENDING, safe=True, check_after=True, duration=5.0, tail_time=0.0
+    )
+    # B (node 4): shorter branch.
+    _insert_step(
+        con, 4, 1, StepState.PENDING, safe=True, check_after=True, duration=1.0, tail_time=0.0
+    )
+    _insert_file(con, 3, 1)  # intermediate for A
+    _insert_file(con, 5, 1)  # intermediate for B
+    # C (node 6): shared sink, already SUCCEEDED so it isn't itself a competing PENDING candidate.
+    _insert_step(con, 6, 1, StepState.SUCCEEDED, duration=2.0, tail_time=2.0)
+    _add_dep(con, 2, 3)  # A -> file
+    _add_dep(con, 3, 6)  # file -> C
+    _add_dep(con, 4, 5)  # B -> file
+    _add_dep(con, 5, 6)  # file -> C
+
+    _run_update_meta_after(con)
+    tail = dict(con.execute("SELECT node, _tail_time FROM step").fetchall())
+    assert tail[2] == pytest.approx(7.0)  # A.duration + C._tail_time = 5.0 + 2.0
+    assert tail[4] == pytest.approx(3.0)  # B.duration + C._tail_time = 1.0 + 2.0
+
+    # SELECT_NEXT_STEP carries a LIMIT 1, so only the top-priority candidate comes back;
+    # A's higher derived _tail_time must win.
+    ids = _get_runnable_ids(con)
+    assert ids == [2]
+
+
 # -----------------------------------------------------------------------
 # Tests for PRUNE_REDUNDANT_CHECK_AFTER
 # -----------------------------------------------------------------------
@@ -550,7 +587,7 @@ def test_propagate_sources_fork_no_duplicates(con):
     """Sources in fork pattern don't cause duplicate insertions.
 
     Fork pattern using deps: E -> file_e -> C, D
-    When both C and D are in update_after, both depend on file_e which is
+    When both C and D are in the changed-ids seed set, both depend on file_e which is
     supplied by E. PROPAGATE_UPDATE_CHECK_AFTER should insert E once, not twice.
 
     This is a regression test for: sqlite3.IntegrityError: UNIQUE constraint failed: check_after.i
@@ -569,13 +606,10 @@ def test_propagate_sources_fork_no_duplicates(con):
     _add_dep(con, 5, 6)  # file_e -> C
     _add_dep(con, 5, 8)  # file_e -> D
 
-    # Create and populate update_after with C and D
-    con.execute("CREATE TEMPORARY TABLE IF NOT EXISTS update_after(i INTEGER PRIMARY KEY)")
-    con.execute("INSERT INTO update_after (i) VALUES (?)", (6,))  # C
-    con.execute("INSERT INTO update_after (i) VALUES (?)", (8,))  # D
-
-    # Create check_after table
+    # Create check_after and changed_after tables, and populate changed_after with C and D
     con.execute(INIT_CHECK_AFTER)
+    con.execute(INIT_CHANGED_AFTER)
+    con.executemany("INSERT INTO changed_after (i) VALUES (?)", [(6,), (8,)])
 
     # Run PROPAGATE_UPDATE_CHECK_AFTER - should not fail with UNIQUE constraint
     con.execute(PROPAGATE_UPDATE_CHECK_AFTER)

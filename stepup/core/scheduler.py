@@ -97,13 +97,15 @@ CREATE TEMPORARY TABLE IF NOT EXISTS check_after(i INTEGER PRIMARY KEY)
 """
 
 
-EMPTY_CHECK_AFTER = """
-DELETE FROM check_after
+# Holds only the ids of steps whose _implied_need/_tail_time changed in the current
+# _update_meta_after iteration -- see PROPAGATE_UPDATE_CHECK_AFTER for how it's used.
+INIT_CHANGED_AFTER = """
+CREATE TEMPORARY TABLE IF NOT EXISTS changed_after(i INTEGER PRIMARY KEY)
 """
 
 
-EMPTY_UPDATE_CHECK_AFTER = """
-DELETE FROM update_after
+EMPTY_CHECK_AFTER = """
+DELETE FROM check_after
 """
 
 
@@ -152,17 +154,12 @@ WHERE i IN (
 """
 
 
-INIT_UPDATE_CHECK_AFTER = """
-CREATE TEMP TABLE IF NOT EXISTS update_after(
-    i INTEGER PRIMARY KEY,
-    _implied_need INTEGER,
-    _tail_time REAL
-)
-"""
-
-
-# Compute the new _implied_need and _tail_time for each step in check_after.
-SELECT_UPDATE_CHECK_AFTER = f"""
+# Compute the new _implied_need and _tail_time for each step in check_after, and apply them
+# directly in the same statement (avoids a round trip through a separate, materialized
+# update_after table). RETURNING reports exactly the node ids that were written, which the
+# caller feeds into PROPAGATE_UPDATE_CHECK_AFTER as the "changed" seed set -- narrowing
+# propagation to steps whose value actually changed, same as the old two-statement design.
+UPDATE_CHECK_AFTER = f"""
 WITH cte AS (
     SELECT
         check_after.i AS i,
@@ -192,30 +189,40 @@ WITH cte AS (
     )
     GROUP BY check_after.i
 )
-INSERT INTO update_after(i, _implied_need, _tail_time)
-SELECT i, new_implied_need, new_tail_time
-FROM cte
-WHERE :first OR (new_implied_need != old_implied_need OR new_tail_time != old_tail_time)
+UPDATE step SET
+    _implied_need = upd.new_implied_need,
+    _tail_time = upd.new_tail_time
+FROM (
+    SELECT i, new_implied_need, new_tail_time
+    FROM cte
+    WHERE :first OR (new_implied_need != old_implied_need OR new_tail_time != old_tail_time)
+) AS upd
+WHERE step.node = upd.i
+RETURNING step.node
 """
 
 
-# Apply the updates
-APPLY_UPDATE_CHECK_AFTER = """
-UPDATE step SET
-    _implied_need = update_after._implied_need,
-    _tail_time = update_after._tail_time
-FROM update_after
-WHERE step.node = update_after.i
+EMPTY_CHANGED_AFTER = """
+DELETE FROM changed_after
 """
 
 
 # Propagate the updates to all (recursive) sources of the updated steps.
 #
-# The two nested `IN` subqueries (rather than a plain JOIN chain starting from `update_after`)
+# changed_after holds the step ids whose _implied_need/_tail_time actually changed in this
+# iteration (populated by the caller from UPDATE_CHECK_AFTER's RETURNING output) -- this is the
+# seed set that preserves the "only propagate from steps whose value actually changed" narrowing,
+# which keeps iteration counts down on real graphs. A first attempt passed this set as a JSON
+# array through `json_each(...)` instead of a temp table, to avoid a round trip populating a
+# table; that measurably regressed this query (EXPLAIN QUERY PLAN showed a `SCAN json_each
+# VIRTUAL TABLE` + bloom-filter build replacing a direct indexed rowid search), so it was
+# reverted in favor of the temp table.
+#
+# The two nested `IN` subqueries (rather than a plain JOIN chain starting from `changed_after`)
 # make the planner drive from `dependency`'s `dependency_sink_source` index seeded by
-# `update_after`, instead of a full scan of `dependency` or `step`. A plain JOIN here lets the
+# `changed_after`, instead of a full scan of `dependency` or `step`. A plain JOIN here lets the
 # planner pick either of those as the driving table, an O(n_dependencies) or O(n_steps) cost
-# regardless of how few steps are in `update_after`.
+# regardless of how few steps changed.
 PROPAGATE_UPDATE_CHECK_AFTER = """
 INSERT INTO check_after(i)
 SELECT DISTINCT source_step.node
@@ -225,7 +232,7 @@ JOIN node AS source_node ON source_step.node = source_node.i
 WHERE NOT source_node.detached
   AND dep2.sink IN (
       SELECT dep1.source FROM dependency AS dep1
-      WHERE dep1.sink IN (SELECT i FROM update_after)
+      WHERE dep1.sink IN (SELECT i FROM changed_after)
   )
 """
 
@@ -457,12 +464,12 @@ class Scheduler:
                     "INSERT INTO available_resource VALUES (?, ?)",
                     parse_resources(resources).items(),
                 )
-            # check_after, update_after, and safe_update are hot-path temp tables used by
+            # check_after, changed_after, and safe_update are hot-path temp tables used by
             # _update_meta_after()/_update_meta_safe(). Creating them once here, instead of on
             # every call, avoids repeated schema-cookie bumps (which invalidate SQLite's
             # prepared-statement cache) on the dispatch hot path.
             self.workflow.db.execute(INIT_CHECK_AFTER)
-            self.workflow.db.execute(INIT_UPDATE_CHECK_AFTER)
+            self.workflow.db.execute(INIT_CHANGED_AFTER)
             self.workflow.db.execute(INIT_SAFE_UPDATE)
 
     #
@@ -575,7 +582,7 @@ class Scheduler:
         if not db.execute("SELECT EXISTS(SELECT 1 FROM step WHERE _check_after)").fetchone()[0]:
             return
         # Not using executescript to preserve atomicity of the transaction.
-        # check_after and update_after are created once in Scheduler.initialize().
+        # check_after and changed_after are created once in Scheduler.initialize().
         db.execute(EMPTY_CHECK_AFTER)
         db.execute(PRUNE_DETACHED_CHECK_AFTER)
         db.execute(PRUNE_REDUNDANT_CHECK_AFTER)
@@ -583,18 +590,15 @@ class Scheduler:
         first = True
         while ncheck > 0:
             logger.debug(f"Found {ncheck} sources to update (first={first})")
-            # for row in db.execute("SELECT i FROM check_after"):
-            #     logger.debug("  Step %s", row[0])
             # The first iteration is different: irrespective of having changed metadata fields of
             # the initial _check_after steps, we need to propagate at least once.
-            db.execute(EMPTY_UPDATE_CHECK_AFTER)
-            db.execute(SELECT_UPDATE_CHECK_AFTER, {"first": first})
-            # for row in db.execute("SELECT * FROM update_after"):
-            #     logger.debug("  Updating step %s", str(row))
-            db.execute(APPLY_UPDATE_CHECK_AFTER)
+            cur = db.execute(UPDATE_CHECK_AFTER, {"first": first})
+            changed_ids = cur.fetchall()
             db.execute(EMPTY_CHECK_AFTER)
-            db.execute(PROPAGATE_UPDATE_CHECK_AFTER)
-            ncheck = db.execute("SELECT COUNT(*) FROM check_after").fetchone()[0]
+            db.execute(EMPTY_CHANGED_AFTER)
+            db.executemany("INSERT INTO changed_after(i) VALUES (?)", changed_ids)
+            cur = db.execute(PROPAGATE_UPDATE_CHECK_AFTER)
+            ncheck = cur.rowcount
             first = False
         logger.debug("Finished updating 'after' metadata fields")
         cur = db.execute("UPDATE step SET _check_after = 0 WHERE _check_after")
