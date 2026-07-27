@@ -27,6 +27,10 @@ logger = logging.getLogger(__name__)
 __all__ = ("ReporterClient", "ReporterHandler")
 
 
+PROGRESS_REFRESH_DELAY = 0.5
+PROGRESS_REFRESH_INTERVAL = 1.0
+
+
 @attrs.define
 class ReporterClient:
     socket_path: Path | None = attrs.field(default=None)
@@ -93,22 +97,43 @@ class StepUpProgressBar(ProgressBar):
     def __init__(self, *args, **kwargs):
         self._njob = 0
         self._running = {}
+        self._refresh_handle: asyncio.TimerHandle | None = None
         super().__init__(*args, **kwargs)
+
+    def request_refresh(self, delay: float = PROGRESS_REFRESH_DELAY):
+        """Schedule a refresh, coalescing with any refresh already pending.
+
+        This coalesces bursts of progress-relevant events into a single
+        delayed `refresh()` call, instead of repainting the terminal on
+        every event. It is also used internally by `_do_refresh` to keep
+        ticking at `PROGRESS_REFRESH_INTERVAL` while steps are running, so
+        their elapsed times stay current on screen.
+        """
+        if self._refresh_handle is None:
+            loop = asyncio.get_running_loop()
+            self._refresh_handle = loop.call_later(delay, self._do_refresh)
+
+    def _do_refresh(self):
+        self._refresh_handle = None
+        self.refresh()
+        if self._running:
+            # Keep ticking while steps are running, to update elapsed times.
+            self.request_refresh(PROGRESS_REFRESH_INTERVAL)
 
     def set_njob(self, njob: int):
         """Set the number of jobs in the progress bar."""
         self._njob = njob
-        self.refresh()
+        self.request_refresh()
 
     def start_step(self, start: float, description: str, step_i: int):
         """Start a step in the progress bar."""
         self._running[step_i] = (start, description)
-        self.refresh()
+        self.request_refresh()
 
     def stop_step(self, step_i: int):
         """Stop a step in the progress bar."""
         self._running.pop(step_i, None)
-        self.refresh()
+        self.request_refresh()
 
     def get_renderables(self) -> Iterable[RenderableType]:
         if len(self._running) > 0:
@@ -162,8 +187,7 @@ class ReporterHandler:
             MofNCompleteColumn(),
             transient=True,
             console=self.console,
-            auto_refresh=True,
-            refresh_per_second=1,
+            auto_refresh=False,
         )
         progress_bar.start()
         return progress_bar
@@ -192,8 +216,8 @@ class ReporterHandler:
                     self.task_id_step,
                     completed=nsuc,
                     total=nsuc + nrun + npen,
-                    refresh=True,
                 )
+                self.progress_bar.request_refresh()
 
         # Action info
         action_color = {
