@@ -104,6 +104,7 @@ EXAMPLES = [
     "input_check_postpone",
     "input_check_three",
     "input_check_two",
+    "keep_going",
     "no_clean",
     "no_clean_awaited_detached",
     "no_data",

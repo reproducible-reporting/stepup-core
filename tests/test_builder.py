@@ -26,6 +26,7 @@ def _make_builder(scheduler: Scheduler, workflow: Workflow) -> Builder:
         reporter=None,
         show_perf=False,
         explain_rerun=False,
+        keep_going=False,
         live_progress=False,
     )
     return Builder(

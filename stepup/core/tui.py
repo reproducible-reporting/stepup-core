@@ -131,6 +131,8 @@ async def async_build(args: argparse.Namespace, default_resources: str):
             argv.append("--no-duration")
         if args.explain_rerun:
             argv.append("--explain-rerun")
+        if args.keep_going:
+            argv.append("--keep-going")
         if not args.fix_epoch:
             argv.append("--no-fix-epoch")
         if args.show_perf > 1:
@@ -323,6 +325,15 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         default=False,
         action=argparse.BooleanOptionalAction,
         help="Explain for every step with recording info why it cannot be skipped.",
+    )
+    parser.add_argument(
+        "--keep-going",
+        "-k",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Keep building steps whose inputs remain available after another step fails, "
+        "instead of putting the scheduler on hold, like `make -k`. "
+        "In-progress steps always finish regardless of this flag.",
     )
     parser.add_argument(
         "--jobs",

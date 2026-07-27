@@ -2,10 +2,10 @@
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py
-     START │ ./simple.sh
-      FAIL │ ./simple.sh
+     START │ false
+      FAIL │ false
 ──────────────────────────────── Failed command ────────────────────────────────
-./simple.sh  # exit=1
+false  # exit=1
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────

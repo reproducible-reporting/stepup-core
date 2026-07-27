@@ -104,6 +104,10 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
   3. The CPU affinity mask reported by the operating system.
   4. The total number of CPUs reported by the operating system.
   The first source that yields a usable value is used.
+- After a step fails, the scheduler is now put on hold by default, like `make` without
+  `-k` (steps already running still finish; no new steps are started).
+  Use the new `--keep-going` / `-k` flag (or `STEPUP_BUILD_KEEP_GOING`) to restore the
+  previous behavior of continuing to build every step whose inputs remain available.
 - The `runsh()` and `runpy()` functions have been replaced by the more flexible `run()` function.
   The new implementation is more efficient and automatically tracks local scripts as dependencies.
 - The `plan()` function has been made maximally similar to `run()`,

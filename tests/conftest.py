@@ -75,6 +75,7 @@ async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
                     do_clean=True,
                     use_duration=False,
                     explain_rerun=False,
+                    keep_going=False,
                     fix_epoch=True,
                     show_perf=False,
                     do_joblog=False,

@@ -10,6 +10,7 @@ ls --this-option-does-not-exist  # exit=2
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ 1 step(s) failed.
+   WARNING │ Scheduler is put on hold. Not reporting pending steps.
    WARNING │ Skipping file cleanup due to incomplete build
    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
      PHASE │ watch

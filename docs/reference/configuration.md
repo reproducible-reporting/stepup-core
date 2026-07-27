@@ -178,6 +178,13 @@ separated by slashes, where applicable.
     When given as a floating point number, the value is multiplied by the number of available CPU cores.
     The default is `1.0`.
 
+`keep_going` / `STEPUP_BUILD_KEEP_GOING` / `--keep-going`, `-k`, `--no-keep-going`
+
+:   Set to `true` to keep dispatching new steps after another step has failed,
+    as long as their own inputs remain available (like `make -k`).
+    By default (`false`), the scheduler is put on hold after the first failure:
+    steps already running are still allowed to finish, but no new steps are started.
+
 `perf` / `STEPUP_BUILD_PERF` / `--perf`
 
 :   Set to a frequency in Hz to enable performance monitoring of the director process

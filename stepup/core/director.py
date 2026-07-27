@@ -115,6 +115,7 @@ async def async_main(
                 do_clean=args.clean,
                 use_duration=args.duration,
                 explain_rerun=args.explain_rerun,
+                keep_going=args.keep_going,
                 fix_epoch=args.fix_epoch,
                 show_perf=args.show_perf,
                 do_joblog=args.joblog,
@@ -177,6 +178,13 @@ def parse_args() -> argparse.Namespace:
         default=False,
         action=argparse.BooleanOptionalAction,
         help="Explain for every step with recording info why it cannot be skipped.",
+    )
+    parser.add_argument(
+        "--keep-going",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Keep dispatching new steps after another step has failed, "
+        "instead of putting the scheduler on hold. (In-progress steps always finish.)",
     )
     parser.add_argument(
         "--log-level",
@@ -334,6 +342,7 @@ async def serve(
     do_clean: bool,
     use_duration: bool,
     explain_rerun: bool,
+    keep_going: bool,
     fix_epoch: bool,
     show_perf: bool,
     do_joblog: bool,
@@ -364,6 +373,10 @@ async def serve(
         If True, the scheduler uses the duration of steps to optimize the execution order.
     explain_rerun
         Report detailed diagnostics explaining why a step is rerun rather than skipped.
+    keep_going
+        If True, keep dispatching new steps after another step has failed
+        (like `make -k`). If False (default), the scheduler is put on hold after
+        the first failure; steps already running are still allowed to finish.
     show_perf
         Show performance details after each completed step.
         Requires `live_progress`, since the performance details are printed inline with the
@@ -433,6 +446,7 @@ async def serve(
         reporter,
         show_perf,
         explain_rerun,
+        keep_going,
         live_progress,
         mp_ctx=mp_ctx,
         infra_env=infra_env,

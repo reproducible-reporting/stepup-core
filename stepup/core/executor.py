@@ -660,6 +660,9 @@ class Executor:
     explain_rerun: bool = attrs.field()
     """Flag to explain why a step could not be skipped."""
 
+    keep_going: bool = attrs.field()
+    """If True, do not put the scheduler on hold when a step fails."""
+
     live_progress: bool = attrs.field()
     """Whether the reporter is an interactive terminal that wants live step-count updates."""
 
@@ -1181,6 +1184,8 @@ class Executor:
             action = "SUCCESS"
         else:
             action = "FAIL"
+        if action == "FAIL" and not self.keep_going:
+            self.scheduler.on_hold = True
         await self.reporter.stop_step(run.step.i)
         await self.reporter(action, escape_command_display(run.step.label), pages)
 

@@ -11,15 +11,16 @@ import pytest
 from stepup.core.executor import Executor, NoOverwriteDict, Run, _executable_uses_same_python
 
 
-def _make_executor(*, reporter=None) -> Executor:
+def _make_executor(*, reporter=None, scheduler=None, db=None, keep_going=False) -> Executor:
     """Build an `Executor` with dummy collaborators, sufficient for `report()` tests."""
     return Executor(
-        scheduler=None,
+        scheduler=scheduler,
         workflow=None,
-        db=None,
+        db=db,
         reporter=reporter,
         show_perf=False,
         explain_rerun=False,
+        keep_going=keep_going,
         live_progress=False,
     )
 
@@ -36,6 +37,16 @@ class _FakeReporter:
 
     async def __call__(self, action, label, pages):
         self.calls.append((action, label, pages))
+
+
+class _NullDB:
+    """A no-op stand-in for `DBSession`, sufficient for `report()`'s `async with self.db:`."""
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc_info):
+        return False
 
 
 def test_missing_file(tmp_path):
@@ -130,6 +141,15 @@ def _make_detached_run(*, success: bool) -> Run:
     return run
 
 
+def _make_failed_run() -> Run:
+    step = SimpleNamespace(
+        i=1, label="false", command_workdir=("false", "."), get_subshell=lambda: None
+    )
+    run = Run(step, job_i=1)
+    run.success = False
+    return run
+
+
 def test_report_marks_detached_step_that_succeeded_as_detached():
     reporter = _FakeReporter()
     executor = _make_executor(reporter=reporter)
@@ -154,6 +174,32 @@ def test_report_marks_detached_step_that_failed_as_detached():
     action, _label, pages = reporter.calls[0]
     assert action == "DETACHED"
     assert pages[0][0] == "Step detached"
+
+
+def test_report_puts_scheduler_on_hold_after_failure_by_default():
+    reporter = _FakeReporter()
+    scheduler = SimpleNamespace(on_hold=False)
+    executor = _make_executor(reporter=reporter, scheduler=scheduler, db=_NullDB())
+    run = _make_failed_run()
+
+    asyncio.run(executor.report(run))
+
+    action, _label, _pages = reporter.calls[0]
+    assert action == "FAIL"
+    assert scheduler.on_hold is True
+
+
+def test_report_leaves_scheduler_running_with_keep_going():
+    reporter = _FakeReporter()
+    scheduler = SimpleNamespace(on_hold=False)
+    executor = _make_executor(reporter=reporter, scheduler=scheduler, db=_NullDB(), keep_going=True)
+    run = _make_failed_run()
+
+    asyncio.run(executor.report(run))
+
+    action, _label, _pages = reporter.calls[0]
+    assert action == "FAIL"
+    assert scheduler.on_hold is False
 
 
 def test_no_overwrite_dict_allows_insertion_of_new_keys():
