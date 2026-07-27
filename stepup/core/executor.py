@@ -567,6 +567,11 @@ class Run:
     interrupted_reschedule: bool = attrs.field(init=False, default=False)
     """Set to True when the step has reached its reschedule cap."""
 
+    detached: bool = attrs.field(init=False, default=False)
+    """Set to True when `Step.completed()` found this step had already been detached by
+    its creator (see `Step.detach()`) when it finished, regardless of success or failure.
+    """
+
     returncode: int | None = attrs.field(init=False, default=None)
     """The return code from the command."""
 
@@ -695,7 +700,7 @@ class Executor:
     async def _reset_step_to_pending(self, step: Step) -> None:
         """Discard a step's stored hash and transition it back to PENDING for re-execution."""
         async with self.db:
-            step.clean_before_run()
+            step.reset_for_rerun()
             step.delete_hash()
             step.set_state(StepState.PENDING)
 
@@ -779,7 +784,7 @@ class Executor:
 
             # Run the step
             async with self.db:
-                step.clean_before_run()
+                step.reset_for_rerun()
             await self._report_step_counts()
             await self.run(run)
 
@@ -819,8 +824,13 @@ class Executor:
                     new_out_hashes,
                     HashUpdateCause.SUCCEEDED if run.success else HashUpdateCause.FAILED,
                 )
-                run.interrupted_reschedule = step.completed(new_hash)
-                if wants_reschedule and not run.interrupted_reschedule:
+                run.detached, run.interrupted_reschedule = step.completed(new_hash)
+                if run.detached:
+                    # The step's creator moved on without it before/when it finished (see
+                    # Step.detach()): the raw result is moot, report() shows a dedicated
+                    # explanatory page instead of the raw error/success info.
+                    run.stderr = ""
+                elif wants_reschedule and not run.interrupted_reschedule:
                     # Erase error info to keep the screen output concise.
                     run.stderr = ""
                 # Record the stop time.
@@ -1078,7 +1088,15 @@ class Executor:
             (run.unavailable_inputs == "" and run.unfresh_inputs == "")
             or run.interrupted_reschedule
         )
-        if not (run.success or needs_reschedule):
+        if run.detached:
+            pages.append(
+                (
+                    "Step detached",
+                    "This step's creator did not recreate it before it finished.\n"
+                    "Its result has been discarded, and it will be executed again if recreated.",
+                )
+            )
+        elif not (run.success or needs_reschedule):
             # Format command for display (can be copied and pasted into a shell); a non-zero
             # return code is appended as a trailing `# exit=N` comment by format_subprocess.
             async with self.db:
@@ -1100,8 +1118,9 @@ class Executor:
         if len(run.inp_messages) > 0:
             run.inp_messages.sort()
             pages.append(("Invalid inputs", "\n".join(run.inp_messages)))
-        if not needs_reschedule and len(run.out_missing) > 0:
-            # Do not show missing outputs, as they are fairly normal and harmless when rescheduling.
+        if not (needs_reschedule or run.detached) and len(run.out_missing) > 0:
+            # Do not show missing outputs, as they are fairly normal and harmless when
+            # rescheduling, or when the step was detached.
             run.out_missing.sort()
             pages.append(("Expected outputs not created", "\n".join(run.out_missing)))
         stdout = run.stdout.rstrip()
@@ -1110,7 +1129,9 @@ class Executor:
         stderr = run.stderr.rstrip()
         if len(stderr) > 0:
             pages.append(("Standard error", stderr))
-        if run.interrupted_reschedule:
+        if run.detached:
+            action = "DETACHED"
+        elif run.interrupted_reschedule:
             action = "FAIL"
         elif run.unavailable_inputs != "" or run.unfresh_inputs != "":
             action = "RESCHEDULE"

@@ -1,0 +1,66 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   root:
+              source   file:plan.py
+             product   file:provide.py
+             product   file:sub.py
+             product   file:work.py
+             product   step:./provide.py
+             product   step:./work.py
+
+file:provide.py
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:./provide.py
+
+file:sub.py
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:./sub.py
+
+file:work.py
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:./work.py
+
+step:./provide.py
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./plan.py
+              source   file:provide.py
+             product   file:provided.txt
+                sink   file:provided.txt [amended]
+
+step:./work.py
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./plan.py
+              source   file:provided.txt [amended]
+              source   file:work.py
+             product   step:./sub.py
+
+step:./sub.py
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./work.py
+              source   file:sub.py
+
+file:provided.txt
+               state = BUILT
+             creator   step:./provide.py
+              source   step:./provide.py
+                sink   step:./work.py

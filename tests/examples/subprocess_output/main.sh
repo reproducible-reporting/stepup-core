@@ -20,7 +20,7 @@ grep -F "subprocess-stderr-line" .stepup/success.log
 
 # Force a skip of ./work.py while keeping its output: change plan.py so it re-runs,
 # but leave the work.py step declaration and its input unchanged. The skip path
-# (try_skip_job) does not call clean_before_run, so the stored output must survive.
+# (try_skip_job) does not call reset_for_rerun, so the stored output must survive.
 > .stepup/success.log
 cp plan2.py plan.py
 stepup watch-update plan.py

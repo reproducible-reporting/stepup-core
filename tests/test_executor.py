@@ -2,9 +2,38 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Unit tests for stepup.core.executor"""
 
+import asyncio
 import sys
+from types import SimpleNamespace
 
-from stepup.core.executor import _executable_uses_same_python
+from stepup.core.executor import Executor, Run, _executable_uses_same_python
+
+
+def _make_executor(*, reporter=None) -> Executor:
+    """Build an `Executor` with dummy collaborators, sufficient for `report()` tests."""
+    return Executor(
+        scheduler=None,
+        workflow=None,
+        db=None,
+        reporter=reporter,
+        show_perf=False,
+        explain_rerun=False,
+        live_progress=False,
+    )
+
+
+class _FakeReporter:
+    """Records `report()` calls instead of sending them anywhere."""
+
+    def __init__(self):
+        self.stopped = []
+        self.calls = []
+
+    async def stop_step(self, step_i):
+        self.stopped.append(step_i)
+
+    async def __call__(self, action, label, pages):
+        self.calls.append((action, label, pages))
 
 
 def test_missing_file(tmp_path):
@@ -89,3 +118,37 @@ def test_env_form_without_interpreter_argument(monkeypatch, tmp_path):
     script = tmp_path / "script"
     script.write_bytes(b"#!/usr/bin/env\n")
     assert not _executable_uses_same_python(str(script))
+
+
+def _make_detached_run(*, success: bool) -> Run:
+    step = SimpleNamespace(i=1, label="one", command_workdir=("echo hi", "."))
+    run = Run(step)
+    run.success = success
+    run.detached = True
+    return run
+
+
+def test_report_marks_detached_step_that_succeeded_as_detached():
+    reporter = _FakeReporter()
+    executor = _make_executor(reporter=reporter)
+    run = _make_detached_run(success=True)
+
+    asyncio.run(executor.report(run))
+
+    assert reporter.stopped == [1]
+    action, _label, pages = reporter.calls[0]
+    assert action == "DETACHED"
+    assert pages[0][0] == "Step detached"
+
+
+def test_report_marks_detached_step_that_failed_as_detached():
+    reporter = _FakeReporter()
+    executor = _make_executor(reporter=reporter)
+    run = _make_detached_run(success=False)
+
+    asyncio.run(executor.report(run))
+
+    assert reporter.stopped == [1]
+    action, _label, pages = reporter.calls[0]
+    assert action == "DETACHED"
+    assert pages[0][0] == "Step detached"

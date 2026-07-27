@@ -41,8 +41,14 @@ class Builder:
     njob: int = attrs.field(kw_only=True)
     """The maximum number of steps to run concurrently."""
 
-    need_job: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
-    """Event that is set when there is capacity to take another job."""
+    wake_job_loop: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+    """Event that is set whenever `job_loop` should re-poll the scheduler.
+
+    This now includes:
+    - A running task finished (freeing a slot).
+    - A new step was defined, which may already be runnable.
+    - Files were confirmed static, meaning depending steps may start.
+    """
 
     watcher: Watcher | None = attrs.field(kw_only=True)
     """The watcher instance, used to start the watcher when the builder becomes idle."""
@@ -135,9 +141,9 @@ class Builder:
             if len(self.running_tasks) == 0 and len(self.done_tasks) == 0:
                 return
 
-            # Let the builder wait until a task slot becomes available.
-            await self.need_job.wait()
-            self.need_job.clear()
+            # Let the builder wait until there is something new to check.
+            await self.wake_job_loop.wait()
+            self.wake_job_loop.clear()
 
     async def finalize(self):
         """Final steps after the builder has executed a bunch of jobs."""
@@ -171,7 +177,7 @@ class Builder:
     def _task_done(self, task: asyncio.Task):
         job = self.running_tasks.pop(task)
         self.done_tasks[task] = job
-        self.need_job.set()
+        self.wake_job_loop.set()
 
     async def handle_done_tasks(self):
         """Check whether done tasks raised exceptions and propagate them when found."""
@@ -184,7 +190,7 @@ class Builder:
                 msg = f"Exception in task {task.get_name()}"
                 raise RuntimeError(msg) from exc
             await self.scheduler.job_completed(job)
-            self.need_job.set()
+            self.wake_job_loop.set()
 
     async def stop(self):
         """Cancel any still-running step tasks and signal their child processes."""

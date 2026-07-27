@@ -206,6 +206,7 @@ class ReporterHandler:
             "SKIP": "cyan",
             "NOSKIP": "yellow",
             "RESCHEDULE": "yellow",
+            "DETACHED": "yellow",
             "DROPAMEND": "yellow",
             "WARNING": "yellow",
             "UNCHANGED": "cyan",

@@ -13,19 +13,14 @@ step:./plan.py
            using_env = STEPUP_PATH_FILTER [amended]
              creator   root:
               source   file:plan.py
+             product   file:work.py
 
-(step:cat first > second)
+file:work.py
+               state = STATIC
+             creator   step:./plan.py
+                sink   (step:./work.py)
+
+(step:./work.py)
                state = PENDING
                 need = DEFAULT
-              source   (file:first)
-             product   (file:second)
-                sink   (file:second)
-
-(file:first)
-               state = AWAITED
-                sink   (step:cat first > second)
-
-(file:second)
-               state = AWAITED
-             creator   (step:cat first > second)
-              source   (step:cat first > second)
+              source   file:work.py

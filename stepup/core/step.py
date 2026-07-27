@@ -185,7 +185,7 @@ CREATE TABLE IF NOT EXISTS step_subprocess (
     stderr     TEXT,                          -- captured standard error, or NULL if not captured
     -- ON DELETE CASCADE removes these rows when the node row is deleted, matching the
     -- other satellite tables (env_var / step_hash / step_output / step_resource).
-    -- Step.clean_before_run() still clears them explicitly between runs of a surviving step.
+    -- Step.reset_for_rerun() still clears them explicitly between runs of a surviving step.
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS step_subprocess_node ON step_subprocess(node);
@@ -449,6 +449,10 @@ class Step(Node):
         return self.db.execute(sql, (self.i,)).fetchone()[0]
 
     def add_unavailable_inputs(self, info: str):
+        if self.is_detached():
+            # This step's creator has moved on without it (see Step.detach()); rescheduling
+            # it is moot.
+            return
         self.db.execute(
             "UPDATE step SET unavailable_inputs = CASE unavailable_inputs"
             " WHEN '' THEN :info ELSE (unavailable_inputs || '\n' || :info) END"
@@ -458,6 +462,27 @@ class Step(Node):
 
     def clear_unavailable_inputs(self):
         self.db.execute("UPDATE step SET unavailable_inputs = '' WHERE node = ?", (self.i,))
+
+    def has_unavailable_amended_input(self) -> bool:
+        """Whether any amended input dependency is not currently `STATIC` or `BUILT`.
+
+        Used by `completed()` to re-derive the current truth directly from the
+        graph, instead of trusting the `unavailable_inputs` memo alone: a
+        producer may complete (and call `mark_pending()`) while this step is
+        still `RUNNING`, in which case that call is a no-op (see
+        `mark_pending()`), leaving the memo stale even though the input is
+        genuinely available again.
+        """
+        sql = f"""
+        SELECT EXISTS (
+            SELECT 1 FROM dependency
+            JOIN amended_dep ON amended_dep.i = dependency.i
+            JOIN file ON file.node = dependency.source
+            WHERE dependency.sink = ?
+            AND file.state NOT IN ({FileState.STATIC.value}, {FileState.BUILT.value})
+        )
+        """
+        return bool(self.db.execute(sql, (self.i,)).fetchone()[0])
 
     def get_unfresh_inputs(self) -> str:
         sql = "SELECT unfresh_inputs FROM step WHERE node = ?"
@@ -502,6 +527,10 @@ class Step(Node):
         Amended information is not included for consistency with
         the information that is available when defining a step.
         """
+        if self.is_detached():
+            # This step's creator has moved on without it (see Step.detach()); its real
+            # info is moot.
+            return StepInfo("", [], [], [], [], Path("."))
         command, workdir = self.command_workdir
         return StepInfo(
             command,
@@ -711,11 +740,13 @@ class Step(Node):
     # Build phase
     #
 
-    def clean_before_run(self):
-        """Remove all information that is expected to be set when running a step.
+    def reset_for_rerun(self):
+        """Reset a step back to its freshly defined state, ready to run again.
 
-        This method is called right before (re)running a step and cleans up leftovers
-        that may still hang around from a previous (failed or aborted) execution.
+        This method discards everything that was produced dynamically by the step's
+        previous run (if any), so that a future (re)run starts from a clean slate.
+        It is called both right before actually re-executing a step, and whenever
+        a step is rescheduled and won't run again immediately.
 
         The following are removed:
 
@@ -771,11 +802,7 @@ class Step(Node):
             node.del_sources([self])
             node.detach()
 
-        # Detach steps created by this step
-        sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'step'"
-        for i, label in self.db.execute(sql, (self.i,)):
-            step = Step(self.graph, i, label)
-            step.detach()
+        self._detach_created_steps()
 
         # Detach static file definitions
         sql = (
@@ -809,7 +836,30 @@ class Step(Node):
         # Drop any subprocess invocations recorded by a previous run.
         self.delete_subprocesses()
 
-    def completed(self, new_hash: StepHash | None) -> bool:
+    def _detach_created_steps(self):
+        """Detach steps created by this step (e.g. via `run()`/`step()`).
+
+        Called unconditionally by `reset_for_rerun()`, and by `completed()` only when a
+        step reaches a genuine terminal `FAILED` state (not on an accepted reschedule):
+        the discarded run's children must not keep running (or linger attached) even
+        before the creator's actual rerun happens, which may be much later. Unlike
+        `reset_for_rerun()`, this does not touch amended dependencies, so a reschedule
+        triggered by an unavailable amended input does not sever the dependency edge
+        that `mark_pending()` relies on to wake the step up again once that input
+        becomes available.
+
+        A still-`RUNNING` detached step is not killed: it keeps running until its
+        command terminates on its own, at which point `completed()`'s `is_detached()`
+        branch discovers this and reports it as `DETACHED` (see `Executor.report()`).
+        If such a command never terminates, the build hangs; this is a deliberate
+        trade-off, not an oversight.
+        """
+        sql = "SELECT i, label FROM node WHERE creator = ? AND kind = 'step'"
+        for i, label in self.db.execute(sql, (self.i,)):
+            step = Step(self.graph, i, label)
+            step.detach()
+
+    def completed(self, new_hash: StepHash | None) -> tuple[bool, bool]:
         """Set a step as completed (succeeded or failed) and trigger the consequences.
 
         Parameters
@@ -819,9 +869,21 @@ class Step(Node):
 
         Returns
         -------
+        detached
+            True if the step had already been detached by its creator (see `Step.detach()`)
+            before this call, in which case the outcome below was not applied: the step is
+            superseded, not failed or succeeded.
         interrupted_reschedule
             True if rescheduling has been interrupted due to cap being exceeded, False otherwise.
         """
+        if self.is_detached():
+            # This step's creator has moved on without it. It is superseded, not failed:
+            # mark it PENDING rather than FAILED so it does not taint the build's outcome.
+            # A detached PENDING step is silently ignored everywhere else (scheduling,
+            # reporting, ...); the executor still reports the fact that it was detached.
+            self.set_state(StepState.PENDING)
+            return True, False
+
         interrupted_reschedule = False
         if new_hash is None:
             unavailable_inputs = self.get_unavailable_inputs()
@@ -835,9 +897,21 @@ class Step(Node):
                 # guaranteed a start_time later than every stop_time already recorded this
                 # invocation, so it can never block again --- clear it eagerly instead of
                 # waiting for a mark_pending() push that will never come. unavailable_inputs
-                # is left untouched here; only a real producer completion (mark_pending)
-                # clears that one.
+                # is normally left untouched here; only a real producer completion
+                # (mark_pending) clears that one.
                 self.clear_unfresh_inputs()
+                if unavailable_inputs != "" and not self.has_unavailable_amended_input():
+                    # An unavailable amended input may have appeared after the step had completed.
+                    # Such updates normally trigger a mark_pending() call,
+                    # which clears unavailable_inputs.
+                    # However, that is ignored when the step state is RUNNING (or CHECKING),
+                    # so the accumulated unavailable_inputs may be outdated.
+                    # This scenario is detected here and the unavailable inputs are cleared
+                    # to allow the step to be rescheduled.
+                    # Without this check, a stale unavailable_inputs would never be cleared
+                    # and the step would never be rescheduled,
+                    # even though the amended inputs are now available.
+                    self.clear_unavailable_inputs()
                 reschedule_count = self._increment_reschedule_count()
                 if reschedule_count <= self.graph.reschedule_cap:
                     logger.info(
@@ -863,6 +937,13 @@ class Step(Node):
             else:
                 logger.info("Failed step: %s", self.label)
                 self.set_state(StepState.FAILED)
+            if self.get_state() == StepState.FAILED:
+                # The step may have created product steps that are already running
+                # opportunistically. A genuine terminal failure detaches all of them;
+                # an accepted reschedule (state stays PENDING) does not, since this step
+                # will run again soon and its children should stay attached until then.
+                self._detach_created_steps()
+            # An unsuccessful step is not skippable, so we're removing its hash.
             self.delete_hash()
         else:
             logger.info("Succeeded step: %s", self.label)
@@ -873,7 +954,7 @@ class Step(Node):
                     file.set_state(FileState.BUILT)
                     file.completed()
             self.set_hash(new_hash)
-        return interrupted_reschedule
+        return False, interrupted_reschedule
 
     def get_hash(self) -> StepHash | None:
         """Return the stored step hash, or `None` if none is stored."""
@@ -958,6 +1039,10 @@ class Step(Node):
         stdout, stderr
             The captured standard output/error of the subprocess as a string.
         """
+        if self.is_detached():
+            # This step's creator has moved on without it (see Step.detach()); recording
+            # is moot.
+            return
         # Invocation order is preserved by the table's rowid insertion order, so no
         # separate sequence number needs to be looked up or assigned here.
         self.db.execute(

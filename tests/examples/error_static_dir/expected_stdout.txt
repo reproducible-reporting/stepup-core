@@ -8,14 +8,6 @@
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
    WARNING │ 1 step(s) failed.
-   WARNING │ 1 step(s) remained pending ...
-──────────────────────────────── Missing inputs ────────────────────────────────
-             MISSING  subdir
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                creator is not RUNNING or SUCCEEDED
-Command               cat subdir
-Inputs       MISSING  subdir
-────────────────────────────────────────────────────────────────────────────────
    WARNING │ Skipping file cleanup due to incomplete build
    WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
      PHASE │ watch

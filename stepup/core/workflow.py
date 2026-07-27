@@ -567,6 +567,10 @@ class Workflow(Trellis):
         """
         if isinstance(paths, str):
             raise TypeError("The paths argument cannot be a string.")
+        if creator.is_detached():
+            # The creator has moved on without this call (see Step.detach()), so
+            # declaring more files for it is moot.
+            return []
         # Sort paths to make the operation deterministic.
         paths = sorted(set(paths))
         # Define the files and create a list of (path, file_hash) tuples.
@@ -839,6 +843,13 @@ class Workflow(Trellis):
             These must be sent back to the client where the hashes can be checked
             and which then calls `confirm_hashes` with the updated hashes.
         """
+        if creator.is_detached():
+            # The creator has moved on without this call (see Step.detach()), so
+            # defining a new child step for it is moot.
+            # (This also sidesteps Node.recycle()'s "new creator must not be detached"
+            # check, which _recreate_step() below could otherwise hit.)
+            return []
+
         # If it is a boot step, check that there was no boot step yet.
         if creator.i == self.root.i and any(self.root.products(Step)):
             raise GraphError("Boot step already defined.")
@@ -1039,7 +1050,9 @@ class Workflow(Trellis):
         if not isinstance(step, Step):
             raise TypeError(f"step must be a Step instance, got: {step!r}")
         if step.is_detached():
-            raise GraphError(f"step is detached: '{step.key()}'")
+            # The step's creator has moved on without it (see Step.detach()), so
+            # its amendments are moot.
+            return True, []
 
         # Normalize arguments
         inp_paths = sorted(set(inp_paths))
@@ -1099,7 +1112,9 @@ class Workflow(Trellis):
         if not isinstance(step, Step):
             raise TypeError(f"step must be a Step instance, got: {step!r}")
         if step.is_detached():
-            raise GraphError(f"step is detached: '{step.key()}'")
+            # The step's creator has moved on without it (see Step.detach()), so
+            # registering more nglobs for it is moot.
+            return
         step.register_nglob(nglob_multi)
 
     def register_static_tree(self, creator: Node, path: str) -> list[tuple[str, FileHash]]:
@@ -1124,6 +1139,10 @@ class Workflow(Trellis):
             raise ValueError(f"Static tree paths cannot be absolute paths: {path}")
         if has_wildcards(path):
             raise ValueError(f"Static tree does not support wildcards: {path}")
+        if creator.is_detached():
+            # The creator has moved on without this call (see Step.detach()), so
+            # registering a static tree for it is moot.
+            return []
         path = Path(path) / ""
         if self.matching_static_tree(path) is not None:
             raise GraphError(f"Static tree is a subdirectory of an existing static tree: {path}")

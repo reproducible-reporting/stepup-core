@@ -14,19 +14,17 @@ step:./plan.py
              creator   root:
               source   file:plan.py
              product   st:subdir/
-             product   step:cat subdir
 
 st:subdir/
              creator   step:./plan.py
              product   file:subdir
 
-step:cat subdir
+(step:cat subdir)
                state = PENDING
                 need = DEFAULT
-             creator   step:./plan.py
               source   file:subdir
 
 file:subdir
                state = MISSING
              creator   st:subdir/
-                sink   step:cat subdir
+                sink   (step:cat subdir)

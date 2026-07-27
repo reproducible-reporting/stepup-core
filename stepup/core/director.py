@@ -578,6 +578,9 @@ class DirectorHandler:
         """
         async with self.db:
             self.workflow.update_file_hashes(checked, HashUpdateCause.CONFIRMED)
+        # The confirmed hash may result in some steps having all required inputs.
+        # Wake the builder, it re-polls the scheduler instead of waiting for an unrelated task.
+        self.builder.wake_job_loop.set()
 
     @allow_rpc
     async def step(
@@ -607,7 +610,7 @@ class DirectorHandler:
         """
         async with self.db:
             creator = self.workflow.node(Step, creator_i)
-            return self.workflow.define_step(
+            to_check = self.workflow.define_step(
                 creator,
                 command,
                 inp_paths=inp_paths,
@@ -620,6 +623,11 @@ class DirectorHandler:
                 subshell=subshell,
                 env_overrides=env_overrides,
             )
+        # The new step may already be runnable, but the builder's job loop may be parked,
+        # waiting for a running task to finish.
+        # Wake it up so it re-polls the scheduler instead of waiting for an unrelated task.
+        self.builder.wake_job_loop.set()
+        return to_check
 
     @allow_rpc
     async def amend(

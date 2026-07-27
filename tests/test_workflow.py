@@ -17,6 +17,7 @@ from stepup.core.hash import FileHash, StepHash
 from stepup.core.nglob import NGlobMulti
 from stepup.core.static_tree import StaticTree
 from stepup.core.step import Step
+from stepup.core.stepinfo import StepInfo
 from stepup.core.workflow import RECURSE_DEFERRED_INPUTS, RECURSE_OUTDATED_STEPS, Workflow
 
 TEST_FILE_GRAPH = """\
@@ -422,9 +423,8 @@ async def test_redefine_step(wfp: Workflow):
         assert echo.get_state() == StepState.PENDING
 
 
-@pytest.mark.skip(reason="Known issue, to be fixed later")
 async def test_rerun_creator_detaches_running_child(wfp: Workflow):
-    """Reproduce GraphError("step is detached") raised by `amend_step` on a RUNNING step.
+    """A detached, still-`RUNNING` step's RPC calls must be harmless no-ops, not crash it.
 
     This models a race that can occur in a real build: a step (`plan`) creates a
     child step (`sub`), e.g. via a `step()` call in a `plan.py` script:
@@ -434,8 +434,13 @@ async def test_rerun_creator_detaches_running_child(wfp: Workflow):
     - StepUp is restarted, which causes `plan` to be rerun.
     - When `plan` reruns, it detaches all its product steps, but by that time `sub`
       may already have started running again in the executor.
-    - When `sub` calls `amend()` while detached, e.g. via a `getenv()` call,
-      this raises `GraphError`, since `amend()` calls on a detached step are rejected.
+    - `sub`'s (still running, but doomed) child process may still call `amend()`, e.g.
+      via `getenv()`, before its own command terminates on its own.
+
+    `amend_step` silently no-ops instead of raising, so a stray RPC call from `sub`'s
+    still-alive child does not crash anything; `sub` itself keeps running until its
+    command terminates, at which point `Step.completed()`'s `is_detached()` branch
+    discovers it and reports it as `DETACHED` (see `Executor.report()`).
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
@@ -456,15 +461,121 @@ async def test_rerun_creator_detaches_running_child(wfp: Workflow):
         # a still-RUNNING child: creator-safety only flows from creator to product, never
         # the other way around (see `scheduler.SELECT_SAFE_UPDATE`).
         plan.set_state(StepState.RUNNING)
-        plan.clean_before_run()
+        plan.reset_for_rerun()
 
-        # `sub` is now detached, but nobody told its (still running) child process.
+        # `sub` is now detached, but keeps running: it is not killed.
         assert sub.is_detached()
         assert sub.get_state() == StepState.RUNNING
 
-        # The next RPC call made by `sub`'s child process blows up.
-        with pytest.raises(GraphError, match="step is detached"):
-            wfp.amend_step(sub, inp_paths=["some_new_input"])
+        # The next RPC call made by `sub`'s still-alive child process is a harmless
+        # no-op instead of a crash.
+        assert wfp.amend_step(sub, inp_paths=["some_new_input"]) == (True, [])
+
+
+async def test_detach_marks_is_detached_regardless_of_state(wfp: Workflow):
+    """`Step.detach()` marks a step as detached regardless of its current state.
+
+    This complements `test_rerun_creator_detaches_running_child`, which only exercises a
+    RUNNING child; here a SUCCEEDED child is detached too, via both a direct `detach()`
+    call and `reset_for_rerun()`'s "detach steps created by this step" pass.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub1")
+        wfp.define_step(plan, "sub2")
+        sub1 = wfp.find(Step, "sub1")
+        sub2 = wfp.find(Step, "sub2")
+
+        # Direct detach() calls, regardless of state.
+        sub1.set_state(StepState.RUNNING)
+        sub1.detach()
+        assert sub1.is_detached()
+
+        sub2.set_state(StepState.SUCCEEDED)
+        sub2.detach()
+        assert sub2.is_detached()
+
+        # Via reset_for_rerun()'s "detach steps created by this step" loop.
+        sub1.recycle(plan)
+        sub2.recycle(plan)
+        sub1.set_state(StepState.RUNNING)
+        sub2.set_state(StepState.SUCCEEDED)
+
+        plan.set_state(StepState.SUCCEEDED)
+        plan.mark_pending()
+        plan.set_state(StepState.RUNNING)
+        plan.reset_for_rerun()
+
+        assert sub1.is_detached()
+        assert sub2.is_detached()
+
+
+async def test_declare_missing_detached_creator_is_noop(wfp: Workflow):
+    """A detached creator's `declare_missing()` call must be a silent no-op."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        sub.detach()
+        assert wfp.declare_missing(sub, ["ghost.txt"]) == []
+        assert wfp.find_detached(File, "ghost.txt") == (None, None)
+
+
+async def test_register_static_tree_detached_creator_is_noop(wfp: Workflow):
+    """A detached creator's `register_static_tree()` call must be a silent no-op."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        sub.detach()
+        assert wfp.register_static_tree(sub, "ghost_dir") == []
+        assert wfp.find_detached(StaticTree, "ghost_dir/") == (None, None)
+
+
+async def test_define_step_detached_creator_is_noop(wfp: Workflow):
+    """A detached creator's `define_step()` call must be a silent no-op."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        sub.detach()
+        assert wfp.define_step(sub, "echo ghost") == []
+        assert wfp.find_detached(Step, "echo ghost") == (None, None)
+
+
+async def test_add_unavailable_inputs_detached_step_is_noop(wfp: Workflow):
+    """A detached step's `add_unavailable_inputs()` call must be a silent no-op."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        sub.detach()
+        sub.add_unavailable_inputs("ghost input")
+        assert sub.get_unavailable_inputs() == ""
+
+
+async def test_record_subprocess_detached_step_is_noop(wfp: Workflow):
+    """A detached step's `record_subprocess()` call must be a silent no-op."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        sub.detach()
+        sub.record_subprocess("ghost cmd", ".", None, 0, False, "", "", "")
+        count = wfp.db.execute(
+            "SELECT COUNT(*) FROM step_subprocess WHERE node = ?", (sub.i,)
+        ).fetchone()[0]
+        assert count == 0
+
+
+async def test_get_step_info_detached_step_returns_empty(wfp: Workflow):
+    """A detached step's `get_step_info()` call must return an empty `StepInfo`."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        sub.detach()
+        assert sub.get_step_info() == StepInfo("", [], [], [], [], Path("."))
 
 
 async def test_define_step_input_static(wfp: Workflow):
@@ -2284,23 +2395,58 @@ async def test_reschedule_cap(wfs: Workflow):
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         echo = wfs.find(Step, "echo")
+        wfs.define_step(echo, "sub")
+        sub = wfs.find(Step, "sub")
 
-        # Reschedule 3 times (== cap): stays PENDING each time, count increments.
+        # Reschedule 3 times (== cap): stays PENDING each time, count increments,
+        # and the opportunistically-created child stays attached (accepted reschedule).
         for expected_count in [1, 2, 3]:
             echo.add_unavailable_inputs("still waiting")
-            interrupted_reschedule = echo.completed(None)
+            detached, interrupted_reschedule = echo.completed(None)
+            assert detached is False
             assert interrupted_reschedule is False
             assert echo.get_state() == StepState.PENDING
             assert echo.get_reschedule_count() == expected_count
+            assert not sub.is_detached()
 
-        # 4th reschedule (cap + 1): FAILED instead of PENDING.
+        # 4th reschedule (cap + 1): FAILED instead of PENDING, a genuine terminal
+        # outcome, so the child is now detached too.
         echo.add_unavailable_inputs("still waiting")
-        interrupted_reschedule = echo.completed(None)
+        detached, interrupted_reschedule = echo.completed(None)
+        assert detached is False
         assert interrupted_reschedule is True
         assert echo.get_state() == StepState.FAILED
         assert echo.get_reschedule_count() == 4
         # unavailable_inputs is still cleared on FAILED, same as any other FAILED step.
         assert echo.get_unavailable_inputs() == ""
+        assert sub.is_detached()
+
+
+async def test_completed_detaches_child_only_on_genuine_failure(wfs: Workflow):
+    """An accepted reschedule leaves opportunistically-created children attached;
+    only a genuine terminal failure detaches them."""
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        echo = wfs.find(Step, "echo")
+        wfs.define_step(echo, "sub")
+        sub = wfs.find(Step, "sub")
+        assert not sub.is_detached()
+
+        # Accepted reschedule: child must stay attached.
+        echo.add_unavailable_inputs("still waiting")
+        detached, interrupted_reschedule = echo.completed(None)
+        assert not detached
+        assert not interrupted_reschedule
+        assert echo.get_state() == StepState.PENDING
+        assert not sub.is_detached()
+
+        # Genuine terminal failure (no unavailable/unfresh inputs): child is detached.
+        echo.set_state(StepState.RUNNING)
+        detached, interrupted_reschedule = echo.completed(None)
+        assert not detached
+        assert not interrupted_reschedule
+        assert echo.get_state() == StepState.FAILED
+        assert sub.is_detached()
 
 
 @pytest.mark.parametrize("wfs", [3], indirect=True)
@@ -2341,7 +2487,7 @@ async def test_reschedule_clear_independent_of_count(wfs: Workflow):
         # command failure on the next run (unavailable_inputs empty this time).
         echo.clear_unavailable_inputs()
         echo.set_state(StepState.PENDING)
-        interrupted_reschedule = echo.completed(None)
+        _detached, interrupted_reschedule = echo.completed(None)
         assert interrupted_reschedule is False  # plain FAILED, not a cap-exceeded reschedule
         assert echo.get_state() == StepState.FAILED
         assert echo.get_reschedule_count() == 1  # unchanged by a plain FAILED
@@ -2361,17 +2507,61 @@ async def test_completed_unfresh_only_reschedules(wfs: Workflow):
 
 
 async def test_completed_mixed_unavailable_and_unfresh(wfs: Workflow):
-    """When both buckets are populated, only unfresh_inputs is cleared unconditionally;
-    unavailable_inputs is left for a real producer completion (mark_pending) to clear."""
+    """When both buckets are populated, only unfresh_inputs is cleared unconditionally.
+
+    unavailable_inputs is left alone as long as the amended input is genuinely still
+    unavailable. See `test_completed_reclaims_unavailable_input_available_during_run`
+    for the case where it has since become available.
+    """
     async with wfs.db:
-        wfs.define_step(wfs.root, "echo")
+        wfs.define_step(wfs.root, "plan")
+        plan = wfs.find(Step, "plan")
+        wfs.define_step(plan, "echo")
         echo = wfs.find(Step, "echo")
-        echo.add_unavailable_inputs("other.txt")
+        keep_going, _ = wfs.amend_step(echo, inp_paths=["other.txt"])
+        assert not keep_going
+        assert echo.get_unavailable_inputs() == "other.txt"
         echo.add_unfresh_inputs("data.txt")
         echo.completed(None)
         assert echo.get_state() == StepState.PENDING
         assert echo.get_unfresh_inputs() == ""
         assert echo.get_unavailable_inputs() == "other.txt"
+
+
+async def test_completed_reclaims_unavailable_input_available_during_run(wfs: Workflow):
+    """`completed()` re-derives amended-input availability directly from the graph,
+    instead of trusting the `unavailable_inputs` memo alone.
+
+    This matters because a producer may complete (and call `mark_pending()`) while the
+    consuming step is still RUNNING: `mark_pending()` is then a no-op (see
+    `Step.mark_pending()`), and the file will never transition state again, so nothing
+    else would ever clear the memo.
+    """
+    async with wfs.db:
+        wfs.define_step(wfs.root, "plan")
+        plan = wfs.find(Step, "plan")
+        wfs.define_step(plan, "producer", out_paths=["data.txt"])
+        producer = wfs.find(Step, "producer")
+        wfs.define_step(plan, "sink")
+        sink = wfs.find(Step, "sink")
+
+        sink.set_state(StepState.RUNNING)
+        keep_going, _ = wfs.amend_step(sink, inp_paths=["data.txt"])
+        assert not keep_going
+        assert sink.get_unavailable_inputs() == "data.txt"
+
+        # `producer` completes while `sink` is still RUNNING: mark_pending() on a
+        # RUNNING step is a no-op, so the memo is not cleared through that path.
+        out_hashes = [("data.txt", fake_hash("data.txt"))]
+        wfs.update_file_hashes(out_hashes, HashUpdateCause.SUCCEEDED)
+        step_hash = StepHash.from_inp(producer.key(), True, [], {})
+        step_hash = step_hash.evolve_out(out_hashes)
+        producer.completed(step_hash)
+        assert sink.get_unavailable_inputs() == "data.txt"
+
+        sink.completed(None)
+        assert sink.get_state() == StepState.PENDING
+        assert sink.get_unavailable_inputs() == ""
 
 
 async def test_clean_stepup_root_parents(wfs: Workflow):
@@ -2526,8 +2716,8 @@ async def test_step_subprocess_clean_then_reinsert(wfp: Workflow):
         ]
 
 
-async def test_step_subprocess_clean_before_run(wfp: Workflow):
-    """clean_before_run drops subprocess rows recorded by a previous run."""
+async def test_step_subprocess_reset_for_rerun(wfp: Workflow):
+    """reset_for_rerun drops subprocess rows recorded by a previous run."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo hi")
@@ -2536,7 +2726,7 @@ async def test_step_subprocess_clean_before_run(wfp: Workflow):
         query = "SELECT * FROM step_subprocess WHERE node = ? ORDER BY rowid"
         rows = wfp.db.execute(query, (step.i,)).fetchall()
         assert len(rows) == 1
-        step.clean_before_run()
+        step.reset_for_rerun()
         rows = wfp.db.execute(query, (step.i,)).fetchall()
         assert rows == []
 

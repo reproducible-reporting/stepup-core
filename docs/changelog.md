@@ -182,6 +182,8 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
       File hashing is offloaded to a dedicated subprocess (`_stepup_hasher` or a forkserver child).
     - Strict database sessions management and transaction correctness has been implemented
       to avoid database corruption, e.g. due to race conditions.
+    - When a step is detached while it is running (and not recreated before it ends),
+      an explicit `DETACHED` warning is shown and its result is discarded.
     - Order of `StepInfo` attributes is made consistent with the `step()` API function.
     - The *run phase* has been renamed to *build phase* throughout the documentation and source code.
     - Runner has been renamed to Builder.
