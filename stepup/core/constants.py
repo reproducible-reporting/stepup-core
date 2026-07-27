@@ -18,6 +18,7 @@ __all__ = (
     "GRAPH_DB",
     "JOBLOG_CSV",
     "PERF_DATA",
+    "PLAN_PY",
     "SQLLOG_CSV",
     "SQLLOG_JSON",
     "STEPUP_DIR",
@@ -37,3 +38,6 @@ SUCCESS_LOG = STEPUP_DIR / "success.log"
 SQLLOG_JSON = STEPUP_DIR / "sqllog.json"
 SQLLOG_CSV = STEPUP_DIR / "sqllog.csv"
 JOBLOG_CSV = STEPUP_DIR / "joblog.csv"
+
+# The boot script that StepUp executes first to define the workflow.
+PLAN_PY = Path("plan.py")

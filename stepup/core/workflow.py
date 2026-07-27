@@ -14,6 +14,7 @@ import attrs
 from path import Path
 
 from .cattrs import json_converter
+from .constants import PLAN_PY
 from .enums import (
     REGULAR_OUTPUT_STATES,
     TARGET_FORBIDDEN_STATES,
@@ -342,7 +343,7 @@ class Workflow(Trellis):
         initialized
             Whether the boot script was (re)initialized.
         """
-        command = "." / Path("plan.py")
+        command = "." / PLAN_PY
         nodes = {node.key(): node for node in self.root.products()}
         del nodes["root:"]
         if (
@@ -357,10 +358,10 @@ class Workflow(Trellis):
         # Need to (re)initialize the boot steps.
         for node in nodes.values():
             node.detach()
-        to_check = self.declare_unconfirmed(self.root, ["plan.py"])
+        to_check = self.declare_unconfirmed(self.root, [PLAN_PY])
         checked = {path: file_hash.regen(path) for path, file_hash in to_check.items()}
         self.update_file_hashes(checked, HashUpdateCause.CONFIRMED)
-        self.define_step(self.root, command, inp_paths=["plan.py"], need=Need.PLAN, safe=True)
+        self.define_step(self.root, command, inp_paths=[PLAN_PY], need=Need.PLAN, safe=True)
         return True
 
     #
@@ -374,7 +375,7 @@ class Workflow(Trellis):
         runs when `define_step`/`amend_step`/`declare_unconfirmed` are actually called, which
         does not happen for a database-resumed run against an unchanged `plan.py`. Call
         this once at director startup, after the boot/resume step
-        (`DirectorHandler.initialize_boot`/`startup_from_db`) so that a changed `plan.py`
+        (`serve`'s `Workflow.initialize_boot`/`startup_from_db`) so that a changed `plan.py`
         has already been marked `PENDING`, and before the first scheduler tick, and after
         `Scheduler.initialize()` has created and populated the `target_dir` temp table.
         It never computes elevation itself; elevation is derived, state-free

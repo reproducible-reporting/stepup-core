@@ -150,7 +150,7 @@ class Builder:
         """Run all runnable jobs until there are none left or the scheduler is on hold."""
         await self._report_counts()
         await self.reporter("PHASE", "build")
-        if self.executor.do_joblog:
+        if self.executor.write_joblog:
             reset_joblog(self.njob)
 
         # Get step jobs and run them as asyncio tasks.

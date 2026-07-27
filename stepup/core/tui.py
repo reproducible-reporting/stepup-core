@@ -22,7 +22,15 @@ from path import Path
 from .asyncio import stoppable_iterator, wait_for_path
 from .cgroups import cgroup_scope_prefix
 from .config import ConfigLoader
-from .constants import DIRECTOR_LOG, JOBLOG_CSV, PERF_DATA, SQLLOG_CSV, SQLLOG_JSON, STEPUP_DIR
+from .constants import (
+    DIRECTOR_LOG,
+    JOBLOG_CSV,
+    PERF_DATA,
+    PLAN_PY,
+    SQLLOG_CSV,
+    SQLLOG_JSON,
+    STEPUP_DIR,
+)
 from .director import interpret_jobs
 from .enums import ReturnCode
 from .exceptions import TUIError
@@ -238,7 +246,7 @@ async def async_build(args: argparse.Namespace, default_resources: str) -> None:
         stepup_root.cd()
 
     # Sanity check before creating a subdirectory.
-    if not Path("plan.py").is_file():
+    if not PLAN_PY.is_file():
         raise TUIError("File plan.py does not exist.")
 
     # Check if another StepUp director is already/still running.

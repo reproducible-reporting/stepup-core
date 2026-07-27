@@ -94,7 +94,7 @@ class ValidateAmendedJob(Job):
         inner = executor.validate_amended_job(
             self.job_i, self.step, self.inp_hashes, self.env_deps, self.step_hash
         )
-        return _run_job_with_log(self.job_i, self.name, inner) if executor.do_joblog else inner
+        return _run_job_with_log(self.job_i, self.name, inner) if executor.write_joblog else inner
 
 
 @attrs.define(frozen=True)
@@ -116,7 +116,7 @@ class RunJob(Job):
             inner = executor.try_skip_job(
                 self.job_i, self.step, self.inp_hashes, self.env_deps, self.step_hash
             )
-        return _run_job_with_log(self.job_i, self.name, inner) if executor.do_joblog else inner
+        return _run_job_with_log(self.job_i, self.name, inner) if executor.write_joblog else inner
 
 
 async def _run_job_with_log(job_i: int, description: str, coro):

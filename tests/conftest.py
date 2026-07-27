@@ -15,7 +15,7 @@ import pytest_asyncio
 from path import Path
 
 from stepup.core.constants import GRAPH_DB
-from stepup.core.director import serve
+from stepup.core.director import ServeConfig, serve
 from stepup.core.enums import HashUpdateCause, Need
 from stepup.core.file import File
 from stepup.core.hash import FileHash
@@ -69,23 +69,9 @@ async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
         with DBSession.open(GRAPH_DB) as db:
             director = asyncio.create_task(
                 serve(
+                    ServeConfig(njob=1, use_duration=False, do_watch=True),
                     director_socket_path=director_socket_path,
-                    njob=1,
                     reporter=reporter,
-                    do_cgroup=False,
-                    do_clean=True,
-                    use_duration=False,
-                    explain_rerun=False,
-                    keep_going=False,
-                    fix_epoch=True,
-                    do_joblog=False,
-                    live_progress=False,
-                    do_watch=True,
-                    do_watch_first=False,
-                    available_resources=None,
-                    postpone_cap=100,
-                    targets=[],
-                    target_dirs=[],
                     db=db,
                     # Do not hijack the signal handlers of the pytest process.
                     handle_signals=False,

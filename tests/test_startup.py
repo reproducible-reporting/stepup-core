@@ -46,7 +46,7 @@ def _make_builder(workflow: Workflow) -> Builder:
         explain_rerun=False,
         keep_going=False,
         live_progress=False,
-        do_joblog=False,
+        write_joblog=False,
         infra_env={},
     )
     return Builder(

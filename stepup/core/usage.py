@@ -116,7 +116,7 @@ class CgroupMemorySampler:
 
 
 def format_resource_usage(
-    time_start: float,
+    wtime_start: float,
     step_accumulator: ResourceAccumulator,
     memory_sampler: CgroupMemorySampler | None,
 ) -> tuple[str, str]:
@@ -127,9 +127,9 @@ def format_resource_usage(
         ru_self.ru_maxrss / 1024 if sys.platform == "linux" else ru_self.ru_maxrss / 1048576
     )
 
-    wall_time = time.perf_counter() - time_start
+    wtime = time.perf_counter() - wtime_start
     report = REPORT_TEMPLATE.format(
-        wall_time=wall_time,
+        wtime=wtime,
         director_utime=ru_self.ru_utime,
         director_stime=ru_self.ru_stime,
         step_utime=step_accumulator.utime,
@@ -145,7 +145,7 @@ def format_resource_usage(
     if not sampler_reported:
         report += "\n" + CGROUP_UNAVAILABLE
     summary = (
-        f"Wall {wall_time:.1f}s, Director {ru_self.ru_utime:.1f}u/{ru_self.ru_stime:.1f}s, "
+        f"Wall {wtime:.1f}s, Director {ru_self.ru_utime:.1f}u/{ru_self.ru_stime:.1f}s, "
         f"Steps {step_accumulator.utime:.1f}u/{step_accumulator.stime:.1f}s"
     )
     return report, summary
@@ -156,7 +156,7 @@ REPORT_TEMPLATE = """\
 RESOURCE USAGE SUMMARY
 ────────────────────────────────────────────────────────────
 Times in seconds                 user         sys       wall
-  Elapsed                           -           - {wall_time:10.3f}
+  Elapsed                           -           - {wtime:10.3f}
   Director                 {director_utime:10.3f}  {director_stime:10.3f}          -
   Steps                    {step_utime:10.3f}  {step_stime:10.3f}          -
 ────────────────────────────────────────────────────────────

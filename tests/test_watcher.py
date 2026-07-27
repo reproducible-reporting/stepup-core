@@ -25,7 +25,7 @@ def _make_watcher(workflow: Workflow) -> Watcher:
         explain_rerun=False,
         keep_going=False,
         live_progress=False,
-        do_joblog=False,
+        write_joblog=False,
         infra_env={},
     )
     return Watcher(

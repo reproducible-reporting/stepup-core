@@ -34,7 +34,7 @@ def _make_executor(
         explain_rerun=False,
         keep_going=keep_going,
         live_progress=False,
-        do_joblog=False,
+        write_joblog=False,
         infra_env={},
     )
 

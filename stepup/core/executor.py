@@ -110,7 +110,7 @@ class Executor:
     live_progress: bool = attrs.field(kw_only=True)
     """Whether the reporter is an interactive terminal that wants live step-count updates."""
 
-    do_joblog: bool = attrs.field(kw_only=True)
+    write_joblog: bool = attrs.field(kw_only=True)
     """Whether to record `--joblog` events."""
 
     # Other configuration

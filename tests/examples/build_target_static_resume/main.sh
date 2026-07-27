@@ -20,7 +20,8 @@ set +e; wait -fn $PID; RETURNCODE=$?; set -e
 # raises a GraphError. This happens in serve(), before the director opens its RPC socket, so
 # the director must report a clean ERROR and exit instead of crashing with a traceback. This
 # run cannot use `stepup wait`/`stepup join`: there is no socket to connect to, and `get_socket()`
-# retries forever if the socket file never appears.
+# would just waste `GET_SOCKET_TIMEOUT` seconds before raising, since the socket file never
+# appears.
 rm .stepup/*.log
 sb input.txt -j 1 -w & # > current_stdout2.txt &
 PID=$!

@@ -147,7 +147,7 @@ def _make_executor(workflow: Workflow) -> Executor:
         explain_rerun=False,
         keep_going=False,
         live_progress=False,
-        do_joblog=False,
+        write_joblog=False,
         infra_env={},
     )
 

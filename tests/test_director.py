@@ -138,6 +138,19 @@ async def test_shutdown_first_call_is_graceful():
     assert handler.executor.signals == []
 
 
+async def test_shutdown_holds_the_scheduler_before_reporting():
+    """`q` must stop dispatch before it awaits the reporter, not after."""
+    handler = make_director_handler(nrunning=1)
+    on_hold_when_reported = []
+
+    async def fake_report(action, description, pages=None):
+        on_hold_when_reported.append(handler.scheduler.on_hold)
+
+    handler.reporter = fake_report
+    await handler.shutdown()
+    assert on_hold_when_reported == [True]
+
+
 async def test_shutdown_escalates_to_sigint_then_sigkill():
     """The documented `q` ladder: graceful, SIGINT, SIGKILL."""
     handler = make_director_handler(nrunning=1)
@@ -161,6 +174,16 @@ async def test_interrupt_aborts_without_waiting():
     assert handler.executor.signals == [signal.SIGINT]
 
 
+async def test_interrupt_then_shutdown_escalates_straight_to_sigkill():
+    """A `q` press after a terminal signal escalates, instead of re-sending `SIGINT`."""
+    handler = make_director_handler(nrunning=0)
+    handler.interrupt(signal.SIGINT)
+    await drain_interrupt(handler)
+    assert handler.executor.signals == [signal.SIGINT]
+    await handler.shutdown()
+    assert handler.executor.signals == [signal.SIGINT, signal.SIGKILL]
+
+
 async def test_interrupt_kills_steps_after_grace(monkeypatch):
     """A step that ignores the interrupt is killed, so StepUp can always exit."""
     monkeypatch.setattr(director, "INTERRUPT_GRACE", 0.2)
@@ -182,7 +205,7 @@ async def test_interrupt_second_signal_skips_the_grace(monkeypatch):
     assert time.monotonic() - time_start < 5.0
 
 
-async def test_close_cancels_a_pending_grace(monkeypatch):
+async def test_cancel_interrupt_cancels_a_pending_grace(monkeypatch):
     """When the build ends in time, shutdown must not wait out the grace period."""
     monkeypatch.setattr(director, "INTERRUPT_GRACE", 30.0)
     handler = make_director_handler(nrunning=1)
@@ -190,6 +213,6 @@ async def test_close_cancels_a_pending_grace(monkeypatch):
     handler.interrupt(signal.SIGINT)
     # Let the interrupt task reach its grace period, as it would while the build winds down.
     await asyncio.sleep(0.05)
-    await handler.close()
+    await handler.cancel_interrupt()
     assert time.monotonic() - time_start < 5.0
     assert handler.executor.signals == [signal.SIGINT]

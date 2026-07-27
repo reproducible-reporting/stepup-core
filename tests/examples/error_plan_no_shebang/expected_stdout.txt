@@ -4,9 +4,9 @@ Traceback (most recent call last):
   File "${PWD}/stepup/core/director.py", line ---, in async_main
     serve_result = await serve(
                  File "${PWD}/stepup/core/director.py", line ---, in serve
-    _check_plan("plan.py")
+    _check_plan()
   File "${PWD}/stepup/core/director.py", line ---, in _check_plan
-    raise ValueError(f"First line of plan differs from '{shebang}': {path_plan}")
+    raise ValueError(f"First line of plan differs from '{shebang}': {PLAN_PY}")
 ValueError: First line of plan differs from '#!/usr/bin/env python3': plan.py
 ────────────────────────────────────────────────────────────────────────────────
  DIRECTOR │ See you!

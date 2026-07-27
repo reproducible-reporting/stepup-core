@@ -555,7 +555,7 @@ class Scheduler:
     job_counter: int = attrs.field(init=False, default=0)
     """Counter used to assign a unique `job_i` to each `Job` created by `_derive_job()`."""
 
-    do_joblog: bool = attrs.field(kw_only=True, default=False)
+    write_joblog: bool = attrs.field(kw_only=True, default=False)
     """Whether to record `--joblog` events."""
 
     #
@@ -851,7 +851,7 @@ class Scheduler:
             # If they are not available, and if the existing inputs have changed,
             # they may also no longer be needed.
             job = ValidateAmendedJob(step, inp_hashes, env_deps, step_hash, job_i=job_i)
-        if self.do_joblog:
+        if self.write_joblog:
             write_joblog_record("CREATED", job_i, job.name)
         return job
 
@@ -860,7 +860,7 @@ class Scheduler:
         del self.jobs[job.job_i]
         if self.use_duration:
             self.new_durations[job.step.i] = job.duration()
-        if self.do_joblog:
+        if self.write_joblog:
             write_joblog_record("COMPLETED", job.job_i, job.name)
         logger.info("Done %s", job.name)
 

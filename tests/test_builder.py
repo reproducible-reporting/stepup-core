@@ -36,7 +36,7 @@ def _make_builder(scheduler: Scheduler, workflow: Workflow) -> Builder:
         explain_rerun=False,
         keep_going=False,
         live_progress=False,
-        do_joblog=False,
+        write_joblog=False,
         infra_env={},
     )
     return Builder(
@@ -209,7 +209,7 @@ async def test_job_loop_dispatches_hash_jobs_before_runnable_steps(wfs: Workflow
         explain_rerun=False,
         keep_going=False,
         live_progress=False,
-        do_joblog=False,
+        write_joblog=False,
         infra_env={},
     )
     builder = Builder(
@@ -264,7 +264,7 @@ async def test_run_promoted_hash_jobs_applies_result(wfs: Workflow, tmpdir):
             explain_rerun=False,
             keep_going=False,
             live_progress=False,
-            do_joblog=False,
+            write_joblog=False,
             infra_env={},
         )
         builder = Builder(
