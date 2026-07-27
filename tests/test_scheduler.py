@@ -7,6 +7,7 @@ import pytest
 from stepup.core.enums import FileState, Need, StepState
 from stepup.core.file import FILE_SCHEMA
 from stepup.core.hash import FileHash, StepHash
+from stepup.core.job import RunJob
 from stepup.core.scheduler import (
     APPLY_SAFE_UPDATE,
     EMPTY_CHANGED_AFTER,
@@ -1705,6 +1706,106 @@ async def test_stop_times_cleared_when_no_steps_running(wfs: Workflow):
         step_b.set_state(StepState.SUCCEEDED)
         scheduler.job_finished(step_b.i, succeeded=True)
         assert scheduler.stop_times == {}
+
+
+# -----------------------------------------------------------------------
+# Tests for deferred step-duration writes (new_durations / flush_durations)
+# -----------------------------------------------------------------------
+
+
+def _get_duration_and_check_after(wfs: Workflow, step: Step) -> tuple[float, int]:
+    return wfs.db.execute(
+        "SELECT duration, _check_after FROM step WHERE node = ?", (step.i,)
+    ).fetchone()
+
+
+async def test_job_completed_accumulates_duration_without_writing_db(wfs: Workflow):
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        step = wfs.find(Step, "echo")
+
+    scheduler = Scheduler(wfs, db=wfs.db, use_duration=True)
+    job = RunJob(step, [], [], None, job_i=0)
+    scheduler.jobs[job.job_i] = step
+
+    await scheduler.job_completed(job)
+
+    assert step.i in scheduler.new_durations
+    async with wfs.db:
+        duration, _check_after = _get_duration_and_check_after(wfs, step)
+    assert duration == 1.0  # schema default, unaffected until flush_durations() runs
+
+
+async def test_job_completed_no_op_when_use_duration_disabled(wfs: Workflow):
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        step = wfs.find(Step, "echo")
+
+    scheduler = Scheduler(wfs, db=wfs.db, use_duration=False)
+    job = RunJob(step, [], [], None, job_i=0)
+    scheduler.jobs[job.job_i] = step
+
+    await scheduler.job_completed(job)
+
+    assert scheduler.new_durations == {}
+
+
+async def test_flush_durations_skips_small_relative_change(wfs: Workflow):
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        step = wfs.find(Step, "echo")
+        wfs.db.execute("UPDATE step SET _check_after = 0 WHERE node = ?", (step.i,))
+
+        scheduler = Scheduler(wfs, db=wfs.db, use_duration=True)
+        scheduler.new_durations[step.i] = 1.05  # within 10% of the schema default (1.0)
+
+        scheduler.flush_durations()
+
+        duration, check_after = _get_duration_and_check_after(wfs, step)
+    assert duration == 1.0
+    assert check_after == 0
+    assert scheduler.new_durations == {}
+
+
+async def test_flush_durations_writes_large_relative_change(wfs: Workflow):
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        step = wfs.find(Step, "echo")
+        wfs.db.execute("UPDATE step SET _check_after = 0 WHERE node = ?", (step.i,))
+
+        scheduler = Scheduler(wfs, db=wfs.db, use_duration=True)
+        scheduler.new_durations[step.i] = 2.0  # 100% change from the schema default (1.0)
+
+        scheduler.flush_durations()
+
+        duration, check_after = _get_duration_and_check_after(wfs, step)
+    assert duration == 2.0
+    assert check_after == 1  # step_flag_check_after_duration fired
+    assert scheduler.new_durations == {}
+
+
+async def test_second_job_completed_overwrites_pending_duration(wfs: Workflow):
+    """A step that re-runs within one phase (validate-amended path) keeps only its latest
+    measured duration in the accumulation buffer -- last value wins, same as today's
+    last-write-wins per-row UPDATE."""
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        step = wfs.find(Step, "echo")
+
+    scheduler = Scheduler(wfs, db=wfs.db, use_duration=True)
+
+    job1 = RunJob(step, [], [], None, create_time=1000.0, job_i=0)
+    scheduler.jobs[job1.job_i] = step
+    await scheduler.job_completed(job1)
+    duration_after_first = scheduler.new_durations[step.i]
+
+    job2 = RunJob(step, [], [], None, create_time=2000.0, job_i=1)
+    scheduler.jobs[job2.job_i] = step
+    await scheduler.job_completed(job2)
+    duration_after_second = scheduler.new_durations[step.i]
+
+    assert len(scheduler.new_durations) == 1
+    assert duration_after_second != duration_after_first
 
 
 # -----------------------------------------------------------------------

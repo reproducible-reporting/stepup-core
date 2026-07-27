@@ -150,6 +150,8 @@ class Builder:
 
     async def finalize(self):
         """Final steps after the builder has executed a bunch of jobs."""
+        async with self.db:
+            self.scheduler.flush_durations()
         await revert_optional(self.db, self.workflow, self.reporter)
         self.returncode = await report_completion(
             self.db, self.workflow, self.scheduler, self.reporter
@@ -203,6 +205,14 @@ class Builder:
             task.cancel()
         if len(tasks) > 0:
             await asyncio.gather(*tasks, return_exceptions=True)
+        # Best-effort rescue of durations accumulated during a phase that ended without
+        # reaching finalize(), e.g. because a step task raised an unexpected exception.
+        # Never let a flush failure mask the original error or block shutdown.
+        try:
+            async with self.db:
+                self.scheduler.flush_durations()
+        except Exception:  # noqa: BLE001
+            logger.warning("Failed to flush step durations during shutdown.", exc_info=True)
 
     async def interrupt_tasks(self, sig: int):
         self.executor.interrupt(sig)

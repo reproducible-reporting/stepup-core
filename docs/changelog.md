@@ -123,7 +123,10 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
       execution time of the workflow.
       This is also known as critical path scheduling.
       Since StepUp assumes no full knowledge of the workflow,
-      the tail time estimates are updated dynamically as the workflow progresses.
+      the tail time estimates are updated dynamically as new edges are discovered.
+    - A new step that has not been executed before is assigned a duration of 1 second.
+      When restarting StepUp, the duration of steps from previous runs is used,
+      even if inputs changed, so that the scheduler can make better tail time estimates.
     - The `pool` feature has been removed and
       is now replaced by the more powerful `resources` feature.
     - The `optional` feature has become more robust.

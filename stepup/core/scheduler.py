@@ -435,6 +435,13 @@ class Scheduler:
     In-memory only, pruned by `job_finished()`. See `start_times`.
     """
 
+    new_durations: dict[int, float] = attrs.field(init=False, factory=dict)
+    """Step node id -> most recently measured job duration, not yet written to the database.
+
+    In-memory only. Populated by `job_completed()`, written and cleared by
+    `flush_durations()` at the end of a build phase (see `Builder.finalize`/`Builder.stop`).
+    """
+
     jobs: dict[int, Step] = attrs.field(init=False, factory=dict)
     """`Job.job_i` -> `Step`, for every job that has been created but not yet completed.
 
@@ -710,11 +717,26 @@ class Scheduler:
         """Handle a completed job: drop its id -> step mapping and record its duration."""
         del self.jobs[job.job_i]
         if self.use_duration:
-            async with self.db:
-                job.step.set_duration(job.duration())
+            self.new_durations[job.step.i] = job.duration()
         if self.do_joblog:
             write_joblog_record("COMPLETED", job.job_i, job.name)
         logger.info("Done %s", job.name)
+
+    def flush_durations(self):
+        """Write accumulated step durations to the database and clear the buffer.
+
+        Skips writes whose new value is within 10% of the currently stored value, so that
+        `step_flag_check_after_duration` is not re-triggered by measurement noise
+        (see `job_completed`). Must be called while holding the database lock.
+        """
+        if not self.new_durations:
+            return
+        self.db.executemany(
+            "UPDATE step SET duration = :duration WHERE node = :node "
+            "AND ABS(duration - :duration) > 0.1 * duration",
+            [{"node": node, "duration": duration} for node, duration in self.new_durations.items()],
+        )
+        self.new_durations.clear()
 
     #
     # Information gathering (must be wrapped in db by caller)
