@@ -161,17 +161,18 @@ async def scan_nglob_changes(
 
     # Select the new ones, i.e. not present in the workflow (detached or missing)
     async with db:
-        db.execute("DROP TABLE IF EXISTS temp.glob")
-        db.execute("CREATE TABLE temp.glob (path TEXT)")
-        db.executemany("INSERT INTO temp.glob VALUES (?)", ((path,) for path in paths))
+        db.execute("DELETE FROM path_list")
+        db.executemany("INSERT INTO path_list VALUES (?)", ((path,) for path in paths))
         rows = db.execute(
-            "SELECT path FROM temp.glob WHERE NOT EXISTS "
+            "SELECT path FROM path_list WHERE NOT EXISTS "
             "(SELECT 1 FROM node JOIN file ON node.i = file.node "
-            "WHERE label = path AND "
+            # `node.kind = 'file'` is redundant (only file nodes have a `file` row), but
+            # lets the correlated subquery's planner use the `node_kind_label` covering
+            # index instead of a full scan of `node` for every candidate path.
+            "WHERE node.kind = 'file' AND label = path AND "
             "NOT detached AND state != ?)",
             (FileState.MISSING.value,),
         ).fetchall()
-        db.execute("DROP TABLE IF EXISTS temp.glob")
     new_paths = [row[0] for row in rows]
     new_paths.sort()
     for new_path in new_paths:

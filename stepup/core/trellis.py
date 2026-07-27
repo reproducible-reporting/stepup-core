@@ -574,6 +574,10 @@ class Trellis:
         #   index (replacing step_pending_ready) and the step_check_ready partial index,
         #   and trigger-maintained bookkeeping for _has_hash/_ready via new triggers on
         #   file, dependency, amended_dep, node(detached), and step_hash.
+        # - Added path_list/node_list scratch temp tables (in FILE_SCHEMA) for batch lookups
+        #   keyed by a list of paths or node ids, replacing `json_each(...)`, which was found
+        #   to be slow in performance tests. Purely additive (CREATE TEMP TABLE IF NOT
+        #   EXISTS), so no version bump is needed for this change on its own.
 
         return 5
 

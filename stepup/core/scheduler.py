@@ -212,11 +212,7 @@ DELETE FROM changed_after
 # changed_after holds the step ids whose _implied_need/_tail_time actually changed in this
 # iteration (populated by the caller from UPDATE_CHECK_AFTER's RETURNING output) -- this is the
 # seed set that preserves the "only propagate from steps whose value actually changed" narrowing,
-# which keeps iteration counts down on real graphs. A first attempt passed this set as a JSON
-# array through `json_each(...)` instead of a temp table, to avoid a round trip populating a
-# table; that measurably regressed this query (EXPLAIN QUERY PLAN showed a `SCAN json_each
-# VIRTUAL TABLE` + bloom-filter build replacing a direct indexed rowid search), so it was
-# reverted in favor of the temp table.
+# which keeps iteration counts down on real graphs.
 #
 # The two nested `IN` subqueries (rather than a plain JOIN chain starting from `changed_after`)
 # make the planner drive from `dependency`'s `dependency_sink_source` index seeded by

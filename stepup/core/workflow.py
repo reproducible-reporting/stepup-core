@@ -358,19 +358,19 @@ class Workflow(Trellis):
 
         # Efficiently get corresponding node_index and state tuples.
         file_hashes = dict(file_hashes)
-        # See get_file_hashes for why this uses an IN subquery instead of a plain JOIN against
-        # json_each. `node.label` is used directly as `path` (instead of joining back to
-        # json_each's `value` column) since a matching row's label is that same value.
+        # See get_file_hashes for why this uses an IN subquery against the path_list
+        # scratch table instead of a plain JOIN.
+        db = self.db
+        db.execute("DELETE FROM path_list")
+        db.executemany("INSERT INTO path_list VALUES (?)", ((path,) for path in file_hashes))
         sql = (
             "SELECT node.i, node.label AS path, file.state FROM node "
             "JOIN file ON file.node = node.i "
-            "WHERE node.kind = 'file' AND node.label IN (SELECT value FROM json_each(:paths)) "
+            "WHERE node.kind = 'file' AND node.label IN (SELECT path FROM path_list) "
             "ORDER BY path"
         )
-        paths = json.dumps(list(file_hashes))
         records = [
-            (i, path, file_hashes[path], FileState(value))
-            for i, path, value in self.db.execute(sql, {"paths": paths})
+            (i, path, file_hashes[path], FileState(value)) for i, path, value in db.execute(sql)
         ]
 
         if len(records) != len(file_hashes):
@@ -721,18 +721,16 @@ class Workflow(Trellis):
             These must be sent back to the client where the hashes can be checked
             and which then calls `confirm_hashes` with the updated hashes.
         """
+        db = self.db
+        db.execute("DELETE FROM node_list")
+        db.executemany("INSERT INTO node_list VALUES (?)", ((file.i,) for file in deferred))
         sql = (
-            "SELECT label, hash "
-            "FROM json_each(:nodes) AS missing "
-            "JOIN node ON node.i = missing.value "
-            "JOIN file ON file.node = missing.value "
-            "ORDER BY label"
+            "SELECT node.label, file.hash FROM node_list "
+            "JOIN node ON node.i = node_list.i "
+            "JOIN file ON file.node = node_list.i "
+            "ORDER BY node.label"
         )
-        nodes = json.dumps([file.i for file in deferred])
-        return [
-            (path, FileHash.from_json(hash_value))
-            for path, hash_value in self.db.execute(sql, {"nodes": nodes})
-        ]
+        return [(path, FileHash.from_json(hash_value)) for path, hash_value in db.execute(sql)]
 
     def _recreate_step(
         self,
@@ -1212,22 +1210,24 @@ class Workflow(Trellis):
         file_hashes
             A list of `(path, file_hash)` tuples.
         """
-        # The `label IN (SELECT value FROM json_each(...))` form makes the planner drive from
+        # The `label IN (SELECT path FROM path_list)` form makes the planner drive from
         # `node`'s `node_kind_label` index (probed once per requested path via a Bloom-filtered
-        # membership test), instead of a plain JOIN against json_each, which lets the planner
+        # membership test), instead of a plain JOIN against path_list, which lets the planner
         # drive from a full scan of `node` instead, an O(n_nodes) cost regardless of how few
         # paths are requested. As a bonus, results come out pre-sorted by the covering index,
-        # so no separate ORDER BY sort is needed.
+        # so no separate ORDER BY sort is needed. `path_list` is a real indexed scratch table
+        # (see file.py), populated here and cleared before reuse, instead of `json_each(...)`,
+        # which was found to be slow in performance tests.
+        db = self.db
+        db.execute("DELETE FROM path_list")
+        db.executemany("INSERT INTO path_list VALUES (?)", ((path,) for path in paths))
         sql = (
             "SELECT node.label, file.hash FROM node "
             "JOIN file ON file.node = node.i "
-            "WHERE node.kind = 'file' AND node.label IN (SELECT value FROM json_each(:paths)) "
+            "WHERE node.kind = 'file' AND node.label IN (SELECT path FROM path_list) "
             "ORDER BY node.label"
         )
-        return [
-            (path, FileHash.from_json(hash_value))
-            for path, hash_value in self.db.execute(sql, {"paths": json.dumps(list(paths))})
-        ]
+        return [(path, FileHash.from_json(hash_value)) for path, hash_value in db.execute(sql)]
 
     def put_dir_queue(self, path: str):
         """Put a directory in the dir_queue, with some consistency checks."""

@@ -42,6 +42,14 @@ WHEN NEW.state IN ({FileState.MISSING.value}, {FileState.AWAITED.value}, {FileSt
 BEGIN
     UPDATE file SET hash = NULL WHERE node = NEW.node;
 END;
+
+-- Reusable scratch tables for batch lookups keyed by a list of paths or node ids,
+-- used instead of `json_each(...)`, which was found to be slow in performance tests.
+-- Created once here and only ever cleared with `DELETE FROM` before reuse:
+-- dropping and recreating a temp table on every call would invalidate SQLite's
+-- prepared-statement cache (see `safe_update` in scheduler.py for the same convention).
+CREATE TEMP TABLE IF NOT EXISTS path_list (path TEXT PRIMARY KEY) WITHOUT ROWID;
+CREATE TEMP TABLE IF NOT EXISTS node_list (i INTEGER PRIMARY KEY) WITHOUT ROWID;
 """
 
 
