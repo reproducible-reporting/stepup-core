@@ -1,19 +1,19 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-  DIRECTOR │ Ran 1 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-   UPDATED │ plan.py
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo hello > foo.txt
-   SUCCESS │ echo hello > foo.txt
-     START │ cp -p foo.txt bar.txt
-   SUCCESS │ cp -p foo.txt bar.txt
-  DIRECTOR │ Ran 4 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+ DIRECTOR │ Ran 1 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+  UPDATED │ plan.py
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ echo hello > foo.txt
+  SUCCESS │ echo hello > foo.txt
+    START │ cp -p foo.txt bar.txt
+  SUCCESS │ cp -p foo.txt bar.txt
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

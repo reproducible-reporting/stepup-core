@@ -1,15 +1,15 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo test2 > test2.txt
-   SUCCESS │ echo test2 > test2.txt
-     START │ cat test2.txt
-   SUCCESS │ cat test2.txt
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ echo test2 > test2.txt
+  SUCCESS │ echo test2 > test2.txt
+    START │ cat test2.txt
+  SUCCESS │ cat test2.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 test2
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Ran 3 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+ DIRECTOR │ Ran 3 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

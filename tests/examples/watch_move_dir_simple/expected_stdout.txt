@@ -1,17 +1,17 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cat data/sub/inp.txt > data/sub/out.txt
-   SUCCESS │ cat data/sub/inp.txt > data/sub/out.txt
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-   DELETED │ data/sub/inp.txt
-   DELETED │ data/sub/out.txt
-     PHASE │ build
-  DIRECTOR │ Ran 0 job(s).
-   WARNING │ 1 step(s) remained pending ...
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ cat data/sub/inp.txt > data/sub/out.txt
+  SUCCESS │ cat data/sub/inp.txt > data/sub/out.txt
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+  DELETED │ data/sub/inp.txt
+  DELETED │ data/sub/out.txt
+    PHASE │ build
+ DIRECTOR │ Ran 0 job(s).
+  WARNING │ 1 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  data/sub/inp.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -20,13 +20,13 @@ Command               cat data/sub/inp.txt > data/sub/out.txt
 Inputs       MISSING  data/sub/inp.txt
 Outputs      AWAITED  data/sub/out.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-   UPDATED │ data/sub/inp.txt
-     PHASE │ build
-      SKIP │ cat data/sub/inp.txt > data/sub/out.txt
-  DIRECTOR │ Ran 1 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+  UPDATED │ data/sub/inp.txt
+    PHASE │ build
+     SKIP │ cat data/sub/inp.txt > data/sub/out.txt
+ DIRECTOR │ Ran 1 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

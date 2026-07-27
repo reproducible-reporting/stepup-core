@@ -1,10 +1,10 @@
-   STARTUP │ Watching 1 director(y|ies)
-   UPDATED │ STEPUP_PATH_FILTER (unset) ➜ =''
-   STARTUP │ Checking 1 file(s) for changes
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ Watching 1 director(y|ies)
+  UPDATED │ STEPUP_PATH_FILTER (unset) ➜ =''
+  STARTUP │ Checking 1 file(s) for changes
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

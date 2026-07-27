@@ -1,22 +1,22 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-     START │ ./work.py
-      FAIL │ ./plan.py
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+    START │ ./work.py
+     FAIL │ ./plan.py
 ──────────────────────────────── Failed command ────────────────────────────────
 ./plan.py  # exit=1
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
-  DETACHED │ ./work.py
+ DETACHED │ ./work.py
 ──────────────────────────────── Step detached ─────────────────────────────────
 This step's creator did not recreate it before it finished.
 Its result has been discarded, and it will be executed again if recreated.
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Ran 2 job(s).
-   WARNING │ 1 step(s) failed.
-   WARNING │ Scheduler is put on hold. Not reporting pending steps.
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+ DIRECTOR │ Ran 2 job(s).
+  WARNING │ 1 step(s) failed.
+  WARNING │ Scheduler is put on hold. Not reporting pending steps.
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

@@ -1,16 +1,16 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp input.txt output.txt
-   SUCCESS │ cp input.txt output.txt
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-   DELETED │ input.txt
-     PHASE │ build
-  DIRECTOR │ Ran 0 job(s).
-   WARNING │ 1 step(s) remained pending ...
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ cp input.txt output.txt
+  SUCCESS │ cp input.txt output.txt
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+  DELETED │ input.txt
+    PHASE │ build
+ DIRECTOR │ Ran 0 job(s).
+  WARNING │ 1 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  input.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -19,14 +19,14 @@ Command               cp input.txt output.txt
 Inputs       MISSING  input.txt
 Outputs     OUTDATED  output.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-   UPDATED │ input.txt
-     PHASE │ build
-     START │ cp input.txt output.txt
-   SUCCESS │ cp input.txt output.txt
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+  UPDATED │ input.txt
+    PHASE │ build
+    START │ cp input.txt output.txt
+  SUCCESS │ cp input.txt output.txt
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

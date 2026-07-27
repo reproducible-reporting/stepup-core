@@ -1,17 +1,17 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py
- POSTPONED │ ./work.py
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./work.py
+POSTPONED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 inp2.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ echo word2 > inp2.txt
-   SUCCESS │ echo word2 > inp2.txt
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Ran 4 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+    START │ echo word2 > inp2.txt
+  SUCCESS │ echo word2 > inp2.txt
+    START │ ./work.py
+  SUCCESS │ ./work.py
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

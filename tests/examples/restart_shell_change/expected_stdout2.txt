@@ -1,25 +1,25 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 3 file(s) for changes
-   UPDATED │ plan.py (digest 02aae12c ➜ 2263c413, size 162 ➜ 163)
-     PHASE │ build
-    NOSKIP │ ./plan.py
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 3 file(s) for changes
+  UPDATED │ plan.py (digest 02aae12c ➜ 2263c413, size 162 ➜ 163)
+    PHASE │ build
+   NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 19764006 ➜ ed93d81e, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest 02aae12c ➜ 2263c413, size 162 ➜ 163)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-    NOSKIP │ cp input.txt output.txt
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+   NOSKIP │ cp input.txt output.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 256efe87 ➜ b6fe792a, out_digest 65161f08 ➜ (unset)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        input.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ cp input.txt output.txt
-   SUCCESS │ cp input.txt output.txt
-  DIRECTOR │ Ran 4 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+    START │ cp input.txt output.txt
+  SUCCESS │ cp input.txt output.txt
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

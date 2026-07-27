@@ -1,14 +1,14 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./big.py
-   SUCCESS │ ./big.py
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./big.py
+  SUCCESS │ ./big.py
 ─────────────────────────────── Standard output ────────────────────────────────
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./fail.py
-      FAIL │ ./fail.py
+    START │ ./fail.py
+     FAIL │ ./fail.py
 ──────────────────────────────── Failed command ────────────────────────────────
 ./fail.py  # exit=1
 ─────────────────────────────── Standard output ────────────────────────────────
@@ -16,10 +16,10 @@ fail-output-line
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Ran 3 job(s).
-   WARNING │ 1 step(s) failed.
-   WARNING │ Scheduler is put on hold. Not reporting pending steps.
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+ DIRECTOR │ Ran 3 job(s).
+  WARNING │ 1 step(s) failed.
+  WARNING │ Scheduler is put on hold. Not reporting pending steps.
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

@@ -1,14 +1,14 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./plan.py  # wd=sub
-   SUCCESS │ ./plan.py  # wd=sub
-     START │ echo hello > out.txt
-   SUCCESS │ echo hello > out.txt
-     START │ cp -p ../out.txt final.txt  # wd=sub
-   SUCCESS │ cp -p ../out.txt final.txt  # wd=sub
-  DIRECTOR │ Ran 4 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./plan.py  # wd=sub
+  SUCCESS │ ./plan.py  # wd=sub
+    START │ echo hello > out.txt
+  SUCCESS │ echo hello > out.txt
+    START │ cp -p ../out.txt final.txt  # wd=sub
+  SUCCESS │ cp -p ../out.txt final.txt  # wd=sub
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

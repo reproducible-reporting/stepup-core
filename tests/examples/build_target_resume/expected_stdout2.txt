@@ -1,10 +1,10 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 4 file(s) for changes
-   UPDATED │ input.txt (digest 2c8b08da ➜ 27dd8ed4)
-     PHASE │ build
-     START │ cp -p input.txt wanted.txt
-   SUCCESS │ cp -p input.txt wanted.txt
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 4 file(s) for changes
+  UPDATED │ input.txt (digest 2c8b08da ➜ 27dd8ed4)
+    PHASE │ build
+    START │ cp -p input.txt wanted.txt
+  SUCCESS │ cp -p input.txt wanted.txt
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

@@ -1,21 +1,21 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-   DELETED │ inp.txt
-     PHASE │ build
-     START │ ./work.py
- POSTPONED │ ./work.py
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./work.py
+  SUCCESS │ ./work.py
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+  DELETED │ inp.txt
+    PHASE │ build
+    START │ ./work.py
+POSTPONED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 inp.txt
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Ran 2 job(s).
-   WARNING │ 1 step(s) remained pending ...
+ DIRECTOR │ Ran 2 job(s).
+  WARNING │ 1 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  inp.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -25,7 +25,7 @@ Inputs       MISSING  inp.txt [amended]
               STATIC  work.py
 Outputs     OUTDATED  out.txt [amended]
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

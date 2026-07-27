@@ -1,12 +1,12 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 1 file(s) for changes
-   UPDATED │ plan.py (digest 6f1cf3aa ➜ 1a0be698, size 94 ➜ 114)
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp -p input.txt out.txt
-   SUCCESS │ cp -p input.txt out.txt
-  DIRECTOR │ Ran 3 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 1 file(s) for changes
+  UPDATED │ plan.py (digest 6f1cf3aa ➜ 1a0be698, size 94 ➜ 114)
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ cp -p input.txt out.txt
+  SUCCESS │ cp -p input.txt out.txt
+ DIRECTOR │ Ran 3 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

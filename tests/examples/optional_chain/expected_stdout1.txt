@@ -1,24 +1,24 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 6 file(s) for changes
-   UPDATED │ plan.py (digest 9db5ea86 ➜ 1553f340, size 491 ➜ 418)
-     PHASE │ build
-    NOSKIP │ ./plan.py
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 6 file(s) for changes
+  UPDATED │ plan.py (digest 9db5ea86 ➜ 1553f340, size 491 ➜ 418)
+    PHASE │ build
+   NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 2257df62 ➜ 449141be, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest 9db5ea86 ➜ 1553f340, size 491 ➜ 418)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-  DIRECTOR │ Ran 2 job(s).
-   WARNING │ Reverted 4 optional step(s) to PENDING and marked 4 output/volatile file(s) for deletion.
-  DIRECTOR │ Trying to remove 5 outdated output(s)
-    REMOVE │ spam.txt
-    REMOVE │ foo2.txt
-    REMOVE │ foo1.txt
-    REMOVE │ egg.txt
-    REMOVE │ bar.txt
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+ DIRECTOR │ Ran 2 job(s).
+  WARNING │ Reverted 4 optional step(s) to PENDING and marked 4 output/volatile file(s) for deletion.
+ DIRECTOR │ Trying to remove 5 outdated output(s)
+   REMOVE │ spam.txt
+   REMOVE │ foo2.txt
+   REMOVE │ foo1.txt
+   REMOVE │ egg.txt
+   REMOVE │ bar.txt
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

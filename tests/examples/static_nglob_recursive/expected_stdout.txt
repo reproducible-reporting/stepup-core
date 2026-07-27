@@ -1,13 +1,13 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
 ─────────────────────────────── Standard output ────────────────────────────────
 data/sub/test3.xyz
 data/test1.txt
 data/test2.dat
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Ran 1 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+ DIRECTOR │ Ran 1 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

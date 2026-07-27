@@ -1,11 +1,11 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 1 file(s) for changes
-   UPDATED │ plan.py (digest 8c3a0a0c ➜ 1a3aa51e, size 132 ➜ 94)
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-  DIRECTOR │ Ran 2 job(s).
-   WARNING │ 1 step(s) remained pending ...
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 1 file(s) for changes
+  UPDATED │ plan.py (digest 8c3a0a0c ➜ 1a3aa51e, size 132 ➜ 94)
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+ DIRECTOR │ Ran 2 job(s).
+  WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  src2.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -13,7 +13,7 @@ Reason                required inputs are unavailable
 Command               cat src2.txt
 Inputs       AWAITED  (src2.txt)
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

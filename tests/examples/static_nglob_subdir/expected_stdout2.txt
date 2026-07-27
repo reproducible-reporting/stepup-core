@@ -1,21 +1,21 @@
-   STARTUP │ Watching 2 director(y|ies)
-   STARTUP │ Checking 6 file(s) for changes
-   STARTUP │ Checking 1 nglob(s) for new or deleted matches
-   UPDATED │ sub/inp3.txt
-     PHASE │ build
-     START │ ./plan.py  # wd=sub
-   SUCCESS │ ./plan.py  # wd=sub
-      SKIP │ cp -p inp1.txt out1.txt  # wd=sub
+  STARTUP │ Watching 2 director(y|ies)
+  STARTUP │ Checking 6 file(s) for changes
+  STARTUP │ Checking 1 nglob(s) for new or deleted matches
+  UPDATED │ sub/inp3.txt
+    PHASE │ build
+    START │ ./plan.py  # wd=sub
+  SUCCESS │ ./plan.py  # wd=sub
+     SKIP │ cp -p inp1.txt out1.txt  # wd=sub
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       compact, inp_digest bc2fd872, out_digest 003961e1
 ────────────────────────────────────────────────────────────────────────────────
-      SKIP │ cp -p inp2.txt out2.txt  # wd=sub
+     SKIP │ cp -p inp2.txt out2.txt  # wd=sub
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       compact, inp_digest ccb3f13f, out_digest c2c4c1bb
 ────────────────────────────────────────────────────────────────────────────────
-     START │ cp -p inp3.txt out3.txt  # wd=sub
-   SUCCESS │ cp -p inp3.txt out3.txt  # wd=sub
-  DIRECTOR │ Ran 4 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+    START │ cp -p inp3.txt out3.txt  # wd=sub
+  SUCCESS │ cp -p inp3.txt out3.txt  # wd=sub
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

@@ -1,9 +1,9 @@
-   STARTUP │ Watching 1 director(y|ies)
-   UPDATED │ ENV_VAR_TEST_STEPUP_IDX ='1' ➜ ='3'
-   STARTUP │ Checking 7 file(s) for changes
-   STARTUP │ Checking 1 nglob(s) for new or deleted matches
-     PHASE │ build
-    NOSKIP │ ./plan.py
+  STARTUP │ Watching 1 director(y|ies)
+  UPDATED │ ENV_VAR_TEST_STEPUP_IDX ='1' ➜ ='3'
+  STARTUP │ Checking 7 file(s) for changes
+  STARTUP │ Checking 1 nglob(s) for new or deleted matches
+    PHASE │ build
+   NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 6488354e ➜ 09b28fc3, out_digest e3b0c442 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_IDX ='1' ➜ ='3'
@@ -11,9 +11,9 @@ Modified env var     ENV_VAR_TEST_STEPUP_IDX ='1' ➜ ='3'
 Same inp hash        plan.py
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-    NOSKIP │ cp -p raw3.txt converted3.txt
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+   NOSKIP │ cp -p raw3.txt converted3.txt
 ───────────────────────────── Missing output files ─────────────────────────────
 converted3.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
@@ -22,14 +22,14 @@ Modified out hash    converted3.txt (digest 7d165af1 ➜ UNKNOWN, size 5 ➜ 0, 
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        raw3.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ cp -p raw3.txt converted3.txt
-   SUCCESS │ cp -p raw3.txt converted3.txt
-     START │ cp -p converted3.txt used.txt
-   SUCCESS │ cp -p converted3.txt used.txt
-  DIRECTOR │ Ran 5 job(s).
-   WARNING │ Reverted 0 optional step(s) to PENDING and marked 1 output/volatile file(s) for deletion.
-  DIRECTOR │ Trying to remove 1 outdated output(s)
-    REMOVE │ converted1.txt
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+    START │ cp -p raw3.txt converted3.txt
+  SUCCESS │ cp -p raw3.txt converted3.txt
+    START │ cp -p converted3.txt used.txt
+  SUCCESS │ cp -p converted3.txt used.txt
+ DIRECTOR │ Ran 5 job(s).
+  WARNING │ Reverted 0 optional step(s) to PENDING and marked 1 output/volatile file(s) for deletion.
+ DIRECTOR │ Trying to remove 1 outdated output(s)
+   REMOVE │ converted1.txt
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

@@ -1,16 +1,16 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-   DELETED │ data/inp1.txt
-   UPDATED │ subs.txt
-     PHASE │ build
- DROPAMEND │ ./work.py
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./work.py
+  SUCCESS │ ./work.py
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+  DELETED │ data/inp1.txt
+  UPDATED │ subs.txt
+    PHASE │ build
+DROPAMEND │ ./work.py
 ────────────────────── Outdated amended step information ───────────────────────
 Modified step hash   explained, inp_digest 85ad62b4 ➜ b375115a, out_digest 2aa07484 ➜ (unset)
 Deleted inp hash     data/inp1.txt
@@ -19,9 +19,9 @@ Modified inp hash    subs.txt (digest ae39a09a ➜ d642a3da)
 Same inp hash        work.py
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+    START │ ./work.py
+  SUCCESS │ ./work.py
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

@@ -1,13 +1,13 @@
-   STARTUP │ Watching 2 director(y|ies)
-   STARTUP │ Checking 5 file(s) for changes
-   UPDATED │ plan.py (digest 35ccdaf6 ➜ ceb2e927, size 183 ➜ 182)
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-      SKIP │ ./plan.py  # wd=sub
-      SKIP │ cp -p hop1.txt hop2.txt
-      SKIP │ cp -p ../hop2.txt hop3.txt  # wd=sub
-  DIRECTOR │ Ran 5 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ Watching 2 director(y|ies)
+  STARTUP │ Checking 5 file(s) for changes
+  UPDATED │ plan.py (digest 35ccdaf6 ➜ ceb2e927, size 183 ➜ 182)
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+     SKIP │ ./plan.py  # wd=sub
+     SKIP │ cp -p hop1.txt hop2.txt
+     SKIP │ cp -p ../hop2.txt hop3.txt  # wd=sub
+ DIRECTOR │ Ran 5 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

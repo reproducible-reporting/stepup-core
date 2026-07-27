@@ -1,14 +1,14 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py plan
-   SUCCESS │ ./work.py plan
-     START │ ./work.py run first
-   SUCCESS │ ./work.py run first
-     START │ ./work.py run second
-   SUCCESS │ ./work.py run second
-  DIRECTOR │ Ran 4 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./work.py plan
+  SUCCESS │ ./work.py plan
+    START │ ./work.py run first
+  SUCCESS │ ./work.py run first
+    START │ ./work.py run second
+  SUCCESS │ ./work.py run second
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

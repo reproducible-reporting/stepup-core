@@ -1,17 +1,17 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 6 file(s) for changes
-   STARTUP │ Checking 1 nglob(s) for new or deleted matches
-   UPDATED │ tail_y.txt
-   UPDATED │ tail_z.txt
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-      SKIP │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
-     START │ paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
-   SUCCESS │ paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
-     START │ paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
-   SUCCESS │ paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
-  DIRECTOR │ Ran 4 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 6 file(s) for changes
+  STARTUP │ Checking 1 nglob(s) for new or deleted matches
+  UPDATED │ tail_y.txt
+  UPDATED │ tail_z.txt
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+     SKIP │ paste -d ' ' head_x.txt tail_x.txt > paste_x.txt
+    START │ paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+  SUCCESS │ paste -d ' ' head_y.txt tail_y.txt > paste_y.txt
+    START │ paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
+  SUCCESS │ paste -d ' ' head_z.txt tail_z.txt > paste_z.txt
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

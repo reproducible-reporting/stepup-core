@@ -1,32 +1,32 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py case1.txt
-      FAIL │ ./work.py case1.txt
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./work.py case1.txt
+     FAIL │ ./work.py case1.txt
 ──────────────────────────────── Failed command ────────────────────────────────
 ./work.py case1.txt
 ──────────────────────────────── Invalid inputs ────────────────────────────────
 Input changed unexpectedly: cases.txt (digest ba246937 ➜ b7bf4c7e)
 ────────────────────────────────────────────────────────────────────────────────
-     ERROR │ The scheduler has been put on hold due to unexpected input changes.
-  DIRECTOR │ Ran 2 job(s).
-   WARNING │ 1 step(s) failed.
-   WARNING │ Scheduler is put on hold. Not reporting pending steps.
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-     PHASE │ watch
-   UPDATED │ cases.txt
- UNCHANGED │ cases.txt
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py case3.txt
-   SUCCESS │ ./work.py case3.txt
-     START │ ./work.py case4.txt
-   SUCCESS │ ./work.py case4.txt
-  DIRECTOR │ Ran 4 job(s).
-  DIRECTOR │ Trying to remove 1 outdated output(s)
-    REMOVE │ case1.txt
-     PHASE │ watch
-  DIRECTOR │ See you!
+    ERROR │ The scheduler has been put on hold due to unexpected input changes.
+ DIRECTOR │ Ran 2 job(s).
+  WARNING │ 1 step(s) failed.
+  WARNING │ Scheduler is put on hold. Not reporting pending steps.
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+    PHASE │ watch
+  UPDATED │ cases.txt
+UNCHANGED │ cases.txt
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./work.py case3.txt
+  SUCCESS │ ./work.py case3.txt
+    START │ ./work.py case4.txt
+  SUCCESS │ ./work.py case4.txt
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 1 outdated output(s)
+   REMOVE │ case1.txt
+    PHASE │ watch
+ DIRECTOR │ See you!

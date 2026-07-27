@@ -1,27 +1,27 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./plan.py  # wd=sub
-      FAIL │ ./plan.py  # wd=sub
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./plan.py  # wd=sub
+     FAIL │ ./plan.py  # wd=sub
 ──────────────────────────────── Failed command ────────────────────────────────
 (cd sub && ./plan.py)  # exit=1
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Ran 2 job(s).
-   WARNING │ 1 step(s) failed.
-   WARNING │ Scheduler is put on hold. Not reporting pending steps.
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-     PHASE │ watch
-   UPDATED │ sub/plan.py
-     PHASE │ build
-     START │ ./plan.py  # wd=sub
-   SUCCESS │ ./plan.py  # wd=sub
-     START │ touch done.txt  # wd=sub
-   SUCCESS │ touch done.txt  # wd=sub
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+ DIRECTOR │ Ran 2 job(s).
+  WARNING │ 1 step(s) failed.
+  WARNING │ Scheduler is put on hold. Not reporting pending steps.
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+    PHASE │ watch
+  UPDATED │ sub/plan.py
+    PHASE │ build
+    START │ ./plan.py  # wd=sub
+  SUCCESS │ ./plan.py  # wd=sub
+    START │ touch done.txt  # wd=sub
+  SUCCESS │ touch done.txt  # wd=sub
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

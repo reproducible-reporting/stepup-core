@@ -1,25 +1,25 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 2 file(s) for changes
-   UPDATED │ plan.py (digest 9753a824 ➜ 02f52b71, size 100 ➜ 45)
-     PHASE │ build
-    NOSKIP │ ./plan.py
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 2 file(s) for changes
+  UPDATED │ plan.py (digest 9753a824 ➜ 02f52b71, size 100 ➜ 45)
+    PHASE │ build
+   NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 165de9ac ➜ 457c1acf, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest 9753a824 ➜ 02f52b71, size 100 ➜ 45)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./plan.py
-      FAIL │ ./plan.py
+    START │ ./plan.py
+     FAIL │ ./plan.py
 ──────────────────────────────── Failed command ────────────────────────────────
 ./plan.py  # exit=1
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Ran 2 job(s).
-   WARNING │ 1 step(s) failed.
-   WARNING │ Scheduler is put on hold. Not reporting pending steps.
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+ DIRECTOR │ Ran 2 job(s).
+  WARNING │ 1 step(s) failed.
+  WARNING │ Scheduler is put on hold. Not reporting pending steps.
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

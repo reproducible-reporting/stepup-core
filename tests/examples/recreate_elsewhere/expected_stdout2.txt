@@ -1,26 +1,26 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 4 file(s) for changes
-   UPDATED │ plan.py (digest bbe406db ➜ 856761f8)
-     PHASE │ build
-    NOSKIP │ ./plan.py
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 4 file(s) for changes
+  UPDATED │ plan.py (digest bbe406db ➜ 856761f8)
+    PHASE │ build
+   NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 4962ab27 ➜ 8b9a9444, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest bbe406db ➜ 856761f8)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./outer.py bar
-   SUCCESS │ ./outer.py bar
-      SKIP │ ./inner.py
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./outer.py bar
+  SUCCESS │ ./outer.py bar
+     SKIP │ ./inner.py
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       explained, inp_digest fb9c75f8, out_digest 93fe80f7
 Same inp hash        inner.py
 Same env var         STEPUP_PATH_FILTER (unset)
 Same out hash        out.txt
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Ran 4 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

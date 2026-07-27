@@ -1,12 +1,12 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp -p foo.txt bar.txt
-   SUCCESS │ cp -p foo.txt bar.txt
-     START │ cp -p README.txt backup.txt
-   SUCCESS │ cp -p README.txt backup.txt
-  DIRECTOR │ Ran 3 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ cp -p foo.txt bar.txt
+  SUCCESS │ cp -p foo.txt bar.txt
+    START │ cp -p README.txt backup.txt
+  SUCCESS │ cp -p README.txt backup.txt
+ DIRECTOR │ Ran 3 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

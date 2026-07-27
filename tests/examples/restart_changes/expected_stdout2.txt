@@ -1,23 +1,23 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 5 file(s) for changes
-   UPDATED │ plan.py (digest f320c2d4 ➜ 9cb549e9)
-     PHASE │ build
-    NOSKIP │ ./plan.py
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 5 file(s) for changes
+  UPDATED │ plan.py (digest f320c2d4 ➜ 9cb549e9)
+    PHASE │ build
+   NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest ce13a0b9 ➜ c32ab10c, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest f320c2d4 ➜ 9cb549e9)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp source_both.txt copy_both2.txt
-   SUCCESS │ cp source_both.txt copy_both2.txt
-     START │ cp source2.txt copy2.txt
-   SUCCESS │ cp source2.txt copy2.txt
-  DIRECTOR │ Ran 4 job(s).
-  DIRECTOR │ Trying to remove 2 outdated output(s)
-    REMOVE │ copy_both1.txt
-    REMOVE │ copy1.txt
-     PHASE │ watch
-  DIRECTOR │ See you!
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ cp source_both.txt copy_both2.txt
+  SUCCESS │ cp source_both.txt copy_both2.txt
+    START │ cp source2.txt copy2.txt
+  SUCCESS │ cp source2.txt copy2.txt
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 2 outdated output(s)
+   REMOVE │ copy_both1.txt
+   REMOVE │ copy1.txt
+    PHASE │ watch
+ DIRECTOR │ See you!

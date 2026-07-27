@@ -1,27 +1,27 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo ping > ping.txt
-   SUCCESS │ echo ping > ping.txt
-     START │ echo pong > pong.txt
-   SUCCESS │ echo pong > pong.txt
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Ran 4 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-   DELETED │ ping.txt
-   DELETED │ pong.txt
-   DELETED │ work.txt
-     PHASE │ build
-     START │ echo ping > ping.txt
-   SUCCESS │ echo ping > ping.txt
-     START │ echo pong > pong.txt
-   SUCCESS │ echo pong > pong.txt
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Ran 6 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ echo ping > ping.txt
+  SUCCESS │ echo ping > ping.txt
+    START │ echo pong > pong.txt
+  SUCCESS │ echo pong > pong.txt
+    START │ ./work.py
+  SUCCESS │ ./work.py
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+  DELETED │ ping.txt
+  DELETED │ pong.txt
+  DELETED │ work.txt
+    PHASE │ build
+    START │ echo ping > ping.txt
+  SUCCESS │ echo ping > ping.txt
+    START │ echo pong > pong.txt
+  SUCCESS │ echo pong > pong.txt
+    START │ ./work.py
+  SUCCESS │ ./work.py
+ DIRECTOR │ Ran 6 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

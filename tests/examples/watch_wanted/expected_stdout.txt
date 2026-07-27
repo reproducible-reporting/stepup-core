@@ -1,9 +1,9 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-  DIRECTOR │ Ran 1 job(s).
-   WARNING │ 2 step(s) remained pending ...
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+ DIRECTOR │ Ran 1 job(s).
+  WARNING │ 2 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  input1.txt
              AWAITED  input2.txt
@@ -18,13 +18,13 @@ Command               cp input2.txt output2.txt
 Inputs       AWAITED  (input2.txt)
 Outputs      AWAITED  output2.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-   DELETED │ plan.py
-     PHASE │ build
-  DIRECTOR │ Ran 0 job(s).
-   WARNING │ 3 step(s) remained pending ...
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+  DELETED │ plan.py
+    PHASE │ build
+ DIRECTOR │ Ran 0 job(s).
+  WARNING │ 3 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  plan.py
 ─────────────────────────────── Detached inputs ────────────────────────────────
@@ -46,14 +46,14 @@ Command               cp input2.txt output2.txt
 Inputs       AWAITED  (input2.txt)
 Outputs      AWAITED  output2.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-   UPDATED │ plan.py
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+  UPDATED │ plan.py
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

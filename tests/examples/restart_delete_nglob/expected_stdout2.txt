@@ -1,22 +1,22 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 7 file(s) for changes
-   DELETED │ inp1.txt
-   STARTUP │ Checking 1 nglob(s) for new or deleted matches
-   DELETED │ inp1.txt
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-      SKIP │ cp -p inp2.txt out2.txt
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 7 file(s) for changes
+  DELETED │ inp1.txt
+  STARTUP │ Checking 1 nglob(s) for new or deleted matches
+  DELETED │ inp1.txt
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+     SKIP │ cp -p inp2.txt out2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       compact, inp_digest ce2b09cd, out_digest 9e7bd348
 ────────────────────────────────────────────────────────────────────────────────
-      SKIP │ cp -p out2.txt foo2.txt
+     SKIP │ cp -p out2.txt foo2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       compact, inp_digest 3139b420, out_digest 810dcef4
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Ran 3 job(s).
-  DIRECTOR │ Trying to remove 2 outdated output(s)
-    REMOVE │ out1.txt
-    REMOVE │ foo1.txt
-     PHASE │ watch
-  DIRECTOR │ See you!
+ DIRECTOR │ Ran 3 job(s).
+ DIRECTOR │ Trying to remove 2 outdated output(s)
+   REMOVE │ out1.txt
+   REMOVE │ foo1.txt
+    PHASE │ watch
+ DIRECTOR │ See you!

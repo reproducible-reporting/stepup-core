@@ -1,30 +1,30 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./use_config.py
-   SUCCESS │ ./use_config.py
-     START │ echo log written to script.log. > report.txt
-   SUCCESS │ echo log written to script.log. > report.txt
-     START │ cp -p report.txt copy.txt
-   SUCCESS │ cp -p report.txt copy.txt
-     START │ echo All is fine. > script.log
-   SUCCESS │ echo All is fine. > script.log
-  DIRECTOR │ Ran 5 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-   UPDATED │ config.json
-     PHASE │ build
-     START │ ./use_config.py
-   SUCCESS │ ./use_config.py
-     START │ echo log written to other.log. > report.txt
-   SUCCESS │ echo log written to other.log. > report.txt
-     START │ cp -p report.txt copy.txt
-   SUCCESS │ cp -p report.txt copy.txt
-     START │ echo All is fine. > other.log
-   SUCCESS │ echo All is fine. > other.log
-  DIRECTOR │ Ran 6 job(s).
-  DIRECTOR │ Trying to remove 1 outdated output(s)
-    REMOVE │ script.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./use_config.py
+  SUCCESS │ ./use_config.py
+    START │ echo log written to script.log. > report.txt
+  SUCCESS │ echo log written to script.log. > report.txt
+    START │ cp -p report.txt copy.txt
+  SUCCESS │ cp -p report.txt copy.txt
+    START │ echo All is fine. > script.log
+  SUCCESS │ echo All is fine. > script.log
+ DIRECTOR │ Ran 5 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+  UPDATED │ config.json
+    PHASE │ build
+    START │ ./use_config.py
+  SUCCESS │ ./use_config.py
+    START │ echo log written to other.log. > report.txt
+  SUCCESS │ echo log written to other.log. > report.txt
+    START │ cp -p report.txt copy.txt
+  SUCCESS │ cp -p report.txt copy.txt
+    START │ echo All is fine. > other.log
+  SUCCESS │ echo All is fine. > other.log
+ DIRECTOR │ Ran 6 job(s).
+ DIRECTOR │ Trying to remove 1 outdated output(s)
+   REMOVE │ script.log
+    PHASE │ watch
+ DIRECTOR │ See you!

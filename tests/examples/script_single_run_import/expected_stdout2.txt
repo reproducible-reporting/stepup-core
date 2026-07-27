@@ -1,10 +1,10 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 4 file(s) for changes
-   UPDATED │ helper.py (digest 9fbd9814 ➜ b649ae50, size 38 ➜ 39)
-     PHASE │ build
-     START │ ./work.py run
-   SUCCESS │ ./work.py run
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 4 file(s) for changes
+  UPDATED │ helper.py (digest 9fbd9814 ➜ b649ae50, size 38 ➜ 39)
+    PHASE │ build
+    START │ ./work.py run
+  SUCCESS │ ./work.py run
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

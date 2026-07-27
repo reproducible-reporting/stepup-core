@@ -1,9 +1,9 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 7 file(s) for changes
-   UPDATED │ inp1.txt (digest 0111f755 ➜ e10a1287)
-   UPDATED │ inp2.txt (digest 333d36c1 ➜ 65f653be)
-     PHASE │ build
-    NOSKIP │ ./prep.py run
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 7 file(s) for changes
+  UPDATED │ inp1.txt (digest 0111f755 ➜ e10a1287)
+  UPDATED │ inp2.txt (digest 333d36c1 ➜ 65f653be)
+    PHASE │ build
+   NOSKIP │ ./prep.py run
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 61350b4c ➜ 2c02b94a, out_digest 864068d4 ➜ (unset)
 Modified inp hash    inp1.txt (digest 0111f755 ➜ e10a1287)
@@ -11,9 +11,9 @@ Modified inp hash    inp1.txt (digest 0111f755 ➜ e10a1287)
 Same inp hash        prep.py
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./prep.py run
-   SUCCESS │ ./prep.py run
-    NOSKIP │ ./work.py
+    START │ ./prep.py run
+  SUCCESS │ ./prep.py run
+   NOSKIP │ ./work.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest deff96a5 ➜ 4b2bb998, out_digest 23f5864d ➜ (unset)
 Modified inp hash    inp2.txt (digest 333d36c1 ➜ 65f653be)
@@ -22,9 +22,9 @@ Modified inp hash    out1.txt (digest 0111f755 ➜ e10a1287)
 Same inp hash        work.py
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Ran 4 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+    START │ ./work.py
+  SUCCESS │ ./work.py
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

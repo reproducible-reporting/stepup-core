@@ -1,17 +1,17 @@
-   STARTUP │ Watching 1 director(y|ies)
-   UPDATED │ ENV_VAR_TEST_STEPUP_SDASFD ='AAAA' ➜ ='BBBB'
-   STARTUP │ Checking 3 file(s) for changes
-     PHASE │ build
-    NOSKIP │ ./demovars.py > output.txt
+  STARTUP │ Watching 1 director(y|ies)
+  UPDATED │ ENV_VAR_TEST_STEPUP_SDASFD ='AAAA' ➜ ='BBBB'
+  STARTUP │ Checking 3 file(s) for changes
+    PHASE │ build
+   NOSKIP │ ./demovars.py > output.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 33c5af25 ➜ e99f650e, out_digest e358c01b ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_SDASFD ='AAAA' ➜ ='BBBB'
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        demovars.py
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./demovars.py > output.txt
-   SUCCESS │ ./demovars.py > output.txt
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+    START │ ./demovars.py > output.txt
+  SUCCESS │ ./demovars.py > output.txt
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

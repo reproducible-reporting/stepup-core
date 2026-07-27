@@ -1,18 +1,18 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp -p static/sub/foo.txt copy.txt
-   SUCCESS │ cp -p static/sub/foo.txt copy.txt
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-   UPDATED │ plan.py
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 1 outdated output(s)
-    REMOVE │ copy.txt
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ cp -p static/sub/foo.txt copy.txt
+  SUCCESS │ cp -p static/sub/foo.txt copy.txt
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+  UPDATED │ plan.py
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 1 outdated output(s)
+   REMOVE │ copy.txt
+    PHASE │ watch
+ DIRECTOR │ See you!

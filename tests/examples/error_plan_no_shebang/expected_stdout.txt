@@ -1,4 +1,4 @@
-     ERROR │ The director raised an exception.
+    ERROR │ The director raised an exception.
 ────────────────────────────────── Traceback ───────────────────────────────────
 Traceback (most recent call last):
   File "${PWD}/stepup/core/director.py", line ---, in async_main
@@ -9,4 +9,4 @@ Traceback (most recent call last):
     raise ValueError(f"First line of plan differs from '{shebang}': {path_plan}")
 ValueError: First line of plan differs from '#!/usr/bin/env python3': plan.py
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ See you!
+ DIRECTOR │ See you!

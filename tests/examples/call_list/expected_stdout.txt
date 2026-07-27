@@ -1,14 +1,14 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py
-   SUCCESS │ ./work.py
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./work.py
+  SUCCESS │ ./work.py
 ─────────────────────────────── Standard output ────────────────────────────────
 ./work.py plan '{"inp": null, "config": "default"}'
 ./work.py run '{"inp": null, "out": null}'
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

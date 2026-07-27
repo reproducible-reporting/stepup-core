@@ -1,11 +1,11 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 2 file(s) for changes
-   DELETED │ test2.txt
-     PHASE │ build
-     START │ echo test2 > test2.txt
-   SUCCESS │ echo test2 > test2.txt
-      SKIP │ cat test2.txt
-  DIRECTOR │ Ran 3 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 2 file(s) for changes
+  DELETED │ test2.txt
+    PHASE │ build
+    START │ echo test2 > test2.txt
+  SUCCESS │ echo test2 > test2.txt
+     SKIP │ cat test2.txt
+ DIRECTOR │ Ran 3 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

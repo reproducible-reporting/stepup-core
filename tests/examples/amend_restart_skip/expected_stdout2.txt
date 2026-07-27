@@ -1,7 +1,7 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 6 file(s) for changes
-     PHASE │ build
-  DIRECTOR │ Ran 0 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 6 file(s) for changes
+    PHASE │ build
+ DIRECTOR │ Ran 0 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

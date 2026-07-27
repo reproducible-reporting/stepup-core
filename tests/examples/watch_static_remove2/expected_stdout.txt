@@ -1,22 +1,22 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo bye > out1.txt
-   SUCCESS │ echo bye > out1.txt
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-   UPDATED │ plan.py
-   DELETED │ inp.txt
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo bye > out2.txt
-   SUCCESS │ echo bye > out2.txt
-  DIRECTOR │ Ran 3 job(s).
-  DIRECTOR │ Trying to remove 2 outdated output(s)
-    REMOVE │ out1.txt
-    REMOVE │ out.txt
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ echo bye > out1.txt
+  SUCCESS │ echo bye > out1.txt
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+  UPDATED │ plan.py
+  DELETED │ inp.txt
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ echo bye > out2.txt
+  SUCCESS │ echo bye > out2.txt
+ DIRECTOR │ Ran 3 job(s).
+ DIRECTOR │ Trying to remove 2 outdated output(s)
+   REMOVE │ out1.txt
+   REMOVE │ out.txt
+    PHASE │ watch
+ DIRECTOR │ See you!

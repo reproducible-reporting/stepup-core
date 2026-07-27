@@ -1,11 +1,11 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 2 file(s) for changes
-   DELETED │ bye.txt
-     PHASE │ build
-     START │ echo soon gone > bye.txt
-   SUCCESS │ echo soon gone > bye.txt
-  DIRECTOR │ Ran 2 job(s).
-   WARNING │ 1 step(s) remained pending ...
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 2 file(s) for changes
+  DELETED │ bye.txt
+    PHASE │ build
+    START │ echo soon gone > bye.txt
+  SUCCESS │ echo soon gone > bye.txt
+ DIRECTOR │ Ran 2 job(s).
+  WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  missing.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -14,7 +14,7 @@ Command               echo data > hello.txt
 Inputs       AWAITED  (missing.txt)
 Outputs      AWAITED  hello.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

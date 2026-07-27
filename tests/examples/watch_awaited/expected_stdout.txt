@@ -1,9 +1,9 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-  DIRECTOR │ Ran 1 job(s).
-   WARNING │ 1 step(s) remained pending ...
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+ DIRECTOR │ Ran 1 job(s).
+  WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  inp.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -12,12 +12,12 @@ Command               cp -p inp.txt out.txt
 Inputs       AWAITED  (inp.txt)
 Outputs      AWAITED  out.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-     PHASE │ build
-  DIRECTOR │ Ran 0 job(s).
-   WARNING │ 1 step(s) remained pending ...
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+    PHASE │ build
+ DIRECTOR │ Ran 0 job(s).
+  WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  inp.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -26,7 +26,7 @@ Command               cp -p inp.txt out.txt
 Inputs       AWAITED  (inp.txt)
 Outputs      AWAITED  out.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

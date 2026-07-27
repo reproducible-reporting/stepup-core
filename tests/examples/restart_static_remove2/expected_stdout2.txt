@@ -1,19 +1,19 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 4 file(s) for changes
-   UPDATED │ plan.py (digest 04f162d6 ➜ 7800367b, size 264 ➜ 111)
-   DELETED │ inp.txt
-     PHASE │ build
- DROPAMEND │ ./plan.py
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 4 file(s) for changes
+  UPDATED │ plan.py (digest 04f162d6 ➜ 7800367b, size 264 ➜ 111)
+  DELETED │ inp.txt
+    PHASE │ build
+DROPAMEND │ ./plan.py
 ────────────────────── Outdated amended step information ───────────────────────
 Modified step hash   compact ➜ explained, inp_digest ea40b2f8 ➜ 603fc93b, out_digest b19341b7 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo bye > out2.txt
-   SUCCESS │ echo bye > out2.txt
-  DIRECTOR │ Ran 3 job(s).
-  DIRECTOR │ Trying to remove 2 outdated output(s)
-    REMOVE │ out1.txt
-    REMOVE │ out.txt
-     PHASE │ watch
-  DIRECTOR │ See you!
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ echo bye > out2.txt
+  SUCCESS │ echo bye > out2.txt
+ DIRECTOR │ Ran 3 job(s).
+ DIRECTOR │ Trying to remove 2 outdated output(s)
+   REMOVE │ out1.txt
+   REMOVE │ out.txt
+    PHASE │ watch
+ DIRECTOR │ See you!

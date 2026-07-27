@@ -1,17 +1,17 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'
-   SUCCESS │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-   UPDATED │ data.txt
-     PHASE │ build
-     START │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'
-   SUCCESS │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'
+  SUCCESS │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+  UPDATED │ data.txt
+    PHASE │ build
+    START │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'
+  SUCCESS │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

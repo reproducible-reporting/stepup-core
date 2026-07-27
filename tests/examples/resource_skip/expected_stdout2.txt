@@ -1,9 +1,9 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 3 file(s) for changes
-   UPDATED │ input.txt (digest 7f8b1dfc ➜ 434728a4)
-     PHASE │ build
-      SKIP │ cp -p input.txt output.txt
-  DIRECTOR │ Ran 1 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 3 file(s) for changes
+  UPDATED │ input.txt (digest 7f8b1dfc ➜ 434728a4)
+    PHASE │ build
+     SKIP │ cp -p input.txt output.txt
+ DIRECTOR │ Ran 1 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

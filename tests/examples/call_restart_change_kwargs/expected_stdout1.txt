@@ -1,19 +1,19 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py run '{"factor": 2, "inp": ["data.txt"], "out": ["result.txt"]}'
-   SUCCESS │ ./work.py run '{"factor": 2, "inp": ["data.txt"], "out": ["result.txt"]}'
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-   UPDATED │ config.json
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py run '{"factor": 3, "inp": ["data.txt"], "out": ["result.txt"]}'
-   SUCCESS │ ./work.py run '{"factor": 3, "inp": ["data.txt"], "out": ["result.txt"]}'
-  DIRECTOR │ Ran 3 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./work.py run '{"factor": 2, "inp": ["data.txt"], "out": ["result.txt"]}'
+  SUCCESS │ ./work.py run '{"factor": 2, "inp": ["data.txt"], "out": ["result.txt"]}'
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+  UPDATED │ config.json
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./work.py run '{"factor": 3, "inp": ["data.txt"], "out": ["result.txt"]}'
+  SUCCESS │ ./work.py run '{"factor": 3, "inp": ["data.txt"], "out": ["result.txt"]}'
+ DIRECTOR │ Ran 3 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

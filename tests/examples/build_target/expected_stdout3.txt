@@ -1,9 +1,9 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 7 file(s) for changes
-     PHASE │ build
-  DIRECTOR │ Ran 0 job(s).
-   WARNING │ 1 target(s) are not produced by any step in the workflow: nope.txt
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 7 file(s) for changes
+    PHASE │ build
+ DIRECTOR │ Ran 0 job(s).
+  WARNING │ 1 target(s) are not produced by any step in the workflow: nope.txt
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

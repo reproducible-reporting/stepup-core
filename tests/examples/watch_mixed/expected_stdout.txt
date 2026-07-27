@@ -1,21 +1,21 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp orig.txt copy1.txt
-   SUCCESS │ cp orig.txt copy1.txt
-     START │ cp copy1.txt copy2.txt
-   SUCCESS │ cp copy1.txt copy2.txt
-  DIRECTOR │ Ran 3 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-   UPDATED │ plan.py
-   DELETED │ orig.txt
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-  DIRECTOR │ Ran 2 job(s).
-   WARNING │ 1 step(s) remained pending ...
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ cp orig.txt copy1.txt
+  SUCCESS │ cp orig.txt copy1.txt
+    START │ cp copy1.txt copy2.txt
+  SUCCESS │ cp copy1.txt copy2.txt
+ DIRECTOR │ Ran 3 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+  UPDATED │ plan.py
+  DELETED │ orig.txt
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+ DIRECTOR │ Ran 2 job(s).
+  WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
             OUTDATED  copy1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -24,7 +24,7 @@ Command               cp copy1.txt copy2.txt
 Inputs      OUTDATED  (copy1.txt)
 Outputs     OUTDATED  copy2.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

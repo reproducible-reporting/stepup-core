@@ -1,18 +1,18 @@
-   STARTUP │ Making failed steps pending
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 3 file(s) for changes
-     PHASE │ build
-     START │ cat line.txt >> log.txt; exit 1
-      FAIL │ cat line.txt >> log.txt; exit 1
+  STARTUP │ Making failed steps pending
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 3 file(s) for changes
+    PHASE │ build
+    START │ cat line.txt >> log.txt; exit 1
+     FAIL │ cat line.txt >> log.txt; exit 1
 ──────────────────────────────── Failed command ────────────────────────────────
 cat line.txt >> log.txt; exit 1  # exit=1
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Ran 1 job(s).
-   WARNING │ 1 step(s) failed.
-   WARNING │ Scheduler is put on hold. Not reporting pending steps.
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+ DIRECTOR │ Ran 1 job(s).
+  WARNING │ 1 step(s) failed.
+  WARNING │ Scheduler is put on hold. Not reporting pending steps.
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

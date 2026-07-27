@@ -1,8 +1,8 @@
-   STARTUP │ Watching 1 director(y|ies)
-   UPDATED │ ENV_VAR_TEST_STEPUP_PREFIX ='README' ➜ ='FOO'
-   STARTUP │ Checking 3 file(s) for changes
-     PHASE │ build
-    NOSKIP │ ./plan.py
+  STARTUP │ Watching 1 director(y|ies)
+  UPDATED │ ENV_VAR_TEST_STEPUP_PREFIX ='README' ➜ ='FOO'
+  STARTUP │ Checking 3 file(s) for changes
+    PHASE │ build
+   NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 7941490b ➜ 560f7ecc, out_digest e3b0c442 ➜ (unset)
 Modified env var     ENV_VAR_TEST_STEPUP_PREFIX ='README' ➜ ='FOO'
@@ -10,13 +10,13 @@ Modified env var     ENV_VAR_TEST_STEPUP_PREFIX ='README' ➜ ='FOO'
 Same inp hash        plan.py
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
-   SUCCESS │ grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
-  DIRECTOR │ Ran 3 job(s).
-  DIRECTOR │ Trying to remove 2 outdated output(s)
-    REMOVE │ README-stdout.txt
-    REMOVE │ README-stderr.txt
-     PHASE │ watch
-  DIRECTOR │ See you!
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+  SUCCESS │ grep variable FOO.txt ${ENV_VAR_TEST_STEPUP_PREFIX}.txt > FOO-stdout.txt 2> FOO-stderr.txt
+ DIRECTOR │ Ran 3 job(s).
+ DIRECTOR │ Trying to remove 2 outdated output(s)
+   REMOVE │ README-stdout.txt
+   REMOVE │ README-stderr.txt
+    PHASE │ watch
+ DIRECTOR │ See you!

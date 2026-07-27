@@ -1,29 +1,29 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py
- POSTPONED │ ./work.py
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./work.py
+POSTPONED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 inp2.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ echo word2 > inp2.txt
-   SUCCESS │ echo word2 > inp2.txt
-     START │ ./work.py
-   SUCCESS │ ./work.py
-  DIRECTOR │ Ran 4 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-   UPDATED │ inp2.txt
-     PHASE │ build
-    NOSKIP │ echo word2 > inp2.txt
+    START │ echo word2 > inp2.txt
+  SUCCESS │ echo word2 > inp2.txt
+    START │ ./work.py
+  SUCCESS │ ./work.py
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+  UPDATED │ inp2.txt
+    PHASE │ build
+   NOSKIP │ echo word2 > inp2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 97737b8e, out_digest 91a94667 ➜ 2066b34c
 Modified out hash    inp2.txt (digest e44a31c3 ➜ afd5b072, size 6 ➜ 15)
 ────────────────────────────────────────────────────────────────────────────────
-     START │ echo word2 > inp2.txt
-   SUCCESS │ echo word2 > inp2.txt
-      SKIP │ ./work.py
+    START │ echo word2 > inp2.txt
+  SUCCESS │ echo word2 > inp2.txt
+     SKIP │ ./work.py
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       explained, inp_digest 20b7d39c, out_digest 29f755b3
 Same inp hash        inp1.txt
@@ -33,7 +33,7 @@ Same env var         STEPUP_PATH_FILTER (unset)
 Same out hash        out1.txt
 Same out hash        out2.txt
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Ran 3 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+ DIRECTOR │ Ran 3 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

@@ -1,14 +1,14 @@
-   STARTUP │ Watching 2 director(y|ies)
-   STARTUP │ Checking 3 file(s) for changes
-   UPDATED │ plan.py (digest 2048b586 ➜ a3ebbdfd, size 147 ➜ 149)
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp -p hello.txt other/hello.txt
-   SUCCESS │ cp -p hello.txt other/hello.txt
-  DIRECTOR │ Ran 3 job(s).
-  DIRECTOR │ Trying to remove 1 outdated output(s)
-    REMOVE │ sub/hello.txt
-    REMOVE │ sub
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ Watching 2 director(y|ies)
+  STARTUP │ Checking 3 file(s) for changes
+  UPDATED │ plan.py (digest 2048b586 ➜ a3ebbdfd, size 147 ➜ 149)
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ cp -p hello.txt other/hello.txt
+  SUCCESS │ cp -p hello.txt other/hello.txt
+ DIRECTOR │ Ran 3 job(s).
+ DIRECTOR │ Trying to remove 1 outdated output(s)
+   REMOVE │ sub/hello.txt
+   REMOVE │ sub
+    PHASE │ watch
+ DIRECTOR │ See you!

@@ -1,15 +1,15 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo "spam" > first.txt
-   SUCCESS │ echo "spam" > first.txt
-     START │ cp -v first.txt second.txt
-   SUCCESS │ cp -v first.txt second.txt
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ echo "spam" > first.txt
+  SUCCESS │ echo "spam" > first.txt
+    START │ cp -v first.txt second.txt
+  SUCCESS │ cp -v first.txt second.txt
 ─────────────────────────────── Standard output ────────────────────────────────
 'first.txt' -> 'second.txt'
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Ran 3 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+ DIRECTOR │ Ran 3 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

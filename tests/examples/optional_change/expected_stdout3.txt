@@ -1,12 +1,12 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 4 file(s) for changes
-   UPDATED │ plan.py (digest 36257838 ➜ aa1a2f0a, size 158 ➜ 157)
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-      SKIP │ cp -p hop1.txt hop2.txt
-      SKIP │ cp -p hop2.txt hop3.txt
-  DIRECTOR │ Ran 4 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 4 file(s) for changes
+  UPDATED │ plan.py (digest 36257838 ➜ aa1a2f0a, size 158 ➜ 157)
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+     SKIP │ cp -p hop1.txt hop2.txt
+     SKIP │ cp -p hop2.txt hop3.txt
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

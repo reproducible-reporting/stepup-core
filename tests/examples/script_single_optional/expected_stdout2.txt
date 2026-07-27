@@ -1,15 +1,15 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 2 file(s) for changes
-   UPDATED │ plan.py (digest ea7e2fc4 ➜ 572a99a9, size 126 ➜ 163)
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-      SKIP │ ./generate.py plan --optional
-     START │ ./generate.py run
-   SUCCESS │ ./generate.py run
-     START │ cp -p runout.txt copy.txt
-   SUCCESS │ cp -p runout.txt copy.txt
-  DIRECTOR │ Ran 5 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 2 file(s) for changes
+  UPDATED │ plan.py (digest ea7e2fc4 ➜ 572a99a9, size 126 ➜ 163)
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+     SKIP │ ./generate.py plan --optional
+    START │ ./generate.py run
+  SUCCESS │ ./generate.py run
+    START │ cp -p runout.txt copy.txt
+  SUCCESS │ cp -p runout.txt copy.txt
+ DIRECTOR │ Ran 5 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

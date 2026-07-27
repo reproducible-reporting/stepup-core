@@ -1,27 +1,27 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 1 file(s) for changes
-   UPDATED │ plan.py (digest 1553f340 ➜ 9db5ea86, size 418 ➜ 491)
-     PHASE │ build
-    NOSKIP │ ./plan.py
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 1 file(s) for changes
+  UPDATED │ plan.py (digest 1553f340 ➜ 9db5ea86, size 418 ➜ 491)
+    PHASE │ build
+   NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
 Modified step hash   explained, inp_digest 449141be ➜ 2257df62, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest 1553f340 ➜ 9db5ea86, size 418 ➜ 491)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
 ────────────────────────────────────────────────────────────────────────────────
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo inp1 > foo1.txt
-   SUCCESS │ echo inp1 > foo1.txt
-     START │ echo inp2 > foo2.txt
-   SUCCESS │ echo inp2 > foo2.txt
-     START │ cat foo1.txt foo2.txt > bar.txt
-   SUCCESS │ cat foo1.txt foo2.txt > bar.txt
-     START │ cat bar.txt > egg.txt
-   SUCCESS │ cat bar.txt > egg.txt
-     START │ cat egg.txt > spam.txt
-   SUCCESS │ cat egg.txt > spam.txt
-  DIRECTOR │ Ran 7 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ echo inp1 > foo1.txt
+  SUCCESS │ echo inp1 > foo1.txt
+    START │ echo inp2 > foo2.txt
+  SUCCESS │ echo inp2 > foo2.txt
+    START │ cat foo1.txt foo2.txt > bar.txt
+  SUCCESS │ cat foo1.txt foo2.txt > bar.txt
+    START │ cat bar.txt > egg.txt
+  SUCCESS │ cat bar.txt > egg.txt
+    START │ cat egg.txt > spam.txt
+  SUCCESS │ cat egg.txt > spam.txt
+ DIRECTOR │ Ran 7 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

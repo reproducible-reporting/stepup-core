@@ -1,13 +1,13 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub
-   SUCCESS │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub
+  SUCCESS │ ./work.py run '{"inp": ["data.txt"], "out": ["result.txt"]}'  # wd=sub
 ─────────────────────────────── Standard output ────────────────────────────────
 Hello from work.py!
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

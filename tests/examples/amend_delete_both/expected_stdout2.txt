@@ -1,11 +1,11 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 7 file(s) for changes
-   DELETED │ data1.txt
-   DELETED │ log.txt
-   DELETED │ asource1.txt
-   DELETED │ data2.txt
-     PHASE │ build
-    NOSKIP │ cp -p asource2.txt data2.txt
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 7 file(s) for changes
+  DELETED │ data1.txt
+  DELETED │ log.txt
+  DELETED │ asource1.txt
+  DELETED │ data2.txt
+    PHASE │ build
+   NOSKIP │ cp -p asource2.txt data2.txt
 ───────────────────────────── Missing output files ─────────────────────────────
 data2.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────
@@ -14,10 +14,10 @@ Modified out hash    data2.txt (digest 83ca09e3 ➜ UNKNOWN, size 25 ➜ 0, mode
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        asource2.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ cp -p asource2.txt data2.txt
-   SUCCESS │ cp -p asource2.txt data2.txt
-  DIRECTOR │ Ran 2 job(s).
-   WARNING │ 2 step(s) remained pending ...
+    START │ cp -p asource2.txt data2.txt
+  SUCCESS │ cp -p asource2.txt data2.txt
+ DIRECTOR │ Ran 2 job(s).
+  WARNING │ 2 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  asource1.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -33,7 +33,7 @@ Inputs       AWAITED  data1.txt
                BUILT  data2.txt [amended]
 Outputs      AWAITED  log.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

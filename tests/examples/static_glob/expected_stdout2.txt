@@ -1,22 +1,22 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 5 file(s) for changes
-   DELETED │ inp2.txt
-   STARTUP │ Checking 1 nglob(s) for new or deleted matches
-   DELETED │ inp2.txt
-   UPDATED │ inp4.txt
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-      SKIP │ cp -p inp3.txt out3.txt
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 5 file(s) for changes
+  DELETED │ inp2.txt
+  STARTUP │ Checking 1 nglob(s) for new or deleted matches
+  DELETED │ inp2.txt
+  UPDATED │ inp4.txt
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+     SKIP │ cp -p inp3.txt out3.txt
 ───────────────────────────── No changes observed ──────────────────────────────
 Same step hash       explained, inp_digest b0978595, out_digest bf3a2db2
 Same inp hash        inp3.txt
 Same out hash        out3.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ cp -p inp4.txt out4.txt
-   SUCCESS │ cp -p inp4.txt out4.txt
-  DIRECTOR │ Ran 3 job(s).
-  DIRECTOR │ Trying to remove 1 outdated output(s)
-    REMOVE │ out2.txt
-     PHASE │ watch
-  DIRECTOR │ See you!
+    START │ cp -p inp4.txt out4.txt
+  SUCCESS │ cp -p inp4.txt out4.txt
+ DIRECTOR │ Ran 3 job(s).
+ DIRECTOR │ Trying to remove 1 outdated output(s)
+   REMOVE │ out2.txt
+    PHASE │ watch
+ DIRECTOR │ See you!

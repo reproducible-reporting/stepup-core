@@ -1,22 +1,22 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py
- POSTPONED │ ./work.py
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./work.py
+POSTPONED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 ping.txt
 pong.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ echo ping > ping.txt
-   SUCCESS │ echo ping > ping.txt
-     START │ ./work.py
- POSTPONED │ ./work.py
+    START │ echo ping > ping.txt
+  SUCCESS │ echo ping > ping.txt
+    START │ ./work.py
+POSTPONED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 pong.txt
 ────────────────────────────────────────────────────────────────────────────────
-  DIRECTOR │ Ran 4 job(s).
-   WARNING │ 1 step(s) remained pending ...
+ DIRECTOR │ Ran 4 job(s).
+  WARNING │ 1 step(s) remained pending ...
 ─────────────────────────────── Detached inputs ────────────────────────────────
              AWAITED  pong.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -27,7 +27,7 @@ Inputs        STATIC  work.py
              AWAITED  (pong.txt) [amended]
 Outputs      AWAITED  work.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

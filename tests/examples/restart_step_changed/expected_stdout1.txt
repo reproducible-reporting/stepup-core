@@ -1,12 +1,12 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo 1 > original.txt
-   SUCCESS │ echo 1 > original.txt
-     START │ cp -p original.txt copy.txt
-   SUCCESS │ cp -p original.txt copy.txt
-  DIRECTOR │ Ran 3 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ echo 1 > original.txt
+  SUCCESS │ echo 1 > original.txt
+    START │ cp -p original.txt copy.txt
+  SUCCESS │ cp -p original.txt copy.txt
+ DIRECTOR │ Ran 3 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

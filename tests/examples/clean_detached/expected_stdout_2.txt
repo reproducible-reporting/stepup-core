@@ -1,13 +1,13 @@
-   STARTUP │ Watching 1 director(y|ies)
-   STARTUP │ Checking 2 file(s) for changes
-   UPDATED │ plan.py (digest 850ad9d9 ➜ b8ea5c7f)
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ echo hello2 > hello2.txt
-   SUCCESS │ echo hello2 > hello2.txt
-  DIRECTOR │ Ran 3 job(s).
-   WARNING │ Skipping file cleanup at user's request (--no-clean)
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ Watching 1 director(y|ies)
+  STARTUP │ Checking 2 file(s) for changes
+  UPDATED │ plan.py (digest 850ad9d9 ➜ b8ea5c7f)
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ echo hello2 > hello2.txt
+  SUCCESS │ echo hello2 > hello2.txt
+ DIRECTOR │ Ran 3 job(s).
+  WARNING │ Skipping file cleanup at user's request (--no-clean)
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

@@ -1,14 +1,14 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./plan.py  # wd=static
-   SUCCESS │ ./plan.py  # wd=static
-     START │ cp -p static/preamble.inc.tex public/preamble.inc.tex
-   SUCCESS │ cp -p static/preamble.inc.tex public/preamble.inc.tex
-     START │ sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
-   SUCCESS │ sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
-  DIRECTOR │ Ran 4 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./plan.py  # wd=static
+  SUCCESS │ ./plan.py  # wd=static
+    START │ cp -p static/preamble.inc.tex public/preamble.inc.tex
+  SUCCESS │ cp -p static/preamble.inc.tex public/preamble.inc.tex
+    START │ sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
+  SUCCESS │ sc-render-jinja main.tex ../variables.py variables.py ../public/main.tex  # wd=static
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

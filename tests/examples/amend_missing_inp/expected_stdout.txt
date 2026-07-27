@@ -1,16 +1,16 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ ./work.py
- POSTPONED │ ./work.py
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ ./work.py
+POSTPONED │ ./work.py
 ────────────────────────── Unavailable amended inputs ──────────────────────────
 missing.txt
 ────────────────────────────────────────────────────────────────────────────────
-     START │ echo Will be deleted by accident > missing.txt
-   SUCCESS │ echo Will be deleted by accident > missing.txt
-     START │ ./work.py
-      FAIL │ ./work.py
+    START │ echo Will be deleted by accident > missing.txt
+  SUCCESS │ echo Will be deleted by accident > missing.txt
+    START │ ./work.py
+     FAIL │ ./work.py
 ──────────────────────────────── Failed command ────────────────────────────────
 ./work.py  # exit=1
 ──────────────────────────────── Invalid inputs ────────────────────────────────
@@ -18,11 +18,11 @@ Input vanished unexpectedly: missing.txt
 ──────────────────────────────── Standard error ────────────────────────────────
 (stripped)
 ────────────────────────────────────────────────────────────────────────────────
-     ERROR │ The scheduler has been put on hold due to unexpected input changes.
-  DIRECTOR │ Ran 4 job(s).
-   WARNING │ 1 step(s) failed.
-   WARNING │ Scheduler is put on hold. Not reporting pending steps.
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-     PHASE │ watch
-  DIRECTOR │ See you!
+    ERROR │ The scheduler has been put on hold due to unexpected input changes.
+ DIRECTOR │ Ran 4 job(s).
+  WARNING │ 1 step(s) failed.
+  WARNING │ Scheduler is put on hold. Not reporting pending steps.
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ See you!

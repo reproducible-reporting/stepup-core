@@ -1,17 +1,17 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp -p sub/message.txt message.txt
-   SUCCESS │ cp -p sub/message.txt message.txt
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-   DELETED │ sub/message.txt
-   DELETED │ message.txt
-     PHASE │ build
-  DIRECTOR │ Ran 0 job(s).
-   WARNING │ 1 step(s) remained pending ...
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ cp -p sub/message.txt message.txt
+  SUCCESS │ cp -p sub/message.txt message.txt
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+  DELETED │ sub/message.txt
+  DELETED │ message.txt
+    PHASE │ build
+ DIRECTOR │ Ran 0 job(s).
+  WARNING │ 1 step(s) remained pending ...
 ──────────────────────────────── Missing inputs ────────────────────────────────
              MISSING  sub/message.txt
 ───────────────────────────────── PENDING Step ─────────────────────────────────
@@ -20,14 +20,14 @@ Command               cp -p sub/message.txt message.txt
 Inputs       MISSING  sub/message.txt
 Outputs      AWAITED  message.txt
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/warning.log
-     PHASE │ watch
-   UPDATED │ sub/message.txt
-     PHASE │ build
-     START │ cp -p sub/message.txt message.txt
-   SUCCESS │ cp -p sub/message.txt message.txt
-  DIRECTOR │ Ran 2 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+  UPDATED │ sub/message.txt
+    PHASE │ build
+    START │ cp -p sub/message.txt message.txt
+  SUCCESS │ cp -p sub/message.txt message.txt
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!

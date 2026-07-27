@@ -243,7 +243,7 @@ class StepUpProgressBar(ProgressBar):
                     no_wrap=True,
                     overflow="crop",
                 )
-                text.append(f"{elapsed:8.0f} ", "bold gray50")
+                text.append(f"{elapsed:7.0f} ", "bold gray50")
                 text.append(f"{letter} ", "bold gray42")
                 text.append(f"│ {description}")
                 yield text
@@ -300,7 +300,7 @@ class ReporterHandler:
 
         # Print action with extra info
         description = escape_markup(description)
-        line = f"[bold {action_color}]{action:>10s}[/] │ "
+        line = f"[bold {action_color}]{action:>9s}[/] │ "
         if action == "START":
             line += description
         else:

@@ -1,16 +1,16 @@
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-   SUCCESS │ ./plan.py
-     START │ cp -p a_input.txt out/a.txt
-   SUCCESS │ cp -p a_input.txt out/a.txt
-     START │ cp -p b_input.txt out/b.txt
-   SUCCESS │ cp -p b_input.txt out/b.txt
-     START │ cp -p c_input.txt out/c.txt
-   SUCCESS │ cp -p c_input.txt out/c.txt
-     START │ ./gen.py run '{"out": ["out/result.txt"]}'
-   SUCCESS │ ./gen.py run '{"out": ["out/result.txt"]}'
-  DIRECTOR │ Ran 5 job(s).
-  DIRECTOR │ Trying to remove 0 outdated output(s)
-     PHASE │ watch
-  DIRECTOR │ See you!
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ cp -p a_input.txt out/a.txt
+  SUCCESS │ cp -p a_input.txt out/a.txt
+    START │ cp -p b_input.txt out/b.txt
+  SUCCESS │ cp -p b_input.txt out/b.txt
+    START │ cp -p c_input.txt out/c.txt
+  SUCCESS │ cp -p c_input.txt out/c.txt
+    START │ ./gen.py run '{"out": ["out/result.txt"]}'
+  SUCCESS │ ./gen.py run '{"out": ["out/result.txt"]}'
+ DIRECTOR │ Ran 5 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ See you!
