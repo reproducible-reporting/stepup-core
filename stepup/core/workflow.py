@@ -67,6 +67,30 @@ JOIN file ON dependency.source = file.node
 WHERE file.state IN ({FileState.AWAITED.value}, {FileState.OUTDATED.value})
 """
 
+# (cause, old_state, hash_known) -> (new_state, action) for `Workflow.update_file_hashes`.
+# action is one of "updated", "deleted", "completed", or None (state/hash change only).
+# A missing key means the combination is unexpected and raises (see `raise_unexpected` there).
+_HASH_TRANSITIONS: dict[tuple[HashUpdateCause, FileState, bool], tuple[FileState, str | None]] = {
+    (HashUpdateCause.EXTERNAL, FileState.MISSING, True): (FileState.STATIC, "updated"),
+    (HashUpdateCause.EXTERNAL, FileState.STATIC, True): (FileState.STATIC, "updated"),
+    (HashUpdateCause.EXTERNAL, FileState.STATIC, False): (FileState.MISSING, "deleted"),
+    (HashUpdateCause.EXTERNAL, FileState.BUILT, True): (FileState.AWAITED, "updated"),
+    (HashUpdateCause.EXTERNAL, FileState.OUTDATED, True): (FileState.AWAITED, "updated"),
+    (HashUpdateCause.EXTERNAL, FileState.BUILT, False): (FileState.AWAITED, "deleted"),
+    (HashUpdateCause.EXTERNAL, FileState.OUTDATED, False): (FileState.AWAITED, "deleted"),
+    (HashUpdateCause.SUCCEEDED, FileState.OUTDATED, True): (FileState.BUILT, "completed"),
+    (HashUpdateCause.SUCCEEDED, FileState.AWAITED, True): (FileState.BUILT, "completed"),
+    (HashUpdateCause.FAILED, FileState.OUTDATED, True): (FileState.OUTDATED, None),
+    (HashUpdateCause.FAILED, FileState.AWAITED, True): (FileState.OUTDATED, None),
+    (HashUpdateCause.FAILED, FileState.OUTDATED, False): (FileState.AWAITED, None),
+    (HashUpdateCause.FAILED, FileState.AWAITED, False): (FileState.AWAITED, None),
+    (HashUpdateCause.CONFIRMED, FileState.MISSING, True): (FileState.STATIC, "completed"),
+    # Two steps can race to be the first to use the same static-tree file: both get told to
+    # check and confirm it before either confirmation is processed. The second confirmation to
+    # arrive is a harmless duplicate of the first; it re-stores the hash but takes no action.
+    (HashUpdateCause.CONFIRMED, FileState.STATIC, True): (FileState.STATIC, None),
+}
+
 
 @attrs.define
 class SupplyInfo:
@@ -380,12 +404,13 @@ class Workflow(Trellis):
                 f"Inconsistent number of records: expected={len(file_hashes)} actual={len(records)}"
             )
 
-        # Files for which `file_externally_updated` must be called.
-        updated = []
-        # Files for which `file_externally_deleted` must be called.
-        deleted = []
-        # Files for which `file_completed` must be called.
-        completed = []
+        # Files grouped by the follow-up action to take on them, keyed by the action tags used
+        # in `_HASH_TRANSITIONS` (`"updated"` -> `file_externally_updated`, etc.).
+        action_lists: dict[str, list[tuple[int, str]]] = {
+            "updated": [],
+            "deleted": [],
+            "completed": [],
+        }
         # Files whose state and hash must be updated.
         new_states_hashes = []
 
@@ -395,71 +420,19 @@ class Workflow(Trellis):
                 f"digest={fmt_digest(fh.digest)} mode={stat.filemode(fh.mode)}"
             )
 
-        # Decide how the file state must change and which other actions to take on the files
-        # based on the cause of the hash updates.
-        if cause == HashUpdateCause.EXTERNAL:
-            # This is branch is relevant for the end of the watch phase or the startup of StepUp
-            for i, path, new_fh, old_state in records:
-                if old_state == FileState.MISSING:
-                    if new_fh.is_unknown:
-                        raise AssertionError(f"Missing updated to be missing again: {path}")
-                    new_states_hashes.append((i, FileState.STATIC, new_fh))
-                    updated.append((i, path))
-                elif old_state == FileState.STATIC:
-                    if new_fh.is_unknown:
-                        new_states_hashes.append((i, FileState.MISSING, new_fh))
-                        deleted.append((i, path))
-                    else:
-                        new_states_hashes.append((i, FileState.STATIC, new_fh))
-                        updated.append((i, path))
-                elif old_state in (FileState.BUILT, FileState.OUTDATED):
-                    new_states_hashes.append((i, FileState.AWAITED, FileHash.unknown()))
-                    if new_fh.is_unknown:
-                        deleted.append((i, path))
-                    else:
-                        updated.append((i, path))
-                else:
-                    raise_unexpected(path, old_state, new_fh)
-        elif cause == HashUpdateCause.SUCCEEDED:
-            # This branch is relevant for when a step has succeeded
-            # and its outputs should be marked as BUILT.
-            for i, path, new_fh, old_state in records:
-                if old_state in (FileState.OUTDATED, FileState.AWAITED):
-                    if new_fh.is_unknown:
-                        raise AssertionError(f"Unknown file hash after succeeded step: {path}")
-                    new_states_hashes.append((i, FileState.BUILT, new_fh))
-                    completed.append((i, path))
-                else:
-                    raise_unexpected(path, old_state, new_fh)
-        elif cause == HashUpdateCause.FAILED:
-            # This branch is relevant for when a step has failed or postponed
-            # and its outputs should be marked as OUTDATED.
-            for i, path, new_fh, old_state in records:
-                if old_state in (FileState.OUTDATED, FileState.AWAITED):
-                    new_states_hashes.append(
-                        (i, FileState.AWAITED if new_fh.is_unknown else FileState.OUTDATED, new_fh)
-                    )
-                else:
-                    raise_unexpected(path, old_state, new_fh)
-        elif cause == HashUpdateCause.CONFIRMED:
-            # This branch is relevant for when the client has confirmed the hashes
-            # of missing files and they should be marked as STATIC.
-            for i, path, new_fh, old_state in records:
-                if old_state == FileState.MISSING:
-                    if new_fh.is_unknown:
-                        raise AssertionError(f"Missing file confirmed as missing: {path}")
-                    new_states_hashes.append((i, FileState.STATIC, new_fh))
-                    completed.append((i, path))
-                elif old_state == FileState.STATIC:
-                    # Two steps can race to be the first to use the same static-tree file:
-                    # both get told to check and confirm it before either confirmation
-                    # is processed. The second confirmation to arrive is a harmless
-                    # duplicate of the first.
-                    if new_fh.is_unknown:
-                        raise AssertionError(f"Static file confirmed as missing: {path}")
-                    new_states_hashes.append((i, FileState.STATIC, new_fh))
-                else:
-                    raise_unexpected(path, old_state, new_fh)
+        # Decide how the file state must change and which other actions to take on the files,
+        # based on the cause of the hash updates and the file's current state.
+        # `new_fh` is stored as-is for every transition: the `file_clear_hash` trigger nulls
+        # the hash whenever the new state is MISSING/AWAITED/VOLATILE, so there is no need to
+        # special-case the stored hash for those target states here.
+        for i, path, new_fh, old_state in records:
+            transition = _HASH_TRANSITIONS.get((cause, old_state, not new_fh.is_unknown))
+            if transition is None:
+                raise_unexpected(path, old_state, new_fh)
+            new_state, action = transition
+            new_states_hashes.append((i, new_state, new_fh))
+            if action is not None:
+                action_lists[action].append((i, path))
 
         # Actual update of the file hashes.
         logger.info("Update file hashes: cause=%s new=%s", cause, new_states_hashes)
@@ -473,19 +446,19 @@ class Workflow(Trellis):
             ((state.value, fh.to_json(), i) for i, state, fh in new_states_hashes),
         )
 
-        # Call File methods to further update the workflow.
+        # Call Workflow methods to further update the workflow.
         logger.info(
             "Update file hashes: cause=%s updated=%s deleted=%s completed=%s",
             cause,
-            updated,
-            deleted,
-            completed,
+            action_lists["updated"],
+            action_lists["deleted"],
+            action_lists["completed"],
         )
-        for i, path in updated:
+        for i, path in action_lists["updated"]:
             self.file_externally_updated(File(self, i, path))
-        for i, path in deleted:
+        for i, path in action_lists["deleted"]:
             self.file_externally_deleted(File(self, i, path))
-        for i, path in completed:
+        for i, path in action_lists["completed"]:
             self.file_completed(File(self, i, path))
 
     def file_externally_updated(self, file: File):

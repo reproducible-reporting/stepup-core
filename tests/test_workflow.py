@@ -1523,6 +1523,38 @@ async def test_externally_updated2(wfp: Workflow):
         assert step2.get_state() == StepState.PENDING
 
 
+async def test_hash_update_failed(wfp: Workflow):
+    """Drive all four `HashUpdateCause.FAILED` rows of `Workflow.update_file_hashes`.
+
+    This cause is normally only reached indirectly, through a failed step in
+    `executor.py`, so it has no direct unit coverage otherwise.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "bla1", out_paths=["out1"])
+        out1 = wfp.find(File, "out1")
+        assert out1.get_state() == FileState.AWAITED
+
+        # FAILED, AWAITED, known -> OUTDATED
+        h = fake_hash("out1")
+        wfp.update_file_hashes([("out1", h)], HashUpdateCause.FAILED)
+        assert out1.get_state() == FileState.OUTDATED
+        assert out1.get_hash() == h
+
+        # FAILED, OUTDATED, known -> OUTDATED
+        wfp.update_file_hashes([("out1", h)], HashUpdateCause.FAILED)
+        assert out1.get_state() == FileState.OUTDATED
+        assert out1.get_hash() == h
+
+        # FAILED, OUTDATED, unknown -> AWAITED
+        wfp.update_file_hashes([("out1", FileHash.unknown())], HashUpdateCause.FAILED)
+        assert out1.get_state() == FileState.AWAITED
+
+        # FAILED, AWAITED, unknown -> AWAITED
+        wfp.update_file_hashes([("out1", FileHash.unknown())], HashUpdateCause.FAILED)
+        assert out1.get_state() == FileState.AWAITED
+
+
 async def test_step_recycle(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
