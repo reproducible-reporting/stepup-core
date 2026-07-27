@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Test a few StepUp basic scenarios."""
 
+import os
 import re
 
 import pytest
@@ -9,7 +10,6 @@ from path import Path
 
 from stepup.core.enums import Need
 from stepup.core.exceptions import RPCError
-from stepup.core.hash import FileHash
 from stepup.core.rpc import AsyncRPCClient
 
 
@@ -105,10 +105,8 @@ async def test_static(client: AsyncRPCClient, path_tmp: Path):
     try:
         with open("foo", "w") as fh:
             fh.write("bar")
-        to_check = await client("declare_unconfirmed", _get_job_i(), ["foo"])
-        assert to_check == [("foo", FileHash.unknown())]
-        file_hash = FileHash.unknown().regen("foo")
-        await client("confirm_hashes", [("foo", file_hash)])
+        result = await client("declare_unconfirmed", _get_job_i(), ["foo"])
+        assert result is None
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
@@ -176,10 +174,8 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
             {},
             True,
         )
-        to_check = await client("declare_unconfirmed", job_i, ["original.txt"])
-        assert to_check == [("original.txt", FileHash.unknown())]
-        file_hash = FileHash.unknown().regen("original.txt")
-        await client("confirm_hashes", [("original.txt", file_hash)])
+        result = await client("declare_unconfirmed", job_i, ["original.txt"])
+        assert result is None
     finally:
         with open("DONE.txt", "w") as fh:
             fh.write("done")
@@ -187,3 +183,35 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
     prefix_graph = path_tmp / "graph"
     await client("graph", prefix_graph)
     _check_graph(prefix_graph + ".txt", COPY_GRAPH)
+
+
+async def test_amend_blocks_until_static_tree_match_confirmed(client: AsyncRPCClient):
+    """`amend()` naming a fresh static-tree match must block until it is hashed and
+    confirmed, then report the step as runnable with the file STATIC."""
+    try:
+        job_i = _get_job_i()
+        os.mkdir("sub")
+        with open("sub/data.txt", "w") as fh:
+            fh.write("hello")
+        await client("static_trees", job_i, ["sub/"])
+        carry_on = await client("amend", job_i, ["sub/data.txt"], [], [], [])
+        assert carry_on is True
+    finally:
+        with open("DONE.txt", "w") as fh:
+            fh.write("done")
+    await client("wait")
+
+
+async def test_amend_reports_missing_static_tree_match(client: AsyncRPCClient):
+    """`amend()` naming a static-tree match that does not exist on disk must not block
+    forever, and must report the step as not runnable (carry_on=False)."""
+    try:
+        job_i = _get_job_i()
+        os.mkdir("sub")
+        await client("static_trees", job_i, ["sub/"])
+        carry_on = await client("amend", job_i, ["sub/ghost.txt"], [], [], [])
+        assert carry_on is False
+    finally:
+        with open("DONE.txt", "w") as fh:
+            fh.write("done")
+    await client("wait")

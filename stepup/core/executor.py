@@ -11,6 +11,7 @@ A single `Executor` instance serves all concurrent steps.
 A per-step mutable state lives in a `Run` created for each job.
 """
 
+import asyncio
 import functools
 import multiprocessing
 import os
@@ -33,7 +34,8 @@ from .hash import (
     compute_inp_hashes,
     compute_out_hashes,
 )
-from .reporter import ReporterClient
+from .hash_queue import HashJob
+from .reporter import PROGRESS_REFRESH_DELAY, ReporterClient
 from .run import Run, ThreadWorker, launch_command
 from .scheduler import Scheduler
 from .sqlite3 import DBSession
@@ -62,14 +64,6 @@ class NoOverwriteDict(dict):
 #
 # Executor
 #
-
-
-STEP_COUNTS_REPORT_INTERVAL = 0.5
-"""Minimum time (seconds) between `get_step_counts()` reports sent to the reporter.
-
-Reporting more often than this would only add `get_step_counts()` cost
-(a full `step` table scan) without any visible benefit.
-"""
 
 
 @attrs.define
@@ -126,8 +120,12 @@ class Executor:
 
     # Internal state
 
-    running: NoOverwriteDict[int, Run] = attrs.field(init=False, factory=NoOverwriteDict)
-    """The `Run` instances whose command is currently running, keyed by `Run.job_i`."""
+    running: NoOverwriteDict[int, Run | HashJob] = attrs.field(init=False, factory=NoOverwriteDict)
+    """The `Run`/`HashJob` instances currently in flight, keyed by `job_i`.
+
+    `Executor.interrupt()` only ever reads `.worker` from the values here, so a `HashJob`
+    (which has no `.step`) can share this dict with `Run` without issue.
+    """
 
     step_accumulator: ResourceAccumulator = attrs.field(init=False, factory=ResourceAccumulator)
     """Running totals of CPU time and block-IO op counts for steps."""
@@ -135,8 +133,15 @@ class Executor:
     _base_env_cache: dict | None = attrs.field(init=False, default=None)
     """Cache for `base_env`, populated lazily on first access."""
 
-    _last_step_counts_time: float | None = attrs.field(init=False, default=None)
-    """`perf_counter()` timestamp of the last step-counts report, or `None` before the first."""
+    _counts_flush_handle: asyncio.TimerHandle | None = attrs.field(init=False, default=None)
+    """Handle for the scheduled step-counts flush, or `None` when none is pending.
+
+    Mirrors `ReporterClient._flush_jobs_handle`'s coalescing pattern.
+    """
+
+    _counts_flush_tasks: set[asyncio.Task] = attrs.field(init=False, factory=set)
+    """In-flight step-counts flush tasks, kept alive here so they cannot be garbage-collected
+    mid-send (same rationale as `ReporterClient._flush_tasks`)."""
 
     #
     # Cached properties
@@ -206,7 +211,7 @@ class Executor:
         # so we can make the step pending again, to be re-queued when new inputs arrive.
         async with self.db:
             step.set_state(StepState.PENDING)
-        await self._report_step_counts()
+        self._report_step_counts()
 
     async def try_skip_job(
         self,
@@ -254,7 +259,7 @@ class Executor:
             self.workflow.update_file_hashes(new_out_hashes, HashUpdateCause.SUCCEEDED)
             step.completed(new_hash, False)
             # Do not call `scheduler.record_stop_time`, as no start time was recorded either.
-        await self._report_step_counts()
+        self._report_step_counts()
 
     async def execute_job(
         self, job_i: int, step: Step, inp_hashes: list[tuple[str, FileHash]], env_deps: list[str]
@@ -273,7 +278,7 @@ class Executor:
         # Run the step
         async with self.db:
             step.reset_for_rerun()
-        await self._report_step_counts()
+        self._report_step_counts()
         await self._run_command(run)
 
         # Recompute the step hash (inputs and outputs).
@@ -306,7 +311,7 @@ class Executor:
             # copy internally, so report() below still forwards the full text to the TUI.
             max_output_size = int(os.getenv("STEPUP_MAX_OUTPUT_SIZE", "0"))
             step.store_output(run.stdout, run.stderr, max_output_size)
-        await self._report_step_counts()
+        self._report_step_counts()
 
         # Report the result of running the step
         await self._report_run(run)
@@ -375,26 +380,35 @@ class Executor:
 
         return new_hash, wants_postpone
 
-    async def _report_step_counts(self) -> None:
-        """Send updated step-state counts to the reporter, throttled by elapsed time.
+    def _report_step_counts(self) -> None:
+        """Request a step-state counts report, coalescing with any already pending.
 
-        This skips the underlying `get_step_counts()` scan (and the RPC call) entirely
-        when the reporter has no live progress display to feed (`live_progress` is
-        `False`), and otherwise when the previous report was sent less than
-        `STEP_COUNTS_REPORT_INTERVAL` ago.
+        This is a no-op when the reporter has no live progress display to feed
+        (`live_progress` is `False`). Otherwise, it schedules `_flush_step_counts`
+        `PROGRESS_REFRESH_DELAY` from now, unless a flush is already pending, so that a
+        burst of calls (e.g. several steps completing in the same event-loop iteration)
+        collapses into a single `get_counts()` scan and RPC call.
+
+        Mirrors `ReporterClient._request_jobs_flush`'s coalescing timer.
         """
-        if not self.live_progress:
+        if not self.live_progress or self._counts_flush_handle is not None:
             return
-        now = perf_counter()
-        if (
-            self._last_step_counts_time is not None
-            and now - self._last_step_counts_time < STEP_COUNTS_REPORT_INTERVAL
-        ):
-            return
-        self._last_step_counts_time = now
+        loop = asyncio.get_running_loop()
+        self._counts_flush_handle = loop.call_later(
+            PROGRESS_REFRESH_DELAY, self._on_counts_flush_timer
+        )
+
+    def _on_counts_flush_timer(self) -> None:
+        self._counts_flush_handle = None
+        task = asyncio.get_running_loop().create_task(self._flush_step_counts())
+        self._counts_flush_tasks.add(task)
+        task.add_done_callback(self._counts_flush_tasks.discard)
+
+    async def _flush_step_counts(self) -> None:
+        """Send the current step-state counts to the reporter."""
         async with self.db:
-            step_counts = self.workflow.get_step_counts()
-        await self.reporter.update_step_counts(step_counts)
+            nsuccess, ntotal = self.workflow.get_counts()
+        await self.reporter.update_counts(nsuccess, ntotal)
 
     async def _reset_step_to_pending(self, step: Step) -> None:
         """Discard a step's stored hash and transition it back to PENDING for re-execution."""
@@ -455,7 +469,7 @@ class Executor:
         async with self.db:
             run.step.completed(None, False)
         self.scheduler.record_stop_time(run.step.i, succeeded=False)
-        await self._report_step_counts()
+        self._report_step_counts()
         await self._report_run(run)
 
     async def _hold_for_unexpected_input_changes(self) -> None:
@@ -490,15 +504,65 @@ class Executor:
                 run.worker = None
 
     @contextmanager
-    def _track_running(self, run):
-        """Context manager to track a worker as running."""
-        if run.job_i in self.running:
-            raise RuntimeError(f"Run {run.job_i} is already tracked as running.")
-        self.running[run.job_i] = run
+    def _track_running(self, job: Run | HashJob):
+        """Context manager to track a `Run` or `HashJob` as running."""
+        if job.job_i in self.running:
+            raise RuntimeError(f"Job {job.job_i} is already tracked as running.")
+        self.running[job.job_i] = job
         try:
             yield
         finally:
-            del self.running[run.job_i]
+            del self.running[job.job_i]
+
+    async def run_hash_job(self, hash_job: HashJob) -> None:
+        """Compute one file hash in a thread, apply it to the workflow, resolve the future.
+
+        Does not reuse `_run_work_thread`: that helper requires a `Run` (step-bound) and
+        writes failure text into `run.stderr`, neither of which applies to a `HashJob`.
+        """
+        worker = ThreadWorker(
+            work=functools.partial(FileHash.regen, hash_job.old_hash, hash_job.path),
+            job_i=hash_job.job_i,
+        )
+        hash_job.worker = worker
+        with self._track_running(hash_job):
+            try:
+                new_hash = await worker.run_in_thread()
+            except HashCancelledError:
+                hash_job.future.cancel()
+                await self.reporter("ERROR", f"Hash cancelled for {hash_job.path}")
+                return
+            except Exception as exc:  # noqa: BLE001
+                # E.g. PermissionError from stat(), or a directory mistakenly used as a file input.
+                # Must not propagate as a task exception: that would crash job_loop via
+                # handle_done_tasks, tearing down the whole director over one bad file.
+                # Instead, borrow on_hold's existing visibility/effect: stop dispatching new steps
+                # and report the error loudly (mirroring handle_done_tasks' own on_hold +
+                # report_completion's "Scheduler is put on hold" warning),
+                # while letting already-running/queued work wind down normally.
+                # The file is left UNCONFIRMED.
+                # A fire-and-forget submitter never awaits this future,
+                # so on_hold is what actually surfaces the failure to the user.
+                self.scheduler.on_hold = True
+                hash_job.future.set_exception(exc)
+                await self.reporter("ERROR", f"Could not hash {hash_job.path}: {exc}")
+                return
+            finally:
+                hash_job.worker = None
+        if new_hash != hash_job.old_hash or hash_job.cause == HashUpdateCause.CONFIRMED:
+            # CONFIRMED must be applied even when unchanged:
+            # only the update flips UNCONFIRMED -> STATIC/MISSING.
+            # Unchanged results under other causes are deliberately NOT applied:
+            # e.g. (EXTERNAL, STATIC, known) would call file_externally_updated
+            # and needlessly mark all sinks pending. (They should already be pending.)
+            async with self.db:
+                self.workflow.update_file_hashes([(hash_job.path, new_hash)], hash_job.cause)
+        if not hash_job.future.done():
+            # Resolved after the DB write, so an awaiter that re-reads file state on wake always
+            # sees the post-transition state.
+            # Already done when the future was cancelled concurrently (e.g. Builder.stop());
+            # set_result would then raise InvalidStateError.
+            hash_job.future.set_result(new_hash)
 
     async def _compute_inp_step_hash(
         self,

@@ -1,8 +1,7 @@
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Watching 1 director(y|ies)
+   STARTUP │ Checking 4 file(s) for changes
    UPDATED │ plan.py (digest 04f162d6 ➜ 7800367b, size 264 ➜ 111)
    DELETED │ inp.txt
-   STARTUP │ Scanning initial database for new nglob matches
      PHASE │ build
  DROPAMEND │ ./plan.py
 ────────────────────── Outdated amended step information ───────────────────────

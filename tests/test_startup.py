@@ -1,0 +1,170 @@
+# SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+"""Unit tests for stepup.core.startup."""
+
+import contextlib
+import os
+
+from conftest import declare_static
+
+from stepup.core.builder import Builder
+from stepup.core.enums import HashUpdateCause
+from stepup.core.executor import Executor
+from stepup.core.file import File, FileState
+from stepup.core.hash import FileHash
+from stepup.core.reporter import ReporterClient
+from stepup.core.scheduler import Scheduler
+from stepup.core.startup import check_file_changes
+from stepup.core.workflow import Workflow
+
+
+def _make_stray_unconfirmed(workflow: Workflow, path: str) -> None:
+    """Move an already-STATIC file back to UNCONFIRMED, keeping its cached hash.
+
+    A direct DB poke rather than a second `declare_unconfirmed()` call: recycling a
+    node's state through the public API requires it to be detached first (e.g. via a
+    step's `reset_for_rerun()`), which is more machinery than this test needs. This
+    reproduces the on-disk shape of a director killed after redeclaring an
+    already-known-good static file but before its confirming hash job completed --
+    see `File.initialize()` for why the hash column survives such a redeclare.
+    """
+    workflow.db.execute(
+        "UPDATE file SET state = ? WHERE node = (SELECT i FROM node WHERE label = ?)",
+        (FileState.UNCONFIRMED.value, path),
+    )
+
+
+def _make_builder(workflow: Workflow) -> Builder:
+    scheduler = Scheduler(workflow, db=workflow.db)
+    executor = Executor(
+        scheduler=scheduler,
+        workflow=workflow,
+        db=workflow.db,
+        reporter=ReporterClient(),
+        show_perf=False,
+        explain_rerun=False,
+        keep_going=False,
+        live_progress=False,
+        do_joblog=False,
+        infra_env={},
+    )
+    return Builder(
+        njob=2,
+        watcher=None,
+        scheduler=scheduler,
+        workflow=workflow,
+        db=workflow.db,
+        reporter=ReporterClient(),
+        live_progress=False,
+        executor=executor,
+    )
+
+
+class _FakeReporter:
+    """Records `report()` calls instead of sending them anywhere."""
+
+    def __init__(self):
+        self.calls = []
+
+    async def __call__(self, action, label, pages=None):
+        self.calls.append((action, label))
+
+    def start_job(self, letter, description, job_i):
+        pass
+
+    def stop_job(self, job_i):
+        pass
+
+    async def update_counts(self, nsuccess, ntotal):
+        pass
+
+
+async def test_check_file_changes_does_nothing_when_nothing_to_check(wfs: Workflow):
+    """An empty/no-eligible-rows scan must not report anything."""
+    builder = _make_builder(wfs)
+    reporter = _FakeReporter()
+
+    await check_file_changes(wfs.db, reporter, builder)
+
+    assert reporter.calls == []
+
+
+async def test_check_file_changes_confirms_unchanged_stray_unconfirmed_row(wfs: Workflow, tmpdir):
+    """A stray UNCONFIRMED row (crash while its confirming hash job was still queued or in
+    flight) whose cached hash still matches disk must become STATIC directly, via
+    `CONFIRMED`, without depending on a step rerun and without an UPDATED/DELETED report
+    (the file did not actually change)."""
+    with contextlib.chdir(tmpdir):
+        with open("foo.txt", "w") as fh:
+            fh.write("hello")
+        # A real (not `conftest.fake_hash`) hash is needed here: the "unchanged" case
+        # only holds if the cached hash actually matches what regen() computes from disk.
+        real_hash = FileHash.unknown().regen("foo.txt")
+        async with wfs.db:
+            wfs.declare_unconfirmed(wfs.root, ["foo.txt"])
+            wfs.update_file_hashes([("foo.txt", real_hash)], HashUpdateCause.CONFIRMED)
+            _make_stray_unconfirmed(wfs, "foo.txt")
+            assert wfs.find(File, "foo.txt").get_state() == FileState.UNCONFIRMED
+
+        builder = _make_builder(wfs)
+        reporter = _FakeReporter()
+
+        await check_file_changes(wfs.db, reporter, builder)
+
+        assert reporter.calls == [("STARTUP", "Checking 1 file(s) for changes")]
+        async with wfs.db:
+            assert wfs.find(File, "foo.txt").get_state() == FileState.STATIC
+
+
+async def test_check_file_changes_confirms_deleted_stray_unconfirmed_row(wfs: Workflow, tmpdir):
+    """A stray UNCONFIRMED row whose file is now absent must become MISSING, reported
+    as DELETED -- same reporting as a regular STATIC file being externally deleted."""
+    with contextlib.chdir(tmpdir):
+        with open("foo.txt", "w") as fh:
+            fh.write("hello")
+        async with wfs.db:
+            declare_static(wfs, wfs.root, ["foo.txt"])
+            _make_stray_unconfirmed(wfs, "foo.txt")
+            assert wfs.find(File, "foo.txt").get_state() == FileState.UNCONFIRMED
+        os.remove("foo.txt")
+
+        builder = _make_builder(wfs)
+        reporter = _FakeReporter()
+
+        await check_file_changes(wfs.db, reporter, builder)
+
+        assert reporter.calls == [
+            ("STARTUP", "Checking 1 file(s) for changes"),
+            ("DELETED", "foo.txt"),
+        ]
+        async with wfs.db:
+            assert wfs.find(File, "foo.txt").get_state() == FileState.MISSING
+
+
+async def test_check_file_changes_reports_externally_updated_static_file(wfs: Workflow, tmpdir):
+    """A regular (non-UNCONFIRMED) STATIC file that changed on disk must still be picked
+    up via the EXTERNAL cause, reported as UPDATED, and get its new hash applied."""
+    with contextlib.chdir(tmpdir):
+        with open("foo.txt", "w") as fh:
+            fh.write("hello")
+        async with wfs.db:
+            file = declare_static(wfs, wfs.root, ["foo.txt"])[0]
+            old_hash = file.get_hash()
+        with open("foo.txt", "w") as fh:
+            fh.write("changed")
+
+        builder = _make_builder(wfs)
+        reporter = _FakeReporter()
+
+        await check_file_changes(wfs.db, reporter, builder)
+
+        assert reporter.calls == [
+            ("STARTUP", "Checking 1 file(s) for changes"),
+            (
+                "UPDATED",
+                "foo.txt (digest ddab29ff ➜ d67e2e94, size 49 ➜ 7, mode ?rw-r--r-- ➜ -rw-r--r--)",
+            ),
+        ]
+        async with wfs.db:
+            assert wfs.find(File, "foo.txt").get_state() == FileState.STATIC
+            assert wfs.find(File, "foo.txt").get_hash() != old_hash

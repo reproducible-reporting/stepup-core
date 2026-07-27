@@ -13,7 +13,6 @@ import attrs
 from path import Path
 
 from .enums import REGULAR_OUTPUT_STATES, FileState, Need, StepState
-from .exceptions import GraphError
 from .file import File
 from .hash import FileHash, StepHash
 from .nglob import NGlobMulti
@@ -209,6 +208,78 @@ CREATE TRIGGER IF NOT EXISTS step_reset_postpone_count AFTER UPDATE OF state ON 
 WHEN NEW.state = {StepState.SUCCEEDED.value}
 BEGIN
     UPDATE step SET postpone_count = 0 WHERE node = NEW.node;
+END;
+
+-- Bucketed counts of non-detached steps by (_implied_need, succeeded), maintained
+-- incrementally so Workflow.get_counts() can answer with a lookup over at most
+-- 2 * (1 + max(Need) - min(Need)) rows instead of scanning every step in the workflow.
+-- The bucketing (rather than one row per StepState) is deliberate: get_counts() only ever
+-- needs "succeeded" vs. "not succeeded", so PENDING/RUNNING/CHECKING/FAILED transitions
+-- among each other never have to touch this table at all.
+-- Deliberately a temp table (like path_list/node_list in FILE_SCHEMA), not persisted: that
+-- sidesteps ever having to migrate/backfill it for on-disk databases written before this
+-- table existed. It starts empty on every fresh connection, so Workflow.check_consistency()
+-- seeds it once from the steps that already exist before trusting the triggers below to
+-- keep it in sync from then on.
+CREATE TEMP TABLE IF NOT EXISTS step_need_count (
+    implied_need INTEGER NOT NULL,
+    succeeded INTEGER NOT NULL CHECK(succeeded IN (0, 1)),
+    n INTEGER NOT NULL CHECK(n >= 0),
+    PRIMARY KEY (implied_need, succeeded)
+) WITHOUT ROWID;
+
+-- Step.initialize() always deletes any existing row for this node before inserting a fresh
+-- one (never INSERT OR REPLACE), precisely so that reusing a recycled node's step row goes
+-- through the ordinary insert/delete triggers below instead of REPLACE's silent,
+-- non-trigger-firing implicit delete.
+CREATE TEMP TRIGGER IF NOT EXISTS step_need_count_ins AFTER INSERT ON step
+WHEN NOT (SELECT detached FROM node WHERE node.i = NEW.node)
+BEGIN
+    INSERT INTO step_need_count(implied_need, succeeded, n)
+    VALUES (NEW._implied_need, NEW.state = {StepState.SUCCEEDED.value}, 1)
+    ON CONFLICT(implied_need, succeeded) DO UPDATE SET n = n + 1;
+END;
+CREATE TEMP TRIGGER IF NOT EXISTS step_need_count_del AFTER DELETE ON step
+WHEN NOT (SELECT detached FROM node WHERE node.i = OLD.node)
+BEGIN
+    UPDATE step_need_count SET n = n - 1
+    WHERE implied_need = OLD._implied_need
+        AND succeeded = (OLD.state = {StepState.SUCCEEDED.value});
+END;
+
+-- Move a step between buckets when its state or _implied_need actually changes the
+-- (implied_need, succeeded) key. Most state transitions (e.g. PENDING -> RUNNING) do not,
+-- since only the SUCCEEDED / not-SUCCEEDED split matters here.
+CREATE TEMP TRIGGER IF NOT EXISTS step_need_count_upd AFTER UPDATE OF state, _implied_need ON step
+WHEN NOT (SELECT detached FROM node WHERE node.i = NEW.node)
+    AND ((OLD.state = {StepState.SUCCEEDED.value}) != (NEW.state = {StepState.SUCCEEDED.value})
+        OR OLD._implied_need != NEW._implied_need)
+BEGIN
+    UPDATE step_need_count SET n = n - 1
+    WHERE implied_need = OLD._implied_need
+        AND succeeded = (OLD.state = {StepState.SUCCEEDED.value});
+    INSERT INTO step_need_count(implied_need, succeeded, n)
+    VALUES (NEW._implied_need, NEW.state = {StepState.SUCCEEDED.value}, 1)
+    ON CONFLICT(implied_need, succeeded) DO UPDATE SET n = n + 1;
+END;
+
+-- Move a step's counted-ness when its node's detached flag flips (RECURSIVELY_SET_DETACHED
+-- in trellis.py is a bulk UPDATE that still fires this row trigger once per affected row, the
+-- same treatment as step_node_check_ready_detached above). A no-op when this node has no
+-- step row (e.g. a file or static-tree node).
+CREATE TEMP TRIGGER IF NOT EXISTS node_detached_step_need_count AFTER UPDATE OF detached ON node
+WHEN OLD.detached != NEW.detached AND EXISTS (SELECT 1 FROM step WHERE step.node = NEW.i)
+BEGIN
+    UPDATE step_need_count SET n = n - 1
+    WHERE NEW.detached
+        AND implied_need = (SELECT _implied_need FROM step WHERE step.node = NEW.i)
+        AND succeeded = (
+            SELECT state = {StepState.SUCCEEDED.value} FROM step WHERE step.node = NEW.i
+        );
+    INSERT INTO step_need_count(implied_need, succeeded, n)
+    SELECT step._implied_need, step.state = {StepState.SUCCEEDED.value}, 1
+    FROM step WHERE step.node = NEW.i AND NOT NEW.detached
+    ON CONFLICT(implied_need, succeeded) DO UPDATE SET n = n + 1;
 END;
 
 -- Satellite tables below hold auxiliary per-step data. All are keyed by (or include) the
@@ -468,18 +539,26 @@ class Step(Node):
     ):
         """Create extra information in the database about this node.
 
-        If a step with this node already exists (i.e. a detached step is being
-        recycled), its `step_hash`/`step_output` satellite rows are untouched by this
-        `INSERT OR REPLACE`, so a recycled step's stored hash remains available for
-        skip-checking after redeclaration instead of being discarded. `_has_hash` must
-        therefore be set explicitly here (rather than left to its `DEFAULT 0`): the
-        `REPLACE` wipes the column without firing any `step_hash` trigger, since this
-        statement never touches the `step_hash` table itself. `_ready`/`_check_ready` need
-        no explicit value -- their `DEFAULT`s (0 and 1) are exactly the conservative
-        "not yet known, must be recomputed" state a new/recycled step should start in.
+        If a step with this node already exists (i.e. a detached step is being recycled),
+        it is deleted before inserting the fresh row, rather than using `INSERT OR REPLACE`,
+        so the delete fires `step_need_count_del` like any other delete
+        instead of being silently skipped by `REPLACE`'s implicit conflict-delete
+        (which never fires delete triggers).
+
+        The `step_hash`/`step_output` satellite rows are untouched by either `DELETE` or `INSERT`,
+        since both only ever reference `node`, not `step`,
+        so a recycled step's stored hash remains available for
+        skip-checking after redeclaration instead of being discarded.
+        `_has_hash` must therefore be set explicitly here (rather than left to its `DEFAULT 0`),
+        since this statement never touches the `step_hash` table itself.
+
+        `_ready`/`_check_ready` need no explicit value.
+        Their `DEFAULT`s (0 and 1) are exactly the conservative "not yet known, must be recomputed"
+        state a new/recycled step should start in.
         """
+        self.db.execute("DELETE FROM step WHERE node = :node", {"node": self.i})
         self.db.execute(
-            "INSERT OR REPLACE INTO step "
+            "INSERT INTO step "
             "(node, state, need, subshell, _safe, _check_safe, _implied_need, _check_after, "
             "_has_hash) "
             "VALUES(:node, :state, :need, :subshell, :safe, :check_safe, "
@@ -1069,20 +1148,6 @@ class Step(Node):
             # An unsuccessful step is not skippable, so we're removing its hash.
             self.delete_hash()
         else:
-            # Check that there are no unconfirmed static files left behind by the step.
-            sql = (
-                "SELECT label FROM node JOIN file ON node.i = file.node "
-                f"WHERE creator = ? AND kind = 'file' AND state = {FileState.UNCONFIRMED.value} "
-                "AND NOT detached"
-            )
-            unconfirmed_paths = [path for (path,) in self.db.execute(sql, (self.i,))]
-            if unconfirmed_paths:
-                # Note: this should never happen. When it does, it must have been caused by a bug.
-                raise GraphError(
-                    f"Step completed with unconfirmed static file(s): {self.label} -> "
-                    + ", ".join(unconfirmed_paths)
-                )
-
             logger.info("Succeeded step: %s", self.label)
             self.set_state(StepState.SUCCEEDED)
             # Update states, needed for files that have not changed since previous run.

@@ -26,9 +26,10 @@ from .asyncio import wait_for_events
 from .builder import Builder
 from .cgroups import get_ncore_from_cgroup
 from .constants import DIRECTOR_LOG, DIRECTOR_PROF, GRAPH_DB, JOBLOG_CSV, SQLLOG_CSV, SQLLOG_JSON
-from .enums import HashUpdateCause, Need, ReturnCode, StepState
+from .enums import FileState, HashUpdateCause, Need, ReturnCode, StepState
 from .exceptions import CgroupError, GraphError
 from .executor import Executor
+from .file import File
 from .hash import FileHash
 from .nglob import NGlobMulti
 from .reporter import ReporterClient
@@ -472,7 +473,6 @@ async def serve(
     if available_resources is not None:
         await reporter("DIRECTOR", f"Setting available resources: {available_resources}")
     await scheduler.initialize(available_resources)
-    watcher = Watcher(workflow, db, reporter, dir_queue) if do_watch else None
     executor = Executor(
         scheduler=scheduler,
         workflow=workflow,
@@ -486,9 +486,14 @@ async def serve(
         do_joblog=do_joblog,
         infra_env=infra_env,
     )
+    # Builder is constructed with watcher=None and patched below, once the watcher exists:
+    # the watcher needs builder.hash_queue,
+    # so both share the wake event that a hash-job submission uses to nudge a parked job_loop,
+    # which means the watcher cannot be built first either.
+    # Builder is a plain mutable attrs class, so patching .watcher after construction is fine.
     builder = Builder(
         njob=njob,
-        watcher=watcher,
+        watcher=None,
         scheduler=scheduler,
         workflow=workflow,
         db=db,
@@ -497,6 +502,20 @@ async def serve(
         do_remove_outdated=do_clean,
         executor=executor,
     )
+    watcher = (
+        Watcher(
+            workflow,
+            db,
+            reporter,
+            dir_queue,
+            executor=executor,
+            hash_queue=builder.hash_queue,
+            njob=njob,
+        )
+        if do_watch
+        else None
+    )
+    builder.watcher = watcher
     memory_sampler = CgroupMemorySampler() if do_cgroup else None
     stop_event = asyncio.Event()
     director_handler = DirectorHandler(
@@ -601,39 +620,44 @@ class DirectorHandler:
         async with self.db:
             return self.workflow.initialize_boot()
 
+    def _submit_to_check(self, to_check: list[tuple[str, FileHash]]) -> None:
+        """Submit a hash job for each `(path, old_hash)` pair, applied with `cause=CONFIRMED`.
+
+        Fire-and-forget: the caller does not wait for these jobs. Each job's own
+        completion flips the file from `UNCONFIRMED` to `STATIC` or `MISSING` and wakes
+        `job_loop`, which is what lets a step consuming the file become runnable.
+        """
+        for path, old_hash in to_check:
+            self.builder.hash_queue.submit(path, old_hash, HashUpdateCause.CONFIRMED)
+
     @allow_rpc
-    async def declare_unconfirmed(self, job_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
+    async def declare_unconfirmed(self, job_i: int, paths: list[str]) -> None:
         """Add a list of absolute paths to the workflow, to become static.
 
-        They are stored internally as paths relative to STEPUP_ROOT, initially set to
-        unconfirmed. A list of available (cached) paths with file hashes is returned,
-        which need to be updated on the client-side.
-        The client then calls confirm with the updated hashes.
+        They are stored internally as paths relative to `${STEPUP_ROOT}`,
+        initially set to `UNCONFIRMED`.
+        A hash job is submitted for each, running in parallel with other work,
+        to confirm it as `STATIC` or `MISSING`.
 
-        The motivation for this two-step process is to avoid unnecessary file hash calculations.
+        The `UNCONFIRMED` intermediate state avoids unnecessary file hash calculations.
         If the file size, inode number and modification time of a path match have not changed,
         we can reasonably safely assume that the file contents have not changed.
         In this case, the hash calculation is skipped and the old hash is reused.
         """
         async with self.db:
             creator = self.scheduler.get_step(job_i)
-            return self.workflow.declare_unconfirmed(creator, paths)
+            to_check = self.workflow.declare_unconfirmed(creator, paths)
+        self._submit_to_check(to_check)
 
     @allow_rpc
-    async def static_trees(self, job_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
-        """Register directories whose contents become static files when used.
-
-        Returns
-        -------
-        to_check
-            A list of (path, file_hash) tuples to check and make static if valid.
-        """
+    async def static_trees(self, job_i: int, paths: list[str]) -> None:
+        """Register directories whose contents become static files when used."""
         to_check = []
         async with self.db:
             creator = self.scheduler.get_step(job_i)
             for path in paths:
                 to_check.extend(self.workflow.register_static_tree(creator, path))
-        return to_check
+        self._submit_to_check(to_check)
 
     @allow_rpc
     async def nglob(self, job_i: int, patterns: list[str], subs: dict[str, str], paths: list[str]):
@@ -643,23 +667,6 @@ class DirectorHandler:
         async with self.db:
             creator = self.scheduler.get_step(job_i)
             self.workflow.register_nglob(creator, ngm)
-
-    @allow_rpc
-    async def confirm_hashes(self, checked: list[tuple[str, FileHash]]):
-        """Mark unconfirmed files as static, or missing if confirmed absent,
-        with up-to-date file hashes.
-
-        Parameters
-        ----------
-        checked
-            A list of (path, file_hash) tuples that have been updated and confirmed
-            on the client side.
-        """
-        async with self.db:
-            self.workflow.update_file_hashes(checked, HashUpdateCause.CONFIRMED)
-        # The confirmed hash may result in some steps having all required inputs.
-        # Wake the builder, it re-polls the scheduler instead of waiting for an unrelated task.
-        self.builder.wake_job_loop.set()
 
     @allow_rpc
     async def step(
@@ -675,17 +682,12 @@ class DirectorHandler:
         resources: dict[str, int],
         subshell: bool = False,
         env_overrides: dict[str, str] | None = None,
-    ) -> list[tuple[str, FileHash]]:
+    ) -> None:
         """Create a step in the workflow.
 
         Notes
         -----
         This is an RPC wrapper for `Workflow.define_step`.
-
-        Returns
-        -------
-        to_check
-            A list of (path, file_hash) tuples to check and make static if valid.
         """
         async with self.db:
             creator = self.scheduler.get_step(job_i)
@@ -702,11 +704,11 @@ class DirectorHandler:
                 subshell=subshell,
                 env_overrides=env_overrides,
             )
+        self._submit_to_check(to_check)
         # The new step may already be runnable, but the builder's job loop may be parked,
         # waiting for a running task to finish.
         # Wake it up so it re-polls the scheduler instead of waiting for an unrelated task.
         self.builder.wake_job_loop.set()
-        return to_check
 
     @allow_rpc
     async def amend(
@@ -716,22 +718,24 @@ class DirectorHandler:
         env_deps: set[str],
         out_paths: list[str],
         vol_paths: list[str],
-    ) -> tuple[bool, list[tuple[str, FileHash]]]:
+    ) -> bool:
         """Amend a step.
 
         Notes
         -----
         This is an RPC wrapper for `Workflow.amend_step`.
 
+        When some amended inputs are still `UNCONFIRMED` (matches of a static tree not yet hashed),
+        this call blocks until they are resolved to `STATIC` or `MISSING`,
+        running their hash jobs immediately rather than through the builder's queue:
+        the calling step already occupies a slot and is idle while it waits,
+        so promoting its hash jobs  outside the `--jobs` budget keeps real concurrency at `njob`,
+        instead of deadlocking when every slot holds a step blocked here.
+
         Returns
         -------
         carry_on
             Whether the step is still runnable after amending.
-        to_check
-            A list of `(path, file_hash)` tuples to check and make static if valid.
-            This is only relevant when `carry_on` is `True`.
-            If some of the static tree matches cannot be confirmed,
-            the caller has to change `carry_on` to `False`.
         """
         async with self.db:
             step = self.scheduler.get_step(job_i)
@@ -743,12 +747,22 @@ class DirectorHandler:
                 vol_paths=vol_paths,
                 ran_concurrently=self.scheduler.ran_concurrently,
             )
+        if to_check:
+            checked_paths = {path for path, _ in to_check}
+            await self.builder.run_promoted_hash_jobs(to_check, HashUpdateCause.CONFIRMED)
+            async with self.db:
+                is_detached = step.is_detached()
+                if not is_detached:
+                    for path in checked_paths:
+                        file = self.workflow.find(File, path)
+                        if file.get_state() not in (FileState.STATIC, FileState.BUILT):
+                            unavailable.add(path)
         carry_on = len(unavailable) == 0 and len(unfresh) == 0
         if not carry_on:
             self.executor.postpone(job_i, unavailable=unavailable, unfresh=unfresh)
         if is_detached:
             carry_on = False
-        return carry_on, to_check
+        return carry_on
 
     @allow_rpc
     async def postpone_step(self, job_i: int, missing: list[str]):

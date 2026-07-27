@@ -160,7 +160,7 @@ class HashUpdateCause(IntEnum):
     """The reason why file hashes are being updated in `Workflow.update_file_hashes`."""
 
     EXTERNAL = 51
-    """File hashes changed externally (startup or watch phase)."""
+    """File hashes changed externally (startup or watch phase). Dependencies become pending."""
 
     SUCCEEDED = 52
     """A step succeeded; its outputs should be marked BUILT."""

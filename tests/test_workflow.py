@@ -329,7 +329,7 @@ async def test_simple_example(wfs: Workflow):
         foo = declare_static(wfs, wfs.root, ["foo.txt"])[0]
         assert wfs.format_str() == TEST_SIMPLE_EXAMPLE_GRAPH2
         assert wfs.get_file_counts() == {FileState.STATIC: 1, FileState.AWAITED: 1}
-        assert wfs.get_step_counts() == {StepState.PENDING: 1}
+        assert wfs.get_counts() == (0, 1)
 
     # Verify things that should not be allowed
     with pytest.raises(GraphError):
@@ -347,7 +347,7 @@ async def test_simple_example(wfs: Workflow):
         step.completed(step_hash, False)
         assert wfs.format_str() == TEST_SIMPLE_EXAMPLE_GRAPH3
         assert wfs.get_file_counts() == Counter({FileState.STATIC: 1, FileState.BUILT: 1})
-        assert wfs.get_step_counts() == Counter({StepState.SUCCEEDED: 1})
+        assert wfs.get_counts() == (1, 1)
 
     # Check hashes
     async with wfs.db:
@@ -2266,10 +2266,13 @@ async def test_confirm_static_then_absent(wfp: Workflow):
 
 
 async def test_hash_update_external_unconfirmed(wfp: Workflow):
-    """Drive the (EXTERNAL, UNCONFIRMED, True/False) rows exercised by startup recovery.
+    """Drive the (EXTERNAL, UNCONFIRMED, True/False) rows, a defensive fallback.
 
-    These are what let a stray UNCONFIRMED file (left over from a director killed between
-    `declare_unconfirmed` and `confirm_hashes`) get resolved by `startup.scan_file_changes`.
+    `scan_file_changes` (Phase 2) resolves stray UNCONFIRMED rows via CONFIRMED at startup,
+    so this EXTERNAL/UNCONFIRMED path should no longer be reachable there in practice.
+    It is kept as a defensive fallback (see the comment on these entries in
+    `_HASH_TRANSITIONS`) in case a non-detached UNCONFIRMED file ever survives into a
+    watch phase, whose own hashing loop uses EXTERNAL.
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
@@ -2287,27 +2290,30 @@ async def test_hash_update_external_unconfirmed(wfp: Workflow):
         assert b.get_state() == FileState.MISSING
 
 
-async def test_step_completed_raises_on_unconfirmed_product(wfp: Workflow):
-    """Step.completed() must reject a step whose declared static file was never confirmed.
+async def test_step_completed_succeeds_with_unconfirmed_product(wfp: Workflow):
+    """Step.completed() must accept a step whose declared static file is still UNCONFIRMED.
 
-    This should be structurally unreachable in normal operation, since both RPC calls in
-    the declare/confirm round trip are synchronous. Seeing it means the step's own process
-    was killed mid-round-trip: a real bug, not a state to self-correct silently.
+    Since hash confirmation is fire-and-forget (Phase 3), this is now a normal state, not a
+    protocol violation: the confirming hash job may still be queued or in flight when the
+    declaring step completes. A consumer of the file cannot become runnable before the hash
+    job resolves it (the scheduler's UNCONFIRMED-is-not-ready gate), and a stray UNCONFIRMED
+    row left behind by a crash is resolved by the next startup scan.
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.declare_unconfirmed(plan, ["ghost.txt"])
         assert wfp.find(File, "ghost.txt").get_state() == FileState.UNCONFIRMED
-    with pytest.raises(GraphError):
-        async with wfp.db:
-            plan.completed(StepHash(b"p" * 32, None, b"p" * 32, None), False)
+    async with wfp.db:
+        plan.completed(StepHash(b"p" * 32, None, b"p" * 32, None), False)
+        assert plan.get_state() == StepState.SUCCEEDED
+        assert wfp.find(File, "ghost.txt").get_state() == FileState.UNCONFIRMED
 
 
 async def test_step_completed_does_not_raise_on_unconfirmed_product_when_failed(wfp: Workflow):
     """Step.completed(None, False) must not raise even with a pending UNCONFIRMED product.
 
-    A step process killed mid-round-trip (e.g. a second Ctrl-C during a long client-side
-    hash) reaches `completed(None, False)` with a still-UNCONFIRMED declared file. This is
+    A step process killed mid-run (e.g. a Ctrl-C while some other file was still being
+    hashed) reaches `completed(None, False)` with a still-UNCONFIRMED declared file. This is
     expected on the failed path, not a protocol violation: `reset_for_rerun()` detaches the
     leftover cleanly on the next run.
     """

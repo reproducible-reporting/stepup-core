@@ -1,6 +1,5 @@
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   STARTUP │ Scanning initial database for new nglob matches
+   STARTUP │ Watching 1 director(y|ies)
+   STARTUP │ Checking 7 file(s) for changes
      PHASE │ build
   DIRECTOR │ Ran 0 job(s).
    WARNING │ 1 target(s) are not produced by any step in the workflow: nope.txt

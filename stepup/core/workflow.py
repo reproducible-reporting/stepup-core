@@ -118,9 +118,12 @@ _HASH_TRANSITIONS: dict[tuple[HashUpdateCause, FileState, bool], tuple[FileState
     # file's existence changed on disk between them. Trust the later report.
     (HashUpdateCause.CONFIRMED, FileState.MISSING, True): (FileState.STATIC, "completed"),
     (HashUpdateCause.CONFIRMED, FileState.STATIC, False): (FileState.MISSING, "deleted"),
-    # Only the changed/deleted flavors of crash recovery for a stray UNCONFIRMED file
-    # are handled here; the unchanged flavor goes through a step rerun instead
-    # (see startup.py: scan_file_changes and the RUNNING -> FAILED reset).
+    # startup.py's scan_file_changes no longer relies on these: it confirms stray
+    # UNCONFIRMED rows directly via CONFIRMED above, changed or not. Kept as a defensive
+    # fallback for Watcher.watch_changes, whose EXTERNAL regen loop is not known to be
+    # unreachable for a non-detached UNCONFIRMED file (Workflow.is_relevant() does not
+    # exclude UNCONFIRMED, only AWAITED/VOLATILE) even though it is not expected to hit
+    # one in normal operation.
     (HashUpdateCause.EXTERNAL, FileState.UNCONFIRMED, True): (FileState.STATIC, "updated"),
     (HashUpdateCause.EXTERNAL, FileState.UNCONFIRMED, False): (FileState.MISSING, "deleted"),
 }
@@ -201,6 +204,19 @@ class Workflow(Trellis):
         """Check whether the initial graph satisfies all constraints."""
         strict = string_to_bool(os.getenv("STEPUP_DEBUG", "0"))
         super().check_consistency()
+
+        # step_need_count (see STEP_SCHEMA / get_counts()) is a temp table, empty on every
+        # fresh connection, and only kept in sync with the step table going forward by
+        # triggers. check_consistency() can run more than once per connection (e.g. tests
+        # call it directly as a post-condition check), so it is unconditionally rebuilt from
+        # scratch here rather than assumed empty, to stay correct (and idempotent) either way.
+        self.db.execute("DELETE FROM step_need_count")
+        self.db.execute(
+            "INSERT INTO step_need_count (implied_need, succeeded, n) "
+            "SELECT step._implied_need, step.state = ?, count(*) FROM node JOIN step "
+            "ON node.i = step.node WHERE NOT node.detached GROUP BY 1, 2",
+            (StepState.SUCCEEDED.value,),
+        )
 
         # Verify that all BUILT, OUTDATED and STATIC files have a hash.
         sql = (
@@ -332,13 +348,20 @@ class Workflow(Trellis):
         )
         return {FileState(value): count for value, count in self.db.execute(sql)}
 
-    def get_step_counts(self) -> dict[StepState, int]:
-        """Return counters for StepState."""
+    def get_counts(self) -> tuple[int, int]:
+        """Return completion counts (succeeded and total).
+
+        Reads from `step_need_count`, a table of per-`(implied_need, succeeded)` bucket
+        counts kept incrementally in sync with the `step` table by triggers (see
+        `STEP_SCHEMA`), so this is a lookup over at most a handful of rows instead of a
+        scan of every step in the workflow.
+        """
         sql = (
-            "SELECT step.state, count(*) FROM node JOIN step ON node.i = step.node "
-            "WHERE NOT node.detached GROUP BY step.state"
+            "SELECT coalesce(sum(succeeded * n), 0), coalesce(sum(n), 0) "
+            "FROM step_need_count WHERE implied_need > ?"
         )
-        return {StepState(value): count for value, count in self.db.execute(sql)}
+        nsucceeded, ntotal = self.db.execute(sql, (self.need_threshold.value,)).fetchone()
+        return nsucceeded, ntotal
 
     def steps(self, state: StepState) -> Iterator[Step]:
         sql = (
@@ -366,6 +389,15 @@ class Workflow(Trellis):
             "WHERE state = ? AND NOT detached"
         )
         for row in self.db.execute(sql, (FileState.MISSING.value,)):
+            yield row[0]
+
+    def unconfirmed_paths(self) -> Iterator[str]:
+        """Iterate over unconfirmed files that are still present in the graph."""
+        sql = (
+            "SELECT label FROM node JOIN file ON node.i = file.node "
+            "WHERE state = ? AND NOT detached"
+        )
+        for row in self.db.execute(sql, (FileState.UNCONFIRMED.value,)):
             yield row[0]
 
     #
@@ -902,8 +934,10 @@ class Workflow(Trellis):
     def _build_to_check(self, deferred: Collection[Node]) -> list[tuple[str, FileHash]]:
         """Convert a list of UNCONFIRMED file nodes to a list of (path, file_hash) tuples.
 
-        This list is intended to be returned to the caller, so the validity of the files
-        can be checked and confirmed as static in a follow-up RPC call.
+        This list is intended for the caller to submit as hash jobs
+        (`HashQueue.submit`, `cause=HashUpdateCause.CONFIRMED`),
+        one per path, so each file's validity is checked and confirmed as static
+        (or resolved as missing) in the background.
 
         Parameters
         ----------
@@ -914,8 +948,6 @@ class Workflow(Trellis):
         -------
         to_check
             A list of paths and file_hashes.
-            These must be sent back to the client where the hashes can be checked
-            and which then calls `confirm_hashes` with the updated hashes.
         """
         db = self.db
         db.execute("DELETE FROM node_list")
@@ -938,7 +970,8 @@ class Workflow(Trellis):
         """Declare files as unconfirmed static candidates, to be confirmed shortly after.
 
         A file declared here becomes STATIC once confirmed present, or MISSING once
-        confirmed absent (see `confirm_hashes`).
+        confirmed absent, through a hash job submitted for its `to_check` entry
+        (see `Workflow.update_file_hashes`).
 
         Parameters
         ----------
@@ -951,8 +984,6 @@ class Workflow(Trellis):
         -------
         to_check
             A list of paths and file_hashes.
-            These must be sent back to the client where the hashes can be checked
-            and which then calls `confirm_hashes` with the updated hashes.
         """
         if isinstance(paths, str):
             raise TypeError("The paths argument cannot be a string.")
@@ -981,7 +1012,6 @@ class Workflow(Trellis):
         -------
         to_check
             A list of matching (path, file_hash) whose existence and validity must be checked.
-            The client must call `confirm_hashes` after checking files with resulting hashes.
         """
         if not isinstance(path, str):
             raise TypeError("The argument path must be a string.")
@@ -1080,8 +1110,6 @@ class Workflow(Trellis):
         -------
         to_check
             A list of paths and file_hashes.
-            These must be sent back to the client where the hashes can be checked
-            and which then calls `confirm_hashes` with the updated hashes.
         """
         if need == Need.TARGET:
             raise GraphError(
@@ -1145,8 +1173,7 @@ class Workflow(Trellis):
         )
         if old_step is not None:
             # Look for UNCONFIRMED inputs that match a static tree. Their existence still
-            # needs to be checked by the client and ideally confirmed as existing in a
-            # follow-up call to `confirm_hashes`.
+            # needs to be checked, ideally confirmed by a hash job submitted for them.
             deferred = {
                 File(self, i, label) for i, label in self.db.execute(DEFERRED_INPUTS, (old_step.i,))
             }
@@ -1232,11 +1259,10 @@ class Workflow(Trellis):
         unfresh
             A set of input paths that are available but fail the amend() freshness check.
         to_check
-            A list of paths and file_hashes.
-            These must be sent back to the client where the hashes can be checked
-            and which then calls `confirm_hashes` with the updated hashes.
-            (This is only relevant when carry_on is True.
-            If some to_check files turn out to be missing, carry_on should be changed to False.)
+            A list of paths and file_hashes whose validity must still be checked, e.g. by
+            submitting a hash job for each (`cause=HashUpdateCause.CONFIRMED`). A path that
+            resolves to MISSING must then move from `unavailable`'s absence to its presence,
+            i.e. the caller must join it into `unavailable` after checking.
         """
         if not isinstance(step, Step):
             raise TypeError(f"step must be a Step instance, got: {step!r}")

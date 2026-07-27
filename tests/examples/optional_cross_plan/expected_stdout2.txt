@@ -1,7 +1,6 @@
-   STARTUP │ Watching 2 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Watching 2 director(y|ies)
+   STARTUP │ Checking 4 file(s) for changes
    UPDATED │ sub/plan.py (digest 0a553827 ➜ 2facd5e7, size 171 ➜ 76)
-   STARTUP │ Scanning initial database for new nglob matches
      PHASE │ build
      START │ ./plan.py  # wd=sub
    SUCCESS │ ./plan.py  # wd=sub

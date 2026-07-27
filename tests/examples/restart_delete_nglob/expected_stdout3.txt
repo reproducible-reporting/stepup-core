@@ -1,7 +1,8 @@
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Watching 1 director(y|ies)
+   STARTUP │ Checking 4 file(s) for changes
    DELETED │ inp2.txt
-   STARTUP │ Scanning initial database for new nglob matches
+   STARTUP │ Checking 1 nglob(s) for new or deleted matches
+   DELETED │ inp2.txt
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py

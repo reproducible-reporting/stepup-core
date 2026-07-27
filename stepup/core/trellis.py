@@ -601,6 +601,10 @@ class Trellis:
         #   change on its own.
         # - Added the FileState.UNCONFIRMED state to distinguish truly MISSING files
         #   from those that still need to be hash-checked.
+        # - Added the step_need_count temp table (in STEP_SCHEMA) and its maintaining
+        #   triggers, so Workflow.get_counts() no longer scans every step. Backfilled once
+        #   per connection by Workflow.check_consistency(), like path_list/node_list, so no
+        #   version bump is needed for this change on its own.
 
         return 5
 

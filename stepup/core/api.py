@@ -25,7 +25,7 @@ import re
 import shlex
 import sys
 import tomllib
-from collections.abc import Collection, Iterable
+from collections.abc import Iterable
 from runpy import run_path
 from types import SimpleNamespace
 from typing import Any
@@ -36,14 +36,12 @@ from path import Path
 from .cattrs import json_converter, yaml_converter
 from .enums import Need
 from .exceptions import (
-    DeferredNotConfirmedError,
     EnvVarError,
     InputNotFoundError,
     PathError,
     StepUpError,
 )
 from .extapi import subs_env_vars
-from .hash import FileHash
 from .nglob import NGlobMulti
 from .path import (
     StrPath,
@@ -130,15 +128,15 @@ def static(*paths: StrPath | Iterable[StrPath]) -> None:
         if len(su_file_paths) > 0:
             # Translate paths to make them relative to the working directory of the director.
             tr_file_paths = sorted(translate(su_file_path) for su_file_path in su_file_paths)
-            # Declare the files unconfirmed and then confirm them.
-            to_check = RPC_CLIENT.call.declare_unconfirmed(_get_job_i(), tr_file_paths)
-            _confirm_static(to_check)
+            # Declare the files unconfirmed; the director hashes and confirms them in the
+            # background, off this call's critical path.
+            RPC_CLIENT.call.declare_unconfirmed(_get_job_i(), tr_file_paths)
         if len(su_dir_paths) > 0:
             # Translate paths to make them relative to the working directory of the director.
             tr_dir_paths = sorted(translate(su_dir_path) for su_dir_path in su_dir_paths)
-            # Declare the static trees and then confirm matching awaited files.
-            to_check = RPC_CLIENT.call.static_trees(_get_job_i(), tr_dir_paths)
-            _confirm_deferred(to_check)
+            # Declare the static trees; matching existing files are hashed and confirmed
+            # in the background by the director, same as above.
+            RPC_CLIENT.call.static_trees(_get_job_i(), tr_dir_paths)
 
 
 def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
@@ -201,8 +199,7 @@ def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
     if len(static_paths) > 0:
         _check_inp_paths(static_paths)
         tr_static_paths = [translate(static_path) for static_path in static_paths]
-        to_check = RPC_CLIENT.call.declare_unconfirmed(_get_job_i(), tr_static_paths)
-        _confirm_static(to_check)
+        RPC_CLIENT.call.declare_unconfirmed(_get_job_i(), tr_static_paths)
 
     # Translate all the nglob matches with matching paths and send to the director.
     tr_all_paths = [
@@ -298,8 +295,6 @@ def step(
         positive integer.
     PathError
         When `inp`, `out`, or `vol` contain a directory.
-    DeferredNotConfirmedError
-        When the director reports that some files matching static trees do not exist on disk.
 
     Notes
     -----
@@ -373,8 +368,10 @@ def step(
                 file=sys.stderr,
             )
 
-    # Finally create the step.
-    to_check = RPC_CLIENT.call.step(
+    # Finally create the step. Any inputs matching a static tree are declared UNCONFIRMED
+    # and hashed/confirmed by the director in the background; a step consuming one simply
+    # does not become runnable until that resolves (see scheduler.py).
+    RPC_CLIENT.call.step(
         _get_job_i(),
         command,
         tr_inp_paths,
@@ -387,9 +384,6 @@ def step(
         shell,
         env_overrides,
     )
-
-    # Check the existence of files matching static trees.
-    _confirm_deferred(to_check)
 
     # Return a StepInfo instance to facilitate the definition of follow-up steps
     return StepInfo(command, su_inp_paths, env_deps, su_out_paths, su_vol_paths, tr_workdir)
@@ -590,6 +584,8 @@ def amend(
         When amended inputs are not yet available.
         Let this exception propagate — do not catch it.
         The director postpones the step once the missing inputs become available.
+        Note this call blocks until any amended input still matching an unconfirmed static
+        tree entry is hashed, so it may take a while for large files.
 
     Notes
     -----
@@ -643,20 +639,20 @@ def amend(
     ):
         return
 
-    # Finally, amend for real.
+    # Finally, amend for real. This call may block while the director hashes any amended
+    # input that still matches an unconfirmed static tree entry, which can exceed
+    # STEPUP_SYNC_RPC_TIMEOUT for a large file, hence the disabled socket timeout.
     job_i = _get_job_i()
-    amend_result = RPC_CLIENT.call.amend(
+    carry_on = RPC_CLIENT.call.amend(
         job_i,
         tr_inp_paths,
         sorted(env_deps),
         tr_out_paths,
         tr_vol_paths,
+        _rpc_timeout=0,
     )
-    if amend_result is not None:
-        carry_on, to_check = amend_result
-        if carry_on is False:
-            raise InputNotFoundError("Amended inputs are not available yet.")
-        _confirm_deferred(to_check, job_i)
+    if carry_on is False:
+        raise InputNotFoundError("Amended inputs are not available yet.")
 
     # Double check that all inputs are indeed present.
     _check_inp_paths(su_inp_paths)
@@ -1295,41 +1291,6 @@ def render_jinja(
 #
 # Internal stuff
 #
-
-
-def _confirm_static(to_check: Collection[tuple[str, FileHash]] | None):
-    """Confirm unconfirmed files and send the updates to the director."""
-    # When the RPC_CLIENT is a dummy, to_check may be `None`.
-    if to_check is not None and len(to_check) > 0:
-        # Every path is reported back, even when its hash is unchanged: the director must
-        # still flip the file out of UNCONFIRMED, and only this call does that.
-        checked = [
-            (tr_path, old_file_hash.regen(translate_back(tr_path)))
-            for tr_path, old_file_hash in to_check
-        ]
-        RPC_CLIENT.call.confirm_hashes(checked)
-
-
-def _confirm_deferred(to_check: Collection[tuple[str, FileHash]] | None, job_i: int | None = None):
-    """Check file, update hashes of existing ones, and send the updates to the director."""
-    if to_check is not None and len(to_check) > 0:
-        # Select matches of the static tree that exist and update their hashes.
-        # Every path is reported back, even when its hash is unchanged: the director must
-        # still flip the file out of UNCONFIRMED, and only this call does that.
-        checked = []
-        missing = []
-        for tr_path, old_file_hash in to_check:
-            new_file_hash = old_file_hash.regen(translate_back(tr_path))
-            checked.append((tr_path, new_file_hash))
-            if new_file_hash.is_unknown:
-                missing.append(tr_path)
-        RPC_CLIENT.call.confirm_hashes(checked)
-        if len(missing) > 0:
-            if job_i is not None:
-                RPC_CLIENT.call.postpone_step(job_i, missing)
-            raise DeferredNotConfirmedError(
-                ", ".join(str(translate_back(path)) for path in missing)
-            )
 
 
 def _check_inp_paths(

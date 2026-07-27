@@ -128,6 +128,8 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
   the old inp/out/pickle argument modes are replaced
   by explicit function dispatch and optional `args_file` support for file-based argument passing.
   See [Function Calls](getting_started/call.md) for details.
+- File hashes are computed in concurrent hash jobs instead of the old serial client-side delegation.
+  Similarly, the director uses the same mechanism to compute file hashes in parallel on startup.
 - A known race condition related to `amend(inp=...)` has been fixed.
   It is now safe to call `amend(inp=...)` after an amended input file has already been read.
   (It is not the most efficient approach to call `amend(inp=...)` too late,
@@ -263,6 +265,8 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
       on a resumed database (invalid on a fresh database too, but previously only
       contained there) now reports a clean `ERROR` and a `FAILED` exit code,
       instead of crashing the director.
+- The progress bar now excludes optional (not rewquired) steps
+  correctly from the total count of steps to be executed.
 
 ## [3.2.3][] - 2026-04-16 {: #v3.2.3 }
 

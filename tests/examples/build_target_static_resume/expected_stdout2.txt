@@ -1,6 +1,5 @@
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   STARTUP │ Scanning initial database for new nglob matches
+   STARTUP │ Watching 1 director(y|ies)
+   STARTUP │ Checking 3 file(s) for changes
      ERROR │ Invalid build target: A build target cannot be a static file: input.txt
    WARNING │ Check logs: .stepup/fail.log
   DIRECTOR │ See you!

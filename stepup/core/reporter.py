@@ -19,7 +19,6 @@ from rich.text import Text
 from rich.theme import Theme
 
 from .constants import FAIL_LOG, SUCCESS_LOG, WARNING_LOG
-from .enums import StepState
 from .rpc import AsyncRPCClient, BaseAsyncRPCClient, DummyAsyncRPCClient, allow_rpc
 from .utils import escape_command_display
 
@@ -28,7 +27,7 @@ logger = logging.getLogger(__name__)
 __all__ = ("ReporterClient", "ReporterHandler")
 
 
-PROGRESS_REFRESH_DELAY = 0.5
+PROGRESS_REFRESH_DELAY = 0.3
 PROGRESS_REFRESH_INTERVAL = 1.0
 ACTION_COLORS = {
     # blue
@@ -54,7 +53,7 @@ ACTION_COLORS = {
     "DIRECTOR": "magenta",
     "KEYBOARD": "magenta",
     "STARTUP": "magenta",
-    # white
+    # (default)
     "PHASE": "",
 }
 
@@ -62,7 +61,34 @@ ACTION_COLORS = {
 @attrs.define
 class ReporterClient:
     socket_path: Path | None = attrs.field(default=None)
+    """Path to the Unix socket of the TUI to connect to, or `None` for a dummy client."""
+
     client: BaseAsyncRPCClient = attrs.field(factory=DummyAsyncRPCClient)
+    """The RPC client to use for reporting, or a dummy client if `socket_path` is `None`."""
+
+    _start_job_buffer: dict[int, tuple[str, str]] = attrs.field(init=False, factory=dict)
+    """Buffered `start_job` signals not yet sent, keyed by `job_i`.
+
+    A `job_i` present here means its start was not yet flushed to the server.
+    """
+
+    _stop_job_buffer: set[int] = attrs.field(init=False, factory=set)
+    """Buffered `stop_job` signals not yet sent.
+
+    Only holds `job_i`s whose matching start was already flushed in an earlier batch:
+    a start/stop pair arriving within the same delay window is dropped instead
+    (see `stop_job`), since it would never be visible in the progress bar anyway.
+    """
+
+    _flush_jobs_handle: asyncio.TimerHandle | None = attrs.field(init=False, default=None)
+    """Handle for the scheduled `_flush_jobs` call, or `None` when none is pending.
+
+    Mirrors `StepUpProgressBar._refresh_handle`'s coalescing pattern.
+    """
+
+    _flush_tasks: set[asyncio.Task] = attrs.field(init=False, factory=set)
+    """In-flight `_flush_jobs` tasks, kept alive here so they cannot be garbage-collected
+    mid-send (same rationale as the `tasks` set in `rpc.py::_serve_rpc_recv_loop`)."""
 
     @classmethod
     @contextlib.asynccontextmanager
@@ -78,24 +104,54 @@ class ReporterClient:
     ):
         if self.client is not None:
             if pages is None:
-                pages = {}
+                pages = []
             await self.client.call.report(action, description, pages)
 
     async def set_njob(self, njob: int):
         if self.client is not None:
             await self.client.call.set_njob(njob)
 
-    async def start_job(self, prefix: str, description: str, step_i: int):
-        if self.client is not None:
-            await self.client.call.start_job(prefix, description, step_i)
+    def start_job(self, letter: str, description: str, job_i: int):
+        """Buffer a job-start signal, sent later in a batched `update_jobs` RPC call."""
+        self._start_job_buffer[job_i] = (letter, description)
+        self._request_jobs_flush()
 
-    async def stop_job(self, step_i: int):
-        if self.client is not None:
-            await self.client.call.stop_job(step_i)
+    def stop_job(self, job_i: int):
+        """Buffer a job-stop signal, sent later in a batched `update_jobs` RPC call.
 
-    async def update_step_counts(self, step_counter: dict[StepState, int]):
+        If the matching start is still buffered (started and stopped within the same
+        delay window), drop both: the job never needs to appear in the progress bar.
+        """
+        if self._start_job_buffer.pop(job_i, None) is None:
+            self._stop_job_buffer.add(job_i)
+        self._request_jobs_flush()
+
+    def _request_jobs_flush(self):
+        """Schedule `_flush_jobs`, coalescing with any flush already pending."""
+        if self._flush_jobs_handle is None:
+            loop = asyncio.get_running_loop()
+            self._flush_jobs_handle = loop.call_later(
+                PROGRESS_REFRESH_DELAY, self._on_flush_jobs_timer
+            )
+
+    def _on_flush_jobs_timer(self):
+        self._flush_jobs_handle = None
+        task = asyncio.get_running_loop().create_task(self._flush_jobs())
+        self._flush_tasks.add(task)
+        task.add_done_callback(self._flush_tasks.discard)
+
+    async def _flush_jobs(self):
+        """Send buffered start/stop job signals in a single batched RPC call."""
+        if len(self._start_job_buffer) == 0 and len(self._stop_job_buffer) == 0:
+            return
+        starts, self._start_job_buffer = self._start_job_buffer, {}
+        stops, self._stop_job_buffer = self._stop_job_buffer, set()
         if self.client is not None:
-            await self.client.call.update_step_counts(step_counter)
+            await self.client.call.update_jobs(starts, stops)
+
+    async def update_counts(self, nsuccess: int, ntotal: int):
+        if self.client is not None:
+            await self.client.call.update_counts(nsuccess, ntotal)
 
     async def check_logs(self):
         if self.client is not None:
@@ -106,6 +162,12 @@ class ReporterClient:
             await self.client.call.shutdown()
 
     async def close(self):
+        if self._flush_jobs_handle is not None:
+            self._flush_jobs_handle.cancel()
+            self._flush_jobs_handle = None
+        await self._flush_jobs()
+        if len(self._flush_tasks) > 0:
+            await asyncio.gather(*self._flush_tasks)
         if self.client is not None:
             try:
                 await self.client.close()
@@ -123,26 +185,32 @@ class StepUpProgressBar(ProgressBar):
     """Custom progress bar to handle the case where the console is not a terminal."""
 
     def __init__(self, *args, **kwargs):
-        self._njob = 0
-        self._running = {}
+        self._njob: int = 0
+        self._running: dict[int, tuple[float, str, str]] = {}
         self._refresh_handle: asyncio.TimerHandle | None = None
         super().__init__(*args, **kwargs)
 
     def request_refresh(self, delay: float = PROGRESS_REFRESH_DELAY):
         """Schedule a refresh, coalescing with any refresh already pending.
 
-        This coalesces bursts of progress-relevant events into a single
-        delayed `refresh()` call, instead of repainting the terminal on
-        every event. It is also used internally by `_do_refresh` to keep
-        ticking at `PROGRESS_REFRESH_INTERVAL` while steps are running, so
-        their elapsed times stay current on screen.
+        This coalesces bursts of progress-relevant events into a single delayed `refresh()` call,
+        instead of repainting the terminal on every event.
+        It is also used by `do_refresh` to keep ticking at `PROGRESS_REFRESH_INTERVAL`
+        while steps are running, so their elapsed times stay current on screen.
         """
         if self._refresh_handle is None:
             loop = asyncio.get_running_loop()
-            self._refresh_handle = loop.call_later(delay, self._do_refresh)
+            self._refresh_handle = loop.call_later(delay, self.do_refresh)
 
-    def _do_refresh(self):
-        self._refresh_handle = None
+    def do_refresh(self):
+        """Perform an immediate refresh of the progress bar.
+
+        This is called by `request_refresh` after the coalescing delay,
+        or by functions that need an immediate refresh outside that delay.
+        """
+        if self._refresh_handle is not None:
+            self._refresh_handle.cancel()
+            self._refresh_handle = None
         self.refresh()
         if self._running:
             # Keep ticking while steps are running, to update elapsed times.
@@ -153,15 +221,14 @@ class StepUpProgressBar(ProgressBar):
         self._njob = njob
         self.request_refresh()
 
-    def start_job(self, start: float, prefix: str, description: str, step_i: int):
-        """Start a job in the progress bar."""
-        self._running[step_i] = (start, prefix, description)
-        self.request_refresh()
-
-    def stop_job(self, step_i: int):
-        """Stop a job in the progress bar."""
-        self._running.pop(step_i, None)
-        self.request_refresh()
+    def update_jobs(self, now: float, starts: dict[int, tuple[str, str]], stops: set[int]):
+        """Apply a batch of job start/stop signals to the progress bar."""
+        for job_i, (letter, description) in starts.items():
+            self._running[job_i] = (now, letter, description)
+        for job_i in stops:
+            self._running.pop(job_i, None)
+        # No need to coalesce here, since this is already called from a coalesced `_flush_jobs`.
+        self.do_refresh()
 
     def get_renderables(self) -> Iterable[RenderableType]:
         if len(self._running) > 0:
@@ -170,26 +237,23 @@ class StepUpProgressBar(ProgressBar):
             if len(running) < len(self._running):
                 rule_message += f" ({len(running)} shown)"
             yield Rule(rule_message, style="bold")
-            for start, prefix, description in running:
+            for start, letter, description in running:
                 elapsed = perf_counter() - start
                 text = Text(
                     no_wrap=True,
                     overflow="crop",
                 )
-                text.append(f"{elapsed:6.0f} ", "bold gray50")
-                text.append(f"{prefix:>3s}", "bold gray50")
-                text.append(f" │ {description}")
+                text.append(f"{elapsed:8.0f} ", "bold gray50")
+                text.append(f"{letter} ", "bold gray42")
+                text.append(f"│ {description}")
                 yield text
         yield from super().get_renderables()
 
 
 @attrs.define
 class ReporterHandler:
-    show_perf: bool = attrs.field(default=False)
     show_progress: bool = attrs.field(default=True)
     stop_event: asyncio.Event = attrs.field(factory=asyncio.Event)
-    _step_counts: dict[StepState, int] = attrs.field(init=False, factory=dict)
-    _num_digits: int = attrs.field(init=False, default=3)
     console: Console = attrs.field(init=False)
     progress_bar: StepUpProgressBar | None = attrs.field(init=False)
     task_id_step: TaskID | None = attrs.field(init=False)
@@ -231,23 +295,6 @@ class ReporterHandler:
 
     @allow_rpc
     def report(self, action: str, description: str, pages: list[tuple[str, str]]):
-        if self.show_progress:
-            # Progress bar
-            nsuc = self._step_counts.get(StepState.SUCCEEDED, 0)
-            nrun = self._step_counts.get(StepState.RUNNING, 0) + self._step_counts.get(
-                StepState.CHECKING, 0
-            )
-            npen = self._step_counts.get(StepState.PENDING, 0)
-            nd = max(self._num_digits, len(str(nsuc)), len(str(nrun)), len(str(npen)))
-            self._num_digits = nd
-            if self.console.is_terminal:
-                self.progress_bar.update(
-                    self.task_id_step,
-                    completed=nsuc,
-                    total=nsuc + nrun + npen,
-                )
-                self.progress_bar.request_refresh()
-
         # Action info
         action_color = ACTION_COLORS[action]
 
@@ -258,11 +305,6 @@ class ReporterHandler:
             line += description
         else:
             line += f"[gray50]{description}[/]"
-        if self.show_perf:
-            now = perf_counter()
-            line = f"[gray50]{perf_counter() - self.start:7.2f} {nrun:{nd}d} [/]" + line
-            if action == "PHASE":
-                self.start = now
         self.console.print(
             line, no_wrap=self.console.is_terminal, soft_wrap=not self.console.is_terminal
         )
@@ -300,19 +342,25 @@ class ReporterHandler:
             self.progress_bar.set_njob(njob)
 
     @allow_rpc
-    def start_job(self, prefix: str, description: str, step_i: int):
+    def update_jobs(self, starts: dict[int, tuple[str, str]], stops: set[int]):
         if self.progress_bar is not None:
-            description = escape_command_display(description)
-            self.progress_bar.start_job(perf_counter(), prefix, description, step_i)
+            starts = {
+                job_i: (letter, escape_command_display(description))
+                for job_i, (letter, description) in starts.items()
+            }
+            self.progress_bar.update_jobs(perf_counter(), starts, stops)
 
     @allow_rpc
-    def stop_job(self, step_i: int):
+    def update_counts(self, nsuccess: int, ntotal: int):
         if self.progress_bar is not None:
-            self.progress_bar.stop_job(step_i)
-
-    @allow_rpc
-    def update_step_counts(self, step_counts: dict[StepState, int]):
-        self._step_counts = step_counts
+            self.progress_bar.update(
+                self.task_id_step,
+                completed=nsuccess,
+                total=ntotal,
+            )
+            # The caller of update_counts is expected to coalesce multiple calls,
+            # as it also increases efficiency on the caller's side.
+            self.progress_bar.do_refresh()
 
     @allow_rpc
     def check_logs(self):

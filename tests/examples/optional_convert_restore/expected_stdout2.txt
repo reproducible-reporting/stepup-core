@@ -1,7 +1,7 @@
-   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Watching 1 director(y|ies)
    UPDATED │ ENV_VAR_TEST_STEPUP_IDX ='3' ➜ ='1'
-   STARTUP │ Scanning initial database for changed files
-   STARTUP │ Scanning initial database for new nglob matches
+   STARTUP │ Checking 7 file(s) for changes
+   STARTUP │ Checking 1 nglob(s) for new or deleted matches
      PHASE │ build
     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────

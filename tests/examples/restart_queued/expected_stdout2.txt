@@ -1,6 +1,5 @@
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   STARTUP │ Scanning initial database for new nglob matches
+   STARTUP │ Watching 1 director(y|ies)
+   STARTUP │ Checking 4 file(s) for changes
      PHASE │ build
     NOSKIP │ cp -p inp.txt out.txt
 ──────────────────────────── Changes causing rerun ─────────────────────────────

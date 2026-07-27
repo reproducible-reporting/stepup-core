@@ -1,10 +1,9 @@
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Watching 1 director(y|ies)
+   STARTUP │ Checking 7 file(s) for changes
    DELETED │ data1.txt
    DELETED │ log.txt
    DELETED │ asource1.txt
    DELETED │ data2.txt
-   STARTUP │ Scanning initial database for new nglob matches
      PHASE │ build
     NOSKIP │ cp -p asource2.txt data2.txt
 ───────────────────────────── Missing output files ─────────────────────────────

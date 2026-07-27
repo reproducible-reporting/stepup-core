@@ -1,10 +1,9 @@
-   STARTUP │ Watching 2 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Watching 2 director(y|ies)
+   STARTUP │ Checking 5 file(s) for changes
    UPDATED │ plan.py (digest 79bd0d52 ➜ 33fdf48c, size 141 ➜ 112)
    DELETED │ static/foo.txt
    DELETED │ foo.txt
    UPDATED │ static/bar.txt (digest 7d865e95 ➜ 7e4fa2eb, size 4 ➜ 6)
-   STARTUP │ Scanning initial database for new nglob matches
      PHASE │ build
     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────

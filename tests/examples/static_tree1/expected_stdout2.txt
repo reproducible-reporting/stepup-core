@@ -1,7 +1,6 @@
-   STARTUP │ Watching 2 director(y|ies) from initial database
+   STARTUP │ Watching 2 director(y|ies)
    UPDATED │ ENV_VAR_TEST_STEPUP_INP ='static/sub/foo.txt' ➜ ='static/sub/bar.txt'
-   STARTUP │ Scanning initial database for changed files
-   STARTUP │ Scanning initial database for new nglob matches
+   STARTUP │ Checking 3 file(s) for changes
      PHASE │ build
      START │ ./plan.py
    SUCCESS │ ./plan.py

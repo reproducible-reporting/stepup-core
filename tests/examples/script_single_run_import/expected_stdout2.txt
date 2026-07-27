@@ -1,7 +1,6 @@
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Watching 1 director(y|ies)
+   STARTUP │ Checking 4 file(s) for changes
    UPDATED │ helper.py (digest 9fbd9814 ➜ b649ae50, size 38 ➜ 39)
-   STARTUP │ Scanning initial database for new nglob matches
      PHASE │ build
      START │ ./work.py run
    SUCCESS │ ./work.py run

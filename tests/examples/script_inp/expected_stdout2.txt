@@ -1,7 +1,6 @@
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Watching 1 director(y|ies)
+   STARTUP │ Checking 5 file(s) for changes
    UPDATED │ config.txt (digest f66ab398 ➜ 291423c4, size 9 ➜ 11)
-   STARTUP │ Scanning initial database for new nglob matches
      PHASE │ build
      START │ ./script.py plan
    SUCCESS │ ./script.py plan

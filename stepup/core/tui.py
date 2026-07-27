@@ -173,7 +173,7 @@ async def async_build(args: argparse.Namespace, default_resources: str):
 
         # Set up the reporter monitor
         stop_event = asyncio.Event()
-        reporter_handler = ReporterHandler(args.show_perf > 0, args.progress, stop_event)
+        reporter_handler = ReporterHandler(args.progress, stop_event)
         if args.show_perf > 0 and not reporter_handler.console.is_terminal:
             print("Error: --show-perf requires an interactive terminal.", file=sys.stderr)
             sys.exit(1)

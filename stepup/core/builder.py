@@ -15,14 +15,16 @@ and `remove_outdated_outputs` that are called during finalization.
 import asyncio
 import logging
 import signal
+from collections.abc import Collection
 
 import attrs
 from path import Path
 
 from .asyncio import wait_for_events
-from .enums import FileState, Need, ReturnCode, StepState
+from .enums import FileState, HashUpdateCause, Need, ReturnCode, StepState
 from .executor import Executor
 from .hash import FileHash
+from .hash_queue import HashJob, HashQueue
 from .job import Job
 from .reporter import ReporterClient
 from .scheduler import Scheduler
@@ -72,11 +74,11 @@ class Builder:
     resume: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
     """Other parts of StepUp can set the resume event to put the builder back to work."""
 
-    running_tasks: dict[asyncio.Task, Job] = attrs.field(init=False, factory=dict)
-    """Dictionary of asyncio tasks that are currently running a job."""
+    running_tasks: dict[asyncio.Task, Job | HashJob] = attrs.field(init=False, factory=dict)
+    """Dictionary of asyncio tasks that are currently running a job or hash job."""
 
-    done_tasks: dict[asyncio.Task, Job] = attrs.field(init=False, factory=dict)
-    """Dictionary of asyncio tasks that have completed a job."""
+    done_tasks: dict[asyncio.Task, Job | HashJob] = attrs.field(init=False, factory=dict)
+    """Dictionary of asyncio tasks that have completed a job or hash job."""
 
     returncode: ReturnCode = attrs.field(init=False, default=ReturnCode.PENDING)
     """Exit code for the director, based on the last build phase."""
@@ -86,6 +88,13 @@ class Builder:
 
     executor: Executor = attrs.field(kw_only=True)
     """The executor that runs the steps as asyncio tasks in this process."""
+
+    hash_queue: HashQueue = attrs.field(kw_only=True)
+    """The hash-job queue, drained with priority over `scheduler.pop_runnable_job()`."""
+
+    @hash_queue.default
+    def _default_hash_queue(self) -> HashQueue:
+        return HashQueue(wake=self.wake_job_loop)
 
     async def loop(self, stop_event: asyncio.Event):
         """The main builder loop.
@@ -116,8 +125,8 @@ class Builder:
         """Run all runnable jobs until there are non left or the scheduler is on hold."""
         if self.live_progress:
             async with self.db:
-                step_counts = self.workflow.get_step_counts()
-            await self.reporter.update_step_counts(step_counts)
+                nsuccess, ntotal = self.workflow.get_counts()
+            await self.reporter.update_counts(nsuccess, ntotal)
         await self.reporter("PHASE", "build")
         if self.executor.do_joblog:
             reset_joblog(self.njob)
@@ -127,6 +136,18 @@ class Builder:
             # Handle exceptions of done tasks,
             # and give feedback to the scheduler about completed jobs.
             await self.handle_done_tasks()
+
+            # Hash jobs jump the queue: their runnability never depends on the workflow
+            # database, so there is no reason to make them wait behind a SQL poll. This
+            # must not be skipped while scheduler.on_hold is set ("start no new steps"):
+            # pending hash jobs are bookkeeping for work already under way and must finish
+            # for the phase to end cleanly, which falls out naturally here since on_hold is
+            # only enforced inside scheduler.pop_runnable_job().
+            if len(self.running_tasks) < self.njob:
+                hash_job = self.hash_queue.pop_nowait()
+                if hash_job is not None:
+                    self.start_hash_task(hash_job)
+                    continue
 
             # Get the next job and start it as a task if there is such a job.
             if len(self.running_tasks) < self.njob:
@@ -167,8 +188,8 @@ class Builder:
             await remove_outdated_outputs(self.workflow, self.db, self.reporter)
         if self.live_progress:
             async with self.db:
-                step_counts = self.workflow.get_step_counts()
-            await self.reporter.update_step_counts(step_counts)
+                nsuccess, ntotal = self.workflow.get_counts()
+            await self.reporter.update_counts(nsuccess, ntotal)
         await self.reporter.check_logs()
         if self.watcher is not None:
             self.watcher.resume.set()
@@ -189,11 +210,73 @@ class Builder:
         early failure, ...), and it shows the job as running from the moment its task
         begins, including input hash computation, not just once the command itself starts.
         """
-        await self.reporter.start_job(job.prefix, job.step.label, job.step.i)
+        self.reporter.start_job(job.prefix[0], job.step.label, job.job_i)
         try:
             return await job.coro(self.executor)
         finally:
-            await self.reporter.stop_job(job.step.i)
+            self.reporter.stop_job(job.job_i)
+
+    def start_hash_task(self, hash_job: HashJob) -> None:
+        """Start an asyncio task that runs `hash_job` on the executor.
+
+        Sibling of `start_task`, kept separate rather than unified with it: `HashJob`
+        bypasses the `Job` task plumbing entirely (see `_run_hash_task_with_progress`),
+        so the two families of tasks share `running_tasks`/`done_tasks` for concurrency
+        accounting but not their per-task coroutine.
+        """
+        task = asyncio.create_task(
+            self._run_hash_task_with_progress(hash_job), name=f"HASH: {hash_job.path}"
+        )
+        self.running_tasks[task] = hash_job
+        task.add_done_callback(self._task_done)
+
+    async def _run_hash_task_with_progress(self, hash_job: HashJob):
+        """Run `hash_job` on the executor, bracketed by progress-bar start/stop calls.
+
+        Mirrors `_run_with_progress`: hash jobs are user-visible progress items too, and
+        the bracket must cover the whole task body (not just the time inside
+        `Executor.run_hash_job`) so the job shows as running from the moment its task
+        starts. `HashJob.job_i` is negative (see `hash_queue.py`), so it can never collide
+        with a real `Step.i` in the reporter/progress-bar dict, which is keyed by whatever
+        int it is given.
+        """
+        self.reporter.start_job("H", hash_job.path, hash_job.job_i)
+        try:
+            return await self.executor.run_hash_job(hash_job)
+        finally:
+            self.reporter.stop_job(hash_job.job_i)
+
+    async def run_promoted_hash_jobs(
+        self, paths_hashes: Collection[tuple[str, FileHash]], cause: HashUpdateCause
+    ) -> None:
+        """Submit and run hash jobs immediately, bypassing `job_loop`'s `njob` budget.
+
+        Used by `amend()` when a step blocks on still-`UNCONFIRMED` inputs: the awaiting
+        step already holds a slot and is idle while it waits, so running its hash jobs
+        outside the budget (instead of queuing them, where `njob` steps all blocked in
+        `amend()` could starve them forever) keeps real concurrent work roughly at `njob`.
+        Goes through `_run_hash_task_with_progress`, like every other hash job,
+        so a promoted job is equally visible in the progress bar.
+
+        Parameters
+        ----------
+        paths_hashes
+            `(path, old_hash)` pairs to (re)hash.
+        cause
+            Passed through to every submitted job; see `HashJob.cause`.
+        """
+
+        async def run_one(path: str, old_hash: FileHash) -> None:
+            job = self.hash_queue.submit(path, old_hash, cause)
+            if self.hash_queue.claim(job):
+                await self._run_hash_task_with_progress(job)
+            # Await (rather than just check) the shared future even after running it here:
+            # `run_hash_job` swallows per-file errors into the future instead of raising,
+            # so this is what lets an exception (e.g. a stat error) propagate to the
+            # `amend()` caller instead of being silently lost.
+            await asyncio.shield(job.future)
+
+        await asyncio.gather(*(run_one(path, old_hash) for path, old_hash in paths_hashes))
 
     def _task_done(self, task: asyncio.Task):
         job = self.running_tasks.pop(task)
@@ -210,12 +293,22 @@ class Builder:
 
                 msg = f"Exception in task {task.get_name()}"
                 raise RuntimeError(msg) from exc
+            if isinstance(job, HashJob):
+                # No Scheduler bookkeeping for hash jobs: they never went through
+                # scheduler.pop_runnable_job(), so job.job_i isn't a key in
+                # scheduler.jobs, and there is no Step to record a duration for.
+                self.wake_job_loop.set()
+                continue
             await self.scheduler.job_completed(job)
             self.wake_job_loop.set()
 
     async def stop(self):
         """Cancel any still-running step tasks and signal their child processes."""
         self.executor.interrupt(signal.SIGTERM)
+        # Started hash jobs are covered by executor.interrupt() above, through
+        # Executor.running; this covers the queued-but-not-yet-started ones, whose
+        # futures would otherwise hang forever.
+        self.hash_queue.shutdown()
         tasks = list(self.running_tasks)
         for task in tasks:
             task.cancel()

@@ -1,7 +1,6 @@
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Watching 1 director(y|ies)
+   STARTUP │ Checking 2 file(s) for changes
    DELETED │ test2.txt
-   STARTUP │ Scanning initial database for new nglob matches
      PHASE │ build
      START │ echo test2 > test2.txt
    SUCCESS │ echo test2 > test2.txt

@@ -6,8 +6,10 @@ import asyncio
 import contextlib
 
 from stepup.core.enums import Change, HashUpdateCause
+from stepup.core.executor import Executor
 from stepup.core.file import File, FileState
 from stepup.core.hash import FileHash
+from stepup.core.hash_queue import HashQueue
 from stepup.core.reporter import ReporterClient
 from stepup.core.step import Step
 from stepup.core.watcher import Watcher
@@ -15,12 +17,92 @@ from stepup.core.workflow import Workflow
 
 
 def _make_watcher(workflow: Workflow) -> Watcher:
+    executor = Executor(
+        scheduler=None,
+        workflow=workflow,
+        db=workflow.db,
+        reporter=ReporterClient(),
+        show_perf=False,
+        explain_rerun=False,
+        keep_going=False,
+        live_progress=False,
+        do_joblog=False,
+        infra_env={},
+    )
     return Watcher(
         workflow=workflow,
         db=workflow.db,
         reporter=ReporterClient(),
         dir_queue=asyncio.Queue(),
+        executor=executor,
+        hash_queue=HashQueue(wake=asyncio.Event()),
+        njob=1,
     )
+
+
+class _FakeReporter:
+    """Records `report()` calls instead of sending them anywhere."""
+
+    def __init__(self):
+        self.calls = []
+
+    async def __call__(self, action, label, pages=None):
+        self.calls.append((action, label))
+
+    def start_job(self, letter, description, job_i):
+        pass
+
+    def stop_job(self, job_i):
+        pass
+
+    async def update_counts(self, nsuccess, ntotal):
+        pass
+
+
+async def test_watch_changes_reports_unchanged_and_updates_only_the_changed_file(
+    wfp: Workflow, tmpdir
+):
+    """A file whose content still matches its cached hash must be reported UNCHANGED and
+    pruned from `self.updated` before `process_nglob_changes` runs; a genuinely changed
+    file must keep its UPDATED report and get its new hash applied. Exercises the
+    `gather_hashes`-based path in `watch_changes` with more than one file at once."""
+    with contextlib.chdir(tmpdir):
+        with open("same.txt", "w") as fh:
+            fh.write("same")
+        with open("changed.txt", "w") as fh:
+            fh.write("before")
+        async with wfp.db:
+            plan = wfp.find(Step, "./plan.py")
+            wfp.declare_unconfirmed(plan, ["same.txt", "changed.txt"])
+            same_hash = FileHash.unknown().regen("same.txt")
+            changed_hash = FileHash.unknown().regen("changed.txt")
+            wfp.update_file_hashes(
+                [("same.txt", same_hash), ("changed.txt", changed_hash)],
+                HashUpdateCause.CONFIRMED,
+            )
+
+        # Simulate "changed.txt" having been rewritten while the build phase was active,
+        # and both paths having been recorded as (candidate) updates by the watcher.
+        with open("changed.txt", "w") as fh:
+            fh.write("after")
+
+        watcher = _make_watcher(wfp)
+        reporter = _FakeReporter()
+        watcher.reporter = reporter
+        watcher.interrupt.set()
+        watcher.updated.update(["same.txt", "changed.txt"])
+
+        await watcher.watch_changes(asyncio.Queue(), asyncio.Event())
+
+        # "UPDATED" is reported by record_change() for the raw inotify event, not by the
+        # hash-confirmation loop under test here (which only ever reports "UNCHANGED");
+        # what matters for a genuinely changed file is that it is *not* reported
+        # UNCHANGED and that its hash was actually applied (checked below).
+        assert ("UNCHANGED", "same.txt") in reporter.calls
+        assert ("UNCHANGED", "changed.txt") not in reporter.calls
+        async with wfp.db:
+            assert wfp.find(File, "same.txt").get_hash() == same_hash
+            assert wfp.find(File, "changed.txt").get_hash() != changed_hash
 
 
 async def test_watch_changes_drain_records_missing_file(wfp: Workflow, tmpdir):

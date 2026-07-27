@@ -36,10 +36,6 @@ class InputNotFoundError(Exception):
     """Raised when amended inputs are not available yet."""
 
 
-class DeferredNotConfirmedError(Exception):
-    """Raised when static tree matches cannot be confirmed."""
-
-
 class CgroupError(RuntimeError):
     """Cgroup v2 accounting is unavailable or unusable for this process."""
 

@@ -11,7 +11,9 @@ from path import Path
 
 from .asyncio import stoppable_iterator, wait_for_events
 from .enums import Change, HashUpdateCause
+from .executor import Executor
 from .file import File, FileState
+from .hash_queue import HashQueue, gather_hashes
 from .reporter import ReporterClient
 from .sqlite3 import DBSession
 from .workflow import Workflow
@@ -56,6 +58,23 @@ class Watcher:
 
     The current implementation can only start watching new directories,
     and does not support stopping watching directories.
+    """
+
+    executor: Executor = attrs.field()
+    """Runs the hash jobs submitted through `hash_queue`, one thread per file."""
+
+    hash_queue: HashQueue = attrs.field()
+    """Where file hashes to (re)compute are submitted, shared with `Builder`.
+
+    Must be the same instance the `Builder` drains during build phases, since it also
+    carries the `wake` event (`Builder.wake_job_loop`) that a submission nudges; see
+    the composition root in `director.py:serve()`.
+    """
+
+    njob: int = attrs.field()
+    """Maximum number of hash jobs to run concurrently while draining `hash_queue` directly
+    (`job_loop` is not running during the watch phase, so this bounds concurrency in its
+    place). Mirrors `Builder.njob`.
     """
 
     active: asyncio.Event = attrs.field(factory=asyncio.Event)
@@ -151,18 +170,29 @@ class Watcher:
         # Feed all updates to the workflow and clean up.
         self.active.clear()
         async with self.db:
-            # Update the hashes of all files known to the workflow.
             old_hashes = self.workflow.get_file_hashes(self.updated | self.deleted)
-            new_hashes = []
-            for path, old_file_hash in old_hashes:
-                new_file_hash = old_file_hash.regen(path)
-                if new_file_hash == old_file_hash:
+
+        # Hashing runs outside any held transaction: each hash job applies its own result
+        # in its own short transaction (see Executor.run_hash_job), which is safe here
+        # because no build phase is active to contend with.
+        new_hashes = await gather_hashes(
+            self.hash_queue,
+            self.executor,
+            self.reporter,
+            [(path, old_hash, HashUpdateCause.EXTERNAL) for path, old_hash in old_hashes],
+            self.njob,
+        )
+
+        async with self.db:
+            # An unchanged result was deliberately not applied by the hash job itself
+            # (see Executor.run_hash_job): report it here instead, and prune it from
+            # self.updated before process_nglob_changes runs, so an unchanged file does
+            # not count as an nglob change.
+            old_by_path = dict(old_hashes)
+            for path, new_file_hash in new_hashes:
+                if new_file_hash == old_by_path[path]:
                     await self.reporter("UNCHANGED", path)
                     self.updated.discard(path)
-                else:
-                    new_hashes.append((path, new_file_hash))
-            if len(new_hashes) > 0:
-                self.workflow.update_file_hashes(new_hashes, HashUpdateCause.EXTERNAL)
 
             # Mark steps pending if they use nglob patterns that have different matches.
             self.workflow.process_nglob_changes(self.deleted, self.updated)

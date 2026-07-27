@@ -2,15 +2,17 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Startup sequence after opening the database and configuring internal data structures."""
 
-import glob
 import logging
 import os
+import pickle
 
 from path import Path
 
 from .builder import Builder
 from .enums import FileState, HashUpdateCause, StepState
 from .hash import FileHash, fmt_env_value, fmt_file_hash_diff
+from .hash_queue import gather_hashes
+from .nglob import NGlobMulti
 from .reporter import ReporterClient
 from .sqlite3 import DBSession
 from .step import Step
@@ -33,10 +35,13 @@ async def startup_from_db(
     # RUNNING/CHECKING are uncommon, but can happen if the director crashes.
     async with db:
         # Steps that were running are considered failed.
-        # This reset is also what recovers a stray UNCONFIRMED file left behind by a
-        # director killed between declare_unconfirmed and confirm_hashes: rerunning the
-        # step redeclares and confirms the file. Do not remove or narrow this without
-        # another way to confirm such rows (see the guard in scan_file_changes below).
+        # A stray UNCONFIRMED file left behind by a director killed while its confirming hash job
+        # was still queued or in flight no longer depends on this reset for recovery:
+        # scan_file_changes below confirms such rows directly, via CONFIRMED,
+        # regardless of whether the hash changed.
+        # Rerunning the declaring step (this reset's actual purpose) redeclares
+        # and reconfirms the same path anyway, which is a harmless duplicate confirmation
+        # (see the race comment in workflow.py's _HASH_TRANSITIONS).
         db.execute(
             "UPDATE step SET state = ? WHERE state = ?",
             (StepState.FAILED.value, StepState.RUNNING.value),
@@ -79,13 +84,11 @@ async def startup_from_db(
             for step in to_mark_pending:
                 workflow.mark_step_pending(step)
 
-    # Check for file changes and new glob matches
-    await reporter("STARTUP", "Scanning initial database for changed files")
-    deleted, old_added = await scan_file_changes(workflow, db, reporter)
-    await reporter("STARTUP", "Scanning initial database for new nglob matches")
-    new_added = await scan_nglob_changes(workflow, db, reporter)
-    async with db:
-        workflow.process_nglob_changes(deleted, old_added | new_added)
+    # Check for file changes
+    await check_file_changes(db, reporter, builder)
+    # Check for added / removed files that match nglobs used by some steps.
+    # File content changes are not relevant for this check.
+    await check_nglob_changes(workflow, db, reporter)
 
     # Wrap up by making necessary steps pending and starting the builder.
     logger.info("Startup sequence completed")
@@ -103,14 +106,12 @@ async def populate_dir_queue(workflow: Workflow, db: DBSession, reporter: Report
         parents = set()
         for (path,) in rows:
             parents.add(str(Path(path).parent))
-        await reporter("STARTUP", f"Watching {len(parents)} director(y|ies) from initial database")
+        await reporter("STARTUP", f"Watching {len(parents)} director(y|ies)")
         for path in parents:
             workflow.put_dir_queue(path)
 
 
-async def scan_file_changes(
-    workflow: Workflow, db: DBSession, reporter: ReporterClient
-) -> tuple[set[str], set[str]]:
+async def check_file_changes(db: DBSession, reporter: ReporterClient, builder: Builder):
     """Check all files in the workflow for changes."""
     sql = (
         "SELECT label, state, hash "
@@ -120,68 +121,87 @@ async def scan_file_changes(
     async with db:
         rows = db.execute(sql, data).fetchall()
     if len(rows) == 0:
-        return None
+        return
 
-    deleted = set()
-    added = set()
-    changed_hashes = []
+    await reporter("STARTUP", f"Checking {len(rows)} file(s) for changes")
+    old_by_path = {}
+    path_hash_causes = []
     for path, state, hash_value in rows:
-        state = FileState(state)
         old_file_hash = FileHash.from_json(hash_value)
-        new_file_hash = old_file_hash.regen(path)
-        # An unchanged UNCONFIRMED row is deliberately left alone here: it is confirmed
-        # instead by the RUNNING -> FAILED -> PENDING reset in startup_from_db,
-        # which reruns the declaring step.
+        old_by_path[path] = old_file_hash
+        # Stray UNCONFIRMED rows (left behind by a director killed while their confirming hash
+        # job was still queued or in flight) are resolved directly here, via CONFIRMED, rather
+        # than depending on the RUNNING -> FAILED -> PENDING reset above to rerun the declaring
+        # step: CONFIRMED is the only cause that flips UNCONFIRMED -> STATIC/MISSING, and unlike
+        # the other causes it is applied by the hash job even when the hash is unchanged
+        # (see Executor.run_hash_job).
+        cause = (
+            HashUpdateCause.CONFIRMED
+            if FileState(state) == FileState.UNCONFIRMED
+            else HashUpdateCause.EXTERNAL
+        )
+        path_hash_causes.append((path, old_file_hash, cause))
+    new_hashes = await gather_hashes(
+        builder.hash_queue, builder.executor, reporter, path_hash_causes, builder.njob
+    )
+
+    for path, new_file_hash in new_hashes:
+        old_file_hash = old_by_path[path]
         if old_file_hash != new_file_hash:
             if new_file_hash.is_unknown:
                 await reporter("DELETED", path)
-                deleted.add(path)
             else:
                 await reporter(
                     "UPDATED", path + " " + fmt_file_hash_diff(old_file_hash, new_file_hash)
                 )
-                if state in (FileState.MISSING, FileState.UNCONFIRMED, FileState.AWAITED):
-                    added.add(path)
-            changed_hashes.append((path, new_file_hash))
-
-    logger.info("Updating file hashes %s", changed_hashes)
-    async with db:
-        workflow.update_file_hashes(changed_hashes, HashUpdateCause.EXTERNAL)
-    return deleted, added
 
 
-async def scan_nglob_changes(
-    workflow: Workflow, db: DBSession, reporter: ReporterClient
-) -> set[str]:
-    """Look for new matches in nglobs used by some jobs."""
+async def check_nglob_changes(workflow: Workflow, db: DBSession, reporter: ReporterClient) -> None:
+    """Look for new and deleted matches in nglobs used by some jobs, and process them.
+
+    This is fully self-contained: for each nglob, the paths it matched last time
+    (persisted in the `nglob_multi` table) are compared to a fresh scan of the
+    file system, without consulting the workflow's file states at all.
+    Steps whose nglob matches changed are marked pending and their new matches
+    are persisted.
+    """
     # Load all nglob_multis
     async with db:
-        nglob_multis = list(workflow.nglob_multis())
+        nglob_multis = list(workflow.nglob_multis(yield_step=True))
+    if len(nglob_multis) == 0:
+        return
 
-    # Collect potentially relevant paths
-    paths = set()
-    for ngm in nglob_multis:
-        for ngs in ngm.nglob_singles:
-            for path in glob.iglob(ngs.glob_pattern, recursive=True, include_hidden=True):
-                if path not in paths and ngs.regex.fullmatch(path):
-                    paths.add(path)
+    # Compare the old matches (persisted from the previous run) to a fresh glob scan.
+    await reporter("STARTUP", f"Checking {len(nglob_multis)} nglob(s) for new or deleted matches")
+    changed = []
+    all_deleted = set()
+    all_added = set()
+    for i, ngm, step in nglob_multis:
+        old_paths = set(ngm.files())
+        # A fresh instance is built from scratch (rather than reusing or deep-copying `ngm`)
+        # because `NGlobMulti.glob()` only ever adds matches: it has no mechanism to prune
+        # paths that no longer exist, so it cannot detect deletions on its own.
+        fresh = NGlobMulti.from_patterns(ngm.patterns, ngm.subs)
+        fresh.glob()
+        new_paths = set(fresh.files())
+        local_deleted = old_paths - new_paths
+        local_added = new_paths - old_paths
+        if local_deleted or local_added:
+            changed.append((i, step, fresh))
+        all_deleted.update(local_deleted)
+        all_added.update(local_added)
 
-    # Select the new ones, i.e. not present in the workflow (detached or missing)
-    async with db:
-        db.execute("DELETE FROM path_list")
-        db.executemany("INSERT INTO path_list VALUES (?)", ((path,) for path in paths))
-        rows = db.execute(
-            "SELECT path FROM path_list WHERE NOT EXISTS "
-            "(SELECT 1 FROM node JOIN file ON node.i = file.node "
-            # `node.kind = 'file'` is redundant (only file nodes have a `file` row), but
-            # lets the correlated subquery's planner use the `node_kind_label` covering
-            # index instead of a full scan of `node` for every candidate path.
-            "WHERE node.kind = 'file' AND label = path AND "
-            "NOT detached AND state NOT IN (?, ?))",
-            (FileState.MISSING.value, FileState.UNCONFIRMED.value),
-        ).fetchall()
-    new_paths = [row[0] for row in rows]
-    new_paths.sort()
-    for new_path in new_paths:
-        await reporter("UPDATED", new_path)
-    return set(new_paths)
+    for path in sorted(all_deleted):
+        await reporter("DELETED", path)
+    for path in sorted(all_added):
+        await reporter("UPDATED", path)
+
+    # Persist the freshly scanned matches (already the correct new state, no need to
+    # recompute them again through Workflow.process_nglob_changes) for the nglobs whose
+    # matches actually changed, and mark their owning steps pending.
+    if len(changed) > 0:
+        async with db:
+            for i, step, fresh in changed:
+                step.delete_hash()
+                db.execute("UPDATE nglob_multi SET data = ? WHERE i = ?", (pickle.dumps(fresh), i))
+                workflow.mark_step_pending(step)

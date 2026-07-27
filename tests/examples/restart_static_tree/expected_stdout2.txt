@@ -1,6 +1,5 @@
-   STARTUP │ Watching 2 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
-   STARTUP │ Scanning initial database for new nglob matches
+   STARTUP │ Watching 2 director(y|ies)
+   STARTUP │ Checking 3 file(s) for changes
      PHASE │ build
   DIRECTOR │ Ran 0 job(s).
   DIRECTOR │ Trying to remove 0 outdated output(s)

@@ -91,6 +91,7 @@ The nodes of the graph can be instances of the following two main classes:
     - `UNCONFIRMED`:
       A file that should become a static file after its hash has been computed and stored.
       This is a transient state that evolves either to `MISSING` or `STATIC`.
+      This logic sits entirely in the director, so you don't need to worry about it.
     - `MISSING`:
       A static file that does not exist or has been removed.
     - `STATIC`:

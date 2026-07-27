@@ -3,26 +3,31 @@
 """Unit tests for stepup.core.executor"""
 
 import asyncio
+import contextlib
 import signal
 import threading
 from types import SimpleNamespace
 
 import pytest
 
-from stepup.core.enums import StepState
+from stepup.core.enums import HashUpdateCause, StepState
 from stepup.core.exceptions import HashCancelledError
 from stepup.core.executor import Executor, NoOverwriteDict, Run
-from stepup.core.hash import StepHash, compute_inp_hashes
+from stepup.core.file import File, FileState
+from stepup.core.hash import FileHash, StepHash, compute_inp_hashes
+from stepup.core.hash_queue import HashJob
 from stepup.core.run import ThreadWorker
 from stepup.core.step import Step
 from stepup.core.workflow import Workflow
 
 
-def _make_executor(*, reporter=None, scheduler=None, db=None, keep_going=False) -> Executor:
+def _make_executor(
+    *, reporter=None, scheduler=None, workflow=None, db=None, keep_going=False
+) -> Executor:
     """Build an `Executor` with dummy collaborators, sufficient for `report()` tests."""
     return Executor(
         scheduler=scheduler,
-        workflow=None,
+        workflow=workflow,
         db=db,
         reporter=reporter,
         show_perf=False,
@@ -40,7 +45,7 @@ class _FakeReporter:
     def __init__(self):
         self.calls = []
 
-    async def __call__(self, action, label, pages):
+    async def __call__(self, action, label, pages=None):
         self.calls.append((action, label, pages))
 
 
@@ -297,3 +302,110 @@ async def test_try_skip_job_bails_out_when_out_hash_cancelled(wfs: Workflow, mon
     async with wfs.db:
         assert step.get_state() == StepState.FAILED
     assert reporter.calls[-1][0] == "FAIL"
+
+
+#
+# Executor.run_hash_job
+#
+
+
+def _spy_update_file_hashes(monkeypatch) -> list:
+    """Patch `Workflow.update_file_hashes` to record calls while still applying them.
+
+    Workflow is a slotted attrs class (like Scheduler, see `test_stop_swallows_flush_failure`
+    in test_builder.py), so the replacement must be patched on the class, not the instance.
+    """
+    calls = []
+    orig = Workflow.update_file_hashes
+
+    def spy(self, file_hashes, cause):
+        calls.append((list(file_hashes), cause))
+        return orig(self, file_hashes, cause)
+
+    monkeypatch.setattr(Workflow, "update_file_hashes", spy)
+    return calls
+
+
+async def test_run_hash_job_confirmed_applies_even_when_unchanged(
+    wfs: Workflow, tmpdir, monkeypatch
+):
+    """CONFIRMED must be applied even when the hash didn't change: it's the only cause that
+    flips UNCONFIRMED -> STATIC."""
+    with contextlib.chdir(tmpdir):
+        async with wfs.db:
+            wfs.declare_unconfirmed(wfs.root, ["foo.txt"])
+        with open("foo.txt", "w") as fh:
+            fh.write("hello")
+        real_hash = FileHash.unknown().regen("foo.txt")
+
+        calls = _spy_update_file_hashes(monkeypatch)
+        executor = _make_executor(workflow=wfs, db=wfs.db)
+        hash_job = HashJob("foo.txt", real_hash, HashUpdateCause.CONFIRMED, -1)
+
+        await executor.run_hash_job(hash_job)
+
+        assert calls == [([("foo.txt", real_hash)], HashUpdateCause.CONFIRMED)]
+        assert hash_job.future.result() == real_hash
+        async with wfs.db:
+            assert wfs.find(File, "foo.txt").get_state() == FileState.STATIC
+
+
+async def test_run_hash_job_external_not_applied_when_unchanged(wfs: Workflow, tmpdir, monkeypatch):
+    """An unchanged hash under a non-CONFIRMED cause must not trigger update_file_hashes:
+    e.g. (EXTERNAL, STATIC, known) would call file_externally_updated and needlessly mark
+    all sinks pending."""
+    with contextlib.chdir(tmpdir):
+        async with wfs.db:
+            wfs.declare_unconfirmed(wfs.root, ["foo.txt"])
+        with open("foo.txt", "w") as fh:
+            fh.write("hello")
+        real_hash = FileHash.unknown().regen("foo.txt")
+        async with wfs.db:
+            wfs.update_file_hashes([("foo.txt", real_hash)], HashUpdateCause.CONFIRMED)
+            assert wfs.find(File, "foo.txt").get_state() == FileState.STATIC
+
+        calls = _spy_update_file_hashes(monkeypatch)
+        executor = _make_executor(workflow=wfs, db=wfs.db)
+        hash_job = HashJob("foo.txt", real_hash, HashUpdateCause.EXTERNAL, -1)
+
+        await executor.run_hash_job(hash_job)
+
+        assert calls == []
+        assert hash_job.future.result() == real_hash
+
+
+async def test_run_hash_job_cancelled_cancels_future_without_raising(monkeypatch):
+    def _raise_cancelled(old_hash, path, cancel_event=None):
+        raise HashCancelledError(path)
+
+    monkeypatch.setattr(FileHash, "regen", _raise_cancelled)
+    executor = _make_executor(reporter=_FakeReporter())
+    hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -1)
+
+    await executor.run_hash_job(hash_job)  # must not raise
+
+    assert hash_job.future.cancelled()
+
+
+async def test_run_hash_job_exception_resolves_future_without_raising(monkeypatch):
+    """A stat error (e.g. a permission problem) must resolve the future with the exception,
+    not propagate: an exception escaping a builder task crashes job_loop via
+    handle_done_tasks. It must also put the scheduler on hold: a fire-and-forget submitter
+    (declare_unconfirmed/static_trees/step) never awaits this future, so on_hold's existing
+    "stop dispatching new steps" + report_completion warning is what actually surfaces the
+    failure to the user instead of it being silently lost."""
+
+    def _raise_permission_error(old_hash, path, cancel_event=None):
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(FileHash, "regen", _raise_permission_error)
+    reporter = _FakeReporter()
+    scheduler = SimpleNamespace(on_hold=False)
+    executor = _make_executor(reporter=reporter, scheduler=scheduler)
+    hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -1)
+
+    await executor.run_hash_job(hash_job)  # must not raise
+
+    assert isinstance(hash_job.future.exception(), PermissionError)
+    assert reporter.calls[-1][0] == "ERROR"
+    assert scheduler.on_hold is True

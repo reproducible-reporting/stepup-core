@@ -1,7 +1,6 @@
-   STARTUP │ Watching 1 director(y|ies) from initial database
-   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Watching 1 director(y|ies)
+   STARTUP │ Checking 3 file(s) for changes
    UPDATED │ input.txt (digest b640e840 ➜ 480c2336, size 6 ➜ 7)
-   STARTUP │ Scanning initial database for new nglob matches
      PHASE │ build
      START │ cp input.txt output.txt
    SUCCESS │ cp input.txt output.txt

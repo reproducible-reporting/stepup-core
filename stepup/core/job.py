@@ -75,7 +75,7 @@ class ValidateAmendedJob(Job):
 
     @property
     def prefix(self) -> str:
-        return "VAL"
+        return "VALIDATE_AMENDED"
 
     def coro(self, executor: "Executor"):
         inner = executor.validate_amended_job(
@@ -94,7 +94,7 @@ class RunJob(Job):
 
     @property
     def prefix(self) -> str:
-        return "RUN" if self.step_hash is None else "SKP"
+        return "RUN" if self.step_hash is None else "SKIP"
 
     def coro(self, executor: "Executor"):
         if self.step_hash is None:

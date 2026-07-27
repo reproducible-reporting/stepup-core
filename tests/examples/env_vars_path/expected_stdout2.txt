@@ -1,7 +1,6 @@
-   STARTUP │ Watching 1 director(y|ies) from initial database
+   STARTUP │ Watching 1 director(y|ies)
    UPDATED │ ENV_VAR_TEST_STEPUP_PREFIX ='README' ➜ ='FOO'
-   STARTUP │ Scanning initial database for changed files
-   STARTUP │ Scanning initial database for new nglob matches
+   STARTUP │ Checking 3 file(s) for changes
      PHASE │ build
     NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
