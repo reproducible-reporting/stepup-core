@@ -18,4 +18,5 @@ Modified inp hash    out.txt (digest de3b107b ➜ 26725e7b)
  DIRECTOR │ Ran 4 job(s).
  DIRECTOR │ Trying to remove 0 outdated output(s)
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
  DIRECTOR │ See you!

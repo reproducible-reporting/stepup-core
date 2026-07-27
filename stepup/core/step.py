@@ -23,7 +23,7 @@ from .stepinfo import StepInfo
 from .trellis import Node, NodeType
 from .utils import format_digest
 
-__all__ = ("RESERVED_ENV_VARS", "Step", "truncate_output")
+__all__ = ("RESERVED_ENV_VARS", "STEP_DISPATCH_WHERE", "PathRecord", "Step", "truncate_output")
 
 
 logger = logging.getLogger(__name__)

@@ -10,4 +10,5 @@
   WARNING │ Skipping file cleanup at user's request (--no-clean)
   WARNING │ Check logs: .stepup/warning.log
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph_2.txt, current_graph_2_provenance.dot and current_graph_2_dependency.dot
  DIRECTOR │ See you!

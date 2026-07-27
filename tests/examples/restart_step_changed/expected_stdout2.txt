@@ -23,4 +23,5 @@ Modified inp hash    original.txt (digest 4355a46b ➜ 53c234e5)
  DIRECTOR │ Ran 5 job(s).
  DIRECTOR │ Trying to remove 0 outdated output(s)
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
  DIRECTOR │ See you!

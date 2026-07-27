@@ -16,6 +16,8 @@ from .step import STEP_DISPATCH_WHERE, Step
 from .utils import parse_resources, write_joblog_record
 from .workflow import Workflow
 
+__all__ = ("Scheduler",)
+
 logger = logging.getLogger(__name__)
 
 

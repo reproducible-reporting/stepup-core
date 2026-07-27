@@ -34,8 +34,9 @@ from .hash import (
     compute_out_hashes,
 )
 from .hash_queue import HashJob
+from .outcome import ChildOutcome
 from .reporter import PROGRESS_REFRESH_DELAY, ReporterClient
-from .run import ChildOutcome, Run, ThreadWorker, launch_command
+from .run import Run, ThreadWorker, launch_command
 from .scheduler import Scheduler
 from .sqlite3 import DBSession
 from .step import Step

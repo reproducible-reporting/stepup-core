@@ -2,6 +2,22 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Exceptions used in StepUp."""
 
+__all__ = (
+    "AmendWhileHoldingError",
+    "CgroupError",
+    "CyclicError",
+    "EnvVarError",
+    "GraphError",
+    "HashCancelledError",
+    "InputNotFoundError",
+    "InteractError",
+    "PathError",
+    "RPCError",
+    "RunError",
+    "StepUpError",
+    "TUIError",
+)
+
 
 class GraphError(Exception):
     """A change to the graph could not be made as it would introduce an inconsistency."""
@@ -55,7 +71,7 @@ class TUIError(RuntimeError):
     """An error raised by the terminal user interface (`tui.py`) before the director starts.
 
     Distinguished from a plain `RuntimeError` so that the top-level handler in
-    `build_tool` (`tui.py`) can catch it and print a short, user-facing message
+    `_build_tool` (`tui.py`) can catch it and print a short, user-facing message
     (`ERROR: ...` on stderr) instead of a full traceback, then exit with
     `ReturnCode.INTERNAL`.
     """

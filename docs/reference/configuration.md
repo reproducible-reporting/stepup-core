@@ -113,21 +113,16 @@ separated by slashes, where applicable.
     Possible values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, and `CRITICAL`.
     The default is `WARNING`.
 
-## Settings for `sb`
+## Settings for `sb` or `stepup build`
 
 These settings are stored under the `[build]` section in config files
 (or `[tool.stepup.build]` in `pyproject.toml`).
 Each entry below lists the config file key, environment variable, and command-line option
 separated by slashes, where applicable.
+The settings are grouped as in the output of `stepup build --help`,
+alphabetically within each group.
 
-`cgroup` / `STEPUP_BUILD_CGROUP` / `--cgroup`, `--no-cgroup`
-
-:   This setting controls whether StepUp will run the director
-    (and all its child processes running steps) use cgroup isolation.
-    When enabled, peak memory usage of the director process and all its child processes is measured.
-    Only available on Linux with cgroup v2 enabled and if `systemd-run` is available.
-    Exceptions are raised if cgroup isolation is requested but not working.
-    Off by default.
+### Build Control
 
 `clean` / `STEPUP_BUILD_CLEAN` / `--clean`, `--no-clean`
 
@@ -157,24 +152,6 @@ separated by slashes, where applicable.
     use it instead of the current time for timestamps in generated files.
     If the variable is already set in the environment, it will be used as-is.
 
-`forkserver` / `STEPUP_BUILD_FORKSERVER` / `--forkserver`, `--no-forkserver`
-
-:   Set to `true` to use a forkserver for Python step execution,
-    which reduces startup overhead.
-    This is enabled by default on Linux.
-
-`joblog` / `STEPUP_BUILD_JOBLOG` / `--joblog`, `--no-joblog`
-
-:   Set to `true` to record job-execution events to `.stepup/joblog.csv`, one row per event,
-    with columns `time_ns`, `job_i`, `event`, `description`.
-    The file is truncated and rewritten at the start of every build phase.
-    Each job produces four events:
-    - `CREATED` (by the scheduler),
-    - `STARTED` and `ENDED` (by the executor),
-    - `COMPLETED` (observed by the scheduler, freeing a slot for the next job).
-    Comparing the timestamps across these events, and deriving the number of concurrently
-    running jobs from them, helps diagnose scheduler/executor dispatch overhead.
-
 `jobs` / `STEPUP_BUILD_JOBS` / `--jobs`, `-j`
 
 :   The maximum number of steps to run concurrently.
@@ -188,27 +165,6 @@ separated by slashes, where applicable.
     By default (`false`), the scheduler is put on hold after the first failure:
     steps already running are still allowed to finish, but no new steps are started.
 
-`perf` / `STEPUP_BUILD_PERF` / `--perf`
-
-:   Set to a frequency in Hz to enable performance monitoring of the director process
-    with the [Linux perf profiler](https://perfwiki.github.io/main/).
-    See the section on [Profiling](../development.md#profiling)
-    in the development documentation for more details.
-
-`preload_modules` / `STEPUP_BUILD_PRELOAD_MODULES` / `--preload-modules`
-
-:   A comma-separated list of Python modules to pre-load into the forkserver.
-    Only has effect when `forkserver = true`.
-    Use this to reduce per-step startup time when all (or most) steps import the same large modules.
-    For example, `preload_modules = "numpy,scipy"` pre-loads NumPy and SciPy into the forkserver
-    so that each Python step forked from it inherits them at zero import cost.
-    By default, no additional modules are pre-loaded (only internal StepUp modules are pre-loaded).
-
-`progress` / `STEPUP_BUILD_PROGRESS` / `--progress`, `--no-progress`
-
-:   Set to `false` to disable the progress bar in the terminal user interface.
-    This can be useful to simplify and reduce the output.
-
 `postpone_cap` / `STEPUP_BUILD_POSTPONE_CAP` / `--postpone-cap`
 
 :   Maximum number of times a step can be postponed (since it last succeeded)
@@ -216,22 +172,19 @@ separated by slashes, where applicable.
     This guards against livelocks where a step's amended inputs keep flapping.
     The default is `100`, deliberately generous.
 
+`progress` / `STEPUP_BUILD_PROGRESS` / `--progress`, `--no-progress`
+
+:   Set to `false` to disable the progress bar in the terminal user interface.
+    This can be useful to simplify and reduce the output.
+
 `resources` / `STEPUP_BUILD_RESOURCES` / `--resources`, `-r`
 
 :   A comma-separated list of resource names and available quantities
     to be used for scheduling decisions.
     For example, `resources = "gpu:2,cpu:4"` indicates that there are 2 GPUs and 4 CPUs available.
     Any resource labels can be used, and the available quantity can be any positive integer.
-    Note that resource specifications from config files, the environment variable, and the CLI option
-    are merged together, with the CLI option taking precedence over the environment variable.
-
-`sqllog` / `STEPUP_BUILD_SQLLOG` / `--sqllog`, `--no-sqllog`
-
-:   Set to `true` to enable SQLite debug logging.
-    Each `execute()` / `executemany()` call appends a timing row to `.stepup/sqllog.csv`
-    as it happens.
-    A `.stepup/sqllog.json` index (query text, call site, query plan, and the `query_i` id
-    referenced by the CSV rows) is written when the director exits.
+    Note that resource specifications from config files, the environment variable,
+    and one ore more CLI options (from left to right, e.g. `-r gpu:2 -r cpu:4`) are merged together.
 
 `watch` / `STEPUP_BUILD_WATCH` / `--watch`, `-w`, `--no-watch`
 
@@ -247,6 +200,61 @@ separated by slashes, where applicable.
     without needing to press the `r` key.
     This implies `watch = true`.
     Only supported on Linux.
+
+### Execution Environment
+
+`cgroup` / `STEPUP_BUILD_CGROUP` / `--cgroup`, `--no-cgroup`
+
+:   This setting controls whether StepUp will run the director
+    (and all its child processes running steps) use cgroup isolation.
+    When enabled, peak memory usage of the director process and all its child processes is measured.
+    Only available on Linux with cgroup v2 enabled and if `systemd-run` is available.
+    Exceptions are raised if cgroup isolation is requested but not working.
+    Off by default.
+
+`forkserver` / `STEPUP_BUILD_FORKSERVER` / `--forkserver`, `--no-forkserver`
+
+:   Set to `true` to use a forkserver for Python step execution,
+    which reduces startup overhead.
+    This is enabled by default on Linux.
+
+`preload_modules` / `STEPUP_BUILD_PRELOAD_MODULES` / `--preload-modules`
+
+:   A comma-separated list of Python modules to pre-load into the forkserver.
+    Only has effect when `forkserver = true`.
+    Use this to reduce per-step startup time when all (or most) steps import the same large modules.
+    For example, `preload_modules = "numpy,scipy"` pre-loads NumPy and SciPy into the forkserver
+    so that each Python step forked from it inherits them at zero import cost.
+    By default, no additional modules are pre-loaded (only internal StepUp modules are pre-loaded).
+
+### Diagnostics and Profiling
+
+`joblog` / `STEPUP_BUILD_JOBLOG` / `--joblog`, `--no-joblog`
+
+:   Set to `true` to record job-execution events to `.stepup/joblog.csv`, one row per event,
+    with columns `time_ns`, `job_i`, `event`, `description`.
+    The file is truncated and rewritten at the start of every build phase.
+    Each job produces four events:
+    - `CREATED` (by the scheduler),
+    - `STARTED` and `ENDED` (by the executor),
+    - `COMPLETED` (observed by the scheduler, freeing a slot for the next job).
+    Comparing the timestamps across these events, and deriving the number of concurrently
+    running jobs from them, helps diagnose scheduler/executor dispatch overhead.
+
+`perf` / `STEPUP_BUILD_PERF` / `--perf`
+
+:   Set to a frequency in Hz to enable performance monitoring of the director process
+    with the [Linux perf profiler](https://perfwiki.github.io/main/).
+    See the section on [Profiling](../development.md#profiling)
+    in the development documentation for more details.
+
+`sqllog` / `STEPUP_BUILD_SQLLOG` / `--sqllog`, `--no-sqllog`
+
+:   Set to `true` to enable SQLite debug logging.
+    Each `execute()` / `executemany()` call appends a timing row to `.stepup/sqllog.csv`
+    as it happens.
+    A `.stepup/sqllog.json` index (query text, call site, query plan, and the `query_i` id
+    referenced by the CSV rows) is written when the director exits.
 
 `yappi` / `STEPUP_BUILD_YAPPI` / `--yappi`, `--no-yappi`
 

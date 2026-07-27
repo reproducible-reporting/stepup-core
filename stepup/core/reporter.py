@@ -24,7 +24,7 @@ from .utils import escape_command_display
 
 logger = logging.getLogger(__name__)
 
-__all__ = ("ReporterClient", "ReporterHandler")
+__all__ = ("PROGRESS_REFRESH_DELAY", "ReporterClient", "ReporterHandler")
 
 
 PROGRESS_REFRESH_DELAY = 0.3
@@ -253,11 +253,30 @@ class StepUpProgressBar(ProgressBar):
 @attrs.define
 class ReporterHandler:
     show_progress: bool = attrs.field(default=True)
+    """Whether the user asked for progress information at all (the `--progress` option)."""
+
     stop_event: asyncio.Event = attrs.field(factory=asyncio.Event)
+    """Event set by `shutdown`, ending the RPC server that serves this handler."""
+
     console: Console = attrs.field(init=False)
+    """The rich console that all output goes through."""
+
+    live_progress: bool = attrs.field(init=False)
+    """Whether progress can be shown live, i.e. wanted **and** possible.
+
+    This is the single decision behind the progress bar: `progress_bar` and `task_id_step`
+    exist iff this is true. `tui.py` also forwards it to the director (`--live-progress`),
+    so the director does not send updates that would be dropped here anyway.
+    """
+
     progress_bar: StepUpProgressBar | None = attrs.field(init=False)
+    """The progress bar, or `None` when progress cannot be shown live."""
+
     task_id_step: TaskID | None = attrs.field(init=False)
+    """The progress bar task tracking completed steps, or `None` without a progress bar."""
+
     start: float = attrs.field(init=False, factory=perf_counter)
+    """The moment this handler was created, i.e. roughly the start of the build."""
 
     @console.default
     def _default_console(self):
@@ -270,9 +289,13 @@ class ReporterHandler:
         )
         return Console(highlight=False, theme=theme)
 
+    @live_progress.default
+    def _default_live_progress(self):
+        return self.show_progress and self.console.is_terminal
+
     @progress_bar.default
     def _default_progress_bar(self):
-        if not (self.show_progress and self.console.is_terminal):
+        if not self.live_progress:
             return None
         progress_bar = StepUpProgressBar(
             TextColumn("{task.description}"),
@@ -287,11 +310,7 @@ class ReporterHandler:
 
     @task_id_step.default
     def _default_task_id_step(self):
-        return (
-            self.progress_bar.add_task("", total=0, visible=True)
-            if self.show_progress and self.console.is_terminal
-            else None
-        )
+        return self.progress_bar.add_task("", total=0, visible=True) if self.live_progress else None
 
     @allow_rpc
     def report(self, action: str, description: str, pages: list[tuple[str, str]]):

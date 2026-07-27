@@ -20,7 +20,7 @@ from path import Path
 from .exceptions import EnvVarError, StepUpError
 from .path import StrPath, coerce_str, translate
 from .step import truncate_output
-from .utils import CaseSensitiveTemplate
+from .utils import CaseSensitiveTemplate, extract_env_overrides
 
 __all__ = (
     "filter_dependencies",
@@ -157,9 +157,9 @@ def record_subprocess(
         recorded as a short summary (byte length and a truncated SHA-256), since the
         archival record is `TEXT` and informative rather than authoritative.
     """
-    from stepup.core.api import RPC_CLIENT, _get_job_i  # noqa: PLC0415
+    from stepup.core.api import RPC_CLIENT, get_job_i  # noqa: PLC0415
 
-    job_i = _get_job_i()
+    job_i = get_job_i()
     if job_i < 0:
         return
     max_output_size = int(os.getenv("STEPUP_MAX_OUTPUT_SIZE", "0"))
@@ -235,12 +235,10 @@ def run_subprocess(
     subprocess.CalledProcessError
         When `check` is `True` and the subprocess exits with a non-zero return code.
     """
-    if not shell:
-        from stepup.core.api import _extract_env_overrides  # noqa: PLC0415
-
-        env_overrides, cmd = _extract_env_overrides(cmd)
-    else:
+    if shell:
         env_overrides = None
+    else:
+        env_overrides, cmd = extract_env_overrides(cmd)
     run_env = dict(os.environ)
     if env_overrides is not None:
         run_env.update(env_overrides)

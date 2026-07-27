@@ -115,7 +115,8 @@ def find_own_memory_cgroup(cgroup_root: str = "/sys/fs/cgroup") -> Path:
     """Return this process's cgroup directory, if memory accounting is usable there.
 
     This does not create or modify any cgroup;
-    it is on the caller (see `stepup.core.tui.cgroup_scope_prefix()`)
+    it is on the caller (`tui.py` builds the director's command line with
+    `cgroup_scope_prefix()` for exactly this reason)
     to arrange for this process to already be the sole occupant of its own cgroup,
     e.g. by launching it via `systemd-run --scope`.
 

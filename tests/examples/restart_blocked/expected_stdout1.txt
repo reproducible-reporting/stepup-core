@@ -22,4 +22,5 @@ Outputs      AWAITED  final.txt
   WARNING │ Skipping file cleanup due to incomplete build
   WARNING │ Check logs: .stepup/warning.log
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
  DIRECTOR │ See you!

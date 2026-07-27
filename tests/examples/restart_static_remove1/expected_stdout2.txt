@@ -17,4 +17,5 @@ Same step hash       compact, inp_digest 6a185d90, out_digest 463361ab
  DIRECTOR │ Trying to remove 1 outdated output(s)
    REMOVE │ bar.txt
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
  DIRECTOR │ See you!

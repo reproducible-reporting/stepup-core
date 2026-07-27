@@ -19,6 +19,7 @@ import resource
 import runpy
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -39,7 +40,6 @@ from .step import Step
 from .utils import escape_command_display
 
 __all__ = (
-    "ChildOutcome",
     "ForkserverWorker",
     "Run",
     "SubprocessWorker",
@@ -627,6 +627,39 @@ async def _wait_proc(proc):
     proc.join()
 
 
+def _lost_child_outcome(exitcode: int | None) -> ChildOutcome:
+    """Describe a forkserver child that died before sending its `ChildOutcome`.
+
+    Whatever the child had written to stdout or stderr is lost with it:
+    it is buffered in the child and only travels back over the pipe as part of the outcome.
+
+    Parameters
+    ----------
+    exitcode
+        The exit code of the joined child process,
+        negative when it was terminated by a signal.
+
+    Returns
+    -------
+    outcome
+        A failed outcome explaining how the child died.
+    """
+    if exitcode is not None and exitcode < 0:
+        try:
+            reason = signal.Signals(-exitcode).name
+        except ValueError:
+            reason = f"signal {-exitcode}"
+        returncode = exitcode
+    else:
+        # A child that exits without sending anything (e.g. a step calling `os._exit`)
+        # never gets here with exitcode 0, but a failed run must not report success.
+        reason = f"exit code {exitcode}"
+        returncode = exitcode if exitcode else 1
+    return ChildOutcome(
+        returncode, "", f"The Python step died ({reason}) before sending back its result.\n"
+    )
+
+
 async def _exec_in_forkserver(
     mp_ctx: multiprocessing.context.BaseContext,
     target,
@@ -636,6 +669,10 @@ async def _exec_in_forkserver(
     """Run `target(*args, conn)` in a forkserver child and return the `ChildOutcome` it sends back.
 
     The child's pid is recorded on `run` so a running step can be interrupted.
+    A child that dies without sending an outcome (typically because the build was aborted
+    and it was killed with `SIGKILL`) yields a failed outcome describing how it died,
+    just like a subprocess killed by a signal, instead of an `EOFError` escaping as an
+    internal director error.
     """
     parent_conn, child_conn = mp_ctx.Pipe(duplex=False)
     proc = mp_ctx.Process(target=target, args=(*args, child_conn))
@@ -644,11 +681,15 @@ async def _exec_in_forkserver(
     run.worker = ForkserverWorker(proc.pid, job_i=run.job_i)
     try:
         outcome = await _recv_conn(parent_conn)
+    except (EOFError, OSError):
+        # EOFError: the child died with the pipe still empty.
+        # OSError (e.g. ConnectionResetError): it died halfway through sending.
+        outcome = None
     finally:
         await _wait_proc(proc)
         parent_conn.close()
         run.worker = None
-    return outcome
+    return _lost_child_outcome(proc.exitcode) if outcome is None else outcome
 
 
 @contextlib.contextmanager

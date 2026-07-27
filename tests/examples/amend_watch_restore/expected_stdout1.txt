@@ -14,6 +14,7 @@ inp2.txt
  DIRECTOR │ Ran 4 job(s).
  DIRECTOR │ Trying to remove 0 outdated output(s)
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
   UPDATED │ inp2.txt
     PHASE │ build
    NOSKIP │ echo word2 > inp2.txt
@@ -36,4 +37,5 @@ Same out hash        out2.txt
  DIRECTOR │ Ran 3 job(s).
  DIRECTOR │ Trying to remove 0 outdated output(s)
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
  DIRECTOR │ See you!

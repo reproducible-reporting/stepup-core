@@ -6,4 +6,5 @@
   WARNING │ Skipping file cleanup due to incomplete build
   WARNING │ Check logs: .stepup/warning.log
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
  DIRECTOR │ See you!

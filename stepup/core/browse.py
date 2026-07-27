@@ -28,7 +28,9 @@ from .hash import FileHash, fmt_digest
 from .nglob import NGlobMulti
 from .sqlite3 import connect
 from .step import Step
-from .utils import escape_command_display, format_subprocess
+from .utils import escape_command_display, format_subprocess, positive_int
+
+__all__ = ("browse_subcommand",)
 
 
 def _detect_browsers() -> str:
@@ -52,7 +54,7 @@ def browse_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     parser = subparsers.add_parser("browse", help="Browse the StepUp build graph.")
     parser.add_argument(
         "--port",
-        type=int,
+        type=positive_int,
         default=7837,
         help="Port to bind the server to (default: %(default)s).",
     )

@@ -353,6 +353,9 @@ class AsyncRPCClient(BaseAsyncRPCClient):
     _recv_stop: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
     """Event to signal the receive loop to stop."""
 
+    _recv_closed: bool = attrs.field(init=False, default=False)
+    """Whether the receive loop has stopped, meaning no responses can arrive anymore."""
+
     _recv_task: asyncio.Task = attrs.field(init=False)
     """The task running the receive loop."""
 
@@ -373,6 +376,11 @@ class AsyncRPCClient(BaseAsyncRPCClient):
                 break
             self._recv_data[call_id] = response
             self._recv_events[call_id].set()
+        # The peer is gone (or `close()` was called). Wake every pending caller,
+        # so that it raises instead of waiting for a response that can no longer arrive.
+        self._recv_closed = True
+        for recv_event in self._recv_events.values():
+            recv_event.set()
 
     @classmethod
     async def subprocess(cls, executable: str, *args, **kwargs):
@@ -400,11 +408,19 @@ class AsyncRPCClient(BaseAsyncRPCClient):
         kwargs
             Keyword arguments for the remote function.
 
+        Raises
+        ------
+        ConnectionResetError
+            When the connection to the server is lost before the response is received,
+            or when it was already lost before the call was made.
+
         Returns
         -------
         value
             Whatever the remote functions returns.
         """
+        if self._recv_closed:
+            raise ConnectionResetError(f"RPC connection lost before calling {name!r}")
         request = pickle.dumps([name, args, kwargs], protocol=pickle.HIGHEST_PROTOCOL)
         self.counter += 1
         call_id = self.counter
@@ -412,8 +428,11 @@ class AsyncRPCClient(BaseAsyncRPCClient):
         self._recv_events[call_id] = recv_event
         await _send_rpc_message(self.writer, call_id, request)
         await recv_event.wait()
-        response = self._recv_data.pop(call_id)
         self._recv_events.pop(call_id)
+        if call_id not in self._recv_data:
+            # The receive loop woke us up without a response, i.e. the peer is gone.
+            raise ConnectionResetError(f"RPC connection lost while calling {name!r}")
+        response = self._recv_data.pop(call_id)
         body, is_error = pickle.loads(response)
         if is_error:
             _handle_error(body, name, args, kwargs)

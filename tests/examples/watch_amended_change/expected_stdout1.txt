@@ -7,6 +7,7 @@
  DIRECTOR │ Ran 2 job(s).
  DIRECTOR │ Trying to remove 0 outdated output(s)
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
   UPDATED │ inp.txt
     PHASE │ build
     START │ ./work.py
@@ -14,4 +15,5 @@
  DIRECTOR │ Ran 2 job(s).
  DIRECTOR │ Trying to remove 0 outdated output(s)
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
  DIRECTOR │ See you!

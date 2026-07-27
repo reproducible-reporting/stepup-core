@@ -19,5 +19,6 @@ Input changed unexpectedly: trigger.txt (digest 84325551 ➜ 92e78d0b, size 3 �
   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
     PHASE │ watch
   UPDATED │ trigger.txt
+ DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
 UNCHANGED │ trigger.txt
  DIRECTOR │ See you!

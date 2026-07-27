@@ -17,6 +17,8 @@ from .hash import FileHash
 from .path import translate, translate_back
 from .sqlite3 import connect, escape_like_pattern
 
+__all__ = ("clean_subcommand",)
+
 
 def clean_subcommand(subparsers, loader: ConfigLoader) -> Callable:
     """Define command-line arguments for the clean tool.

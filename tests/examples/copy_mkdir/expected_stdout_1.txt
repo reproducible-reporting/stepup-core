@@ -9,4 +9,5 @@
  DIRECTOR │ Ran 3 job(s).
  DIRECTOR │ Trying to remove 0 outdated output(s)
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph_1.txt, current_graph_1_provenance.dot and current_graph_1_dependency.dot
  DIRECTOR │ See you!

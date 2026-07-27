@@ -14,6 +14,8 @@ from path import Path
 from .config import ConfigLoader
 from .utils import string_to_bool
 
+__all__ = ("main", "sb_main")
+
 
 def main():
     parser, tool_funcs = build_parser()

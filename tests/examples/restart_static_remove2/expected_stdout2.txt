@@ -16,4 +16,5 @@ Modified step hash   compact ➜ explained, inp_digest ea40b2f8 ➜ 603fc93b, ou
    REMOVE │ out1.txt
    REMOVE │ out.txt
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
  DIRECTOR │ See you!

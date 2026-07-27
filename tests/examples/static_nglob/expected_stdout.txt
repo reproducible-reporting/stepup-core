@@ -33,6 +33,7 @@ Planning sec 1 summary
  DIRECTOR │ Ran 11 job(s).
  DIRECTOR │ Trying to remove 0 outdated output(s)
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
   DELETED │ ch-2-theory/sec-2-2-advanced.txt
   UPDATED │ ch-2-theory/sec-2-2-original.txt
     PHASE │ build
@@ -63,4 +64,5 @@ Planning sec 1 summary
  DIRECTOR │ Trying to remove 1 outdated output(s)
    REMOVE │ ch-2-theory/sec-2-2-advanced.md
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
  DIRECTOR │ See you!

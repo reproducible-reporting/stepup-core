@@ -16,6 +16,7 @@ tmp1.txt
  DIRECTOR │ Ran 5 job(s).
  DIRECTOR │ Trying to remove 0 outdated output(s)
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
   DELETED │ inp2.txt
     PHASE │ build
    NOSKIP │ echo Contents of inp2.txt > inp2.txt
@@ -39,6 +40,7 @@ Same out hash        log.txt
  DIRECTOR │ Ran 3 job(s).
  DIRECTOR │ Trying to remove 0 outdated output(s)
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
   UPDATED │ inp0.txt
   UPDATED │ inp1.txt
     PHASE │ build
@@ -63,4 +65,5 @@ Same inp hash        work.py
  DIRECTOR │ Ran 4 job(s).
  DIRECTOR │ Trying to remove 0 outdated output(s)
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
  DIRECTOR │ See you!

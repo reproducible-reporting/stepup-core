@@ -23,7 +23,6 @@ import keyword
 import logging
 import math
 import os
-import re
 import shlex
 import sys
 import tomllib
@@ -61,7 +60,7 @@ from .path import (
 from .rpc import DummySyncRPCClient, SocketSyncRPCClient
 from .step import RESERVED_ENV_VARS
 from .stepinfo import StepInfo
-from .utils import format_command, parse_resources, string_to_list
+from .utils import extract_env_overrides, format_command, parse_resources, string_to_list
 
 __all__ = (
     "RPC_CLIENT",
@@ -69,6 +68,8 @@ __all__ = (
     "call",
     "copy",
     "dumpns",
+    "get_job_i",
+    "get_rpc_client",
     "getenv",
     "getinfo",
     "glob",
@@ -136,13 +137,13 @@ def static(*paths: StrPath | Iterable[StrPath]) -> None:
             tr_file_paths = sorted(translate(su_file_path) for su_file_path in su_file_paths)
             # Declare the files unconfirmed; the director hashes and confirms them in the
             # background, off this call's critical path.
-            RPC_CLIENT.call.declare_unconfirmed(_get_job_i(), tr_file_paths)
+            RPC_CLIENT.call.declare_unconfirmed(get_job_i(), tr_file_paths)
         if len(su_dir_paths) > 0:
             # Translate paths to make them relative to the working directory of the director.
             tr_dir_paths = sorted(translate(su_dir_path) for su_dir_path in su_dir_paths)
             # Declare the static trees; matching existing files are hashed and confirmed
             # in the background by the director, same as above.
-            RPC_CLIENT.call.static_trees(_get_job_i(), tr_dir_paths)
+            RPC_CLIENT.call.static_trees(get_job_i(), tr_dir_paths)
 
 
 def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
@@ -205,7 +206,7 @@ def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
     if len(static_paths) > 0:
         _check_inp_paths(static_paths)
         tr_static_paths = [translate(static_path) for static_path in static_paths]
-        RPC_CLIENT.call.declare_unconfirmed(_get_job_i(), tr_static_paths)
+        RPC_CLIENT.call.declare_unconfirmed(get_job_i(), tr_static_paths)
 
     # Translate all the nglob matches with matching paths and send to the director.
     tr_all_paths = [
@@ -214,7 +215,7 @@ def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
         for paths in nglob_single.results.values()
         for path in paths
     ]
-    RPC_CLIENT.call.nglob(_get_job_i(), tr_patterns, subs, tr_all_paths)
+    RPC_CLIENT.call.nglob(get_job_i(), tr_patterns, subs, tr_all_paths)
 
     # Done
     return nglob_multi
@@ -401,7 +402,7 @@ def step(
     # and hashed/confirmed by the director in the background; a step consuming one simply
     # does not become runnable until that resolves (see scheduler.py).
     RPC_CLIENT.call.step(
-        _get_job_i(),
+        get_job_i(),
         command,
         tr_inp_paths,
         env_deps,
@@ -715,7 +716,7 @@ def amend(
     # Finally, amend for real. This call may block while the director hashes any amended
     # input that still matches an unconfirmed static tree entry, which can exceed
     # STEPUP_SYNC_RPC_TIMEOUT for a large file, hence the disabled socket timeout.
-    job_i = _get_job_i()
+    job_i = get_job_i()
     carry_on = RPC_CLIENT.call.amend(
         job_i,
         tr_inp_paths,
@@ -763,7 +764,7 @@ def hold() -> Iterator[None]:
     once `release()` is confirmed to have succeeded, so `amend()`'s guard correctly stays active
     if the release call could not be confirmed.
     """
-    job_i = _get_job_i()
+    job_i = get_job_i()
     RPC_CLIENT.call.hold(job_i)
     _HOLD_STATE.holding += 1
     try:
@@ -799,7 +800,7 @@ def getinfo() -> StepInfo:
         For consistency with other functions in this module, the `inp`, `out` and `vol`
         paths are relative to the working directory of the step.
     """
-    step_info = RPC_CLIENT.call.getinfo(_get_job_i())
+    step_info = RPC_CLIENT.call.getinfo(get_job_i())
     # Update paths to make them relative to the working directory of the step.
     step_info.inp = sorted(translate_back(inp) for inp in step_info.inp)
     step_info.out = sorted(translate_back(out) for out in step_info.out)
@@ -1457,61 +1458,6 @@ def _check_no_directories(paths: Iterable[Path]):
             raise PathError(f"Directories are not allowed: {path}")
 
 
-# Matches a single leading `NAME=value` assignment in a command string, anchored at the scan
-# position. The value may be unquoted, single-quoted, or double-quoted (shell-style).
-_LEADING_ASSIGNMENT = re.compile(
-    r"""
-    \s*                                    # optional leading whitespace
-    (?P<name>[A-Za-z_][A-Za-z0-9_]*)       # variable name
-    =                                      # the equals sign
-    (?P<value>
-        (?:"(?:[^"\\]|\\.)*")              # double-quoted value
-        | (?:'[^']*')                      # single-quoted value
-        | [^\s'"]*                         # bare value (no whitespace or quotes)
-    )
-    (?=\s|$)                               # must be followed by whitespace or end of string
-    """,
-    re.VERBOSE,
-)
-
-
-def _extract_env_overrides(command: str) -> tuple[dict[str, str] | None, str]:
-    """Split leading `VAR=value` assignments off a command string.
-
-    Only assignments at the very start of the command are extracted.
-    Scanning stops at the first token that is not an assignment (e.g. the executable),
-    so `./cmd FOO=bar` extracts nothing.
-    Values may be unquoted, single-quoted, or double-quoted, consistent with shell quoting.
-
-    Parameters
-    ----------
-    command
-        The raw command string, possibly prefixed with `VAR=value` assignments.
-
-    Returns
-    -------
-    env_overrides
-        A dictionary with the extracted environment variable overrides.
-    remaining
-        The command string with the leading assignments removed, otherwise preserved verbatim.
-    """
-    env_overrides = {}
-    pos = 0
-    while True:
-        match = _LEADING_ASSIGNMENT.match(command, pos)
-        if match is None:
-            break
-        try:
-            dequoted = shlex.split(match.group("value"))
-        except ValueError:
-            break
-        env_overrides[match.group("name")] = dequoted[0] if dequoted else ""
-        pos = match.end()
-    if len(env_overrides) == 0:
-        env_overrides = None
-    return env_overrides, command[pos:].lstrip()
-
-
 def _prepare_run_command(
     command: StrPath, *, shell: bool, need_relative_exe: bool
 ) -> tuple[str, str | None, dict[str, str] | None]:
@@ -1550,7 +1496,7 @@ def _prepare_run_command(
         The extracted environment overrides, or `None`.
     """
     command = coerce_str(command)
-    env_overrides, remaining = _extract_env_overrides(command)
+    env_overrides, remaining = extract_env_overrides(command)
     if shell:
         # Leading assignments are left in the command for the shell to interpret.
         # They are only stripped off here to find the real first word for exe detection.
@@ -1588,7 +1534,7 @@ def get_rpc_client(socket: str | None = None) -> DummySyncRPCClient | SocketSync
 RPC_CLIENT = get_rpc_client()
 
 
-def _get_job_i() -> int:
+def get_job_i() -> int:
     """Get the current job id from the STEPUP_JOB_I environment variable."""
     job_i = os.getenv("STEPUP_JOB_I")
     if job_i is None:

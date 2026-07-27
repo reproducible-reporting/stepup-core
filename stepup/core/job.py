@@ -11,8 +11,8 @@ from .utils import write_joblog_record
 
 if TYPE_CHECKING:
     from .executor import Executor
-    from .file import FileHash
-    from .step import Step, StepHash
+    from .hash import FileHash, StepHash
+    from .step import Step
 
 
 __all__ = ("Job", "RunJob", "ValidateAmendedJob")

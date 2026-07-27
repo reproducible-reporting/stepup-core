@@ -21,4 +21,5 @@ Inputs        STATIC  inp1.txt [amended]
   WARNING │ Skipping file cleanup due to incomplete build
   WARNING │ Check logs: .stepup/warning.log
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph_1.txt, current_graph_1_provenance.dot and current_graph_1_dependency.dot
  DIRECTOR │ See you!

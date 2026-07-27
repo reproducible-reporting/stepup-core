@@ -32,4 +32,5 @@ Same inp hash        raw3.txt
    REMOVE │ converted1.txt
   WARNING │ Check logs: .stepup/warning.log
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
  DIRECTOR │ See you!

@@ -4,6 +4,7 @@
   SUCCESS │ ./plan.py
     START │ stepup shutdown; sleep 3; echo hello > msg.txt
  DIRECTOR │ Waiting for steps to complete before shutdown.
+ DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
   SUCCESS │ stepup shutdown; sleep 3; echo hello > msg.txt
  DIRECTOR │ Ran 2 job(s).
   WARNING │ Scheduler is put on hold. Not reporting pending steps.

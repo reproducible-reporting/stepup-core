@@ -15,6 +15,8 @@ from .constants import GRAPH_DB
 from .enums import FileState, StepState
 from .sqlite3 import connect
 
+__all__ = ("status_subcommand",)
+
 SQL_STEP_COUNTS = (
     "SELECT step.state, count(*) FROM node JOIN step ON node.i = step.node "
     "WHERE NOT node.detached GROUP BY step.state"

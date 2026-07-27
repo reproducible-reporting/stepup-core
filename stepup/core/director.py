@@ -41,6 +41,7 @@ from .sqlite3 import DBSession
 from .startup import startup_from_db
 from .stepinfo import StepInfo
 from .usage import CgroupMemorySampler, format_resource_usage
+from .utils import positive_int
 from .watcher import WATCHER_AVAILABLE, Watcher
 from .workflow import Workflow
 
@@ -280,7 +281,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--postpone-cap",
-        type=int,
+        type=positive_int,
         default=100,
         help="Maximum number of consecutive postpones (since the last success) before "
         "a step is failed instead of parked. A livelock guard. [default=%(default)s]",
@@ -1152,6 +1153,10 @@ class DirectorHandler:
                 print(self.workflow.format_dot_provenance(), file=fh)
             with open(f"{prefix}_dependency.dot", "w") as fh:
                 print(self.workflow.format_dot_dependency(), file=fh)
+        await self.reporter(
+            "DIRECTOR",
+            f"Wrote graph to {prefix}.txt, {prefix}_provenance.dot and {prefix}_dependency.dot",
+        )
 
     @allow_rpc
     async def run(self) -> None:

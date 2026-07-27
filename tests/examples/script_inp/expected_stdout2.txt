@@ -13,4 +13,5 @@
    REMOVE │ out_foo.txt
    REMOVE │ out_bar.txt
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
  DIRECTOR │ See you!

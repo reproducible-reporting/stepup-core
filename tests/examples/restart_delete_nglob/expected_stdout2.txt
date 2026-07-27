@@ -19,4 +19,5 @@ Same step hash       compact, inp_digest 3139b420, out_digest 810dcef4
    REMOVE │ out1.txt
    REMOVE │ foo1.txt
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
  DIRECTOR │ See you!

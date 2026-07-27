@@ -3,6 +3,7 @@
 """Unit tests for stepup.core.rpc"""
 
 import asyncio
+import contextlib
 import sys
 
 import pytest
@@ -357,3 +358,48 @@ async def test_send_loop_does_not_mask_original_error_with_connection_error():
         await queue.put((1, asyncio.ensure_future(_boom())))
         with pytest.raises(_MarkerError):
             await _serve_rpc_send_loop(_AlwaysResetWriter(), stop_event, queue)
+
+
+@pytest_asyncio.fixture()
+async def vanishing_server_path(path_tmp):
+    """Path of a socket server that drops the connection instead of answering the first call."""
+    path = path_tmp / "vanishing_socket"
+
+    async def handle(reader, writer):
+        # Read the fixed-size header of the first request and then disappear,
+        # like a director that dies while a call is in flight.
+        with contextlib.suppress(asyncio.IncompleteReadError, ConnectionError):
+            await reader.readexactly(16)
+        writer.close()
+
+    server = await asyncio.start_unix_server(handle, path)
+    try:
+        yield path
+    finally:
+        server.close()
+        await server.wait_closed()
+
+
+async def test_client_call_raises_when_server_dies(vanishing_server_path):
+    """A call in flight must fail when the peer disappears, instead of waiting forever.
+
+    Only the receive loop can set the per-call event, so a peer that goes away without
+    answering leaves the caller waiting for a response that can never arrive.
+    """
+    async with asyncio.timeout(5):
+        client = await AsyncRPCClient.socket(vanishing_server_path)
+        with pytest.raises(ConnectionResetError):
+            await client.call.echo("hello")
+        await client.close()
+
+
+async def test_client_close_after_peer_gone(vanishing_server_path):
+    """Closing a client whose peer is already gone must complete without hanging or raising."""
+    async with asyncio.timeout(5):
+        client = await AsyncRPCClient.socket(vanishing_server_path)
+        with pytest.raises(ConnectionResetError):
+            await client.call.echo("hello")
+        await client.close()
+        # A new call cannot be answered either, so it must fail instead of waiting forever.
+        with pytest.raises(ConnectionResetError):
+            await client.call.echo("world")

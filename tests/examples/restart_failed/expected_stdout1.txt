@@ -13,4 +13,5 @@ cat line.txt >> log.txt; exit 1  # exit=1
   WARNING │ Skipping file cleanup due to incomplete build
   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
     PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
  DIRECTOR │ See you!

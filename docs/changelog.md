@@ -304,6 +304,16 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
 - Sending `SIGTERM` to StepUp no longer leaves running steps behind as orphaned processes.
 - The third `q` key press kills running steps with `SIGKILL` again, as documented.
   It escalated to `SIGTERM` instead since version 3.0.0.
+- The terminal user interface cleanly exits when the director process fails to start unexpectedly.
+- Starting a build no longer refuses to run just because a previous director's socket file
+  is still on disk after the process that created it was killed.
+  The check now asks the operating system whether the pid advertised in `.stepup/director.log`
+  is still alive, and only refuses when it is (or when the pid cannot be determined).
+- A keystroke whose command fails inside the director (e.g. `g` when `graph.txt` cannot be
+  written) is now reported as an error, and the build carries on.
+  Previously this ended `stepup build` with a traceback and discarded the director's return code.
+- Running with `--log-level=ERROR` or `--log-level=CRITICAL` no longer ends every successful
+  build with a spurious `Errors logged in .stepup/director.log` warning.
 
 ## [3.2.3][] - 2026-04-16 {: #v3.2.3 }
 

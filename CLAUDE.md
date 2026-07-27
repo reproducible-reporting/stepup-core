@@ -157,6 +157,32 @@ Section headings (`##`, `###`, ...) use **Title Case**
 coordinating conjunctions, and prepositions regardless of length, e.g. "from", "with").
 Inline code spans (e.g. `` `run()` ``) keep their own casing and are never title-cased.
 
+### `__all__`
+
+Wildcard imports are banned (ruff `F403`), so `__all__` does not describe a star-import
+surface here. It is the module's **import contract**: the names that code outside the module
+is meant to import.
+
+- Every module in `stepup/core/` declares `__all__`, placed directly after the imports and
+  before `logger`. It is a tuple of string literals, sorted (enforced by ruff `RUF022`).
+- List a name when it is imported by another `stepup` module, a downstream extension package,
+  a user's `plan.py`, or a `pyproject.toml` entry point (e.g. `build_subcommand`).
+- Do not list module-internal names, even when they lack a leading underscore:
+  `logger`, SQL constants (`*_SCHEMA`, `SELECT_*`, ...), helpers used only within the module.
+  A public-looking name is not a claim that the name is exported.
+- Tests may import names that are not in `__all__`; white-box testing does not make a name
+  part of the contract.
+- Do not re-export: a name in `__all__` must be defined in that same module.
+  Import a name from the module that defines it, not from a module that happens to import it.
+- `__all__ = ()` is a real claim — nothing outside the module may import from it —
+  and is correct only for leaf modules.
+
+Consequence, enforced by `tests/test_conventions.py`: any `from .mod import X` inside
+`stepup/` requires `X` to be in `mod.__all__`, with no exemption for underscore-prefixed names.
+When a module needs something private from another one,
+move that name to a module both may depend on (`utils.py` is often the right home),
+or promote it to part of the defining module's contract.
+
 ### Dependencies
 
 Runtime dependencies are declared in `pyproject.toml` under `[project] dependencies`.
@@ -360,7 +386,8 @@ except `interact.py` (top-level import) and `call.py`, `script.py`, `run.py`,
 `extapi.py` collects utilities for authors of StepUp extension packages:
 `subs_env_vars`, `record_subprocess`, `run_subprocess`, `filter_dependencies`,
 and `get_local_import_paths`.
-`get_rpc_client` lives in `api.py`, not `extapi.py`.
+`get_rpc_client`, `RPC_CLIENT` and `get_job_i` live in `api.py`, not `extapi.py`:
+together they are how an extension addresses the director.
 `subs_env_vars` is re-exported from `api.py` for backward compatibility.
 `extapi.py` imports from `api.py` only via local (inside-function) imports to avoid
 circular dependencies at module load time.

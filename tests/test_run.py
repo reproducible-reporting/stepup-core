@@ -2,9 +2,11 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Unit tests for stepup.core.run"""
 
+import multiprocessing
 import os
 import shlex
 import shutil
+import signal
 import sys
 from types import SimpleNamespace
 
@@ -18,8 +20,10 @@ from stepup.core.run import (
     ChildOutcome,
     Run,
     _detect_python_entrypoint,
+    _exec_in_forkserver,
     _executable_compatible_with_current_python,
     _executable_uses_same_python,
+    _lost_child_outcome,
     launch_command,
 )
 
@@ -141,6 +145,82 @@ async def test_launch_command_measures_resource_usage(tmp_path):
     # The wall time brackets the whole child, so it cannot be shorter than the CPU time
     # of this single-threaded child.
     assert outcome.usage.wtime >= outcome.usage.utime
+
+
+def test_lost_child_outcome_signal():
+    outcome = _lost_child_outcome(-signal.SIGKILL)
+    assert outcome.returncode == -signal.SIGKILL
+    assert outcome.stdout == ""
+    assert "SIGKILL" in outcome.stderr
+
+
+def test_lost_child_outcome_exit_code():
+    assert _lost_child_outcome(3).returncode == 3
+    # A child that vanished cannot be reported as a success.
+    assert _lost_child_outcome(0).returncode == 1
+    assert _lost_child_outcome(None).returncode == 1
+
+
+class _FakeChild:
+    """A stand-in for a forkserver child process that has already exited.
+
+    Its `sentinel` is the read end of a pipe whose write end is closed,
+    so it is immediately readable, just like the sentinel of a dead child.
+    """
+
+    def __init__(self, exitcode: int, outcome: ChildOutcome | None, child_conn):
+        self.pid = os.getpid()
+        self.exitcode = exitcode
+        self._outcome = outcome
+        self._child_conn = child_conn
+        self.sentinel, write_fd = os.pipe()
+        os.close(write_fd)
+
+    def start(self):
+        if self._outcome is not None:
+            self._child_conn.send(self._outcome)
+
+    def join(self):
+        os.close(self.sentinel)
+
+
+class _FakeMPContext:
+    """A `multiprocessing` context whose children are `_FakeChild` instances."""
+
+    def __init__(self, exitcode: int, outcome: ChildOutcome | None = None):
+        self._exitcode = exitcode
+        self._outcome = outcome
+
+    def Pipe(self, duplex: bool = True):  # noqa: N802
+        self._parent_conn, self._child_conn = multiprocessing.Pipe(duplex=duplex)
+        return self._parent_conn, self._child_conn
+
+    def Process(self, target, args):  # noqa: N802
+        return _FakeChild(self._exitcode, self._outcome, self._child_conn)
+
+
+async def test_exec_in_forkserver_child_killed():
+    """A child killed (e.g. during an aborted build) becomes a failed outcome, not an error."""
+    run = Run(SimpleNamespace(i=1, label="killed", command_workdir=("killed", ".")), job_i=1)
+    mp_ctx = _FakeMPContext(-signal.SIGKILL)
+
+    outcome = await _exec_in_forkserver(mp_ctx, None, (), run)
+
+    assert outcome.returncode == -signal.SIGKILL
+    assert "SIGKILL" in outcome.stderr
+    assert run.worker is None
+
+
+async def test_exec_in_forkserver_outcome_received():
+    """A child that does send its outcome has it returned unchanged."""
+    run = Run(SimpleNamespace(i=1, label="fine", command_workdir=("fine", ".")), job_i=1)
+    sent = ChildOutcome(0, "out", "err")
+    mp_ctx = _FakeMPContext(0, sent)
+
+    outcome = await _exec_in_forkserver(mp_ctx, None, (), run)
+
+    assert outcome == sent
+    assert run.worker is None
 
 
 def _set_env_bins(monkeypatch, prefix, base_prefix=None):

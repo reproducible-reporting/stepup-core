@@ -8,7 +8,6 @@ or to interact with StepUp running in the background on a remote server.
 """
 
 import argparse
-import contextlib
 import functools
 import os
 import sys
@@ -22,8 +21,19 @@ from .config import ConfigLoader
 from .constants import DIRECTOR_LOG
 from .enums import ReturnCode
 from .exceptions import InteractError, RPCError
+from .utils import is_process_running, query_director_log
 
-__all__ = ()
+# The subcommands are referenced by string in `pyproject.toml`'s `stepup.tools` entry points.
+__all__ = (
+    "drain_subcommand",
+    "graph_subcommand",
+    "join_subcommand",
+    "run_subcommand",
+    "shutdown_subcommand",
+    "wait_subcommand",
+    "watch_delete_subcommand",
+    "watch_update_subcommand",
+)
 
 
 GET_SOCKET_TIMEOUT = 10.0
@@ -63,63 +73,6 @@ def _report_errors(tool: Callable) -> Callable:
     return wrapper
 
 
-def _is_running(pid: int) -> bool:
-    """Whether a process with this pid exists (it may or may not be the director)."""
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        # The process exists but belongs to another user.
-        return True
-    return True
-
-
-def _query_director_log(path_director_log: Path) -> tuple[Path | None, int | None, str]:
-    """Look up the director's socket and pid in `DIRECTOR_LOG`.
-
-    Parameters
-    ----------
-    path_director_log
-        The path of the director log to read from.
-
-    Returns
-    -------
-    path_socket
-        The socket path advertised by the director, if it exists on disk, `None` otherwise.
-    pid
-        The pid advertised by the director,
-        or `None` when the log holds no usable `PID` line.
-    message
-        An explanation of why no existing socket was found, empty when one was.
-    """
-    if not os.path.isfile(path_director_log):
-        return None, None, f"File {path_director_log} not found."
-    with open(path_director_log) as fh:
-        line_socket = fh.readline()
-        line_pid = fh.readline()
-
-    # A non-empty path is the only degenerate case worth guarding:
-    # `async_main` writes each line in one shot (`sys.stderr` is line-buffered), so a short
-    # but non-empty tail cannot occur in practice. Reading them from the same file handle can
-    # at worst miss the `PID` line of a director that has just written the `SOCKET` line,
-    # which the next attempt picks up.
-    pid = None
-    if line_pid.startswith("PID"):
-        with contextlib.suppress(ValueError):
-            pid = int(line_pid[3:])
-
-    if not line_socket.startswith("SOCKET"):
-        return None, pid, f"File {path_director_log} does not start with SOCKET line."
-    path_socket = Path(line_socket[6:].strip())
-    if path_socket and path_socket.exists():
-        return path_socket, pid, ""
-    message = (
-        f"Socket {path_socket} read from {path_director_log} does not exist. StepUp not running?"
-    )
-    return None, pid, message
-
-
 def get_socket() -> Path:
     """Block until the director socket is known and return it.
 
@@ -146,13 +99,13 @@ def get_socket() -> Path:
     first = True
     reported_startup = False
     while True:
-        path_socket, pid, message = _query_director_log(path_director_log)
+        path_socket, pid, message = query_director_log(path_director_log)
         if path_socket is not None:
             return path_socket
         if first:
             print("Trying to contact StepUp director process.", file=sys.stderr)
             first = False
-        if pid is not None and _is_running(pid):
+        if pid is not None and is_process_running(pid):
             # The director exists but has not created its socket yet,
             # i.e. it is still busy with its startup file scan.
             # A pid recycled by an unrelated process only makes the client wait

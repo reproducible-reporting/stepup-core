@@ -10,9 +10,9 @@ import attrs
 from path import Path
 
 from .asyncio import stoppable_iterator, wait_for_events
-from .enums import Change, HashUpdateCause
+from .enums import Change, FileState, HashUpdateCause
 from .executor import Executor
-from .file import File, FileState
+from .file import File
 from .hash_queue import HashQueue, gather_hashes
 from .reporter import ReporterClient
 from .sqlite3 import DBSession
