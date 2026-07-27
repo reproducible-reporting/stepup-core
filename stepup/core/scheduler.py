@@ -513,7 +513,11 @@ class Scheduler:
     """The workflow that the scheduler is responsible for."""
 
     db: DBSession = attrs.field(kw_only=True)
-    """Lock for workflow database access."""
+    """The workflow database session, i.e. the same object as `workflow.db`.
+
+    It is used directly as an async context manager,
+    which acquires exclusive access to the database for the duration of a transaction.
+    """
 
     use_duration: bool = attrs.field(kw_only=True, default=False)
     """Whether to use the duration of steps to optimize the execution order."""

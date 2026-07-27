@@ -75,6 +75,23 @@ class HashJob:
     worker: ThreadWorker | None = attrs.field(init=False, default=None)
     """The in-flight hashing thread, if any, for `Executor.interrupt()`."""
 
+    # The three members below mirror `Job`, so that `Builder._run_with_progress` can bracket
+    # both kinds of job with progress-bar calls without having to know which one it got.
+
+    @property
+    def label(self) -> str:
+        """The description of the job shown in the progress bar, i.e. the file's path."""
+        return self.path
+
+    @property
+    def letter(self) -> str:
+        """The single character identifying the kind of job in the progress bar."""
+        return "H"
+
+    def coro(self, executor: "Executor"):
+        """Return a coroutine, of which the builder will make an asyncio.Task."""
+        return executor.run_hash_job(self)
+
 
 @attrs.define
 class HashQueue:
@@ -270,7 +287,7 @@ async def gather_hashes(
         nonlocal nsuccess
         if hash_queue.claim(job):
             async with sem:
-                reporter.start_job("H", job.path, job.job_i)
+                reporter.start_job(job.letter, job.label, job.job_i)
                 try:
                     await executor.run_hash_job(job)
                 finally:

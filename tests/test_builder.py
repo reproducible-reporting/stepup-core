@@ -106,9 +106,9 @@ class _FakeReporter:
         self.events.append(("stop", step_i))
 
 
-def _make_job(*, prefix: str, job_i: int, label: str, coro):
+def _make_job(*, letter: str, job_i: int, label: str, coro):
     """A minimal stand-in for `Job`, sufficient for `_run_with_progress()`."""
-    return SimpleNamespace(prefix=prefix, job_i=job_i, step=SimpleNamespace(label=label), coro=coro)
+    return SimpleNamespace(letter=letter, job_i=job_i, label=label, coro=coro)
 
 
 def _make_progress_builder(reporter: _FakeReporter) -> Builder:
@@ -132,7 +132,7 @@ async def test_run_with_progress_brackets_a_successful_job():
         assert ("start", "R", "echo hi", 1) in reporter.events
         return "done"
 
-    job = _make_job(prefix="RUN", job_i=1, label="echo hi", coro=inner)
+    job = _make_job(letter="R", job_i=1, label="echo hi", coro=inner)
 
     result = await builder._run_with_progress(job)
 
@@ -150,7 +150,7 @@ async def test_run_with_progress_still_stops_when_job_raises():
     async def inner(executor):
         raise ValueError("boom")
 
-    job = _make_job(prefix="SKIP", job_i=2, label="false", coro=inner)
+    job = _make_job(letter="S", job_i=2, label="false", coro=inner)
 
     with pytest.raises(ValueError, match="boom"):
         await builder._run_with_progress(job)
@@ -158,10 +158,9 @@ async def test_run_with_progress_still_stops_when_job_raises():
     assert reporter.events == [("start", "S", "false", 2), ("stop", 2)]
 
 
-async def test_run_hash_task_with_progress_brackets_a_successful_job():
-    """Mirrors `test_run_with_progress_brackets_a_successful_job`: hash jobs are
-    user-visible progress items too, using the `H` letter and `HashJob.job_i`/`.path`
-    in place of `Step.i`/`.label`."""
+async def test_run_with_progress_brackets_a_successful_hash_job():
+    """`_run_with_progress` also serves hash jobs: they are user-visible progress items too,
+    using the `H` letter and `HashJob.job_i`/`.path` in place of `Step.i`/`.label`."""
     reporter = _FakeReporter()
     builder = _make_progress_builder(reporter)
     hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -1)
@@ -172,14 +171,14 @@ async def test_run_hash_task_with_progress_brackets_a_successful_job():
 
     builder.executor = SimpleNamespace(run_hash_job=fake_run_hash_job)
 
-    result = await builder._run_hash_task_with_progress(hash_job)
+    result = await builder._run_with_progress(hash_job)
 
     assert result == "done"
     assert reporter.events == [("start", "H", "foo.txt", -1), ("stop", -1)]
 
 
-async def test_run_hash_task_with_progress_still_stops_when_job_raises():
-    """Mirrors `test_run_with_progress_still_stops_when_job_raises`."""
+async def test_run_with_progress_still_stops_when_hash_job_raises():
+    """Mirrors `test_run_with_progress_still_stops_when_job_raises`, for a hash job."""
     reporter = _FakeReporter()
     builder = _make_progress_builder(reporter)
     hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -2)
@@ -190,7 +189,7 @@ async def test_run_hash_task_with_progress_still_stops_when_job_raises():
     builder.executor = SimpleNamespace(run_hash_job=fake_run_hash_job)
 
     with pytest.raises(ValueError, match="boom"):
-        await builder._run_hash_task_with_progress(hash_job)
+        await builder._run_with_progress(hash_job)
 
     assert reporter.events == [("start", "H", "foo.txt", -2), ("stop", -2)]
 
@@ -227,7 +226,7 @@ async def test_job_loop_dispatches_hash_jobs_before_runnable_steps(wfs: Workflow
 
     dispatched = []
 
-    async def fake_start_task(self, job):
+    def fake_start_task(self, job):
         dispatched.append(("step", job))
 
     def fake_start_hash_task(self, hash_job):

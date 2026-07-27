@@ -47,11 +47,24 @@ class Job:
     @property
     def name(self) -> str:
         """A name for the job for logging purposes."""
-        return f"{self.prefix}: {self.step.label}"
+        return f"{self.prefix}: {self.label}"
+
+    @property
+    def label(self) -> str:
+        """The description of the job shown in the progress bar, i.e. the step's label."""
+        return self.step.label
+
+    @property
+    def letter(self) -> str:
+        """The single character identifying the kind of job in the progress bar."""
+        return self.prefix[0]
 
     @property
     def prefix(self) -> str:
-        """A 3-letter code for the kind of job, shown in the progress bar."""
+        """The kind of job, spelled out in full for log lines such as `RUN: echo hi`.
+
+        Only its first character, exposed as `letter`, reaches the progress bar.
+        """
         raise NotImplementedError
 
     def coro(self, executor: "Executor"):

@@ -45,9 +45,11 @@ class Watcher:
     """The workflow to report file events to."""
 
     db: DBSession = attrs.field()
-    """Lock for workflow database access.
+    """The workflow database session, i.e. the same object as `workflow.db`.
 
-    This is only used for workflow calls that may change the database.
+    It is used directly as an async context manager,
+    which acquires exclusive access to the database for the duration of a transaction.
+    Only workflow calls that may change the database are wrapped in it.
     """
 
     reporter: ReporterClient = attrs.field()

@@ -674,10 +674,8 @@ class Step(Node):
             ngm = json_converter.structure(json.loads(row[0]), NGlobMulti)
             yield "ngm", f"{[ngs.pattern for ngs in ngm.nglob_singles]} {ngm.subs}"
 
-        for row in self.db.execute(
-            "SELECT name, units FROM step_resource WHERE node = ?", (self.i,)
-        ):
-            yield "resource", f"{row[0]}: {row[1]} units"
+        for name, units in self.resources():
+            yield "resource", f"{name}: {units} units"
 
         step_hash = self.get_hash()
         if step_hash is not None:
@@ -1084,6 +1082,12 @@ class Step(Node):
         """Iterate over nglob_multis used by this step."""
         for row in self.db.execute("SELECT data FROM nglob_multi WHERE node = ?", (self.i,)):
             yield json_converter.structure(json.loads(row[0]), NGlobMulti)
+
+    def resources(self) -> Iterator[tuple[str, int]]:
+        """Iterate over the `(name, units)` pairs of the resources required by this step."""
+        yield from self.db.execute(
+            "SELECT name, units FROM step_resource WHERE node = ?", (self.i,)
+        )
 
     #
     # Build phase

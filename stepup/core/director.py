@@ -856,7 +856,7 @@ class DirectorHandler:
                 else ("SIGTERM", signal.SIGTERM)
             )
             await self.reporter("DIRECTOR", f"Interrupting running steps ({signal_name}).")
-            await self.builder.interrupt_tasks(signal_number)
+            self.executor.interrupt(signal_number)
             self._shutdown_counter += 2
         else:
             if len(self.builder.running_tasks) > 0:
