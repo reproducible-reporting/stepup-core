@@ -566,108 +566,39 @@ class Trellis:
         # While making this change, the enums were also made more intuitive.
         # Schema 2 became outdated due to the worker actions.
         # Schema 3 became outdated due to a change in step table (dirty field).
-        # Schema 4 became outdated due to:
-        # - Directory file nodes are no longer part of the graph. They are implicit.
-        # - Deferred globs have been removed in favor of static trees.
-        # - Switch from Blake2B to SHA-256 hashes
-        # - Renamed "orphan" to "detached".
-        # - Extended the step table with many new fields to support the new scheduling algorithm,
-        #   and removed some old fields that are no longer needed.
-        # - Step labels no longer carry an action-name prefix.
-        #   They store the raw command line.
-        # - The QUEUED step state has been removed.
-        # - Added CHECKING step state: steps being hash-checked for possible skipping
-        #   without consuming named resource slots.
-        # - Added a step_output table to store the stdout/stderr of steps.
-        # - Added a step_subprocess table to record subprocess invocations of wrapper steps.
-        # - Added ON DELETE CASCADE to the satellite tables (file, step, env_var, step_hash,
-        #   step_resource, step_output, step_subprocess, nglob_multi) so their rows are
-        #   removed automatically when a node row is deleted.
-        # - Indexes were tuned.
-        # - The auto_vacuum mode was set to INCREMENTAL,
-        #   which is paired with a database vacuum worker to reclaim space from deleted nodes.
-        # - Added several triggers, which all replace some corresponding Python logic:
-        #   - _dependency_check_after_ins/del triggers on the dependency table
-        #     (in STEP_SCHEMA) to flag step._check_after when a source/sink
-        #     edge touching a step is inserted or deleted.
-        #   - Added a step_clear_postponed trigger to clear step.postponed when a step's
-        #     state moves to SUCCEEDED or FAILED.
-        #   - The file table's CHECK constraint no longer requires `hash IS NULL` for
-        #     MISSING/AWAITED/VOLATILE. The reverse is still checked.
-        #     A `file_clear_hash` AFTER UPDATE OF state trigger now nulls the hash for
-        #     those three states.
-        # - Merged the file table's separate digest/mode/mtime/size/inode columns into a
-        #   single nullable JSON `hash` column (NULL means "no hash", replacing the
-        #   digest == b"u" sentinel).
-        # - Dropped the vestigial, unreachable "directory hash" CHECK branch (digest == b"d")
-        # - Removed the now-unused UInt64 adapter/converter;
-        #   inodes are now stored as a plain JSON integer inside the hash blob.
-        # - Dropped the explicit `seq` column (and its `(node, seq)` primary key) from
-        #   step_subprocess in favor of the table's own rowid for ordering, and removed
-        #   `WITHOUT ROWID` accordingly. This avoids a `SELECT MAX(seq)` round trip before
-        #   every `Step.record_subprocess` insert.
-        # - Simplified storage of step hashes: now just a single JSON blob,
-        #   instead of four columns.
-        # - Added DEFAULT clauses in the step table so Step.initialize() no longer
-        #   needs to hardcode their initial values by column position.
-        # - Added step_flag_check_safe (AFTER UPDATE OF state) and
-        #   step_flag_check_after_duration (AFTER UPDATE OF duration) triggers, replacing
-        #   the corresponding Python-side flag writes in Step.set_state()/set_duration()
-        #   and the redundant explicit flags in Workflow._recreate_step()'s UPDATE, per the
-        #   trigger-vs-Python convention documented in STEP_SCHEMA.
-        # - Added step._has_hash/_ready/_check_ready columns, the step_dispatch partial
-        #   index (replacing step_pending_ready) and the step_check_ready partial index,
-        #   and trigger-maintained bookkeeping for _has_hash/_ready via new triggers on
-        #   file, dependency, amended_dep, node(detached), and step_hash.
-        # - Added path_list/node_list scratch temp tables (in FILE_SCHEMA) for batch lookups
-        #   keyed by a list of paths or node ids, replacing `json_each(...)`, which was found
-        #   to be slow in performance tests. Purely additive (CREATE TEMP TABLE IF NOT
-        #   EXISTS), so no version bump is needed for this change on its own.
-        # - Tightened the step.need column's CHECK constraint to exclude TARGET (33):
-        #   need is never persisted with that value (write-once, derived-elevation-only,
-        #   landing exclusively in _implied_need). Redundant with the Python-level
-        #   rejection in Workflow.define_step, so no version bump is needed for this
-        #   change on its own.
-        # - Added the FileState.UNCONFIRMED state to distinguish truly MISSING files
-        #   from those that still need to be hash-checked.
-        # - Added the step_need_count temp table (in STEP_SCHEMA) and its maintaining
-        #   triggers, so Workflow.get_counts() no longer scans every step. Backfilled once
-        #   per connection by Workflow._rebuild_temp_tables(), like path_list/node_list, so no
-        #   version bump is needed for this change on its own.
-        # - Changed nglob_multi.data from a pickle blob to a JSON blob (via cattrs hooks for
-        #   NGlobSingle/NGlobMulti in cattrs.py), for consistency with the rest of the
-        #   codebase and readability in external SQLite tools. The column type changed from
-        #   BLOB to TEXT accordingly.
-        # - Added the step._holding column: a counter of open (unmatched) `hold()` calls on
-        #   a step, supporting re-entrant nesting on the same step. Consulted by
-        #   SELECT_SAFE_UPDATE to keep held-back children unsafe until the matching
-        #   `release()` brings the counter back to zero.
-        # - Added the step._safe_ignoring_hold column, computed alongside _safe by
-        #   SELECT_SAFE_UPDATE, so hash-checkable steps can bypass an active hold() in
-        #   STEP_DISPATCH_WHERE while ordinary reruns stay gated by _safe as before.
-        # - Added the step_reset_holding trigger (AFTER UPDATE OF state), so a step's
-        #   _holding cannot survive a transition away from RUNNING (e.g. a crash-recovery
-        #   reset in startup.py). Purely additive, so no version bump is needed for this
-        #   change on its own.
-        # - Added a CHECK on the step table requiring NOT postponed OR state = PENDING,
-        #   promoting the invariant Step.set_state() already enforced in Python to a
-        #   database-level constraint.
-        # - Added a CHECK on the node table requiring kind = 'root' OR creator IS NOT NULL
-        #   OR detached, catching an attached (non-detached) node with a NULL creator
-        #   immediately on write instead of only at the next full-graph consistency check.
-        # - Added node_check_creator_kind_ins/_upd and dependency_check_kinds_ins triggers
-        #   (in WORKFLOW_SCHEMA, workflow.py) enforcing Workflow's creator-kind and
-        #   dependency-kind rules at the database level. Purely additive, so no version bump
-        #   is needed for this change on its own. These triggers now fully subsume what were
-        #   previously Python-only checks; the redundant Python-side guards were removed:
-        #   Workflow._check_creator/_check_source, Step.set_state()'s postponed ValueError
-        #   (already covered by the postponed/state CHECK above), Workflow.define_step()'s
-        #   Need.TARGET rejection (already covered by the step.need CHECK), and
-        #   Trellis._check_creator's "only one root node" guard (already guaranteed by the
-        #   node.i PRIMARY KEY, since the root node is always inserted with i=1). With no
-        #   subclass left overriding them, the now-empty _check_creator/_check_source hook
-        #   methods (and their Node.recycle()/Node.add_source()/Trellis.create() call sites)
-        #   were removed from Trellis entirely, rather than kept as unused extension points.
+        # Schema 4 became outdated due to the v4.0.0 rewrite
+        # (schema 4 itself was last released in v3.2.3):
+        # - Directory file nodes are no longer part of the graph (implicit instead);
+        #   deferred globs were removed in favor of static trees;
+        #   "orphan" was renamed to "detached".
+        # - File hashing switched from Blake2B to SHA-256, and the file table's separate
+        #   digest/mode/mtime/size/inode columns were merged into a single nullable JSON
+        #   `hash` column (NULL replacing the old sentinel values). Added
+        #   `FileState.UNCONFIRMED` to distinguish truly missing files from those still
+        #   needing a hash check.
+        # - The step table was reworked for the new scheduling algorithm: many fields
+        #   added/removed, DEFAULT clauses added, step hashes collapsed to a single JSON
+        #   blob, and labels now store the raw command line instead of an
+        #   action-name-prefixed one. The QUEUED state was removed and CHECKING was added
+        #   (hash-checking a step for a possible skip without consuming a resource slot).
+        # - Step readiness/safety/postponement bookkeeping (previously read-branch-write in
+        #   Python) moved into triggers and CHECK constraints: the postponed/state CHECK,
+        #   `step_clear_postponed`, `step_flag_check_safe`/`step_flag_check_after_duration`,
+        #   and the `_has_hash`/`_ready`/`_check_ready` columns with their maintaining
+        #   triggers and the `step_dispatch`/`step_check_ready` indexes. New
+        #   `step_need_count`/`path_list`/`node_list` temp tables avoid full-table scans for
+        #   counts and batch lookups.
+        # - Added re-entrant `hold()`/`release()` support: `step._holding`,
+        #   `step._safe_ignoring_hold`, and the `step_reset_holding` trigger.
+        # - Graph invariants (creator/dependency kind rules, single root node) moved from
+        #   Python (`Workflow._check_creator`/`_check_source`, `Trellis._check_creator`,
+        #   and their `Node`/`Trellis` call sites, all removed) into node/dependency CHECK
+        #   constraints and triggers.
+        # - Added `step_output` (stdout/stderr) and `step_subprocess` (subprocess
+        #   invocations, keyed by rowid instead of an explicit seq column) tables.
+        # - `nglob_multi.data` changed from a pickle blob to JSON.
+        # - `ON DELETE CASCADE` added to all satellite tables; indexes tuned; `auto_vacuum`
+        #   set to INCREMENTAL with a paired vacuum worker.
 
         return 5
 

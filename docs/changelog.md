@@ -194,11 +194,15 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
     - The files state `UNCONFIRMED` has been added to distinguish truly missing files
       from those who still need to be hash-checked.
     - `step_output` and `step_subprocess` tables were added.
+    - The `step` table now tracks re-entrant `hold()`/`release()` calls,
+      needed for the new `hold()` context manager (see above).
     - SQLite's `ON DELETE CASCADE` feature is now used for all satellite tables of the `step` table.
     - SQLite triggers are used to replace some of the Python logic by lower-level database logic.
-    - All hashes are stored as human-readable JSON blobs
+    - All hashes are stored as human-readable JSON blobs.
+    - `nglob_multi` data is now stored as JSON instead of a pickle blob,
+      for consistency and readability.
     - Removed the now-unused UInt64 adapter/converter,
-      no longer needed because of the previous point.
+      no longer needed because of the previous points.
     - Indexes were tuned.
     - The auto_vacuum mode was set to INCREMENTAL,
       which is paired with a database vacuum worker to reclaim space from deleted nodes.
