@@ -289,28 +289,25 @@ class Node:
         self,
         node_type: type[NodeType] = Self,
         do_sources: bool = True,
-    ) -> Iterator[tuple[int, str]]:
-        sql = "SELECT kind, label, detached, dependency.i FROM node JOIN dependency ON node.i ="
-        if do_sources:
-            sql += " source WHERE sink = ?"
-        else:
-            sql += " sink WHERE source = ?"
+    ) -> Iterator[str]:
+        sql = "SELECT kind, label, detached FROM node JOIN dependency ON node.i = "
+        sql += " source WHERE sink = ?" if do_sources else " sink WHERE source = ?"
         data = [self.i]
         if node_type is not Self:
             sql += " AND kind = ?"
             data.append(node_type.kind())
         sql += " ORDER BY kind, label"
-        for kind, label, detached, idep in self.db.execute(sql, data):
+        for kind, label, detached in self.db.execute(sql, data):
             node_str = f"{kind}:{label}"
             if detached:
                 node_str = f"({node_str})"
-            yield idep, node_str
+            yield node_str
 
-    def sources_str(self, node_type: type[NodeType] = Self) -> Iterator[tuple[int, str]]:
+    def sources_str(self, node_type: type[NodeType] = Self) -> Iterator[str]:
         """Iterate over nodes that supply to this one, formatted as strings."""
         yield from self._dependencies_str(node_type, do_sources=True)
 
-    def sinks_str(self, node_type: type[NodeType] = Self) -> Iterator[tuple[int, str]]:
+    def sinks_str(self, node_type: type[NodeType] = Self) -> Iterator[str]:
         """Iterate over nodes that consume from this one, formatted as strings."""
         yield from self._dependencies_str(node_type, do_sources=False)
 
@@ -697,11 +694,11 @@ class Trellis:
             pairs = []
             if ci is not None and (label != clabel):
                 pairs.append(("creator", creator.key(cdetached)))
-            pairs.extend(("source", other_str) for _, other_str in node.sources_str())
+            pairs.extend(("source", other_str) for other_str in node.sources_str())
             pairs.extend(
                 ("product", other_str) for other_str in node.products_str() if other_str != "root:"
             )
-            pairs.extend(("sink", other_str) for _, other_str in node.sinks_str())
+            pairs.extend(("sink", other_str) for other_str in node.sinks_str())
             for role, key in pairs:
                 lines.append(f"{role:>20s}   {key}")
             lines.append("")

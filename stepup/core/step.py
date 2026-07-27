@@ -18,7 +18,7 @@ from .hash import StepHash
 from .nglob import NGlobMulti
 from .static_tree import StaticTree
 from .stepinfo import StepInfo
-from .trellis import Node
+from .trellis import Node, NodeType
 from .utils import format_digest
 
 __all__ = ("RESERVED_ENV_VARS", "Step", "truncate_output")
@@ -400,14 +400,26 @@ class Step(Node):
 
     def _dependencies_str(
         self,
-        node_type: type = Self,
+        node_type: type[NodeType] = Self,
         do_sources: bool = True,
-    ) -> Iterator[tuple[int, str]]:
-        # TODO: make more efficient with executemany
-        sql = "SELECT 1 FROM amended_dep WHERE i = ?"
-        for idep, node_str in super()._dependencies_str(node_type, do_sources):
-            amended = self.db.execute(sql, (idep,)).fetchone() is not None
-            yield idep, f"{node_str} [amended]" if amended else node_str
+    ) -> Iterator[str]:
+        sql = (
+            "SELECT kind, label, detached, dependency.i IN amended_dep "
+            "FROM node JOIN dependency ON node.i = "
+        )
+        sql += " source WHERE sink = ?" if do_sources else " sink WHERE source = ?"
+        data = [self.i]
+        if node_type is not Self:
+            sql += " AND kind = ?"
+            data.append(node_type.kind())
+        sql += " ORDER BY kind, label"
+        for kind, label, detached, amended in self.db.execute(sql, data):
+            node_str = f"{kind}:{label}"
+            if detached:
+                node_str = f"({node_str})"
+            if amended:
+                node_str += " [amended]"
+            yield node_str
 
     @property
     def command_workdir(self) -> tuple[str, Path]:
