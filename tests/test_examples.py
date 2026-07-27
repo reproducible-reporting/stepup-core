@@ -71,6 +71,7 @@ EXAMPLES = [
     "clean_drained_scheduler",
     "clean_nonexisting",
     "clean_detached",
+    "config_sections",
     "copy_mkdir",
     "cyclic_dynamic",
     "cyclic_static",

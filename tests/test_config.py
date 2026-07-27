@@ -8,6 +8,7 @@ from decimal import Decimal
 import pytest
 from path import Path
 
+from stepup.core.__main__ import build_parser
 from stepup.core.config import ConfigLoader
 
 # ---------------------------------------------------------------------------
@@ -206,6 +207,40 @@ def test_patch_parser_missing_section_leaves_defaults(path_tmp, plugin_parser):
     ns = plugin_parser.parse_args([])
     assert ns.quality is None
     assert ns.num_jobs == 1
+
+
+def test_patch_parser_section_of_real_subparser(path_tmp):
+    # Argparse prefixes a subparser's prog with the parent's, e.g. "stepup plugin".
+    # Only the last word may be used as section name.
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b'[plugin]\nquality = "high"\n')
+    main_parser = argparse.ArgumentParser(prog="stepup")
+    subparsers = main_parser.add_subparsers(dest="tool")
+    sub = subparsers.add_parser("plugin")
+    sub.add_argument("--quality", default=None)
+    sub.add_argument("--label", default=None)
+    assert sub.prog == "stepup plugin"
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={"STEPUP_PLUGIN_LABEL": "x"})
+    loader.patch_parser(sub)
+    ns = main_parser.parse_args(["plugin"])
+    assert ns.quality == "high"
+    assert ns.label == "x"
+
+
+def test_patch_parser_section_of_alias_subparser(path_tmp):
+    # A subparser registered under an alias shares the section of the subcommand it
+    # aliases by pinning its prog, so that both read the same configuration.
+    cfg = path_tmp / "stepup.toml"
+    cfg.write_bytes(b'[plugin]\nquality = "high"\n')
+    main_parser = argparse.ArgumentParser(prog="stepup")
+    subparsers = main_parser.add_subparsers(dest="tool")
+    loader = ConfigLoader("stepup", config_paths=[cfg], environ={})
+    for name in "plugin", "old-plugin":
+        sub = subparsers.add_parser(name, prog="stepup plugin")
+        sub.add_argument("--quality", default=None)
+        loader.patch_parser(sub)
+    assert main_parser.parse_args(["plugin"]).quality == "high"
+    assert main_parser.parse_args(["old-plugin"]).quality == "high"
 
 
 # ---------------------------------------------------------------------------
@@ -548,3 +583,25 @@ def test_full_integration(path_tmp, parser):
     assert ns.debug is True  # from env
     assert ns.search_paths == "/usr/share:/home/user/lib"  # merge handler
     assert ns.label == "cli"  # CLI overrides pyproject
+
+
+@pytest.mark.parametrize(
+    ("argv", "env_var", "env_value", "dest", "expected"),
+    [
+        (["build"], "STEPUP_BUILD_JOBS", "7", "jobs", Decimal("7")),
+        # The deprecated boot alias must read the build section, not a boot section.
+        (["boot"], "STEPUP_BUILD_JOBS", "7", "jobs", Decimal("7")),
+        (["clean", "."], "STEPUP_CLEAN_ALL", "1", "all", True),
+        (["browse"], "STEPUP_BROWSE_PORT", "4242", "port", 4242),
+    ],
+)
+def test_cli_section_per_subcommand(
+    monkeypatch, path_tmp, argv, env_var, env_value, dest, expected
+):
+    """Each subcommand reads the config section documented in `docs/reference/configuration.md`."""
+    # Point STEPUP_ROOT at an empty directory, so that no config file of this repository
+    # interferes with the environment variable under test.
+    monkeypatch.setenv("STEPUP_ROOT", path_tmp)
+    monkeypatch.setenv(env_var, env_value)
+    parser, _ = build_parser()
+    assert getattr(parser.parse_args(argv), dest) == expected

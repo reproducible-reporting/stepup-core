@@ -1,0 +1,8 @@
+# Settings for `stepup build` and its deprecated alias `stepup boot`.
+[build]
+jobs = 1
+clean = false
+
+# Settings for `stepup clean`. (`commit` is set as an environment variable in main.sh.)
+[clean]
+all = true

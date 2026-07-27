@@ -11,6 +11,8 @@ the environment last.
 Environment variable naming convention
 --------------------------------------
 
+The section of a subparser is the last word of its `prog`
+(argparse prefixes it with the parent's `prog`, e.g. `"stepup build"` yields `"build"`).
 The env var name is derived from the prefix, the section (if any), and the dest:
 
 - No section: `STEPUP_DEBUG` (prefix + dest)
@@ -34,7 +36,8 @@ loader = ConfigLoader(
 # Main parser — top-level config keys, env vars: STEPUP_<DEST>
 loader.patch_parser(main_parser, use_section=False)
 
-# Tool subparser — named section, env vars: STEPUP_MYTOOL_<DEST>
+# Tool subparser — section taken from the last word of its prog ("mytool"),
+# env vars: STEPUP_MYTOOL_<DEST>
 loader.patch_parser(mytool_parser, merge_handlers={"paths": merge_paths})
 ```
 """
@@ -146,6 +149,17 @@ class ConfigLoader:
         """
         section_str = (section.upper().replace(".", "_").replace("-", "_") + "_") if section else ""
         return f"{self._prefix.upper()}_{section_str}{dest.upper()}"
+
+    @staticmethod
+    def _section(parser: argparse.ArgumentParser) -> str:
+        """Derive the config section name from a parser's `prog`.
+
+        Argparse prefixes the `prog` of a subparser with that of its parent,
+        e.g. `"stepup clean"` for the `clean` subcommand.
+        Only the last word is the section name,
+        so that `stepup clean` reads `[clean]` and not `[stepup clean]`.
+        """
+        return parser.prog.rsplit(" ", 1)[-1]
 
     def _actions(self, parser: argparse.ArgumentParser) -> dict[str, argparse.Action]:
         """Collect all user-facing argument actions from *parser*, keyed by dest.
@@ -324,8 +338,12 @@ class ConfigLoader:
             Argument defaults are mutated in place.
         use_section
             Set to `False` for the top-level parser.
-            If `True`, the parser's `prog` is used as section name for config files
-            (e.g., `"stepup.build."`) and env vars (e.g., `"STEPUP_BUILD_"`).
+            If `True`, the last word of the parser's `prog` is used as section name
+            for config files (e.g., `"stepup.build."`) and env vars (e.g., `"STEPUP_BUILD_"`).
+            Argparse prefixes a subparser's `prog` with its parent's,
+            so `"stepup build"` and `"build"` both select the `"build"` section.
+            A subcommand that is an alias of another must therefore set its `prog`
+            to that of the subcommand it aliases, to share its configuration.
             If `False`, the top-level config section (e.g., `"stepup"`) and
             env vars are used (e.g., `"STEPUP_"`).
         merge_handlers
@@ -334,7 +352,7 @@ class ConfigLoader:
             Without a handler the incoming value replaces the accumulated one.
         """
         handlers = merge_handlers or {}
-        section = parser.prog if use_section else None
+        section = self._section(parser) if use_section else None
 
         def get_location_error_msg(path, loc):
             if loc == "":

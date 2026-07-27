@@ -455,9 +455,13 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
     """Register the build subparser under *name* and return its default resources.
 
     The argument definitions are identical for every subcommand name; only the
-    subparser name and its help text differ. Configuration always comes from the
-    `"build"` section, regardless of *name*, so `stepup build` and its aliases
-    share a single source of truth for configuration.
+    subparser name and its help text differ.
+    The parser's `prog` is pinned to `"stepup build"` instead of the default derived
+    from *name*, because `ConfigLoader.patch_parser` derives the config section from `prog`.
+    Configuration therefore always comes from the `"build"` section, regardless of *name*,
+    so `stepup build` and its aliases share a single source of truth for configuration.
+    The price is that an alias shows `usage: stepup build ...` in its help,
+    which is a fair hint towards the canonical name.
 
     Parameters
     ----------
@@ -479,7 +483,7 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
     """
     parser = subparsers.add_parser(
         name,
-        prog=name,
+        prog="stepup build",
         help=help_text,
     )
     parser.add_argument(
