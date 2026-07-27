@@ -13,6 +13,7 @@ It can be a sum of the following codes:
 - `8` = at least one step was still runnable
 - `16` = at least one target was not produced by any step
 - `32` = the scheduler was on hold (not reporting pending steps)
+- `64` = the build was aborted by Ctrl-C or `SIGTERM`
 
 A few example combinations are:
 
@@ -20,6 +21,8 @@ A few example combinations are:
 - `1` = internal error (never combined with other codes).
 - `6` = at least one step failed and at least one step remained pending.
 - `12` = some steps remain pending and some steps are runnable when StepUp is restarted.
+- `98` = the build was aborted by Ctrl-C (`64`) while a step was running,
+  so that step counted as failed (`2`) and the scheduler was put on hold (`32`).
 
 To test for a specific flag in Bash, use the bitwise AND operator `&`:
 

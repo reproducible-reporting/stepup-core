@@ -168,6 +168,32 @@ class ThreadWorker(Worker):
 #
 
 
+def _signal_process_group(pid: int, sig: int) -> None:
+    """Deliver `sig` to the process group led by `pid`, falling back to `pid` itself.
+
+    Every step runs in a session of its own, so the pid of the process StepUp started is
+    also its process group id. Signalling the group (instead of just that one process)
+    is what reaches the actual work when a step is a shell command whose pipeline or
+    `&&`-chain keeps the shell around as a wrapper.
+
+    The fallback covers the short window in which a forkserver child has been forked but
+    has not called `os.setsid` yet, so that its group does not exist.
+    A process that has already exited raises `ProcessLookupError` from both calls,
+    which `Worker.interrupt` ignores.
+
+    Parameters
+    ----------
+    pid
+        The process id of the step, which is also its process group id.
+    sig
+        The signal to deliver.
+    """
+    try:
+        os.killpg(pid, sig)
+    except ProcessLookupError:
+        os.kill(pid, sig)
+
+
 @attrs.define
 class SubprocessWorker(Worker):
     """A running subprocess (shell command or direct exec)."""
@@ -179,7 +205,7 @@ class SubprocessWorker(Worker):
         return f"subprocess {self.proc.pid!r}"
 
     def _signal(self, sig: int) -> None:
-        self.proc.send_signal(sig)
+        _signal_process_group(self.proc.pid, sig)
 
 
 @attrs.define
@@ -193,7 +219,7 @@ class ForkserverWorker(Worker):
         return f"forkserver child {self.pid}"
 
     def _signal(self, sig: int) -> None:
-        os.kill(self.pid, sig)
+        _signal_process_group(self.pid, sig)
 
 
 #
@@ -540,6 +566,11 @@ async def _exec_subprocess(
             stderr=subprocess.PIPE,
             env=env,
             cwd=cwd,
+            # Put the step in its own session, so that a Ctrl-C in the terminal does not
+            # reach it directly and the director alone decides when to stop it.
+            # This also makes the whole process tree of the step signallable as one group,
+            # which a `sh -c` wrapper around a pipeline would otherwise hide.
+            start_new_session=True,
         )
     except OSError as exc:
         return ChildOutcome(1, "", f"Failed to launch command {cmd!r}: {exc}\n")
@@ -677,6 +708,11 @@ def _forkserver_entry(
     When `ep_value` is a `module:attr` string, the corresponding console_script function
     is imported and called directly without import tracking.
     """
+    # Put the step in its own session, the counterpart of `start_new_session` on the
+    # subprocess path, so that both kinds of steps are signalled the same way: as a process
+    # group, by the director alone. See `_signal_process_group`.
+    # This cannot fail: a freshly forked child is never a process group leader.
+    os.setsid()
     # Note that the time needed to start/stop the forkserver child is not counted,
     # which is a minor accepted discrepancy with the subprocess path.
     wtime_start = time.perf_counter()

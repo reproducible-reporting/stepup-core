@@ -35,6 +35,14 @@ class ReturnCode(Flag):
     ONHOLD = auto()
     """The scheduler is on hold. Pending steps are not reported."""
 
+    INTERRUPTED = auto()
+    """The build was aborted by a terminal signal (Ctrl-C or `SIGTERM`).
+
+    Set by the terminal user interface, not by the director:
+    it describes how the build ended, not the state of the workflow,
+    so it is combined with whatever the director reported.
+    """
+
 
 class FileState(IntEnum):
     """State of a file in the StepUp workflow.

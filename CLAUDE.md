@@ -224,6 +224,15 @@ resource usage. `launch_command()` is its single dispatch entry point, called fr
 cancels a computation instead, so it overrides `interrupt()` directly
 rather than using `Worker`'s signal-delivery template.
 
+Every step runs in a **session of its own**: `start_new_session=True` for subprocesses and
+`os.setsid()` at the top of `_forkserver_entry` for forkserver children.
+Both worker classes therefore signal a *process group* (`_signal_process_group`), not a single
+pid, which is what reaches the actual work when a shell step is a pipeline or `&&`-chain that
+keeps `sh` around as a wrapper.
+The flip side is that the terminal no longer signals steps directly:
+a Ctrl-C reaches only the TUI and the director, and the director is the only thing that stops
+running steps (`DirectorHandler.interrupt`).
+
 ### Workflow Graph (`trellis.py`, `workflow.py`)
 
 The core data structure is a combined **provenance** and **dependency** graph stored in SQLite.

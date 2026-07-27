@@ -33,8 +33,12 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
   which elevates every step whose declared need is `DEFAULT`
   and whose output falls under that directory, best-effort (never raises).
   See [Build Targets](advanced_topics/build_targets.md) for details.
-- A new returncode bit (`16`) was added to indicate that at least one target was not produced
-  by any step in the workflow.
+- Return codes have changed:
+    - A new returncode bit (`16`) was added to indicate that at least one target was not produced
+      by any step in the workflow.
+    - A new returncode bit (`64`) indicates that the build was aborted by `Ctrl-C` or `SIGTERM`.
+      Previously, an interrupted build could exit with returncode `0`,
+      making it indistinguishable from a successful one.
   See [StepUp Return Codes](reference/returncode.md) for details.
 - StepUp can use a forkserver for Python step execution and file hashing,
   which reduces startup overhead.
@@ -144,6 +148,11 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
   See [Function Calls](getting_started/call.md) for details.
 - File hashes are computed in concurrent hash jobs instead of the old serial client-side delegation.
   Similarly, the director uses the same mechanism to compute file hashes in parallel on startup.
+- File hashing now runs in threads inside the director process
+  instead of subprocesses or forkserver children,
+  which lowers overhead while remaining promptly interruptible.
+  As a result, the "Hashing" row is gone from the resource-usage summary;
+  that time is now counted under "Director".
 - A known race condition related to `amend(inp=...)` has been fixed.
   It is now safe to call `amend(inp=...)` after an amended input file has already been read.
   (It is not the most efficient approach to call `amend(inp=...)` too late,
@@ -174,11 +183,12 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
   instead of `stepup render-jinja ...`.
   This matches the recommended pattern for extensions that do not need low-level access to
   StepUp internals.
-- File hashing now runs in threads inside the director process
-  instead of subprocesses or forkserver children,
-  which lowers overhead while remaining promptly interruptible.
-  As a result, the "Hashing" row is gone from the resource-usage summary;
-  that time is now counted under "Director".
+- Every step now runs in a session of its own,
+  so a `Ctrl-C` in the terminal no longer reaches step processes directly.
+  The director is the only thing that stops them, on every route.
+  As a result, aborting a build now also stops the actual work of a shell step
+  that is a pipeline or an `&&`-chain,
+  which previously kept running because only its surrounding `sh` was signalled.
 - The database schema version has been incremented to 5 because:
     - Directories are no longer stored in the database
       (except for static trees, which are stored as special nodes in the graph.)
@@ -285,6 +295,15 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
       instead of crashing the director.
 - The progress bar now excludes optional (not rewquired) steps
   correctly from the total count of steps to be executed.
+- `Ctrl-C` and `SIGTERM` now abort the build in an orderly fashion.
+  The director interrupts all running steps with `SIGINT`,
+  kills whatever is still running after a few seconds with `SIGKILL`,
+  and only then exits, after writing its logs and final report.
+  Previously, the terminal user interface exited immediately,
+  which cut the director's shutdown short.
+- Sending `SIGTERM` to StepUp no longer leaves running steps behind as orphaned processes.
+- The third `q` key press kills running steps with `SIGKILL` again, as documented.
+  It escalated to `SIGTERM` instead since version 3.0.0.
 
 ## [3.2.3][] - 2026-04-16 {: #v3.2.3 }
 

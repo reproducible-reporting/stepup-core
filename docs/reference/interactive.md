@@ -54,7 +54,13 @@ These commands are defined as follows:
 Note that these interactive keys also work without the `-w` or `-W` option,
 except for `r` which only has an effect during the *watch phase*.
 
-Note that the `SIGINT` signal (pressing `Ctrl+C`) are also supported to stop StepUp.
+Pressing `Ctrl+C` (or sending `SIGTERM`) also stops StepUp, but more abruptly than `q`:
+it aborts the build instead of waiting for running steps.
+Every running step is interrupted with `SIGINT`,
+and whatever is still running a few seconds later is killed with `SIGKILL`,
+so a single `Ctrl+C` is always enough to get your shell prompt back.
+(Pressing `Ctrl+C` again just skips the waiting.)
+An aborted build sets the `64` bit in the [return code](returncode.md).
 
 ## Interacting With a Background StepUp Process
 

@@ -4,6 +4,7 @@
 
 import argparse
 import asyncio
+import contextlib
 import logging
 import multiprocessing
 import os
@@ -47,6 +48,13 @@ __all__ = ("ServeResult", "get_ncore", "get_socket", "interpret_jobs", "serve")
 
 
 logger = logging.getLogger(__name__)
+
+
+INTERRUPT_GRACE = 5.0
+"""Seconds a step gets to wind down after a terminal signal, before it is killed.
+
+See `DirectorHandler.interrupt`.
+"""
 
 
 @attrs.define(frozen=True)
@@ -375,6 +383,7 @@ async def serve(
     target_dirs: list[Path],
     db: DBSession,
     mp_ctx: multiprocessing.context.BaseContext | None = None,
+    handle_signals: bool = True,
 ) -> ServeResult:
     """Server program.
 
@@ -431,6 +440,11 @@ async def serve(
     mp_ctx
         A `multiprocessing` forkserver context for Python step execution and file hashing,
         or `None` to use plain subprocesses.
+    handle_signals
+        If True, install handlers for `SIGINT` and `SIGTERM` that abort the build,
+        see `DirectorHandler.interrupt`.
+        Set to False when running the director inside another process (e.g. the test suite),
+        where hijacking the process-wide signal handlers is not wanted.
 
     Returns
     -------
@@ -555,16 +569,27 @@ async def serve(
         coroutines.append(watcher.loop(stop_event))
         if do_watch_first:
             coroutines.append(watch_first_loop(watcher, director_handler, stop_event))
+    # Abort the build on a terminal signal, instead of dying with a KeyboardInterrupt
+    # traceback (SIGINT) or instantly and mid-transaction (SIGTERM).
+    loop = asyncio.get_running_loop()
+    if handle_signals:
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, director_handler.interrupt, sig)
     try:
         await asyncio.gather(*coroutines)
     finally:
         # In case of an exception, set the stop event, so other parts know they can stop waiting.
         stop_event.set()
-        # Regular shutdown
+        # Regular shutdown. The signal handlers stay installed for its duration:
+        # a step ignoring the first interrupt is killed by a second one during `builder.stop()`.
         await builder.stop()
         exit_event.set()
         await rpc_server
         director_socket_path.remove_p()
+        await director_handler.close()
+        if handle_signals:
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                loop.remove_signal_handler(sig)
 
     usage_report, usage_summary = format_resource_usage(
         time_start,
@@ -600,6 +625,15 @@ class DirectorHandler:
     watcher: Watcher | None = attrs.field()
     stop_event: asyncio.Event = attrs.field()
     _shutdown_counter: int = attrs.field(init=False, default=0)
+
+    _interrupt_count: int = attrs.field(init=False, default=0)
+    """The number of terminal signals received so far, see `interrupt`."""
+
+    _interrupt_task: asyncio.Task | None = attrs.field(init=False, default=None)
+    """The in-flight `_interrupt` task, kept alive here so it cannot be garbage-collected."""
+
+    _interrupt_escalate: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
+    """Set by a second terminal signal, to cut the grace period of the first one short."""
 
     #
     # Building the workflow
@@ -853,14 +887,18 @@ class DirectorHandler:
         The first call puts the scheduler on hold and stops the build/watch loops
         gracefully: steps already running are left to finish on their own.
         A second call interrupts running steps with `SIGINT`;
-        a third and any further call escalates to `SIGTERM`.
+        a third and any further call escalates to `SIGKILL`.
+
+        Waiting for running steps is the point of this (deliberate, interactive) route,
+        so it escalates only when asked to, never on a timer.
+        A terminal signal takes the more abrupt `interrupt` route instead.
         """
         self.scheduler.on_hold = True
         if self.stop_event.is_set():
             signal_name, signal_number = (
                 ("SIGINT", signal.SIGINT)
                 if self._shutdown_counter == 1
-                else ("SIGTERM", signal.SIGTERM)
+                else ("SIGKILL", signal.SIGKILL)
             )
             await self.reporter("DIRECTOR", f"Interrupting running steps ({signal_name}).")
             self.executor.interrupt(signal_number)
@@ -872,6 +910,57 @@ class DirectorHandler:
             self._shutdown_counter = 1
         if self.watcher is not None:
             self.watcher.interrupt.set()
+
+    def interrupt(self, sig: signal.Signals) -> None:
+        """Abort the build because a terminal signal was received.
+
+        Unlike `shutdown` (the `q` key), this never waits for running steps:
+        the user asked for everything to stop, so the build ends as soon as the steps do.
+        The escalation to `SIGKILL` is on a timer (`INTERRUPT_GRACE`) rather than on further
+        signals, so that a single Ctrl-C is always enough to get the shell prompt back.
+        A second signal only cuts that grace period short.
+
+        This is a plain callback (not a coroutine), as required by `add_signal_handler`.
+        The work happens in a task, since reporting and waiting are asynchronous.
+        """
+        self._interrupt_count += 1
+        if self._interrupt_count == 1:
+            self._interrupt_task = asyncio.create_task(self._interrupt(sig), name="interrupt")
+        else:
+            self._interrupt_escalate.set()
+
+    async def _interrupt(self, sig: signal.Signals) -> None:
+        """Stop scheduling, interrupt running steps and kill whatever ignores that."""
+        await self.reporter(
+            "DIRECTOR", f"Aborting the build ({sig.name}). Interrupting running steps (SIGINT)."
+        )
+        self.scheduler.on_hold = True
+        # Steps run in a session of their own, so the terminal does not signal them:
+        # this is the only thing that stops them, on every route (Ctrl-C, SIGTERM, or a
+        # SIGINT sent to the terminal user interface alone).
+        self.executor.interrupt(signal.SIGINT)
+        self.stop_event.set()
+        if self.watcher is not None:
+            self.watcher.interrupt.set()
+        # Give the steps a moment to wind down on their own. Polling keeps this simple and
+        # lets shutdown proceed immediately once the last step is gone, which is the common case.
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + INTERRUPT_GRACE
+        while len(self.builder.running_tasks) > 0 and not self._interrupt_escalate.is_set():
+            if loop.time() > deadline:
+                break
+            await asyncio.sleep(0.1)
+        if len(self.builder.running_tasks) > 0:
+            await self.reporter("DIRECTOR", "Killing unresponsive steps (SIGKILL).")
+            self.executor.interrupt(signal.SIGKILL)
+
+    async def close(self) -> None:
+        """Cancel a pending `interrupt` grace period, e.g. when the build ended in time."""
+        if self._interrupt_task is not None and not self._interrupt_task.done():
+            self._interrupt_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._interrupt_task
+        self._interrupt_task = None
 
     @allow_rpc
     async def drain(self) -> None:

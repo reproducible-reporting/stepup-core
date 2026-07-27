@@ -87,6 +87,8 @@ async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
                     targets=[],
                     target_dirs=[],
                     db=db,
+                    # Do not hijack the signal handlers of the pytest process.
+                    handle_signals=False,
                 )
             )
             while not director_socket_path.exists():
