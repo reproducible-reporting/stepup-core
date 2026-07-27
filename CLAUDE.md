@@ -120,8 +120,7 @@ Some conventions specific to this codebase:
   (e.g., `stdout, stderr`) is allowed when the mkdocs rendering supports it and
   the parameters share the same description.
 
-   ```python
-    In `Returns` sections, use a **semantic name** for the return value, not the type:
+- In `Returns` sections, use a **semantic name** for the return value, not the type:
 
     ```python
     # correct
@@ -194,6 +193,15 @@ StepUp runs as two process types:
 
 The entry point `stepup build` (in `tui.py`) is what users run.
 It spawns the director and connects to it.
+(`stepup boot` still exists as a deprecated alias of `stepup build`.)
+
+Naming gotcha — two similar flags with different meanings:
+
+- `keep_going` (CLI `-k` / `--keep-going`, env `STEPUP_BUILD_KEEP_GOING`):
+  keep building unrelated steps after a step has failed.
+- `carry_on` (internal, part of the director's `amend()` RPC result):
+  whether a running step may continue after amending its inputs,
+  or must abort because some amended inputs are not yet available.
 
 ### Workflow Graph (`trellis.py`, `workflow.py`)
 
@@ -306,16 +314,21 @@ Used in the API for dynamic file discovery with consistency constraints across p
 
 | Variable | Purpose |
 | --- | --- |
-| `STEPUP_DEBUG` | Enable debug logging |
+| `STEPUP_DEBUG` | Debug mode: implies `STEPUP_LOG_LEVEL=DEBUG` and makes internal consistency checks fatal instead of self-correcting |
 | `STEPUP_BUILD_DURATION` | Measure step durations to optimize scheduling (set `0` to disable in tests) |
+| `STEPUP_BUILD_FORKSERVER` | Run Python steps via forkserver (`1`) or plain subprocesses (`0`); CI tests both |
 | `STEPUP_SYNC_RPC_TIMEOUT` | Timeout for sync RPC calls (seconds) |
 | `STEPUP_BUILD_PERF` | Frequency (Hz) for Linux `perf` profiling of director |
 | `STEPUP_BUILD_YAPPI` | Enable Yappi profiling of director |
+| `STEPUP_BUILD_SQLLOG` | Log all SQLite queries with timings |
+| `STEPUP_BUILD_JOBLOG` | Log per-job scheduling and timing information |
+
+Profiling output (`perf`, sqllog, joblog) can be analyzed with `tools/analyze_perf.py`.
 
 Several other `STEPUP_*` / `STEPUP_BUILD_*` variables exist for configuration
-(e.g. `STEPUP_BUILD_JOBS`, `STEPUP_BUILD_RESOURCES`, `STEPUP_RESOURCES`, `STEPUP_LOG_LEVEL`,
-`STEPUP_MAX_OUTPUT_SIZE`, `STEPUP_PATH_FILTER`, `STEPUP_RENDER_JINJA`) — see
-`docs/reference/configuration.md` for the full list.
+(e.g. `STEPUP_BUILD_JOBS`, `STEPUP_BUILD_RESOURCES`, `STEPUP_BUILD_KEEP_GOING`,
+`STEPUP_RESOURCES`, `STEPUP_LOG_LEVEL`, `STEPUP_MAX_OUTPUT_SIZE`, `STEPUP_PATH_FILTER`,
+`STEPUP_RENDER_JINJA`) — see `docs/reference/configuration.md` for the full list.
 Most StepUp-3-era `STEPUP_*` variables gained a `STEPUP_BUILD_` prefix in the 4.0 migration;
 see `docs/migration/from_3x_to_40.md` before assuming an old name still applies.
 
@@ -324,15 +337,19 @@ see `docs/migration/from_3x_to_40.md` before assuming an old name still applies.
 - `tests/conftest.py` defines fixtures:
     - `wfs` (bare workflow)
     - `wfp` (workflow with plan.py),
-    - `client` (full director running in-process).
+    - `client` (full director running in-process),
+    - `path_tmp` (pytest's `tmpdir` as a `path.Path`).
 - `tests/examples/*/` contains integration test cases,
   each with `plan.py`, `main.sh`, and `expected_stdout*.txt` / `expected_graph*.txt`.
   These are run by `tests/test_examples.py`.
   See `tests/examples/README.md` for a detailed explanation of the `main.sh` conventions
   and how the test builder compares `current_*` files against `expected_*` files.
-    - New examples are **not** auto-discovered: register each in the `@pytest.mark.parametrize`
-      `name` list of `test_example` in `tests/test_examples.py` (and `test_plan` if the plan
-      should run standalone), or it is silently never run.
+    - Register each new example in the `EXAMPLES` list at the top of `tests/test_examples.py`
+      (and in the `test_plan` parametrize list if the plan should also run standalone).
+      The guard tests `test_examples_list_has_all_dirs` / `test_examples_list_has_no_extra`
+      fail when `EXAMPLES` is out of sync with the directories under `tests/examples/`.
+    - Examples that only work with the forkserver must be added to
+      `EXAMPLES_REQUIRES_FORKSERVER`; they are skipped when `STEPUP_BUILD_FORKSERVER=0`.
     - CI runs the example suite twice, with `STEPUP_BUILD_FORKSERVER=1` and `=0`, so examples
       must pass under both the forkserver and plain-subprocess paths.
     - The "Standard error" page is replaced with `(stripped)` before comparison, so assert
