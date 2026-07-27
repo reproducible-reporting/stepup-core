@@ -197,6 +197,11 @@ HTML_TEMPLATE = """\
       padding: 10px;
       border-radius: 4px;
     }
+    code {
+      background-color: var(--pre-color);
+      padding: 1px 3px;
+      border-radius: 4px;
+    }
     a {
       color: var(--link-color);
       text-decoration: none;
@@ -259,21 +264,33 @@ HTML_TEMPLATE = """\
     .postponed { color: var(--orange); }
     .clean { color: var(--green); }
     .required { color: var(--blue); }
-    table.list tr td {
+    table.ngm {
+      margin: 12px;
+    }
+    table.ngm, table.ngm tr, table.ngm tr td, table.ngm tr th {
+      border: 1px solid var(--link-color);
+      border-collapse: collapse;
+    }
+    table.ngm tr td, table.ngm tr th {
+      vertical-align: top;
+      text-align: left;
+      padding: 1px 4px 4px 4px;
+    }
+    table.edges tr td {
       vertical-align: top;
       padding-top: 2px;
       padding-bottom: 2px;
     }
-    td:nth-child(1) {
+    table.edges tr td:nth-child(1) {
       text-align: right;
       padding-right: 10px;
       width: 15ex;
     }
-    td:nth-child(2) {
+    table.edges tr td:nth-child(2) {
       padding-right: 10px;
       padding-left: 10px;
     }
-    tr {
+    table.edges tr {
       margin: 4px;
     }
   </style>
@@ -293,9 +310,12 @@ HTML_TEMPLATE = """\
 
 MAIN_TEMPLATE = """\
 <h2>Overview</h2>
-<p>The graph contains <a href="/search_file/">{{ n_files }} files</a>
-and <a href="/search_step/">{{ n_steps }} steps</a>.</p>
-<p>Entry point: {{ a_entry }}<p>
+<p>The graph contains:<ul>
+  <li><a href="/search_file/">{{ n_files }} files</a></li>
+  <li><a href="/search_step/">{{ n_steps }} steps</a></li>
+  <li><a href="/search_st/">{{ n_static_trees }} static trees</a></li>
+</ul></p>
+<p>Entry point: {{ a_entry }}</p>
 <h2>Search</h2>
 <p><form action="/search/" method="get">
   <table>
@@ -307,7 +327,8 @@ and <a href="/search_step/">{{ n_steps }} steps</a>.</p>
       <td></td>
       <td><input type="submit" value="(Any)">
       <input type="submit" value="🗏 File" formaction="/search_file/">
-      <input type="submit" value="⚙ Step" formaction="/search_step/"></td>
+      <input type="submit" value="⚙ Step" formaction="/search_step/">
+      <input type="submit" value="𐂷 Static Tree" formaction="/search_st/"></td>
     </tr>
   </table>
 </form></p>
@@ -387,6 +408,8 @@ class GraphServer(BaseHTTPRequestHandler):
                 main = self._search_file(env, args)
             elif parsed.path.startswith("/search_step/"):
                 main = self._search_step(env, args)
+            elif parsed.path.startswith("/search_st/"):
+                main = self._search_st(env, args)
             else:
                 main = self._not_found(env)
                 response_code = 404
@@ -413,6 +436,7 @@ class GraphServer(BaseHTTPRequestHandler):
         # Get a few stats from the database.
         (n_files,) = self.con.execute("SELECT COUNT(*) FROM file").fetchone()
         (n_steps,) = self.con.execute("SELECT COUNT(*) FROM step").fetchone()
+        (n_static_trees,) = self.con.execute("SELECT COUNT(*) FROM node WHERE kind='st'").fetchone()
 
         # Get the top-level step plan.py
         label_entry = Step.create_label("./plan.py")
@@ -424,7 +448,9 @@ class GraphServer(BaseHTTPRequestHandler):
         # Format main HTML content.
         template = env.from_string(MAIN_TEMPLATE)
         template.filename = "<MAIN_TEMPLATE>"
-        yield template.render(n_files=n_files, n_steps=n_steps, a_entry=a_entry)
+        yield template.render(
+            n_files=n_files, n_steps=n_steps, n_static_trees=n_static_trees, a_entry=a_entry
+        )
 
     def _node(self, env, args: dict[str, list[str]]) -> Iterator[str]:
         if "i" not in args or len(args["i"]) != 1:
@@ -437,7 +463,10 @@ class GraphServer(BaseHTTPRequestHandler):
         ).fetchone()
         node_prefix = "Detached " if detached else ""
         yield f"<h2>{node_prefix}Node {node_i}</h2>"
-        yield f"<p><b>Kind:</b> {KIND_NAMES.get(kind, kind)}</p>"
+        kind_name = KIND_NAMES.get(kind, kind)
+        if kind != "root":
+            kind_name = f"<a href='/search_{kind}/'>{kind_name}</a>"
+        yield f"<p><b>Kind:</b> {kind_name}</p>"
         display_label = escape_command_display(label) if kind == "step" else label
         yield f"<p><b>Label:</b> {html.escape(display_label)}</p>"
 
@@ -524,16 +553,33 @@ class GraphServer(BaseHTTPRequestHandler):
                     yield f"<p><b>{res_name}:</b> {res_units}</p>"
 
             sql_ngm = "SELECT data FROM nglob_multi WHERE node = ?"
-            ngms = list(self.con.execute(sql_ngm, (node_i,)))
-            if len(ngms) > 0:
-                yield "<h3>Defines NGlob Multis</h3>"
-                for row in ngms:
-                    ngm = json_converter.structure(json.loads(row[0]), NGlobMulti)
-                    line = f"<pre>{[ngs.pattern for ngs in ngm.nglob_singles]}"
-                    if len(ngm.subs) > 0:
-                        line += f" {ngm.subs}"
-                    line += "</pre>"
-                    yield line
+            ngm_rows = list(self.con.execute(sql_ngm, (node_i,)))
+            if len(ngm_rows) > 0:
+                yield "<h3>Defines (Named) Globs</h3>"
+                for ngm_row in ngm_rows:
+                    ngm = json_converter.structure(json.loads(ngm_row[0]), NGlobMulti)
+                    yield '<table class="ngm">'
+                    yield "<tr>"
+                    for ngs in ngm.nglob_singles:
+                        yield f"<th><code>{ngs.pattern}</code></th>"
+                    subs_keys = []
+                    for key, value in ngm.subs.items():
+                        subs_keys.append(key)
+                        yield f"<th><code>{key} = {value}</code></th>"
+                    yield "</tr>"
+                    for match in ngm.matches():
+                        yield "<tr>"
+                        for path1 in match.files:
+                            if isinstance(path1, str):
+                                yield f"<td><code>{path1}</code></td>"
+                            else:
+                                yield "<td>"
+                                yield "</br>".join(f"<code>{path}</code>" for path in path1)
+                                yield "</td>"
+                        for key in subs_keys:
+                            yield f"<td><code>{match.mapping.get(key, '?')}</code></td>"
+                        yield "</tr>"
+                    yield "</table>"
 
             sql_outcome = (
                 "SELECT returncode, stdout, stderr, utime, stime, wtime "
@@ -615,7 +661,7 @@ class GraphServer(BaseHTTPRequestHandler):
         ).fetchone()
         if creator is not None:
             yield "<p>Creator</p>"
-            yield '<table class="list">'
+            yield '<table class="edges">'
             creator_kind, creator_label, creator_detached, creator_state_i = creator
             yield self._format_node(
                 creator_i, creator_kind, creator_label, creator_detached, creator_state_i
@@ -629,7 +675,7 @@ class GraphServer(BaseHTTPRequestHandler):
         ).fetchall()
         if len(product_rows) > 0:
             yield "<p>Products</p>"
-            yield '<table class="list">'
+            yield '<table class="edges">'
             for prod_i, prod_kind, prod_label, state in product_rows:
                 yield f"{self._format_node(prod_i, prod_kind, prod_label, False, state)}"
             yield "</table>"
@@ -645,7 +691,7 @@ class GraphServer(BaseHTTPRequestHandler):
         ).fetchall()
         if len(source_rows) > 0:
             yield "<p>Sources</p>"
-            yield '<table class="list">'
+            yield '<table class="edges">'
             for sup_i, sup_kind, sup_label, amended, state in source_rows:
                 yield self._format_node(sup_i, sup_kind, sup_label, False, state, amended)
             yield "</table>"
@@ -659,7 +705,7 @@ class GraphServer(BaseHTTPRequestHandler):
         ).fetchall()
         if len(sink_rows) > 0:
             yield "<p>Sinks</p>"
-            yield '<table class="list">'
+            yield '<table class="edges">'
             for cons_i, cons_kind, cons_label, amended, state in sink_rows:
                 yield self._format_node(cons_i, cons_kind, cons_label, False, state, amended)
             yield "</table>"
@@ -675,6 +721,10 @@ class GraphServer(BaseHTTPRequestHandler):
     def _search_step(self, env, args):
         pattern = args.get("pattern", [""])[0]
         yield from self._search_low(env, pattern, "step")
+
+    def _search_st(self, env, args):
+        pattern = args.get("pattern", [""])[0]
+        yield from self._search_low(env, pattern, "st")
 
     def _search_low(self, _env, pattern: str, filter_kind: str | None = None) -> Iterator[str]:
         yield "<h2>Search Results</h2>"
@@ -693,13 +743,13 @@ class GraphServer(BaseHTTPRequestHandler):
             )
         rows = list(cur)
         yield f"<p><b>Number of matches:</b> {len(rows)}</p>"
-        yield '<table class="list">'
+        yield '<table class="edges">'
         for i, kind, label, detached, state in rows:
             yield f"{self._format_node(i, kind, label, detached, state)}"
         yield "</table>"
 
-    def _not_found(self, env, path: str) -> Iterator[str]:
-        yield f"<h2>404 Not Found</h2><p>Path {path} is not implemented.</p>"
+    def _not_found(self, env) -> Iterator[str]:
+        yield "<h2>404 Not Found</h2><p>The requested URL was not found on this server.</p>"
 
     def _error(self, env, exc) -> Iterator[str]:
         yield "<h2>500 Internal Server Error</h2>"
