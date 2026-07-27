@@ -839,7 +839,7 @@ class Workflow(Trellis):
         if old_step is None or not detached:
             return None
         old_inp_paths = sorted(
-            item[0] for item in old_step.inp_paths(amended=False, yield_detached=True)
+            r.path for r in old_step.inp_paths(amended=False, include_detached=True)
         )
         if old_inp_paths != inp_paths:
             return None
@@ -847,12 +847,12 @@ class Workflow(Trellis):
         if old_env_vars != env_deps:
             return None
         old_out_paths = sorted(
-            item[0] for item in old_step.out_paths(amended=False, yield_detached=True)
+            r.path for r in old_step.out_paths(amended=False, include_detached=True)
         )
         if old_out_paths != out_paths:
             return None
         old_vol_paths = sorted(
-            item[0] for item in old_step.vol_paths(amended=False, yield_detached=True)
+            r.path for r in old_step.vol_paths(amended=False, include_detached=True)
         )
         if old_vol_paths != vol_paths:
             return None

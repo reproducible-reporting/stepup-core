@@ -325,32 +325,30 @@ async def report_completion(
                     lines.append(f"Working directory     {workdir}")
 
                 prefix = "Declares"
-                for path in step.static_paths():
-                    lines.append(f"{prefix}      STATIC  {path}")
+                for rec in step.static_paths():
+                    lines.append(f"{prefix}      STATIC  {rec.path}")
                     prefix = "        "
 
                 prefix = "Declares"
-                for path in step.missing_paths():
-                    lines.append(f"{prefix}       MISSING  {path}")
+                for rec in step.missing_paths():
+                    lines.append(f"{prefix}       MISSING  {rec.path}")
                     prefix = "        "
 
                 prefix = "Inputs"
-                for path, state, detached, amended in step.inp_paths(
-                    yield_state=True, yield_detached=True, yield_amended=True
-                ):
-                    path_fmt = f"({path})" if detached else path
-                    path_fmt = f"{path_fmt} [amended]" if amended else path_fmt
-                    lines.append(f"{prefix}      {state.name:>8s}  {path_fmt}")
+                for rec in step.inp_paths(include_detached=True):
+                    path_fmt = f"({rec.path})" if rec.detached else rec.path
+                    path_fmt = f"{path_fmt} [amended]" if rec.amended else path_fmt
+                    lines.append(f"{prefix}      {rec.state.name:>8s}  {path_fmt}")
                     prefix = "      "
 
                 prefix = "Outputs"
-                for path, state, amended in step.out_paths(yield_state=True, yield_amended=True):
-                    path_fmt = f"{path} [amended]" if amended else path
-                    lines.append(f"{prefix}     {state.name:>8s}  {path_fmt}")
+                for rec in step.out_paths():
+                    path_fmt = f"{rec.path} [amended]" if rec.amended else rec.path
+                    lines.append(f"{prefix}     {rec.state.name:>8s}  {path_fmt}")
                     prefix = "       "
 
-                for path, amended in step.vol_paths(yield_amended=True):
-                    path_fmt = f"{path} [amended]" if amended else path
+                for rec in step.vol_paths():
+                    path_fmt = f"{rec.path} [amended]" if rec.amended else rec.path
                     lines.append(f"{prefix}     VOLATILE  {path_fmt}")
                     prefix = "       "
 

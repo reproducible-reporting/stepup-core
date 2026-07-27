@@ -43,6 +43,7 @@ from .exceptions import (
     StepUpError,
 )
 from .extapi import subs_env_vars
+from .hash import FileHash
 from .nglob import NGlobMulti
 from .path import (
     StrPath,
@@ -57,7 +58,7 @@ from .path import (
     translate_back,
 )
 from .rpc import DummySyncRPCClient, SocketSyncRPCClient
-from .step import RESERVED_ENV_VARS, FileHash
+from .step import RESERVED_ENV_VARS
 from .stepinfo import StepInfo
 from .utils import format_command, parse_resources, string_to_list
 

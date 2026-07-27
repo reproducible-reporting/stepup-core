@@ -12,7 +12,7 @@ import attrs
 from .exceptions import CyclicError, GraphError
 from .sqlite3 import DBSession
 
-__all__ = ("Node", "Root", "Trellis")
+__all__ = ("Node", "NodeType", "Root", "Trellis")
 
 
 logger = logging.getLogger(__name__)

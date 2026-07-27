@@ -141,8 +141,10 @@ async def test_step(wfs: Workflow):
         assert isinstance(workdir, Path)
         assert wfs.format_str() == TEST_STEP_GRAPH
         assert list(wfs.nodes(Step)) == [step]
-        assert set(step.inp_paths(yield_detached=True)) == {("foo.txt", True)}
-        assert set(step.out_paths()) == {"sub/bar.txt"}
+        assert {(r.path, r.detached) for r in step.inp_paths(include_detached=True)} == {
+            ("foo.txt", True)
+        }
+        assert {r.path for r in step.out_paths()} == {"sub/bar.txt"}
         assert set(wfs.detached_inp_paths()) == {("foo.txt", FileState.AWAITED)}
 
     # Redefining the boot script is not allowed.
@@ -168,11 +170,11 @@ async def test_step(wfs: Workflow):
         assert unavailable == {"spam.txt"}
         assert not unfresh
         assert step.has_unavailable_amended_input()
-        assert set(step.inp_paths(yield_detached=True)) == {
+        assert {(r.path, r.detached) for r in step.inp_paths(include_detached=True)} == {
             ("foo.txt", True),
             ("spam.txt", True),
         }
-        assert set(step.out_paths()) == {"egg.csv", "sub/bar.txt"}
+        assert {r.path for r in step.out_paths()} == {"egg.csv", "sub/bar.txt"}
         assert wfs.format_str() == TEST_STEP_GRAPH2
 
     # Amend an input that was already known, which just gets ignored.
@@ -897,7 +899,7 @@ async def test_skip_step_amended_detached_input(wfp: Workflow):
         wfp.define_step(plan, "foo > log", out_paths=["log"])
         foo = wfp.find(Step, "foo > log")
         assert foo.get_state() == StepState.PENDING
-        assert list(foo.out_paths()) == ["log"]
+        assert [r.path for r in foo.out_paths()] == ["log"]
 
         # Simulate run
         wfp.amend_step(foo, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"])
@@ -908,9 +910,9 @@ async def test_skip_step_amended_detached_input(wfp: Workflow):
         assert foo.get_state() == StepState.SUCCEEDED
 
         # Detach ainp and check state
-        assert set(foo.out_paths()) == {"aout", "log"}
+        assert {r.path for r in foo.out_paths()} == {"aout", "log"}
         ainp.detach()
-        assert set(foo.out_paths()) == {"aout", "log"}
+        assert {r.path for r in foo.out_paths()} == {"aout", "log"}
         assert foo.get_hash() is not None
         assert foo.get_state() == StepState.SUCCEEDED
         assert wfp.find(File, "log").get_state() == FileState.BUILT
@@ -978,12 +980,14 @@ async def test_amend_step(wfp: Workflow):
         )
         assert not keep_going
         assert to_check == []
-        assert set(step.inp_paths(yield_detached=True, amended=True)) == {
+        assert {
+            (r.path, r.detached) for r in step.inp_paths(include_detached=True, amended=True)
+        } == {
             ("inp1", True),
             ("inp2", True),
         }
-        assert set(step.out_paths(amended=True)) == {"out3"}
-        assert set(step.vol_paths(amended=True)) == {"vol4"}
+        assert {r.path for r in step.out_paths(amended=True)} == {"out3"}
+        assert {r.path for r in step.vol_paths(amended=True)} == {"vol4"}
         step.completed(None, True)
         step.set_state(StepState.PENDING)
         declare_static(wfp, plan, ["inp1"])
@@ -1651,8 +1655,8 @@ async def test_acyclic_amend_static(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         declare_static(wfp, plan, ["static.txt"])
         wfp.amend_step(plan, inp_paths=["static.txt"])
-        assert set(plan.inp_paths()) == {"plan.py", "static.txt"}
-        assert set(plan.static_paths()) == {"static.txt"}
+        assert {r.path for r in plan.inp_paths()} == {"plan.py", "static.txt"}
+        assert {r.path for r in plan.static_paths()} == {"static.txt"}
 
 
 async def test_cyclic_two_steps(wfp: Workflow):
@@ -1966,13 +1970,15 @@ async def test_inp_paths(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "script", inp_paths=["foo"])
         step = wfp.find(Step, "script")
-        assert set(step.inp_paths()) == set()
-        assert set(step.inp_paths(yield_detached=True)) == {("foo", True)}
-        assert list(step.inp_paths(yield_state=True)) == []
-        assert set(step.inp_paths(yield_state=True, yield_detached=True)) == {
+        assert {r.path for r in step.inp_paths()} == set()
+        assert {(r.path, r.detached) for r in step.inp_paths(include_detached=True)} == {
+            ("foo", True)
+        }
+        assert list(step.inp_paths()) == []
+        assert {(r.path, r.state, r.detached) for r in step.inp_paths(include_detached=True)} == {
             ("foo", FileState.AWAITED, True),
         }
-        assert list(step.inp_paths(yield_hash=True)) == []
+        assert list(step.inp_paths()) == []
 
 
 async def test_out_paths(wfp: Workflow):
@@ -1981,16 +1987,16 @@ async def test_out_paths(wfp: Workflow):
         wfp.define_step(plan, "script", out_paths=["foo", "bar"])
         step = wfp.find(Step, "script")
         wfp.update_file_hashes([("bar", fake_hash("bar"))], HashUpdateCause.SUCCEEDED)
-        assert set(step.out_paths()) == {"bar", "foo"}
-        assert set(step.out_paths(yield_state=True)) == {
+        assert {r.path for r in step.out_paths()} == {"bar", "foo"}
+        assert {(r.path, r.state) for r in step.out_paths()} == {
             ("bar", FileState.BUILT),
             ("foo", FileState.AWAITED),
         }
-        assert sorted(step.out_paths(yield_hash=True)) == [
+        assert sorted((r.path, r.hash) for r in step.out_paths()) == [
             ("bar", fake_hash("bar")),
             ("foo", FileHash.unknown()),
         ]
-        assert sorted(step.out_paths(yield_state=True, yield_hash=True)) == [
+        assert sorted((r.path, r.state, r.hash) for r in step.out_paths()) == [
             ("bar", FileState.BUILT, fake_hash("bar")),
             ("foo", FileState.AWAITED, FileHash.unknown()),
         ]
@@ -2001,8 +2007,8 @@ async def test_vol_paths(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "script", vol_paths=["foo", "bar"])
         step = wfp.find(Step, "script")
-        assert set(step.vol_paths()) == {"bar", "foo"}
-        assert sorted(step.vol_paths(yield_hash=True)) == [
+        assert {r.path for r in step.vol_paths()} == {"bar", "foo"}
+        assert sorted((r.path, r.hash) for r in step.vol_paths()) == [
             ("bar", FileHash.unknown()),
             ("foo", FileHash.unknown()),
         ]
@@ -2015,14 +2021,14 @@ async def test_static_missing_paths(wfp: Workflow):
         step = wfp.find(Step, "script")
         declare_static(wfp, step, ["foo", "bar", "zzz"])
         wfp.find(File, "zzz").set_state(FileState.MISSING)
-        assert set(step.static_paths()) == {"bar", "foo"}
-        assert set(step.missing_paths()) == {"zzz"}
+        assert {r.path for r in step.static_paths()} == {"bar", "foo"}
+        assert {r.path for r in step.missing_paths()} == {"zzz"}
         assert set(wfp.missing_paths()) == {"zzz"}
-        assert sorted(step.static_paths(yield_hash=True)) == [
+        assert sorted((r.path, r.hash) for r in step.static_paths()) == [
             ("bar", fake_hash("bar")),
             ("foo", fake_hash("foo")),
         ]
-        assert list(step.missing_paths(yield_hash=True)) == [("zzz", FileHash.unknown())]
+        assert [(r.path, r.hash) for r in step.missing_paths()] == [("zzz", FileHash.unknown())]
 
 
 async def test_skip_amend_detached_inputs(wfp: Workflow):
@@ -2034,14 +2040,14 @@ async def test_skip_amend_detached_inputs(wfp: Workflow):
 
         # Simulate running the step, which amends a few things.
         wfp.amend_step(step, inp_paths=["foo"], env_deps=["AAA"], vol_paths=["bbb"])
-        assert set(step.inp_paths(yield_detached=True, yield_amended=True)) == {
+        assert {(r.path, r.detached, r.amended) for r in step.inp_paths(include_detached=True)} == {
             ("foo", False, True)
         }
         assert set(step.env_deps(yield_amended=True)) == {("AAA", True)}
-        assert set(step.out_paths(yield_detached=True, yield_amended=True)) == {
+        assert {(r.path, r.detached, r.amended) for r in step.out_paths(include_detached=True)} == {
             ("bar", False, False),
         }
-        assert set(step.vol_paths(yield_detached=True, yield_amended=True)) == {
+        assert {(r.path, r.detached, r.amended) for r in step.vol_paths(include_detached=True)} == {
             ("bbb", False, True),
         }
         wfp.update_file_hashes([("bar", fake_hash("bar"))], HashUpdateCause.SUCCEEDED)
@@ -2053,12 +2059,14 @@ async def test_skip_amend_detached_inputs(wfp: Workflow):
         foo1.detach()
         assert foo1.is_detached()
         # Amended info is not removed
-        assert set(step.inp_paths(yield_detached=True, yield_amended=True)) == {("foo", True, True)}
+        assert {(r.path, r.detached, r.amended) for r in step.inp_paths(include_detached=True)} == {
+            ("foo", True, True)
+        }
         assert set(step.env_deps(yield_amended=True)) == {("AAA", True)}
-        assert set(step.out_paths(yield_detached=True, yield_amended=True)) == {
+        assert {(r.path, r.detached, r.amended) for r in step.out_paths(include_detached=True)} == {
             ("bar", False, False),
         }
-        assert set(step.vol_paths(yield_detached=True, yield_amended=True)) == {
+        assert {(r.path, r.detached, r.amended) for r in step.vol_paths(include_detached=True)} == {
             ("bbb", False, True),
         }
 
@@ -2073,11 +2081,13 @@ async def test_skip_amend_detached_inputs(wfp: Workflow):
         assert foo1 == foo2
         wfp.define_step(plan, "prog", out_paths=["bar"])
         assert not step.is_detached()
-        assert set(step.inp_paths()) == {"foo"}
-        assert set(step.inp_paths(yield_detached=True)) == {("foo", False)}
-        assert set(step.out_paths()) == {"bar"}
+        assert {r.path for r in step.inp_paths()} == {"foo"}
+        assert {(r.path, r.detached) for r in step.inp_paths(include_detached=True)} == {
+            ("foo", False)
+        }
+        assert {r.path for r in step.out_paths()} == {"bar"}
         # Note that amended info is removed when inputs of a step are detached.
-        assert set(step.vol_paths()) == {"bbb"}
+        assert {r.path for r in step.vol_paths()} == {"bbb"}
 
         # Check that amended info is back and hash is still in place
         assert step.get_hash() is not None
@@ -2088,8 +2098,8 @@ async def test_define_step_out_nested(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "script", out_paths=["sub/foo/bar"])
         step = wfp.find(Step, "script")
-        assert set(step.inp_paths()) == set()
-        assert set(step.out_paths()) == {"sub/foo/bar"}
+        assert {r.path for r in step.inp_paths()} == set()
+        assert {r.path for r in step.out_paths()} == {"sub/foo/bar"}
 
 
 async def test_define_step_vol_nested(wfp: Workflow):
@@ -2097,9 +2107,9 @@ async def test_define_step_vol_nested(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "script", vol_paths=["sub/foo/bar"])
         step = wfp.find(Step, "script")
-        assert set(step.inp_paths()) == set()
-        assert set(step.out_paths()) == set()
-        assert set(step.vol_paths()) == {"sub/foo/bar"}
+        assert {r.path for r in step.inp_paths()} == set()
+        assert {r.path for r in step.out_paths()} == set()
+        assert {r.path for r in step.vol_paths()} == {"sub/foo/bar"}
 
 
 async def test_amend_step_out_nested(wfp: Workflow):
@@ -2108,8 +2118,8 @@ async def test_amend_step_out_nested(wfp: Workflow):
         wfp.define_step(plan, "script")
         step = wfp.find(Step, "script")
         wfp.amend_step(step, out_paths=["sub/foo/bar"])
-        assert set(step.inp_paths()) == set()
-        assert set(step.out_paths()) == {"sub/foo/bar"}
+        assert {r.path for r in step.inp_paths()} == set()
+        assert {r.path for r in step.out_paths()} == {"sub/foo/bar"}
 
 
 async def test_amend_step_vol_nested(wfp: Workflow):
@@ -2118,9 +2128,9 @@ async def test_amend_step_vol_nested(wfp: Workflow):
         wfp.define_step(plan, "script")
         step = wfp.find(Step, "script")
         wfp.amend_step(step, vol_paths=["sub/foo/bar"])
-        assert set(step.inp_paths()) == set()
-        assert set(step.out_paths()) == set()
-        assert set(step.vol_paths()) == {"sub/foo/bar"}
+        assert {r.path for r in step.inp_paths()} == set()
+        assert {r.path for r in step.out_paths()} == set()
+        assert {r.path for r in step.vol_paths()} == {"sub/foo/bar"}
 
 
 async def test_step_static_tree(wfp: Workflow):

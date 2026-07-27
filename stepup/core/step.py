@@ -13,8 +13,8 @@ import attrs
 from path import Path
 
 from .enums import FileState, Need, StepState
-from .file import File, FileHash
-from .hash import StepHash
+from .file import File
+from .hash import FileHash, StepHash
 from .nglob import NGlobMulti
 from .static_tree import StaticTree
 from .stepinfo import StepInfo
@@ -289,6 +289,31 @@ UPDATE step SET _check_after = 1 FROM (
 """
 
 
+@attrs.define(frozen=True)
+class PathRecord:
+    """One path yielded by `Step._paths()` and its wrapper methods."""
+
+    path: str
+    """The path, relative to the workflow root or the step's work directory."""
+
+    state: FileState
+    """The state of the file."""
+
+    detached: bool
+    """Whether the path is detached, i.e. its creating step moved on without it."""
+
+    amended: bool
+    """Whether the path was amended, i.e. discovered while the step was running."""
+
+    _hash_json: str | None = attrs.field(repr=False)
+    """The JSON representation of the file's hash, decoded lazily through `hash`."""
+
+    @property
+    def hash(self) -> FileHash:
+        """The file's hash, lazily decoded from its JSON representation."""
+        return FileHash.from_json(self._hash_json)
+
+
 @attrs.define
 class Step(Node):
     #
@@ -527,10 +552,10 @@ class Step(Node):
         command, workdir = self.command_workdir
         return StepInfo(
             command,
-            self.inp_paths(amended=False),
+            [r.path for r in self.inp_paths(amended=False)],
             self.env_deps(amended=False),
-            self.out_paths(amended=False),
-            self.vol_paths(amended=False),
+            [r.path for r in self.out_paths(amended=False)],
+            [r.path for r in self.vol_paths(amended=False)],
             workdir,
         )
 
@@ -556,20 +581,21 @@ class Step(Node):
     def _paths(
         self,
         relation: str,
-        yield_state: bool = False,
-        yield_hash: bool = False,
-        yield_detached: bool = False,
-        yield_amended: bool = False,
+        *,
+        include_detached: bool = False,
         amended: bool | None = None,
         filter_states: tuple[FileState, ...] = (),
-    ) -> Iterator:
+    ) -> Iterator[PathRecord]:
         """Iterate over paths of this step using various criteria."""
         # Which relation?
         data = {"node": self.i}
         if relation == "product":
-            if yield_amended or amended is not None:
-                raise ValueError("Cannot combine amended with product relation.")
-            sql = "WITH relevant AS (SELECT i AS node FROM node WHERE creator = :node)"
+            # There is no dependency row for a product, so `idep` is NULL, which makes the
+            # amended-exists check below (and an `amended=True` filter) naturally resolve to
+            # "never amended" -- correct, since a declared static/missing path can't be amended.
+            sql = (
+                "WITH relevant AS (SELECT i AS node, NULL AS idep FROM node WHERE creator = :node)"
+            )
         elif relation == "source":
             sql = (
                 "WITH relevant AS "
@@ -582,29 +608,18 @@ class Step(Node):
             )
         else:
             raise ValueError(f"Unrecognized relation argument: '{relation}'")
-        join = "JOIN node ON node.i = relevant.node"
-
-        # Which fields to yield?
-        fields = ["label"]
-        join_file = False
-        if yield_state:
-            fields.append("state")
-            join_file = True
-        if yield_hash:
-            fields.append("hash")
-            join_file = True
-        if yield_detached:
-            fields.append("detached")
-        if yield_amended:
-            fields.append("EXISTS (SELECT 1 FROM amended_dep WHERE amended_dep.i = relevant.idep)")
-        if len(filter_states) > 0:
-            join_file = True
-        if join_file:
-            join += " JOIN file ON file.node = relevant.node"
+        join = "JOIN node ON node.i = relevant.node JOIN file ON file.node = relevant.node"
+        fields = [
+            "label",
+            "state",
+            "hash",
+            "detached",
+            "EXISTS (SELECT 1 FROM amended_dep WHERE amended_dep.i = relevant.idep)",
+        ]
         where = "WHERE kind = 'file'"
 
-        # Exclude detached paths if not yielding detached
-        if not yield_detached:
+        # Exclude detached paths unless requested
+        if not include_detached:
             where += " AND NOT detached"
 
         # Select only the initial files (not amended)
@@ -626,86 +641,44 @@ class Step(Node):
             where += f" AND ({' OR '.join(where_states)})"
 
         sql += f" SELECT {', '.join(fields)} FROM relevant {join} {where}"
-        for row in self.db.execute(sql, data):
-            record = [row[0]]
-            i = 1
-            if yield_state:
-                record.append(FileState(row[i]))
-                i += 1
-            if yield_hash:
-                record.append(FileHash.from_json(row[i]))
-                i += 1
-            if yield_detached:
-                record.append(bool(row[i]))
-                i += 1
-            if yield_amended:
-                record.append(bool(row[i]))
-            yield record[0] if len(record) == 1 else tuple(record)
+        for label, state, hash_json, detached, amended_flag in self.db.execute(sql, data):
+            yield PathRecord(label, FileState(state), bool(detached), bool(amended_flag), hash_json)
 
     def inp_paths(
-        self,
-        *,
-        yield_state: bool = False,
-        yield_hash: bool = False,
-        yield_detached: bool = False,
-        yield_amended: bool = False,
-        amended: bool | None = None,
-    ) -> Iterator:
+        self, *, include_detached: bool = False, amended: bool | None = None
+    ) -> Iterator[PathRecord]:
         """Iterate over input files of this step."""
-        yield from self._paths(
-            "source", yield_state, yield_hash, yield_detached, yield_amended, amended
-        )
+        yield from self._paths("source", include_detached=include_detached, amended=amended)
 
     def out_paths(
-        self,
-        *,
-        yield_state: bool = False,
-        yield_hash: bool = False,
-        yield_detached: bool = False,
-        yield_amended: bool = False,
-        amended: bool | None = None,
-    ) -> Iterator:
+        self, *, include_detached: bool = False, amended: bool | None = None
+    ) -> Iterator[PathRecord]:
         """Iterate over output files of this step."""
         yield from self._paths(
             "sink",
-            yield_state,
-            yield_hash,
-            yield_detached,
-            yield_amended,
-            amended,
-            (FileState.AWAITED, FileState.BUILT, FileState.OUTDATED),
+            include_detached=include_detached,
+            amended=amended,
+            filter_states=(FileState.AWAITED, FileState.BUILT, FileState.OUTDATED),
         )
 
     def vol_paths(
-        self,
-        *,
-        yield_hash: bool = False,
-        yield_detached: bool = False,
-        yield_amended: bool = False,
-        amended: bool | None = None,
-    ) -> Iterator:
+        self, *, include_detached: bool = False, amended: bool | None = None
+    ) -> Iterator[PathRecord]:
         """Iterate over volatile output files of this step."""
         yield from self._paths(
             "sink",
-            False,
-            yield_hash,
-            yield_detached,
-            yield_amended,
-            amended,
-            (FileState.VOLATILE,),
+            include_detached=include_detached,
+            amended=amended,
+            filter_states=(FileState.VOLATILE,),
         )
 
-    def static_paths(self, *, yield_hash: bool = False) -> Iterator:
+    def static_paths(self) -> Iterator[PathRecord]:
         """Iterate over static paths created by this step."""
-        yield from self._paths(
-            "product", False, yield_hash, False, False, None, (FileState.STATIC,)
-        )
+        yield from self._paths("product", filter_states=(FileState.STATIC,))
 
-    def missing_paths(self, *, yield_hash: bool = False) -> Iterator:
+    def missing_paths(self) -> Iterator[PathRecord]:
         """Iterate over missing paths created by this step."""
-        yield from self._paths(
-            "product", False, yield_hash, False, False, None, (FileState.MISSING,)
-        )
+        yield from self._paths("product", filter_states=(FileState.MISSING,))
 
     def env_deps(self, *, amended: bool | None = None, yield_amended: bool = False):
         """Iterate over used environment variable names (not values)."""

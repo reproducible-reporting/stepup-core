@@ -962,7 +962,7 @@ class Executor:
     ) -> tuple[StepHash, list[tuple[str, FileHash]]]:
         """Compute the output part of a step hash and apply it to `run`."""
         async with self.db:
-            out_hashes = list(run.step.out_paths(yield_hash=True))
+            out_hashes = [(rec.path, rec.hash) for rec in run.step.out_paths()]
         task = HashTask(mode="out", step_hash=step_hash, out_hashes=out_hashes)
         result = await self._run_hash(run, task)
         run.merge_hash_result(result)
@@ -978,15 +978,13 @@ class Executor:
             # Therefore, only check the hashes of built and static files.
             subshell = run.step.get_subshell()
             inp_hashes = [
-                (path, file_hash)
-                for path, file_state, file_hash in run.step.inp_paths(
-                    yield_state=True, yield_hash=True
-                )
-                if file_state in (FileState.BUILT, FileState.STATIC)
+                (rec.path, rec.hash)
+                for rec in run.step.inp_paths()
+                if rec.state in (FileState.BUILT, FileState.STATIC)
             ]
             env_deps = list(run.step.env_deps())
             env_overrides = run.step.get_env_overrides()
-            out_hashes = list(run.step.out_paths(yield_hash=True))
+            out_hashes = [(rec.path, rec.hash) for rec in run.step.out_paths()]
         base_env = self.base_env
         task = HashTask(
             mode="full",
