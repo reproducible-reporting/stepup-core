@@ -3,10 +3,11 @@
 
 By the time this step calls amend(), producer.sh has already completed and data.txt is
 BUILT. Under the old single-bucket rescheduled_info scheme, the dependency edge to
-data.txt would be created only now, *after* producer.sh's own File.completed() already
-ran --- so nothing would ever call mark_pending() on this step again, and it would sit
-in PENDING forever. With the unavailable_inputs/unfresh_inputs split, this step's
-freshness-only postoned step self-resolves on its own next dispatch, with no push needed.
+data.txt would be created only now, *after* producer.sh's own Workflow.file_completed()
+already ran --- so nothing would ever call mark_step_pending() on this step again, and
+it would sit in PENDING forever. With the unavailable_inputs/unfresh_inputs split, this
+step's freshness-only postoned step self-resolves on its own next dispatch, with no
+push needed.
 """
 
 import time

@@ -469,7 +469,7 @@ async def test_rerun_creator_detaches_running_child(wfp: Workflow):
         # `plan` succeeds, but is later marked pending again, e.g. because a new file
         # matching one of its `glob()` patterns was confirmed while `sub` is still running.
         plan.set_state(StepState.SUCCEEDED)
-        plan.mark_pending()
+        wfp.mark_step_pending(plan)
         assert plan.get_state() == StepState.PENDING
 
         # Nothing prevents the scheduler from dispatching `plan` again even though it has
@@ -493,7 +493,7 @@ async def test_mark_pending_noop_when_running(wfs: Workflow):
         wfs.define_step(wfs.root, "echo")
         echo = wfs.find(Step, "echo")
         echo.set_state(StepState.RUNNING)
-        echo.mark_pending()
+        wfs.mark_step_pending(echo)
         assert echo.get_state() == StepState.RUNNING
 
 
@@ -503,7 +503,7 @@ async def test_mark_pending_noop_when_checking(wfs: Workflow):
         wfs.define_step(wfs.root, "echo")
         echo = wfs.find(Step, "echo")
         echo.set_state(StepState.CHECKING)
-        echo.mark_pending()
+        wfs.mark_step_pending(echo)
         assert echo.get_state() == StepState.CHECKING
 
 
@@ -537,7 +537,7 @@ async def test_detach_marks_is_detached_regardless_of_state(wfp: Workflow):
         sub2.set_state(StepState.SUCCEEDED)
 
         plan.set_state(StepState.SUCCEEDED)
-        plan.mark_pending()
+        wfp.mark_step_pending(plan)
         plan.set_state(StepState.RUNNING)
         plan.reset_for_rerun()
 
@@ -852,7 +852,7 @@ async def test_define_pending_step_skip_extra(wfp: Workflow):
         assert foo.get_state() == StepState.SUCCEEDED
         assert bar.get_state() == StepState.PENDING
         # bar
-        bar.mark_pending()  # Should not hurt
+        wfp.mark_step_pending(bar)  # Should not hurt
         assert bar.get_state() == StepState.PENDING
         wfp.amend_step(bar, inp_paths=["ainp2"], out_paths=["aout2"], vol_paths=["avol2"])
         assert wfp.find(File, "ainp2") in set(bar.sources())
@@ -862,7 +862,7 @@ async def test_define_pending_step_skip_extra(wfp: Workflow):
         txt = wfp.format_str()
 
         # Make foo pending and check state
-        foo.mark_pending()
+        wfp.mark_step_pending(foo)
         assert foo.get_hash() is not None
         assert foo.get_state() == StepState.PENDING
         assert not foo.is_detached()
@@ -876,7 +876,7 @@ async def test_define_pending_step_skip_extra(wfp: Workflow):
         assert spam.get_state() == FileState.VOLATILE
 
         # Simulate rerun
-        foo.mark_pending()
+        wfp.mark_step_pending(foo)
         assert foo.get_state() == StepState.PENDING
         assert bar.get_state() == StepState.PENDING
         # This simulation assumes that no files have changed and we can just skip foo.
@@ -941,7 +941,7 @@ async def test_skip_ngm(wfp: Workflow):
         assert foo.get_state() == StepState.SUCCEEDED
 
         # Make foo pending and check state
-        foo.mark_pending()
+        wfp.mark_step_pending(foo)
         assert foo.get_hash() is not None
         assert foo.get_state() == StepState.PENDING
 
@@ -1770,7 +1770,7 @@ async def test_static_tree_clean(wfp: Workflow):
         assert wfp.find_detached(File, "static/foo/bar.txt") == (None, None)
 
         # make the plan pending
-        plan.mark_pending()
+        wfp.mark_step_pending(plan)
         assert not sr.is_detached()
         assert plan.get_state() == StepState.PENDING
 
@@ -2482,11 +2482,12 @@ async def test_completed_reclaims_unavailable_input_available_during_run(wfs: Wo
     """`completed()` re-derives amended-input availability directly from the graph,
     instead of trusting a stale amend-time snapshot.
 
-    This matters because a producer may complete (and call `mark_pending()`) while the
-    consuming step is still RUNNING: `mark_pending()` is then a no-op (see
-    `Step.mark_pending()`), and the file will never transition state again through that
-    path. `completed()` must still notice the input is available by re-querying the
-    graph, rather than trusting the caller's stale `wants_postpone` judgment.
+    This matters because a producer may complete (and call `mark_step_pending()`) while
+    the consuming step is still RUNNING: `mark_step_pending()` is then a no-op (see
+    `Workflow.mark_step_pending()`), and the file will never transition state again
+    through that path. `completed()` must still notice the input is available by
+    re-querying the graph, rather than trusting the caller's stale `wants_postpone`
+    judgment.
     """
     async with wfs.db:
         wfs.define_step(wfs.root, "plan")

@@ -192,7 +192,7 @@ class Watcher:
                 for event in self.files_changed_events:
                     event.set()
         elif change == Change.DELETED_PARENT:
-            for sub_path in self.workflow.iter_relevant(path):
+            for sub_path in self.workflow.relevant_paths(path):
                 if sub_path not in self.deleted:
                     await self.reporter("DELETED", sub_path)
                     self.deleted.add(sub_path)

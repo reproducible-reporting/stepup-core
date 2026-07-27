@@ -95,7 +95,7 @@ class File(Node):
         )
         # If the state is BUILT, mark it as OUTDATED to force a rebuild.
         if state == FileState.BUILT:
-            self.mark_outdated()
+            self.graph.mark_file_outdated(self)
 
     def validate(self):
         """Validate extra information about this node is present in the database."""
@@ -147,84 +147,3 @@ class File(Node):
         sql = "SELECT hash FROM file WHERE node = ?"
         row = self.db.execute(sql, (self.i,)).fetchone()
         return FileHash.from_json(row[0])
-
-    #
-    # Build phase
-    #
-
-    def completed(self):
-        """Check and if necessary, mark all sink steps pending."""
-        # Local import to avoid cyclic imports.
-        from .step import Step  # noqa: PLC0415
-
-        state = self.get_state()
-        if state in [FileState.STATIC, FileState.BUILT]:
-            logger.info("Completed %s file: %s", state, self.path)
-            for step in self.sinks(Step, include_detached=True):
-                step.mark_pending()
-
-    #
-    # Watch phase
-    #
-
-    def externally_deleted(self):
-        """Modify the graph to account for the fact this file was deleted.
-
-        File states and hashes have already been updated before this method is called.
-        """
-        state = self.get_state()
-        logger.info("Externally deleted %s file: %s", state, self.path)
-
-        if state == FileState.STATIC:
-            self.set_state(FileState.MISSING)
-            state = FileState.MISSING
-        elif state in (FileState.BUILT, FileState.OUTDATED):
-            self.set_state(FileState.AWAITED)
-            state = FileState.AWAITED
-
-        if state == FileState.AWAITED:
-            # Request rerun of creator
-            creator = self.creator()
-            if creator is not None and creator.kind() == "step":
-                creator.mark_pending()
-        if state != FileState.VOLATILE:
-            # Make all sinks pending.
-            # Local import to avoid cyclic imports.
-            from .step import Step  # noqa: PLC0415
-
-            for step in self.sinks(Step):
-                step.mark_pending()
-            for file in self.sinks(File):
-                file.externally_deleted()
-
-    def externally_updated(self):
-        """Modify the graph to account for the external changes to this file.
-
-        File states and hashes have already been updated before this method is called.
-        """
-        state = self.get_state()
-        if state == FileState.STATIC:
-            # Mark all sinks pending.
-            # Local import to avoid cyclic imports.
-            from .step import Step  # noqa: PLC0415
-
-            for step in self.sinks(Step):
-                step.mark_pending()
-        elif state == FileState.AWAITED:
-            # Mark the creator pending, as to make sure the file is rebuilt.
-            creator = self.creator()
-            if creator is not None and creator.kind() == "step":
-                creator.mark_pending()
-
-    def mark_outdated(self):
-        state = self.get_state()
-        if state == FileState.BUILT:
-            logger.info("Mark %s file OUTDATED: %s", state, self.path)
-            self.set_state(FileState.OUTDATED)
-            # Local import to avoid cyclic imports.
-            from .step import Step  # noqa: PLC0415
-
-            for step in self.sinks(Step, include_detached=True):
-                step.mark_pending()
-        elif state != FileState.OUTDATED:
-            raise ValueError(f"Cannot make file outdated when its state is {state}")

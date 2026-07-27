@@ -820,7 +820,7 @@ class Step(Node):
         data = (self.i, FileState.BUILT.value)
         for i, label in self.db.execute(sql, data):
             file = File(self.graph, i, label)
-            file.mark_outdated()
+            self.graph.mark_file_outdated(file)
 
         # Drop any output stored by a previous run.
         self.delete_outputs()
@@ -926,7 +926,7 @@ class Step(Node):
             for file in self.products(File):
                 if file.get_state() == FileState.OUTDATED:
                     file.set_state(FileState.BUILT)
-                    file.completed()
+                    self.graph.file_completed(file)
             self.set_hash(new_hash)
         return False, interrupted_postpone
 
@@ -1050,39 +1050,6 @@ class Step(Node):
     def register_nglob(self, nglob_multi):
         data = (self.i, pickle.dumps(nglob_multi))
         self.db.execute("INSERT INTO nglob_multi(node, data) VALUES (?, ?)", data)
-
-    #
-    # Watch phase
-    #
-
-    def mark_pending(self):
-        """Set SUCCEEDED or FAILED step pending (again).
-
-        There can be many reasons for marking a step pending again, after having been completed:
-
-        - inputs changes
-        - outputs disappeared
-        - environment variables changed
-
-        As a side effect, this method is sometimes also called on RUNNING steps,
-        in which case the call is ignored.
-
-        This method also clears the postponed flag,
-        which makes the step eligible for scheduling again.
-        """
-        # Note that PENDING, RUNNING, and CHECKING are ignored.
-        # This method may be called on RUNNING steps that create their own amended inputs.
-        # CHECKING steps are mid hash-check and will settle naturally (SUCCEEDED or PENDING).
-        state = self.get_state()
-        if state in (StepState.RUNNING, StepState.CHECKING):
-            return
-        self.set_state(StepState.PENDING)
-        if state in (StepState.SUCCEEDED, StepState.FAILED):
-            logger.info("Mark %s step PENDING: %s", state.name, self.label)
-            # Make all sinks (output files) pending
-            for file in self.sinks(File, include_detached=True):
-                if file.get_state() == FileState.BUILT:
-                    file.mark_outdated()
 
     #
     # Respond to graph modifications by flagging the necessary _check_* fields.

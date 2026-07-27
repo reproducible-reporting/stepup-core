@@ -46,7 +46,7 @@ async def startup_from_db(
         )
         # Make all failed steps pending again, as they can be retried.
         for step in workflow.steps(StepState.FAILED):
-            step.mark_pending()
+            workflow.mark_step_pending(step)
 
     # Populate dir queue
     await populate_dir_queue(workflow, db, reporter)
@@ -71,7 +71,7 @@ async def startup_from_db(
                     seen.add(name)
         async with db:
             for step in to_mark_pending:
-                step.mark_pending()
+                workflow.mark_step_pending(step)
 
     # Check for file changes and new glob matches
     await reporter("STARTUP", "Scanning initial database for changed files")

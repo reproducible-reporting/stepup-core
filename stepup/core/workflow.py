@@ -120,6 +120,10 @@ class Workflow(Trellis):
     This list contains BUILT files node with file hashes that were removed from the graph.
     """
 
+    @staticmethod
+    def default_node_classes() -> list[type[Node]]:
+        return [*Trellis.default_node_classes(), File, Step, StaticTree]
+
     #
     # Initialization
     #
@@ -147,8 +151,8 @@ class Workflow(Trellis):
         if len(file_hashes) > 0:
             logger.error("Fixing %s file hashes", len(file_hashes))
             self.update_file_hashes(file_hashes, HashUpdateCause.EXTERNAL)
-            for file in self.files:
-                file.mark_outdated()
+            for file in files:
+                self.mark_file_outdated(file)
 
         # Verify that all succeeded steps only have BUILT outputs.
         sql = (
@@ -173,7 +177,7 @@ class Workflow(Trellis):
         # Mark steps pending to rerun steps that seem to be out of date,
         # despite being marked succeeded.
         for step in to_mark_pending:
-            step.mark_pending()
+            self.mark_step_pending(step)
 
     def initialize_boot(self) -> bool:
         """Initialize the (new) boot script.
@@ -203,10 +207,6 @@ class Workflow(Trellis):
         self.update_file_hashes(checked, HashUpdateCause.CONFIRMED)
         self.define_step(self.root, command, inp_paths=["plan.py"], need=Need.PLAN, safe=True)
         return True
-
-    @staticmethod
-    def default_node_classes() -> list[type[Node]]:
-        return [*Trellis.default_node_classes(), File, Step, StaticTree]
 
     #
     # Workflow introspection
@@ -279,7 +279,7 @@ class Workflow(Trellis):
         for i, label in self.db.execute(sql, (state.value,)):
             yield Step(self, i, label)
 
-    def detached_inp_paths(self) -> Iterator[str, FileState]:
+    def detached_inp_paths(self) -> Iterator[tuple[str, FileState]]:
         """Iterate over detached input paths used by non-detached steps."""
         sql = (
             "SELECT node.label, file.state FROM node JOIN file ON node.i = file.node "
@@ -380,11 +380,11 @@ class Workflow(Trellis):
                 f"Inconsistent number of records: expected={len(file_hashes)} actual={len(records)}"
             )
 
-        # Files whose `externally_updated` method must be called.
+        # Files for which `file_externally_updated` must be called.
         updated = []
-        # Files whose `externally_deleted` method must be called.
+        # Files for which `file_externally_deleted` must be called.
         deleted = []
-        # File whose `release` method should be called
+        # Files for which `file_completed` must be called.
         completed = []
         # Files whose state and hash must be updated.
         new_states_hashes = []
@@ -482,11 +482,101 @@ class Workflow(Trellis):
             completed,
         )
         for i, path in updated:
-            File(self, i, path).externally_updated()
+            self.file_externally_updated(File(self, i, path))
         for i, path in deleted:
-            File(self, i, path).externally_deleted()
+            self.file_externally_deleted(File(self, i, path))
         for i, path in completed:
-            File(self, i, path).completed()
+            self.file_completed(File(self, i, path))
+
+    def file_externally_updated(self, file: File):
+        """Modify the graph to account for the external changes to this file.
+
+        File states and hashes have already been updated before this method is called.
+        """
+        state = file.get_state()
+        if state == FileState.STATIC:
+            # Mark all sinks pending.
+            for step in file.sinks(Step):
+                self.mark_step_pending(step)
+        elif state == FileState.AWAITED:
+            # Mark the creator pending, as to make sure the file is rebuilt.
+            creator = file.creator()
+            if creator is not None and creator.kind() == "step":
+                self.mark_step_pending(creator)
+
+    def file_externally_deleted(self, file: File):
+        """Modify the graph to account for the fact this file was deleted.
+
+        File states and hashes have already been updated before this method is called.
+        """
+        state = file.get_state()
+        logger.info("Externally deleted %s file: %s", state, file.path)
+
+        if state == FileState.STATIC:
+            file.set_state(FileState.MISSING)
+            state = FileState.MISSING
+        elif state in (FileState.BUILT, FileState.OUTDATED):
+            file.set_state(FileState.AWAITED)
+            state = FileState.AWAITED
+
+        if state == FileState.AWAITED:
+            # Request rerun of creator
+            creator = file.creator()
+            if creator is not None and creator.kind() == "step":
+                self.mark_step_pending(creator)
+        if state != FileState.VOLATILE:
+            # Make all sinks pending.
+            for step in file.sinks(Step):
+                self.mark_step_pending(step)
+            for sink_file in file.sinks(File):
+                self.file_externally_deleted(sink_file)
+
+    def file_completed(self, file: File):
+        """Check and if necessary, mark all sink steps pending."""
+        state = file.get_state()
+        if state in [FileState.STATIC, FileState.BUILT]:
+            logger.info("Completed %s file: %s", state, file.path)
+            for step in file.sinks(Step, include_detached=True):
+                self.mark_step_pending(step)
+
+    def mark_step_pending(self, step: Step):
+        """Set SUCCEEDED or FAILED step pending (again).
+
+        There can be many reasons for marking a step pending again, after having been completed:
+
+        - inputs changes
+        - outputs disappeared
+        - environment variables changed
+
+        As a side effect, this method is sometimes also called on RUNNING steps,
+        in which case the call is ignored.
+
+        This method also clears the postponed flag,
+        which makes the step eligible for scheduling again.
+        """
+        # Note that RUNNING and CHECKING are ignored.
+        # This method may be called on RUNNING steps that create their own amended inputs.
+        # CHECKING steps are mid hash-check and will settle naturally (SUCCEEDED or PENDING).
+        state = step.get_state()
+        if state in (StepState.RUNNING, StepState.CHECKING):
+            return
+        step.set_state(StepState.PENDING)
+        if state in (StepState.SUCCEEDED, StepState.FAILED):
+            logger.info("Mark %s step PENDING: %s", state.name, step.label)
+            # Make all sinks (output files) pending
+            for file in step.sinks(File, include_detached=True):
+                if file.get_state() == FileState.BUILT:
+                    self.mark_file_outdated(file)
+
+    def mark_file_outdated(self, file: File):
+        state = file.get_state()
+        if state == FileState.BUILT:
+            logger.info("Mark %s file OUTDATED: %s", state, file.path)
+            file.set_state(FileState.OUTDATED)
+            for step in file.sinks(Step, include_detached=True):
+                self.mark_step_pending(step)
+        elif state != FileState.OUTDATED:
+            raise ValueError(f"Cannot make file outdated when its state is {state}")
 
     #
     # Build phase (helper methods)
@@ -784,7 +874,7 @@ class Workflow(Trellis):
         # If inputs of the recreated steps are AWAITED or OUTDATED, these steps must be postponed.
         for i, label in self.db.execute(RECURSE_OUTDATED_STEPS, (old_step.i,)):
             step = Step(self, i, label)
-            step.mark_pending()
+            self.mark_step_pending(step)
 
         # Look for MISSING inputs and determine which were matching a static tree.
         # Their existence still needs to be checked by the client and ideally confirmed as existing
@@ -830,6 +920,62 @@ class Workflow(Trellis):
         missing = [self._declare_file(creator, path, FileState.MISSING) for path in paths]
         # Collect a list of paths and file hashes to be checked.
         return self._build_to_check(missing)
+
+    def register_static_tree(self, creator: Node, path: str) -> list[tuple[str, FileHash]]:
+        """Install a static tree.
+
+        Parameters
+        ----------
+        creator
+            The step creating the static tree.
+        path
+            A path to a directory that will be treated as a static tree.
+
+        Returns
+        -------
+        to_check
+            A list of matching (path, file_hash) whose existence and validity must be checked.
+            The client must call `confirm_hashes` after checking files with resulting hashes.
+        """
+        if not isinstance(path, str):
+            raise TypeError("The argument path must be a string.")
+        if Path(path).isabs():
+            raise ValueError(f"Static tree paths cannot be absolute paths: {path}")
+        if has_wildcards(path):
+            raise ValueError(f"Static tree does not support wildcards: {path}")
+        if creator.is_detached():
+            # The creator has moved on without this call (see Step.detach()), so
+            # registering a static tree for it is moot.
+            return []
+        path = Path(path) / ""
+        if self._matching_static_tree(path) is not None:
+            raise GraphError(f"Static tree is a subdirectory of an existing static tree: {path}")
+        sql = "SELECT 1 FROM node WHERE kind = 'st' AND NOT detached AND label LIKE ? ESCAPE '\\'"
+        pattern = f"{escape_like_pattern(path)}%"
+        if self.db.execute(sql, (pattern,)).fetchone() is not None:
+            raise GraphError(
+                f"Static tree is a parent directory of an existing static tree: {path}"
+            )
+        st = self.create(StaticTree, creator, path)
+        # Check for matches in existing files.
+        # For example previously defined inputs whose origin was not determined yet.
+        pattern = f"{escape_like_pattern(path)}%"
+        sql = (
+            "SELECT label FROM node JOIN file ON node.i = file.node "
+            f"WHERE state != {FileState.MISSING.value} "
+            "AND node.label LIKE ?"
+        )
+        matching_paths = [path for (path,) in self.db.execute(sql, (pattern,))]
+        return self.declare_missing(st, matching_paths)
+
+    def register_nglob(self, step: Step, nglob_multi: NGlobMulti):
+        if not isinstance(step, Step):
+            raise TypeError(f"step must be a Step instance, got: {step!r}")
+        if step.is_detached():
+            # The step's creator has moved on without it (see Step.detach()), so
+            # registering more nglobs for it is moot.
+            return
+        step.register_nglob(nglob_multi)
 
     def define_step(
         self,
@@ -1073,62 +1219,6 @@ class Workflow(Trellis):
         self.db.executemany("INSERT INTO amended_dep VALUES (?)", amended_ideps)
         return False, unavailable, unfresh, self._build_to_check(deferred)
 
-    def register_nglob(self, step: Step, nglob_multi: NGlobMulti):
-        if not isinstance(step, Step):
-            raise TypeError(f"step must be a Step instance, got: {step!r}")
-        if step.is_detached():
-            # The step's creator has moved on without it (see Step.detach()), so
-            # registering more nglobs for it is moot.
-            return
-        step.register_nglob(nglob_multi)
-
-    def register_static_tree(self, creator: Node, path: str) -> list[tuple[str, FileHash]]:
-        """Install a static tree.
-
-        Parameters
-        ----------
-        creator
-            The step creating the static tree.
-        path
-            A path to a directory that will be treated as a static tree.
-
-        Returns
-        -------
-        to_check
-            A list of matching (path, file_hash) whose existence and validity must be checked.
-            The client must call `confirm_hashes` after checking files with resulting hashes.
-        """
-        if not isinstance(path, str):
-            raise TypeError("The argument path must be a string.")
-        if Path(path).isabs():
-            raise ValueError(f"Static tree paths cannot be absolute paths: {path}")
-        if has_wildcards(path):
-            raise ValueError(f"Static tree does not support wildcards: {path}")
-        if creator.is_detached():
-            # The creator has moved on without this call (see Step.detach()), so
-            # registering a static tree for it is moot.
-            return []
-        path = Path(path) / ""
-        if self._matching_static_tree(path) is not None:
-            raise GraphError(f"Static tree is a subdirectory of an existing static tree: {path}")
-        sql = "SELECT 1 FROM node WHERE kind = 'st' AND NOT detached AND label LIKE ? ESCAPE '\\'"
-        pattern = f"{escape_like_pattern(path)}%"
-        if self.db.execute(sql, (pattern,)).fetchone() is not None:
-            raise GraphError(
-                f"Static tree is a parent directory of an existing static tree: {path}"
-            )
-        st = self.create(StaticTree, creator, path)
-        # Check for matches in existing files.
-        # For example previously defined inputs whose origin was not determined yet.
-        pattern = f"{escape_like_pattern(path)}%"
-        sql = (
-            "SELECT label FROM node JOIN file ON node.i = file.node "
-            f"WHERE state != {FileState.MISSING.value} "
-            "AND node.label LIKE ?"
-        )
-        matching_paths = [path for (path,) in self.db.execute(sql, (pattern,))]
-        return self.declare_missing(st, matching_paths)
-
     #
     # Watch phase
     #
@@ -1139,7 +1229,7 @@ class Workflow(Trellis):
             return file.get_state() not in (FileState.AWAITED, FileState.VOLATILE)
         return any(ngm.may_change(set(), {path}) for ngm in self.nglob_multis())
 
-    def iter_relevant(self, parent: str) -> Iterator[str]:
+    def relevant_paths(self, parent: str) -> Iterator[str]:
         """Iterate over all non-detached files that are relevant for a given parent directory."""
         sql = (
             "SELECT label FROM node JOIN file ON node.i = file.node "
@@ -1183,7 +1273,7 @@ class Workflow(Trellis):
                 step.delete_hash()
                 data = (pickle.dumps(evolved), i)
                 self.db.execute("UPDATE nglob_multi SET data = ? WHERE i = ?", data)
-                step.mark_pending()
+                self.mark_step_pending(step)
 
     def get_file_hashes(self, paths: Collection[str]) -> list[tuple[str, FileHash]]:
         """Get the hashes of existing files.

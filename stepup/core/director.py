@@ -541,17 +541,6 @@ class DirectorHandler:
             return self.workflow.declare_missing(creator, paths)
 
     @allow_rpc
-    async def nglob(
-        self, creator_i: int, patterns: list[str], subs: dict[str, str], paths: list[str]
-    ):
-        """Register a glob patterns to be watched."""
-        ngm = NGlobMulti.from_patterns(patterns, subs)
-        ngm.extend(paths)
-        async with self.db:
-            creator = self.workflow.node(Step, creator_i)
-            self.workflow.register_nglob(creator, ngm)
-
-    @allow_rpc
     async def static_trees(self, creator_i: int, paths: list[str]) -> list[tuple[str, FileHash]]:
         """Register directories whose contents become static files when used.
 
@@ -566,6 +555,17 @@ class DirectorHandler:
             for path in paths:
                 to_check.extend(self.workflow.register_static_tree(creator, path))
         return to_check
+
+    @allow_rpc
+    async def nglob(
+        self, creator_i: int, patterns: list[str], subs: dict[str, str], paths: list[str]
+    ):
+        """Register a glob patterns to be watched."""
+        ngm = NGlobMulti.from_patterns(patterns, subs)
+        ngm.extend(paths)
+        async with self.db:
+            creator = self.workflow.node(Step, creator_i)
+            self.workflow.register_nglob(creator, ngm)
 
     @allow_rpc
     async def confirm_hashes(self, checked: list[tuple[str, FileHash]]):
@@ -795,7 +795,7 @@ class DirectorHandler:
         async with self.db:
             # Make all failed steps pending again for rerun
             for step in self.workflow.steps(StepState.FAILED):
-                step.mark_pending()
+                self.workflow.mark_step_pending(step)
         self.watcher.interrupt.set()
         await wait_for_events(
             self.watcher.processed, self.stop_event, return_when=asyncio.FIRST_COMPLETED
