@@ -449,7 +449,7 @@ class Scheduler:
     stop_times: dict[int, int] = attrs.field(init=False, factory=dict)
     """Step node id -> `time.monotonic_ns()` at the moment it reached SUCCEEDED.
 
-    In-memory only, pruned by `job_finished()`. See `start_times`.
+    In-memory only, pruned by `record_stop_time()`. See `start_times`.
     """
 
     new_durations: dict[int, float] = attrs.field(init=False, factory=dict)
@@ -541,7 +541,7 @@ class Scheduler:
                 self.start_times[step.i] = time.monotonic_ns()
             return job
 
-    def job_finished(self, step_i: int, *, succeeded: bool) -> None:
+    def record_stop_time(self, step_i: int, *, succeeded: bool) -> None:
         """Update start/stop-time bookkeeping after a step reaches a terminal state.
 
         Parameters
@@ -553,11 +553,19 @@ class Scheduler:
         """
         self.start_times.pop(step_i, None)
         if succeeded:
+            # Record stop times when there can be BUILT outputs to be used by other steps.
+            # Only these may be approved by a post-hoc amend(inp=...) call in another step.
             self.stop_times[step_i] = time.monotonic_ns()
-        if self._count_running() == 0:
-            # Nothing running means nothing can race with a not-yet-dispatched step,
-            # so every remaining stop_times entry is safe to drop.
+        if len(self.start_times) == 0:
+            # If there are no more start_times, clear the dict to avoid holding old entries forever.
             self.stop_times.clear()
+        else:
+            # Clean up stop_times older than the oldest start_time,
+            # since these will never be relevant for ran_concurrently() anymore.
+            oldest_start = min(self.start_times.values())
+            for other_step_i, stop_time in list(self.stop_times.items()):
+                if stop_time < oldest_start:
+                    del self.stop_times[other_step_i]
 
     def ran_concurrently(self, producer_i: int, consumer_i: int) -> bool:
         """Whether a consumer step started running before the producer step stopped.
@@ -581,12 +589,6 @@ class Scheduler:
         stop_time = self.stop_times.get(producer_i)
         start_time = self.start_times.get(consumer_i)
         return stop_time is not None and start_time is not None and start_time <= stop_time
-
-    def _count_running(self) -> int:
-        row = self.workflow.db.execute(
-            "SELECT COUNT(*) FROM step WHERE state = ?", (StepState.RUNNING.value,)
-        ).fetchone()
-        return row[0]
 
     def _update_meta_safe(self):
         """Update the "safe" metadata fields where needed."""
@@ -763,6 +765,10 @@ class Scheduler:
             [{"node": node, "duration": duration} for node, duration in self.new_durations.items()],
         )
         self.new_durations.clear()
+        # Also clear the timings used to detect unfresh inputs (see ran_concurrently).
+        # This is safe to do here because the builder is guaranteed to have no RUNNING steps.
+        self.start_times.clear()
+        self.stop_times.clear()
 
     #
     # Information gathering (must be wrapped in db by caller)

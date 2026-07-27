@@ -791,7 +791,7 @@ class Executor:
             async with self.db:
                 self.workflow.update_file_hashes(new_out_hashes, HashUpdateCause.SUCCEEDED)
                 step.completed(new_hash, False)
-                # Note that we do not call `scheduler.job_finished` here,
+                # Note that we do not call `scheduler.record_stop_time` here,
                 # because the step was never actually run.
                 # That would record a stop time while no outputs were written
                 # for which race conditions need to be excluded.
@@ -848,6 +848,7 @@ class Executor:
                     HashUpdateCause.SUCCEEDED if run.success else HashUpdateCause.FAILED,
                 )
                 run.detached, run.interrupted_postpone = step.completed(new_hash, wants_postpone)
+                self.scheduler.record_stop_time(step.i, succeeded=new_hash is not None)
                 if run.detached:
                     # The step's creator moved on without it before/when it finished (see
                     # Step.detach()): the raw result is moot, report() shows a dedicated
@@ -856,8 +857,6 @@ class Executor:
                 elif wants_postpone and not run.interrupted_postpone:
                     # Erase error info to keep the screen output concise.
                     run.stderr = ""
-                # Record the stop time.
-                self.scheduler.job_finished(step.i, succeeded=new_hash is not None)
                 # Persist the captured output in the same transaction as completed(),
                 # so a crash cannot leave a completed step without its output (or vice
                 # versa). run.stdout/run.stderr stay untruncated; store_output truncates a
@@ -919,7 +918,7 @@ class Executor:
             # or some inputs were deleted. This breaks the workflow, so flag the step as failed.
             async with self.db:
                 step.completed(None, False)
-                self.scheduler.job_finished(step.i, succeeded=False)
+            self.scheduler.record_stop_time(step.i, succeeded=False)
             await self._report_step_counts()
             await self.report(run)
             self.scheduler.on_hold = True

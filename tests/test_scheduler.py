@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Unit tests for stepup.core.scheduler."""
 
+import time
+
 import pytest
 
 from stepup.core.enums import FileState, Need, StepState
@@ -1711,21 +1713,29 @@ def test_unavailable_input_blocks_on_volatile(con):
 # -----------------------------------------------------------------------
 
 
-async def test_job_finished_writes_stop_time_and_prunes_start_time(wfs: Workflow):
+async def test_record_stop_time_writes_stop_time_and_prunes_start_time(wfs: Workflow):
     async with wfs.db:
-        wfs.define_step(wfs.root, "echo")
+        wfs.define_step(wfs.root, "plan")
+        plan = wfs.find(Step, "plan")
+        wfs.define_step(plan, "echo")
+        wfs.define_step(plan, "other")
         step = wfs.find(Step, "echo")
+        other = wfs.find(Step, "other")
         step.set_state(StepState.RUNNING)
+        other.set_state(StepState.RUNNING)
 
         scheduler = Scheduler(wfs, db=wfs.db)
         scheduler.start_times[step.i] = 100
+        # A second step is still running, so record_stop_time() below must not treat
+        # concurrency as having dropped to zero and prune the stop time it just wrote.
+        scheduler.start_times[other.i] = 200
 
-        scheduler.job_finished(step.i, succeeded=True)
+        scheduler.record_stop_time(step.i, succeeded=True)
         assert step.i not in scheduler.start_times
         assert step.i in scheduler.stop_times
 
 
-async def test_job_finished_no_stop_time_on_failure(wfs: Workflow):
+async def test_record_stop_time_no_stop_time_on_failure(wfs: Workflow):
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         step = wfs.find(Step, "echo")
@@ -1734,7 +1744,7 @@ async def test_job_finished_no_stop_time_on_failure(wfs: Workflow):
         scheduler = Scheduler(wfs, db=wfs.db)
         scheduler.start_times[step.i] = 100
 
-        scheduler.job_finished(step.i, succeeded=False)
+        scheduler.record_stop_time(step.i, succeeded=False)
         assert step.i not in scheduler.start_times
         assert step.i not in scheduler.stop_times
 
@@ -1753,15 +1763,19 @@ async def test_stop_times_cleared_when_no_steps_running(wfs: Workflow):
         step_b.set_state(StepState.RUNNING)
 
         scheduler = Scheduler(wfs, db=wfs.db)
+        # record_stop_time() now tracks concurrency via start_times, not step DB state
+        # (see pop_runnable_job()), so populate it the way dispatch would.
+        scheduler.start_times[step_a.i] = time.monotonic_ns()
+        scheduler.start_times[step_b.i] = time.monotonic_ns()
 
         # step_a finishes while step_b is still RUNNING: stop_times must survive.
         step_a.set_state(StepState.SUCCEEDED)
-        scheduler.job_finished(step_a.i, succeeded=True)
+        scheduler.record_stop_time(step_a.i, succeeded=True)
         assert step_a.i in scheduler.stop_times
 
         # step_b finishes too: nothing RUNNING anymore, so stop_times is cleared entirely.
         step_b.set_state(StepState.SUCCEEDED)
-        scheduler.job_finished(step_b.i, succeeded=True)
+        scheduler.record_stop_time(step_b.i, succeeded=True)
         assert scheduler.stop_times == {}
 
 
