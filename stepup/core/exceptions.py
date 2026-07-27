@@ -42,3 +42,13 @@ class DeferredNotConfirmedError(Exception):
 
 class CgroupError(RuntimeError):
     """Cgroup v2 accounting is unavailable or unusable for this process."""
+
+
+class TUIError(RuntimeError):
+    """An error raised by the terminal user interface (`tui.py`) before the director starts.
+
+    Distinguished from a plain `RuntimeError` so that the top-level handler in
+    `build_tool` (`tui.py`) can catch it and print a short, user-facing message
+    (`ERROR: ...` on stderr) instead of a full traceback, then exit with
+    `ReturnCode.INTERNAL`.
+    """

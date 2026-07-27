@@ -1,0 +1,15 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 4 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ plan.py (digest f1a395ed ➜ 1472e6a9, size 148 ➜ 201)
+   UPDATED │ input.txt (digest 27dd8ed4 ➜ f6936912, size 4 ➜ 6)
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ cp -p input.txt wanted.txt
+   SUCCESS │ cp -p input.txt wanted.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+     PHASE │ watch
+  DIRECTOR │ See you!

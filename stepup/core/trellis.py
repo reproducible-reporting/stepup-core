@@ -594,6 +594,11 @@ class Trellis:
         #   keyed by a list of paths or node ids, replacing `json_each(...)`, which was found
         #   to be slow in performance tests. Purely additive (CREATE TEMP TABLE IF NOT
         #   EXISTS), so no version bump is needed for this change on its own.
+        # - Tightened the step.need column's CHECK constraint to exclude TARGET (33):
+        #   need is never persisted with that value (write-once, derived-elevation-only,
+        #   landing exclusively in _implied_need). Redundant with the Python-level
+        #   rejection in Workflow.define_step, so no version bump is needed for this
+        #   change on its own.
 
         return 5
 

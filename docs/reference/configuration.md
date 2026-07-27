@@ -21,10 +21,10 @@ it will load its settings in the following order, with later settings overriding
 - Environment variables (`STEPUP_*`)
 - Command-line options
 
-Settings for all subcommands are placed at the top level of the config file
+Settings shared by all subcommands are placed at the top level of the config file
 (or under `[tool.stepup]` in `pyproject.toml`).
-Settings specific to the `build` subcommand go under a `[build]` section
-(or `[tool.stepup.build]` in `pyproject.toml`).
+Settings specific to a subcommand, e.g. `build`, go under a subcommand-specific section,
+e.g. `[build]` (or `[tool.stepup.build]` in `pyproject.toml`).
 
 Example `stepup.toml`:
 
@@ -41,6 +41,9 @@ StepUp provides a `stepup show-config` tool to help you understand which setting
 This tool reads all the configuration files and environment variables,
 and shows the merged settings as a single, informative TOML file,
 including comments about the source of each setting.
+
+Positional command-line arguments (targets to build or paths to clean)
+cannot be set through configuration files or environment variables.
 
 ## Internal environment variables
 
@@ -250,6 +253,11 @@ separated by slashes, where applicable.
 :   Set to `true` to profile the director process with the [Yappi profiler](https://github.com/sumerc/yappi).
     See the section on [Profiling](../development.md#profiling)
     in the development documentation for more details.
+
+The targets to build (see [Build Targets](../advanced_topics/build_targets.md))
+are positional command-line arguments
+and cannot be set through config files or environment variables.
+When no targets are given, the full default workflow is built.
 
 ## Settings for `stepup clean`
 

@@ -38,6 +38,6 @@ grep "stepup.core.exceptions.InputNotFoundError: Amended inputs are not availabl
 
 # Wait for background processes, if any.
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
-[[ "${RETURNCODE}" -eq 18 ]] || exit 1
+[[ "${RETURNCODE}" -eq 34 ]] || exit 1
 
 [[ ! -f never.txt ]] || exit 1

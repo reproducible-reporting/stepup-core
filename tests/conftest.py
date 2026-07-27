@@ -84,6 +84,8 @@ async def client(tmpdir) -> AsyncGenerator[AsyncRPCClient, None]:
                     do_watch_first=False,
                     available_resources=None,
                     postpone_cap=100,
+                    targets=[],
+                    target_dirs=[],
                     db=db,
                 )
             )

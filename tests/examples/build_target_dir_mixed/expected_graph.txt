@@ -1,0 +1,95 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   root:
+              source   file:plan.py
+             product   file:a_input.txt
+             product   file:b_input.txt
+             product   file:c_input.txt
+             product   file:d_input.txt
+             product   step:cp -p a_input.txt out/a.txt
+             product   step:cp -p b_input.txt solo.txt
+             product   step:cp -p c_input.txt out/optional.txt
+             product   step:cp -p d_input.txt exact_optional.txt
+
+file:a_input.txt
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:cp -p a_input.txt out/a.txt
+
+file:b_input.txt
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:cp -p b_input.txt solo.txt
+
+file:c_input.txt
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:cp -p c_input.txt out/optional.txt
+
+file:d_input.txt
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:cp -p d_input.txt exact_optional.txt
+
+step:cp -p a_input.txt out/a.txt
+               state = SUCCEEDED
+                need = TARGET (implied by sinks > DEFAULT)
+             creator   step:./plan.py
+              source   file:a_input.txt
+             product   file:out/a.txt
+                sink   file:out/a.txt
+
+file:out/a.txt
+               state = BUILT
+             creator   step:cp -p a_input.txt out/a.txt
+              source   step:cp -p a_input.txt out/a.txt
+
+step:cp -p b_input.txt solo.txt
+               state = SUCCEEDED
+                need = TARGET (implied by sinks > DEFAULT)
+             creator   step:./plan.py
+              source   file:b_input.txt
+             product   file:solo.txt
+                sink   file:solo.txt
+
+file:solo.txt
+               state = BUILT
+             creator   step:cp -p b_input.txt solo.txt
+              source   step:cp -p b_input.txt solo.txt
+
+step:cp -p c_input.txt out/optional.txt
+               state = PENDING
+                need = OPTIONAL
+             creator   step:./plan.py
+              source   file:c_input.txt
+             product   file:out/optional.txt
+                sink   file:out/optional.txt
+
+file:out/optional.txt
+               state = AWAITED
+             creator   step:cp -p c_input.txt out/optional.txt
+              source   step:cp -p c_input.txt out/optional.txt
+
+step:cp -p d_input.txt exact_optional.txt
+               state = SUCCEEDED
+                need = TARGET (implied by sinks > OPTIONAL)
+             creator   step:./plan.py
+              source   file:d_input.txt
+             product   file:exact_optional.txt
+                sink   file:exact_optional.txt
+
+file:exact_optional.txt
+               state = BUILT
+             creator   step:cp -p d_input.txt exact_optional.txt
+              source   step:cp -p d_input.txt exact_optional.txt

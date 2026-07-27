@@ -11,7 +11,8 @@ It can be a sum of the following codes:
 - `2` = at least one step failed
 - `4` = at least one step remained pending
 - `8` = at least one step was still runnable
-- `16` = the scheduler was on hold (not reporting pending steps)
+- `16` = at least one target was not produced by any step
+- `32` = the scheduler was on hold (not reporting pending steps)
 
 A few example combinations are:
 
@@ -34,5 +35,8 @@ if [ $(($RET & 4)) -gt 0 ]; then
 fi
 if [ $(($RET & 8)) -gt 0 ]; then
     echo "At least one step was still runnable"
+fi
+if [ $(($RET & 16)) -gt 0 ]; then
+    echo "At least one target was not produced by any step"
 fi
 ```

@@ -159,12 +159,16 @@ class ConfigLoader:
         -------
         actions
             Dict mapping each dest to its action, excluding the built-in
-            `help` action and subparser actions.
+            `help` action, subparser actions, and positional arguments
+            (which have no `option_strings` and are therefore CLI-only,
+            not configurable via a config file or environment variable).
         """
         return {
             a.dest: a
             for a in parser._actions
-            if a.dest != "help" and not isinstance(a, argparse._SubParsersAction)
+            if a.dest != "help"
+            and not isinstance(a, argparse._SubParsersAction)
+            and a.option_strings
         }
 
     def _coerce_type(self, raw: Any, action: argparse.Action) -> Any:

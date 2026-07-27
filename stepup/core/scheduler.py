@@ -10,12 +10,14 @@ import attrs
 from .enums import FileState, Need, StepState
 from .hash import FileHash
 from .job import Job, RunJob, ValidateAmendedJob
+from .path import dir_range_upper
 from .sqlite3 import DBSession
 from .step import STEP_DISPATCH_WHERE, Step
 from .utils import parse_resources, write_joblog_record
 from .workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
 
 INIT_SAFE_UPDATE = """
 CREATE TEMP TABLE IF NOT EXISTS safe_update(i INTEGER PRIMARY KEY, safe INTEGER)
@@ -159,6 +161,23 @@ WHERE i IN (
 # update_after table). RETURNING reports exactly the node ids that were written, which the
 # caller feeds into PROPAGATE_UPDATE_CHECK_AFTER as the "changed" seed set -- narrowing
 # propagation to steps whose value actually changed, same as the old two-statement design.
+#
+# The CASE/EXISTS term elevates a step to at least TARGET when one of its attached,
+# non-volatile outputs is a target. Dependency sinks of a step are exactly its out_paths
+# (AWAITED/BUILT/OUTDATED) and vol_paths (VOLATILE), so excluding VOLATILE leaves exactly
+# the regular outputs. NOT onode.detached mirrors Workflow.reconcile_targets()'s
+# deliberate skipping of detached rows.
+# Without targets, target_path (always created and populated in Scheduler.initialize())
+# is empty, so the EXISTS never matches and the term contributes Need.OPTIONAL --
+# the enum minimum, a no-op inside MAX. All probes in the EXISTS are indexed,
+# so this costs little on untargeted builds.
+#
+# The second WHEN arm elevates a step whose *declared* need is DEFAULT (step.need, not
+# _implied_need) when one of its attached, non-volatile outputs falls under a directory
+# target (label in [target_dir.path, target_dir.upper)). The step.need = DEFAULT guard
+# keeps directory targets from sweeping OPTIONAL steps into the build, unlike exact
+# targets. Without directory targets, target_dir (always created and populated in
+# Scheduler.initialize()) is empty, so this term is also a no-op.
 UPDATE_CHECK_AFTER = f"""
 WITH cte AS (
     SELECT
@@ -166,6 +185,28 @@ WITH cte AS (
         step._implied_need AS old_implied_need,
         MAX(
             step.need,
+            CASE WHEN EXISTS (
+                SELECT 1 FROM dependency AS depo
+                JOIN node AS onode ON onode.i = depo.sink
+                JOIN file AS ofile ON ofile.node = depo.sink
+                WHERE depo.source = check_after.i
+                  AND NOT onode.detached
+                  AND ofile.state != {FileState.VOLATILE.value}
+                  AND onode.label IN (SELECT path FROM target_path)
+            ) THEN {Need.TARGET.value}
+            WHEN step.need = {Need.DEFAULT.value} AND EXISTS (
+                SELECT 1 FROM dependency AS depo
+                JOIN node AS onode ON onode.i = depo.sink
+                JOIN file AS ofile ON ofile.node = depo.sink
+                WHERE depo.source = check_after.i
+                  AND NOT onode.detached
+                  AND ofile.state != {FileState.VOLATILE.value}
+                  AND EXISTS (
+                      SELECT 1 FROM target_dir
+                      WHERE onode.label >= target_dir.path
+                        AND onode.label < target_dir.upper
+                  )
+            ) THEN {Need.TARGET.value} ELSE {Need.OPTIONAL.value} END,
             COALESCE(
                 MAX(sink_step._implied_need),
                 {Need.OPTIONAL.value}
@@ -355,12 +396,19 @@ WHERE req.node = node.i
 # the index forces a temp B-tree sort of all matching rows, defeating this query's purpose.
 # The tie-break is therefore the index's implicit `step.node ASC` primary-key suffix
 # (deterministic, but a different order than the dropped `label ASC`).
+#
+# step._implied_need > ? (Workflow.need_threshold, bound by _get_next_step()) sits outside
+# STEP_DISPATCH_WHERE, which must stay static and textually match step_dispatch's WHERE
+# clause -- a per-build runtime value cannot appear there. Without targets the threshold is
+# OPTIONAL, which this term already implies via STEP_DISPATCH_WHERE, so behavior is
+# unchanged; with targets it is DEFAULT, making DEFAULT-need steps optional-in-effect.
 SELECT_NEXT_STEP = f"""
 SELECT node.i, node.label, step._has_hash
 FROM step INDEXED BY step_dispatch
 JOIN node ON node.i = step.node
 WHERE
     {STEP_DISPATCH_WHERE} AND
+    step._implied_need > ? AND
     NOT node.detached AND
     (step._has_hash OR NOT EXISTS ({RESOURCE_UNAVAILABLE}))
 ORDER BY
@@ -402,6 +450,12 @@ LEFT JOIN (
 # Identify the reasons why pending steps are not runnable after the builder has stopped.
 # It is assumed that there are no RUNNING steps at this point.
 # (This is typically called after the builder has (been) stopped.)
+#
+# step._implied_need > ? binds Workflow.need_threshold, the same property SELECT_NEXT_STEP
+# binds, so the dispatch and reporting thresholds can never diverge. Without targets this is
+# OPTIONAL, equivalent to the old static `!= OPTIONAL` filter since OPTIONAL is Need's
+# minimum value; with targets it is DEFAULT, so DEFAULT-implied PENDING steps (never
+# selected for dispatch) are no longer reported.
 SELECT_PENDING_REASONS = f"""
 SELECT
     node.i,
@@ -417,7 +471,7 @@ SELECT
 FROM node
 JOIN step ON node.i = step.node
 WHERE step.state = {StepState.PENDING.value} AND
-    step._implied_need != {Need.OPTIONAL.value} AND
+    step._implied_need > ? AND
     NOT node.detached
 {_ORDER_BY_PRIORITY}
 """
@@ -495,6 +549,32 @@ class Scheduler:
             self.workflow.db.execute(INIT_CHECK_AFTER)
             self.workflow.db.execute(INIT_CHANGED_AFTER)
             self.workflow.db.execute(INIT_SAFE_UPDATE)
+            # target_path backs UPDATE_CHECK_AFTER's target-elevation check.
+            # Populated once here since Workflow.targets is
+            # immutable for the lifetime of the director process.
+            self.workflow.db.execute(
+                "CREATE TEMPORARY TABLE IF NOT EXISTS target_path (path TEXT PRIMARY KEY)"
+            )
+            self.workflow.db.execute("DELETE FROM target_path")
+            self.workflow.db.executemany(
+                "INSERT INTO target_path VALUES (?)",
+                ((str(path),) for path in sorted(self.workflow.targets)),
+            )
+            # target_dir backs UPDATE_CHECK_AFTER's directory-target elevation check.
+            # Populated once here since Workflow.target_dirs is
+            # immutable for the lifetime of the director process.
+            self.workflow.db.execute(
+                "CREATE TEMPORARY TABLE IF NOT EXISTS target_dir "
+                "(path TEXT PRIMARY KEY, upper TEXT NOT NULL)"
+            )
+            self.workflow.db.execute("DELETE FROM target_dir")
+            self.workflow.db.executemany(
+                "INSERT INTO target_dir VALUES (?, ?)",
+                (
+                    (str(path), dir_range_upper(str(path)))
+                    for path in sorted(self.workflow.target_dirs)
+                ),
+            )
 
     #
     # Interaction with builder
@@ -650,7 +730,9 @@ class Scheduler:
             or the runnable path (`False`, transitions to `RUNNING`).
             `None` if no PENDING step is currently eligible.
         """
-        row = self.workflow.db.execute(SELECT_NEXT_STEP).fetchone()
+        row = self.workflow.db.execute(
+            SELECT_NEXT_STEP, (self.workflow.need_threshold.value,)
+        ).fetchone()
         if row is None:
             return None
         i, label, has_hash = row
@@ -801,7 +883,9 @@ class Scheduler:
             - `unsafe`: the step's creator is not RUNNING or SUCCEEDED
         """
         results = []
-        cur = self.workflow.db.execute(SELECT_PENDING_REASONS)
+        cur = self.workflow.db.execute(
+            SELECT_PENDING_REASONS, (self.workflow.need_threshold.value,)
+        )
         for i, label, safe, postponed, unavailable_inputs, resource_issue in cur:
             step = Step(self.workflow, i, label)
             if not safe:

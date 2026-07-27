@@ -14,11 +14,19 @@ from collections.abc import Callable, Collection, Iterator
 import attrs
 from path import Path
 
-from .enums import FileState, HashUpdateCause, Need, StepState
+from .enums import (
+    REGULAR_OUTPUT_STATES,
+    TARGET_FORBIDDEN_STATES,
+    FileState,
+    HashUpdateCause,
+    Need,
+    StepState,
+)
 from .exceptions import GraphError
 from .file import File
 from .hash import FileHash, fmt_digest
 from .nglob import NGlobMulti, has_wildcards
+from .path import dir_range_upper
 from .sqlite3 import escape_like_pattern
 from .static_tree import StaticTree
 from .step import RESERVED_ENV_VARS, Step
@@ -49,6 +57,39 @@ WITH RECURSIVE missing(i, label, creator_kind) AS (
     WHERE node.kind = 'file' AND file.state = {FileState.MISSING.value}
 )
 SELECT i, label FROM missing WHERE creator_kind = 'st'
+"""
+
+# Flags the check_after bit of every step with an in-scope (declared-DEFAULT or not; see
+# below) output under a directory target, for `Workflow.reconcile_targets()`. Newly-matching
+# direction only -- the stale direction (a step elevated by a directory target in a previous
+# run) is already covered by that method's `_implied_need = TARGET` reset.
+#
+# Mirrors UPDATE_CHECK_AFTER's directory arm (scheduler.py): the same dependency-based join
+# (depo.source -> step), not the exact-target loop's file.creator() walk, so reconcile and
+# recompute can never disagree about which step a file belongs to. No `need = DEFAULT`
+# filter here -- over-flagging is safe (recomputation is state-free) and UPDATE_CHECK_AFTER
+# re-applies the restriction. No GraphError arms, per the best-effort decision for directory
+# targets.
+#
+# The CROSS JOIN is load-bearing: a plain JOIN lets SQLite pick node-first join order and
+# scan every file node via node_kind_label (kind=?) alone. CROSS JOIN forces SCAN target_dir
+# -> SEARCH onode USING INDEX node_kind_label (kind=? AND label>? AND label<?) -> indexed
+# probes of file and dependency_sink_source.
+RECONCILE_TARGET_DIRS = f"""
+UPDATE step SET _check_after = 1
+WHERE node IN (
+    SELECT depo.source
+    FROM target_dir
+    CROSS JOIN node AS onode ON (
+        onode.kind = '{File.kind()}'
+        AND onode.label >= target_dir.path
+        AND onode.label < target_dir.upper
+    )
+    JOIN dependency AS depo ON depo.sink = onode.i
+    JOIN file AS ofile ON ofile.node = onode.i
+    WHERE NOT onode.detached
+      AND ofile.state != {FileState.VOLATILE.value}
+)
 """
 
 # (cause, old_state, hash_known) -> (new_state, action) for `Workflow.update_file_hashes`.
@@ -112,11 +153,30 @@ class Workflow(Trellis):
     step is failed instead of parked in PENDING again. A livelock guard, not expected
     to bind in normal use; see `Step.completed()`."""
 
+    targets: frozenset[Path] = attrs.field(kw_only=True, factory=frozenset, converter=frozenset)
+    """The paths `stepup build` was asked to produce.
+
+    Set once at construction and never mutated afterward — the only way to change the
+    target set is to restart the director. An empty set (the default) means
+    "build everything," unchanged behavior."""
+
+    target_dirs: frozenset[Path] = attrs.field(kw_only=True, factory=frozenset, converter=frozenset)
+    """The directories `stepup build` was asked to produce everything under.
+
+    Entries always carry their trailing slash. Set once at construction and never mutated
+    afterward, mirroring `targets`. An empty set (the default) means no directory targets
+    were given."""
+
     to_be_deleted: list[tuple[str, FileHash | None]] = attrs.field(init=False, factory=list)
     """A list of files and directories that can be deleted.
 
     This list contains BUILT files node with file hashes that were removed from the graph.
     """
+
+    @property
+    def need_threshold(self) -> Need:
+        """The need level above which a step's `_implied_need` makes it required."""
+        return Need.DEFAULT if self.targets or self.target_dirs else Need.OPTIONAL
 
     @staticmethod
     def default_node_classes() -> list[type[Node]]:
@@ -540,6 +600,19 @@ class Workflow(Trellis):
             return srs[0]
         return None
 
+    def _raise_if_forbidden_target(self, path: str, state: FileState):
+        """Raise when `path` is a build target in a state a target may never have.
+
+        Raises
+        ------
+        GraphError
+            When `path` is in `self.targets` and `state` is in `TARGET_FORBIDDEN_STATES`.
+        """
+        if path in self.targets and state in TARGET_FORBIDDEN_STATES:
+            if state == FileState.VOLATILE:
+                raise GraphError(f"A build target cannot be a volatile output: {path}")
+            raise GraphError(f"A build target cannot be a static file: {path}")
+
     def _resolve_supply_file(
         self,
         node: Node,
@@ -588,6 +661,7 @@ class Workflow(Trellis):
             if st is None:
                 file = self.create(File, None, path, state=FileState.AWAITED)
             else:
+                self._raise_if_forbidden_target(path, FileState.MISSING)
                 file = self.create(File, st, path, state=FileState.MISSING)
                 is_deferred = True
                 available = True
@@ -596,6 +670,7 @@ class Workflow(Trellis):
             state = file.get_state()
             if state == FileState.VOLATILE:
                 raise GraphError(f"Input is volatile: {path}")
+            self._raise_if_forbidden_target(path, state)
             available = state in (FileState.BUILT, FileState.STATIC, FileState.MISSING)
             if state == FileState.MISSING:
                 is_deferred = True
@@ -662,9 +737,7 @@ class Workflow(Trellis):
             for file, available, is_deferred, new_relation in resolved
         ]
 
-    def _declare_file(
-        self, creator: Node, path: str, file_state: FileState
-    ) -> tuple[Node, list[Node]]:
+    def _declare_file(self, creator: Node, path: str, file_state: FileState) -> File:
         """Create (or recycle) a file with a MISSING, AWAITED or VOLATILE file state.
 
         Parameters
@@ -691,6 +764,7 @@ class Workflow(Trellis):
             raise GraphError("A volatile output cannot be a directory.")
         if not (creator.kind() == "st" or self._matching_static_tree(path) is None):
             raise GraphError("Cannot manually add a file that matches a static tree.")
+        self._raise_if_forbidden_target(path, file_state)
 
         file = self.create(File, creator, path, state=file_state)
 
@@ -702,6 +776,113 @@ class Workflow(Trellis):
             # Watch parent directories of non-volatile files.
             self.put_dir_queue(Path(path).parent)
         return file
+
+    def reconcile_targets(self):
+        """Validate targets against the loaded graph and flag affected steps for recompute.
+
+        Declaration-time validation (in `_declare_file` and `_resolve_supply_file`) only
+        runs when `define_step`/`amend_step`/`declare_missing` are actually called, which
+        does not happen for a database-resumed run against an unchanged `plan.py`. Call
+        this once at director startup, after the boot/resume step
+        (`DirectorHandler.initialize_boot`/`startup_from_db`) so that a changed `plan.py`
+        has already been marked `PENDING`, and before the first scheduler tick, and after
+        `Scheduler.initialize()` has created and populated the `target_dir` temp table.
+        It never computes elevation itself; elevation is derived, state-free
+        recomputation (see `scheduler.UPDATE_CHECK_AFTER`) that runs on the next
+        metadata pass for every step flagged here.
+
+        Directory targets (`self.target_dirs`) are handled separately from `self.targets`
+        below, by a single bulk range `UPDATE`. Unlike exact targets, directory-target
+        elevation is best-effort and never raises: the stale direction (a step that was
+        elevated by a directory target in a previous run) is already covered by the reset
+        below, since such a step also has `_implied_need = TARGET`; only the newly-matching
+        direction needs new code.
+
+        Raises
+        ------
+        GraphError
+            When an exact target matches a `VOLATILE`, `STATIC` or `MISSING` file whose
+            creator chain has no `PENDING` step, i.e. the declaration producing that file
+            state is not going to be re-evaluated. Never raised for directory targets.
+        """
+        # Stale TARGET values in _implied_need (left behind by a previous run with a
+        # different target set) must be recomputed; over-flagging is always safe since
+        # recomputation is state-free.
+        self.db.execute(
+            f"UPDATE step SET _check_after = 1 WHERE _implied_need = {Need.TARGET.value}"
+        )
+        # One-time startup cost, several queries per target instead of one batched query.
+        # Accepted for now given small typical target counts; revisit if this shows up in
+        # profiling.
+        for path in sorted(self.targets):
+            file, detached = self.find_detached(File, path)
+            if file is None or detached:
+                # Not (yet) in the graph, or detached. Detached rows are deliberately
+                # skipped: they may be garbage from an abandoned plan, and raising on
+                # those would block legitimate builds. Declaration-time checks and the
+                # not-produced warning cover these.
+                continue
+            state = file.get_state()
+            if state in TARGET_FORBIDDEN_STATES:
+                # Only raise when the declaration producing this row is still current: a
+                # PENDING step in the creator chain may re-declare the file differently
+                # when it reruns, in which case declaration-time checks take over.
+                if not self._creator_chain_pending(file):
+                    self._raise_if_forbidden_target(path, state)
+                continue
+            creator = file.creator()
+            if isinstance(creator, Step):
+                self.db.execute("UPDATE step SET _check_after = 1 WHERE node = ?", (creator.i,))
+
+        # Directory targets: newly-matching outputs need a bulk range UPDATE.
+        # See RECONCILE_TARGET_DIRS above for the query and its rationale.
+        self.db.execute(RECONCILE_TARGET_DIRS)
+
+    def _creator_chain_pending(self, node: Node) -> bool:
+        """Return whether any step in the node's creator chain is PENDING."""
+        while True:
+            node = node.creator()
+            if node is None or isinstance(node, Root):
+                # Root.creator() returns Root itself, so this also terminates the walk.
+                return False
+            if isinstance(node, Step) and node.get_state() == StepState.PENDING:
+                return True
+
+    def is_regular_output(self, path: str) -> bool:
+        """Return whether `path` is currently a regular (non-volatile) output of a step."""
+        node, detached = self.find_detached(File, path)
+        return (
+            node is not None
+            and not detached
+            and isinstance(node.creator(), Step)
+            and node.get_state() in REGULAR_OUTPUT_STATES
+        )
+
+    def dir_has_regular_output(self, path: str) -> bool:
+        """Return whether any active step's regular (non-volatile) output falls under `path`.
+
+        `path` is a directory-target label (trailing slash). Backs the end-of-build
+        matched-nothing warning for directory targets (`builder.report_completion`). Unlike
+        `is_regular_output()`, this checks a label range instead of a single label, and
+        deliberately has no `step.need = DEFAULT` filter: the warning catches typos
+        ("nothing is ever produced here"), not policy surprises ("things are produced here
+        but you opted them out" -- an `OPTIONAL`-only directory is a correctly-spelled path).
+        `state != VOLATILE` with a dependency-sink join mirrors the elevation arm's
+        condition verbatim (`scheduler.UPDATE_CHECK_AFTER`), so warning and elevation can
+        never disagree about what counts as an output.
+        """
+        row = self.db.execute(
+            "SELECT EXISTS ("
+            "SELECT 1 FROM node AS onode "
+            "JOIN file AS ofile ON ofile.node = onode.i "
+            "JOIN dependency AS depo ON depo.sink = onode.i "
+            f"WHERE onode.kind = '{File.kind()}' "
+            "AND onode.label >= ? AND onode.label < ? "
+            "AND NOT onode.detached "
+            f"AND ofile.state != {FileState.VOLATILE.value})",
+            (path, dir_range_upper(path)),
+        ).fetchone()
+        return bool(row[0])
 
     def _build_to_check(self, deferred: Collection[Node]) -> list[tuple[str, FileHash]]:
         """Convert a list of MISSING file nodes to a list of (path, file_hash) tuples.
@@ -879,6 +1060,12 @@ class Workflow(Trellis):
             These must be sent back to the client where the hashes can be checked
             and which then calls `confirm_hashes` with the updated hashes.
         """
+        if need == Need.TARGET:
+            raise GraphError(
+                "need=Need.TARGET is reserved for derived elevation; "
+                "it cannot be passed to define_step."
+            )
+
         if creator.is_detached():
             # The creator has moved on without this call (see Step.detach()), so
             # defining a new child step for it is moot.
@@ -895,6 +1082,13 @@ class Workflow(Trellis):
         env_deps = sorted(set(env_deps))
         out_paths = sorted(set(out_paths))
         vol_paths = sorted(set(vol_paths))
+        # Deliberate duplicate of _declare_file's check: needed as long as `old_step is not
+        # None` below returns early, since that path never calls _declare_file on vol_paths.
+        target_vol_paths = self.targets & set(vol_paths)
+        if target_vol_paths:
+            raise GraphError(
+                f"A build target cannot be a volatile output: {sorted(target_vol_paths)}"
+            )
         if any(inp_path.endswith(os.sep) for inp_path in inp_paths):
             raise GraphError("Directory inputs are not supported.")
         if env_overrides is not None and not set(env_deps).isdisjoint(env_overrides):

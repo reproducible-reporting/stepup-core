@@ -13,6 +13,7 @@ from stepup.core.path import (
     coerce_paths,
     coerce_paths2,
     coerce_str,
+    dir_range_upper,
     get_affixes,
     make_path_out,
     translate,
@@ -142,6 +143,25 @@ def test_affixes_round_trip(path):
     leading, trailing = get_affixes(path)
     stripped = path[len(leading) : len(path) - len(trailing)]
     assert apply_affixes(stripped, leading, trailing) == path
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        ("out/", "out0"),
+        ("out/report/", "out/report0"),
+        ("é/", "é0"),
+    ],
+)
+def test_dir_range_upper(path, expected):
+    # The exclusive upper bound must sort just past every label under the directory
+    # (byte-wise, matching SQLite's default BINARY collation on node.label), while a
+    # boundary sibling sharing the prefix without the slash falls outside the range.
+    upper = dir_range_upper(path)
+    assert upper == expected
+    assert path < upper  # the directory node itself is in range
+    assert path <= f"{path}sub/file.txt" < upper
+    assert not (path <= path[:-1] + "_sibling" < upper)
 
 
 def test_make_path_out():

@@ -76,7 +76,6 @@ def clean_tool(args: argparse.Namespace):
     """Main program."""
     # Translate all unique paths so they are relative to STEPUP_ROOT,
     # because this is how they are stored in the database. (tr_ prefix)
-    # A trailing slash is appended to directories.
     tr_paths = {translate(path.normpath()) for path in args.paths}
 
     # Copy the database in memory and work on the copy.

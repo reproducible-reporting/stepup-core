@@ -248,6 +248,23 @@ def test_patch_parser_env_count_action():
     assert p.parse_args(["-v"]).verbose == 3  # 2 (injected) + 1 (from -v)
 
 
+def test_patch_parser_excludes_positional():
+    """A positional argument (no `option_strings`) must never be patched from the environment.
+
+    Positionals have `type=None`, so a raw env-var string would otherwise be assigned
+    unparsed as the default, and iterating it (e.g. `for t in args.targets`) would
+    silently yield individual characters instead of the intended list of values.
+    """
+    p = argparse.ArgumentParser()
+    p.add_argument("targets", nargs="*", default=[])
+    p.add_argument("--jobs", type=int, default=1)
+    loader = ConfigLoader("app", environ={"APP_TARGETS": "foo.txt", "APP_JOBS": "4"})
+    loader.patch_parser(p, use_section=False)
+    args = p.parse_args([])
+    assert args.targets == []
+    assert args.jobs == 4
+
+
 def test_patch_parser_nargs_optional_env_overrides_const():
     # Env var sets both const and default, enabling the feature without --perf.
     p = argparse.ArgumentParser()

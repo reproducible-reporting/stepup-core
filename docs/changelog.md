@@ -25,6 +25,17 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
   See [Configuration files](reference/configuration.md) for details.
 - The `stepup show-config` command shows the current configuration,
   as the result of merging all config files and environment variables.
+- `stepup build [targets...]` restricts the build to the steps needed to produce
+  the given output files (and their dependencies), instead of the full default workflow.
+  A target cannot name a volatile output or a static file, and a target that is never
+  produced by any step is reported as a warning at the end of the build.
+  Targets may now also name a directory (a path ending in `/`),
+  which elevates every step whose declared need is `DEFAULT`
+  and whose output falls under that directory, best-effort (never raises).
+  See [Build Targets](advanced_topics/build_targets.md) for details.
+- A new returncode bit (`16`) was added to indicate that at least one target was not produced
+  by any step in the workflow.
+  See [StepUp Return Codes](reference/returncode.md) for details.
 - StepUp can use a forkserver for Python step execution and file hashing,
   which reduces startup overhead.
   This can be controlled with the `--forkserver` flag,
@@ -234,6 +245,17 @@ This is release candidate 9 of the upcoming StepUp Core 4.0 release.
   Use the `shq()` helper function instead, together with Python's built-in f-strings.
 - The `glob()` function no longer accepts `_defer` and `_required` keyword arguments.
 - Removed the environment variable substitution in the executable passed to `script()` and `call()`.
+
+### Fixed
+
+- Previously computed file hashes of static files are now reused instead of recomputing them.
+- Simple user mistakes no longer dump a full Python traceback:
+    - A `TUIError` raised before the director starts
+      (e.g. an invalid `stepup build` target) now prints a short `ERROR: ...` message.
+    - A build target that resolves to a static file or a volatile output
+      on a resumed database (invalid on a fresh database too, but previously only
+      contained there) now reports a clean `ERROR` and a `FAILED` exit code,
+      instead of crashing the director.
 
 ## [3.2.3][] - 2026-04-16 {: #v3.2.3 }
 

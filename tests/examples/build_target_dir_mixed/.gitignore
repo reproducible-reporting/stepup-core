@@ -1,0 +1,9 @@
+.stepup/
+current_*
+a_input.txt
+b_input.txt
+c_input.txt
+d_input.txt
+out/
+solo.txt
+exact_optional.txt

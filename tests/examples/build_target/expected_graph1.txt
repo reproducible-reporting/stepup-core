@@ -1,0 +1,84 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   root:
+              source   file:plan.py
+             product   file:gen.py
+             product   file:input.txt
+             product   step:./gen.py plan '{}'
+             product   step:cp -p input.txt other.txt
+             product   step:cp -p input.txt wanted.txt
+
+file:gen.py
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:./gen.py plan '{}'
+
+file:input.txt
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:cp -p input.txt other.txt
+                sink   step:cp -p input.txt wanted.txt
+
+step:cp -p input.txt wanted.txt
+               state = SUCCEEDED
+                need = TARGET (implied by sinks > DEFAULT)
+             creator   step:./plan.py
+              source   file:input.txt
+             product   file:wanted.txt
+                sink   file:wanted.txt
+
+file:wanted.txt
+               state = BUILT
+             creator   step:cp -p input.txt wanted.txt
+              source   step:cp -p input.txt wanted.txt
+
+step:cp -p input.txt other.txt
+               state = PENDING
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:input.txt
+             product   file:other.txt
+                sink   file:other.txt
+
+file:other.txt
+               state = AWAITED
+             creator   step:cp -p input.txt other.txt
+              source   step:cp -p input.txt other.txt
+
+step:./gen.py plan '{}'
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./plan.py
+              source   file:gen.py
+             product   file:seed.txt
+             product   step:cp -p seed.txt dynamic.txt
+
+file:seed.txt
+               state = STATIC
+             creator   step:./gen.py plan '{}'
+                sink   step:cp -p seed.txt dynamic.txt
+
+step:cp -p seed.txt dynamic.txt
+               state = SUCCEEDED
+                need = TARGET (implied by sinks > DEFAULT)
+             creator   step:./gen.py plan '{}'
+              source   file:seed.txt
+             product   file:dynamic.txt
+                sink   file:dynamic.txt
+
+file:dynamic.txt
+               state = BUILT
+             creator   step:cp -p seed.txt dynamic.txt
+              source   step:cp -p seed.txt dynamic.txt

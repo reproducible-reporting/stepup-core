@@ -6,18 +6,21 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 By default, StepUp will build all steps.
 As an exception, steps can be made optional by adding the `optional=True` option.
-This is the opposite of most build tools, where steps are only executed when they are *targets*.
+This is the opposite of most build tools,
+where a step only runs when it is needed, directly or indirectly,
+by a *target* given on the command line.
 
 The reason for this difference is that conventional build tools work with rigid predefined graphs.
 They introduce some flexibility
 by allowing users to specify which steps are *targets* on the command line.
-This gives the user some control over which part of the graph is executed.
+This gives the user some control over which part of the graph is executed,
+but also shifts to them the responsibility of knowing which targets a given task actually needs.
 
-StepUp offers such flexibility differently.
-The basic premise is that all outdated or missing outputs need to be (re)built.
-It is the responsibility of the build tool to figure out which steps need executing.
-This responsibility should not be shifted to users by expecting them to specify targets.
-That said, some legitimate exceptions exist, in which ignoring steps is a desirable feature.
+StepUp keeps this responsibility with the build tool instead.
+The basic premise is that all outdated or missing outputs need to be (re)built,
+and it is StepUp's job to figure out which steps that requires.
+That said, several legitimate mechanisms exist
+for running only part of the workflow when this is genuinely useful.
 These are supported by StepUp as follows:
 
 - One can define **steps conditionally**, e.g.,
@@ -32,8 +35,26 @@ These are supported by StepUp as follows:
   Use this feature wisely:
   Defining thousands of steps when only a few are actually used, is obviously inefficient.
 
-- As shown in the [next tutorial](blocked_steps.md), one may also **block steps**,
-  as a temporary measure to speed up the edit-build cycle.
+- One can **build a subset of targets**,
+  by listing one or more output paths on the command line,
+  as shown in [the next tutorial](build_targets.md).
+  This is an *inclusion* mechanism:
+  only the steps needed to produce the given targets run, and the rest stay `PENDING`.
+  It is useful when you temporarily want to work on
+  a small part of a much larger workflow, e.g., for debugging purposes.
+  An exact-file target reaches an `optional` step just like any other step:
+  naming its output explicitly is enough to build it, regardless of its declared need.
+  A [directory target](build_targets.md#directory-targets) is more conservative:
+  it only elevates steps whose declared need is `DEFAULT`,
+  so an `optional` step's output sitting under a targeted directory is not, by itself,
+  a reason to build it.
+
+- One can also **block steps**, as shown in [a later tutorial](blocked_steps.md).
+  This acts more as a longer-term *exclusion* filter:
+  it keeps one or more steps pending indefinitely,
+  e.g., while a downstream part of the workflow is still under development
+  or too expensive to run on every iteration,
+  until you explicitly unblock them again.
 
 Steps that define other steps, declare static files, or otherwise extend the workflow,
 should not be made optional.

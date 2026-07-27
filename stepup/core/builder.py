@@ -313,6 +313,9 @@ async def report_completion(
     if scheduler.on_hold:
         returncode |= ReturnCode.ONHOLD
         await reporter("WARNING", "Scheduler is put on hold. Not reporting pending steps.")
+        # The missing-target checks further down are skipped too: the build phase ended
+        # early, so steps that would have declared a target as output may not have run yet,
+        # making a "not produced" warning unreliable.
         return returncode
 
     async with db:
@@ -394,6 +397,37 @@ async def report_completion(
                 pending_pages.insert(0, ("Missing inputs", missing_page))
             # Finally, report the workflow steps that are pending.
             await reporter("WARNING", descr, pending_pages)
+
+    # Targets that never became the regular output of an active step: reported after the
+    # build phase completes, since dynamically-declared steps may only appear once earlier
+    # steps run, so this cannot be checked upfront.
+    async with db:
+        missing_targets = [
+            target for target in sorted(workflow.targets) if not workflow.is_regular_output(target)
+        ]
+    if missing_targets:
+        returncode |= ReturnCode.NOTPRODUCED
+        await reporter(
+            "WARNING",
+            f"{len(missing_targets)} target(s) are not produced by any step in the workflow: "
+            + ", ".join(missing_targets),
+        )
+
+    # Directory targets that matched zero regular outputs: weaker than the exact-target
+    # warning above by design (best-effort semantics), see Workflow.dir_has_regular_output.
+    async with db:
+        missing_target_dirs = [
+            target_dir
+            for target_dir in sorted(workflow.target_dirs)
+            if not workflow.dir_has_regular_output(target_dir)
+        ]
+    if missing_target_dirs:
+        returncode |= ReturnCode.NOTPRODUCED
+        await reporter(
+            "WARNING",
+            f"{len(missing_target_dirs)} directory target(s) matched no regular output "
+            "in the workflow: " + ", ".join(missing_target_dirs),
+        )
     return returncode
 
 

@@ -1,0 +1,11 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 11 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+   WARNING │ 1 directory target(s) matched no regular output in the workflow: empty/
+   WARNING │ Skipping file cleanup due to incomplete build
+   WARNING │ Check logs: .stepup/warning.log
+     PHASE │ watch
+  DIRECTOR │ See you!

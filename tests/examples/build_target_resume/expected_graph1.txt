@@ -1,0 +1,50 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   root:
+              source   file:plan.py
+             product   file:input.txt
+             product   step:cp -p input.txt other.txt
+             product   step:cp -p input.txt wanted.txt
+
+file:input.txt
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:cp -p input.txt other.txt
+                sink   step:cp -p input.txt wanted.txt
+
+step:cp -p input.txt wanted.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:input.txt
+             product   file:wanted.txt
+                sink   file:wanted.txt
+
+file:wanted.txt
+               state = BUILT
+             creator   step:cp -p input.txt wanted.txt
+              source   step:cp -p input.txt wanted.txt
+
+step:cp -p input.txt other.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:input.txt
+             product   file:other.txt
+                sink   file:other.txt
+
+file:other.txt
+               state = BUILT
+             creator   step:cp -p input.txt other.txt
+              source   step:cp -p input.txt other.txt

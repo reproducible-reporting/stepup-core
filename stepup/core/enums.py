@@ -4,7 +4,16 @@
 
 from enum import Enum, Flag, auto
 
-__all__ = ("Change", "FileState", "HashUpdateCause", "Need", "ReturnCode", "StepState")
+__all__ = (
+    "REGULAR_OUTPUT_STATES",
+    "TARGET_FORBIDDEN_STATES",
+    "Change",
+    "FileState",
+    "HashUpdateCause",
+    "Need",
+    "ReturnCode",
+    "StepState",
+)
 
 
 class ReturnCode(Flag):
@@ -19,6 +28,9 @@ class ReturnCode(Flag):
 
     RUNNABLE = auto()
     """Some steps are runnable. Stopped early due to shutdown, drain, etc."""
+
+    NOTPRODUCED = auto()
+    """Some targets were not produced by any step in the workflow."""
 
     ONHOLD = auto()
     """The scheduler is on hold. Pending steps are not reported."""
@@ -72,6 +84,13 @@ class FileState(Enum):
     - No hashes are computed for volatile files.
     - They can change when a step is repeated with the same inputs.
     """
+
+
+REGULAR_OUTPUT_STATES = (FileState.AWAITED, FileState.BUILT, FileState.OUTDATED)
+"""`FileState` values of a regular (non-volatile) output, at any point in its build lifecycle."""
+
+TARGET_FORBIDDEN_STATES = frozenset({FileState.VOLATILE, FileState.STATIC, FileState.MISSING})
+"""`FileState` values a `stepup build` target file may never be in."""
 
 
 class StepState(Enum):

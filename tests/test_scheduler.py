@@ -10,6 +10,7 @@ from stepup.core.enums import FileState, Need, StepState
 from stepup.core.file import FILE_SCHEMA
 from stepup.core.hash import FileHash, StepHash
 from stepup.core.job import RunJob
+from stepup.core.path import dir_range_upper
 from stepup.core.scheduler import (
     APPLY_SAFE_UPDATE,
     EMPTY_CHANGED_AFTER,
@@ -34,7 +35,7 @@ from stepup.core.scheduler import (
 from stepup.core.sqlite3 import connect
 from stepup.core.step import STEP_SCHEMA, Step
 from stepup.core.trellis import TRELLIS_SCHEMA
-from stepup.core.workflow import Workflow
+from stepup.core.workflow import RECONCILE_TARGET_DIRS, Workflow
 
 
 @pytest.fixture
@@ -46,10 +47,16 @@ def con():
     # triggers are declared ON file, which requires the file table to already exist.
     c.executescript(FILE_SCHEMA)
     c.executescript(STEP_SCHEMA)
-    # available_resource is normally a temp table created by Scheduler.initialize.
+    # available_resource, target_path and target_dir are normally temp tables created by
+    # Scheduler.initialize.
     c.execute(
         "CREATE TEMPORARY TABLE IF NOT EXISTS available_resource"
         " (name TEXT PRIMARY KEY, units INTEGER NOT NULL)"
+    )
+    c.execute("CREATE TEMPORARY TABLE IF NOT EXISTS target_path (path TEXT PRIMARY KEY)")
+    c.execute(
+        "CREATE TEMPORARY TABLE IF NOT EXISTS target_dir "
+        "(path TEXT PRIMARY KEY, upper TEXT NOT NULL)"
     )
     # Root node has a self-referential creator.
     c.execute("INSERT INTO node (i, kind, label, creator, detached) VALUES (1, 'root', '', 1, 0)")
@@ -135,11 +142,17 @@ def _add_dep(con, source_id, sink_id):
     )
 
 
-def _insert_input_file(con, node_id, creator_id, state, *, detached=False):
-    """Insert a file node + file table row for use as a step input."""
+def _insert_input_file(con, node_id, creator_id, state, *, detached=False, label=None):
+    """Insert a file node + file table row for use as a step input.
+
+    `label` defaults to `file_{node_id}.txt`; pass an explicit value for directory-target
+    tests, which need labels with a specific path structure.
+    """
+    if label is None:
+        label = f"file_{node_id}.txt"
     con.execute(
         "INSERT INTO node (i, kind, label, creator, detached) VALUES (?, 'file', ?, ?, ?)",
-        (node_id, f"file_{node_id}.txt", creator_id, detached),
+        (node_id, label, creator_id, detached),
     )
     if state in (FileState.MISSING, FileState.AWAITED, FileState.VOLATILE):
         hash_value = None
@@ -165,7 +178,7 @@ def _mark_dep_amended(con, dep_id):
     con.execute("INSERT INTO amended_dep (i) VALUES (?)", (dep_id,))
 
 
-def _get_runnable_ids(con):
+def _get_runnable_ids(con, need_threshold=Need.OPTIONAL):
     """Run SELECT_NEXT_STEP and return the ids of results
     dispatched via the runnable (non-checkable) path.
 
@@ -177,8 +190,13 @@ def _get_runnable_ids(con):
     since SELECT_NEXT_STEP's LIMIT 1 only ever returns
     the single highest-priority candidate overall (checkable steps always win),
     not the best candidate per path.
+
+    `need_threshold` mirrors `Workflow.need_threshold`: `OPTIONAL` (the default)
+    reproduces pre-targeting behavior, since `_implied_need > OPTIONAL` is already
+    implied by `STEP_DISPATCH_WHERE`.
     """
-    return [row[0] for row in con.execute(SELECT_NEXT_STEP).fetchall() if not row[2]]
+    rows = con.execute(SELECT_NEXT_STEP, (need_threshold.value,)).fetchall()
+    return [row[0] for row in rows if not row[2]]
 
 
 def _get_safe(con):
@@ -195,7 +213,11 @@ def _run_update_meta_safe(con):
 
 
 def _run_update_meta_after(con):
-    """Run the full update_meta_after logic against a bare SQLite connection."""
+    """Run the full update_meta_after logic against a bare SQLite connection.
+
+    For target elevation, the caller must have populated the `target_path` temp table
+    (see `_insert_target_path`) beforehand; with an empty table, no step is elevated.
+    """
     con.execute(INIT_CHECK_AFTER)
     con.execute(INIT_CHANGED_AFTER)
     con.execute(EMPTY_CHECK_AFTER)
@@ -213,6 +235,19 @@ def _run_update_meta_after(con):
         ncheck = cur.rowcount
         first = False
     con.execute("UPDATE step SET _check_after = 0 WHERE _check_after = 1")
+
+
+def _insert_target_path(con, *paths):
+    """Populate the target_path temp table, mirroring Scheduler.initialize()."""
+    con.executemany("INSERT INTO target_path VALUES (?)", ((path,) for path in paths))
+
+
+def _insert_target_dir(con, *paths):
+    """Populate the target_dir temp table, mirroring Scheduler.initialize()."""
+    con.executemany(
+        "INSERT INTO target_dir VALUES (?, ?)",
+        ((path, dir_range_upper(path)) for path in paths),
+    )
 
 
 # -----------------------------------------------------------------------
@@ -405,6 +440,367 @@ def test_tail_time_is_maximum_over_parallel_sinks(con):
     _run_update_meta_after(con)
     row = con.execute("SELECT _tail_time FROM step WHERE node = 2").fetchone()
     assert row[0] == pytest.approx(6.0)  # A.duration + max(B._tail_time, C._tail_time) = 1 + 5
+
+
+# -----------------------------------------------------------------------
+# Tests for target elevation in UPDATE_CHECK_AFTER
+# -----------------------------------------------------------------------
+
+
+def test_target_match_elevates_producer(con):
+    """A step whose output file matches a target is elevated to _implied_need=TARGET."""
+    _insert_step(
+        con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
+    )
+    _insert_input_file(con, 3, 2, FileState.AWAITED)  # step 2's output
+    _add_dep(con, 2, 3)
+    _insert_target_path(con, "file_3.txt")
+    _run_update_meta_after(con)
+    row = con.execute("SELECT need, _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.DEFAULT.value  # need itself is never written
+    assert row[1] == Need.TARGET.value
+
+
+def test_target_match_on_volatile_sink_not_elevated(con):
+    """A step whose only target-matching sink is VOLATILE is not elevated.
+
+    Dependency sinks of a step are exactly its out_paths (AWAITED/BUILT/OUTDATED) and
+    vol_paths (VOLATILE); the ofile.state != VOLATILE filter keeps elevation restricted to
+    regular outputs, matching the fact that a build target can never legitimately be a
+    vol_path (declaration-time checks reject that combination for reachable graphs).
+    """
+    _insert_step(
+        con,
+        2,
+        1,
+        StepState.PENDING,
+        check_after=True,
+        need=Need.OPTIONAL,
+        implied_need=Need.OPTIONAL,
+    )
+    _insert_input_file(con, 3, 2, FileState.VOLATILE)
+    _add_dep(con, 2, 3)
+    _insert_target_path(con, "file_3.txt")
+    _run_update_meta_after(con)
+    row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.OPTIONAL.value
+
+
+def test_target_match_on_detached_sink_not_elevated(con):
+    """A step whose only target-matching sink is detached is not elevated."""
+    _insert_step(
+        con,
+        2,
+        1,
+        StepState.PENDING,
+        check_after=True,
+        need=Need.OPTIONAL,
+        implied_need=Need.OPTIONAL,
+    )
+    _insert_input_file(con, 3, 2, FileState.AWAITED, detached=True)
+    _add_dep(con, 2, 3)
+    _insert_target_path(con, "file_3.txt")
+    _run_update_meta_after(con)
+    row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.OPTIONAL.value
+
+
+def test_target_match_keeps_plan_need(con):
+    """A PLAN-need step producing a target keeps _implied_need=PLAN (scalar MAX)."""
+    _insert_step(
+        con, 2, 1, StepState.PENDING, check_after=True, need=Need.PLAN, implied_need=Need.PLAN
+    )
+    _insert_input_file(con, 3, 2, FileState.AWAITED)
+    _add_dep(con, 2, 3)
+    _insert_target_path(con, "file_3.txt")
+    _run_update_meta_after(con)
+    row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.PLAN.value
+
+
+def test_target_match_elevates_optional_need_step(con):
+    """An OPTIONAL-need step whose output is a target is elevated to TARGET and dispatched."""
+    _insert_step(
+        con,
+        2,
+        1,
+        StepState.PENDING,
+        safe=True,
+        check_after=True,
+        need=Need.OPTIONAL,
+        implied_need=Need.OPTIONAL,
+    )
+    _insert_input_file(con, 3, 2, FileState.AWAITED)
+    _add_dep(con, 2, 3)
+    _insert_target_path(con, "file_3.txt")
+    _run_update_meta_after(con)
+    row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.TARGET.value
+    assert _get_runnable_ids(con, Need.DEFAULT) == [2]
+
+
+def test_target_match_propagates_to_upstream_source(con):
+    """Elevating a target-producing step propagates TARGET to its (transitive) sources.
+
+    Chain: step 2 -> file 3 -> step 4 -> file 5 (the target). Only step 4 is initially
+    check_after-flagged (mirroring Workflow.reconcile_targets(), which flags exactly the
+    target's producer); step 2 is expected to be picked up by
+    PROPAGATE_UPDATE_CHECK_AFTER once step 4's _implied_need actually changes.
+    """
+    _insert_step(
+        con,
+        2,
+        1,
+        StepState.PENDING,
+        check_after=False,
+        need=Need.DEFAULT,
+        implied_need=Need.DEFAULT,
+    )
+    _insert_file(con, 3, 1)
+    _insert_step(
+        con, 4, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
+    )
+    _insert_input_file(con, 5, 4, FileState.AWAITED)
+    _add_dep(con, 2, 3)
+    _add_dep(con, 3, 4)
+    _add_dep(con, 4, 5)
+    _insert_target_path(con, "file_5.txt")
+    _run_update_meta_after(con)
+    rows = dict(con.execute("SELECT node, _implied_need FROM step").fetchall())
+    assert rows[4] == Need.TARGET.value
+    assert rows[2] == Need.TARGET.value
+
+
+def test_stale_target_implied_need_is_demoted(con):
+    """A step with a stale _implied_need=TARGET is recomputed down when no target matches.
+
+    Simulates Workflow.reconcile_targets() flagging a step left over (_check_after=1) from
+    a previous run with a different target set: recomputation is state-free, so it settles
+    back to MAX(need, sink-derived) without needing to know it was ever TARGET.
+    """
+    _insert_step(
+        con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.TARGET
+    )
+    _run_update_meta_after(con)
+    row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.DEFAULT.value
+
+
+# -----------------------------------------------------------------------
+# Tests for directory-target elevation in UPDATE_CHECK_AFTER
+# -----------------------------------------------------------------------
+
+
+def test_dir_target_elevates_producer_of_file_inside(con):
+    """A DEFAULT-need step whose output falls under a directory target is elevated."""
+    _insert_step(
+        con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
+    )
+    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/fig.svg")
+    _add_dep(con, 2, 3)
+    _insert_target_dir(con, "out/report/")
+    _run_update_meta_after(con)
+    row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.TARGET.value
+
+
+def test_dir_target_boundary_sibling_not_matched(con):
+    """A file sharing the directory target's prefix but not its slash boundary is not matched.
+
+    `out/report_debug.txt` starts with the string `out/report` but not with `out/report/`,
+    so it must fall outside the [path, upper) range.
+    """
+    _insert_step(
+        con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
+    )
+    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report_debug.txt")
+    _add_dep(con, 2, 3)
+    _insert_target_dir(con, "out/report/")
+    _run_update_meta_after(con)
+    row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.DEFAULT.value
+
+
+def test_dir_target_matches_directory_node_itself(con):
+    """The directory `File` node itself (label equal to the target) is matched.
+
+    `'out/report/' >= 'out/report/'` holds, so a step that produces the directory node
+    (e.g. via `mkdir`) is elevated too.
+    """
+    _insert_step(
+        con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
+    )
+    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/")
+    _add_dep(con, 2, 3)
+    _insert_target_dir(con, "out/report/")
+    _run_update_meta_after(con)
+    row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.TARGET.value
+
+
+def test_dir_target_matches_nested_subdirectory(con):
+    """A file in a nested subdirectory under the target directory is matched."""
+    _insert_step(
+        con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
+    )
+    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/sub/fig.svg")
+    _add_dep(con, 2, 3)
+    _insert_target_dir(con, "out/report/")
+    _run_update_meta_after(con)
+    row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.TARGET.value
+
+
+def test_dir_target_matches_non_ascii_label(con):
+    """A non-ASCII label under the target directory is matched (BINARY collation, UTF-8
+    byte order preserves code-point order)."""
+    _insert_step(
+        con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
+    )
+    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/fé中.svg")
+    _add_dep(con, 2, 3)
+    _insert_target_dir(con, "out/report/")
+    _run_update_meta_after(con)
+    row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.TARGET.value
+
+
+def test_dir_target_optional_producer_not_elevated(con):
+    """An OPTIONAL-need step whose output is under a directory target is not elevated.
+
+    Directory targets only reach steps whose declared `need` is DEFAULT; exact targets
+    remain the only way to reach an OPTIONAL step.
+    """
+    _insert_step(
+        con,
+        2,
+        1,
+        StepState.PENDING,
+        check_after=True,
+        need=Need.OPTIONAL,
+        implied_need=Need.OPTIONAL,
+    )
+    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/fig.svg")
+    _add_dep(con, 2, 3)
+    _insert_target_dir(con, "out/report/")
+    _run_update_meta_after(con)
+    row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.OPTIONAL.value
+
+
+def test_dir_target_volatile_output_not_elevated(con):
+    """A step whose only in-directory sink is VOLATILE is not elevated."""
+    _insert_step(
+        con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
+    )
+    _insert_input_file(con, 3, 2, FileState.VOLATILE, label="out/report/fig.svg")
+    _add_dep(con, 2, 3)
+    _insert_target_dir(con, "out/report/")
+    _run_update_meta_after(con)
+    row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.DEFAULT.value
+
+
+def test_dir_target_detached_sink_not_elevated(con):
+    """A step whose only in-directory sink is detached is not elevated."""
+    _insert_step(
+        con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
+    )
+    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/fig.svg", detached=True)
+    _add_dep(con, 2, 3)
+    _insert_target_dir(con, "out/report/")
+    _run_update_meta_after(con)
+    row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.DEFAULT.value
+
+
+def test_empty_target_dir_is_no_op(con):
+    """With no directory targets, a DEFAULT-need step is not elevated."""
+    _insert_step(
+        con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
+    )
+    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/fig.svg")
+    _add_dep(con, 2, 3)
+    _run_update_meta_after(con)
+    row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.DEFAULT.value
+
+
+def test_dir_target_nested_and_duplicate_ranges_are_harmless(con):
+    """Overlapping directory targets (a parent and a child, listed twice) still elevate once."""
+    _insert_step(
+        con, 2, 1, StepState.PENDING, check_after=True, need=Need.DEFAULT, implied_need=Need.DEFAULT
+    )
+    _insert_input_file(con, 3, 2, FileState.AWAITED, label="out/report/sub/fig.svg")
+    _add_dep(con, 2, 3)
+    _insert_target_dir(con, "out/", "out/report/", "out/report/sub/")
+    _run_update_meta_after(con)
+    row = con.execute("SELECT _implied_need FROM step WHERE node = 2").fetchone()
+    assert row[0] == Need.TARGET.value
+
+
+def test_dir_target_exact_arm_plan_unchanged(con):
+    """The exact-path arm's plan is unchanged by the directory-target arm: it still probes
+    `target_path` via the `IN`-operator index, and never falls back to a scan of it."""
+    con.execute(INIT_CHECK_AFTER)
+    plan = "\n".join(
+        row[3] for row in con.execute(f"EXPLAIN QUERY PLAN {UPDATE_CHECK_AFTER}", {"first": True})
+    )
+    assert "USING INDEX sqlite_autoindex_target_path_1 FOR IN-OPERATOR" in plan
+    assert "SCAN target_path" not in plan
+
+
+def test_dir_target_arm_plan_probes_target_dir_index(con):
+    """The directory-target arm probes `target_dir` via its PK index with a range (`path<?`),
+    as a separate correlated subquery -- not via a label index on `onode`."""
+    con.execute(INIT_CHECK_AFTER)
+    plan = "\n".join(
+        row[3] for row in con.execute(f"EXPLAIN QUERY PLAN {UPDATE_CHECK_AFTER}", {"first": True})
+    )
+    assert "target_dir" in plan
+    assert "sqlite_autoindex_target_dir_1" in plan
+
+
+def test_reconcile_target_dirs_plan_uses_range_scan(con):
+    """`Workflow.RECONCILE_TARGET_DIRS`'s `CROSS JOIN` keeps the `node_kind_label`
+    range scan (`kind=? AND label>? AND label<?`), guarding against a well-meaning cleanup
+    that turns the `CROSS JOIN` into a plain `JOIN` -- which would degrade to a full scan of
+    every file node (`kind=?` only, no label bounds).
+    """
+    plan = "\n".join(row[3] for row in con.execute(f"EXPLAIN QUERY PLAN {RECONCILE_TARGET_DIRS}"))
+    assert "SCAN target_dir" in plan
+    assert "kind=? AND label>? AND label<?" in plan
+
+
+# -----------------------------------------------------------------------
+# Tests for the need_threshold bound parameter (SELECT_NEXT_STEP, SELECT_PENDING_REASONS)
+# -----------------------------------------------------------------------
+
+
+def test_default_implied_step_excluded_with_default_threshold(con):
+    """With need_threshold=DEFAULT (targets set), a DEFAULT-implied step is not dispatched."""
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
+    assert _get_runnable_ids(con, Need.DEFAULT) == []
+    assert _get_runnable_ids(con, Need.OPTIONAL) == [2]
+
+
+def test_target_implied_step_included_with_default_threshold(con):
+    """With need_threshold=DEFAULT, a TARGET-implied step is still dispatched."""
+    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.TARGET)
+    assert _get_runnable_ids(con, Need.DEFAULT) == [2]
+
+
+def test_pending_reasons_default_threshold_excludes_default_implied(con):
+    """With need_threshold=DEFAULT, a DEFAULT-implied PENDING step is not reported."""
+    _insert_step(con, 2, 1, StepState.PENDING, implied_need=Need.DEFAULT)
+    assert _get_pending_reasons(con, Need.DEFAULT) == {}
+    assert 2 in _get_pending_reasons(con, Need.OPTIONAL)
+
+
+def test_pending_reasons_default_threshold_includes_target_implied(con):
+    """With need_threshold=DEFAULT, a TARGET-implied PENDING step is still reported."""
+    _insert_step(con, 2, 1, StepState.PENDING, implied_need=Need.TARGET)
+    assert 2 in _get_pending_reasons(con, Need.DEFAULT)
 
 
 def test_no_check_after_skips_update(con):
@@ -925,7 +1321,8 @@ def test_ordering_node_tiebreaker(con):
     assert ids == [9]
 
 
-def test_select_next_step_uses_dispatch_index(con):
+@pytest.mark.parametrize("need_threshold", [Need.OPTIONAL, Need.DEFAULT])
+def test_select_next_step_uses_dispatch_index(con, need_threshold):
     """SELECT_NEXT_STEP walks step_dispatch in order and never sorts the candidate set.
 
     This is the whole point of materializing _has_hash/_ready: without it, SQLite falls
@@ -933,9 +1330,16 @@ def test_select_next_step_uses_dispatch_index(con):
     hotspot this design removes. Regression-test the query plan directly so a future change
     that breaks the index match (e.g. an ORDER BY term outside the index) fails loudly here
     instead of only showing up as a production slowdown.
+
+    Parametrized over both threshold bindings Workflow.need_threshold can supply (OPTIONAL
+    without targets, DEFAULT with targets): the bound `step._implied_need > ?` term sits
+    outside step_dispatch's WHERE clause, so it must not affect index eligibility either way.
     """
     plan = "\n".join(
-        row[3] for row in con.execute(f"EXPLAIN QUERY PLAN {SELECT_NEXT_STEP}").fetchall()
+        row[3]
+        for row in con.execute(
+            f"EXPLAIN QUERY PLAN {SELECT_NEXT_STEP}", (need_threshold.value,)
+        ).fetchall()
     )
     assert "USING INDEX step_dispatch" in plan
     assert "TEMP B-TREE FOR ORDER BY" not in plan
@@ -1141,12 +1545,15 @@ def test_resource_counts_resource_not_in_available_excluded(con):
 # -----------------------------------------------------------------------
 
 
-def _get_pending_reasons(con):
-    """Run SELECT_PENDING_REASONS and return a dict mapping node id -> row dict."""
+def _get_pending_reasons(con, need_threshold=Need.OPTIONAL):
+    """Run SELECT_PENDING_REASONS and return a dict mapping node id -> row dict.
+
+    See `_get_runnable_ids` for `need_threshold`.
+    """
     keys = ("i", "label", "safe", "postponed", "has_unavailable_inputs", "has_resource_issue")
     return {
         row[0]: dict(zip(keys, row, strict=True))
-        for row in con.execute(SELECT_PENDING_REASONS).fetchall()
+        for row in con.execute(SELECT_PENDING_REASONS, (need_threshold.value,)).fetchall()
     }
 
 
@@ -1558,7 +1965,7 @@ def _insert_step_hash(con, node_id):
     con.execute("INSERT OR REPLACE INTO step_hash VALUES (?, '{}')", (node_id,))
 
 
-def _get_checkable_ids(con):
+def _get_checkable_ids(con, need_threshold=Need.OPTIONAL):
     """Run SELECT_NEXT_STEP and return the ids of results
     dispatched via the checkable (hash-checking) path.
 
@@ -1570,8 +1977,11 @@ def _get_checkable_ids(con):
     since SELECT_NEXT_STEP's LIMIT 1 only ever returns
     the single highest-priority candidate overall (checkable steps always win),
     not the best candidate per path.
+
+    See `_get_runnable_ids` for `need_threshold`.
     """
-    return [row[0] for row in con.execute(SELECT_NEXT_STEP).fetchall() if row[2]]
+    rows = con.execute(SELECT_NEXT_STEP, (need_threshold.value,)).fetchall()
+    return [row[0] for row in rows if row[2]]
 
 
 def _has_unavailable_input(con, sink_id):
@@ -1780,7 +2190,7 @@ async def test_stop_times_cleared_when_no_steps_running(wfs: Workflow):
 
 
 # -----------------------------------------------------------------------
-# Tests for deferred step-duration writes (new_durations / flush_durations)
+# Tests for deferred step-duration writes (new_durations / build_completed)
 # -----------------------------------------------------------------------
 
 
@@ -1804,7 +2214,7 @@ async def test_job_completed_accumulates_duration_without_writing_db(wfs: Workfl
     assert step.i in scheduler.new_durations
     async with wfs.db:
         duration, _check_after = _get_duration_and_check_after(wfs, step)
-    assert duration == 1.0  # schema default, unaffected until flush_durations() runs
+    assert duration == 1.0  # schema default, unaffected until build_completed() runs
 
 
 async def test_job_completed_no_op_when_use_duration_disabled(wfs: Workflow):
@@ -1821,7 +2231,7 @@ async def test_job_completed_no_op_when_use_duration_disabled(wfs: Workflow):
     assert scheduler.new_durations == {}
 
 
-async def test_flush_durations_skips_small_relative_change(wfs: Workflow):
+async def test_build_completed_skips_small_relative_change(wfs: Workflow):
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         step = wfs.find(Step, "echo")
@@ -1830,7 +2240,7 @@ async def test_flush_durations_skips_small_relative_change(wfs: Workflow):
         scheduler = Scheduler(wfs, db=wfs.db, use_duration=True)
         scheduler.new_durations[step.i] = 1.05  # within 10% of the schema default (1.0)
 
-        scheduler.flush_durations()
+        scheduler.build_completed()
 
         duration, check_after = _get_duration_and_check_after(wfs, step)
     assert duration == 1.0
@@ -1838,7 +2248,7 @@ async def test_flush_durations_skips_small_relative_change(wfs: Workflow):
     assert scheduler.new_durations == {}
 
 
-async def test_flush_durations_writes_large_relative_change(wfs: Workflow):
+async def test_build_completed_writes_large_relative_change(wfs: Workflow):
     async with wfs.db:
         wfs.define_step(wfs.root, "echo")
         step = wfs.find(Step, "echo")
@@ -1847,7 +2257,7 @@ async def test_flush_durations_writes_large_relative_change(wfs: Workflow):
         scheduler = Scheduler(wfs, db=wfs.db, use_duration=True)
         scheduler.new_durations[step.i] = 2.0  # 100% change from the schema default (1.0)
 
-        scheduler.flush_durations()
+        scheduler.build_completed()
 
         duration, check_after = _get_duration_and_check_after(wfs, step)
     assert duration == 2.0

@@ -23,6 +23,8 @@ from .cgroups import cgroup_scope_prefix
 from .config import ConfigLoader
 from .constants import DIRECTOR_LOG, JOBLOG_CSV, PERF_DATA, SQLLOG_CSV, SQLLOG_JSON, STEPUP_DIR
 from .director import interpret_jobs
+from .enums import ReturnCode
+from .exceptions import TUIError
 from .reporter import ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
 from .utils import parse_resources
@@ -36,8 +38,87 @@ def merge_resources(base: str | None, override: str | None) -> str:
     return ",".join(f"{k}:{v}" for k, v in merged.items())
 
 
+def _normalize_targets(raw_targets: list[str], stepup_root: Path) -> tuple[list[Path], list[Path]]:
+    """Resolve and validate `stepup build` target arguments against the project root.
+
+    A raw target ending in `os.sep` is a directory target: everything under that
+    subtree whose declared `need` is `DEFAULT` is elevated, best-effort (see
+    `docs/advanced_topics/build_targets.md`). Everything else is an exact-file target,
+    regardless of what exists on disk. The trailing slash is the only classifier;
+    classification never looks at the file system.
+
+    Parameters
+    ----------
+    raw_targets
+        The raw target strings, as passed on the command line.
+    stepup_root
+        The absolute path of the StepUp project root.
+
+    Returns
+    -------
+    targets
+        The normalized, root-relative exact-file target paths.
+    target_dirs
+        The normalized, root-relative directory target paths, each carrying its
+        trailing slash.
+
+    Raises
+    ------
+    TUIError
+        If a target is an empty string, falls outside `stepup_root`, or is a directory
+        target that normalizes to the project root.
+    """
+    targets = []
+    target_dirs = []
+    for raw_target in raw_targets:
+        if raw_target == "":
+            raise TUIError("A target cannot be an empty string.")
+        is_dir_target = raw_target.endswith(os.sep)
+        target_abs = Path(raw_target).absolute()
+        target_rel = target_abs.relpath(stepup_root).normpath()
+        if is_dir_target:
+            target_dirs.append(target_rel / "")
+        else:
+            targets.append(Path(target_rel))
+    return targets, target_dirs
+
+
+def _resolve_root_and_targets(
+    raw_targets: list[str],
+) -> tuple[Path, list[Path], list[Path]]:
+    """Resolve the project root and normalize target arguments against it.
+
+    Reads `${STEPUP_ROOT}` (falling back to the current working directory) and
+    absolutizes it immediately: a relative `STEPUP_ROOT` must be interpreted
+    against the *original* working directory, before `async_build` changes to
+    the project root. Targets are likewise normalized before any `cd()`.
+
+    Parameters
+    ----------
+    raw_targets
+        The raw target strings, as passed on the command line.
+
+    Returns
+    -------
+    stepup_root
+        The absolute project root.
+    targets
+        The normalized, root-relative exact-file target paths.
+    target_dirs
+        The normalized, root-relative directory target paths, each carrying its
+        trailing slash.
+    """
+    stepup_root = Path(os.getenv("STEPUP_ROOT", os.getcwd())).absolute()
+    targets, target_dirs = _normalize_targets(raw_targets, stepup_root)
+    return stepup_root, targets, target_dirs
+
+
 def build_tool(args: argparse.Namespace, default_resources: str):
-    asyncio.run(async_build(args, default_resources))
+    try:
+        asyncio.run(async_build(args, default_resources))
+    except TUIError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(ReturnCode.INTERNAL.value)
 
 
 def _handle_terminal_signal(
@@ -55,14 +136,14 @@ def _handle_terminal_signal(
 async def async_build(args: argparse.Namespace, default_resources: str):
     if WATCHER_AVAILABLE and args.watch_first:
         args.watch = True
-    stepup_root = Path(os.getenv("STEPUP_ROOT", os.getcwd()))
-    if stepup_root.absolute() != Path.cwd():
+    stepup_root, targets, target_dirs = _resolve_root_and_targets(args.targets)
+    if stepup_root != Path.cwd():
         print("Changing to", stepup_root)
         stepup_root.cd()
 
     # Sanity check before creating a subdirectory.
     if not Path("plan.py").is_file():
-        raise RuntimeError("File plan.py does not exist.")
+        raise TUIError("File plan.py does not exist.")
 
     # Check if another StepUp director is already/still running.
     if DIRECTOR_LOG.exists():
@@ -71,7 +152,7 @@ async def async_build(args: argparse.Namespace, default_resources: str):
                 line = next(fh)
                 path_old_socket = line.split()[-1]
                 if Path(path_old_socket).exists():
-                    raise RuntimeError(
+                    raise TUIError(
                         f"Old director still running? Socket still exists: {path_old_socket}"
                     )
             except StopIteration:
@@ -121,6 +202,8 @@ async def async_build(args: argparse.Namespace, default_resources: str):
                 f"--log-level={args.log_level}",
             ]
         )
+        argv.extend(f"--target={target}" for target in targets)
+        argv.extend(f"--target-dir={target_dir}" for target_dir in target_dirs)
         if args.forkserver:
             argv.append("--forkserver")
         if args.preload_modules:
@@ -300,6 +383,13 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         help=help_text,
     )
     parser.add_argument(
+        "targets",
+        nargs="*",
+        default=[],
+        help="Build only these output files (and their required dependencies), "
+        "instead of the full default workflow.",
+    )
+    parser.add_argument(
         "--cgroup",
         default=False,
         action=argparse.BooleanOptionalAction,
@@ -373,7 +463,9 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         const="500",
         metavar="FREQ",
         help="Profile the director with perf, by default at a frequency of %(const)s Hz. "
-        "(Only supported on Linux with perf installed.)",
+        "(Only supported on Linux with perf installed.) "
+        "Write --perf=FREQ when combining with build targets, "
+        "since a bare --perf would otherwise consume the next target as the frequency.",
     )
     parser.add_argument(
         "--preload-modules",

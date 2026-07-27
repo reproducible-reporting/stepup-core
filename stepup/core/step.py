@@ -12,7 +12,7 @@ from typing import Self
 import attrs
 from path import Path
 
-from .enums import FileState, Need, StepState
+from .enums import REGULAR_OUTPUT_STATES, FileState, Need, StepState
 from .file import File
 from .hash import FileHash, StepHash
 from .nglob import NGlobMulti
@@ -54,8 +54,12 @@ CREATE TABLE IF NOT EXISTS step (
     -- The node of the step in the node table.
     state INTEGER NOT NULL CHECK(state >= 21 AND state <= 25),
     -- The state of the step, as defined in the StepState enum.
-    need INTEGER NOT NULL CHECK(need >= 31 AND need <= 34),
+    need INTEGER NOT NULL CHECK(
+        need IN ({Need.OPTIONAL.value}, {Need.DEFAULT.value}, {Need.PLAN.value})
+    ),
     -- The need of the step, as defined in the Need enum.
+    -- TARGET is deliberately excluded: it is derived-elevation-only and lives
+    -- exclusively in _implied_need, never persisted here.
     duration REAL NOT NULL CHECK(duration >= 0) DEFAULT 1.0,
     -- An estimate of the wall time of the step in seconds.
     postponed INTEGER NOT NULL CHECK(postponed IN (0, 1)) DEFAULT 0,
@@ -828,7 +832,7 @@ class Step(Node):
             "sink",
             include_detached=include_detached,
             amended=amended,
-            filter_states=(FileState.AWAITED, FileState.BUILT, FileState.OUTDATED),
+            filter_states=REGULAR_OUTPUT_STATES,
         )
 
     def vol_paths(

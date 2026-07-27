@@ -69,12 +69,12 @@ async def test_stop_swallows_flush_failure(wfs: Workflow, caplog, monkeypatch):
     unwound, nor block shutdown."""
     scheduler = Scheduler(wfs, db=wfs.db, use_duration=True)
 
-    def _raise_flush_durations(self):
+    def _raise_build_completed(self):
         raise RuntimeError("boom")
 
     # Scheduler is a slotted attrs class, so the replacement method must be patched on the
     # class, not assigned on the instance.
-    monkeypatch.setattr(Scheduler, "flush_durations", _raise_flush_durations)
+    monkeypatch.setattr(Scheduler, "build_completed", _raise_build_completed)
     builder = _make_builder(scheduler, wfs)
 
     with caplog.at_level(logging.WARNING, logger="stepup.core.builder"):

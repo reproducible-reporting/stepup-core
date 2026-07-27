@@ -4,9 +4,9 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 # Blocked Steps
 
-As discussed in a previous tutorial on [Optional Steps](optional_steps.md),
+As discussed in a previous tutorials on [Optional Steps](optional_steps.md) and [Build Targets](build_targets.md),
 StepUp has several mechanisms to ignore certain steps.
-As a rule, StepUp will always try to execute all steps, and not doing so is the exception.
+As a rule, however, StepUp will always try to execute all steps, and not doing so is the exception.
 
 A valid reason for ignoring some steps is illustrated in the following schematic:
 
@@ -35,6 +35,8 @@ Blocking a step has some consequences:
 - A blocked step remains in the `PENDING` state,
   meaning that outdated output files are not cleaned up automatically.
 - At the end of the **build phase**, all currently blocked steps are listed as a reminder.
+  When [build targets](build_targets.md) are in use and the blocked step is not needed
+  to produce any of the given targets, it stays silently `PENDING` like any other unneeded step.
 - Subsequent steps, which use outputs of blocked or pending steps, also remain pending.
 
 ## Example

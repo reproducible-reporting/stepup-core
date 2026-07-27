@@ -1,0 +1,129 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   root:
+              source   file:plan.py
+             product   file:a_input.txt
+             product   file:b_input.txt
+             product   file:c_input.txt
+             product   file:gen.py
+             product   file:other_input.txt
+             product   step:./gen.py run '{"out": ["out/result.txt"]}'
+             product   step:cp -p a_input.txt out/a.txt
+             product   step:cp -p b_input.txt out/b.txt
+             product   step:cp -p c_input.txt out/c.txt
+             product   step:cp -p other_input.txt other.txt
+
+file:a_input.txt
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:cp -p a_input.txt out/a.txt
+
+file:b_input.txt
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:cp -p b_input.txt out/b.txt
+
+file:c_input.txt
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:cp -p c_input.txt out/c.txt
+
+file:gen.py
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:./gen.py run '{"out": ["out/result.txt"]}'
+
+file:other_input.txt
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:cp -p other_input.txt other.txt
+
+step:cp -p a_input.txt out/a.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:a_input.txt
+             product   file:out/a.txt
+                sink   file:out/a.txt
+
+file:out/a.txt
+               state = BUILT
+             creator   step:cp -p a_input.txt out/a.txt
+              source   step:cp -p a_input.txt out/a.txt
+                sink   step:./gen.py run '{"out": ["out/result.txt"]}'
+
+step:cp -p b_input.txt out/b.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:b_input.txt
+             product   file:out/b.txt
+                sink   file:out/b.txt
+
+file:out/b.txt
+               state = BUILT
+             creator   step:cp -p b_input.txt out/b.txt
+              source   step:cp -p b_input.txt out/b.txt
+                sink   step:./gen.py run '{"out": ["out/result.txt"]}'
+
+step:cp -p c_input.txt out/c.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:c_input.txt
+             product   file:out/c.txt
+                sink   file:out/c.txt
+
+file:out/c.txt
+               state = BUILT
+             creator   step:cp -p c_input.txt out/c.txt
+              source   step:cp -p c_input.txt out/c.txt
+                sink   step:./gen.py run '{"out": ["out/result.txt"]}'
+
+step:cp -p other_input.txt other.txt
+               state = PENDING
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:other_input.txt
+             product   file:other.txt
+                sink   file:other.txt
+
+file:other.txt
+               state = AWAITED
+             creator   step:cp -p other_input.txt other.txt
+              source   step:cp -p other_input.txt other.txt
+
+step:./gen.py run '{"out": ["out/result.txt"]}'
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./plan.py
+              source   file:gen.py
+              source   file:out/a.txt [amended]
+              source   file:out/b.txt [amended]
+              source   file:out/c.txt [amended]
+             product   file:invocations.txt
+             product   file:out/result.txt
+                sink   file:invocations.txt
+                sink   file:out/result.txt
+
+file:out/result.txt
+               state = BUILT
+             creator   step:./gen.py run '{"out": ["out/result.txt"]}'
+              source   step:./gen.py run '{"out": ["out/result.txt"]}'
+
+file:invocations.txt
+               state = VOLATILE
+             creator   step:./gen.py run '{"out": ["out/result.txt"]}'
+              source   step:./gen.py run '{"out": ["out/result.txt"]}'

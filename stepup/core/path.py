@@ -16,6 +16,7 @@ __all__ = (
     "coerce_paths",
     "coerce_paths2",
     "coerce_str",
+    "dir_range_upper",
     "get_affixes",
     "make_path_out",
     "translate",
@@ -227,3 +228,13 @@ def translate_back(path: StrPath, workdir: StrPath = ".") -> Path:
         here = Path(os.getenv("HERE", Path(".").relpath(root)))
         path = Path(root / path).relpath(root / here / workdir)
     return path
+
+
+def dir_range_upper(path: str) -> str:
+    """Compute the exclusive upper bound of the label prefix range matched by a directory target.
+
+    `path` always ends in `/` (`0x2F`). Since `0x2F + 1 == 0x30 == "0"`, replacing the
+    trailing slash with `"0"` gives the smallest string that sorts (byte-wise) just past
+    every label starting with `path`, without per-row string concatenation in SQL.
+    """
+    return path[:-1] + "0"

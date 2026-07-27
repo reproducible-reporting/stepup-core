@@ -1,0 +1,13 @@
+   STARTUP │ (Re)initialized boot script
+     PHASE │ build
+     START │ ./plan.py
+   SUCCESS │ ./plan.py
+     START │ ./gen.py plan '{}'
+   SUCCESS │ ./gen.py plan '{}'
+     START │ cp -p input.txt wanted.txt
+   SUCCESS │ cp -p input.txt wanted.txt
+     START │ cp -p seed.txt dynamic.txt
+   SUCCESS │ cp -p seed.txt dynamic.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+     PHASE │ watch
+  DIRECTOR │ See you!

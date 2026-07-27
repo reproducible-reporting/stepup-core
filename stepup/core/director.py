@@ -27,7 +27,7 @@ from .builder import Builder
 from .cgroups import get_ncore_from_cgroup
 from .constants import DIRECTOR_LOG, DIRECTOR_PROF, GRAPH_DB, JOBLOG_CSV, SQLLOG_CSV, SQLLOG_JSON
 from .enums import HashUpdateCause, Need, ReturnCode, StepState
-from .exceptions import CgroupError
+from .exceptions import CgroupError, GraphError
 from .executor import Executor
 from .hash import FileHash
 from .nglob import NGlobMulti
@@ -124,6 +124,8 @@ async def async_main(
                 do_watch_first=args.watch_first,
                 available_resources=args.resources,
                 postpone_cap=args.postpone_cap,
+                targets=args.targets,
+                target_dirs=args.target_dirs,
                 db=db,
                 mp_ctx=mp_ctx,
             )
@@ -268,6 +270,25 @@ def parse_args() -> argparse.Namespace:
         f"as they execute, and write a query/call-site/plan index to {SQLLOG_JSON} "
         "when the director exits.",
     )
+    parser.add_argument(
+        "--target",
+        dest="targets",
+        action="append",
+        default=[],
+        type=Path,
+        help="Restrict the build to steps needed to produce this output file. "
+        "May be repeated. When omitted, the full default workflow is built.",
+    )
+    parser.add_argument(
+        "--target-dir",
+        dest="target_dirs",
+        action="append",
+        default=[],
+        type=Path,
+        help="Restrict the build to declared-DEFAULT steps whose output falls under this "
+        "directory (trailing slash included). May be repeated. Director-internal: the "
+        "TUI classifies raw CLI targets into --target/--target-dir; see tui.py.",
+    )
     if WATCHER_AVAILABLE:
         parser.add_argument(
             "--watch",
@@ -351,6 +372,8 @@ async def serve(
     do_watch_first: bool,
     available_resources: str | None,
     postpone_cap: int,
+    targets: list[Path],
+    target_dirs: list[Path],
     db: DBSession,
     mp_ctx=None,
 ) -> ServeResult:
@@ -432,7 +455,13 @@ async def serve(
 
     # Create basic components
     dir_queue = asyncio.Queue() if do_watch else None
-    workflow = Workflow(db, dir_queue=dir_queue, postpone_cap=postpone_cap)
+    workflow = Workflow(
+        db,
+        dir_queue=dir_queue,
+        postpone_cap=postpone_cap,
+        targets=targets,
+        target_dirs=target_dirs,
+    )
     await workflow.initialize()
     scheduler = Scheduler(workflow, db=db, use_duration=use_duration, do_joblog=do_joblog)
     if available_resources is not None:
@@ -476,6 +505,28 @@ async def serve(
         builder.resume.set()
     else:
         await startup_from_db(workflow, db, reporter, builder)
+
+    # Validate targets against the (re)loaded graph and flag affected steps for
+    # recompute. Must run after the boot/resume block above: on a resumed database,
+    # startup_from_db's file scan is what marks a changed plan.py's step PENDING, which
+    # Workflow.reconcile_targets()'s creator-chain guard consults. Must run before the
+    # task gather below, since the builder loop (and thus the first dispatch) only
+    # starts there.
+    async with db:
+        try:
+            workflow.reconcile_targets()
+        except GraphError as exc:
+            await reporter("ERROR", f"Invalid build target: {exc}")
+            await reporter.check_logs()
+            return ServeResult(
+                returncode=ReturnCode.FAILED,
+                resource_report=format_resource_usage(
+                    time_start,
+                    builder.executor.step_accumulator,
+                    builder.executor.hash_accumulator,
+                    memory_sampler,
+                ),
+            )
 
     # Start tasks and wait for them to complete
     exit_event = asyncio.Event()

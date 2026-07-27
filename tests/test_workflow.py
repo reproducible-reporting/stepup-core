@@ -2,19 +2,24 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Unit tests for stepup.core.workflow."""
 
+import asyncio
 import hashlib
 import sqlite3
 from collections import Counter
+from collections.abc import AsyncIterator
 
 import pytest
+import pytest_asyncio
 from conftest import amend_step, declare_static, fake_hash
 from path import Path
 
-from stepup.core.enums import FileState, HashUpdateCause, StepState
+from stepup.core.enums import FileState, HashUpdateCause, Need, StepState
 from stepup.core.exceptions import GraphError
 from stepup.core.file import File
 from stepup.core.hash import FileHash, StepHash
 from stepup.core.nglob import NGlobMulti
+from stepup.core.path import dir_range_upper
+from stepup.core.sqlite3 import DBSession
 from stepup.core.static_tree import StaticTree
 from stepup.core.step import Step
 from stepup.core.stepinfo import StepInfo
@@ -2745,3 +2750,492 @@ async def test_clean_cascades_satellite_rows(wfs: Workflow):
         assert (
             wfs.db.execute("SELECT count(*) FROM file WHERE node = ?", (out_i,)).fetchone()[0] == 0
         )
+
+
+#
+# Build targets (Stage 1: plumbing and declaration-time validation only)
+#
+
+
+@pytest_asyncio.fixture
+async def wfs_target(request) -> AsyncIterator[Workflow]:
+    """A from-scratch workflow constructed with a custom `targets` set.
+
+    Indirect parametrization supplies the `targets` collection, e.g.
+    `@pytest.mark.parametrize("wfs_target", [["out.txt"]], indirect=True)`.
+    """
+    dir_queue = asyncio.Queue()
+    with DBSession.open(":memory:") as db:
+        workflow = Workflow(db, makedirs=False, dir_queue=dir_queue, targets=request.param)
+        await workflow.initialize()
+        yield workflow
+        async with db:
+            workflow.check_consistency()
+
+
+def _init_target_dir(workflow, *paths):
+    """Create and populate the `target_dir` temp table, mirroring `Scheduler.initialize()`.
+
+    `reconcile_targets()`'s bulk range `UPDATE` joins this table; tests that call
+    `reconcile_targets()` directly (without a full `Scheduler`) must set it up themselves.
+    Must be called inside `async with workflow.db:`.
+    """
+    workflow.db.execute(
+        "CREATE TEMPORARY TABLE IF NOT EXISTS target_dir "
+        "(path TEXT PRIMARY KEY, upper TEXT NOT NULL)"
+    )
+    workflow.db.execute("DELETE FROM target_dir")
+    workflow.db.executemany(
+        "INSERT INTO target_dir VALUES (?, ?)",
+        ((path, dir_range_upper(path)) for path in paths),
+    )
+
+
+async def test_need_threshold_property_no_targets(wfs: Workflow):
+    assert wfs.need_threshold == Need.OPTIONAL
+
+
+@pytest.mark.parametrize("wfs_target", [["out.txt"]], indirect=True)
+async def test_need_threshold_property_with_targets(wfs_target: Workflow):
+    assert wfs_target.need_threshold == Need.DEFAULT
+
+
+async def test_need_threshold_property_with_target_dirs_only():
+    """A build given only directory targets must also flip the threshold to DEFAULT.
+
+    This guards the `or self.target_dirs` half of `need_threshold`: without it, a
+    dirs-only build would dispatch every DEFAULT step in the project while appearing
+    to work (the targeted subtree does build too).
+    """
+    dir_queue = asyncio.Queue()
+    with DBSession.open(":memory:") as db:
+        workflow = Workflow(db, makedirs=False, dir_queue=dir_queue, target_dirs=["out/"])
+        await workflow.initialize()
+        assert workflow.need_threshold == Need.DEFAULT
+
+
+async def test_define_step_rejects_need_target(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+    with pytest.raises(GraphError):
+        async with wfp.db:
+            wfp.define_step(plan, "echo", need=Need.TARGET)
+
+
+@pytest.mark.parametrize("wfs_target", [["out.txt"]], indirect=True)
+async def test_define_step_target_volatile_output(wfs_target: Workflow):
+    with pytest.raises(GraphError):
+        async with wfs_target.db:
+            wfs_target.define_step(wfs_target.root, "touch out.txt", vol_paths=["out.txt"])
+
+
+@pytest.mark.parametrize("wfs_target", [["out.txt"]], indirect=True)
+async def test_define_step_target_static_output(wfs_target: Workflow):
+    with pytest.raises(GraphError):
+        async with wfs_target.db:
+            wfs_target.declare_missing(wfs_target.root, ["out.txt"])
+
+
+@pytest.mark.parametrize("wfs_target", [["out.txt"]], indirect=True)
+async def test_amend_step_target_volatile_output(wfs_target: Workflow):
+    async with wfs_target.db:
+        wfs_target.define_step(wfs_target.root, "echo")
+        echo = wfs_target.find(Step, "echo")
+    with pytest.raises(GraphError):
+        async with wfs_target.db:
+            _amend(wfs_target, echo, vol_paths=["out.txt"])
+
+
+async def test_define_step_recycle_target_volatile_output():
+    """A target's volatile-output rejection must also fire on `define_step`'s recycle path.
+
+    `Step.recycle()` reattaches a detached VOLATILE product row without going through
+    `_declare_file`, so this needs its own guard (checked directly on `vol_paths`,
+    before `self.recycle()` is attempted). To exercise it, the step is first declared
+    and detached on a *targetless* workflow (simulating a previous director process),
+    then redeclared identically on a second `Workflow` instance sharing the same
+    database, this time constructed with a matching target.
+    """
+    dir_queue = asyncio.Queue()
+    with DBSession.open(":memory:") as db:
+        workflow1 = Workflow(db, makedirs=False, dir_queue=dir_queue)
+        await workflow1.initialize()
+        async with db:
+            workflow1.define_step(workflow1.root, "touch out.txt", vol_paths=["out.txt"])
+            workflow1.find(Step, "touch out.txt").detach()
+
+        workflow2 = Workflow(db, makedirs=False, dir_queue=dir_queue, targets=["out.txt"])
+        await workflow2.initialize()
+        with pytest.raises(GraphError):
+            async with db:
+                workflow2.define_step(workflow2.root, "touch out.txt", vol_paths=["out.txt"])
+
+
+@pytest.mark.parametrize("wfs_target", [["static/foo/bar.txt"]], indirect=True)
+async def test_resolve_supply_file_target_static_tree(wfs_target: Workflow):
+    """A target resolving to a static-tree match must be rejected as a supplied input.
+
+    This is a genuinely separate code path from `_declare_file`: `_resolve_supply_file`
+    creates the MISSING file node itself, directly, without ever calling `_declare_file`.
+    """
+    async with wfs_target.db:
+        wfs_target.define_step(wfs_target.root, "./plan.py")
+        plan = wfs_target.find(Step, "./plan.py")
+        wfs_target.register_static_tree(plan, "static")
+    with pytest.raises(GraphError):
+        async with wfs_target.db:
+            wfs_target.define_step(plan, "cat static/foo/bar.txt", inp_paths=["static/foo/bar.txt"])
+
+
+async def test_resolve_supply_file_target_static_existing():
+    """A target matching a pre-existing STATIC file must be rejected when supplied as an input.
+
+    The STATIC row is confirmed on a *targetless* workflow first (simulating a previous
+    director process), since a targeted workflow would already reject the declaration
+    itself via `_declare_file`. A second `Workflow` instance, sharing the database and
+    constructed with a matching target, then supplies it as an input.
+    """
+    dir_queue = asyncio.Queue()
+    with DBSession.open(":memory:") as db:
+        workflow1 = Workflow(db, makedirs=False, dir_queue=dir_queue)
+        await workflow1.initialize()
+        async with db:
+            declare_static(workflow1, workflow1.root, ["input.txt"])
+
+        workflow2 = Workflow(db, makedirs=False, dir_queue=dir_queue, targets=["input.txt"])
+        await workflow2.initialize()
+        with pytest.raises(GraphError):
+            async with db:
+                workflow2.define_step(workflow2.root, "cat input.txt", inp_paths=["input.txt"])
+
+
+async def test_need_column_check_rejects_target(wfp: Workflow):
+    """The tightened `need` CHECK constraint rejects a direct write of TARGET (33)."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "echo")
+        step = wfp.find(Step, "echo")
+    with pytest.raises(sqlite3.IntegrityError):
+        async with wfp.db:
+            wfp.db.execute("UPDATE step SET need = 33 WHERE node = ?", (step.i,))
+
+
+#
+# Build targets (Stage 2: reconcile_targets, startup reconciliation for resumed runs)
+#
+
+
+async def test_reconcile_targets_raises_when_no_pending_creator():
+    """A stale VOLATILE target row raises when nothing can re-declare it.
+
+    The VOLATILE row is created on a *targetless* workflow first (simulating a previous
+    director process), then a second `Workflow` sharing the database is constructed with
+    a matching target -- mirroring `test_define_step_recycle_target_volatile_output`. The
+    declaring step is advanced past PENDING, so `_creator_chain_pending()` finds nothing
+    that could re-declare the file differently, and `reconcile_targets()` must raise.
+    """
+    dir_queue = asyncio.Queue()
+    with DBSession.open(":memory:") as db:
+        workflow1 = Workflow(db, makedirs=False, dir_queue=dir_queue)
+        await workflow1.initialize()
+        async with db:
+            workflow1.define_step(workflow1.root, "touch out.txt", vol_paths=["out.txt"])
+            workflow1.find(Step, "touch out.txt").set_state(StepState.SUCCEEDED)
+
+        workflow2 = Workflow(db, makedirs=False, dir_queue=dir_queue, targets=["out.txt"])
+        await workflow2.initialize()
+        async with db:
+            _init_target_dir(workflow2)
+            with pytest.raises(GraphError):
+                workflow2.reconcile_targets()
+
+
+async def test_reconcile_targets_skips_when_creator_pending():
+    """The same stale VOLATILE target row is silently skipped while its creator is PENDING.
+
+    A PENDING creator may re-declare the file differently when it reruns, so raising here
+    would block a legitimate build (revision-6 guard in the design doc).
+    """
+    dir_queue = asyncio.Queue()
+    with DBSession.open(":memory:") as db:
+        workflow1 = Workflow(db, makedirs=False, dir_queue=dir_queue)
+        await workflow1.initialize()
+        async with db:
+            workflow1.define_step(workflow1.root, "touch out.txt", vol_paths=["out.txt"])
+            # A freshly declared step defaults to PENDING (Step.initialize()).
+
+        workflow2 = Workflow(db, makedirs=False, dir_queue=dir_queue, targets=["out.txt"])
+        await workflow2.initialize()
+        async with db:
+            _init_target_dir(workflow2)
+            workflow2.reconcile_targets()  # must not raise
+
+
+@pytest.mark.parametrize("wfs_target", [["missing.txt"]], indirect=True)
+async def test_reconcile_targets_skips_target_with_no_file_row(wfs_target: Workflow):
+    """A target with no matching `File` row at all is silently skipped."""
+    async with wfs_target.db:
+        _init_target_dir(wfs_target)
+        wfs_target.reconcile_targets()  # must not raise
+
+
+@pytest.mark.parametrize("wfs_target", [["out.txt"]], indirect=True)
+async def test_reconcile_targets_skips_detached_file(wfs_target: Workflow):
+    """A target matching a detached `File` row is silently skipped.
+
+    Detached rows may be garbage from an abandoned plan; raising on those would block
+    legitimate builds. Declaration-time checks and the not-produced warning cover these.
+    """
+    async with wfs_target.db:
+        wfs_target.define_step(wfs_target.root, "touch out.txt", out_paths=["out.txt"])
+        wfs_target.find(Step, "touch out.txt").detach()
+    async with wfs_target.db:
+        _init_target_dir(wfs_target)
+        wfs_target.reconcile_targets()  # must not raise
+
+
+@pytest.mark.parametrize("wfs_target", [["out.txt"]], indirect=True)
+async def test_reconcile_targets_flags_producer_check_after(wfs_target: Workflow):
+    """A target matching an active `File` row flags its creator step's `_check_after`."""
+    async with wfs_target.db:
+        wfs_target.define_step(wfs_target.root, "touch out.txt", out_paths=["out.txt"])
+        step = wfs_target.find(Step, "touch out.txt")
+        # Clear the flag define_step already set, to isolate reconcile_targets()'s own effect.
+        wfs_target.db.execute("UPDATE step SET _check_after = 0 WHERE node = ?", (step.i,))
+    async with wfs_target.db:
+        _init_target_dir(wfs_target)
+        wfs_target.reconcile_targets()
+    async with wfs_target.db:
+        row = wfs_target.db.execute(
+            "SELECT _check_after FROM step WHERE node = ?", (step.i,)
+        ).fetchone()
+    assert row[0] == 1
+
+
+async def test_reconcile_targets_flags_stale_target_implied_need(wfs: Workflow):
+    """A step with a stale `_implied_need = TARGET` is flagged, regardless of current targets.
+
+    `wfs` has no targets at all, matching the design doc's note that this UPDATE runs "on
+    every director start, targeted or not" -- it is what demotes a chain left elevated by a
+    previous run with a different target set.
+    """
+    async with wfs.db:
+        wfs.define_step(wfs.root, "echo")
+        step = wfs.find(Step, "echo")
+        wfs.db.execute(
+            "UPDATE step SET _implied_need = ?, _check_after = 0 WHERE node = ?",
+            (Need.TARGET.value, step.i),
+        )
+    async with wfs.db:
+        _init_target_dir(wfs)
+        wfs.reconcile_targets()
+    async with wfs.db:
+        row = wfs.db.execute("SELECT _check_after FROM step WHERE node = ?", (step.i,)).fetchone()
+    assert row[0] == 1
+
+
+async def test_reconcile_targets_dir_flags_producer_check_after():
+    """A new directory target flags the `_check_after` bit of a previously out-of-scope producer.
+
+    Mirrors `test_reconcile_targets_flags_producer_check_after` but for a directory target
+    on a reopened database: `workflow1` builds a graph with no targets at all; `workflow2`,
+    sharing the database and constructed with `target_dirs=["out/"]`, must flag the
+    producer's `_check_after` even though the file was never declared as an exact target.
+    """
+    dir_queue = asyncio.Queue()
+    with DBSession.open(":memory:") as db:
+        workflow1 = Workflow(db, makedirs=False, dir_queue=dir_queue)
+        await workflow1.initialize()
+        async with db:
+            workflow1.define_step(
+                workflow1.root, "touch out/report.txt", out_paths=["out/report.txt"]
+            )
+            step = workflow1.find(Step, "touch out/report.txt")
+            workflow1.db.execute("UPDATE step SET _check_after = 0 WHERE node = ?", (step.i,))
+
+        workflow2 = Workflow(db, makedirs=False, dir_queue=dir_queue, target_dirs=["out/"])
+        await workflow2.initialize()
+        async with db:
+            _init_target_dir(workflow2, "out/")
+            workflow2.reconcile_targets()
+        async with db:
+            row = workflow2.db.execute(
+                "SELECT _check_after FROM step WHERE node = ?", (step.i,)
+            ).fetchone()
+        assert row[0] == 1
+
+
+async def test_reconcile_targets_dir_removed_flags_stale_implied_need():
+    """A step left elevated by a removed directory target is flagged via the stale-need reset.
+
+    De-elevation for directory targets reuses the existing `_implied_need = TARGET` reset
+    (settled in the design doc): no directory-target-specific code path is needed for the
+    stale direction, only for newly-matching targets.
+    """
+    dir_queue = asyncio.Queue()
+    with DBSession.open(":memory:") as db:
+        workflow1 = Workflow(db, makedirs=False, dir_queue=dir_queue, target_dirs=["out/"])
+        await workflow1.initialize()
+        async with db:
+            workflow1.define_step(
+                workflow1.root, "touch out/report.txt", out_paths=["out/report.txt"]
+            )
+            step = workflow1.find(Step, "touch out/report.txt")
+            workflow1.db.execute(
+                "UPDATE step SET _implied_need = ?, _check_after = 0 WHERE node = ?",
+                (Need.TARGET.value, step.i),
+            )
+
+        # workflow2 shares the database but is constructed without target_dirs, simulating
+        # the directory target being removed on the next director start.
+        workflow2 = Workflow(db, makedirs=False, dir_queue=dir_queue)
+        await workflow2.initialize()
+        async with db:
+            _init_target_dir(workflow2)
+            workflow2.reconcile_targets()
+        async with db:
+            row = workflow2.db.execute(
+                "SELECT _check_after FROM step WHERE node = ?", (step.i,)
+            ).fetchone()
+        assert row[0] == 1
+
+
+async def test_creator_chain_pending_detects_pending_ancestor(wfp: Workflow):
+    """A PENDING step further up the creator chain (not the immediate creator) is detected."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")  # still PENDING (wfp's default)
+        wfp.define_step(plan, "echo", out_paths=["out.txt"])
+        # FAILED (not SUCCEEDED): check_consistency() would flag a SUCCEEDED step with a
+        # non-BUILT output at fixture teardown, which is beside the point of this test.
+        wfp.find(Step, "echo").set_state(StepState.FAILED)
+        out_file = wfp.find(File, "out.txt")
+    async with wfp.db:
+        assert wfp._creator_chain_pending(out_file) is True
+
+
+async def test_creator_chain_pending_false_when_nothing_pending(wfp: Workflow):
+    """The creator chain walk returns False (and terminates at Root) when nothing is PENDING."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        plan.set_state(StepState.FAILED)
+        wfp.define_step(plan, "echo", out_paths=["out.txt"])
+        wfp.find(Step, "echo").set_state(StepState.FAILED)
+        out_file = wfp.find(File, "out.txt")
+    async with wfp.db:
+        assert wfp._creator_chain_pending(out_file) is False
+
+
+#
+# Build targets (Stage 3: is_regular_output)
+#
+
+
+async def test_is_regular_output_true_for_awaited(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "prog", out_paths=["out.txt"])
+    async with wfp.db:
+        assert wfp.is_regular_output("out.txt") is True
+
+
+async def test_is_regular_output_true_for_built(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "prog", out_paths=["out.txt"])
+        wfp.update_file_hashes([("out.txt", fake_hash("out.txt"))], HashUpdateCause.SUCCEEDED)
+    async with wfp.db:
+        assert wfp.find(File, "out.txt").get_state() == FileState.BUILT
+        assert wfp.is_regular_output("out.txt") is True
+
+
+async def test_is_regular_output_true_for_outdated(wfp: Workflow):
+    """An OUTDATED output (rebuild pending, e.g. after an input changed) is still regular."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "prog", out_paths=["out.txt"])
+        wfp.update_file_hashes([("out.txt", fake_hash("out.txt"))], HashUpdateCause.SUCCEEDED)
+        step = wfp.find(Step, "prog")
+        step.set_state(StepState.SUCCEEDED)
+        wfp.mark_step_pending(step)  # Demotes the BUILT output to OUTDATED.
+    async with wfp.db:
+        assert wfp.find(File, "out.txt").get_state() == FileState.OUTDATED
+        assert wfp.is_regular_output("out.txt") is True
+
+
+async def test_is_regular_output_false_for_static(wfp: Workflow):
+    """A STATIC file declared by a step (e.g. via `static()`) is not one of its outputs."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["static.txt"])
+    async with wfp.db:
+        assert wfp.is_regular_output("static.txt") is False
+
+
+async def test_is_regular_output_false_for_volatile(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "touch vol.txt", vol_paths=["vol.txt"])
+    async with wfp.db:
+        assert wfp.is_regular_output("vol.txt") is False
+
+
+async def test_is_regular_output_false_for_detached(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "prog", out_paths=["out.txt"])
+        wfp.find(Step, "prog").detach()
+    async with wfp.db:
+        assert wfp.is_regular_output("out.txt") is False
+
+
+async def test_is_regular_output_false_for_input_only(wfp: Workflow):
+    """A file only ever supplied as an input has no `Step` creator (`_resolve_supply_file`
+    creates it with `creator=None`), so it is not "produced" even though it exists."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "cat inp", inp_paths=["inp"])
+    async with wfp.db:
+        assert wfp.is_regular_output("inp") is False
+
+
+async def test_is_regular_output_false_for_no_file_row(wfp: Workflow):
+    async with wfp.db:
+        assert wfp.is_regular_output("nope.txt") is False
+
+
+#
+# Build targets (Stage 5: dir_has_regular_output, the matched-nothing warning helper)
+#
+
+
+async def test_dir_has_regular_output_empty_range(wfp: Workflow):
+    """An empty directory (no matching File rows at all) has no regular output."""
+    async with wfp.db:
+        assert wfp.dir_has_regular_output("out/") is False
+
+
+async def test_dir_has_regular_output_volatile_only(wfp: Workflow):
+    """A directory whose only in-range output is VOLATILE has no regular output."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "touch out/vol.txt", vol_paths=["out/vol.txt"])
+    async with wfp.db:
+        assert wfp.dir_has_regular_output("out/") is False
+
+
+async def test_dir_has_regular_output_matching_range(wfp: Workflow):
+    """A directory with a regular (non-volatile) output inside is detected."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "prog", out_paths=["out/report.txt"])
+    async with wfp.db:
+        assert wfp.dir_has_regular_output("out/") is True
+
+
+async def test_dir_has_regular_output_boundary_sibling_excluded(wfp: Workflow):
+    """A sibling sharing the directory's prefix but not its slash boundary is excluded."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "prog", out_paths=["out_debug.txt"])
+    async with wfp.db:
+        assert wfp.dir_has_regular_output("out/") is False

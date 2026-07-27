@@ -1,0 +1,13 @@
+   STARTUP │ Making failed steps pending
+   STARTUP │ Watching directories for 5 files from initial database
+   STARTUP │ Making steps pending that use changed environment variables
+   STARTUP │ Scanning initial database for changed files
+   UPDATED │ a_input.txt (digest 0111f755 ➜ 333d36c1)
+   UPDATED │ b_input.txt (digest e10a1287 ➜ 65f653be)
+   STARTUP │ Scanning initial database for new nglob matches
+     PHASE │ build
+     START │ cp -p b_input.txt b.txt
+   SUCCESS │ cp -p b_input.txt b.txt
+  DIRECTOR │ Trying to delete 0 outdated output(s)
+     PHASE │ watch
+  DIRECTOR │ See you!
