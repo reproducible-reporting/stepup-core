@@ -1671,7 +1671,7 @@ async def test_cyclic_batch_define_step(wfp: Workflow):
     with pytest.raises(GraphError):
         async with wfp.db:
             # "second" already exists and would close a cycle; "third" is a brand-new file
-            # in the SAME batch. This exercises supply_files' batched cycle check across
+            # in the SAME batch. This exercises _supply_files' batched cycle check across
             # a mix of new and pre-existing files in one define_step call.
             wfp.define_step(
                 plan,

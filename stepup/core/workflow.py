@@ -70,7 +70,7 @@ WHERE file.state IN ({FileState.AWAITED.value}, {FileState.OUTDATED.value})
 
 @attrs.define
 class SupplyInfo:
-    """Result of the `supply_files` method, for internal use only."""
+    """Result of the `_supply_files` method, for internal use only."""
 
     file: Node = attrs.field()
     """A new or existing file."""
@@ -300,7 +300,7 @@ class Workflow(Trellis):
             yield row[0]
 
     #
-    # Build phase
+    # Trellis extensions
     #
 
     def _check_creator(self, node_type: type[Node], creator: Node | None) -> None:
@@ -328,303 +328,18 @@ class Workflow(Trellis):
                 f"Node {sink.key()!r} (kind={sink.kind()!r}) cannot be a dependency sink"
             )
 
-    def matching_static_tree(self, path: str) -> StaticTree | None:
-        srs = []
-        sql = (
-            "SELECT i, label FROM node WHERE kind = 'st' AND NOT detached AND "
-            "label = substr(?, 1, length(label))"
-        )
-        path = Path(path) / ""
-        for i, label in self.db.execute(sql, (path,)):
-            srs.append(StaticTree(self, i, label))
-        if len(srs) > 1:
-            raise GraphError(f"Multiple static trees match: {path}")
-        if len(srs) == 1:
-            return srs[0]
-        return None
+    def clean(self):
+        # Get rid of static tree files that are no longer used.
+        for st in self.nodes(StaticTree):
+            files = sorted(st.products(), reverse=True, key=(lambda node: node.path))
+            for file in files:
+                if not any(file.sinks()):
+                    file.detach()
+        super().clean()
 
-    def _resolve_supply_file(
-        self,
-        node: Node,
-        path: str,
-        new: bool,
-        start_times: dict[int, int] | None = None,
-        stop_times: dict[int, int] | None = None,
-    ) -> tuple[File, bool, bool, list[Node], bool]:
-        """Find or create the file for a path and resolve its relation to node.
-
-        This performs everything `supply_files` needs except inserting the
-        dependency edge, so the cyclic-dependency check can be batched
-        across multiple paths by the caller.
-
-        Parameters
-        ----------
-        node
-            The file or step node to supply to.
-        path
-            The path of the file that should supply to the node.
-        new
-            When `True` the (file, node) relationship must be new.
-            If not, a `GraphError` is raised.
-        start_times, stop_times
-            The scheduler's step-node-id-keyed dispatch/completion timestamps.
-            When both are given, a `BUILT` file whose creator step's `stop_time` is
-            not strictly before `node`'s own `start_time` is flagged as `unfresh`.
-            When `None` (the `define_step` hot path), the freshness check is skipped.
-
-        Returns
-        -------
-        file
-            The existing or newly created file node.
-        available
-            See `SupplyInfo.available`.
-        unfresh
-            See `SupplyInfo.unfresh`.
-        deferred
-            See `SupplyInfo.deferred`.
-        new_relation
-            `True` when the (file, node) dependency edge does not exist yet
-            and still needs to be inserted by the caller.
-
-        Raises
-        ------
-        GraphError
-            When the path is volatile.
-            When the path exists while it is expected to be new.
-        """
-        available = False
-        unfresh = False
-        file, detached = self.find_detached(File, path)
-        deferred = []
-        if file is None or detached:
-            st = self.matching_static_tree(path)
-            if st is None:
-                file = self.create(File, None, path, state=FileState.AWAITED)
-            else:
-                file = self.create(File, st, path, state=FileState.MISSING)
-                deferred.append(file)
-                available = True
-            self.put_dir_queue(Path(path).parent)
-        else:
-            state = file.get_state()
-            if state == FileState.VOLATILE:
-                raise GraphError(f"Input is volatile: {path}")
-            available = state in (FileState.BUILT, FileState.STATIC, FileState.MISSING)
-            if state == FileState.MISSING:
-                deferred.append(file)
-            elif state == FileState.BUILT and start_times is not None:
-                producer = file.creator()
-                if isinstance(producer, Step):
-                    stop_time = stop_times.get(producer.i)
-                    start_time = start_times.get(node.i)
-                    if stop_time is not None and start_time is not None and start_time <= stop_time:
-                        unfresh = True
-        new_relation = (
-            self.db.execute(
-                "SELECT 1 FROM dependency WHERE source = ? AND sink = ?", (file.i, node.i)
-            ).fetchone()
-            is None
-        )
-        if not new_relation and new:
-            raise GraphError(f"Supplying file already exists: {path}")
-        return file, available, unfresh, deferred, new_relation
-
-    def supply_files(
-        self,
-        node: Node,
-        paths: Collection[str],
-        new: bool = True,
-        start_times: dict[int, int] | None = None,
-        stop_times: dict[int, int] | None = None,
-    ) -> list[SupplyInfo]:
-        """Find or create files for several paths and make them sources of node.
-
-        Since `node` is the sink of every new edge in this batch,
-        the cyclic-dependency check is performed once for the whole batch
-        (via `Node.check_no_cycle_batch`) instead of once per path.
-        Note that if `paths` contains a duplicate, it is caught later than before:
-        as a `GraphError("Relation already exists")` from `add_source` instead of
-        `GraphError("Supplying file already exists")`.
-        This is unreachable in practice because callers already dedupe `paths`.
-
-        Parameters
-        ----------
-        node
-            The file or step node to supply to.
-        paths
-            The paths of the files that should supply to the node.
-        new
-            When `True` every (file, node) relationship must be new.
-            If not, a `GraphError` is raised.
-        start_times, stop_times
-            Forwarded to `_resolve_supply_file`. Only ever passed by `amend_step`.
-
-        Returns
-        -------
-        supply_infos
-            Information about each supplied file, in the same order as `paths`.
-
-        Raises
-        ------
-        GraphError
-            When a path is volatile.
-            When a path exists while it is expected to be new.
-        CyclicError
-            When adding the new relations would introduce a cyclic dependency.
-        """
-        resolved = [
-            self._resolve_supply_file(node, path, new, start_times, stop_times) for path in paths
-        ]
-        new_file_is = [file.i for file, _, _, _, new_relation in resolved if new_relation]
-        if new_file_is:
-            node.check_no_cycle_batch(new_file_is)
-        results = []
-        for file, available, unfresh, deferred, new_relation in resolved:
-            new_idep = node.add_source(file, skip_cycle_check=True) if new_relation else None
-            results.append(SupplyInfo(file, available, unfresh, deferred, new_idep))
-        return results
-
-    def declare_file(
-        self, creator: Node, path: str, file_state: FileState
-    ) -> tuple[Node, list[Node]]:
-        """Create (or recycle) a file with a MISSING, AWAITED or VOLATILE file state.
-
-        Parameters
-        ----------
-        creator
-            The creating step or static tree.
-        path
-            The (normalized path). Directories must have trailing slashes.
-        file_state
-            The desired file state if any.
-            (None for supplying files, not None in all other cases)
-
-        Returns
-        -------
-        file
-            The key of the created / recycled file.
-        """
-        # Consistency checks before creating the file.
-        if file_state == FileState.BUILT:
-            raise ValueError("Cannot create a BUILT file. It must be AWAITED first.")
-        if file_state == FileState.STATIC:
-            raise ValueError("Cannot create a STATIC file. It must be MISSING first.")
-        if file_state == FileState.VOLATILE and path.endswith(os.sep):
-            raise GraphError("A volatile output cannot be a directory.")
-        if not (creator.kind() == "st" or self.matching_static_tree(path) is None):
-            raise GraphError("Cannot manually add a file that matches a static tree.")
-
-        file = self.create(File, creator, path, state=file_state)
-
-        if file_state == FileState.VOLATILE:
-            # Do not allow volatile files to have sinks.
-            if any(file.sinks()):
-                raise GraphError(f"An input to an existing step cannot be volatile: {path}")
-        else:
-            # Watch parent directories of non-volatile files.
-            self.put_dir_queue(Path(path).parent)
-        return file
-
-    def put_dir_queue(self, path: str):
-        """Put a directory in the dir_queue, with some consistency checks."""
-        path = Path(path)
-        if path == "":
-            path = Path(".")
-        if self.makedirs:
-            path.makedirs_p()
-        if self.dir_queue is not None:
-            self.dir_queue.put_nowait(path)
-
-    def declare_missing(self, creator: Node, paths=Collection[str]) -> list[tuple[str, FileHash]]:
-        """Declare a files as missing, with the intention to later confirm them as static.
-
-        Parameters
-        ----------
-        creator
-            The node creating this file (or None if not known).
-        paths
-            The locations of the files or directories (ending with /).
-
-        Returns
-        -------
-        to_check
-            A list of paths and file_hashes.
-            These must be sent back to the client where the hashes can be checked
-            and which then calls `confirm_hashes` with the updated hashes.
-        """
-        if isinstance(paths, str):
-            raise TypeError("The paths argument cannot be a string.")
-        if creator.is_detached():
-            # The creator has moved on without this call (see Step.detach()), so
-            # declaring more files for it is moot.
-            return []
-        # Sort paths to make the operation deterministic.
-        paths = sorted(set(paths))
-        # Define the files and create a list of (path, file_hash) tuples.
-        missing = [self.declare_file(creator, path, FileState.MISSING) for path in paths]
-        # Collect a list of paths and file hashes to be checked.
-        return self._build_to_check(missing)
-
-    def _build_to_check(self, deferred: Collection[Node]) -> list[tuple[str, FileHash]]:
-        """Convert a list of MISSING file nodes to a list of (path, file_hash) tuples.
-
-        This list is intended to be returned to the caller, so the validity of the files
-        can be checked and confirmed as static in a follow-up RPC call.
-
-        Parameters
-        ----------
-        deferred
-            MISSING file nodes that match a static tree.
-
-        Returns
-        -------
-        to_check
-            A list of paths and file_hashes.
-            These must be sent back to the client where the hashes can be checked
-            and which then calls `confirm_hashes` with the updated hashes.
-        """
-        sql = (
-            "SELECT label, hash "
-            "FROM json_each(:nodes) AS missing "
-            "JOIN node ON node.i = missing.value "
-            "JOIN file ON file.node = missing.value "
-            "ORDER BY label"
-        )
-        nodes = json.dumps([file.i for file in deferred])
-        return [
-            (path, FileHash.from_json(hash_value))
-            for path, hash_value in self.db.execute(sql, {"nodes": nodes})
-        ]
-
-    def get_file_hashes(self, paths: Collection[str]) -> list[tuple[str, FileHash]]:
-        """Get the hashes of existing files.
-
-        Parameters
-        ----------
-        paths
-            A list of paths.
-
-        Returns
-        -------
-        file_hashes
-            A list of `(path, file_hash)` tuples.
-        """
-        # The `label IN (SELECT value FROM json_each(...))` form makes the planner drive from
-        # `node`'s `node_kind_label` index (probed once per requested path via a Bloom-filtered
-        # membership test), instead of a plain JOIN against json_each, which lets the planner
-        # drive from a full scan of `node` instead, an O(n_nodes) cost regardless of how few
-        # paths are requested. As a bonus, results come out pre-sorted by the covering index,
-        # so no separate ORDER BY sort is needed.
-        sql = (
-            "SELECT node.label, file.hash FROM node "
-            "JOIN file ON file.node = node.i "
-            "WHERE node.kind = 'file' AND node.label IN (SELECT value FROM json_each(:paths)) "
-            "ORDER BY node.label"
-        )
-        return [
-            (path, FileHash.from_json(hash_value))
-            for path, hash_value in self.db.execute(sql, {"paths": json.dumps(list(paths))})
-        ]
+    #
+    # State propagation
+    #
 
     def update_file_hashes(
         self, file_hashes: Collection[tuple[str, FileHash]], cause: HashUpdateCause
@@ -773,6 +488,352 @@ class Workflow(Trellis):
         for i, path in completed:
             File(self, i, path).completed()
 
+    #
+    # Build phase (helper methods)
+    #
+
+    def _matching_static_tree(self, path: str) -> StaticTree | None:
+        srs = []
+        sql = (
+            "SELECT i, label FROM node WHERE kind = 'st' AND NOT detached AND "
+            "label = substr(?, 1, length(label))"
+        )
+        path = Path(path) / ""
+        for i, label in self.db.execute(sql, (path,)):
+            srs.append(StaticTree(self, i, label))
+        if len(srs) > 1:
+            raise GraphError(f"Multiple static trees match: {path}")
+        if len(srs) == 1:
+            return srs[0]
+        return None
+
+    def _resolve_supply_file(
+        self,
+        node: Node,
+        path: str,
+        new: bool,
+        start_times: dict[int, int] | None = None,
+        stop_times: dict[int, int] | None = None,
+    ) -> tuple[File, bool, bool, list[Node], bool]:
+        """Find or create the file for a path and resolve its relation to node.
+
+        This performs everything `_supply_files` needs except inserting the
+        dependency edge, so the cyclic-dependency check can be batched
+        across multiple paths by the caller.
+
+        Parameters
+        ----------
+        node
+            The file or step node to supply to.
+        path
+            The path of the file that should supply to the node.
+        new
+            When `True` the (file, node) relationship must be new.
+            If not, a `GraphError` is raised.
+        start_times, stop_times
+            The scheduler's step-node-id-keyed dispatch/completion timestamps.
+            When both are given, a `BUILT` file whose creator step's `stop_time` is
+            not strictly before `node`'s own `start_time` is flagged as `unfresh`.
+            When `None` (the `define_step` hot path), the freshness check is skipped.
+
+        Returns
+        -------
+        file
+            The existing or newly created file node.
+        available
+            See `SupplyInfo.available`.
+        unfresh
+            See `SupplyInfo.unfresh`.
+        deferred
+            See `SupplyInfo.deferred`.
+        new_relation
+            `True` when the (file, node) dependency edge does not exist yet
+            and still needs to be inserted by the caller.
+
+        Raises
+        ------
+        GraphError
+            When the path is volatile.
+            When the path exists while it is expected to be new.
+        """
+        available = False
+        unfresh = False
+        file, detached = self.find_detached(File, path)
+        deferred = []
+        if file is None or detached:
+            st = self._matching_static_tree(path)
+            if st is None:
+                file = self.create(File, None, path, state=FileState.AWAITED)
+            else:
+                file = self.create(File, st, path, state=FileState.MISSING)
+                deferred.append(file)
+                available = True
+            self.put_dir_queue(Path(path).parent)
+        else:
+            state = file.get_state()
+            if state == FileState.VOLATILE:
+                raise GraphError(f"Input is volatile: {path}")
+            available = state in (FileState.BUILT, FileState.STATIC, FileState.MISSING)
+            if state == FileState.MISSING:
+                deferred.append(file)
+            elif state == FileState.BUILT and start_times is not None:
+                producer = file.creator()
+                if isinstance(producer, Step):
+                    stop_time = stop_times.get(producer.i)
+                    start_time = start_times.get(node.i)
+                    if stop_time is not None and start_time is not None and start_time <= stop_time:
+                        unfresh = True
+        new_relation = (
+            self.db.execute(
+                "SELECT 1 FROM dependency WHERE source = ? AND sink = ?", (file.i, node.i)
+            ).fetchone()
+            is None
+        )
+        if not new_relation and new:
+            raise GraphError(f"Supplying file already exists: {path}")
+        return file, available, unfresh, deferred, new_relation
+
+    def _supply_files(
+        self,
+        node: Node,
+        paths: Collection[str],
+        new: bool = True,
+        start_times: dict[int, int] | None = None,
+        stop_times: dict[int, int] | None = None,
+    ) -> list[SupplyInfo]:
+        """Find or create files for several paths and make them sources of node.
+
+        Since `node` is the sink of every new edge in this batch,
+        the cyclic-dependency check is performed once for the whole batch
+        (via `Node.check_no_cycle_batch`) instead of once per path.
+        Note that if `paths` contains a duplicate, it is caught later than before:
+        as a `GraphError("Relation already exists")` from `add_source` instead of
+        `GraphError("Supplying file already exists")`.
+        This is unreachable in practice because callers already dedupe `paths`.
+
+        Parameters
+        ----------
+        node
+            The file or step node to supply to.
+        paths
+            The paths of the files that should supply to the node.
+        new
+            When `True` every (file, node) relationship must be new.
+            If not, a `GraphError` is raised.
+        start_times, stop_times
+            Forwarded to `_resolve_supply_file`. Only ever passed by `amend_step`.
+
+        Returns
+        -------
+        supply_infos
+            Information about each supplied file, in the same order as `paths`.
+
+        Raises
+        ------
+        GraphError
+            When a path is volatile.
+            When a path exists while it is expected to be new.
+        CyclicError
+            When adding the new relations would introduce a cyclic dependency.
+        """
+        resolved = [
+            self._resolve_supply_file(node, path, new, start_times, stop_times) for path in paths
+        ]
+        new_file_is = [file.i for file, _, _, _, new_relation in resolved if new_relation]
+        if new_file_is:
+            node.check_no_cycle_batch(new_file_is)
+        results = []
+        for file, available, unfresh, deferred, new_relation in resolved:
+            new_idep = node.add_source(file, skip_cycle_check=True) if new_relation else None
+            results.append(SupplyInfo(file, available, unfresh, deferred, new_idep))
+        return results
+
+    def _declare_file(
+        self, creator: Node, path: str, file_state: FileState
+    ) -> tuple[Node, list[Node]]:
+        """Create (or recycle) a file with a MISSING, AWAITED or VOLATILE file state.
+
+        Parameters
+        ----------
+        creator
+            The creating step or static tree.
+        path
+            The (normalized path). Directories must have trailing slashes.
+        file_state
+            The desired file state if any.
+            (None for supplying files, not None in all other cases)
+
+        Returns
+        -------
+        file
+            The key of the created / recycled file.
+        """
+        # Consistency checks before creating the file.
+        if file_state == FileState.BUILT:
+            raise ValueError("Cannot create a BUILT file. It must be AWAITED first.")
+        if file_state == FileState.STATIC:
+            raise ValueError("Cannot create a STATIC file. It must be MISSING first.")
+        if file_state == FileState.VOLATILE and path.endswith(os.sep):
+            raise GraphError("A volatile output cannot be a directory.")
+        if not (creator.kind() == "st" or self._matching_static_tree(path) is None):
+            raise GraphError("Cannot manually add a file that matches a static tree.")
+
+        file = self.create(File, creator, path, state=file_state)
+
+        if file_state == FileState.VOLATILE:
+            # Do not allow volatile files to have sinks.
+            if any(file.sinks()):
+                raise GraphError(f"An input to an existing step cannot be volatile: {path}")
+        else:
+            # Watch parent directories of non-volatile files.
+            self.put_dir_queue(Path(path).parent)
+        return file
+
+    def _build_to_check(self, deferred: Collection[Node]) -> list[tuple[str, FileHash]]:
+        """Convert a list of MISSING file nodes to a list of (path, file_hash) tuples.
+
+        This list is intended to be returned to the caller, so the validity of the files
+        can be checked and confirmed as static in a follow-up RPC call.
+
+        Parameters
+        ----------
+        deferred
+            MISSING file nodes that match a static tree.
+
+        Returns
+        -------
+        to_check
+            A list of paths and file_hashes.
+            These must be sent back to the client where the hashes can be checked
+            and which then calls `confirm_hashes` with the updated hashes.
+        """
+        sql = (
+            "SELECT label, hash "
+            "FROM json_each(:nodes) AS missing "
+            "JOIN node ON node.i = missing.value "
+            "JOIN file ON file.node = missing.value "
+            "ORDER BY label"
+        )
+        nodes = json.dumps([file.i for file in deferred])
+        return [
+            (path, FileHash.from_json(hash_value))
+            for path, hash_value in self.db.execute(sql, {"nodes": nodes})
+        ]
+
+    def _recreate_step(
+        self,
+        command: str,
+        workdir: str,
+        inp_paths: list[str],
+        env_deps: list[str],
+        out_paths: list[str],
+        vol_paths: list[str],
+        need: Need,
+        resources: dict[str, int] | None,
+        creator: Node,
+        subshell: bool = False,
+        env_overrides: dict[str, str] | None = None,
+    ) -> set[Node] | None:
+        """Recreate a step if it was detached and the step arguments are compatible.
+
+        Returns
+        -------
+        deferred
+            If the step can be reused, a possibly empty list is returned with
+            MISSING file nodes that match a static tree and need to be confirmed.
+        """
+        label = Step.create_label(command, workdir=workdir)
+        old_step, detached = self.find_detached(Step, label)
+
+        # Check whether the step can be reused.
+        if old_step is None or not detached:
+            return None
+        old_inp_paths = sorted(
+            item[0] for item in old_step.inp_paths(amended=False, yield_detached=True)
+        )
+        if old_inp_paths != inp_paths:
+            return None
+        old_env_vars = sorted(old_step.env_deps(amended=False))
+        if old_env_vars != env_deps:
+            return None
+        old_out_paths = sorted(
+            item[0] for item in old_step.out_paths(amended=False, yield_detached=True)
+        )
+        if old_out_paths != out_paths:
+            return None
+        old_vol_paths = sorted(
+            item[0] for item in old_step.vol_paths(amended=False, yield_detached=True)
+        )
+        if old_vol_paths != vol_paths:
+            return None
+
+        # We have a match!
+
+        # Update the need, subshell values and _check_* flags.
+        self.db.execute(
+            "UPDATE step SET need = ?, subshell = ?, _check_safe = 1, _check_after = 1 "
+            "WHERE node = ?",
+            (need.value, int(subshell), old_step.i),
+        )
+
+        # Restore the step and its products (recursively), and set resources and overrides.
+        old_step.recycle(creator)
+        old_step.set_resources(resources)
+        old_step.set_env_overrides(env_overrides)
+
+        # If inputs of the recreated steps are AWAITED or OUTDATED, these steps must be postponed.
+        for i, label in self.db.execute(RECURSE_OUTDATED_STEPS, (old_step.i,)):
+            step = Step(self, i, label)
+            step.mark_pending()
+
+        # Look for MISSING inputs and determine which were matching a static tree.
+        # Their existence still needs to be checked by the client and ideally confirmed as existing
+        # in a follow-up call to `confirm_hashes`.
+        deferred = {
+            File(self, i, label)
+            for i, label in self.db.execute(RECURSE_DEFERRED_INPUTS, (old_step.i,))
+        }
+
+        logger.info("Reuse detached step: %s", old_step.label)
+        return deferred
+
+    def _amend_dep(self, idep):
+        self.db.execute("INSERT INTO amended_dep VALUES (?)", (idep,))
+
+    #
+    # Build phase (low-level public API)
+    #
+
+    def declare_missing(self, creator: Node, paths=Collection[str]) -> list[tuple[str, FileHash]]:
+        """Declare a files as missing, with the intention to later confirm them as static.
+
+        Parameters
+        ----------
+        creator
+            The node creating this file (or None if not known).
+        paths
+            The locations of the files or directories (ending with /).
+
+        Returns
+        -------
+        to_check
+            A list of paths and file_hashes.
+            These must be sent back to the client where the hashes can be checked
+            and which then calls `confirm_hashes` with the updated hashes.
+        """
+        if isinstance(paths, str):
+            raise TypeError("The paths argument cannot be a string.")
+        if creator.is_detached():
+            # The creator has moved on without this call (see Step.detach()), so
+            # declaring more files for it is moot.
+            return []
+        # Sort paths to make the operation deterministic.
+        paths = sorted(set(paths))
+        # Define the files and create a list of (path, file_hash) tuples.
+        missing = [self._declare_file(creator, path, FileState.MISSING) for path in paths]
+        # Collect a list of paths and file hashes to be checked.
+        return self._build_to_check(missing)
+
     def define_step(
         self,
         creator: Node,
@@ -894,7 +955,7 @@ class Workflow(Trellis):
         deferred = set()
 
         # Supply inp_paths
-        for info in self.supply_files(step, inp_paths):
+        for info in self._supply_files(step, inp_paths):
             # We do not care about the unavailable files here,
             # because the step will only be executed when all inputs are available.
             deferred.update(info.deferred)
@@ -904,94 +965,17 @@ class Workflow(Trellis):
 
         # Create out_paths
         for out_path in out_paths:
-            file = self.declare_file(step, out_path, FileState.AWAITED)
+            file = self._declare_file(step, out_path, FileState.AWAITED)
             file.add_source(step)
 
         # Create vol_paths
         for vol_path in vol_paths:
-            file = self.declare_file(step, vol_path, FileState.VOLATILE)
+            file = self._declare_file(step, vol_path, FileState.VOLATILE)
             file.add_source(step)
 
         # Determine if the step needs executing and queue if relevant.
         logger.info("Define step: %s", step.label)
         return self._build_to_check(deferred)
-
-    def _recreate_step(
-        self,
-        command: str,
-        workdir: str,
-        inp_paths: list[str],
-        env_deps: list[str],
-        out_paths: list[str],
-        vol_paths: list[str],
-        need: Need,
-        resources: dict[str, int] | None,
-        creator: Node,
-        subshell: bool = False,
-        env_overrides: dict[str, str] | None = None,
-    ) -> set[Node] | None:
-        """Recreate a step if it was detached and the step arguments are compatible.
-
-        Returns
-        -------
-        deferred
-            If the step can be reused, a possibly empty list is returned with
-            MISSING file nodes that match a static tree and need to be confirmed.
-        """
-        label = Step.create_label(command, workdir=workdir)
-        old_step, detached = self.find_detached(Step, label)
-
-        # Check whether the step can be reused.
-        if old_step is None or not detached:
-            return None
-        old_inp_paths = sorted(
-            item[0] for item in old_step.inp_paths(amended=False, yield_detached=True)
-        )
-        if old_inp_paths != inp_paths:
-            return None
-        old_env_vars = sorted(old_step.env_deps(amended=False))
-        if old_env_vars != env_deps:
-            return None
-        old_out_paths = sorted(
-            item[0] for item in old_step.out_paths(amended=False, yield_detached=True)
-        )
-        if old_out_paths != out_paths:
-            return None
-        old_vol_paths = sorted(
-            item[0] for item in old_step.vol_paths(amended=False, yield_detached=True)
-        )
-        if old_vol_paths != vol_paths:
-            return None
-
-        # We have a match!
-
-        # Update the need, subshell values and _check_* flags.
-        self.db.execute(
-            "UPDATE step SET need = ?, subshell = ?, _check_safe = 1, _check_after = 1 "
-            "WHERE node = ?",
-            (need.value, int(subshell), old_step.i),
-        )
-
-        # Restore the step and its products (recursively), and set resources and overrides.
-        old_step.recycle(creator)
-        old_step.set_resources(resources)
-        old_step.set_env_overrides(env_overrides)
-
-        # If inputs of the recreated steps are AWAITED or OUTDATED, these steps must be postponed.
-        for i, label in self.db.execute(RECURSE_OUTDATED_STEPS, (old_step.i,)):
-            step = Step(self, i, label)
-            step.mark_pending()
-
-        # Look for MISSING inputs and determine which were matching a static tree.
-        # Their existence still needs to be checked by the client and ideally confirmed as existing
-        # in a follow-up call to `confirm_hashes`.
-        deferred = {
-            File(self, i, label)
-            for i, label in self.db.execute(RECURSE_DEFERRED_INPUTS, (old_step.i,))
-        }
-
-        logger.info("Reuse detached step: %s", old_step.label)
-        return deferred
 
     def amend_step(
         self,
@@ -1020,7 +1004,7 @@ class Workflow(Trellis):
             Volatile output (not reproducible) but will be cleaned like built files.
         start_times, stop_times
             The scheduler's step-node-id-keyed dispatch/completion timestamps, forwarded
-            to `supply_files` for the freshness check.
+            to `_supply_files` for the freshness check.
 
         Returns
         -------
@@ -1061,7 +1045,7 @@ class Workflow(Trellis):
         deferred = set()
 
         # Process inp_paths
-        infos = self.supply_files(
+        infos = self._supply_files(
             step, inp_paths, new=False, start_times=start_times, stop_times=stop_times
         )
         for inp_path, info in zip(inp_paths, infos, strict=True):
@@ -1078,20 +1062,17 @@ class Workflow(Trellis):
 
         # Create out_paths
         for out_path in out_paths:
-            file = self.declare_file(step, out_path, FileState.AWAITED)
+            file = self._declare_file(step, out_path, FileState.AWAITED)
             new_idep = file.add_source(step)
             self._amend_dep(new_idep)
 
         # Create vol_paths
         for vol_path in vol_paths:
-            file = self.declare_file(step, vol_path, FileState.VOLATILE)
+            file = self._declare_file(step, vol_path, FileState.VOLATILE)
             new_idep = file.add_source(step)
             self._amend_dep(new_idep)
 
         return False, unavailable, unfresh, self._build_to_check(deferred)
-
-    def _amend_dep(self, idep):
-        self.db.execute("INSERT INTO amended_dep VALUES (?)", (idep,))
 
     def register_nglob(self, step: Step, nglob_multi: NGlobMulti):
         if not isinstance(step, Step):
@@ -1129,7 +1110,7 @@ class Workflow(Trellis):
             # registering a static tree for it is moot.
             return []
         path = Path(path) / ""
-        if self.matching_static_tree(path) is not None:
+        if self._matching_static_tree(path) is not None:
             raise GraphError(f"Static tree is a subdirectory of an existing static tree: {path}")
         sql = "SELECT 1 FROM node WHERE kind = 'st' AND NOT detached AND label LIKE ? ESCAPE '\\'"
         pattern = f"{escape_like_pattern(path)}%"
@@ -1148,15 +1129,6 @@ class Workflow(Trellis):
         )
         matching_paths = [path for (path,) in self.db.execute(sql, (pattern,))]
         return self.declare_missing(st, matching_paths)
-
-    def clean(self):
-        # Get rid of static tree files that are no longer used.
-        for st in self.nodes(StaticTree):
-            files = sorted(st.products(), reverse=True, key=(lambda node: node.path))
-            for file in files:
-                if not any(file.sinks()):
-                    file.detach()
-        super().clean()
 
     #
     # Watch phase
@@ -1213,3 +1185,43 @@ class Workflow(Trellis):
                 data = (pickle.dumps(evolved), i)
                 self.db.execute("UPDATE nglob_multi SET data = ? WHERE i = ?", data)
                 step.mark_pending()
+
+    def get_file_hashes(self, paths: Collection[str]) -> list[tuple[str, FileHash]]:
+        """Get the hashes of existing files.
+
+        Parameters
+        ----------
+        paths
+            A list of paths.
+
+        Returns
+        -------
+        file_hashes
+            A list of `(path, file_hash)` tuples.
+        """
+        # The `label IN (SELECT value FROM json_each(...))` form makes the planner drive from
+        # `node`'s `node_kind_label` index (probed once per requested path via a Bloom-filtered
+        # membership test), instead of a plain JOIN against json_each, which lets the planner
+        # drive from a full scan of `node` instead, an O(n_nodes) cost regardless of how few
+        # paths are requested. As a bonus, results come out pre-sorted by the covering index,
+        # so no separate ORDER BY sort is needed.
+        sql = (
+            "SELECT node.label, file.hash FROM node "
+            "JOIN file ON file.node = node.i "
+            "WHERE node.kind = 'file' AND node.label IN (SELECT value FROM json_each(:paths)) "
+            "ORDER BY node.label"
+        )
+        return [
+            (path, FileHash.from_json(hash_value))
+            for path, hash_value in self.db.execute(sql, {"paths": json.dumps(list(paths))})
+        ]
+
+    def put_dir_queue(self, path: str):
+        """Put a directory in the dir_queue, with some consistency checks."""
+        path = Path(path)
+        if path == "":
+            path = Path(".")
+        if self.makedirs:
+            path.makedirs_p()
+        if self.dir_queue is not None:
+            self.dir_queue.put_nowait(path)
