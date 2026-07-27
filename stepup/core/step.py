@@ -71,9 +71,10 @@ CREATE TABLE IF NOT EXISTS step (
     -- Whether recent changes to this step require the recalculation of the _implied_need
     -- metadata of this step and its sources.
 
-    -- Indices for efficient querying
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 ) WITHOUT ROWID;
+
+-- Indexes for efficient querying
 CREATE INDEX IF NOT EXISTS step_state ON step(state);
 CREATE INDEX IF NOT EXISTS step_implied_need ON step(_implied_need);
 -- Partial indexes over the scheduler's "to recompute" flags. They contain only the few
@@ -116,6 +117,10 @@ BEGIN
     UPDATE step SET postpone_count = 0 WHERE node = NEW.node;
 END;
 
+-- Satellite tables below hold auxiliary per-step data. All are keyed by (or include) the
+-- step's node and are removed via ON DELETE CASCADE when the node row is deleted.
+
+-- Named glob patterns (with back-references) registered by this step; see NGlobMulti.
 CREATE TABLE IF NOT EXISTS nglob_multi (
     i INTEGER PRIMARY KEY,
     node INTEGER NOT NULL,
@@ -124,11 +129,15 @@ CREATE TABLE IF NOT EXISTS nglob_multi (
 );
 CREATE INDEX IF NOT EXISTS nglob_multi_node ON nglob_multi(node);
 
+-- Marks which dependency rows were amended (discovered while the step ran) rather than
+-- declared up front, so reset_for_rerun() knows which sources/sinks to drop between runs.
 CREATE TABLE IF NOT EXISTS amended_dep (
     i INTEGER PRIMARY KEY,
     FOREIGN KEY (i) REFERENCES dependency(i) ON DELETE CASCADE
 ) WITHOUT ROWID;
 
+-- Environment variable names this step depends on, and the value observed when recorded
+-- (declared up front or amended during the run).
 CREATE TABLE IF NOT EXISTS env_var (
     node INTEGER NOT NULL,
     name TEXT NOT NULL,
@@ -140,6 +149,8 @@ CREATE TABLE IF NOT EXISTS env_var (
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 ) WITHOUT ROWID;
 
+-- The stored hash of the step's last successful run, used to decide whether a rerun can be
+-- skipped.
 CREATE TABLE IF NOT EXISTS step_hash (
     node INTEGER PRIMARY KEY,
     hash TEXT NOT NULL,
@@ -149,6 +160,7 @@ CREATE TABLE IF NOT EXISTS step_hash (
     CHECK (json_valid(hash))
 );
 
+-- Captured standard output/error of the step's command, for the "show output" feature.
 CREATE TABLE IF NOT EXISTS step_output (
     node INTEGER PRIMARY KEY,
     stdout TEXT NOT NULL DEFAULT '',
@@ -158,6 +170,8 @@ CREATE TABLE IF NOT EXISTS step_output (
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 );
 
+-- Named resource units (e.g. a semaphore-like GPU or license count) claimed by this step
+-- while it runs; consumed by the scheduler to cap concurrent resource usage.
 CREATE TABLE IF NOT EXISTS step_resource (
     node  INTEGER NOT NULL,
     name  TEXT    NOT NULL CHECK(name <> ''),
@@ -167,16 +181,28 @@ CREATE TABLE IF NOT EXISTS step_resource (
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS step_resource_name ON step_resource(name);
 
+-- Subprocess invocations made by this (wrapper) step, recorded for archival/debugging via
+-- Step.record_subprocess; informative only, not authoritative.
 CREATE TABLE IF NOT EXISTS step_subprocess (
-    node       INTEGER NOT NULL,        -- step node
-    cmd        TEXT    NOT NULL,        -- shell command line
-    workdir    TEXT    NOT NULL DEFAULT './',  -- relative to STEPUP_ROOT
-    env_overrides TEXT,                 -- JSON-encoded dict[str, str] overlay, or NULL
+    node INTEGER NOT NULL,
+    -- The step node that ran this subprocess.
+    cmd TEXT NOT NULL,
+    -- The command line, as a single shell-quoted string.
+    workdir TEXT NOT NULL DEFAULT './',
+    -- The working directory of the subprocess, relative to STEPUP_ROOT.
+    env_overrides TEXT,
+    -- JSON-encoded dict[str, str] overlay of environment variables set on top of the
+    -- inherited environment, or NULL when no overlay was applied.
     returncode INTEGER NOT NULL,
-    shell      INTEGER NOT NULL DEFAULT 0,    -- 1 if cmd was run via a shell
-    stdin      TEXT,                          -- standard input fed to the subprocess, or NULL
-    stdout     TEXT,                          -- captured standard output, or NULL if not captured
-    stderr     TEXT,                          -- captured standard error, or NULL if not captured
+    -- The exit code of the subprocess.
+    shell INTEGER NOT NULL DEFAULT 0,
+    -- Whether cmd was executed via a shell (1) or directly (0).
+    stdin TEXT,
+    -- The standard input fed to the subprocess, or NULL.
+    stdout TEXT,
+    -- The captured standard output of the subprocess, or NULL if not captured.
+    stderr TEXT,
+    -- The captured standard error of the subprocess, or NULL if not captured.
     -- ON DELETE CASCADE removes these rows when the node row is deleted, matching the
     -- other satellite tables (env_var / step_hash / step_output / step_resource).
     -- Step.reset_for_rerun() still clears them explicitly between runs of a surviving step.
