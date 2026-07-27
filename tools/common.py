@@ -45,7 +45,7 @@ PLAN_ISSUE_LABELS: dict[str, str] = {
     "full_scan": "a full table scan without any index",
     "automatic_index": "an automatic index built at query time",
     "temp_btree": "a temporary B-tree for ORDER BY / GROUP BY / DISTINCT",
-    "correlated_subquery": "a correlated subquery (CO-ROUTINE / SCALAR SUBQUERY)",
+    "correlated_subquery": "a correlated subquery (CO-ROUTINE / CORRELATED SCALAR SUBQUERY)",
 }
 
 
@@ -67,13 +67,18 @@ def classify_plan_lines(plan: str) -> set[str]:
         line = raw_line.strip()
         if "AUTOMATIC" in line and "INDEX" in line:
             issues.add("automatic_index")
-        elif line.startswith("SCAN") and "USING INDEX" not in line:
+        elif line.startswith("SCAN") and "USING INDEX" not in line and line != "SCAN CONSTANT ROW":
+            # "SCAN CONSTANT ROW" is SQLite's label for the dummy single-row source of a
+            # bare `SELECT` with no `FROM` clause (e.g. `SELECT EXISTS(subquery)`) -- it is
+            # not a scan of any table and costs nothing, so it is not a real full scan.
             issues.add("full_scan")
         if line.startswith("USE TEMP B-TREE"):
             issues.add("temp_btree")
-        if line.startswith("CO-ROUTINE") or "SCALAR SUBQUERY" in line:
-            # Catches both the bare "SCALAR SUBQUERY N" (CO-ROUTINE-style) label and
-            # SQLite's "CORRELATED SCALAR SUBQUERY N" prefix used for correlated subqueries.
+        if line.startswith("CO-ROUTINE") or "CORRELATED SCALAR SUBQUERY" in line:
+            # A bare "SCALAR SUBQUERY N" (without the "CORRELATED" prefix) references no
+            # column from the enclosing query, so SQLite evaluates it once, not once per
+            # outer row -- it is not flagged. "CORRELATED SCALAR SUBQUERY N" and
+            # "CO-ROUTINE" (used for recursive CTEs, evaluated incrementally) are.
             issues.add("correlated_subquery")
     return issues
 
