@@ -72,26 +72,22 @@ class File(Node):
 
     def initialize(self, state: FileState):  # type: ignore
         """Create extra information in the database about this node."""
-        file_hash = FileHash.unknown()
+        hash_json = None
         # If the file was previously BUILT or OUTDATED, and created again as AWAITED,
-        # it should copy that state
+        # it should copy that state (and hash).
+        # Note: SQLite checks the file table's CHECK constraint against the literal VALUES(...),
+        # even when the row already exists and the DO UPDATE branch never touches the hash column.
+        # So a real hash must be supplied here whenever the final state requires one.
         if state == FileState.AWAITED:
             sql = "SELECT state, hash FROM file WHERE node = ?"
             row = self.db.execute(sql, (self.i,)).fetchone()
             if row is not None and row[0] in (FileState.BUILT.value, FileState.OUTDATED.value):
                 state = FileState(row[0])
-                file_hash = FileHash.from_json(row[1])
-        if file_hash.is_unknown and state in (
-            FileState.STATIC,
-            FileState.BUILT,
-            FileState.OUTDATED,
-        ):
-            raise ValueError(f"Cannot create a {state.name} file without a hash: {self.path}")
-        # Add/update row in the file table.
+                hash_json = row[1]
         self.db.execute(
             "INSERT INTO file VALUES(:node, :state, :hash) "
-            "ON CONFLICT DO UPDATE SET state = :state, hash = :hash WHERE node = :node",
-            {"node": self.i, "state": state.value, "hash": file_hash.to_json()},
+            "ON CONFLICT DO UPDATE SET state = :state WHERE node = :node",
+            {"node": self.i, "state": state.value, "hash": hash_json},
         )
         # If the state is BUILT, mark it as OUTDATED to force a rebuild.
         if state == FileState.BUILT:
