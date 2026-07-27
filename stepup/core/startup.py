@@ -146,7 +146,7 @@ async def check_file_changes(db: DBSession, reporter: ReporterClient, builder: B
         builder.hash_queue, builder.executor, reporter, path_hash_causes, builder.njob
     )
 
-    for path, new_file_hash in new_hashes:
+    for path, new_file_hash in new_hashes.items():
         old_file_hash = old_by_path[path]
         if old_file_hash != new_file_hash:
             if new_file_hash.is_unknown:

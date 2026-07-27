@@ -8,7 +8,7 @@ import logging
 import os
 import stat
 import textwrap
-from collections.abc import Callable, Collection, Iterator
+from collections.abc import Callable, Collection, Iterator, Mapping
 
 import attrs
 from path import Path
@@ -358,7 +358,7 @@ class Workflow(Trellis):
         for node in nodes.values():
             node.detach()
         to_check = self.declare_unconfirmed(self.root, ["plan.py"])
-        checked = [(path, file_hash.regen(path)) for path, file_hash in to_check]
+        checked = {path: file_hash.regen(path) for path, file_hash in to_check.items()}
         self.update_file_hashes(checked, HashUpdateCause.CONFIRMED)
         self.define_step(self.root, command, inp_paths=["plan.py"], need=Need.PLAN, safe=True)
         return True
@@ -569,15 +569,13 @@ class Workflow(Trellis):
     # State propagation
     #
 
-    def update_file_hashes(
-        self, file_hashes: Collection[tuple[str, FileHash]], cause: HashUpdateCause
-    ):
+    def update_file_hashes(self, file_hashes: Mapping[str, FileHash], cause: HashUpdateCause):
         """Update the hashes of existing files.
 
         Parameters
         ----------
         file_hashes
-            A list of `(path, file_hash)` tuples.
+            The new hashes of the files, keyed by path.
         cause
             The reason for the hash updates.
         """
@@ -587,7 +585,6 @@ class Workflow(Trellis):
             return
 
         # Efficiently get corresponding node_index and state tuples.
-        file_hashes = dict(file_hashes)
         # See get_file_hashes for why this uses an IN subquery against the path_list
         # scratch table instead of a plain JOIN.
         db = self.db
@@ -641,11 +638,6 @@ class Workflow(Trellis):
 
         # Actual update of the file hashes.
         logger.info("Update file hashes: cause=%s new=%s", cause.name, new_states_hashes)
-        if len(new_states_hashes) != len(file_hashes):
-            raise AssertionError(
-                f"Inconsistent number of file hash updates: "
-                f"expected={len(file_hashes)} actual={len(new_states_hashes)}"
-            )
         self.db.executemany(
             "UPDATE file SET state = ?, hash = ? WHERE node = ?",
             ((state.value, fh.to_json(), i) for i, state, fh in new_states_hashes),
@@ -949,10 +941,10 @@ class Workflow(Trellis):
             self.put_dir_queue(Path(path).parent)
         return file
 
-    def _build_to_check(self, deferred: Collection[File]) -> list[tuple[str, FileHash]]:
-        """Convert a list of UNCONFIRMED file nodes to a list of (path, file_hash) tuples.
+    def _build_to_check(self, deferred: Collection[File]) -> dict[str, FileHash]:
+        """Collect the currently known hashes of UNCONFIRMED file nodes, keyed by path.
 
-        This list is intended for the caller to submit as hash jobs
+        This mapping is intended for the caller to submit as hash jobs
         (`HashQueue.submit`, `cause=HashUpdateCause.CONFIRMED`),
         one per path, so each file's validity is checked and confirmed as static
         (or resolved as missing) in the background.
@@ -965,7 +957,7 @@ class Workflow(Trellis):
         Returns
         -------
         to_check
-            A list of paths and file_hashes.
+            The known hashes of the files to check, keyed by path, ordered by path.
         """
         db = self.db
         db.execute("DELETE FROM node_list")
@@ -976,15 +968,13 @@ class Workflow(Trellis):
             "JOIN file ON file.node = node_list.i "
             "ORDER BY node.label"
         )
-        return [(path, FileHash.from_json(hash_value)) for path, hash_value in db.execute(sql)]
+        return {path: FileHash.from_json(hash_value) for path, hash_value in db.execute(sql)}
 
     #
     # Build phase (low-level public API)
     #
 
-    def declare_unconfirmed(
-        self, creator: Node, paths: Collection[str]
-    ) -> list[tuple[str, FileHash]]:
+    def declare_unconfirmed(self, creator: Node, paths: Collection[str]) -> dict[str, FileHash]:
         """Declare files as unconfirmed static candidates, to be confirmed shortly after.
 
         A file declared here becomes STATIC once confirmed present, or MISSING once
@@ -1001,22 +991,21 @@ class Workflow(Trellis):
         Returns
         -------
         to_check
-            A list of paths and file_hashes.
+            The known hashes of the files to check, keyed by path.
         """
         if isinstance(paths, str):
             raise TypeError("The paths argument cannot be a string.")
         if creator.is_detached():
             # The creator has moved on without this call (see Step.detach()), so
             # declaring more files for it is moot.
-            return []
+            return {}
         # Sort paths to make the operation deterministic.
         paths = sorted(set(paths))
-        # Define the files and create a list of (path, file_hash) tuples.
+        # Define the files whose hashes must be checked.
         unconfirmed = [self._declare_file(creator, path, FileState.UNCONFIRMED) for path in paths]
-        # Collect a list of paths and file hashes to be checked.
         return self._build_to_check(unconfirmed)
 
-    def register_static_tree(self, creator: Node, path: str) -> list[tuple[str, FileHash]]:
+    def register_static_tree(self, creator: Node, path: str) -> dict[str, FileHash]:
         """Install a static tree.
 
         Parameters
@@ -1029,7 +1018,8 @@ class Workflow(Trellis):
         Returns
         -------
         to_check
-            A list of matching (path, file_hash) whose existence and validity must be checked.
+            The known hashes of the matching files whose existence and validity must be
+            checked, keyed by path.
         """
         if not isinstance(path, str):
             raise TypeError("The argument path must be a string.")
@@ -1040,7 +1030,7 @@ class Workflow(Trellis):
         if creator.is_detached():
             # The creator has moved on without this call (see Step.detach()), so
             # registering a static tree for it is moot.
-            return []
+            return {}
         path = Path(path) / ""
         if self._find_matching_static_tree(path) is not None:
             raise GraphError(f"Static tree is a subdirectory of an existing static tree: {path}")
@@ -1090,7 +1080,7 @@ class Workflow(Trellis):
         subshell: bool = False,
         env_overrides: dict[str, str] | None = None,
         duration: float | None = None,
-    ) -> list[tuple[str, FileHash]]:
+    ) -> dict[str, FileHash]:
         """Define a new step.
 
         Parameters
@@ -1133,14 +1123,14 @@ class Workflow(Trellis):
         Returns
         -------
         to_check
-            A list of paths and file_hashes.
+            The known hashes of the files to check, keyed by path.
         """
         if creator.is_detached():
             # The creator has moved on without this call (see Step.detach()), so
             # defining a new child step for it is moot.
             # (This also sidesteps Node.recycle()'s "new creator must not be detached"
             # check, which Trellis.recycle() below could otherwise hit.)
-            return []
+            return {}
 
         # If it is a boot step, check that there was no boot step yet.
         if creator.i == self.root.i and any(self.root.products(Step)):
@@ -1248,7 +1238,7 @@ class Workflow(Trellis):
         out_paths: Collection[str] = (),
         vol_paths: Collection[str] = (),
         ran_concurrently: Callable[[int, int], bool],
-    ) -> tuple[bool, set[str], set[str], list[tuple[str, FileHash]]]:
+    ) -> tuple[bool, set[str], set[str], dict[str, FileHash]]:
         """Amend step information.
 
         Parameters
@@ -1279,8 +1269,8 @@ class Workflow(Trellis):
         unfresh
             A set of input paths that are available but fail the amend() freshness check.
         to_check
-            A list of paths and file_hashes whose validity must still be checked, e.g. by
-            submitting a hash job for each (`cause=HashUpdateCause.CONFIRMED`). A path that
+            The known hashes, keyed by path, of the files whose validity must still be checked,
+            e.g. by submitting a hash job for each (`cause=HashUpdateCause.CONFIRMED`). A path that
             resolves to MISSING must then move from `unavailable`'s absence to its presence,
             i.e. the caller must join it into `unavailable` after checking.
         """
@@ -1289,7 +1279,7 @@ class Workflow(Trellis):
         if step.is_detached():
             # The step's creator has moved on without it (see Step.detach()), so
             # its amendments are moot.
-            return True, set(), set(), []
+            return True, set(), set(), {}
 
         # Normalize arguments
         inp_paths = sorted(set(inp_paths))
@@ -1399,7 +1389,7 @@ class Workflow(Trellis):
                 self.db.execute("UPDATE nglob_multi SET data = ? WHERE i = ?", data)
                 self.mark_step_pending(step)
 
-    def get_file_hashes(self, paths: Collection[str]) -> list[tuple[str, FileHash]]:
+    def get_file_hashes(self, paths: Collection[str]) -> dict[str, FileHash]:
         """Get the hashes of existing files.
 
         Parameters
@@ -1410,7 +1400,7 @@ class Workflow(Trellis):
         Returns
         -------
         file_hashes
-            A list of `(path, file_hash)` tuples.
+            The current hashes of the files, keyed by path, ordered by path.
         """
         # The `label IN (SELECT path FROM path_list)` form makes the planner drive from
         # `node`'s `node_kind_label` index (probed once per requested path via a Bloom-filtered
@@ -1429,7 +1419,7 @@ class Workflow(Trellis):
             "WHERE node.kind = 'file' AND node.label IN (SELECT path FROM path_list) "
             "ORDER BY node.label"
         )
-        return [(path, FileHash.from_json(hash_value)) for path, hash_value in db.execute(sql)]
+        return {path: FileHash.from_json(hash_value) for path, hash_value in db.execute(sql)}
 
     def put_dir_queue(self, path: str):
         """Put a directory in the dir_queue, with some consistency checks."""

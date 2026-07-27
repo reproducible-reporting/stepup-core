@@ -16,7 +16,7 @@ import functools
 import multiprocessing
 import os
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from contextlib import contextmanager
 from time import perf_counter
 from typing import Any
@@ -188,7 +188,7 @@ class Executor:
         self,
         job_i: int,
         step: Step,
-        inp_hashes: list[tuple[str, FileHash]],
+        inp_hashes: Mapping[str, FileHash],
         env_deps: list[str],
         step_hash: StepHash,
     ):
@@ -217,7 +217,7 @@ class Executor:
         self,
         job_i: int,
         step: Step,
-        inp_hashes: list[tuple[str, FileHash]],
+        inp_hashes: Mapping[str, FileHash],
         env_deps: list[str],
         step_hash: StepHash,
     ):
@@ -262,7 +262,7 @@ class Executor:
         self._report_step_counts()
 
     async def execute_job(
-        self, job_i: int, step: Step, inp_hashes: list[tuple[str, FileHash]], env_deps: list[str]
+        self, job_i: int, step: Step, inp_hashes: Mapping[str, FileHash], env_deps: list[str]
     ):
         """Execute a step (no skipping).
 
@@ -329,7 +329,7 @@ class Executor:
         self,
         run: Run,
         new_hash: StepHash | None,
-        new_inp_hashes: list[tuple[str, FileHash]],
+        new_inp_hashes: Mapping[str, FileHash],
         unexpected_input_changes: bool,
     ) -> tuple[StepHash | None, bool]:
         """Decide success/failure/postpone for a just-executed step, updating `run` in place.
@@ -421,7 +421,7 @@ class Executor:
         self,
         job_i: int,
         step: Step,
-        inp_hashes: list[tuple[str, FileHash]],
+        inp_hashes: Mapping[str, FileHash],
         env_deps: list[str],
     ) -> tuple[Run, StepHash | None]:
         """Set up a fresh `Run` and compute the input part of its step hash.
@@ -433,7 +433,7 @@ class Executor:
         step
             The step being executed.
         inp_hashes
-            The input file hashes for the step, as a list of `(path, FileHash)` tuples.
+            The input file hashes for the step, keyed by path.
         env_deps
             The names of environment variables that the step depends on.
 
@@ -556,7 +556,7 @@ class Executor:
             # e.g. (EXTERNAL, STATIC, known) would call file_externally_updated
             # and needlessly mark all sinks pending. (They should already be pending.)
             async with self.db:
-                self.workflow.update_file_hashes([(hash_job.path, new_hash)], hash_job.cause)
+                self.workflow.update_file_hashes({hash_job.path: new_hash}, hash_job.cause)
         if not hash_job.future.done():
             # Resolved after the DB write, so an awaiter that re-reads file state on wake always
             # sees the post-transition state.
@@ -567,13 +567,13 @@ class Executor:
     async def _compute_inp_step_hash(
         self,
         run: Run,
-        inp_hashes: list[tuple[str, FileHash]],
+        inp_hashes: Mapping[str, FileHash],
         env_deps: list[str],
-    ) -> tuple[StepHash | None, list[tuple[str, FileHash]]]:
+    ) -> tuple[StepHash | None, dict[str, FileHash]]:
         """Compute the input part of a step hash and apply it to `run`."""
         result = await self._run_work_thread(run, functools.partial(compute_inp_hashes, inp_hashes))
         if result is None:
-            return None, []
+            return None, {}
 
         # If there are unexpected issues with inputs, bail out.
         if len(result.messages) > 0:
@@ -595,11 +595,11 @@ class Executor:
             env_overrides or {},
         )
         run.inp_digest = step_hash.inp_digest
-        return step_hash, []
+        return step_hash, {}
 
     async def _compute_out_step_hash(
         self, run: Run, step_hash: StepHash
-    ) -> tuple[StepHash | None, list[tuple[str, FileHash]]]:
+    ) -> tuple[StepHash | None, dict[str, FileHash]]:
         """Compute the output part of a step hash and apply it to `run`.
 
         Returns
@@ -610,11 +610,11 @@ class Executor:
             The output file hashes that differed from what was expected before the step ran.
         """
         async with self.db:
-            out_hashes = [(rec.path, rec.hash) for rec in run.step.out_paths()]
+            out_hashes = {rec.path: rec.hash for rec in run.step.out_paths()}
 
         result = await self._run_work_thread(run, functools.partial(compute_out_hashes, out_hashes))
         if result is None:
-            return None, []
+            return None, {}
 
         if len(result.messages) > 0:
             run.out_missing.extend(result.messages)
@@ -625,19 +625,19 @@ class Executor:
 
     async def _compute_full_step_hash(
         self, run: Run
-    ) -> tuple[StepHash | None, list[tuple[str, FileHash]], list[tuple[str, FileHash]]]:
+    ) -> tuple[StepHash | None, dict[str, FileHash], dict[str, FileHash]]:
         """Compute a new step hash with updated input and output file hashes, applied to `run`."""
         async with self.db:
             # Some inputs may be amended and still unavailable,
             # for which checking hashes is too early.
             # Therefore, only check the hashes of built and static files.
-            inp_hashes = [
-                (rec.path, rec.hash)
+            inp_hashes = {
+                rec.path: rec.hash
                 for rec in run.step.inp_paths()
                 if rec.state in (FileState.BUILT, FileState.STATIC)
-            ]
+            }
             env_deps = list(run.step.env_deps())
-            out_hashes = [(rec.path, rec.hash) for rec in run.step.out_paths()]
+            out_hashes = {rec.path: rec.hash for rec in run.step.out_paths()}
             subshell = run.step.get_subshell()
             env_overrides = run.step.get_env_overrides()
 
@@ -645,7 +645,7 @@ class Executor:
             run, functools.partial(compute_both_hashes, inp_hashes, out_hashes)
         )
         if result is None:
-            return None, [], []
+            return None, {}, {}
 
         inp_result, out_result = result
 

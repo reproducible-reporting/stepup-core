@@ -173,7 +173,7 @@ async def test_gather_hashes_returns_results_in_input_order_and_applies_them(wfs
             hash_queue, executor, ReporterClient(), path_hash_causes, njob=2
         )
 
-        assert [path for path, _ in result] == ["a.txt", "b.txt"]
+        assert list(result) == ["a.txt", "b.txt"]
         async with wfs.db:
             assert wfs.find(File, "a.txt").get_state() == FileState.STATIC
             assert wfs.find(File, "b.txt").get_state() == FileState.STATIC
@@ -225,4 +225,5 @@ async def test_gather_hashes_tolerates_a_duplicate_path_and_runs_it_once():
     )
 
     assert calls == ["a.txt"]
-    assert result == [("a.txt", FileHash.unknown()), ("a.txt", FileHash.unknown())]
+    # Both entries resolve to the same job, and the returned mapping collapses them.
+    assert result == {"a.txt": FileHash.unknown()}

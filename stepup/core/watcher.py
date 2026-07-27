@@ -179,7 +179,7 @@ class Watcher:
             self.hash_queue,
             self.executor,
             self.reporter,
-            [(path, old_hash, HashUpdateCause.EXTERNAL) for path, old_hash in old_hashes],
+            [(path, old_hash, HashUpdateCause.EXTERNAL) for path, old_hash in old_hashes.items()],
             self.njob,
         )
 
@@ -188,9 +188,8 @@ class Watcher:
             # (see Executor.run_hash_job): report it here instead, and prune it from
             # self.updated before process_nglob_changes runs, so an unchanged file does
             # not count as an nglob change.
-            old_by_path = dict(old_hashes)
-            for path, new_file_hash in new_hashes:
-                if new_file_hash == old_by_path[path]:
+            for path, new_file_hash in new_hashes.items():
+                if new_file_hash == old_hashes[path]:
                     await self.reporter("UNCHANGED", path)
                     self.updated.discard(path)
 

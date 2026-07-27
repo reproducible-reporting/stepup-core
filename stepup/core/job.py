@@ -25,8 +25,8 @@ class Job:
     step: "Step" = attrs.field()
     """The step related to this job."""
 
-    inp_hashes: list[tuple[str, "FileHash"]] = attrs.field()
-    """The input hashes of the step, as a list of tuples (name, hash)."""
+    inp_hashes: dict[str, "FileHash"] = attrs.field()
+    """The input hashes of the step, keyed by path."""
 
     env_deps: list[str] = attrs.field()
     """The names of (externally defined) environment variables that are used by the step."""

@@ -77,7 +77,7 @@ async def test_watch_changes_reports_unchanged_and_updates_only_the_changed_file
             same_hash = FileHash.unknown().regen("same.txt")
             changed_hash = FileHash.unknown().regen("changed.txt")
             wfp.update_file_hashes(
-                [("same.txt", same_hash), ("changed.txt", changed_hash)],
+                {"same.txt": same_hash, "changed.txt": changed_hash},
                 HashUpdateCause.CONFIRMED,
             )
 
@@ -114,7 +114,7 @@ async def test_watch_changes_drain_records_missing_file(wfp: Workflow, tmpdir):
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
             wfp.declare_unconfirmed(plan, ["ghost.txt"])
-            wfp.update_file_hashes([("ghost.txt", FileHash.unknown())], HashUpdateCause.CONFIRMED)
+            wfp.update_file_hashes({"ghost.txt": FileHash.unknown()}, HashUpdateCause.CONFIRMED)
             ghost = wfp.find(File, "ghost.txt")
             assert ghost.get_state() == FileState.MISSING
 

@@ -235,12 +235,12 @@ async def test_compute_out_step_hash_cancelled_reports_failure(wfs: Workflow, mo
     scheduler = SimpleNamespace(on_hold=False, record_stop_time=lambda step_i, *, succeeded: None)
     executor = _make_executor(reporter=reporter, scheduler=scheduler, db=wfs.db)
     run = Run(step, job_i=1)
-    step_hash = StepHash.from_inp(step.label, False, [], {})
+    step_hash = StepHash.from_inp(step.label, False, {}, {})
 
     new_hash, new_out_hashes = await executor._compute_out_step_hash(run, step_hash)
 
     assert new_hash is None
-    assert new_out_hashes == []
+    assert new_out_hashes == {}
     assert run.success is False
     assert "cancelled" in run.stderr
 
@@ -264,8 +264,8 @@ async def test_compute_full_step_hash_cancelled_returns_sentinel_without_raising
     new_hash, new_inp_hashes, new_out_hashes = await executor._compute_full_step_hash(run)
 
     assert new_hash is None
-    assert new_inp_hashes == []
-    assert new_out_hashes == []
+    assert new_inp_hashes == {}
+    assert new_out_hashes == {}
     assert run.success is False
     assert "cancelled" in run.stderr
     # _compute_full_step_hash must not finalize the step or report anything itself.
@@ -294,7 +294,7 @@ async def test_try_skip_job_bails_out_when_out_hash_cancelled(wfs: Workflow, mon
     reporter = _FakeReporter()
     scheduler = SimpleNamespace(on_hold=False, record_stop_time=lambda step_i, *, succeeded: None)
     executor = _make_executor(reporter=reporter, scheduler=scheduler, db=wfs.db)
-    step_hash = StepHash.from_inp(step.label, False, [], {})
+    step_hash = StepHash.from_inp(step.label, False, {}, {})
 
     # try_skip_job must not raise, even though _compute_out_step_hash is cancelled.
     await executor.try_skip_job(1, step, [], [], step_hash)
@@ -319,7 +319,7 @@ def _spy_update_file_hashes(monkeypatch) -> list:
     orig = Workflow.update_file_hashes
 
     def spy(self, file_hashes, cause):
-        calls.append((list(file_hashes), cause))
+        calls.append((dict(file_hashes), cause))
         return orig(self, file_hashes, cause)
 
     monkeypatch.setattr(Workflow, "update_file_hashes", spy)
@@ -344,7 +344,7 @@ async def test_run_hash_job_confirmed_applies_even_when_unchanged(
 
         await executor.run_hash_job(hash_job)
 
-        assert calls == [([("foo.txt", real_hash)], HashUpdateCause.CONFIRMED)]
+        assert calls == [({"foo.txt": real_hash}, HashUpdateCause.CONFIRMED)]
         assert hash_job.future.result() == real_hash
         async with wfs.db:
             assert wfs.find(File, "foo.txt").get_state() == FileState.STATIC
@@ -361,7 +361,7 @@ async def test_run_hash_job_external_not_applied_when_unchanged(wfs: Workflow, t
             fh.write("hello")
         real_hash = FileHash.unknown().regen("foo.txt")
         async with wfs.db:
-            wfs.update_file_hashes([("foo.txt", real_hash)], HashUpdateCause.CONFIRMED)
+            wfs.update_file_hashes({"foo.txt": real_hash}, HashUpdateCause.CONFIRMED)
             assert wfs.find(File, "foo.txt").get_state() == FileState.STATIC
 
         calls = _spy_update_file_hashes(monkeypatch)

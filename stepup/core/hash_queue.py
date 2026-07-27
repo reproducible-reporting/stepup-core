@@ -203,7 +203,7 @@ async def gather_hashes(
     reporter: ReporterClient,
     path_hash_causes: Collection[tuple[str, FileHash, HashUpdateCause]],
     njob: int,
-) -> list[tuple[str, FileHash]]:
+) -> dict[str, FileHash]:
     """Submit hash jobs for `path_hash_causes` and run them with bounded concurrency.
 
     Used by the startup scan and the watcher to drain a batch of hash jobs directly,
@@ -235,7 +235,9 @@ async def gather_hashes(
     Returns
     -------
     path_hashes
-        `(path, new_hash)` for every path in `path_hash_causes`, in input order. An exception
+        The new hash of every path in `path_hash_causes`, keyed by path, in input order.
+        (The input stays a sequence of triples, since a single call may carry several causes.)
+        An exception
         raised by one job (e.g. a stat error) propagates from `gather()` without cancelling
         the other jobs already running in the background; that mirrors today's behavior,
         where an unhandled `regen()` error already crashes the caller (startup or watcher).
@@ -288,4 +290,4 @@ async def gather_hashes(
         await asyncio.gather(*counts_flush_tasks)
     await reporter.update_counts(nsuccess, ntotal)
 
-    return [(job.path, new_hash) for job, new_hash in zip(jobs, new_hashes, strict=True)]
+    return {job.path: new_hash for job, new_hash in zip(jobs, new_hashes, strict=True)}

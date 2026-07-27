@@ -781,7 +781,7 @@ class Scheduler:
     def _derive_job(self, step: Step) -> RunJob | ValidateAmendedJob:
         """Derive a Job instance for a step that is ready to be queued."""
         amended_inputs_ready = True
-        inp_hashes = []
+        inp_hashes = {}
         db = self.workflow.db
         cur = db.execute(SELECT_INPUTS, (step.i,))
         for path, detached, fs_value, is_amended, hash_value in cur:
@@ -801,7 +801,7 @@ class Scheduler:
             # Amended or not, just process ready inputs.
             if not detached and file_state in (FileState.BUILT, FileState.STATIC):
                 # Input is ready, collect its hash and look no further.
-                inp_hashes.append((path, FileHash.from_json(hash_value)))
+                inp_hashes[path] = FileHash.from_json(hash_value)
                 continue
 
             # Sanity checks

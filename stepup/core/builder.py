@@ -16,7 +16,7 @@ and `remove_outdated_outputs` that are called during finalization.
 import asyncio
 import logging
 import signal
-from collections.abc import Collection
+from collections.abc import Mapping
 
 import attrs
 from path import Path
@@ -240,7 +240,7 @@ class Builder:
             self.reporter.stop_job(hash_job.job_i)
 
     async def run_promoted_hash_jobs(
-        self, paths_hashes: Collection[tuple[str, FileHash]], cause: HashUpdateCause
+        self, paths_hashes: Mapping[str, FileHash], cause: HashUpdateCause
     ) -> None:
         """Submit and run hash jobs immediately, bypassing `job_loop`'s `njob` budget.
 
@@ -254,7 +254,7 @@ class Builder:
         Parameters
         ----------
         paths_hashes
-            `(path, old_hash)` pairs to (re)hash.
+            The old hashes of the files to (re)hash, keyed by path.
         cause
             Passed through to every submitted job; see `HashJob.cause`.
         """
@@ -269,7 +269,7 @@ class Builder:
             # `amend()` caller instead of being silently lost.
             await asyncio.shield(job.future)
 
-        await asyncio.gather(*(run_one(path, old_hash) for path, old_hash in paths_hashes))
+        await asyncio.gather(*(run_one(path, old_hash) for path, old_hash in paths_hashes.items()))
 
     def _task_done(self, task: asyncio.Task):
         job = self.running_tasks.pop(task)

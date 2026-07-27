@@ -147,7 +147,7 @@ def test_compute_inp_hashes_cancelled_during_second_file(path_tmp: Path):
     cancel_event = TrippingEvent(4)
     with pytest.raises(HashCancelledError):
         compute_inp_hashes(
-            [(str(path1), FileHash.unknown()), (str(path2), FileHash.unknown())],
+            {str(path1): FileHash.unknown(), str(path2): FileHash.unknown()},
             cancel_event=cancel_event,
         )
     assert cancel_event.polls > cancel_event.trip_after
@@ -156,15 +156,13 @@ def test_compute_inp_hashes_cancelled_during_second_file(path_tmp: Path):
 def test_compute_inp_hashes_uncancelled(path_tmp: Path):
     path = path_tmp / "inp.bin"
     path.write_bytes(b"some input")
-    inp_result = compute_inp_hashes(
-        [(str(path), FileHash.unknown())], cancel_event=threading.Event()
-    )
+    inp_result = compute_inp_hashes({str(path): FileHash.unknown()}, cancel_event=threading.Event())
     # The file was unknown before, so its (now known) hash is reported as an unexpected change.
     assert len(inp_result.messages) == 1
     assert str(path) in inp_result.messages[0]
     assert inp_result.new_hashes == inp_result.all_hashes
-    assert [path for path, _ in inp_result.all_hashes] == [str(path)]
-    assert not inp_result.all_hashes[0][1].is_unknown
+    assert list(inp_result.all_hashes) == [str(path)]
+    assert not inp_result.all_hashes[str(path)].is_unknown
 
 
 def test_compute_inp_and_out_hashes(path_tmp: Path):
@@ -174,17 +172,17 @@ def test_compute_inp_and_out_hashes(path_tmp: Path):
     path_out.write_bytes(b"output")
 
     inp_result = compute_inp_hashes(
-        [(str(path_inp), FileHash.unknown())], cancel_event=threading.Event()
+        {str(path_inp): FileHash.unknown()}, cancel_event=threading.Event()
     )
     # The file was unknown before, so its (now known) hash is reported as an unexpected change.
     assert len(inp_result.messages) == 1
     assert str(path_inp) in inp_result.messages[0]
     assert inp_result.new_hashes == inp_result.all_hashes
-    assert [path for path, _ in inp_result.new_hashes] == [str(path_inp)]
+    assert list(inp_result.new_hashes) == [str(path_inp)]
 
     out_result = compute_out_hashes(
-        [(str(path_out), FileHash.unknown())], cancel_event=threading.Event()
+        {str(path_out): FileHash.unknown()}, cancel_event=threading.Event()
     )
     assert out_result.messages == []
-    assert [path for path, _ in out_result.new_hashes] == [str(path_out)]
-    assert [path for path, _ in out_result.all_hashes] == [str(path_out)]
+    assert list(out_result.new_hashes) == [str(path_out)]
+    assert list(out_result.all_hashes) == [str(path_out)]

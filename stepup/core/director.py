@@ -11,6 +11,7 @@ import signal
 import sys
 import time
 import traceback
+from collections.abc import Mapping
 from decimal import Decimal
 from importlib.metadata import version as get_version
 
@@ -616,14 +617,14 @@ class DirectorHandler:
         async with self.db:
             return self.workflow.initialize_boot()
 
-    def _submit_to_check(self, to_check: list[tuple[str, FileHash]]) -> None:
-        """Submit a hash job for each `(path, old_hash)` pair, applied with `cause=CONFIRMED`.
+    def _submit_to_check(self, to_check: Mapping[str, FileHash]) -> None:
+        """Submit a hash job for each `path: old_hash` entry, applied with `cause=CONFIRMED`.
 
         Fire-and-forget: the caller does not wait for these jobs. Each job's own
         completion flips the file from `UNCONFIRMED` to `STATIC` or `MISSING` and wakes
         `job_loop`, which is what lets a step consuming the file become runnable.
         """
-        for path, old_hash in to_check:
+        for path, old_hash in to_check.items():
             self.builder.hash_queue.submit(path, old_hash, HashUpdateCause.CONFIRMED)
 
     @allow_rpc
@@ -648,11 +649,11 @@ class DirectorHandler:
     @allow_rpc
     async def static_trees(self, job_i: int, paths: list[str]) -> None:
         """Register directories whose contents become static files when used."""
-        to_check = []
+        to_check = {}
         async with self.db:
             creator = self.scheduler.get_step(job_i)
             for path in paths:
-                to_check.extend(self.workflow.register_static_tree(creator, path))
+                to_check.update(self.workflow.register_static_tree(creator, path))
         self._submit_to_check(to_check)
 
     @allow_rpc
@@ -776,7 +777,7 @@ class DirectorHandler:
                 ran_concurrently=self.scheduler.ran_concurrently,
             )
         if to_check:
-            checked_paths = {path for path, _ in to_check}
+            checked_paths = set(to_check)
             await self.builder.run_promoted_hash_jobs(to_check, HashUpdateCause.CONFIRMED)
             async with self.db:
                 is_detached = step.is_detached()

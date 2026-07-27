@@ -13,6 +13,7 @@ import json
 import os
 import stat
 import threading
+from collections.abc import Mapping
 from typing import Self
 
 import attrs
@@ -302,19 +303,24 @@ class StepHash:
         cls,
         step_key: str,
         extended: bool,
-        inp_hashes: list[tuple[str, FileHash]],
+        inp_hashes: Mapping[str, FileHash],
         env_values: dict[str, str | None],
         subshell: bool = False,
         env_overrides: dict[str, str] | None = None,
     ):
-        """Create a new step hash with input information only."""
+        """Create a new step hash with input information only.
+
+        The paths are sorted here, so the digest does not depend on the order in which
+        the caller happened to collect them.
+        """
         env_overrides = {} if env_overrides is None else env_overrides
         hw = HashWords()
         hw.update(step_key)
         hw.update("__subshell__")
         hw.update(bytes([int(subshell)]))
         hw.update("__inp_paths__")
-        for path, file_hash in sorted(inp_hashes):
+        for path in sorted(inp_hashes):
+            file_hash = inp_hashes[path]
             hw.update(path)
             hw.update(file_hash.mode.to_bytes(8))
             hw.update(file_hash.size.to_bytes(8))
@@ -335,10 +341,14 @@ class StepHash:
         )
         return cls(inp_digest, inp_info)
 
-    def evolve_out(self, out_hashes):
-        """Create a copy of the StepHash with output information added/updated."""
+    def evolve_out(self, out_hashes: Mapping[str, FileHash]):
+        """Create a copy of the StepHash with output information added/updated.
+
+        As in `from_inp`, the paths are sorted to make the digest order-independent.
+        """
         hw = HashWords()
-        for path, file_hash in sorted(out_hashes):
+        for path in sorted(out_hashes):
+            file_hash = out_hashes[path]
             hw.update(path)
             hw.update(file_hash.mode.to_bytes(8))
             hw.update(file_hash.size.to_bytes(8))
@@ -522,22 +532,22 @@ class HashComputeResult:
     messages: list[str] = attrs.field()
     """Messages about unexpected input changes or vanished inputs."""
 
-    new_hashes: list[tuple[str, FileHash]] = attrs.field()
-    """A list of tuples `(path, new_file_hash)` for inputs/outputs whose hash changed."""
+    new_hashes: dict[str, FileHash] = attrs.field()
+    """The new hashes of the inputs/outputs whose hash changed, keyed by path."""
 
-    all_hashes: list[tuple[str, FileHash]] = attrs.field()
-    """A list of tuples `(path, new_file_hash)` for all inputs/outputs, regardless of changes."""
+    all_hashes: dict[str, FileHash] = attrs.field()
+    """The new hashes of all inputs/outputs, keyed by path, regardless of changes."""
 
 
 def compute_inp_hashes(
-    inp_hashes: list[tuple[str, FileHash]], cancel_event: threading.Event
+    inp_hashes: Mapping[str, FileHash], cancel_event: threading.Event
 ) -> HashComputeResult:
     """Compute the new hashes of the inputs.
 
     Parameters
     ----------
     inp_hashes
-        A list of tuples `(path, old_file_hash)` for each input file.
+        The old hashes of the input files, keyed by path.
     cancel_event
         Set this event to cancel the hash computation.
 
@@ -546,6 +556,8 @@ def compute_inp_hashes(
     HashComputeResult
         The result of the hash computation.
         The messages attribute contains a list of unexpected input changes or vanished inputs.
+        The paths are processed in sorted order, so the messages are reported deterministically
+        and both hash dictionaries are ordered by path.
 
     Raises
     ------
@@ -553,13 +565,14 @@ def compute_inp_hashes(
         When `cancel_event` was set before the whole file was hashed.
     """
     messages = []
-    new_inp_hashes = []
-    all_inp_hashes = []
-    for path, old_file_hash in sorted(inp_hashes):
+    new_inp_hashes = {}
+    all_inp_hashes = {}
+    for path in sorted(inp_hashes):
+        old_file_hash = inp_hashes[path]
         new_file_hash = old_file_hash.regen(path, cancel_event)
-        all_inp_hashes.append((path, new_file_hash))
+        all_inp_hashes[path] = new_file_hash
         if new_file_hash != old_file_hash:
-            new_inp_hashes.append((path, new_file_hash))
+            new_inp_hashes[path] = new_file_hash
             if new_file_hash.is_unknown:
                 messages.append(f"Input vanished unexpectedly: {path} ")
             else:
@@ -572,14 +585,14 @@ def compute_inp_hashes(
 
 
 def compute_out_hashes(
-    out_hashes: list[tuple[str, FileHash]], cancel_event: threading.Event
+    out_hashes: Mapping[str, FileHash], cancel_event: threading.Event
 ) -> HashComputeResult:
     """Compute the new hashes of the outputs.
 
     Parameters
     ----------
     out_hashes
-        A list of tuples `(path, old_file_hash)` for each output file.
+        The old hashes of the output files, keyed by path.
     cancel_event
         Set this event to cancel the hash computation.
 
@@ -588,6 +601,7 @@ def compute_out_hashes(
     HashComputeResult
         The result of the hash computation.
         The messages attribute contains a list of missing output paths.
+        The paths are processed in sorted order, as in `compute_inp_hashes`.
 
     Raises
     ------
@@ -595,13 +609,14 @@ def compute_out_hashes(
         When `cancel_event` was set before the whole file was hashed.
     """
     out_missing = []
-    new_out_hashes = []
-    all_out_hashes = []
-    for path, old_file_hash in sorted(out_hashes):
+    new_out_hashes = {}
+    all_out_hashes = {}
+    for path in sorted(out_hashes):
+        old_file_hash = out_hashes[path]
         new_file_hash = old_file_hash.regen(path, cancel_event)
-        all_out_hashes.append((path, new_file_hash))
+        all_out_hashes[path] = new_file_hash
         if new_file_hash != old_file_hash:
-            new_out_hashes.append((path, new_file_hash))
+            new_out_hashes[path] = new_file_hash
         if new_file_hash.is_unknown:
             out_missing.append(path)
 
@@ -609,8 +624,8 @@ def compute_out_hashes(
 
 
 def compute_both_hashes(
-    inp_hashes: list[tuple[str, FileHash]],
-    out_hashes: list[tuple[str, FileHash]],
+    inp_hashes: Mapping[str, FileHash],
+    out_hashes: Mapping[str, FileHash],
     cancel_event: threading.Event,
 ) -> tuple[HashComputeResult, HashComputeResult]:
     """Compute input and output hashes.
@@ -618,9 +633,9 @@ def compute_both_hashes(
     Parameters
     ----------
     inp_hashes
-        A list of tuples `(path, file_hash)` for each input file.
+        The old hashes of the input files, keyed by path.
     out_hashes
-        A list of tuples `(path, file_hash)` for each output file.
+        The old hashes of the output files, keyed by path.
     cancel_event
         Set this event to cancel the hash computation.
 

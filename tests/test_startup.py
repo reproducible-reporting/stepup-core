@@ -103,7 +103,7 @@ async def test_check_file_changes_confirms_unchanged_stray_unconfirmed_row(wfs: 
         real_hash = FileHash.unknown().regen("foo.txt")
         async with wfs.db:
             wfs.declare_unconfirmed(wfs.root, ["foo.txt"])
-            wfs.update_file_hashes([("foo.txt", real_hash)], HashUpdateCause.CONFIRMED)
+            wfs.update_file_hashes({"foo.txt": real_hash}, HashUpdateCause.CONFIRMED)
             _make_stray_unconfirmed(wfs, "foo.txt")
             assert wfs.find(File, "foo.txt").get_state() == FileState.UNCONFIRMED
 

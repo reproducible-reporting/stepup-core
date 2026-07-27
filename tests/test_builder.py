@@ -282,7 +282,7 @@ async def test_run_promoted_hash_jobs_applies_result(wfs: Workflow, tmpdir):
         )
 
         await builder.run_promoted_hash_jobs(
-            [("a.txt", FileHash.unknown())], HashUpdateCause.CONFIRMED
+            {"a.txt": FileHash.unknown()}, HashUpdateCause.CONFIRMED
         )
 
         async with wfs.db:
@@ -303,9 +303,7 @@ async def test_run_promoted_hash_jobs_goes_through_progress_wrapper():
     # ahead of time (submit() dedups by path, so this is the same job it will run).
     job = builder.hash_queue.submit("foo.txt", FileHash.unknown(), HashUpdateCause.CONFIRMED)
 
-    await builder.run_promoted_hash_jobs(
-        [("foo.txt", FileHash.unknown())], HashUpdateCause.CONFIRMED
-    )
+    await builder.run_promoted_hash_jobs({"foo.txt": FileHash.unknown()}, HashUpdateCause.CONFIRMED)
 
     assert reporter.events == [("start", "H", "foo.txt", job.job_i), ("stop", job.job_i)]
 
@@ -336,7 +334,7 @@ async def test_run_promoted_hash_jobs_awaits_already_claimed_job_without_rerunni
     resolver = asyncio.create_task(resolve_soon())
     try:
         await builder.run_promoted_hash_jobs(
-            [("foo.txt", FileHash.unknown())], HashUpdateCause.CONFIRMED
+            {"foo.txt": FileHash.unknown()}, HashUpdateCause.CONFIRMED
         )
     finally:
         await resolver
