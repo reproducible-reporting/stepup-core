@@ -9,7 +9,7 @@ import os
 import pickle
 import stat
 import textwrap
-from collections.abc import Collection, Iterator
+from collections.abc import Callable, Collection, Iterator
 
 import attrs
 from path import Path
@@ -106,13 +106,6 @@ class SupplyInfo:
     If True, the file is BUILT, MISSING or STATIC.
     In case of a MISSING file, it still needs to be confirmed as STATIC,
     but we cannot report it as unavailable yet, hence the True value.
-    """
-
-    unfresh: bool = attrs.field()
-    """True if the file is BUILT but fails the amend() freshness check.
-
-    Only ever set when `_resolve_supply_file` is called while the start time of
-    the current step precedes the stop time of the file's creator step.
     """
 
     is_deferred: bool = attrs.field()
@@ -572,9 +565,7 @@ class Workflow(Trellis):
         node: Node,
         path: str,
         new: bool,
-        start_times: dict[int, int] | None = None,
-        stop_times: dict[int, int] | None = None,
-    ) -> tuple[File, bool, bool, Node | None, bool]:
+    ) -> tuple[File, bool, bool, bool]:
         """Find or create the file for a path and resolve its relation to node.
 
         This performs everything `_supply_files` needs except inserting the
@@ -590,11 +581,6 @@ class Workflow(Trellis):
         new
             When `True` the (file, node) relationship must be new.
             If not, a `GraphError` is raised.
-        start_times, stop_times
-            The scheduler's step-node-id-keyed dispatch/completion timestamps.
-            When both are given, a `BUILT` file whose creator step's `stop_time` is
-            not strictly before `node`'s own `start_time` is flagged as `unfresh`.
-            When `None` (the `define_step` hot path), the freshness check is skipped.
 
         Returns
         -------
@@ -602,8 +588,6 @@ class Workflow(Trellis):
             The existing or newly created file node.
         available
             See `SupplyInfo.available`.
-        unfresh
-            See `SupplyInfo.unfresh`.
         is_deferred
             See `SupplyInfo.is_deferred`.
         new_relation
@@ -617,7 +601,6 @@ class Workflow(Trellis):
             When the path exists while it is expected to be new.
         """
         available = False
-        unfresh = False
         file, detached = self.find_detached(File, path)
         is_deferred = False
         if file is None or detached:
@@ -636,13 +619,6 @@ class Workflow(Trellis):
             available = state in (FileState.BUILT, FileState.STATIC, FileState.MISSING)
             if state == FileState.MISSING:
                 is_deferred = True
-            elif state == FileState.BUILT and start_times is not None:
-                producer = file.creator()
-                if isinstance(producer, Step):
-                    stop_time = stop_times.get(producer.i)
-                    start_time = start_times.get(node.i)
-                    if stop_time is not None and start_time is not None and start_time <= stop_time:
-                        unfresh = True
         new_relation = (
             self.db.execute(
                 "SELECT 1 FROM dependency WHERE source = ? AND sink = ?", (file.i, node.i)
@@ -651,15 +627,13 @@ class Workflow(Trellis):
         )
         if not new_relation and new:
             raise GraphError(f"Supplying file already exists: {path}")
-        return file, available, unfresh, is_deferred, new_relation
+        return file, available, is_deferred, new_relation
 
     def _supply_files(
         self,
         node: Node,
         paths: Collection[str],
         new: bool = True,
-        start_times: dict[int, int] | None = None,
-        stop_times: dict[int, int] | None = None,
     ) -> list[SupplyInfo]:
         """Find or create files for several paths and make them sources of node.
 
@@ -680,8 +654,6 @@ class Workflow(Trellis):
         new
             When `True` every (file, node) relationship must be new.
             If not, a `GraphError` is raised.
-        start_times, stop_times
-            Forwarded to `_resolve_supply_file`. Only ever passed by `amend_step`.
 
         Returns
         -------
@@ -696,21 +668,18 @@ class Workflow(Trellis):
         CyclicError
             When adding the new relations would introduce a cyclic dependency.
         """
-        resolved = [
-            self._resolve_supply_file(node, path, new, start_times, stop_times) for path in paths
-        ]
-        new_file_is = [file.i for file, _, _, _, new_relation in resolved if new_relation]
+        resolved = [self._resolve_supply_file(node, path, new) for path in paths]
+        new_file_is = [file.i for file, _, _, new_relation in resolved if new_relation]
         if len(new_file_is) > 0:
             node.check_no_cycle_batch(new_file_is)
         return [
             SupplyInfo(
                 file,
                 available,
-                unfresh,
                 is_deferred,
                 new_idep=(node.add_source(file, skip_cycle_check=True) if new_relation else None),
             )
-            for file, available, unfresh, is_deferred, new_relation in resolved
+            for file, available, is_deferred, new_relation in resolved
         ]
 
     def _declare_file(
@@ -1104,8 +1073,7 @@ class Workflow(Trellis):
         env_deps: Collection[str] = (),
         out_paths: Collection[str] = (),
         vol_paths: Collection[str] = (),
-        start_times: dict[int, int] | None = None,
-        stop_times: dict[int, int] | None = None,
+        ran_concurrently: Callable[[int, int], bool],
     ) -> tuple[bool, set[str], set[str], list[tuple[File, FileState]]]:
         """Amend step information.
 
@@ -1121,9 +1089,12 @@ class Workflow(Trellis):
             Additional output paths.
         vol_paths
             Volatile output (not reproducible) but will be cleaned like built files.
-        start_times, stop_times
-            The scheduler's step-node-id-keyed dispatch/completion timestamps, forwarded
-            to `_supply_files` for the freshness check.
+        ran_concurrently
+            Callable `(producer_node_i, consumer_node_i) -> bool` used to flag a `BUILT`
+            input as unfresh: it decides whether the producer step's execution window
+            overlapped the current step's, meaning the current step may have read stale
+            content. Only ever `Scheduler.ran_concurrently`, passed by the `amend()` RPC
+            handler.
 
         Returns
         -------
@@ -1165,14 +1136,14 @@ class Workflow(Trellis):
         amended_ideps = []
 
         # Process inp_paths
-        infos = self._supply_files(
-            step, inp_paths, new=False, start_times=start_times, stop_times=stop_times
-        )
+        infos = self._supply_files(step, inp_paths, new=False)
         for info in infos:
             if not info.available:
                 unavailable.add(info.file.path)
-            elif info.unfresh:
-                unfresh.add(info.file.path)
+            elif info.file.get_state() == FileState.BUILT:
+                producer = info.file.creator()
+                if isinstance(producer, Step) and ran_concurrently(producer.i, step.i):
+                    unfresh.add(info.file.path)
             if info.new_idep is not None:
                 amended_ideps.append((info.new_idep,))
             if info.is_deferred:

@@ -7,7 +7,7 @@ import sqlite3
 from collections import Counter
 
 import pytest
-from conftest import declare_static, fake_hash
+from conftest import amend_step, declare_static, fake_hash
 from path import Path
 
 from stepup.core.enums import FileState, HashUpdateCause, StepState
@@ -26,7 +26,7 @@ def _amend(wfx: Workflow, step: Step, **kwargs) -> tuple[bool, list]:
 
     Mirrors `DirectorHandler.handle_amend` in `stepup/core/director.py`.
     """
-    is_detached, unavailable, unfresh, to_check = wfx.amend_step(step, **kwargs)
+    is_detached, unavailable, unfresh, to_check = amend_step(wfx, step, **kwargs)
     keep_going = not is_detached and not unavailable and not unfresh
     return keep_going, to_check
 
@@ -162,8 +162,8 @@ async def test_step(wfs: Workflow):
         step.set_state(StepState.RUNNING)
         assert not step.has_unavailable_amended_input()
     async with wfs.db:
-        is_detached, unavailable, unfresh, to_check = wfs.amend_step(
-            step, inp_paths=["spam.txt"], out_paths=["egg.csv"]
+        is_detached, unavailable, unfresh, to_check = amend_step(
+            wfs, step, inp_paths=["spam.txt"], out_paths=["egg.csv"]
         )
         assert to_check == []
         assert not is_detached
@@ -179,20 +179,20 @@ async def test_step(wfs: Workflow):
 
     # Amend an input that was already known, which just gets ignored.
     async with wfs.db:
-        wfs.amend_step(step, inp_paths=["foo.txt"])
+        amend_step(wfs, step, inp_paths=["foo.txt"])
         assert wfs.format_str() == TEST_STEP_GRAPH2
 
     # Try a few things that should raise errors
     with pytest.raises(GraphError):
         async with wfs.db:
             # Amend an output that was already known.
-            wfs.amend_step(step, out_paths=["egg.csv"])
+            amend_step(wfs, step, out_paths=["egg.csv"])
     async with wfs.db:
         assert wfs.format_str() == TEST_STEP_GRAPH2
     with pytest.raises(GraphError):
         async with wfs.db:
             # Amend a new input and an output that was already known.
-            wfs.amend_step(step, inp_paths=["new.zip"], out_paths=["egg.csv"])
+            amend_step(wfs, step, inp_paths=["new.zip"], out_paths=["egg.csv"])
     async with wfs.db:
         assert wfs.format_str() == TEST_STEP_GRAPH2
 
@@ -486,7 +486,7 @@ async def test_rerun_creator_detaches_running_child(wfp: Workflow):
 
         # The next RPC call made by `sub`'s still-alive child process is a harmless
         # no-op instead of a crash.
-        assert wfp.amend_step(sub, inp_paths=["some_new_input"]) == (True, set(), set(), [])
+        assert amend_step(wfp, sub, inp_paths=["some_new_input"]) == (True, set(), set(), [])
 
 
 async def test_mark_pending_noop_when_running(wfs: Workflow):
@@ -684,13 +684,13 @@ async def test_file_state_static_overlap(wfp: Workflow):
         assert not keep_going
         assert to_check == []
         # Amending an existing input is tolerated.
-        wfp.amend_step(step, inp_paths=["some"])
+        amend_step(wfp, step, inp_paths=["some"])
     with pytest.raises(GraphError):
         async with wfp.db:
-            wfp.amend_step(step, out_paths=["given"])
+            amend_step(wfp, step, out_paths=["given"])
     with pytest.raises(GraphError):
         async with wfp.db:
-            wfp.amend_step(step, vol_paths=["given"])
+            amend_step(wfp, step, vol_paths=["given"])
 
 
 async def test_file_state_output_overlap(wfp: Workflow):
@@ -714,10 +714,10 @@ async def test_file_state_output_overlap(wfp: Workflow):
         assert to_check == []
     with pytest.raises(GraphError):
         async with wfp.db:
-            wfp.amend_step(step, out_paths=["given"])
+            amend_step(wfp, step, out_paths=["given"])
     with pytest.raises(GraphError):
         async with wfp.db:
-            wfp.amend_step(step, vol_paths=["given"])
+            amend_step(wfp, step, vol_paths=["given"])
 
 
 async def test_file_state_volatile_overlap(wfp: Workflow):
@@ -741,13 +741,13 @@ async def test_file_state_volatile_overlap(wfp: Workflow):
         assert to_check == []
     with pytest.raises(GraphError):
         async with wfp.db:
-            wfp.amend_step(step, inp_paths=["given"])
+            amend_step(wfp, step, inp_paths=["given"])
     with pytest.raises(GraphError):
         async with wfp.db:
-            wfp.amend_step(step, out_paths=["given"])
+            amend_step(wfp, step, out_paths=["given"])
     with pytest.raises(GraphError):
         async with wfp.db:
-            wfp.amend_step(step, vol_paths=["given"])
+            amend_step(wfp, step, vol_paths=["given"])
 
 
 PENDING_STEP_SKIP_GRAPH = """\
@@ -856,7 +856,7 @@ async def test_define_pending_step_skip_extra(wfp: Workflow):
         # bar
         wfp.mark_step_pending(bar)  # Should not hurt
         assert bar.get_state() == StepState.PENDING
-        wfp.amend_step(bar, inp_paths=["ainp2"], out_paths=["aout2"], vol_paths=["avol2"])
+        amend_step(wfp, bar, inp_paths=["ainp2"], out_paths=["aout2"], vol_paths=["avol2"])
         assert wfp.find(File, "ainp2") in set(bar.sources())
         wfp.update_file_hashes([("aout2", fake_hash("aout2"))], HashUpdateCause.SUCCEEDED)
         bar.completed(StepHash(b"bar_ok", None, b"zzz", None), False)
@@ -902,7 +902,7 @@ async def test_skip_step_amended_detached_input(wfp: Workflow):
         assert [r.path for r in foo.out_paths()] == ["log"]
 
         # Simulate run
-        wfp.amend_step(foo, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"])
+        amend_step(wfp, foo, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"])
         wfp.update_file_hashes(
             [("log", fake_hash("log")), ("aout", fake_hash("aout"))], HashUpdateCause.SUCCEEDED
         )
@@ -974,7 +974,7 @@ async def test_amend_step(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "blub > log", vol_paths=["log"])
         step = wfp.find(Step, "blub > log")
-        assert wfp.amend_step(step)
+        assert amend_step(wfp, step)
         keep_going, to_check = _amend(
             wfp, step, inp_paths=["inp1", "inp2"], out_paths=["out3"], vol_paths=["vol4"]
         )
@@ -1018,25 +1018,25 @@ def _build_producer_sink(wfs: Workflow) -> tuple[Step, Step]:
     return producer, sink
 
 
-async def test_amend_step_no_dicts_skips_freshness_check(wfs: Workflow):
-    """Without start_times/stop_times, amend() behaves exactly as before the freshness
-    check existed: a BUILT input is always accepted, regardless of any race."""
+async def test_amend_step_never_concurrent_skips_freshness_check(wfs: Workflow):
+    """When `ran_concurrently` always reports no overlap, a BUILT input is always
+    accepted, regardless of any race."""
     async with wfs.db:
         _, sink = _build_producer_sink(wfs)
-        is_detached, unavailable, unfresh, _ = wfs.amend_step(sink, inp_paths=["data.txt"])
+        is_detached, unavailable, unfresh, _ = amend_step(
+            wfs, sink, inp_paths=["data.txt"], ran_concurrently=lambda p, c: False
+        )
         assert not is_detached
         assert not unavailable
         assert not unfresh
 
 
 async def test_amend_step_freshness_fresh(wfs: Workflow):
-    """sink.start_time strictly after producer.stop_time: accepted as fresh."""
+    """`ran_concurrently` reports no overlap: input accepted as fresh."""
     async with wfs.db:
-        producer, sink = _build_producer_sink(wfs)
-        start_times = {producer.i: 100, sink.i: 200}
-        stop_times = {producer.i: 100}
-        is_detached, unavailable, unfresh, _ = wfs.amend_step(
-            sink, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
+        _, sink = _build_producer_sink(wfs)
+        is_detached, unavailable, unfresh, _ = amend_step(
+            wfs, sink, inp_paths=["data.txt"], ran_concurrently=lambda p, c: False
         )
         assert not is_detached
         assert not unavailable
@@ -1044,46 +1044,15 @@ async def test_amend_step_freshness_fresh(wfs: Workflow):
 
 
 async def test_amend_step_freshness_unfresh(wfs: Workflow):
-    """sink.start_time strictly before producer.stop_time: rejected as unfresh."""
-    async with wfs.db:
-        producer, sink = _build_producer_sink(wfs)
-        start_times = {producer.i: 200, sink.i: 100}
-        stop_times = {producer.i: 200}
-        is_detached, unavailable, unfresh, _ = wfs.amend_step(
-            sink, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
-        )
-        assert not is_detached
-        assert not unavailable
-        assert unfresh == {"data.txt"}
-
-
-async def test_amend_step_freshness_tie_is_unfresh(wfs: Workflow):
-    """An exact start_time == stop_time tie is treated as unfresh (conservative choice)."""
-    async with wfs.db:
-        producer, sink = _build_producer_sink(wfs)
-        start_times = {producer.i: 150, sink.i: 150}
-        stop_times = {producer.i: 150}
-        is_detached, unavailable, unfresh, _ = wfs.amend_step(
-            sink, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
-        )
-        assert not is_detached
-        assert not unavailable
-        assert unfresh == {"data.txt"}
-
-
-async def test_amend_step_freshness_producer_stop_time_missing(wfs: Workflow):
-    """Producer has no stop_times entry (e.g. finished in a previous director invocation,
-    or was never tracked through a RUNNING transition this invocation): trivially fresh."""
+    """`ran_concurrently` reports an overlap: input rejected as unfresh."""
     async with wfs.db:
         _, sink = _build_producer_sink(wfs)
-        start_times = {sink.i: 100}
-        stop_times = {}
-        is_detached, unavailable, unfresh, _ = wfs.amend_step(
-            sink, inp_paths=["data.txt"], start_times=start_times, stop_times=stop_times
+        is_detached, unavailable, unfresh, _ = amend_step(
+            wfs, sink, inp_paths=["data.txt"], ran_concurrently=lambda p, c: True
         )
         assert not is_detached
         assert not unavailable
-        assert not unfresh
+        assert unfresh == {"data.txt"}
 
 
 PENDING_STEP_SKIP_AMENDED_GRAPH = """\
@@ -1170,7 +1139,7 @@ async def test_define_pending_step_skip_amended(wfp: Workflow):
         step = wfp.find(Step, "cat < inp > out 2> vol")
 
         # Simulate running the step
-        wfp.amend_step(step, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"])
+        amend_step(wfp, step, inp_paths=["ainp"], out_paths=["aout"], vol_paths=["avol"])
         wfp.update_file_hashes(
             [("out", fake_hash("out")), ("aout", fake_hash("aout"))], HashUpdateCause.SUCCEEDED
         )
@@ -1633,8 +1602,8 @@ async def test_amended_env_vars(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "prog1", env_deps=["egg"])
         step = wfp.find(Step, "prog1")
-        wfp.amend_step(step, env_deps=["foo", "egg"])
-        wfp.amend_step(step, env_deps=["foo", "bar"])
+        amend_step(wfp, step, env_deps=["foo", "egg"])
+        amend_step(wfp, step, env_deps=["foo", "bar"])
         assert set(step.env_deps(amended=False)) == {"egg"}
         assert set(step.env_deps(amended=True)) == {"bar", "foo"}
         assert set(step.env_deps()) == {"bar", "egg", "foo"}
@@ -1659,7 +1628,7 @@ async def test_setenv_amend_ignored(wfp: Workflow):
         wfp.define_step(plan, "prog1", env_overrides={"FOO": "bar"})
         step = wfp.find(Step, "prog1")
         # A variable overridden via env_overrides is not tracked as an amended dependency.
-        wfp.amend_step(step, env_deps=["FOO", "EGG"])
+        amend_step(wfp, step, env_deps=["FOO", "EGG"])
         assert set(step.env_deps(amended=True)) == {"EGG"}
         assert set(step.env_deps()) == {"EGG"}
 
@@ -1686,7 +1655,7 @@ async def test_acyclic_amend_static(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         declare_static(wfp, plan, ["static.txt"])
-        wfp.amend_step(plan, inp_paths=["static.txt"])
+        amend_step(wfp, plan, inp_paths=["static.txt"])
         assert {r.path for r in plan.inp_paths()} == {"plan.py", "static.txt"}
         assert {r.path for r in plan.static_paths()} == {"static.txt"}
 
@@ -1888,10 +1857,10 @@ async def test_static_tree_amend_out(wfp: Workflow):
         prog = wfp.find(Step, "prog")
     with pytest.raises(GraphError):
         async with wfp.db:
-            wfp.amend_step(prog, vol_paths=["data/vol_amended/vol.txt"])
+            amend_step(wfp, prog, vol_paths=["data/vol_amended/vol.txt"])
     with pytest.raises(GraphError):
         async with wfp.db:
-            wfp.amend_step(prog, out_paths=["data/out_amended/out.txt"])
+            amend_step(wfp, prog, out_paths=["data/out_amended/out.txt"])
 
 
 async def test_static_tree_recursive(wfp: Workflow):
@@ -1973,7 +1942,7 @@ async def test_amend_step_reqdir_out_path(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo")
         step = wfp.find(Step, "echo")
-        wfp.amend_step(step, out_paths=["sub/dir/out"])
+        amend_step(wfp, step, out_paths=["sub/dir/out"])
         reqdir, detached = wfp.find_detached(File, "sub/dir")
         assert reqdir is None
         assert detached is None
@@ -1984,7 +1953,7 @@ async def test_amend_step_reqdir_vol_path(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo")
         step = wfp.find(Step, "echo")
-        wfp.amend_step(step, vol_paths=["sub/dir/vol"])
+        amend_step(wfp, step, vol_paths=["sub/dir/vol"])
         reqdir, detached = wfp.find_detached(File, "sub/dir")
         assert reqdir is None
         assert detached is None
@@ -2071,7 +2040,7 @@ async def test_skip_amend_detached_inputs(wfp: Workflow):
         (foo1,) = declare_static(wfp, plan, ["foo"])
 
         # Simulate running the step, which amends a few things.
-        wfp.amend_step(step, inp_paths=["foo"], env_deps=["AAA"], vol_paths=["bbb"])
+        amend_step(wfp, step, inp_paths=["foo"], env_deps=["AAA"], vol_paths=["bbb"])
         assert {(r.path, r.detached, r.amended) for r in step.inp_paths(include_detached=True)} == {
             ("foo", False, True)
         }
@@ -2149,7 +2118,7 @@ async def test_amend_step_out_nested(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "script")
         step = wfp.find(Step, "script")
-        wfp.amend_step(step, out_paths=["sub/foo/bar"])
+        amend_step(wfp, step, out_paths=["sub/foo/bar"])
         assert {r.path for r in step.inp_paths()} == set()
         assert {r.path for r in step.out_paths()} == {"sub/foo/bar"}
 
@@ -2159,7 +2128,7 @@ async def test_amend_step_vol_nested(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "script")
         step = wfp.find(Step, "script")
-        wfp.amend_step(step, vol_paths=["sub/foo/bar"])
+        amend_step(wfp, step, vol_paths=["sub/foo/bar"])
         assert {r.path for r in step.inp_paths()} == set()
         assert {r.path for r in step.out_paths()} == set()
         assert {r.path for r in step.vol_paths()} == {"sub/foo/bar"}
@@ -2540,7 +2509,7 @@ async def test_completed_reclaims_unavailable_input_available_during_run(wfs: Wo
         sink = wfs.find(Step, "sink")
 
         sink.set_state(StepState.RUNNING)
-        is_detached, unavailable, unfresh, _ = wfs.amend_step(sink, inp_paths=["data.txt"])
+        is_detached, unavailable, unfresh, _ = amend_step(wfs, sink, inp_paths=["data.txt"])
         assert not is_detached
         assert unavailable == {"data.txt"}
         assert not unfresh

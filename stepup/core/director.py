@@ -663,8 +663,7 @@ class DirectorHandler:
                 env_deps=env_deps,
                 out_paths=out_paths,
                 vol_paths=vol_paths,
-                start_times=self.scheduler.start_times,
-                stop_times=self.scheduler.stop_times,
+                ran_concurrently=self.scheduler.ran_concurrently,
             )
         keep_going = len(unavailable) == 0 and len(unfresh) == 0
         if not keep_going:

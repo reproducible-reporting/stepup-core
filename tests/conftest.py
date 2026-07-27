@@ -120,6 +120,16 @@ def declare_static(workflow, creator, paths):
     return [workflow.find(File, path) for path in paths]
 
 
+def amend_step(workflow, step, **kwargs):
+    """Call `Workflow.amend_step`, defaulting `ran_concurrently` to never overlapping.
+
+    Most tests don't exercise the freshness check, so they have no real
+    `Scheduler.ran_concurrently` to pass. This is solely used for testing the workflow.
+    """
+    kwargs.setdefault("ran_concurrently", lambda producer_i, consumer_i: False)
+    return workflow.amend_step(step, **kwargs)
+
+
 @pytest_asyncio.fixture
 async def wfs(request) -> AsyncIterator[Workflow]:
     """A workflow from scratch, no plan.py

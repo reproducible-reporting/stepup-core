@@ -1646,6 +1646,44 @@ async def test_stop_times_cleared_when_no_steps_running(wfs: Workflow):
         assert scheduler.stop_times == {}
 
 
+# -----------------------------------------------------------------------
+# Tests for ran_concurrently
+# -----------------------------------------------------------------------
+
+
+async def test_ran_concurrently_true_when_consumer_starts_before_producer_stops(wfs: Workflow):
+    scheduler = Scheduler(wfs, db=wfs.db)
+    scheduler.start_times[2] = 100
+    scheduler.stop_times[1] = 200
+    assert scheduler.ran_concurrently(1, 2)
+
+
+async def test_ran_concurrently_tie_counts_as_overlapping(wfs: Workflow):
+    scheduler = Scheduler(wfs, db=wfs.db)
+    scheduler.start_times[2] = 150
+    scheduler.stop_times[1] = 150
+    assert scheduler.ran_concurrently(1, 2)
+
+
+async def test_ran_concurrently_false_when_consumer_starts_after_producer_stops(wfs: Workflow):
+    scheduler = Scheduler(wfs, db=wfs.db)
+    scheduler.start_times[2] = 200
+    scheduler.stop_times[1] = 100
+    assert not scheduler.ran_concurrently(1, 2)
+
+
+async def test_ran_concurrently_false_when_producer_stop_time_missing(wfs: Workflow):
+    scheduler = Scheduler(wfs, db=wfs.db)
+    scheduler.start_times[2] = 100
+    assert not scheduler.ran_concurrently(1, 2)
+
+
+async def test_ran_concurrently_false_when_consumer_start_time_missing(wfs: Workflow):
+    scheduler = Scheduler(wfs, db=wfs.db)
+    scheduler.stop_times[1] = 100
+    assert not scheduler.ran_concurrently(1, 2)
+
+
 async def test_child_of_running_step_dispatched_as_soon_as_created(wfp: Workflow):
     """A step created by an already-RUNNING creator is dispatched right away, as soon as its
     own inputs are ready, without waiting for the creator to settle into a new state.

@@ -405,7 +405,7 @@ class Scheduler:
     start_times: dict[int, int] = attrs.field(init=False, factory=dict)
     """Step node id -> `time.monotonic_ns()` at the moment it was dispatched to RUNNING.
 
-    In-memory only (not persisted): used by `amend()`'s freshness check to compare
+    In-memory only (not persisted): used by `ran_concurrently()` to compare
     against a producer's `stop_times` entry.
     """
 
@@ -502,6 +502,29 @@ class Scheduler:
             # Nothing running means nothing can race with a not-yet-dispatched step,
             # so every remaining stop_times entry is safe to drop.
             self.stop_times.clear()
+
+    def ran_concurrently(self, producer_i: int, consumer_i: int) -> bool:
+        """Whether a consumer step started running before the producer step stopped.
+
+        Parameters
+        ----------
+        producer_i
+            Node id of the step that (re)built the file being amended as an input.
+        consumer_i
+            Node id of the step amending that file as an input.
+
+        Returns
+        -------
+        overlapped
+            `True` when the producer's `stop_times` entry and the consumer's
+            `start_times` entry both exist and `start_time <= stop_time`, i.e. the
+            consumer's execution window overlapped the producer's (a tie counts as
+            overlapping: the conservative choice). `False` when either timestamp is
+            missing.
+        """
+        stop_time = self.stop_times.get(producer_i)
+        start_time = self.start_times.get(consumer_i)
+        return stop_time is not None and start_time is not None and start_time <= stop_time
 
     def _count_running(self) -> int:
         row = self.workflow.db.execute(
