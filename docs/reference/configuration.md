@@ -218,7 +218,10 @@ separated by slashes, where applicable.
 `sqllog` / `STEPUP_BUILD_SQLLOG` / `--sqllog`, `--no-sqllog`
 
 :   Set to `true` to enable SQLite debug logging.
-    The recorded log is written to `.stepup/sqllog.json` when the director exits.
+    Each `execute()` / `executemany()` call appends a timing row to `.stepup/sqllog.csv`
+    as it happens.
+    A `.stepup/sqllog.json` index (query text, call site, query plan, and the `query_i` id
+    referenced by the CSV rows) is written when the director exits.
 
 `watch` / `STEPUP_BUILD_WATCH` / `--watch`, `-w`, `--no-watch`
 

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Tests for stepup.core.sqlite3."""
 
+import csv
 import inspect
 import json
 
@@ -75,13 +76,45 @@ async def test_sqllog_written_on_close(tmp_path):
     assert set(by_query) == {"CREATE TABLE t (a INTEGER)", "INSERT INTO t VALUES (?)"}
 
     create_entry = by_query["CREATE TABLE t (a INTEGER)"]
-    assert create_entry["count"] == 1
-    assert create_entry["wtime"] >= 0.0
+    assert isinstance(create_entry["query_i"], int)
     assert isinstance(create_entry["plan"], str)
     assert create_entry["module_name"] == __name__
 
     insert_entry = by_query["INSERT INTO t VALUES (?)"]
-    assert insert_entry["count"] == 2
-    assert insert_entry["wtime"] >= 0.0
     assert insert_entry["module_name"] == __name__
     assert insert_entry["line"] == insert_line
+    assert insert_entry["query_i"] != create_entry["query_i"]
+
+
+async def test_sqllog_csv_rows(tmp_path):
+    path_sqlcsv = tmp_path / "sqllog.csv"
+    with DBSession.open(":memory:", path_sqlcsv=path_sqlcsv) as db:
+        assert db.record
+        # The CSV file (header only) is created as soon as the session opens.
+        with open(path_sqlcsv, newline="") as fh:
+            header = next(csv.reader(fh))
+        assert header == [
+            "transaction_i",
+            "execute_i",
+            "query_i",
+            "start_ns",
+            "duration_ns",
+            "nrecords",
+        ]
+        async with db:
+            db.execute("CREATE TABLE t (a INTEGER)")
+            db.executemany("INSERT INTO t VALUES (?)", [(1,), (2,)])
+
+    with open(path_sqlcsv, newline="") as fh:
+        _header, create_row, insert_row = csv.reader(fh)
+
+    # Both statements ran in the same (only) transaction.
+    assert create_row[0] == insert_row[0] == "1"
+    # Each distinct call site gets its own query_i.
+    assert create_row[1] != insert_row[1]
+    # execute_i increments across both calls.
+    assert create_row[1] == "1"
+    assert insert_row[1] == "2"
+    # nrecords: -1 for execute(), len(seq_of_args) for executemany().
+    assert create_row[5] == "-1"
+    assert insert_row[5] == "2"

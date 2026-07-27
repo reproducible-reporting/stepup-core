@@ -82,8 +82,13 @@ def prof_path(suffix: str) -> Path:
 
 
 def sqllog_path(suffix: str) -> Path:
-    """The path of the SQL query log file for a given suffix."""
+    """The path of the SQL query log index file for a given suffix."""
     return Path(f"sqllog{suffix}.json")
+
+
+def sqlcsv_path(suffix: str) -> Path:
+    """The path of the `--sqllog` per-execution timing CSV file for a given suffix."""
+    return Path(f"sqllog{suffix}.csv")
 
 
 def perf_data_path(suffix: str) -> Path:

@@ -11,19 +11,24 @@ python tools/analyze_perf.py [suffix] [--top N] [--min-pct PCT]
 ```
 
 `suffix` is appended to the default file names, e.g. with suffix `_v1`,
-the files read are `director_v1.prof`, `sqllog_v1.json`, `perf_v1.data`,
-and `joblog_v1.csv` in the current directory.
+the files read are `director_v1.prof`, `sqllog_v1.json`, `sqllog_v1.csv`,
+`perf_v1.data`, and `joblog_v1.csv` in the current directory.
 
 The profile is expected in `pstats`-compatible format
 (as written by `yappi.get_func_stats().save(..., type="pstat")`,
 which is what `STEPUP_YAPPI` produces).
-The SQL log is the JSON file written when running with `--sqllog`:
-a list of records, one per distinct call site,
-each `{"query": ..., "module_name": ..., "line": ..., "plan": ..., "wtime": ..., "count": ...}`,
+The SQL log is written when running with `--sqllog`, split across two files.
+`sqllog.json` is an index: a list of records, one per distinct call site,
+each `{"query": ..., "module_name": ..., "line": ..., "plan": ..., "query_i": ...}`,
 where `module_name` / `line` identify the `db.execute()` / `db.executemany()` call site,
-`wtime` is the summed wall time over all executions of that query at that call site,
-and `count` is the number of rows processed
-(1 per plain `execute()`, `n` per `executemany()` with `n` rows).
+and `query_i` is the id referenced by rows in `sqllog.csv`.
+`sqllog.csv` has one row per individual `execute()` / `executemany()` call,
+`(transaction_i, execute_i, query_i, start_ns, duration_ns, nrecords)`,
+where `duration_ns` is that single call's wall time and `nrecords` is the number
+of parameter tuples passed to `executemany()`, or -1 for a plain `execute()` call.
+Per-query mean and median timings are computed from these individual call durations,
+so outlier calls (e.g. one slow `execute()` among many fast ones) remain visible
+even after aggregating by call site.
 The perf.data file is the raw output of a Linux `perf record` capture
 (as produced by `stepup build --perf`, which sets `STEPUP_BUILD_PERF`).
 It is analyzed in place via `perf report --stdio -g none`,
@@ -48,6 +53,7 @@ import json
 import pstats
 import re
 import shutil
+import statistics
 import subprocess
 from pathlib import Path
 
@@ -65,6 +71,7 @@ from common import (
     ranked_rows,
     section_limit,
     sql_location,
+    sqlcsv_path,
     sqllog_path,
     strip_site_packages,
 )
@@ -146,30 +153,60 @@ def analyze_profile(prof_file: Path, top: int, min_pct: float | None) -> None:
         )
 
 
-def analyze_sqllog(sqllog_file: Path, top: int, min_pct: float | None) -> float:
-    """Print the costliest queries from a SQL query log and return the total wall time."""
-    data = json.loads(sqllog_file.read_text())
+def read_sqllog_csv(sqlcsv_file: Path) -> dict[int, list[int]]:
+    """Parse a `--sqllog` timing CSV file into `{query_i: [duration_ns, ...]}`."""
+    durations: dict[int, list[int]] = {}
+    with open(sqlcsv_file, newline="") as fh:
+        for row in csv.DictReader(fh):
+            durations.setdefault(int(row["query_i"]), []).append(int(row["duration_ns"]))
+    return durations
+
+
+def analyze_sqllog(sqllog_file: Path, sqlcsv_file: Path, top: int, min_pct: float | None) -> float:
+    """Print the costliest queries from a SQL query log and return the total wall time.
+
+    `sqllog_file` is the query/call-site/plan index written when the director exits;
+    `sqlcsv_file` has one row per individual `execute()` / `executemany()` call,
+    written as it happens. The two are joined here by `query_i` to recover, per call
+    site, the total wall time as well as the mean and median duration of individual
+    calls -- the mean/median pair makes outlier calls (e.g. one slow `execute()`
+    among many fast ones) visible even after aggregating by call site.
+    """
+    index = json.loads(sqllog_file.read_text())
+    durations_by_query = read_sqllog_csv(sqlcsv_file)
+    data = []
+    for rec in index:
+        durations = durations_by_query.get(rec["query_i"], [])
+        data.append(
+            {
+                **rec,
+                "count": len(durations),
+                "wtime": sum(durations) / 1e9,
+                "mean_ms": statistics.mean(durations) / 1e6 if durations else 0.0,
+                "median_ms": statistics.median(durations) / 1e6 if durations else 0.0,
+            }
+        )
+
     total_wtime = sum(rec["wtime"] for rec in data)
     distinct_queries = len({rec["query"] for rec in data})
-    print(f"\n=== SQL log: {sqllog_file} ===")
+    print(f"\n=== SQL log: {sqllog_file} + {sqlcsv_file} ===")
     print(f"Distinct call sites: {len(data)}")
     print(f"Distinct queries: {distinct_queries}")
     print(f"Total SQL wall time: {total_wtime:.3f} s")
 
     print(f"\n-- Top {section_limit(top, min_pct)} queries by total wall time --")
     print(
-        f"{'wtime [s]':>10} {'%':>6} {'cov %':>6} {'count':>8} {'avg [ms]':>10}"
-        "                        location  query"
+        f"{'wtime [s]':>10} {'%':>6} {'cov %':>6} {'count':>8} {'mean [ms]':>10} "
+        f"{'median [ms]':>12}           location  query"
     )
     rows = sorted(data, key=lambda rec: -rec["wtime"])
     for rec, running_pct in ranked_rows(rows, top, min_pct, lambda r: r["wtime"], total_wtime):
         wtime, count = rec["wtime"], rec["count"]
-        avg_ms = 1000 * wtime / count if count else 0.0
         flat_query = flatten_query(rec["query"])
         location = sql_location(rec["module_name"], rec["line"])
         print(
             f"{wtime:10.3f} {pct(wtime, total_wtime):6.1f} {running_pct:6.1f} {count:8d} "
-            f"{avg_ms:10.4f}  {location:>30}  {flat_query[:70]}"
+            f"{rec['mean_ms']:10.4f} {rec['median_ms']:12.4f}  {location:>30}  {flat_query[:70]}"
         )
 
     plan_issues = [(rec, classify_plan_lines(rec["plan"])) for rec in data]
@@ -583,6 +620,7 @@ def main() -> None:
 
     prof_file = prof_path(args.suffix)
     sqllog_file = sqllog_path(args.suffix)
+    sqlcsv_file = sqlcsv_path(args.suffix)
     perf_data_file = perf_data_path(args.suffix)
     joblog_file = joblog_path(args.suffix)
 
@@ -600,10 +638,10 @@ def main() -> None:
         print(f"perf.data not found: {perf_data_file}")
 
     total_sql = None
-    if sqllog_file.is_file():
-        total_sql = analyze_sqllog(sqllog_file, args.top, args.min_pct)
+    if sqllog_file.is_file() and sqlcsv_file.is_file():
+        total_sql = analyze_sqllog(sqllog_file, sqlcsv_file, args.top, args.min_pct)
     else:
-        print(f"SQL log not found: {sqllog_file}")
+        print(f"SQL log not found: {sqllog_file} and/or {sqlcsv_file}")
 
     if total_profiled and total_sql:
         sql_pct = pct(total_sql, total_profiled)

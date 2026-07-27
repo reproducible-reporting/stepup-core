@@ -21,7 +21,7 @@ from path import Path
 from .asyncio import stoppable_iterator, wait_for_path
 from .cgroups import cgroup_scope_prefix
 from .config import ConfigLoader
-from .constants import DIRECTOR_LOG, JOBLOG_CSV, PERF_DATA, SQLLOG_JSON, STEPUP_DIR
+from .constants import DIRECTOR_LOG, JOBLOG_CSV, PERF_DATA, SQLLOG_CSV, SQLLOG_JSON, STEPUP_DIR
 from .director import interpret_jobs
 from .reporter import ReporterHandler
 from .rpc import AsyncRPCClient, serve_socket_rpc
@@ -402,7 +402,8 @@ def _add_build_parser(subparsers, loader: ConfigLoader, name: str, help_text: st
         "--sqllog",
         default=False,
         action=argparse.BooleanOptionalAction,
-        help=f"Enable SQLite debug logging and write the recorded log to {SQLLOG_JSON} "
+        help=f"Enable SQLite debug logging: append per-query timing rows to {SQLLOG_CSV} "
+        f"as they execute, and write a query/call-site/plan index to {SQLLOG_JSON} "
         "when the director exits.",
     )
     if WATCHER_AVAILABLE:

@@ -4,6 +4,7 @@
 
 import asyncio
 import contextlib
+import csv
 import inspect
 import json
 import logging
@@ -150,11 +151,45 @@ class QueryLog:
     plan: str = attrs.field()
     """The formatted query plan as returned by `EXPLAIN QUERY PLAN`."""
 
-    wtime: float = attrs.field()
-    """Wall-clock time taken to execute all occurrences of the query, in seconds."""
+    query_i: int = attrs.field()
+    """A unique integer id assigned to this `QueryKey`, referenced by rows in `SQLLOG_CSV`."""
 
-    count: int = attrs.field()
-    """Number of times the query was executed."""
+
+_SQLLOG_CSV_COLUMNS = (
+    "transaction_i",
+    "execute_i",
+    "query_i",
+    "start_ns",
+    "duration_ns",
+    "nrecords",
+)
+"""Column names of the `--sqllog` CSV file, in on-disk order."""
+
+
+def _init_sqllog_csv(path: StrPath) -> None:
+    """(Re)create the SQL query log CSV file at `path` and write its header."""
+    with open(path, "w", newline="") as fh:
+        csv.writer(fh).writerow(_SQLLOG_CSV_COLUMNS)
+
+
+def _append_sqllog_row(
+    path: StrPath,
+    transaction_i: int,
+    execute_i: int,
+    query_i: int,
+    start_ns: int,
+    duration_ns: int,
+    nrecords: int,
+) -> None:
+    """Append one query-execution row to the SQL query log CSV file at `path`.
+
+    The file is opened and closed for every call, so the write reaches disk synchronously
+    and rows stay correctly ordered, mirroring `write_joblog_record()` in `utils.py`.
+    """
+    with open(path, "a", newline="") as fh:
+        csv.writer(fh).writerow(
+            (transaction_i, execute_i, query_i, start_ns, duration_ns, nrecords)
+        )
 
 
 @attrs.define
@@ -173,12 +208,20 @@ class DBSession:
     record: bool = attrs.field(default=False)
     """If True, record SQL debug information for later inspection with `write_log()`."""
 
+    path_sqlcsv: StrPath | None = attrs.field(default=None)
+    """When set, each `execute()` / `executemany()` call appends a timing row to this CSV file."""
+
     _con: sqlite3.Connection | None = attrs.field(init=False, default=None)
     _lock: asyncio.Lock = attrs.field(factory=asyncio.Lock, init=False)
     _cv: ContextVar[sqlite3.Connection | None] = attrs.field(
         factory=lambda: ContextVar("con_cv", default=None), init=False
     )
     _log: dict[QueryKey, QueryLog] = attrs.field(factory=dict, init=False)
+    _transaction_i: int = attrs.field(init=False, default=0)
+    """Incremented once per transaction (each `BEGIN IMMEDIATE` in `__aenter__`)."""
+
+    _execute_i: int = attrs.field(init=False, default=0)
+    """Incremented once per `execute()` / `executemany()` call, while `record` is True."""
 
     #
     # Application lifecycle (Synchronous Context Manager)
@@ -187,6 +230,8 @@ class DBSession:
     def __attrs_post_init__(self) -> None:
         """Open the connection from the start."""
         self._con = connect(self.db_path, **self.connect_kwargs)
+        if self.path_sqlcsv is not None:
+            _init_sqllog_csv(self.path_sqlcsv)
 
     def _close(self) -> None:
         """Close the database connection."""
@@ -202,6 +247,7 @@ class DBSession:
         db_path: str | os.PathLike[str],
         *,
         path_sqllog: StrPath | None = None,
+        path_sqlcsv: StrPath | None = None,
         **connect_kwargs: Any,
     ) -> Iterator[Self]:
         """Open a database connection and yield a DBSession instance for exclusive access.
@@ -211,8 +257,12 @@ class DBSession:
         path_sqllog
             When given, `record` is set to `True` and `write_log()` is called with this path
             when the session is closed.
+        path_sqlcsv
+            When given, `record` is set to `True` and a timing row is appended to this CSV
+            file on every `execute()` / `executemany()` call.
         """
-        db = cls(db_path, connect_kwargs, record=path_sqllog is not None)
+        record = path_sqllog is not None or path_sqlcsv is not None
+        db = cls(db_path, connect_kwargs, record=record, path_sqlcsv=path_sqlcsv)
         with contextlib.ExitStack() as stack:
             stack.callback(db._close)
             if path_sqllog is not None:
@@ -224,9 +274,10 @@ class DBSession:
 
         The file contains a list of records, one per distinct `QueryKey`,
         each merging the key fields (`query`, `module_name`, `line`)
-        with the log fields (`plan`, `wtime`, `count`).
+        with the log fields (`plan`, `query_i`).
         A list is used instead of a mapping keyed by query text,
         because a `QueryKey` cannot be represented as a single JSON object key.
+        `query_i` is the id referenced by the `query_i` column of `SQLLOG_CSV`.
 
         Parameters
         ----------
@@ -252,6 +303,7 @@ class DBSession:
         await self._lock.acquire()
         try:
             self._con.execute("BEGIN IMMEDIATE")
+            self._transaction_i += 1
             self._cv.set(self._con)
         except Exception:
             self._lock.release()
@@ -292,7 +344,7 @@ class DBSession:
         if self.record:
             frame = inspect.currentframe().f_back
             module_name = frame.f_globals.get("__name__", "?")
-            with self._update_log(sql, module_name, frame.f_lineno, 1, args):
+            with self._record_execute(sql, module_name, frame.f_lineno, -1, args):
                 return con.execute(sql, args)
         else:
             return con.execute(sql, args)
@@ -306,7 +358,7 @@ class DBSession:
         if len(seq_of_args) > 0 and self.record:
             frame = inspect.currentframe().f_back
             module_name = frame.f_globals.get("__name__", "?")
-            with self._update_log(
+            with self._record_execute(
                 sql, module_name, frame.f_lineno, len(seq_of_args), seq_of_args[0]
             ):
                 return con.executemany(sql, seq_of_args)
@@ -314,27 +366,46 @@ class DBSession:
             return con.executemany(sql, seq_of_args)
 
     @contextmanager
-    def _update_log(
-        self, sql: str, module_name: str, line: int, count: int, args: Iterable[Any] = ()
+    def _record_execute(
+        self, sql: str, module_name: str, line: int, nrecords: int, args: Iterable[Any] = ()
     ) -> Iterator[None]:
-        """Context manager to update the SQL debug log for a given query and call site."""
+        """Context manager to time one `execute()` / `executemany()` call and log it.
+
+        Parameters
+        ----------
+        nrecords
+            The number of parameter sequences passed to `executemany()`,
+            or -1 for a plain `execute()` call.
+        args
+            The (first) set of query arguments, used for `EXPLAIN QUERY PLAN`
+            the first time this `QueryKey` is seen.
+        """
         key = QueryKey(query=sql, module_name=module_name, line=line)
-        item = self._log.get(key)
-        if item is None:
+        log = self._log.get(key)
+        if log is None:
             con = self._take_con()
             plan_rows = list(con.execute(f"EXPLAIN QUERY PLAN {sql}", args))
             plan = _format_query_plan(plan_rows)
-            item = QueryLog(plan=plan, wtime=0.0, count=0)
-            self._log[key] = item
+            log = QueryLog(plan=plan, query_i=len(self._log))
+            self._log[key] = log
 
-        start_time = time.perf_counter()
+        self._execute_i += 1
+        execute_i = self._execute_i
+        start_ns = time.monotonic_ns()
         try:
             yield
         finally:
-            end_time = time.perf_counter()
-            wtime = end_time - start_time
-            item.wtime += wtime
-            item.count += count
+            duration_ns = time.monotonic_ns() - start_ns
+            if self.path_sqlcsv is not None:
+                _append_sqllog_row(
+                    self.path_sqlcsv,
+                    self._transaction_i,
+                    execute_i,
+                    log.query_i,
+                    start_ns,
+                    duration_ns,
+                    nrecords,
+                )
 
     async def initialize(
         self, application_id: int, schema_version: int, schema_blobs: list[str]
