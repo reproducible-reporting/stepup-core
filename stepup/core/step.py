@@ -614,6 +614,17 @@ class Step(Node):
         Their `DEFAULT`s (0 and 1) are exactly the conservative "not yet known, must be recomputed"
         state a new/recycled step should start in.
 
+        `_check_after` is always seeded to `1`, even though a fresh `OPTIONAL` step's
+        `_implied_need` already equals its seeded value (`OPTIONAL` is `Need`'s minimum, so there
+        is nothing to recompute) -- *unless* this is `Trellis.create()`'s partial-recycle branch
+        (`if node is not None:`), which cuts the node's sources but keeps its sinks.
+        A recycled `OPTIONAL` step can then inherit a stale sink whose downstream consumer would
+        elevate its true `_implied_need`, and nothing forces the recompute unless a *new* dependency
+        insert happens to touch this node afterward (see `step_dependency_check_after_ins`).
+        Seeding `1` unconditionally costs one extra (usually no-op) row in the first iteration of
+        `Scheduler._update_meta_after()`, in exchange for not depending on that unstated call-order
+        assumption.
+
         `duration` falls back to `1.0` (matching the column's own `DEFAULT`) when not given,
         since a brand-new step has no prior measurement to seed it with.
 
@@ -632,7 +643,7 @@ class Step(Node):
             "(node, state, need, duration, subshell, _safe, _check_safe, _safe_ignoring_hold, "
             "_implied_need, _check_after, _has_hash) "
             "VALUES(:node, :state, :need, :duration, :subshell, :safe, :check_safe, :safe, "
-            ":implied_need, :check_need, "
+            ":implied_need, 1, "
             "(SELECT EXISTS(SELECT 1 FROM step_hash WHERE node = :node)))",
             {
                 "node": self.i,
@@ -643,7 +654,6 @@ class Step(Node):
                 "safe": int(safe),
                 "check_safe": int(not safe),
                 "implied_need": need.value,
-                "check_need": int(need != Need.OPTIONAL),
             },
         )
 

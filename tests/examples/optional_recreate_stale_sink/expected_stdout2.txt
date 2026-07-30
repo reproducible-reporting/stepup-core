@@ -1,0 +1,25 @@
+  STARTUP │ Watching 3 director(y|ies)
+  STARTUP │ Checking 6 file(s) for changes
+  UPDATED │ a/plan.py (digest c7796481 ➜ d93c74a2, size 248 ➜ 260)
+  UPDATED │ a/hop1.txt (digest 5891b5b5 ➜ e258d248)
+    PHASE │ build
+    START │ ./plan.py  # wd=a
+  SUCCESS │ ./plan.py  # wd=a
+    START │ cp hop1.txt hop2.txt  # wd=a
+  SUCCESS │ cp hop1.txt hop2.txt  # wd=a
+ DIRECTOR │ Ran 4 job(s).
+  WARNING │ 1 step(s) remained pending ...
+─────────────────────────────── Detached inputs ────────────────────────────────
+            OUTDATED  a/hop2.txt
+───────────────────────────────── PENDING Step ─────────────────────────────────
+Reason                required inputs are unavailable
+Command               cp ../a/hop2.txt done.txt
+Working directory     b
+Inputs      OUTDATED  (a/hop2.txt)
+Outputs     OUTDATED  b/done.txt
+────────────────────────────────────────────────────────────────────────────────
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+ DIRECTOR │ See you!
