@@ -108,11 +108,12 @@ async def revert_optional(db: DBSession, workflow: Workflow, reporter: ReporterC
         db.execute(DROP_OPTIONAL_STEP_TABLE)
         db.execute(DROP_OPTIONAL_FILE_TABLE)
     # Report the reverted steps and the files that are marked for deletion.
-    if nstep > 0 or len(to_be_deleted) > 0:
+    if nstep > 0:
+        await reporter("WARNING", f"Reverted {nstep} optional step(s) to PENDING.")
+    if len(to_be_deleted) > 0:
         await reporter(
             "WARNING",
-            f"Reverted {nstep} optional step(s) to PENDING and "
-            f"marked {len(to_be_deleted)} output/volatile file(s) for deletion.",
+            f"Marked {len(to_be_deleted)} old optional (volatile) output file(s) for deletion.",
         )
 
 

@@ -1,0 +1,58 @@
+#!/usr/bin/env -S bash -x
+source ../example.rc
+
+# Run the example with plan1
+cp plan1.py plan.py
+sb -j 1 -w & # > current_stdout1.txt &
+
+# Get the graph after completion of the pending steps.
+stepup wait
+stepup graph current_graph1
+stepup join
+
+# Wait for background processes, if any.
+wait
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit 1
+[[ -f hop1.txt ]] || exit 1
+[[ ! -f hop2.txt ]] || exit 1
+[[ ! -f sub/hop3.txt ]] || exit 1
+
+
+# Run the example with plan1
+cp plan2.py plan.py
+sb -j 1 -w & # > current_stdout2.txt &
+
+# Get the graph after completion of the pending steps.
+stepup wait
+stepup graph current_graph2
+stepup join
+
+# Wait for background processes, if any.
+wait
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit 1
+[[ -f hop1.txt ]] || exit 1
+[[ -f hop2.txt ]] || exit 1
+[[ -f sub/hop3.txt ]] || exit 1
+
+
+# Run the example with plan1
+cp plan1.py plan.py
+stepup -l INFO build -j 1 -w & # > current_stdout3.txt &
+
+# Get the graph after completion of the pending steps.
+stepup wait
+stepup graph current_graph3
+stepup join
+
+# Wait for background processes, if any.
+wait
+
+# Check files that are expected to be present and/or missing.
+[[ -f plan.py ]] || exit 1
+[[ -f hop1.txt ]] || exit 1
+[[ ! -f hop2.txt ]] || exit 1
+[[ ! -f sub/hop3.txt ]] || exit 1

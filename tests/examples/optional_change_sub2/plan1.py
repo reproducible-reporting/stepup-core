@@ -1,0 +1,5 @@
+#!/usr/bin/env python3
+from stepup.core.api import copy, static
+
+static("hop1.txt", "sub/plan.py")
+copy("hop1.txt", "hop2.txt", optional=True)

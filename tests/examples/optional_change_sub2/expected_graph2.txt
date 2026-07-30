@@ -1,0 +1,64 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   root:
+              source   file:plan.py
+             product   file:hop1.txt
+             product   file:sub/plan.py
+             product   step:./plan.py  # wd=sub
+             product   step:cp -p hop1.txt hop2.txt
+
+file:hop1.txt
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:cp -p hop1.txt hop2.txt
+
+file:sub/plan.py
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:./plan.py  # wd=sub
+
+step:cp -p hop1.txt hop2.txt
+               state = SUCCEEDED
+                need = DEFAULT (implied by sinks > OPTIONAL)
+             creator   step:./plan.py
+              source   file:hop1.txt
+             product   file:hop2.txt
+                sink   file:hop2.txt
+
+file:hop2.txt
+               state = BUILT
+             creator   step:cp -p hop1.txt hop2.txt
+              source   step:cp -p hop1.txt hop2.txt
+                sink   step:cp -p ../hop2.txt hop3.txt  # wd=sub
+
+step:./plan.py  # wd=sub
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./plan.py
+              source   file:sub/plan.py
+             product   step:cp -p ../hop2.txt hop3.txt  # wd=sub
+
+step:cp -p ../hop2.txt hop3.txt  # wd=sub
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py  # wd=sub
+              source   file:hop2.txt
+             product   file:sub/hop3.txt
+                sink   file:sub/hop3.txt
+
+file:sub/hop3.txt
+               state = BUILT
+             creator   step:cp -p ../hop2.txt hop3.txt  # wd=sub
+              source   step:cp -p ../hop2.txt hop3.txt  # wd=sub

@@ -18,7 +18,7 @@ Same env var         STEPUP_PATH_FILTER (unset)
     START │ cp -p converted1.txt used.txt
   SUCCESS │ cp -p converted1.txt used.txt
  DIRECTOR │ Ran 4 job(s).
-  WARNING │ Reverted 0 optional step(s) to PENDING and marked 1 output/volatile file(s) for deletion.
+  WARNING │ Marked 1 old optional (volatile) output file(s) for deletion.
  DIRECTOR │ Trying to remove 1 outdated output(s)
    REMOVE │ converted3.txt
   WARNING │ Check logs: .stepup/warning.log
