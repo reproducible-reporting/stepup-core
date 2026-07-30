@@ -2,3 +2,4 @@
 current_*
 plan.py
 sub/copy.txt
+!sub/plan.py

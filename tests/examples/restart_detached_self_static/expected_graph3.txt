@@ -28,24 +28,16 @@ step:./plan.py  # wd=sub
              creator   step:./plan.py
               source   file:sub/data.txt [amended]
               source   file:sub/plan.py
+             product   file:sub/copy.txt
              product   file:sub/data.txt
-             product   step:cp -p data.txt copy.txt  # wd=sub
+                sink   file:sub/copy.txt [amended]
 
 file:sub/data.txt
                state = STATIC
              creator   step:./plan.py  # wd=sub
                 sink   step:./plan.py  # wd=sub
-                sink   step:cp -p data.txt copy.txt  # wd=sub
-
-step:cp -p data.txt copy.txt  # wd=sub
-               state = SUCCEEDED
-                need = DEFAULT
-             creator   step:./plan.py  # wd=sub
-              source   file:sub/data.txt
-             product   file:sub/copy.txt
-                sink   file:sub/copy.txt
 
 file:sub/copy.txt
                state = BUILT
-             creator   step:cp -p data.txt copy.txt  # wd=sub
-              source   step:cp -p data.txt copy.txt  # wd=sub
+             creator   step:./plan.py  # wd=sub
+              source   step:./plan.py  # wd=sub
