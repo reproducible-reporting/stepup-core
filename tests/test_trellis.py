@@ -120,9 +120,9 @@ class Foo(Node):
         row = self.db.execute("SELECT value FROM foo WHERE node = ?", (self.i,)).fetchone()
         yield "value", str(row[0])
 
-    def discard(self):
-        """Clean up a detached node because it loses a product node."""
-        self.db.execute("INSERT INTO log VALUES(?)", (f"discard {self.key()}",))
+    def lost_product(self):
+        """Invalidate cached results because a product of this detached node was removed."""
+        self.db.execute("INSERT INTO log VALUES(?)", (f"lost_product {self.key()}",))
 
     def clean(self):
         """Perform a cleanup right before the detached node is removed from the graph."""
@@ -413,6 +413,8 @@ async def test_chain(lt):
             "init f:three",
             "init f:four",
             "clean f:four",
+            # foo0 lost foo4 to the cleanup, but survives it as a source of the attached foo2.
+            "lost_product f:zero",
         ]
 
 
@@ -799,8 +801,12 @@ async def test_relocate_nested_detached(lt):
             "init f:2",
             "init f:3",
             "init f:4",
-            "discard f:1",
+            # foo1 lost foo2 to foo4.
+            "lost_product f:1",
             "clean f:3",
+            # foo1 also lost foo3, deleted by the cleanup above.
+            # It survives the cleanup itself, because foo2 is an attached sink of foo1.
+            "lost_product f:1",
         ]
 
 

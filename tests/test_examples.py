@@ -190,6 +190,7 @@ EXAMPLES = [
     "restart_changes",
     "restart_delete_nglob",
     "restart_detached",
+    "restart_detached_self_static",
     "restart_failed",
     "restart_fix_bug",
     "restart_input",

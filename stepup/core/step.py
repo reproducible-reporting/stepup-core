@@ -701,29 +701,16 @@ class Step(Node):
             if step_hash.inp_info is not None:
                 yield "explained", "yes"
 
-    def clean(self):
-        """Perform a cleanup right before the detached node is removed from the graph.
+    def lost_product(self):
+        """Invalidate the step hash because a product of this detached step was lost.
 
-        The satellite rows (step, env_var, nglob_multi, step_hash, step_outcome,
-        step_resource, step_subprocess) are removed automatically by `ON DELETE CASCADE`
-        when the node row is deleted, so only the dependency edges are handled here.
+        A product is lost when `Trellis.clean` deletes it
+        or when another creator takes it over.
+        The step itself stays recyclable, but its stored hash no longer describes
+        a complete run: skipping the step would leave the lost products unbuilt.
+        Without a hash, a recycled step always runs again and recreates them.
         """
-        self.del_sources()
-        for sink in self.sinks(include_detached=True):
-            sink.del_sources([self])
-
-    def discard(self):
-        """Clean up a detached node because it loses a product node.
-
-        Completely remove this step, making reuse impossible.
-        """
-        for sink in self.sinks(include_detached=True):
-            sink.del_sources([self])
-        for product in self.products():
-            product.detach()
-        self.detach()
-        self.clean()
-        self.db.execute("DELETE FROM node WHERE i = ?", (self.i,))
+        self.delete_hash()
 
     def can_recycle(
         self,

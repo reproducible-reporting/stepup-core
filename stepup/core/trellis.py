@@ -151,7 +151,7 @@ class Node:
     - `initialize` to create or update rows for new nodes outside the default Trellis tables.
     - `validate` to check if the necessary rows outside the default Trellis tables are made.
     - `format_properties` to define the properties of the node.
-    - `discard` is called when a detached node must be cleaned up because it loses a product node.
+    - `lost_product` is called when a detached node loses a product node.
     - `clean` to decide if a detached node can be removed and to release resources.
     - `can_recycle` to decide if a detached node can be fully recycled by `Trellis.recycle`.
     - `update_recycled` to update the mutable declared properties after a full recycle.
@@ -207,16 +207,23 @@ class Node:
         """Iterate over key-value pairs with the properties of the node, for terminal display."""
         yield from []
 
-    def discard(self):
-        """Clean up a detached node because it loses a product node.
-
-        Implementations in subclasses should remove all related info,
-        all edges, and make sure the node is deleted immediately.
-        """
-        raise NotImplementedError
-
     def clean(self):
         """Perform a cleanup right before the detached node is removed from the graph."""
+
+    def lost_product(self):
+        """Invalidate cached results because a product of this detached node was removed.
+
+        This keeps the node (and its recyclable metadata) in the graph:
+        only `Trellis.clean` ever deletes nodes.
+        It is called on a detached node that loses a product,
+        either because the product was deleted (`Trellis.clean`)
+        or because another creator took it over (`Trellis.create` and `Node.recycle`).
+        Such a node is no longer a faithful record of what it created,
+        so subclasses must drop whatever would let them be skipped when recycled later.
+
+        The default implementation does nothing,
+        which is correct for nodes that store no such result.
+        """
 
     def can_recycle(self, **kwargs) -> bool:
         """Decide whether this detached node may be fully recycled by `Trellis.recycle`.
@@ -416,11 +423,12 @@ class Node:
         self.db.execute(
             "UPDATE node SET creator = ?, detached = FALSE WHERE i = ?", (new_creator.i, self.i)
         )
-        # Clean up the old creator if it exists.
+        # The old creator, if any, no longer records everything it created.
+        # It is left in the graph (it may still be recycled), but not as a skippable node.
         if old_creator is not None:
             if not old_creator_detached:
                 raise GraphError("Old creator of detached node is not detached.")
-            old_creator.discard()
+            old_creator.lost_product()
         # Propagate the detached=FALSE property to all product nodes.
         self.db.execute(RECURSIVELY_SET_DETACHED, (self.i, False))
 
@@ -517,13 +525,16 @@ class Root(Node):
         """Always raise, since the root node is never detached and thus never cleaned up."""
         raise AssertionError("Root node cannot be cleaned")
 
-    def discard(self):
+    def lost_product(self):
         """Always raise, since the root node can never lose a product this way.
 
-        `discard` is only called on an already-detached creator,
-        and the root node can never be detached.
+        `lost_product` is only called on a detached node:
+        `Trellis.clean` only deletes detached nodes,
+        and `Trellis.create` and `Node.recycle` only take a product away
+        from an already-detached creator.
+        The root node is never detached.
         """
-        raise AssertionError("Root node cannot be detached because that would mean it is detached.")
+        raise AssertionError("Root node cannot be the creator of a detached node.")
 
 
 @attrs.define(eq=False)
@@ -813,12 +824,13 @@ class Trellis:
                 "UPDATE node SET creator = ?, detached = ? WHERE i = ?",
                 (creator_i, detached, node.i),
             )
-            # Discard the old creator (if any) immediately.
-            # It lost a product and is therefore no longer recyclable, so it must be removed now.
+            # The old creator, if any, no longer records everything it created.
+            # It is left in the graph (it may still be recycled), but not as a skippable node.
+            # It is removed by the next `Trellis.clean` unless it is recycled before that.
             if old_creator is not None:
                 if not old_creator_detached:
                     raise GraphError("Old creator of detached node is not detached.")
-                old_creator.discard()
+                old_creator.lost_product()
             # Cut all ties to sources, so this node starts from a clean slate.
             node.del_sources()
             # Since this node is recreated, it cannot have created other nodes (yet).
@@ -890,20 +902,68 @@ class Trellis:
         return node
 
     def clean(self):
-        """Delete all detached nodes that can be removed safely."""
+        """Delete all detached nodes that can be removed safely.
+
+        This is the only place where nodes are deleted from the graph.
+        Everything else that lets go of a node merely detaches it,
+        so this method decides when it is actually gone.
+        """
+        # Creators of the deleted nodes, checked after the loop has settled.
+        creator_is = set()
         cleaned_some = True
         while cleaned_some:
             cleaned_some = False
-            # Look for detached nodes without sinks or products.
-            # As long as nodes have sinks or products, they cannot be removed.
+            # Look for detached nodes that are leaves in both graphs:
+            # no products (no outgoing creator edge) and no sinks (no outgoing dependency edge).
+            # Such a node is referenced by no other row, so it can be deleted outright.
+            # (`node.creator` and `dependency.source` are foreign keys without ON DELETE action,
+            # so deleting a node that still has products or sinks fails on a constraint.)
+            #
+            # The two conditions hold back deletion for different reasons:
+            #
+            # * Products of a detached node are themselves detached, always:
+            #   `Node.detach` propagates the flag recursively over creator -> product edges, and
+            #   `_check_consistency` verifies this both per row and globally (reachability).
+            #   Every product is therefore a candidate for this same loop,
+            #   and the products condition merely forces the cascade to run bottom-up.
+            # * Sinks may well be attached, because detachment propagates along creator edges
+            #   only, never along dependency edges. A detached file that is still an input of an
+            #   attached step must be kept: deleting it would silently drop that step's input.
+            #   Such nodes are reported to the user instead, see `Workflow.detached_inp_paths`.
+            #
+            # The intended fixed point is therefore: every surviving detached node is held
+            # (directly or indirectly) by an attached sink.
+            # Note that a cycle of creator and dependency edges within the detached part of the
+            # graph is a fixed point of this loop as well, without any attached sink involved,
+            # e.g. a step that declares one of its own products as an (amended) input.
+            # Whatever the reason for its survival, a detached node that lost a product this way
+            # is no longer a complete record of what it created, see after the loop.
             query = (
-                "SELECT i, kind, label FROM node WHERE detached AND "
+                "SELECT i, kind, label, creator FROM node WHERE detached AND "
                 "NOT EXISTS (SELECT 1 FROM node AS cnode WHERE node.i = cnode.creator) AND "
                 "NOT EXISTS (SELECT 1 FROM dependency WHERE node.i = dependency.source)"
             )
-            for i, kind, label in self.db.execute(query):
+            for i, kind, label, creator_i in self.db.execute(query):
                 node = self.node_classes[kind](self, i, label)
                 cleaned_some = True
                 node.del_sources()
                 node.clean()
                 self.db.execute("DELETE FROM node where i = ?", (i,))
+                creator_is.discard(i)
+                if creator_i is not None:
+                    creator_is.add(creator_i)
+
+        # A creator that lost a product above and is still present no longer records everything
+        # it created, so it cannot be trusted to reproduce its products when it is recycled later.
+        # It survived either because a cycle keeps it alive,
+        # or because one of its other products is (indirectly) held by an attached sink.
+        # The node itself is worth keeping: it is still recyclable, just not skippable.
+        # This must happen after the loop has settled, so it does not fire for creators
+        # that a later iteration deletes anyway.
+        for creator_i in creator_is:
+            row = self.db.execute(
+                "SELECT kind, label FROM node WHERE i = ?", (creator_i,)
+            ).fetchone()
+            if row is not None:
+                kind, label = row
+                self.node_classes[kind](self, creator_i, label).lost_product()

@@ -122,9 +122,9 @@ class File(Node):
         if not file_hash.is_unknown:
             yield "digest", format_digest(file_hash.digest)
 
-    def discard(self):
-        """Clean up a detached node because it loses a product node."""
-        raise AssertionError("A file node never has products, so it cannot be detached.")
+    def lost_product(self):
+        """Always raise, since a file node never has products and thus never loses one."""
+        raise AssertionError("A file node never has products, so it cannot lose one.")
 
     def clean(self):
         """Perform a cleanup right before the detached node is removed from the graph.

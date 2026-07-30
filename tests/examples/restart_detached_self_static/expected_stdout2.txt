@@ -1,0 +1,12 @@
+  STARTUP │ Watching 2 director(y|ies)
+  STARTUP │ Checking 4 file(s) for changes
+  UPDATED │ plan.py (digest 30300625 ➜ 40f40528, size 120 ➜ 81)
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+ DIRECTOR │ Ran 2 job(s).
+ DIRECTOR │ Trying to remove 1 outdated output(s)
+   REMOVE │ sub/copy.txt
+    PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+ DIRECTOR │ See you!

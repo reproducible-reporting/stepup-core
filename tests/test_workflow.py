@@ -1841,6 +1841,39 @@ async def test_static_tree_clean(wfp: Workflow):
         assert plan.get_state() == StepState.PENDING
 
 
+async def test_clean_cycle_invalidates_hash(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["sub/plan.py"])
+        wfp.define_step(plan, "./plan.py", inp_paths=["sub/plan.py"], workdir="sub")
+        sub = wfp.find(Step, "./plan.py  # wd=sub")
+
+        # The sub plan declares data.txt static and then uses it as an input of itself,
+        # a cycle in the combined provenance and dependency graph.
+        declare_static(wfp, sub, ["sub/data.txt"])
+        amend_step(wfp, sub, inp_paths=["sub/data.txt"])
+        wfp.define_step(
+            sub,
+            "cp data.txt copy.txt",
+            inp_paths=["data.txt"],
+            out_paths=["copy.txt"],
+            workdir="sub",
+        )
+        copy = wfp.find(Step, "cp data.txt copy.txt  # wd=sub")
+        sub.completed(StepHash(b"sths", None, b"zzz", None), False)
+        assert sub.get_hash() is not None
+
+        # Detach the sub plan step and clean up. The cycle survives, the rest does not.
+        sub.detach()
+        wfp.clean()
+        assert sub.is_alive()
+        assert wfp.find(File, "sub/data.txt").is_alive()
+        assert not copy.is_alive()
+
+        # Because the sub plan step lost a product, it must not be skipped when recycled.
+        assert sub.get_hash() is None
+
+
 async def test_static_tree_subdir(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
@@ -2456,6 +2489,7 @@ async def test_step_lost_child(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "prog", out_paths=["data.txt"])
         step = wfp.find(Step, "prog")
+        step.completed(StepHash(b"prog", None, b"prog", None), False)
         step.detach()
         assert step.is_detached()
 
@@ -2465,8 +2499,66 @@ async def test_step_lost_child(wfp: Workflow):
         data = wfp.find(File, "data.txt")
         assert data.creator() == wfp.root
 
-        # Check that step of prog is gone
+        # The step of prog is kept for a possible recycle, but it lost data.txt.
+        # It must not be skipped anymore, and it can no longer be recycled as the step
+        # that declares data.txt, since that output is not one of its declared outputs.
+        assert step.is_alive()
+        assert step.get_hash() is None
+        assert list(step.out_paths(amended=False, include_detached=True)) == []
+        assert not step.can_recycle(out_paths=["data.txt"])
+
+        # The next cleanup removes it.
+        wfp.clean()
+        assert not step.is_alive()
         assert list(wfp.nodes(Step, include_detached=True)) == [plan]
+
+
+async def test_step_lost_amended_child(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "prog")
+        step = wfp.find(Step, "prog")
+        _amend(wfp, step, out_paths=["data.txt"])
+        step.completed(StepHash(b"prog", None, b"prog", None), False)
+        assert step.get_hash() is not None
+        step.detach()
+
+        # Simulate creation of new data.txt
+        declare_static(wfp, wfp.root, ["data.txt"])
+        assert wfp.find(File, "data.txt").creator() == wfp.root
+
+        # Amended outputs are not compared by can_recycle, so redeclaring the step recycles it.
+        # It must run again to recreate data.txt, i.e. it must have lost its hash.
+        assert step.get_hash() is None
+        wfp.define_step(plan, "prog")
+        again = wfp.find(Step, "prog")
+        assert again.i == step.i
+        assert not again.is_detached()
+        assert again.get_hash() is None
+
+
+async def test_step_lost_recycled_child(wfp: Workflow):
+    """A detached step loses a created step to a new creator that recycles it."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub_plan")
+        sub_plan = wfp.find(Step, "sub_plan")
+        wfp.define_step(sub_plan, "work")
+        work = wfp.find(Step, "work")
+        sub_plan.completed(StepHash(b"sub_plan", None, b"sub_plan", None), False)
+        work.completed(StepHash(b"work", None, b"work", None), False)
+        sub_plan.detach()
+        assert work.is_detached()
+
+        # The top-level plan declares the same step itself, which recycles it as is.
+        wfp.define_step(plan, "work")
+        assert wfp.find(Step, "work").i == work.i
+        assert not work.is_detached()
+        assert work.get_hash() is not None
+
+        # The sub plan lost work and must not be skipped when it is recycled later.
+        assert sub_plan.is_alive()
+        assert sub_plan.get_hash() is None
 
 
 async def test_static_tree_lost_child(wfp: Workflow):
@@ -2476,6 +2568,7 @@ async def test_static_tree_lost_child(wfp: Workflow):
         wfp.define_step(plan, "prog")
         prog = wfp.find(Step, "prog")
         wfp.register_static_tree(prog, "data")
+        tree = wfp.find(StaticTree, "data/")
 
         # Simulate the creation of a static data/foo.txt through the static tree.
         to_check = wfp.define_step(prog, "work", inp_paths=["data/foo.txt"])
@@ -2497,8 +2590,43 @@ async def test_static_tree_lost_child(wfp: Workflow):
         data = wfp.find(File, "data/foo.txt")
         assert data.creator() == wfp.root
 
-        # Check that step of prog is gone
+        # The static tree is kept until the next cleanup, but it is detached and must
+        # therefore not claim any new file.
+        assert tree.is_alive()
+        assert tree.is_detached()
+        wfp.define_step(plan, "other", inp_paths=["data/bar.txt"])
+        assert wfp.find(File, "data/bar.txt").creator() is None
+
+        # The next cleanup removes it.
+        wfp.clean()
+        assert not tree.is_alive()
         assert list(wfp.nodes(StaticTree, include_detached=True)) == []
+
+
+async def test_static_tree_lost_child_reregister(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "prog")
+        prog = wfp.find(Step, "prog")
+        wfp.register_static_tree(prog, "data")
+        tree = wfp.find(StaticTree, "data/")
+        wfp.define_step(prog, "work", inp_paths=["data/foo.txt"])
+        wfp.update_file_hashes(
+            {"data/foo.txt": fake_hash("data/foo.txt")}, HashUpdateCause.CONFIRMED
+        )
+
+        # The root takes data/foo.txt away from the static tree.
+        prog.detach()
+        wfp.declare_unconfirmed(wfp.root, ["data/foo.txt"])
+        assert tree.is_detached()
+
+        # A new creator can still register the same static tree, reusing the node.
+        wfp.define_step(plan, "prog2")
+        prog2 = wfp.find(Step, "prog2")
+        wfp.register_static_tree(prog2, "data")
+        new_tree = wfp.find(StaticTree, "data/")
+        assert new_tree.i == tree.i
+        assert new_tree.creator() == prog2
 
 
 async def test_consistency_parent(wfp: Workflow):
@@ -2842,16 +2970,17 @@ async def test_step_outcome_truncated_on_store(wfp: Workflow):
         )
 
 
-async def test_step_outcome_discard_no_fk_error(wfp: Workflow):
-    """discard() removes the step row (and implicitly its outcome columns)."""
+async def test_step_outcome_clean_no_fk_error(wfp: Workflow):
+    """clean() removes the step row (and implicitly its outcome columns)."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo hi")
         step = wfp.find(Step, "echo hi")
         step.store_outcome(ChildOutcome(0, "data\n", "oops\n"), 0)
         step_i = step.i
-        step.discard()
-        # After discard() deletes the node row, the step no longer exists in the database.
+        step.detach()
+        wfp.clean()
+        # After clean() deletes the node row, the step no longer exists in the database.
         assert wfp.db.execute("SELECT 1 FROM step WHERE node = ?", (step_i,)).fetchone() is None
 
 
@@ -2941,16 +3070,17 @@ async def test_step_subprocess_reset_for_rerun(wfp: Workflow):
         assert rows == []
 
 
-async def test_step_subprocess_discard_no_fk_error(wfp: Workflow):
-    """discard() removes recorded subprocesses (clean() runs before node deletion, no FK error)."""
+async def test_step_subprocess_clean_no_fk_error(wfp: Workflow):
+    """clean() removes recorded subprocesses of a deleted step, without an FK error."""
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "echo hi")
         step = wfp.find(Step, "echo hi")
         step.record_subprocess("echo hi", ".", None, 0, False, "in", "out", "err")
-        # discard() deletes the node row, and the step_subprocess rows are removed automatically
+        # clean() deletes the node row, and the step_subprocess rows are removed automatically
         # by the ON DELETE CASCADE foreign key.
-        step.discard()
+        step.detach()
+        wfp.clean()
         query = "SELECT * FROM step_subprocess WHERE node = ? ORDER BY rowid"
         rows = wfp.db.execute(query, (step.i,)).fetchall()
         assert rows == []

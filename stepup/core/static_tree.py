@@ -22,13 +22,10 @@ class StaticTree(Node):
         """Always raise, since a static tree does not use sources."""
         raise NotImplementedError("A static tree does not use sources.")
 
-    def discard(self):
-        """Clean up a detached node because it loses a product node.
+    def lost_product(self):
+        """Do nothing, since a static tree has no cached result that could go stale.
 
-        Completely remove this static tree, making reuse impossible.
+        A static tree only declares files static;
+        it is never skipped and stores nothing that a lost product would invalidate.
+        It is removed by the next `Trellis.clean`, unless a new creator recycles it first.
         """
-        for product in self.products():
-            product.detach()
-        self.detach()
-        self.clean()
-        self.db.execute("DELETE FROM node WHERE i = ?", (self.i,))
