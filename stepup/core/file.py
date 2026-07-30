@@ -33,13 +33,21 @@ CREATE TABLE IF NOT EXISTS file (
 -- A hash is only meaningful for a file whose content is known and trusted
 -- (STATIC/BUILT/OUTDATED); null it out whenever the state moves to MISSING, AWAITED or
 -- VOLATILE, so File.set_state does not have to special-case the reset itself.
--- UNCONFIRMED is deliberately excluded: a file being redeclared static must keep whatever
--- hash it already had (if any), so FileHash.regen() can skip recomputing it when the file
--- on disk is unchanged. Do not add UNCONFIRMED here, and do not add `hash` to the `SET`
--- clause of the upsert in File.initialize() -- both would silently defeat that optimization.
+-- UNCONFIRMED is only partly excluded: a file being redeclared static keeps a hash that came
+-- from a previous STATIC state, so FileHash.regen() can skip recomputing it when the file on
+-- disk is unchanged. A hash that came from BUILT or OUTDATED reflects what a step produced,
+-- not a confirmed source's content, so it must not survive a recycle into UNCONFIRMED -- that
+-- would let a leftover build product be silently adopted as a trusted source. Do not add
+-- `hash` to the `SET` clause of the upsert in File.initialize() -- that would defeat the
+-- STATIC-origin optimization this trigger is carving the exception for.
 CREATE TRIGGER IF NOT EXISTS file_clear_hash AFTER UPDATE OF state ON file
-WHEN NEW.state IN ({FileState.MISSING.value}, {FileState.AWAITED.value}, {FileState.VOLATILE.value})
-     AND NEW.hash IS NOT NULL
+WHEN (
+    NEW.state IN ({FileState.MISSING.value}, {FileState.AWAITED.value}, {FileState.VOLATILE.value})
+    OR (
+        NEW.state = {FileState.UNCONFIRMED.value}
+        AND OLD.state IN ({FileState.BUILT.value}, {FileState.OUTDATED.value})
+    )
+) AND NEW.hash IS NOT NULL
 BEGIN
     UPDATE file SET hash = NULL WHERE node = NEW.node;
 END;

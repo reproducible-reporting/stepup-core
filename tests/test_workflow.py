@@ -2629,6 +2629,99 @@ async def test_static_tree_lost_child_reregister(wfp: Workflow):
         assert new_tree.creator() == prog2
 
 
+def _build_and_leave_behind(wfp: Workflow, target_state: FileState) -> tuple[Step, File]:
+    """Build `data/foo.txt`, bring it to `target_state`, then detach its creator.
+
+    Simulates a step that built a file and was subsequently dropped from `plan.py`,
+    leaving its output behind as an untracked, detached file still carrying its
+    build-time hash. `target_state` must be `FileState.BUILT` or `FileState.OUTDATED`.
+    """
+    plan = wfp.find(Step, "./plan.py")
+    wfp.define_step(plan, "prog", out_paths=["data/foo.txt"])
+    prog = wfp.find(Step, "prog")
+    wfp.update_file_hashes({"data/foo.txt": fake_hash("data/foo.txt")}, HashUpdateCause.SUCCEEDED)
+    foo = wfp.find(File, "data/foo.txt")
+    assert foo.get_state() == FileState.BUILT
+    if target_state == FileState.OUTDATED:
+        # Demote BUILT -> OUTDATED (e.g. an input changed), still keeping the (now stale) hash.
+        step = wfp.find(Step, "prog")
+        step.set_state(StepState.SUCCEEDED)
+        wfp.mark_step_pending(step)
+        foo = wfp.find(File, "data/foo.txt")
+    assert foo.get_state() == target_state
+    assert not foo.get_hash().is_unknown
+
+    # Simulate plan.py no longer declaring "prog": data/foo.txt is now a leftover.
+    prog.detach()
+    assert foo.is_detached()
+    return prog, foo
+
+
+@pytest.mark.parametrize("target_state", [FileState.BUILT, FileState.OUTDATED])
+async def test_static_tree_adoption_clears_stale_build_hash(wfp: Workflow, target_state: FileState):
+    """A BUILT/OUTDATED file left behind by a removed step must be re-hashed once adopted.
+
+    Its stored hash is build-time provenance, not a confirmed source's content, so
+    `register_static_tree`'s eager adoption sweep must not let it survive the recycle into
+    UNCONFIRMED the way a STATIC-origin hash does (`test_static_tree_lost_child`).
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        _, foo = _build_and_leave_behind(wfp, target_state)
+
+        to_check = wfp.register_static_tree(plan, "data")
+        assert to_check == {"data/foo.txt": FileHash.unknown()}
+        assert foo.get_state() == FileState.UNCONFIRMED
+        assert foo.get_hash().is_unknown
+
+
+@pytest.mark.parametrize("target_state", [FileState.BUILT, FileState.OUTDATED])
+async def test_supply_file_clears_stale_build_hash_on_lazy_adoption(
+    wfp: Workflow, target_state: FileState
+):
+    """The lazy adoption path (`_resolve_supply_file`) must clear a stale BUILT/OUTDATED hash too.
+
+    Fixing only `register_static_tree`'s eager sweep is not enough: a leftover build product
+    that is only consumed later as a step input goes through this second call site, which must
+    apply the same origin-state discrimination.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        _, foo = _build_and_leave_behind(wfp, target_state)
+
+        # Declare the static tree directly, bypassing the eager adoption sweep, as a stand-in
+        # for "the tree already exists and does not (yet) cover this leftover file."
+        wfp.create(StaticTree, plan, "data/")
+        assert foo.is_detached()
+
+        to_check = wfp.define_step(plan, "other", inp_paths=["data/foo.txt"])
+        assert to_check == {"data/foo.txt": FileHash.unknown()}
+        assert foo.get_state() == FileState.UNCONFIRMED
+        assert foo.get_hash().is_unknown
+
+
+async def test_awaited_redeclare_unaffected_by_stale_build_hash_clear(wfp: Workflow):
+    """Redeclaring an already-AWAITED file as AWAITED again must not be touched by the new clause.
+
+    This pins that the `file_clear_hash` trigger's added `UNCONFIRMED`-with-`BUILT`/`OUTDATED`
+    origin branch is scoped to `NEW.state = UNCONFIRMED` only, and does not affect the ordinary
+    AWAITED re-declaration a step performs by redeclaring its own outputs before a rerun.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        out = wfp._declare_file(plan, "out.txt", FileState.AWAITED)
+        assert out.get_state() == FileState.AWAITED
+        assert out.get_hash().is_unknown
+
+        # Simulate a restart: the file is detached, then redeclared AWAITED again before
+        # ever having been built.
+        out.detach()
+        assert out.is_detached()
+        out = wfp._declare_file(plan, "out.txt", FileState.AWAITED)
+        assert out.get_state() == FileState.AWAITED
+        assert out.get_hash().is_unknown
+
+
 async def test_consistency_parent(wfp: Workflow):
     async with wfp.db:
         declare_static(wfp, wfp.find(Step, "./plan.py"), ["local.txt"])

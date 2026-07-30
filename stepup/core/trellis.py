@@ -615,6 +615,9 @@ class Trellis:
         # - `nglob_multi.data` changed from a pickle blob to JSON.
         # - `ON DELETE CASCADE` added to all satellite tables; indexes tuned; `auto_vacuum`
         #   set to INCREMENTAL with a paired vacuum worker.
+        # - `file_clear_hash` also nulls the hash when a BUILT/OUTDATED file is recycled into
+        #   UNCONFIRMED, so a leftover build product from a removed step is not silently
+        #   trusted as a confirmed source when it is adopted by a static tree.
 
         return 5
 

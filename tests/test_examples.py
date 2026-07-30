@@ -206,6 +206,7 @@ EXAMPLES = [
     "restart_static_remove2",
     "restart_static_tree",
     "restart_static_tree_removed",
+    "restart_static_tree_stale_build",
     "restart_step_changed",
     "script_cases",
     "script_cases_run_import",
