@@ -317,7 +317,7 @@ async def remove_outdated_outputs(db: DBSession, workflow: Workflow, reporter: R
 
     # Reset the state of the deleted files in the database, if they are still present.
     async with db:
-        workflow.db.executemany(
+        db.executemany(
             """
             WITH node_tmp AS (SELECT i FROM node WHERE label = ?)
             UPDATE file

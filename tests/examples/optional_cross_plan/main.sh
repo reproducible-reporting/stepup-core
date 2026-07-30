@@ -32,9 +32,6 @@ stepup join
 # Wait for background processes, if any.
 wait
 
-# The removed sink's own output is cleaned up (this works correctly).
+# The removed sink's own output is cleaned up.
 [[ ! -f sub/final.txt ]] || exit 1
-# The optional step is no longer needed, so its output must be cleaned up too.
-# This currently FAILS: out.txt lingers because the step keeps a stale, elevated
-# _implied_need (DEFAULT) even though its only sink was detached in another plan.
 [[ ! -f out.txt ]] || exit 1
