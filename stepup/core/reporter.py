@@ -278,6 +278,16 @@ class ReporterHandler:
     start: float = attrs.field(init=False, factory=perf_counter)
     """The moment this handler was created, i.e. roughly the start of the build."""
 
+    _first_build_phase: bool = attrs.field(init=False, default=True)
+    """Whether the next `PHASE build` report is the first one of this director's lifetime.
+
+    The log files are already fresh at that point: `tui.py`'s `_reset_stepup_dir` clears
+    them before the director is even spawned. Skipping the wipe on this first occurrence
+    preserves `STARTUP`-phase errors (e.g. a file that could not be hashed), which would
+    otherwise be reported to `fail.log` and then immediately erased before the first
+    `job_loop` runs.
+    """
+
     @console.default
     def _default_console(self):
         theme = Theme(
@@ -337,9 +347,13 @@ class ReporterHandler:
 
         # File logging
         if action == "PHASE" and description == "build":
-            # Delete the log files at the start of a new build phase.
-            for path_log in [FAIL_LOG, WARNING_LOG, SUCCESS_LOG]:
-                path_log.remove_p()
+            if self._first_build_phase:
+                # Skip the wipe on the very first build phase: see `_first_build_phase`.
+                self._first_build_phase = False
+            else:
+                # Delete the log files at the start of a new build phase.
+                for path_log in [FAIL_LOG, WARNING_LOG, SUCCESS_LOG]:
+                    path_log.remove_p()
         path_log = {
             "red": FAIL_LOG,
             "yellow": WARNING_LOG,

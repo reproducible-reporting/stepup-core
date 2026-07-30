@@ -33,9 +33,8 @@ stepup join
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq 32 ]] || exit 1
 
-# The reported error and the provenance page it carries are checked against
-# expected_stdout2.txt: the log files are wiped at the start of the build phase,
-# which follows the startup phase that reports this error.
+# Check that the error message was logged.
+grep "Could not hash data.txt" .stepup/fail.log || exit 1
 
 # The hash job is nobody's to await, so its error must not resurface as a stray future.
 ! grep -q "Future exception was never retrieved" .stepup/director.log
