@@ -134,11 +134,11 @@ class File(Node):
         """
         state = self.get_state()
         if state == FileState.VOLATILE:
-            self.graph.to_be_deleted.append((self.path, None))
+            self.graph.to_be_deleted[self.path] = None
         elif state in (FileState.BUILT, FileState.OUTDATED):
             file_hash = self.get_hash()
             if not file_hash.is_unknown:
-                self.graph.to_be_deleted.append((self.path, file_hash))
+                self.graph.to_be_deleted[self.path] = file_hash
 
     #
     # Getters and setters

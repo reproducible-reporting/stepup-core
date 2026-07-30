@@ -1418,15 +1418,15 @@ async def test_to_be_deleted(wfp: Workflow):
         )
         blub1.completed(StepHash(b"aaa", None, b"zzz", None), False)
         plan.detach()
-        assert wfp.to_be_deleted == []
+        assert wfp.to_be_deleted == {}
         assert wfp.find_detached(Step, "./plan.py") == (plan, True)
         wfp.clean()
-        assert wfp.to_be_deleted == [
-            ("built", built_file_hash),
-            ("gone", gone_file_hash),
-            ("volatile", None),
-            ("sub/foo", foo_file_hash),
-        ]
+        assert wfp.to_be_deleted == {
+            "built": built_file_hash,
+            "gone": gone_file_hash,
+            "volatile": None,
+            "sub/foo": foo_file_hash,
+        }
         assert wfp.find_detached(Step, "./plan.py") == (None, None)
 
 

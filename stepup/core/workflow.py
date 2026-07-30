@@ -250,11 +250,11 @@ class Workflow(Trellis):
     afterward, mirroring `targets`. An empty set (the default) means no directory targets
     were given."""
 
-    to_be_deleted: list[tuple[str, FileHash | None]] = attrs.field(init=False, factory=list)
-    """A list of files that can be deleted, plus any parent directories left empty by that.
+    to_be_deleted: dict[str, FileHash | None] = attrs.field(init=False, factory=dict)
+    """Files that can be deleted, plus any parent directories left empty by that.
 
-    This list contains BUILT/OUTDATED file nodes (with their file hash) and VOLATILE file
-    nodes (hash always `None`) that were removed from the graph.
+    Maps a path to its file hash. This dict contains BUILT/OUTDATED file nodes (with their
+    file hash) and VOLATILE file nodes (hash always `None`) that were removed from the graph.
     """
 
     @property

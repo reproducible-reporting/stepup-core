@@ -97,13 +97,13 @@ async def revert_optional(db: DBSession, workflow: Workflow, reporter: ReporterC
         cur = db.execute(UPDATE_OPTIONAL_STEPS)
         nstep = cur.rowcount
         cur = db.execute(SELECT_OPTIONAL_TO_BE_DELETED)
-        to_be_deleted = [
-            (row[0], None if row[1] == FileState.VOLATILE.value else FileHash.from_json(row[2]))
+        to_be_deleted = {
+            row[0]: None if row[1] == FileState.VOLATILE.value else FileHash.from_json(row[2])
             for row in cur
-        ]
+        }
         if len(to_be_deleted) > 0:
             # Mark the files for deletion and reset their state in the database.
-            workflow.to_be_deleted.extend(to_be_deleted)
+            workflow.to_be_deleted.update(to_be_deleted)
             db.execute(UPDATE_OPTIONAL_TO_BE_DELETED)
         db.execute(DROP_OPTIONAL_STEP_TABLE)
         db.execute(DROP_OPTIONAL_FILE_TABLE)
@@ -304,10 +304,10 @@ async def remove_outdated_outputs(db: DBSession, workflow: Workflow, reporter: R
         "DIRECTOR",
         f"Trying to remove {len(workflow.to_be_deleted)} outdated output(s)",
     )
-    workflow.to_be_deleted.sort(reverse=True)
-    # Remove the files from the file system.
+    # Remove the files from the file system, deepest first, so a directory is only
+    # pruned once every file it contains is gone.
     parents = set()
-    for path, file_hash in workflow.to_be_deleted:
+    for path, file_hash in sorted(workflow.to_be_deleted.items(), reverse=True):
         path = Path(path)
         if (file_hash is None or file_hash.regen(path) == file_hash) and _try_remove(path.remove):
             await reporter("REMOVE", path)
@@ -324,7 +324,7 @@ async def remove_outdated_outputs(db: DBSession, workflow: Workflow, reporter: R
             SET state = ?, hash = NULL
             WHERE node IN node_tmp
             """,
-            [(path, FileState.AWAITED.value) for path, _ in workflow.to_be_deleted],
+            [(path, FileState.AWAITED.value) for path in workflow.to_be_deleted],
         )
     workflow.to_be_deleted.clear()
 
