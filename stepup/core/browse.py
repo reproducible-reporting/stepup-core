@@ -25,7 +25,7 @@ from .config import ConfigLoader
 from .constants import GRAPH_DB
 from .enums import FileState, Need, StepState
 from .hash import FileHash, fmt_digest
-from .nglob import NGlobMulti
+from .nglob import NamedGlob
 from .sqlite3 import connect
 from .step import Step
 from .utils import escape_command_display, format_subprocess, positive_int
@@ -264,14 +264,14 @@ HTML_TEMPLATE = """\
     .postponed { color: var(--orange); }
     .clean { color: var(--green); }
     .required { color: var(--blue); }
-    table.ngm {
+    table.nglob {
       margin: 12px;
     }
-    table.ngm, table.ngm tr, table.ngm tr td, table.ngm tr th {
+    table.nglob, table.nglob tr, table.nglob tr td, table.nglob tr th {
       border: 1px solid var(--link-color);
       border-collapse: collapse;
     }
-    table.ngm tr td, table.ngm tr th {
+    table.nglob tr td, table.nglob tr th {
       vertical-align: top;
       text-align: left;
       padding: 1px 4px 4px 4px;
@@ -552,30 +552,29 @@ class GraphServer(BaseHTTPRequestHandler):
                 for res_name, res_units in resources:
                     yield f"<p><b>{res_name}:</b> {res_units}</p>"
 
-            sql_ngm = "SELECT data FROM nglob_multi WHERE node = ?"
-            ngm_rows = list(self.con.execute(sql_ngm, (node_i,)))
-            if len(ngm_rows) > 0:
+            sql_nglob = "SELECT data FROM nglob WHERE node = ?"
+            nglob_rows = list(self.con.execute(sql_nglob, (node_i,)))
+            if len(nglob_rows) > 0:
                 yield "<h3>Defines (Named) Globs</h3>"
-                for ngm_row in ngm_rows:
-                    ngm = json_converter.structure(json.loads(ngm_row[0]), NGlobMulti)
-                    yield '<table class="ngm">'
+                for nglob_row in nglob_rows:
+                    ng = json_converter.structure(json.loads(nglob_row[0]), NamedGlob)
+                    yield '<table class="nglob">'
                     yield "<tr>"
-                    for ngs in ngm.nglob_singles:
-                        yield f"<th><code>{ngs.pattern}</code></th>"
+                    yield f"<th><code>{ng.pattern}</code></th>"
                     subs_keys = []
-                    for key, value in ngm.subs.items():
+                    for key, value in ng.subs.items():
                         subs_keys.append(key)
                         yield f"<th><code>{key} = {value}</code></th>"
                     yield "</tr>"
-                    for match in ngm.matches():
+                    for match in ng.matches():
                         yield "<tr>"
-                        for path1 in match.files:
-                            if isinstance(path1, str):
-                                yield f"<td><code>{path1}</code></td>"
-                            else:
-                                yield "<td>"
-                                yield "</br>".join(f"<code>{path}</code>" for path in path1)
-                                yield "</td>"
+                        files = match.files
+                        if isinstance(files, str):
+                            yield f"<td><code>{files}</code></td>"
+                        else:
+                            yield "<td>"
+                            yield "</br>".join(f"<code>{path}</code>" for path in files)
+                            yield "</td>"
                         for key in subs_keys:
                             yield f"<td><code>{match.mapping.get(key, '?')}</code></td>"
                         yield "</tr>"

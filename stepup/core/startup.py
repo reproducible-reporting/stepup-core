@@ -13,7 +13,7 @@ from .cattrs import json_converter
 from .enums import FileState, HashUpdateCause, StepState
 from .hash import FileHash, fmt_env_value, fmt_file_hash_diff
 from .hash_queue import gather_hashes
-from .nglob import NGlobMulti
+from .nglob import NamedGlob
 from .reporter import ReporterClient
 from .sqlite3 import DBSession
 from .step import Step
@@ -161,28 +161,28 @@ async def check_nglob_changes(workflow: Workflow, db: DBSession, reporter: Repor
     """Look for new and deleted matches in nglobs used by some jobs, and process them.
 
     This is fully self-contained: for each nglob, the paths it matched last time
-    (persisted in the `nglob_multi` table) are compared to a fresh scan of the
+    (persisted in the `nglob` table) are compared to a fresh scan of the
     file system, without consulting the workflow's file states at all.
     Steps whose nglob matches changed are marked pending and their new matches
     are persisted.
     """
-    # Load all nglob_multis
+    # Load all nglobs
     async with db:
-        nglob_multis = list(workflow.nglob_multis(yield_step=True))
-    if len(nglob_multis) == 0:
+        nglobs = list(workflow.nglobs(yield_step=True))
+    if len(nglobs) == 0:
         return
 
     # Compare the old matches (persisted from the previous run) to a fresh glob scan.
-    await reporter("STARTUP", f"Checking {len(nglob_multis)} nglob(s) for new or deleted matches")
+    await reporter("STARTUP", f"Checking {len(nglobs)} nglob(s) for new or deleted matches")
     changed = []
     all_deleted = set()
     all_added = set()
-    for i, ngm, step in nglob_multis:
-        old_paths = set(ngm.files())
-        # A fresh instance is built from scratch (rather than reusing or deep-copying `ngm`)
-        # because `NGlobMulti.glob()` only ever adds matches: it has no mechanism to prune
+    for i, ng, step in nglobs:
+        old_paths = set(ng.files())
+        # A fresh instance is built from scratch (rather than reusing or deep-copying `ng`)
+        # because `NamedGlob.glob()` only ever adds matches: it has no mechanism to prune
         # paths that no longer exist, so it cannot detect deletions on its own.
-        fresh = NGlobMulti.from_patterns(ngm.patterns, ngm.subs)
+        fresh = NamedGlob(ng.pattern, ng.subs)
         fresh.glob()
         new_paths = set(fresh.files())
         local_deleted = old_paths - new_paths
@@ -205,5 +205,5 @@ async def check_nglob_changes(workflow: Workflow, db: DBSession, reporter: Repor
             for i, step, fresh in changed:
                 step.delete_hash()
                 data = (json.dumps(json_converter.unstructure(fresh)), i)
-                db.execute("UPDATE nglob_multi SET data = ? WHERE i = ?", data)
+                db.execute("UPDATE nglob SET data = ? WHERE i = ?", data)
                 workflow.mark_step_pending(step)

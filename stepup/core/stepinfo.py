@@ -9,7 +9,7 @@ import attrs
 from path import Path
 
 from .cattrs import json_converter
-from .nglob import NGlobMulti
+from .nglob import NamedGlob
 from .path import StrPath, coerce_path
 
 __all__ = ("StepInfo", "dump_step_info", "load_step_info")
@@ -62,23 +62,23 @@ class StepInfo:
 
     If relative, it is relative to the StepUp root."""
 
-    def filter_inp(self, *patterns: str, **subs: str):
-        """Return an `NGlobMulti` object with matching results from `self.inp`."""
-        ngm = NGlobMulti.from_patterns(patterns, subs)
-        ngm.extend(self.inp)
-        return ngm
+    def filter_inp(self, pattern: str, **subs: str) -> NamedGlob:
+        """Return a `NamedGlob` object with matching results from `self.inp`."""
+        ng = NamedGlob(pattern, subs)
+        ng.extend(self.inp)
+        return ng
 
-    def filter_out(self, *patterns: str, **subs: str):
-        """Return an `NGlobMulti` object with matching results from `self.out`."""
-        ngm = NGlobMulti.from_patterns(patterns, subs)
-        ngm.extend(self.out)
-        return ngm
+    def filter_out(self, pattern: str, **subs: str) -> NamedGlob:
+        """Return a `NamedGlob` object with matching results from `self.out`."""
+        ng = NamedGlob(pattern, subs)
+        ng.extend(self.out)
+        return ng
 
-    def filter_vol(self, *patterns: str, **subs: str):
-        """Return an `NGlobMulti` object with matching results from `self.vol`."""
-        ngm = NGlobMulti.from_patterns(patterns, subs)
-        ngm.extend(self.vol)
-        return ngm
+    def filter_vol(self, pattern: str, **subs: str) -> NamedGlob:
+        """Return a `NamedGlob` object with matching results from `self.vol`."""
+        ng = NamedGlob(pattern, subs)
+        ng.extend(self.vol)
+        return ng
 
 
 def load_step_info(filename: StrPath) -> StepInfo | list[StepInfo]:

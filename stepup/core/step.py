@@ -16,7 +16,7 @@ from .enums import REGULAR_OUTPUT_STATES, FileState, Need, StepState
 from .exceptions import GraphError
 from .file import File
 from .hash import FileHash, StepHash
-from .nglob import NGlobMulti
+from .nglob import NamedGlob
 from .outcome import ChildOutcome, ResourceUsage
 from .static_tree import StaticTree
 from .stepinfo import StepInfo
@@ -335,15 +335,15 @@ END;
 -- Satellite tables below hold auxiliary per-step data. All are keyed by (or include) the
 -- step's node and are removed via ON DELETE CASCADE when the node row is deleted.
 
--- Named glob patterns (with back-references) registered by this step; see NGlobMulti.
--- data is a JSON blob, see json_converter hooks for NGlobMulti in cattrs.py.
-CREATE TABLE IF NOT EXISTS nglob_multi (
+-- Named glob pattern (with back-references) registered by this step; see NamedGlob.
+-- data is a JSON blob, see json_converter hooks for NamedGlob in cattrs.py.
+CREATE TABLE IF NOT EXISTS nglob (
     i INTEGER PRIMARY KEY,
     node INTEGER NOT NULL,
     data TEXT NOT NULL,
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 );
-CREATE INDEX IF NOT EXISTS nglob_multi_node ON nglob_multi(node);
+CREATE INDEX IF NOT EXISTS nglob_node ON nglob(node);
 
 -- Marks which dependency rows were amended (discovered while the step ran) rather than
 -- declared up front, so reset_for_rerun() knows which sources/sinks to drop between runs.
@@ -687,9 +687,9 @@ class Step(Node):
             yield label, f"{name}={value}"
             label = ""
 
-        for row in self.db.execute("SELECT data FROM nglob_multi WHERE node = ?", (self.i,)):
-            ngm = json_converter.structure(json.loads(row[0]), NGlobMulti)
-            yield "ngm", f"{[ngs.pattern for ngs in ngm.nglob_singles]} {ngm.subs}"
+        for row in self.db.execute("SELECT data FROM nglob WHERE node = ?", (self.i,)):
+            ng = json_converter.structure(json.loads(row[0]), NamedGlob)
+            yield "nglob", f"{ng.pattern} {ng.subs}"
 
         for name, units in self.resources():
             yield "resource", f"{name}: {units} units"
@@ -1082,10 +1082,10 @@ class Step(Node):
         """Iterate over missing paths created by this step."""
         yield from self._paths("product", filter_states=(FileState.MISSING,))
 
-    def nglob_multis(self) -> Iterator[NGlobMulti]:
-        """Iterate over nglob_multis used by this step."""
-        for row in self.db.execute("SELECT data FROM nglob_multi WHERE node = ?", (self.i,)):
-            yield json_converter.structure(json.loads(row[0]), NGlobMulti)
+    def nglobs(self) -> Iterator[NamedGlob]:
+        """Iterate over nglobs used by this step."""
+        for row in self.db.execute("SELECT data FROM nglob WHERE node = ?", (self.i,)):
+            yield json_converter.structure(json.loads(row[0]), NamedGlob)
 
     def resources(self) -> Iterator[tuple[str, int]]:
         """Iterate over the `(name, units)` pairs of the resources required by this step."""
@@ -1109,7 +1109,7 @@ class Step(Node):
 
         - amended inputs and (volatile) outputs
         - amended environment variables
-        - nglob_multis
+        - nglobs
         - stored stdout/stderr and recorded subprocess invocations
 
         The following are detached:
@@ -1139,8 +1139,8 @@ class Step(Node):
         # Drop amended environment variables
         self.db.execute("DELETE FROM env_var WHERE node = ? AND amended = 1", (self.i,))
 
-        # Drop nglob_multis
-        self.db.execute("DELETE FROM nglob_multi WHERE node = ?", (self.i,))
+        # Drop nglobs
+        self.db.execute("DELETE FROM nglob WHERE node = ?", (self.i,))
 
         # Drop amended sinks and detach the corresponding sink nodes.
         records_sink = list(
@@ -1430,10 +1430,10 @@ class Step(Node):
         """Remove all recorded subprocess rows for this step."""
         self.db.execute("DELETE FROM step_subprocess WHERE node = ?", (self.i,))
 
-    def register_nglob(self, nglob_multi: NGlobMulti) -> None:
-        """Store an `NGlobMulti` pattern set registered by this step."""
-        data = (self.i, json.dumps(json_converter.unstructure(nglob_multi)))
-        self.db.execute("INSERT INTO nglob_multi(node, data) VALUES (?, ?)", data)
+    def register_nglob(self, ng: NamedGlob) -> None:
+        """Store a `NamedGlob` pattern registered by this step."""
+        data = (self.i, json.dumps(json_converter.unstructure(ng)))
+        self.db.execute("INSERT INTO nglob(node, data) VALUES (?, ?)", data)
 
     #
     # Respond to graph modifications by flagging the necessary _check_* fields.

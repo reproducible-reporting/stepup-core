@@ -11,8 +11,8 @@ step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-                 ngm = ['work?.py'] {}
-                 ngm = ['inp?.txt'] {}
+               nglob = work?.py {}
+               nglob = inp?.txt {}
              creator   root:
               source   file:plan.py
              product   file:inp2.txt

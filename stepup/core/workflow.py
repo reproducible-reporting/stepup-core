@@ -26,7 +26,7 @@ from .enums import (
 from .exceptions import GraphError
 from .file import File
 from .hash import FileHash, fmt_digest
-from .nglob import NGlobMulti, has_wildcards
+from .nglob import NamedGlob, has_any_wildcards
 from .path import dir_range_upper
 from .sqlite3 import escape_like_pattern
 from .static_tree import StaticTree
@@ -1072,7 +1072,7 @@ class Workflow(Trellis):
             raise TypeError("The argument path must be a string.")
         if Path(path).isabs():
             raise ValueError(f"Static tree paths cannot be absolute paths: {path}")
-        if has_wildcards(path):
+        if has_any_wildcards(path):
             raise ValueError(f"Static tree does not support wildcards: {path}")
         if creator.is_detached():
             # The creator has moved on without this call (see Step.detach()), so
@@ -1114,14 +1114,14 @@ class Workflow(Trellis):
         matching_paths = [path for (path,) in self.db.execute(sql, (pattern,))]
         return self.declare_unconfirmed(st, matching_paths)
 
-    def register_nglob(self, step: Step, nglob_multi: NGlobMulti):
+    def register_nglob(self, step: Step, ng: NamedGlob):
         if not isinstance(step, Step):
             raise TypeError(f"step must be a Step instance, got: {step!r}")
         if step.is_detached():
             # The step's creator has moved on without it (see Step.detach()), so
             # registering more nglobs for it is moot.
             return
-        step.register_nglob(nglob_multi)
+        step.register_nglob(ng)
 
     def define_step(
         self,
@@ -1398,7 +1398,7 @@ class Workflow(Trellis):
         file, detached = self.find_detached(File, path)
         if not (file is None or detached):
             return file.get_state() not in (FileState.AWAITED, FileState.VOLATILE)
-        return any(ngm.may_change(set(), {path}) for ngm in self.nglob_multis())
+        return any(ng.may_change(set(), {path}) for ng in self.nglobs())
 
     def relevant_paths(self, parent: str) -> Iterator[str]:
         """Iterate over all non-detached files that are relevant for a given parent directory."""
@@ -1411,18 +1411,15 @@ class Workflow(Trellis):
         for (path,) in self.db.execute(sql, (pattern,)):
             yield path
 
-    def nglob_multis(
-        self, yield_step: bool = False
-    ) -> Iterator[NGlobMulti | tuple[int, NGlobMulti, Step]]:
+    def nglobs(self, yield_step: bool = False) -> Iterator[NamedGlob | tuple[int, NamedGlob, Step]]:
         sql = (
-            "SELECT node.i, label, kind, nglob_multi.i, data "
-            "FROM node JOIN nglob_multi ON node.i = nglob_multi.node"
+            "SELECT node.i, label, kind, nglob.i, data FROM node JOIN nglob ON node.i = nglob.node"
         )
-        for node_i, label, kind, ngm_i, data in self.db.execute(sql):
+        for node_i, label, kind, nglob_i, data in self.db.execute(sql):
             if kind != "step":
-                raise ValueError("Only steps can define nglob_multis")
-            nglob_multi = json_converter.structure(json.loads(data), NGlobMulti)
-            yield (ngm_i, nglob_multi, Step(self, node_i, label)) if yield_step else nglob_multi
+                raise ValueError("Only steps can define nglobs")
+            ng = json_converter.structure(json.loads(data), NamedGlob)
+            yield (nglob_i, ng, Step(self, node_i, label)) if yield_step else ng
 
     def process_nglob_changes(self, deleted: Collection[str], added: Collection[str]):
         """Mark steps with nglob pending if they are affected by the deleted and updated paths.
@@ -1436,16 +1433,16 @@ class Workflow(Trellis):
         """
         if deleted & added:
             raise ValueError("Deleted and added paths cannot overlap.")
-        for i, ngm, step in self.nglob_multis(yield_step=True):
+        for i, ng, step in self.nglobs(yield_step=True):
             # Check if any of the deleted files matches an nglob.
             # If yes, step becomes pending.
             # Check if added files could result in new nglob matches.
             # If yes, step becomes pending.
-            evolved = ngm.will_change(deleted, added)
+            evolved = ng.will_change(deleted, added)
             if evolved is not None:
                 step.delete_hash()
                 data = (json.dumps(json_converter.unstructure(evolved)), i)
-                self.db.execute("UPDATE nglob_multi SET data = ? WHERE i = ?", data)
+                self.db.execute("UPDATE nglob SET data = ? WHERE i = ?", data)
                 self.mark_step_pending(step)
 
     def get_file_hashes(self, paths: Collection[str]) -> dict[str, FileHash]:

@@ -28,7 +28,7 @@ is that environment variables are substituted in the paths.
 In addition, `StepInfo` has three methods: `filter_inp()`, `filter_out()` and `filter_vol()`,
 which can be used to get a subset of paths.
 These functions take the same arguments as those of the [`glob()`][stepup.core.api.glob] function
-and also return an [`NGlobMulti`][stepup.core.nglob] instance.
+and also return a [`NamedGlob`][stepup.core.nglob] instance.
 
 Note that the `StepInfo` object will only contain information known at the time the step is defined.
 Amended information (inputs, outputs, ...) cannot be retrieved from `StepInfo` objects.

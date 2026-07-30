@@ -621,6 +621,9 @@ class Trellis:
         # - Added `node_check_static_tree_ins`/`_upd` triggers (WORKFLOW_SCHEMA, workflow.py)
         #   as a backstop enforcing that an attached file node under a static tree's path
         #   must have that tree as its creator.
+        # - `nglob_multi` (one row per multi-pattern glob registration, storing a serialized
+        #   `NGlobMulti`) was replaced by `nglob` (one row per single pattern, storing a
+        #   serialized `NamedGlob`), since cross-pattern glob consistency was removed.
 
         return 5
 

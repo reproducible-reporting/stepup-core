@@ -494,8 +494,8 @@ def test_glob_dir_pattern_keeps_trailing_slash(path_tmp, monkeypatch):
     monkeypatch.setattr(api, "RPC_CLIENT", client)
     glob("src/*/")
     assert len(client.calls) == 1
-    tr_patterns = client.calls[0][1]
-    assert tr_patterns == ["src/*/"]
+    tr_pattern = client.calls[0][1]
+    assert tr_pattern == "src/*/"
 
 
 @attrs.define

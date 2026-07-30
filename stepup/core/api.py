@@ -44,7 +44,7 @@ from .exceptions import (
     StepUpError,
 )
 from .extapi import subs_env_vars
-from .nglob import NGlobMulti
+from .nglob import NamedGlob
 from .path import (
     StrPath,
     apply_affixes,
@@ -160,10 +160,10 @@ def static(*paths: StrPath | Iterable[StrPath]) -> None:
             RPC_CLIENT.call.declare_unconfirmed(get_job_i(), tr_file_paths)
 
 
-def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
-    """Return file and directory matches of glob patterns, and declare static files.
+def glob(pattern: StrPath, **subs: str) -> NamedGlob:
+    """Return file and directory matches of a glob pattern, and declare static files.
 
-    StepUp registers that the caller uses these patterns,
+    StepUp registers that the caller uses this pattern,
     so it can make the calling step pending when new matches appear in future runs.
     A file match is declared static, unless it already belongs to a static tree
     (declared with `static()`), which owns it instead.
@@ -173,87 +173,74 @@ def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
 
     Parameters
     ----------
-    *patterns
-        One or more glob patterns relative to the current working directory.
-        Patterns may contain anonymous wildcards (`*`, `**`) and named wildcards (`${*name}`).
+    pattern
+        A glob pattern relative to the current working directory.
+        The pattern may contain anonymous wildcards (`*`, `**`) and named wildcards (`${*name}`).
     **subs
         Override the sub-pattern matched by each named wildcard.
         By default every named wildcard matches `*`.
 
     Returns
     -------
-    ngm
-        An `NGlobMulti` instance with all matched paths.
-        Iteration yields `NGlobMatch` objects when named wildcards are present,
+    ng
+        A `NamedGlob` instance with all matched paths.
+        Iteration yields `NamedGlobMatch` objects when named wildcards are present,
         or `Path` objects when only anonymous wildcards are used.
-        Use `ngm.matches()` or `ngm.files()` to force either mode.
-        Use `ngm.single()` to assert and return exactly one matched path.
+        Use `ng.matches()` or `ng.files()` to force either mode.
+        Use `ng.single()` to assert and return exactly one matched path.
         Evaluates to `True` in a boolean context when at least one match exists.
 
     Raises
     ------
-    StepUpError
-        When no patterns are given.
     GraphError
         When a directory match does not lie inside a static tree.
 
     Notes
     -----
-    Multiple patterns are matched *jointly*: only combinations of files whose
-    named wildcard substitutions are mutually consistent are returned.
-    For independent patterns, separate `glob` calls are more efficient.
-
-    Environment variables in `patterns` are substituted before matching,
+    Environment variables in `pattern` are substituted before matching,
     and the variables referenced are added to the calling step's `env_deps` list.
     These substitutions are based on the state of `os.environ` in the calling script,
     at the time this function is called, not when the step is executed.
     """
-    if len(patterns) == 0:
-        raise StepUpError("At least one path is required for glob.")
     # Substitute environment variables.
     # Affixes are captured before normpath(), which would otherwise strip them,
     # and re-applied after, so a trailing separator survives normalization.
     with subs_env_vars() as subs_path:
-        su_patterns = []
-        for pattern in patterns:
-            su_pattern = subs_path(pattern)
-            prefix, suffix = get_affixes(su_pattern)
-            su_patterns.append(apply_affixes(su_pattern.normpath(), prefix, suffix))
-
-    # StepUp needs to know the patterns, so it can identify new files matching the
-    # patterns in future runs. Trailing separators are preserved because translate()
-    # normalizes them away, and a trailing separator distinguishes a directory pattern.
-    tr_patterns = []
-    for su_pattern in su_patterns:
+        su_pattern = subs_path(pattern)
         prefix, suffix = get_affixes(su_pattern)
-        tr_patterns.append(apply_affixes(translate(su_pattern), prefix, suffix))
+        su_pattern = apply_affixes(su_pattern.normpath(), prefix, suffix)
+
+    # StepUp needs to know the pattern, so it can identify new files matching it
+    # in future runs. Trailing separators are preserved because translate()
+    # normalizes them away, and a trailing separator distinguishes a directory pattern.
+    prefix, suffix = get_affixes(su_pattern)
+    tr_pattern = apply_affixes(translate(su_pattern), prefix, suffix)
 
     # Collect all matches
-    nglob_multi = NGlobMulti.from_patterns(su_patterns, subs)
-    nglob_multi.glob()
+    ng = NamedGlob(su_pattern, subs)
+    ng.glob()
 
     # Translate all matches, keeping track of which ones are directories.
-    # Trailing separators are preserved for the same reason as for the patterns above.
+    # Trailing separators are preserved for the same reason as for the pattern above.
     # Existence is guaranteed by nglob's own filesystem walk, so `_check_inp_path`
     # here only classifies files versus directories; it cannot raise.
     tr_all_paths = []
     tr_dir_paths = []
-    for nglob_single in nglob_multi.nglob_singles:
-        for paths in nglob_single.results.values():
-            for path in paths:
-                prefix, suffix = get_affixes(path)
-                tr_path = apply_affixes(translate(path), prefix, suffix)
-                tr_all_paths.append(tr_path)
-                if _check_inp_path(path, return_dir=True):
-                    tr_dir_paths.append(tr_path)
+    for paths in ng.results.values():
+        for path in paths:
+            prefix, suffix = get_affixes(path)
+            tr_path = apply_affixes(translate(path), prefix, suffix)
+            tr_all_paths.append(tr_path)
+            if _check_inp_path(path, return_dir=True):
+                tr_dir_paths.append(tr_path)
 
     # One call: the director decides which file matches are already owned by a static
     # tree (skipped), which directory matches lie inside one (accepted),
     # and which directory matches do not (raises `GraphError`).
-    RPC_CLIENT.call.nglob(get_job_i(), tr_patterns, subs, tr_all_paths, tr_dir_paths)
+    RPC_CLIENT.call.nglob(get_job_i(), tr_pattern, subs, tr_all_paths, tr_dir_paths)
 
     # Done
-    return nglob_multi
+    return ng
 
 
 def step(

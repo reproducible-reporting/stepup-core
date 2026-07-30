@@ -17,7 +17,7 @@ from stepup.core.enums import FileState, HashUpdateCause, Need, StepState
 from stepup.core.exceptions import GraphError
 from stepup.core.file import File
 from stepup.core.hash import FileHash, StepHash
-from stepup.core.nglob import NGlobMulti
+from stepup.core.nglob import NamedGlob
 from stepup.core.outcome import ChildOutcome
 from stepup.core.path import dir_range_upper
 from stepup.core.sqlite3 import DBSession
@@ -936,7 +936,7 @@ async def test_skip_step_amended_detached_input(wfp: Workflow):
         assert log.get_state() == FileState.OUTDATED
 
 
-async def test_skip_ngm(wfp: Workflow):
+async def test_skip_nglob(wfp: Workflow):
     async with wfp.db:
         # Prepare jobs for normal run
         plan = wfp.find(Step, "./plan.py")
@@ -947,8 +947,8 @@ async def test_skip_ngm(wfp: Workflow):
         assert plan.get_state() == StepState.SUCCEEDED
 
         # Simulate run
-        ngm = NGlobMulti.from_patterns(["${*prefix}_data.txt"], subs={"prefix": "n???"})
-        wfp.register_nglob(foo, ngm)
+        ng = NamedGlob("${*prefix}_data.txt", subs={"prefix": "n???"})
+        wfp.register_nglob(foo, ng)
         foo.completed(StepHash(b"foo_ok", None, b"zzz", None), False)
         assert foo.get_hash() is not None
         assert foo.get_state() == StepState.SUCCEEDED
@@ -962,13 +962,11 @@ async def test_skip_ngm(wfp: Workflow):
         assert foo.get_state() == StepState.PENDING
         foo.completed(StepHash(b"foo_ok", None, b"zzz", None), False)
         assert foo.get_state() == StepState.SUCCEEDED
-        nglob_multis = list(foo.nglob_multis())
-        assert len(nglob_multis) == 1
-        assert len(nglob_multis[0].nglob_singles) == 1
-        assert nglob_multis[0].nglob_singles[0].pattern == "${*prefix}_data.txt"
-        assert nglob_multis[0].nglob_singles[0].subs == {"prefix": "n???"}
-        assert nglob_multis[0].used_names == ("prefix",)
-        assert nglob_multis[0].subs == {"prefix": "n???"}
+        nglobs = list(foo.nglobs())
+        assert len(nglobs) == 1
+        assert nglobs[0].pattern == "${*prefix}_data.txt"
+        assert nglobs[0].subs == {"prefix": "n???"}
+        assert nglobs[0].used_names == ("prefix",)
 
 
 async def test_hash_completed_success(wfp: Workflow):
@@ -1214,7 +1212,7 @@ step:./plan.py
 step:touch log
                state = PENDING
                 need = DEFAULT
-                 ngm = ['*.txt'] {}
+               nglob = *.txt {}
              creator   step:./plan.py
              product   file:log
                 sink   file:log
@@ -1231,19 +1229,19 @@ async def test_register_nglob(wfp: Workflow):
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "touch log", vol_paths=["log"])
         step = wfp.find(Step, "touch log")
-        ngm = NGlobMulti.from_patterns(["*.txt"])
-        wfp.register_nglob(step, ngm)
-        assert list(step.nglob_multis()) == [ngm]
-        assert list(wfp.nglob_multis(yield_step=True)) == [(1, ngm, step)]
+        ng = NamedGlob("*.txt")
+        wfp.register_nglob(step, ng)
+        assert list(step.nglobs()) == [ng]
+        assert list(wfp.nglobs(yield_step=True)) == [(1, ng, step)]
         assert wfp.format_str() == REGISTER_NGLOB_GRAPH
 
         # Detaching does not clear products
         step.detach()
-        assert list(step.nglob_multis()) == [ngm]
-        assert list(wfp.nglob_multis(yield_step=True)) == [(1, ngm, step)]
+        assert list(step.nglobs()) == [ng]
+        assert list(wfp.nglobs(yield_step=True)) == [(1, ng, step)]
         wfp.clean()
-        assert list(step.nglob_multis()) == []
-        assert list(wfp.nglob_multis(yield_step=True)) == []
+        assert list(step.nglobs()) == []
+        assert list(wfp.nglobs(yield_step=True)) == []
 
 
 async def test_is_relevant(wfp: Workflow):
@@ -1251,7 +1249,7 @@ async def test_is_relevant(wfp: Workflow):
         assert wfp.is_relevant("plan.py")
         assert not wfp.is_relevant("unknown.txt")
         plan = wfp.find(Step, "./plan.py")
-        wfp.register_nglob(plan, NGlobMulti.from_patterns(["*.txt"]))
+        wfp.register_nglob(plan, NamedGlob("*.txt"))
         assert wfp.is_relevant("unknown.txt")
 
 
@@ -1260,12 +1258,14 @@ async def test_externally_updated1(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         declare_static(wfp, plan, ["aa1_foo.txt", "bb7_foo.txt", "cc5_foo.txt"])
-        _ngm = NGlobMulti.from_patterns(
-            ["${*prefix}_foo.txt", "${*prefix}_bar.txt"],
-            {"prefix": "??[0-9]", "unused": "aa??"},
-        )
-        _ngm.extend(["aa1_foo.txt", "aa1_bar.txt", "bb7_foo.txt", "cc5_foo.txt"])
-        wfp.register_nglob(plan, _ngm)
+        paths = ["aa1_foo.txt", "aa1_bar.txt", "bb7_foo.txt", "cc5_foo.txt"]
+        subs = {"prefix": "??[0-9]", "unused": "aa??"}
+        ng_foo = NamedGlob("${*prefix}_foo.txt", subs)
+        ng_foo.extend(paths)
+        wfp.register_nglob(plan, ng_foo)
+        ng_bar = NamedGlob("${*prefix}_bar.txt", subs)
+        ng_bar.extend(paths)
+        wfp.register_nglob(plan, ng_bar)
         wfp.define_step(
             plan, "work", inp_paths=["aa1_foo.txt"], out_paths=["aa1_bar.txt"], vol_paths=["log"]
         )
@@ -1306,13 +1306,19 @@ async def test_externally_updated1(wfp: Workflow):
         assert cc5_foo is not None
         assert cc5_foo.get_state() == FileState.MISSING
         assert wfp.find(File, "bb7_bar.txt") is None
-        ngm = next(plan.nglob_multis())
-        assert ngm.files() == ("aa1_bar.txt", "aa1_foo.txt", "bb7_bar.txt", "bb7_foo.txt")
-        assert ngm.nglob_singles[0].results == {
+        nglobs = list(plan.nglobs())
+        assert len(nglobs) == 2
+        assert sorted({*nglobs[0].files(), *nglobs[1].files()}) == [
+            "aa1_bar.txt",
+            "aa1_foo.txt",
+            "bb7_bar.txt",
+            "bb7_foo.txt",
+        ]
+        assert nglobs[0].results == {
             ("aa1",): {"aa1_foo.txt"},
             ("bb7",): {"bb7_foo.txt"},
         }
-        assert ngm.nglob_singles[1].results == {
+        assert nglobs[1].results == {
             ("aa1",): {"aa1_bar.txt"},
             ("bb7",): {"bb7_bar.txt"},
         }
@@ -3286,7 +3292,7 @@ SATELLITE_NODE_TABLES = (
     "env_var",
     "step_resource",
     "step_subprocess",
-    "nglob_multi",
+    "nglob",
 )
 
 
@@ -3315,7 +3321,7 @@ async def test_clean_cascades_satellite_rows(wfs: Workflow):
         step.set_hash(StepHash(b"inp", None, b"out", None))
         step.store_outcome(ChildOutcome(0, "hello\n", ""), 0)
         step.record_subprocess("do something", ".", None, 0, False, "in", "out", "err")
-        wfs.register_nglob(step, NGlobMulti.from_patterns(["*.txt"]))
+        wfs.register_nglob(step, NamedGlob("*.txt"))
         step_i = step.i
         out_i = out_file.i
 

@@ -448,8 +448,9 @@ circular dependencies at module load time.
 
 ### Named Globs (`nglob.py`)
 
-`NGlobSingle` / `NGlobMulti` implement pattern matching with named back-references (`${*name}`).
-Used in the API for dynamic file discovery with consistency constraints across patterns.
+`NamedGlob` implements pattern matching with named back-references (`${*name}`).
+Used in the API for dynamic file discovery,
+enforcing consistency between multiple occurrences of the same named wildcard within a pattern.
 
 ### Key Environment Variables
 

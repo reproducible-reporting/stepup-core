@@ -191,6 +191,8 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
       directory lies inside a static tree.
       Outside a static tree, StepUp has no evidence that the directory is source material
       rather than a step's build product, so the set of matches could depend on build progress.
+- `glob()` and `StepInfo.filter_inp()`/`filter_out()`/`filter_vol()` now take a single
+  pattern instead of `*patterns`.
 - The `render-jinja` feature is now a standalone Python console script, `sc-render-jinja`
   instead of a `stepup` subcommand (tool).
   Steps created by [`render_jinja()`][stepup.core.api.render_jinja] now run `sc-render-jinja ...`
@@ -296,6 +298,16 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
   Use the `shq()` helper function instead, together with Python's built-in f-strings.
 - The `glob()` function no longer accepts `_defer` and `_required` keyword arguments.
 - Removed the environment variable substitution in the executable passed to `script()` and `call()`.
+- Cross-pattern named-glob consistency (matching several patterns jointly, e.g.
+  `glob("feedback_${*idx}.md", "report_${*idx}.pdf")`) is no longer supported.
+  It was rarely, if ever, used in practice, and its removal significantly simplifies
+  `stepup.core.nglob` and every module that consumes it.
+  `NGlobMulti` is removed; `NamedGlob` (unchanged for single-pattern use, and now with
+  the convenience methods `NGlobMulti` used to provide) is the only named-glob class.
+  It was previously named `NGlobSingle`, a name that only made sense next to a "multi"
+  counterpart; `NGlobMatch` is likewise renamed to `NamedGlobMatch`.
+  Consistency *within* one pattern (the same `${*name}` reused twice in a single pattern
+  string) is unaffected.
 
 ### Fixed
 
@@ -328,6 +340,12 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
   Previously this ended `stepup build` with a traceback and discarded the director's return code.
 - Running with `--log-level=ERROR` or `--log-level=CRITICAL` no longer ends every successful
   build with a spurious `Errors logged in .stepup/director.log` warning.
+- A named wildcard (`${*name}`) now matches the same paths as the anonymous `*` it replaces.
+  Previously, `glob("data/${*name}")` silently skipped directory matches,
+  while `glob("data/*")` included them.
+  Consequently, a named wildcard directly following a separator
+  no longer matches an empty string, just like `*` in that position.
+  The trailing separator of a matched directory is not part of the captured substring.
 
 ## [3.2.3][] - 2026-04-16 {: #v3.2.3 }
 

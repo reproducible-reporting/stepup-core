@@ -11,8 +11,8 @@ step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-                 ngm = ['data/**/*.inp'] {}
-                 ngm = ['data/**/*.out'] {}
+               nglob = data/**/*.inp {}
+               nglob = data/**/*.out {}
              creator   root:
               source   file:plan.py
              product   file:data/part1/bar.inp

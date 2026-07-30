@@ -25,7 +25,7 @@ step:./plan.py  # wd=sub
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-                 ngm = ['sub/inp${*idx}.txt'] {'idx': '?'}
+               nglob = sub/inp${*idx}.txt {'idx': '?'}
              creator   step:./plan.py
               source   file:sub/plan.py
              product   file:sub/inp1.txt

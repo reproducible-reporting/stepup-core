@@ -12,7 +12,7 @@ from stepup.core.enums import HashUpdateCause, StepState
 from stepup.core.executor import Executor
 from stepup.core.file import File, FileState
 from stepup.core.hash import FileHash, StepHash
-from stepup.core.nglob import NGlobMulti
+from stepup.core.nglob import NamedGlob
 from stepup.core.reporter import ReporterClient
 from stepup.core.scheduler import Scheduler
 from stepup.core.startup import check_file_changes, check_nglob_changes
@@ -175,8 +175,8 @@ async def test_check_nglob_changes_persists_readable_matches(wfp: Workflow, tmpd
     running) must persist matches in the same format later reads expect.
 
     Regression test: `check_nglob_changes` used to persist the freshly scanned matches
-    with `pickle.dumps`, while every read path (`Workflow.nglob_multis`, `Step.nglob_multis`,
-    `browse.py`) expects the `nglob_multi.data` column to hold JSON, via `json_converter`
+    with `pickle.dumps`, while every read path (`Workflow.nglobs`, `Step.nglobs`,
+    `browse.py`) expects the `nglob.data` column to hold JSON, via `json_converter`
     (see `stepup.core.cattrs`). That mismatch was invisible in the integration examples,
     because the owning step (typically the perpetually-rerunning `PLAN` step) usually
     re-registers its nglob with correct JSON before anything reads the row again -- but a
@@ -190,9 +190,9 @@ async def test_check_nglob_changes_persists_readable_matches(wfp: Workflow, tmpd
             pass
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
-            ngm = NGlobMulti.from_patterns(["inp*.txt"])
-            ngm.extend(["inp1.txt", "inp2.txt"])
-            wfp.register_nglob(plan, ngm)
+            ng = NamedGlob("inp*.txt")
+            ng.extend(["inp1.txt", "inp2.txt"])
+            wfp.register_nglob(plan, ng)
             plan.completed(StepHash(b"ok", None, b"inp_ok", None), False)
             assert plan.get_state() == StepState.SUCCEEDED
 
@@ -215,10 +215,8 @@ async def test_check_nglob_changes_persists_readable_matches(wfp: Workflow, tmpd
             assert plan.get_hash() is None
             # The critical check: reading the persisted matches back must not raise,
             # and must reflect the fresh scan, not the pickled (or stale) old one.
-            row = wfp.db.execute(
-                "SELECT data FROM nglob_multi WHERE node = ?", (plan.i,)
-            ).fetchone()
+            row = wfp.db.execute("SELECT data FROM nglob WHERE node = ?", (plan.i,)).fetchone()
             assert isinstance(row[0], str)
-            new_ngms = list(wfp.nglob_multis())
-            assert len(new_ngms) == 1
-            assert new_ngms[0].files() == ("inp1.txt", "inp3.txt")
+            new_nglobs = list(wfp.nglobs())
+            assert len(new_nglobs) == 1
+            assert new_nglobs[0].files() == ["inp1.txt", "inp3.txt"]

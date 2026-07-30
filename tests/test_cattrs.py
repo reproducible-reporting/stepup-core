@@ -7,7 +7,7 @@ import json
 from path import Path
 
 from stepup.core.cattrs import json_converter
-from stepup.core.nglob import NGlobMulti
+from stepup.core.nglob import NamedGlob
 
 
 def test_path_round_trip():
@@ -19,53 +19,20 @@ def test_path_round_trip():
     assert isinstance(back, Path)
 
 
-def test_nglob_multi_round_trip_results():
-    ngm = NGlobMulti.from_patterns(["inp*.txt"])
-    ngm.extend(["inp1.txt", "inp2.txt"])
-    data = json.loads(json.dumps(json_converter.unstructure(ngm)))
-    back = json_converter.structure(data, NGlobMulti)
-    assert back.equals(ngm)
-    assert back.results == {(): [{"inp1.txt", "inp2.txt"}]}
+def test_named_glob_round_trip_results():
+    ng = NamedGlob("inp*.txt")
+    ng.extend(["inp1.txt", "inp2.txt"])
+    data = json.loads(json.dumps(json_converter.unstructure(ng)))
+    back = json_converter.structure(data, NamedGlob)
+    assert back.results == ng.results
+    assert back.results == {(): {"inp1.txt", "inp2.txt"}}
 
 
-def test_nglob_multi_round_trip_results_shared():
-    # `NGlobMulti.results` sets must be the same objects as the corresponding
-    # `NGlobSingle.results` sets, so that in-place updates from `NGlobSingle.extend` /
-    # `.reduce` (used by `NGlobMulti.extend` / `.reduce` and, transitively, `.will_change`)
-    # are visible through `NGlobMulti.results` without a separate write.
-    # A cattrs structure hook that rebuilds `NGlobMulti.results` from independently
-    # deserialized data (instead of reusing the `NGlobSingle.results` objects)
-    # breaks this invariant.
-    ngm = NGlobMulti.from_patterns(["inp*.txt"])
-    ngm.extend(["inp1.txt", "inp2.txt"])
-    data = json.loads(json.dumps(json_converter.unstructure(ngm)))
-    back = json_converter.structure(data, NGlobMulti)
-    for values, path_sets in back.results.items():
-        for ngs, path_set in zip(back.nglob_singles, path_sets, strict=True):
-            assert path_set is ngs.results[values]
-
-
-def test_nglob_multi_round_trip_will_change():
-    ngm = NGlobMulti.from_patterns(["inp*.txt"])
-    ngm.extend(["inp1.txt", "inp2.txt"])
-    data = json.loads(json.dumps(json_converter.unstructure(ngm)))
-    back = json_converter.structure(data, NGlobMulti)
+def test_named_glob_round_trip_will_change():
+    ng = NamedGlob("inp*.txt")
+    ng.extend(["inp1.txt", "inp2.txt"])
+    data = json.loads(json.dumps(json_converter.unstructure(ng)))
+    back = json_converter.structure(data, NamedGlob)
     evolved = back.will_change({"inp1.txt"}, {"inp3.txt"})
     assert evolved is not None
-    assert evolved.results == {(): [{"inp2.txt", "inp3.txt"}]}
-
-
-def test_nglob_multi_round_trip_named():
-    ngm = NGlobMulti.from_patterns(["${*dir}/foo.txt", "${*dir}/bar${*id}.csv"])
-    ngm.extend(["a/foo.txt", "a/bar1.csv", "b/foo.txt", "b/bar2.csv"])
-    data = json.loads(json.dumps(json_converter.unstructure(ngm)))
-    back = json_converter.structure(data, NGlobMulti)
-    assert back.equals(ngm)
-    assert back.used_names == ("dir", "id")
-    assert back.results == {
-        ("a", "1"): [{"a/foo.txt"}, {"a/bar1.csv"}],
-        ("b", "2"): [{"b/foo.txt"}, {"b/bar2.csv"}],
-    }
-    evolved = back.will_change(set(), {"a/bar3.csv"})
-    assert evolved is not None
-    assert evolved.results[("a", "3")] == [{"a/foo.txt"}, {"a/bar3.csv"}]
+    assert evolved.results == {(): {"inp2.txt", "inp3.txt"}}

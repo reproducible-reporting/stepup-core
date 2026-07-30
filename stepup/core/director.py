@@ -33,7 +33,7 @@ from .exceptions import CgroupError, GraphError
 from .executor import Executor
 from .file import File
 from .hash import FileHash
-from .nglob import NGlobMulti
+from .nglob import NamedGlob
 from .reporter import ReporterClient
 from .rpc import allow_rpc, serve_socket_rpc
 from .scheduler import Scheduler
@@ -818,12 +818,12 @@ class DirectorHandler:
     async def nglob(
         self,
         job_i: int,
-        patterns: list[str],
+        pattern: str,
         subs: dict[str, str],
         paths: list[str],
         dir_paths: list[str],
     ) -> None:
-        """Register glob patterns, declare file matches static, validate directory matches.
+        """Register a glob pattern, declare file matches static, validate directory matches.
 
         File matches already owned by a static tree are silently skipped by
         `Workflow.declare_unconfirmed`, since the tree owns them.
@@ -831,13 +831,13 @@ class DirectorHandler:
         tree raises `GraphError`, since StepUp cannot tell whether it is source material
         or a step's build product.
         """
-        ngm = NGlobMulti.from_patterns(patterns, subs)
-        ngm.extend(paths)
+        ng = NamedGlob(pattern, subs)
+        ng.extend(paths)
         async with self.db:
             creator = self.scheduler.get_step(job_i)
             self.workflow.check_dir_matches_static_tree(dir_paths)
             to_check = self.workflow.declare_unconfirmed(creator, paths)
-            self.workflow.register_nglob(creator, ngm)
+            self.workflow.register_nglob(creator, ng)
         self._submit_to_check(to_check)
 
     @allow_rpc
