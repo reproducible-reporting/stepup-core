@@ -14,7 +14,7 @@ import attrs
 from path import Path
 
 from .cattrs import json_converter
-from .constants import PLAN_PY
+from .constants import PLAN_PY, STEPUP_DIR
 from .enums import (
     REGULAR_OUTPUT_STATES,
     TARGET_FORBIDDEN_STATES,
@@ -936,6 +936,8 @@ class Workflow(Trellis):
                     f"that matches a static tree ({static_tree.label})."
                 )
         self._raise_if_forbidden_target(path, file_state)
+        if path.startswith(STEPUP_DIR + os.sep):
+            raise GraphError(f"Cannot declare a file under {STEPUP_DIR}: {path}")
 
         file = self.create(File, creator, path, state=file_state)
 

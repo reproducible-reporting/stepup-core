@@ -105,6 +105,7 @@ EXAMPLES = [
     "error_runsh_not_executable",
     "error_runsh_opts",
     "error_step",
+    "error_stepup_dir",
     "external_sources",
     "filter_deps_symlink",
     "getinfo",
