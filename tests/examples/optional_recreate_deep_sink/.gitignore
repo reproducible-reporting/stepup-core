@@ -1,0 +1,7 @@
+.stepup
+current_*
+hop2.txt
+sub/hop3.txt
+sub/hop4.txt
+plan.py
+!sub/plan.py

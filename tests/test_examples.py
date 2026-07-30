@@ -140,6 +140,7 @@ EXAMPLES = [
     "optional_convert_reselect",
     "optional_convert_restore",
     "optional_cross_plan",
+    "optional_recreate_deep_sink",
     "output_not_created",
     "output_storage",
     "path_filter",

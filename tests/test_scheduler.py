@@ -21,7 +21,6 @@ from stepup.core.scheduler import (
     INIT_SAFE_UPDATE,
     PROPAGATE_UPDATE_CHECK_AFTER,
     PRUNE_DETACHED_CHECK_AFTER,
-    PRUNE_REDUNDANT_CHECK_AFTER,
     RECOMPUTE_READY,
     SELECT_INPUTS,
     SELECT_NEXT_STEP,
@@ -238,7 +237,6 @@ def _run_update_meta_after(con):
     con.execute(INIT_CHANGED_AFTER)
     con.execute(EMPTY_CHECK_AFTER)
     con.execute(PRUNE_DETACHED_CHECK_AFTER)
-    con.execute(PRUNE_REDUNDANT_CHECK_AFTER)
     ncheck = con.execute("SELECT COUNT(*) FROM check_after").fetchone()[0]
     first = True
     while ncheck > 0:
@@ -960,154 +958,35 @@ def test_update_meta_after_then_dispatch_order_by_tail_time(con):
     assert ids == [2]
 
 
-# -----------------------------------------------------------------------
-# Tests for PRUNE_REDUNDANT_CHECK_AFTER
-# -----------------------------------------------------------------------
+def test_update_meta_after_elevates_flagged_step_two_hops_upstream(con):
+    """Every flagged step is recomputed, also when a flagged sink is two hops downstream.
 
-
-def _setup_check_after(con, *step_ids):
-    """Create (if needed) and populate check_after with the given step ids."""
-    con.execute(INIT_CHECK_AFTER)
-    con.execute(EMPTY_CHECK_AFTER)
-    for step_id in step_ids:
-        con.execute("INSERT INTO check_after (i) VALUES (?)", (step_id,))
-
-
-def _get_check_after_ids(con):
-    """Return the sorted list of step ids currently in check_after."""
-    return sorted(row[0] for row in con.execute("SELECT i FROM check_after").fetchall())
-
-
-def test_prune_redundant_single_step_unchanged(con):
-    """A single step in check_after with no dependencies is not pruned."""
-    _insert_step(con, 2, 1, StepState.PENDING, check_after=True)
-    _setup_check_after(con, 2)
-    con.execute(PRUNE_REDUNDANT_CHECK_AFTER)
-    assert _get_check_after_ids(con) == [2]
-
-
-def test_prune_redundant_upstream_pruned_when_both_flagged(con):
-    """Upstream A is pruned when both A and its downstream B are in check_after.
-
-    Processing B will propagate to A via PROPAGATE_UPDATE_CHECK_AFTER, so A is redundant.
+    Chain A -> B -> C, all three flagged. A is an OPTIONAL step whose `_implied_need` is
+    stale (it was left at OPTIONAL while C was detached), while B and C already hold their
+    final values. Recomputing only the most-downstream flagged step and relying on
+    propagation to reach the rest does not work here: B does not change, so propagation
+    stops before A. A must be elevated to DEFAULT all the same, otherwise it is never
+    dispatched (`STEP_DISPATCH_WHERE` requires `_implied_need > OPTIONAL`) and B and C
+    stay PENDING forever.
     """
-    _insert_step(con, 2, 1, StepState.PENDING, check_after=True)  # A (upstream)
+    # A (node 2): declared OPTIONAL, with a stale implied need.
+    _insert_step(con, 2, 1, StepState.PENDING, check_after=True, need=Need.OPTIONAL, tail_time=3.0)
     _insert_file(con, 3, 1)
-    _insert_step(con, 4, 1, StepState.PENDING, check_after=True)  # B (downstream)
+    # B (node 4): unchanged, so it does not propagate anything by itself.
+    _insert_step(con, 4, 1, StepState.PENDING, check_after=True, tail_time=2.0)
+    _insert_file(con, 5, 1)
+    # C (node 6): unchanged as well.
+    _insert_step(con, 6, 1, StepState.PENDING, check_after=True, tail_time=1.0)
     _add_dep(con, 2, 3)  # A -> file
     _add_dep(con, 3, 4)  # file -> B
-    _setup_check_after(con, 2, 4)
-    con.execute(PRUNE_REDUNDANT_CHECK_AFTER)
-    assert _get_check_after_ids(con) == [4]  # A pruned, B stays
+    _add_dep(con, 4, 5)  # B -> file
+    _add_dep(con, 5, 6)  # file -> C
 
-
-def test_prune_redundant_only_upstream_flagged_unchanged(con):
-    """A is not pruned when only A (and not its downstream B) is in check_after."""
-    _insert_step(con, 2, 1, StepState.PENDING, check_after=True)
-    _insert_file(con, 3, 1)
-    _insert_step(con, 4, 1, StepState.PENDING, check_after=False)
-    _add_dep(con, 2, 3)
-    _add_dep(con, 3, 4)
-    _setup_check_after(con, 2)
-    con.execute(PRUNE_REDUNDANT_CHECK_AFTER)
-    assert _get_check_after_ids(con) == [2]
-
-
-def test_prune_redundant_only_downstream_flagged_unchanged(con):
-    """B is not pruned when only B (and not its upstream A) is in check_after."""
-    _insert_step(con, 2, 1, StepState.PENDING, check_after=False)
-    _insert_file(con, 3, 1)
-    _insert_step(con, 4, 1, StepState.PENDING, check_after=True)
-    _add_dep(con, 2, 3)
-    _add_dep(con, 3, 4)
-    _setup_check_after(con, 4)
-    con.execute(PRUNE_REDUNDANT_CHECK_AFTER)
-    assert _get_check_after_ids(con) == [4]
-
-
-def test_prune_redundant_three_step_chain_keeps_only_tail(con):
-    """In chain A -> B -> C with all three flagged, A and B are pruned; only C remains.
-
-    C is the most-downstream leaf.  Processing C propagates to B, then B to A.
-    """
-    _insert_step(con, 2, 1, StepState.PENDING, check_after=True)  # A
-    _insert_file(con, 3, 1)
-    _insert_step(con, 4, 1, StepState.PENDING, check_after=True)  # B
-    _insert_file(con, 5, 1)
-    _insert_step(con, 6, 1, StepState.PENDING, check_after=True)  # C
-    _add_dep(con, 2, 3)
-    _add_dep(con, 3, 4)
-    _add_dep(con, 4, 5)
-    _add_dep(con, 5, 6)
-    _setup_check_after(con, 2, 4, 6)
-    con.execute(PRUNE_REDUNDANT_CHECK_AFTER)
-    assert _get_check_after_ids(con) == [6]  # only C remains
-
-
-def test_prune_redundant_parallel_sinks_prunes_shared_source(con):
-    """A supplies both B and C; with all three flagged, A is pruned but B and C stay."""
-    _insert_step(con, 2, 1, StepState.PENDING, check_after=True)  # A
-    _insert_file(con, 3, 1)
-    _insert_file(con, 4, 1)
-    _insert_step(con, 5, 1, StepState.PENDING, check_after=True)  # B
-    _insert_step(con, 6, 1, StepState.PENDING, check_after=True)  # C
-    _add_dep(con, 2, 3)
-    _add_dep(con, 3, 5)
-    _add_dep(con, 2, 4)
-    _add_dep(con, 4, 6)
-    _setup_check_after(con, 2, 5, 6)
-    con.execute(PRUNE_REDUNDANT_CHECK_AFTER)
-    assert _get_check_after_ids(con) == [5, 6]  # B and C stay, A pruned
-
-
-def test_prune_redundant_unconnected_steps_unchanged(con):
-    """Steps with no dependency between them are never pruned."""
-    _insert_step(con, 2, 1, StepState.PENDING, check_after=True)
-    _insert_step(con, 3, 1, StepState.PENDING, check_after=True)
-    _setup_check_after(con, 2, 3)
-    con.execute(PRUNE_REDUNDANT_CHECK_AFTER)
-    assert _get_check_after_ids(con) == [2, 3]
-
-
-def test_prune_redundant_detached_intermediate_breaks_chain(con):
-    """A detached step in the middle of a chain blocks source traversal.
-
-    With A -> file -> B(detached) -> file -> C and A and C both in check_after,
-    the traversal from C stops at the detached B, so A is NOT pruned.
-    """
-    _insert_step(con, 2, 1, StepState.PENDING, check_after=True)  # A
-    _insert_file(con, 3, 1)
-    _insert_step(con, 4, 1, StepState.PENDING, check_after=True, detached=True)  # B (detached)
-    _insert_file(con, 5, 1)
-    _insert_step(con, 6, 1, StepState.PENDING, check_after=True)  # C
-    _add_dep(con, 2, 3)
-    _add_dep(con, 3, 4)
-    _add_dep(con, 4, 5)
-    _add_dep(con, 5, 6)
-    _setup_check_after(con, 2, 6)  # B is detached so not in check_after
-    con.execute(PRUNE_REDUNDANT_CHECK_AFTER)
-    assert _get_check_after_ids(con) == [2, 6]  # A not pruned: chain broken by detached B
-
-
-def test_prune_redundant_stops_at_first_hit(con):
-    """Traversal stops at the first check_after step it finds upstream.
-
-    With B -> C both in check_after and A upstream of B (not in check_after),
-    the trace from C finds B (hit=True, stops) and never reaches A.
-    B is pruned; A is unaffected because it is not in check_after.
-    """
-    _insert_step(con, 2, 1, StepState.PENDING, check_after=False)  # A (not flagged)
-    _insert_file(con, 3, 1)
-    _insert_step(con, 4, 1, StepState.PENDING, check_after=True)  # B
-    _insert_file(con, 5, 1)
-    _insert_step(con, 6, 1, StepState.PENDING, check_after=True)  # C
-    _add_dep(con, 2, 3)
-    _add_dep(con, 3, 4)
-    _add_dep(con, 4, 5)
-    _add_dep(con, 5, 6)
-    _setup_check_after(con, 4, 6)
-    con.execute(PRUNE_REDUNDANT_CHECK_AFTER)
-    assert _get_check_after_ids(con) == [6]  # B pruned; C stays
+    _run_update_meta_after(con)
+    implied = dict(con.execute("SELECT node, _implied_need FROM step").fetchall())
+    assert implied[2] == Need.DEFAULT
+    assert implied[4] == Need.DEFAULT
+    assert implied[6] == Need.DEFAULT
 
 
 # -----------------------------------------------------------------------

@@ -148,44 +148,6 @@ WHERE NOT node.detached AND step._check_after
 """
 
 
-# Remove from check_after steps that have (indirect) sinks also in check_after.
-# This is done by starting from the flagged steps, and recursively following their sources,
-# until we hit another step whose _check_after is set.
-# Such source steps will be updated anyway, and unchecking them here
-# will avoid duplicate work and potential conflicts later.
-PRUNE_REDUNDANT_CHECK_AFTER = """
-DELETE FROM check_after
-WHERE i IN (
-    WITH RECURSIVE trace(i, depth, hit) AS (
-        -- Start from all steps in check_after
-        SELECT
-            i,
-            0,
-            FALSE
-        FROM check_after
-        UNION ALL
-        -- Iterate over all their (recursive) sources,
-        -- until we hit another step whose _check_after is set.
-        -- There is no need to go further,
-        -- because that step will be updated elsewhere in the trace.
-        SELECT
-            source_step.node,
-            trace.depth + 1,
-            source_step._check_after
-        FROM trace
-        JOIN dependency AS dep1 ON dep1.sink = trace.i
-        JOIN dependency AS dep2 ON dep2.sink = dep1.source
-        JOIN step AS source_step ON dep2.source = source_step.node
-        JOIN node AS source_node ON source_step.node = source_node.i
-        WHERE NOT source_node.detached AND NOT trace.hit
-    )
-    SELECT trace.i
-    FROM trace
-    WHERE trace.depth > 0
-)
-"""
-
-
 # Compute the new _implied_need and _tail_time for each step in check_after, and apply them
 # directly in the same statement (avoids a round trip through a separate, materialized
 # update_after table). RETURNING reports exactly the node ids that were written, which the
@@ -718,7 +680,16 @@ class Scheduler:
         logger.debug(f"Updated {cur.rowcount} _check_safe metadata field(s) for steps")
 
     def _update_meta_after(self):
-        """Update the "after" metadata fields where needed."""
+        """Update the "after" metadata fields where needed.
+
+        Every flagged step is recomputed in the first iteration.
+        Skipping the ones that also have a flagged (indirect) sink,
+        on the grounds that propagation from that sink will reach them anyway,
+        is not sound: propagation stops at the first step whose values do not change,
+        so a flagged step two or more hops upstream can be missed entirely.
+        It would then keep a stale `_implied_need` for good,
+        because `_check_after` is cleared for all steps at the end of this method.
+        """
         db = self.workflow.db
         if not db.execute("SELECT EXISTS(SELECT 1 FROM step WHERE _check_after)").fetchone()[0]:
             return
@@ -726,7 +697,6 @@ class Scheduler:
         # check_after and changed_after are created once in Scheduler.initialize().
         db.execute(EMPTY_CHECK_AFTER)
         db.execute(PRUNE_DETACHED_CHECK_AFTER)
-        db.execute(PRUNE_REDUNDANT_CHECK_AFTER)
         ncheck = db.execute("SELECT COUNT(*) FROM check_after").fetchone()[0]
         first = True
         while ncheck > 0:
