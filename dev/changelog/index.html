@@ -5861,7 +5861,25 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   This allows for huge static data directories, of which only some are used,
   without having to glob the entire directory recursively.
   To declare a static tree directory, just pass it as an argument to the <code>static()</code> function.
-  It will treat all directory arguments are static trees.</li>
+  <code>static()</code> will treat all directory arguments are static trees.
+  Static trees interact with <code>static()</code> and <code>glob()</code> as follows:<ul>
+<li><code>static()</code> on a path already covered by a static tree is now a no-op,
+  instead of raising an error.
+  A static tree must still be declared before any file it contains;
+  the reverse order still raises.</li>
+<li><code>glob()</code> no longer declares file matches already covered by a static tree,
+  since the tree already owns them.
+  This makes overlapping <code>glob()</code> calls over the same static tree work:
+  declare the tree once with <code>static()</code>, then <code>glob()</code> it as often as needed.</li>
+<li>Declaring a static tree that already contains previously declared files raises an error.</li>
+<li>A directory match of a <code>glob()</code> pattern is only accepted when the
+  directory lies inside a static tree.
+  Outside a static tree, StepUp has no evidence that the directory is source material
+  rather than a step&rsquo;s build product, so the set of matches could depend on build progress.</li>
+</ul>
+</li>
+<li><code>glob()</code> and <code>StepInfo.filter_inp()</code>/<code>filter_out()</code>/<code>filter_vol()</code> now take a single
+  pattern instead of <code>*patterns</code>.</li>
 <li>The <code>render-jinja</code> feature is now a standalone Python console script, <code>sc-render-jinja</code>
   instead of a <code>stepup</code> subcommand (tool).
   Steps created by <a class="autorefs autorefs-internal" title="stepup.core.api.render_jinja(*args, mode='auto', optional=False, resources=None, duration=None)" href="../reference/stepup.core.api/#stepup.core.api.render_jinja"><code>render_jinja()</code></a> now run <code>sc-render-jinja ...</code>
@@ -5977,6 +5995,16 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   Use the <code>shq()</code> helper function instead, together with Python&rsquo;s built-in f-strings.</li>
 <li>The <code>glob()</code> function no longer accepts <code>_defer</code> and <code>_required</code> keyword arguments.</li>
 <li>Removed the environment variable substitution in the executable passed to <code>script()</code> and <code>call()</code>.</li>
+<li>Cross-pattern named-glob consistency (matching several patterns jointly, e.g.
+  <code>glob("feedback_${*idx}.md", "report_${*idx}.pdf")</code>) is no longer supported.
+  It was rarely, if ever, used in practice, and its removal significantly simplifies
+  <code>stepup.core.nglob</code> and every module that consumes it.
+  <code>NGlobMulti</code> is removed; <code>NamedGlob</code> (unchanged for single-pattern use, and now with
+  the convenience methods <code>NGlobMulti</code> used to provide) is the only named-glob class.
+  It was previously named <code>NGlobSingle</code>, a name that only made sense next to a &ldquo;multi&rdquo;
+  counterpart; <code>NGlobMatch</code> is likewise renamed to <code>NamedGlobMatch</code>.
+  Consistency <em>within</em> one pattern (the same <code>${*name}</code> reused twice in a single pattern
+  string) is unaffected.</li>
 </ul>
 <h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
 <ul>
@@ -6011,6 +6039,12 @@ and this project adheres to <a href="https://jacobtomlinson.dev/effver/">Effort-
   Previously this ended <code>stepup build</code> with a traceback and discarded the director&rsquo;s return code.</li>
 <li>Running with <code>--log-level=ERROR</code> or <code>--log-level=CRITICAL</code> no longer ends every successful
   build with a spurious <code>Errors logged in .stepup/director.log</code> warning.</li>
+<li>A named wildcard (<code>${*name}</code>) now matches the same paths as the anonymous <code>*</code> it replaces.
+  Previously, <code>glob("data/${*name}")</code> silently skipped directory matches,
+  while <code>glob("data/*")</code> included them.
+  Consequently, a named wildcard directly following a separator
+  no longer matches an empty string, just like <code>*</code> in that position.
+  The trailing separator of a matched directory is not part of the captured substring.</li>
 </ul>
 <h2 id="v3.2.3"><a href="https://github.com/reproducible-reporting/stepup-core/releases/tag/v3.2.3">3.2.3</a> - 2026-04-16<a class="headerlink" href="#v3.2.3" title="Permanent link">&para;</a></h2>
 <p>Bugfix release: support large inodes in SQLite storage</p>

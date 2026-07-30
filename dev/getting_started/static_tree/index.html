@@ -2445,6 +2445,15 @@ Also, create a <code>plan.py</code> file with the following contents:</p>
 <p>Under the hood, StepUp will not immediately declare all files in the <code>data/</code> directory as static.
 Instead, they are declared static lazily when they are first accessed.
 This means that <code>data/</code> may contain a huge number of files without causing any performance issues.</p>
+<p>A static tree must be declared before any file it contains.
+Calling <code>static("data/")</code> and then <code>static("data/somefile.txt")</code> is fine:
+the second call is a no-op, since the tree already owns the file.
+The reverse order raises an error,
+because <code>data/somefile.txt</code> was already declared before <code>data/</code> became a static tree.
+Within a single <code>static()</code> call, directory arguments are always registered before
+file arguments, so <code>static("data/", "data/somefile.txt")</code> and
+<code>static("data/somefile.txt", "data/")</code> are both fine and behave identically:
+argument order within one call does not matter.</p>
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
 <li>

@@ -1608,6 +1608,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Directory Handling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#static-trees-instead-of-static-directories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Static Trees Instead of Static Directories
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trailing-slashes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trailing Slashes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2596,6 +2624,34 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Directory Handling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#static-trees-instead-of-static-directories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Static Trees Instead of Static Directories
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trailing-slashes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trailing Slashes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2872,14 +2928,7 @@ This has a few practical consequences for your <code>plan.py</code> file:</p>
 <p><code>mkdir()</code> is no longer needed and has been removed.</p>
 </li>
 <li>
-<p>When <code>static()</code> is called with a directory path, this has a different meaning than before.
-  In StepUp 3, this just made the directory static.
-  In StepUp 4, this makes all contained files (recursively) static.
-  This implementation is <em>lazy</em>, meaning that the directory is not scanned immediately,
-  but that contained files only become static when they are used as inputs.</p>
-</li>
-<li>
-<p>When <code>glob()</code> is called with a directory argument, an error is raised.</p>
+<p>Directories can no longer be used as inputs or outputs of steps.</p>
 </li>
 <li>
 <p>The <code>_defer=True</code> argument to <code>glob()</code> is no longer supported.
@@ -2887,10 +2936,36 @@ This has a few practical consequences for your <code>plan.py</code> file:</p>
   (Deferred globbing was slightly more flexible,
   but is now abandoned due to subtle and difficult to solve bugs.)</p>
 </li>
-<li>
-<p>Directories can no longer be used as inputs or outputs of steps.</p>
-</li>
 </ul>
+<h3 id="static-trees-instead-of-static-directories">Static Trees Instead of Static Directories<a class="headerlink" href="#static-trees-instead-of-static-directories" title="Permanent link">&para;</a></h3>
+<p>Passing a directory to <code>static()</code> has a different meaning than before.
+In StepUp 3, this just made the directory itself static.
+In StepUp 4, it registers a <em>static tree</em>, which makes all contained files (recursively) static.
+This implementation is <em>lazy</em>, meaning that the directory is not scanned immediately,
+but that contained files only become static when they are used as inputs.</p>
+<p>Three rules govern how static trees interact with <code>static()</code> and <code>glob()</code>:</p>
+<ol>
+<li>
+<p><strong>A static tree must be declared before any file it contains.</strong>
+   With <code>static("data/")</code> first, a later <code>static("data/foo.txt")</code> is simply a no-op,
+   because the tree already owns that file.
+   The reverse order raises an error.</p>
+</li>
+<li>
+<p><strong><code>glob()</code> still declares its matching files static,
+   except for matches already covered by a static tree.</strong>
+   Those belong to the tree, so <code>glob()</code> only records the pattern for them.
+   Consequently, overlapping <code>glob()</code> calls are allowed inside a static tree:
+   declare the tree once, then glob it as often as convenient.
+   (Outside a static tree, two <code>glob()</code> calls matching the same file still raise an error.)</p>
+</li>
+<li>
+<p><strong>A <code>glob()</code> pattern may only match a directory when that directory lies inside a static tree.</strong>
+   Elsewhere, StepUp has no evidence that the matched directory is source material
+   rather than a step&rsquo;s build product, so an error is raised.</p>
+</li>
+</ol>
+<h3 id="trailing-slashes">Trailing Slashes<a class="headerlink" href="#trailing-slashes" title="Permanent link">&para;</a></h3>
 <p>StepUp 3 strongly insisted on trailing slashes for directory paths.
 This requirement has been abandoned almost entirely in StepUp 4.
 End users only need to specify such &ldquo;path affixes&rdquo; in two places to avoid ambiguity:</p>

@@ -697,6 +697,17 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
       
         <li class="md-nav__item">
+  <a href="#combining-static-trees-and-globs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combining Static Trees and Globs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#inherent-risks" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2383,6 +2394,17 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
       
         <li class="md-nav__item">
+  <a href="#combining-static-trees-and-globs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combining Static Trees and Globs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#inherent-risks" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2436,10 +2458,10 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 <h1 id="static-glob">Static Glob<a class="headerlink" href="#static-glob" title="Permanent link">&para;</a></h1>
 <p>In addition to the <code>static()</code> function in the previous two tutorials,
 StepUp also supports globbing for static files.</p>
-<p>The <a class="autorefs autorefs-internal" title="stepup.core.api.glob(*patterns, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function is similar to <a class="autorefs autorefs-internal" title="stepup.core.api.static(*paths)" href="../../reference/stepup.core.api/#stepup.core.api.static"><code>static()</code></a>
+<p>The <a class="autorefs autorefs-internal" title="stepup.core.api.glob(pattern, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function is similar to <a class="autorefs autorefs-internal" title="stepup.core.api.static(*paths)" href="../../reference/stepup.core.api/#stepup.core.api.static"><code>static()</code></a>
 and supports globbing, including some non-standard glob techniques
 discussed in the following tutorials.</p>
-<p>Here, only the basic usage of <a class="autorefs autorefs-internal" title="stepup.core.api.glob(*patterns, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> is covered.
+<p>Here, only the basic usage of <a class="autorefs autorefs-internal" title="stepup.core.api.glob(pattern, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> is covered.
 In the <a href="../static_glob_conditional/">following tutorial</a>,
 the use of <code>glob()</code> in conditionals is discussed.
 See <a href="../../advanced_topics/static_named_glob/">Static Named Glob</a> for more advanced use cases.</p>
@@ -2470,9 +2492,30 @@ Also, create a <code>plan.py</code> file with the following contents:</p>
 </span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
 </span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>  DIRECTOR │ See you!
 </span></code></pre></div>
-<p>Note that all files found by the <code>glob()</code> function are declared static in the workflow.
-Hence, they cannot be outputs of other steps.
+<p>Every file matched by <code>glob()</code> is static:
+either it was already covered by a static tree (see <a href="../static_tree/">Static Tree</a>),
+or <code>glob()</code> declares it static itself.
+Matched files can therefore never be outputs of other steps.
 (This restriction is part of StepUp&rsquo;s design.)</p>
+<p>A directory match is only accepted when it lies inside a static tree.
+Outside a static tree, StepUp has no evidence that the matched directory is source
+material rather than a step&rsquo;s build product, so the set of matches could depend on
+build progress. See <a href="#combining-static-trees-and-globs">Combining Static Trees and Globs</a>
+below, and <a href="../../advanced_topics/static_named_glob/">Static Named Glob</a> for a way to
+identify directories by name without matching them directly.</p>
+<h2 id="combining-static-trees-and-globs">Combining Static Trees and Globs<a class="headerlink" href="#combining-static-trees-and-globs" title="Permanent link">&para;</a></h2>
+<p>A static tree and <code>glob()</code> can be combined: declare the tree once, then glob it as
+often as you like, with overlapping patterns if convenient.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">static</span><span class="p">(</span><span class="s2">&quot;src/&quot;</span><span class="p">)</span>              <span class="c1"># declare the tree once</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;src/*.txt&quot;</span><span class="p">)</span>           <span class="c1"># as many globs as you like</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;src/**/*.csv&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>The tree must be declared first.
+<code>glob()</code> matches under <code>src/</code> are already owned by the tree, so <code>glob()</code> only
+registers the patterns instead of trying to declare the files again.
+Reversing the order raises an error, for the same reason explained in
+<a href="../static_tree/">Static Tree</a>: a static tree must be declared before any file it
+contains, and a file matched by an earlier <code>glob()</code> call counts as such a file.</p>
 <h2 id="inherent-risks">Inherent Risks<a class="headerlink" href="#inherent-risks" title="Permanent link">&para;</a></h2>
 <p>Glob patterns are inherently error-prone and we therefore recommend to avoid them when possible,
 and use them with care otherwise.
@@ -2482,24 +2525,24 @@ For instance, files may be missing due to data loss or because of mistakes in th
 and any globbing pattern will proceed with the files that are found, without any warning.</p>
 <p>Consider for example a dataset where filenames have a predictable structure,
 e.g. an enumeration as follows:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>file_000.txt
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>file_001.txt
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>file_002.txt
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>file_003.txt
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>file_000.txt
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>file_001.txt
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>file_002.txt
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>file_003.txt
 </span></code></pre></div>
 <p>There are two ways to loop over these files:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">glob</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">glob</span><span class="p">(</span><span class="s2">&quot;file_*.txt&quot;</span><span class="p">):</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="c1"># do something with path</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">glob</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">glob</span><span class="p">(</span><span class="s2">&quot;file_*.txt&quot;</span><span class="p">):</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="c1"># do something with path</span>
 </span></code></pre></div>
 <p>Alternatively, one can loop over the expected range of numbers:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">static</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;file_</span><span class="si">{</span><span class="n">i</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">.txt&quot;</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">static</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="c1"># do something with path</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">static</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;file_</span><span class="si">{</span><span class="n">i</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">.txt&quot;</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">static</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="c1"># do something with path</span>
 </span></code></pre></div>
 <p>If the four files are present, both loops are equivalent in StepUp.
 The latter encodes a bit of extra knowledge about the dataset,

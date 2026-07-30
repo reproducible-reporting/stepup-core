@@ -2410,8 +2410,8 @@ The main difference to the arguments passed in,
 is that environment variables are substituted in the paths.</p>
 <p>In addition, <code>StepInfo</code> has three methods: <code>filter_inp()</code>, <code>filter_out()</code> and <code>filter_vol()</code>,
 which can be used to get a subset of paths.
-These functions take the same arguments as those of the <a class="autorefs autorefs-internal" title="stepup.core.api.glob(*patterns, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function
-and also return an <a class="autorefs autorefs-internal" href="../../reference/stepup.core.nglob/#stepup.core.nglob"><code>NGlobMulti</code></a> instance.</p>
+These functions take the same arguments as those of the <a class="autorefs autorefs-internal" title="stepup.core.api.glob(pattern, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function
+and also return a <a class="autorefs autorefs-internal" href="../../reference/stepup.core.nglob/#stepup.core.nglob"><code>NamedGlob</code></a> instance.</p>
 <p>Note that the <code>StepInfo</code> object will only contain information known at the time the step is defined.
 Amended information (inputs, outputs, &hellip;) cannot be retrieved from <code>StepInfo</code> objects.
 Also note that relative paths in <code>inp</code>, <code>out</code> and <code>vol</code> are relative to the working directory.</p>
