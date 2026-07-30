@@ -5,6 +5,7 @@
 import logging
 import pathlib
 
+import attrs
 import pytest
 from path import Path
 
@@ -16,6 +17,7 @@ from stepup.core.api import (
     dumpns,
     get_rpc_client,
     getenv,
+    glob,
     hold,
     loadns,
     plan,
@@ -23,9 +25,10 @@ from stepup.core.api import (
     run,
     script,
     shq,
+    static,
     step,
 )
-from stepup.core.exceptions import AmendWhileHoldingError
+from stepup.core.exceptions import AmendWhileHoldingError, PathError
 from stepup.core.rpc import DummySyncRPCClient
 
 
@@ -427,3 +430,97 @@ def test_hold_genuine_exception_not_masked_by_release_failure(monkeypatch, caplo
         raise ValueError("boom")
     assert api._HOLD_STATE.holding == 1
     assert any("release" in record.message for record in caplog.records)
+
+
+def test_check_inp_path_file(path_tmp):
+    path_foo = path_tmp / "foo.txt"
+    path_foo.write_text("content")
+    assert api._check_inp_path(path_foo) is None
+    assert api._check_inp_path(path_foo, return_dir=True) is False
+
+
+def test_check_inp_path_dir_disallowed(path_tmp):
+    with pytest.raises(PathError, match="Directory inputs are not supported"):
+        api._check_inp_path(path_tmp)
+
+
+def test_check_inp_path_dir_allowed(path_tmp):
+    assert api._check_inp_path(path_tmp, return_dir=True) is True
+
+
+def test_check_inp_path_missing(path_tmp):
+    path_missing = path_tmp / "missing.txt"
+    with pytest.raises(PathError, match="Path does not exist"):
+        api._check_inp_path(path_missing)
+    with pytest.raises(PathError, match="Path does not exist"):
+        api._check_inp_path(path_missing, return_dir=True)
+
+
+def test_check_inp_paths_splits_files_and_dirs(path_tmp):
+    path_foo = path_tmp / "foo.txt"
+    path_foo.write_text("content")
+    path_sub = path_tmp / "sub"
+    path_sub.mkdir()
+    file_paths, dir_paths = api._check_inp_paths([path_foo, path_sub], allow_dirs=True)
+    assert file_paths == [path_foo]
+    assert dir_paths == [path_sub]
+    with pytest.raises(PathError, match="Directory inputs are not supported"):
+        api._check_inp_paths([path_foo, path_sub])
+
+
+@attrs.define
+class _CaptureNglobClient(DummySyncRPCClient):
+    """A dummy RPC client that records the arguments of the `nglob` call."""
+
+    calls: list = attrs.field(factory=list)
+
+    def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
+        if name == "nglob":
+            self.calls.append(args)
+        return super().__call__(name, *args, _rpc_timeout=_rpc_timeout, **kwargs)
+
+
+def test_glob_dir_pattern_keeps_trailing_slash(path_tmp, monkeypatch):
+    """A directory pattern's trailing separator must survive `subs_env_vars()` + `normpath()`.
+
+    `Path("src/*/").normpath()` strips the trailing slash. If that normalization happens
+    before the affixes are captured, `glob()` sends the director a file pattern (`src/*`)
+    instead of a directory pattern (`src/*/`), so it silently matches files too.
+    """
+    monkeypatch.chdir(path_tmp)
+    (path_tmp / "src" / "sub").makedirs()
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+    client = _CaptureNglobClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    glob("src/*/")
+    assert len(client.calls) == 1
+    tr_patterns = client.calls[0][1]
+    assert tr_patterns == ["src/*/"]
+
+
+@attrs.define
+class _CaptureCallOrderClient(DummySyncRPCClient):
+    """A dummy RPC client that records the order in which RPC methods are called."""
+
+    names: list = attrs.field(factory=list)
+
+    def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
+        self.names.append(name)
+        return super().__call__(name, *args, _rpc_timeout=_rpc_timeout, **kwargs)
+
+
+@pytest.mark.parametrize("order", [("src/", "src/foo.txt"), ("src/foo.txt", "src/")])
+def test_static_tree_before_file_regardless_of_argument_order(path_tmp, monkeypatch, order):
+    """Within one `static()` call, the tree must reach the director before any file it contains.
+
+    Otherwise the director would see `src/foo.txt` declared before the tree `src/` exists,
+    which it rejects, even though the tree was named in the same `static()` call.
+    """
+    monkeypatch.chdir(path_tmp)
+    (path_tmp / "src").mkdir()
+    (path_tmp / "src" / "foo.txt").write_text("content")
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+    client = _CaptureCallOrderClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    static(*order)
+    assert client.names == ["static_trees", "declare_unconfirmed"]

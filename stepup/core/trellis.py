@@ -618,6 +618,9 @@ class Trellis:
         # - `file_clear_hash` also nulls the hash when a BUILT/OUTDATED file is recycled into
         #   UNCONFIRMED, so a leftover build product from a removed step is not silently
         #   trusted as a confirmed source when it is adopted by a static tree.
+        # - Added `node_check_static_tree_ins`/`_upd` triggers (WORKFLOW_SCHEMA, workflow.py)
+        #   as a backstop enforcing that an attached file node under a static tree's path
+        #   must have that tree as its creator.
 
         return 5
 

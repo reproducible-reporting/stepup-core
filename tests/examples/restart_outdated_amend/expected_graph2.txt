@@ -19,6 +19,10 @@ step:./plan.py
              product   st:data/
              product   step:./work.py
 
+st:data/
+             creator   step:./plan.py
+             product   file:data/inp2.txt
+
 file:subs.txt
                state = STATIC
              creator   step:./plan.py
@@ -28,10 +32,6 @@ file:work.py
                state = STATIC
              creator   step:./plan.py
                 sink   step:./work.py
-
-st:data/
-             creator   step:./plan.py
-             product   file:data/inp2.txt
 
 step:./work.py
                state = SUCCEEDED

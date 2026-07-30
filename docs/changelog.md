@@ -176,7 +176,21 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
   This allows for huge static data directories, of which only some are used,
   without having to glob the entire directory recursively.
   To declare a static tree directory, just pass it as an argument to the `static()` function.
-  It will treat all directory arguments are static trees.
+  `static()` will treat all directory arguments are static trees.
+  Static trees interact with `static()` and `glob()` as follows:
+    - `static()` on a path already covered by a static tree is now a no-op,
+      instead of raising an error.
+      A static tree must still be declared before any file it contains;
+      the reverse order still raises.
+    - `glob()` no longer declares file matches already covered by a static tree,
+      since the tree already owns them.
+      This makes overlapping `glob()` calls over the same static tree work:
+      declare the tree once with `static()`, then `glob()` it as often as needed.
+    - Declaring a static tree that already contains previously declared files raises an error.
+    - A directory match of a `glob()` pattern is only accepted when the
+      directory lies inside a static tree.
+      Outside a static tree, StepUp has no evidence that the directory is source material
+      rather than a step's build product, so the set of matches could depend on build progress.
 - The `render-jinja` feature is now a standalone Python console script, `sc-render-jinja`
   instead of a `stepup` subcommand (tool).
   Steps created by [`render_jinja()`][stepup.core.api.render_jinja] now run `sc-render-jinja ...`

@@ -38,6 +38,16 @@ Under the hood, StepUp will not immediately declare all files in the `data/` dir
 Instead, they are declared static lazily when they are first accessed.
 This means that `data/` may contain a huge number of files without causing any performance issues.
 
+A static tree must be declared before any file it contains.
+Calling `static("data/")` and then `static("data/somefile.txt")` is fine:
+the second call is a no-op, since the tree already owns the file.
+The reverse order raises an error,
+because `data/somefile.txt` was already declared before `data/` became a static tree.
+Within a single `static()` call, directory arguments are always registered before
+file arguments, so `static("data/", "data/somefile.txt")` and
+`static("data/somefile.txt", "data/")` are both fine and behave identically:
+argument order within one call does not matter.
+
 ## Try the Following
 
 - Add a file `data/egg.txt` and run StepUp again with the same arguments.

@@ -29,6 +29,33 @@ prefix_bbb_something_aaa.txt
 Named globs are especially valuable for coordinating output across multiple directories
 where a consistent naming pattern links them together.
 
+## Matching Directories by Name
+
+A glob pattern that matches a bare directory is only accepted when the directory lies
+inside a static tree (declared with `static()`);
+see [Combining Static Trees and Globs](../getting_started/static_glob.md#combining-static-trees-and-globs).
+Outside a static tree, StepUp has no evidence that the directory is source material
+rather than a step's build product.
+
+When you only need to discover directories by name, without declaring a static tree,
+combine a named wildcard with a file inside each directory that shares its name.
+For example, given a set of Typst documents organized one per directory:
+
+```text
+typst-report/report.typ
+typst-summary/summary.typ
+```
+
+the directories can be discovered by name with:
+
+```python
+for match in glob("typst-${*name}/${*name}.typ"):
+    ...  # match.name is "report", "summary", ...
+```
+
+This matches a *file*, not the directory itself, so it works with or without a static
+tree, while `match.name` still gives you the enclosing directory's name.
+
 ## Example
 
 Example source files: [`docs/advanced_topics/static_named_glob/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/static_named_glob)

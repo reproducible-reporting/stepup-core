@@ -1,0 +1,15 @@
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ cp -p src/bar.txt out_bar.txt
+  SUCCESS │ cp -p src/bar.txt out_bar.txt
+    START │ cp -p src/foo.txt out_foo.txt
+  SUCCESS │ cp -p src/foo.txt out_foo.txt
+    START │ cp -p src/foo.txt alt_foo.txt
+  SUCCESS │ cp -p src/foo.txt alt_foo.txt
+ DIRECTOR │ Ran 4 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+ DIRECTOR │ See you!

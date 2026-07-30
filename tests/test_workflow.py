@@ -4,6 +4,7 @@
 
 import asyncio
 import hashlib
+import re
 import sqlite3
 from collections.abc import AsyncIterator
 
@@ -1887,12 +1888,79 @@ async def test_static_tree_subdir(wfp: Workflow):
 
 
 async def test_static_tree_static(wfp: Workflow):
+    """Declaring a file already owned by an existing static tree is a silent no-op.
+
+    The tree was declared first, so it already owns the file; no new node is created,
+    and the file resolves lazily through the tree when later used as a step input.
+    """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.register_static_tree(plan, "static")
-    with pytest.raises(GraphError):
-        async with wfp.db:
-            declare_static(wfp, plan, ["static/README.md"])
+        to_check = wfp.declare_unconfirmed(plan, ["static/README.md"])
+        assert to_check == {}
+        assert wfp.find(File, "static/README.md") is None
+
+        to_check = wfp.define_step(plan, "cat static/README.md", inp_paths=["static/README.md"])
+        assert to_check == {"static/README.md": FileHash.unknown()}
+        readme = wfp.find(File, "static/README.md")
+        assert readme.creator() == wfp.find(StaticTree, "static/")
+
+
+async def test_static_tree_declare_unconfirmed_queues_parent_dir(wfp: Workflow):
+    """A tree-covered path declared through `declare_unconfirmed` still watches its parent.
+
+    No file node may be created for a path already owned by a static tree
+    (that adoption happens lazily), but the parent directory must still be queued for
+    watching, so a `glob()` match that is not (yet) consumed as a step input stays
+    reactive in watch mode.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "static")
+        while not wfp.dir_queue.empty():
+            wfp.dir_queue.get_nowait()
+
+        to_check = wfp.declare_unconfirmed(plan, ["static/sub/README.md"])
+
+        assert to_check == {}
+        assert wfp.find(File, "static/sub/README.md") is None
+        assert wfp.dir_queue.get_nowait() == "static/sub"
+        assert wfp.dir_queue.empty()
+
+
+async def test_check_dir_matches_static_tree_inside(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "static")
+        # Must not raise: static/sub/ lies inside the static/ tree.
+        wfp.check_dir_matches_static_tree(["static/sub/"])
+
+
+async def test_check_dir_matches_static_tree_root(wfp: Workflow):
+    """A directory match equal to the tree root itself counts as covered.
+
+    This falls out of `_find_matching_static_tree`'s `substr` arithmetic
+    (probing "static/" against a tree labeled "static/" matches itself),
+    rather than from an explicit branch, so it is easy to break by accident.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "static")
+        wfp.check_dir_matches_static_tree(["static/"])
+
+
+async def test_check_dir_matches_static_tree_outside(wfp: Workflow):
+    async with wfp.db:
+        with pytest.raises(GraphError, match="other/"):
+            wfp.check_dir_matches_static_tree(["other/"])
+
+
+async def test_check_dir_matches_static_tree_mixed(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "static")
+        with pytest.raises(GraphError, match="other/"):
+            wfp.check_dir_matches_static_tree(["static/sub/", "other/"])
 
 
 async def test_static_tree_output(wfp: Workflow):
@@ -2435,12 +2503,12 @@ async def test_reset_for_rerun_detaches_unconfirmed(wfp: Workflow):
         assert wfp.find_detached(File, "ghost.txt") == (ghost, True)
 
 
-async def test_register_static_tree_excludes_unconfirmed_and_missing(wfp: Workflow):
-    """register_static_tree() must not try to reattach UNCONFIRMED or MISSING files.
+async def test_register_static_tree_rejects_attached_unconfirmed_or_missing(wfp: Workflow):
+    """A static tree cannot be declared over a file already attached to another creator.
 
-    Both stay attached to whatever creator originally declared them; sweeping them into a
-    newly-registered, overlapping static tree would make `declare_unconfirmed` try to
-    reattach an already-attached node and raise a `GraphError`.
+    This holds regardless of the file's state: an UNCONFIRMED or MISSING file declared by
+    another creator blocks the tree exactly like a STATIC or BUILT one would, per the rule
+    "a static tree must be declared before any file it contains."
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
@@ -2452,19 +2520,46 @@ async def test_register_static_tree_excludes_unconfirmed_and_missing(wfp: Workfl
         unconfirmed = wfp.find(File, "data/unconfirmed.txt")
         assert unconfirmed.get_state() == FileState.UNCONFIRMED
 
-        # A MISSING (confirmed absent) file declared by another creator.
-        wfp.declare_unconfirmed(sub, ["data/missing.txt"])
-        wfp.update_file_hashes({"data/missing.txt": FileHash.unknown()}, HashUpdateCause.CONFIRMED)
-        missing = wfp.find(File, "data/missing.txt")
+    with pytest.raises(GraphError, match=re.escape("data/unconfirmed.txt")):
+        async with wfp.db:
+            wfp.register_static_tree(plan, "data")
+    async with wfp.db:
+        assert unconfirmed.creator() == sub
+        assert not unconfirmed.is_detached()
+        assert wfp.find(StaticTree, "data/") is None
+
+        # A MISSING (confirmed absent) file declared by another creator blocks it too.
+        wfp.declare_unconfirmed(sub, ["other/missing.txt"])
+        wfp.update_file_hashes({"other/missing.txt": FileHash.unknown()}, HashUpdateCause.CONFIRMED)
+        missing = wfp.find(File, "other/missing.txt")
         assert missing.get_state() == FileState.MISSING
 
-        # Registering an overlapping static tree must not try to reattach either file.
-        to_check = wfp.register_static_tree(plan, "data")
-        assert to_check == {}
-        assert unconfirmed.creator() == sub
+    with pytest.raises(GraphError, match=re.escape("other/missing.txt")):
+        async with wfp.db:
+            wfp.register_static_tree(plan, "other")
+    async with wfp.db:
         assert missing.creator() == sub
-        assert not unconfirmed.is_detached()
         assert not missing.is_detached()
+        assert wfp.find(StaticTree, "other/") is None
+
+
+async def test_register_static_tree_adopts_detached_file(wfp: Workflow):
+    """A detached file left behind by a removed creator is silently adopted (restart case).
+
+    Unlike an attached file, a detached one has no live creator to conflict with, so
+    declaring the tree over it recycles the node instead of raising.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        (foo,) = declare_static(wfp, plan, ["data/foo.txt"])
+        assert foo.get_state() == FileState.STATIC
+        foo.detach()
+        assert foo.is_detached()
+
+        to_check = wfp.register_static_tree(plan, "data")
+        assert to_check == {"data/foo.txt": fake_hash("data/foo.txt")}
+        assert not foo.is_detached()
+        assert foo.creator() == wfp.find(StaticTree, "data/")
 
 
 async def test_step_try_clean(wfp: Workflow):
@@ -2615,18 +2710,24 @@ async def test_static_tree_lost_child_reregister(wfp: Workflow):
             {"data/foo.txt": fake_hash("data/foo.txt")}, HashUpdateCause.CONFIRMED
         )
 
-        # The root takes data/foo.txt away from the static tree.
+        # prog disappears from plan.py: the tree, and the file it created, become
+        # detached leftovers (detachment propagates recursively to product nodes).
         prog.detach()
-        wfp.declare_unconfirmed(wfp.root, ["data/foo.txt"])
         assert tree.is_detached()
+        foo = wfp.find(File, "data/foo.txt")
+        assert foo.is_detached()
 
-        # A new creator can still register the same static tree, reusing the node.
+        # A new creator can still register the same static tree, reusing the node and
+        # adopting the orphaned (detached) file that used to belong to it.
         wfp.define_step(plan, "prog2")
         prog2 = wfp.find(Step, "prog2")
-        wfp.register_static_tree(prog2, "data")
+        to_check = wfp.register_static_tree(prog2, "data")
+        assert to_check == {"data/foo.txt": fake_hash("data/foo.txt")}
         new_tree = wfp.find(StaticTree, "data/")
         assert new_tree.i == tree.i
         assert new_tree.creator() == prog2
+        assert not foo.is_detached()
+        assert foo.creator() == new_tree
 
 
 def _build_and_leave_behind(wfp: Workflow, target_state: FileState) -> tuple[Step, File]:
@@ -3478,6 +3579,29 @@ async def test_dependency_kind_check_rejects_step_to_step(wfp: Workflow):
             wfp.db.execute(
                 "INSERT INTO dependency (source, sink) VALUES (?, ?)", (step_a.i, step_b.i)
             )
+
+
+async def test_static_tree_check_rejects_file_insert_under_tree(wfp: Workflow):
+    """An attached `file` node under a static tree's path must have that tree as creator.
+
+    `Workflow.register_static_tree` / `Workflow._declare_file` already reject this with a
+    friendlier, two-path `GraphError` before either of them ever writes to the node table
+    (see `test_register_static_tree_rejects_attached_unconfirmed_or_missing` and
+    `test_static_tree_static`). This exercises only the `node_check_static_tree_ins`
+    backstop trigger (WORKFLOW_SCHEMA, workflow.py) directly, by inserting a conflicting
+    row with raw SQL.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "data")
+
+
+async def test_static_tree_check_rejects_file_update_under_tree(wfp: Workflow):
+    """The `_upd` variant fires when a file under a tree's path is reattached to a creator
+    other than the tree with raw SQL, e.g. bypassing `Node.recycle()`."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "data")
 
 
 #

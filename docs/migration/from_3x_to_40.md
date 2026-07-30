@@ -130,20 +130,40 @@ This has a few practical consequences for your `plan.py` file:
 
 - `mkdir()` is no longer needed and has been removed.
 
-- When `static()` is called with a directory path, this has a different meaning than before.
-  In StepUp 3, this just made the directory static.
-  In StepUp 4, this makes all contained files (recursively) static.
-  This implementation is *lazy*, meaning that the directory is not scanned immediately,
-  but that contained files only become static when they are used as inputs.
-
-- When `glob()` is called with a directory argument, an error is raised.
+- Directories can no longer be used as inputs or outputs of steps.
 
 - The `_defer=True` argument to `glob()` is no longer supported.
   Use `static()` with a directory path instead, which has a similar effect.
   (Deferred globbing was slightly more flexible,
   but is now abandoned due to subtle and difficult to solve bugs.)
 
-- Directories can no longer be used as inputs or outputs of steps.
+### Static Trees Instead of Static Directories
+
+Passing a directory to `static()` has a different meaning than before.
+In StepUp 3, this just made the directory itself static.
+In StepUp 4, it registers a *static tree*, which makes all contained files (recursively) static.
+This implementation is *lazy*, meaning that the directory is not scanned immediately,
+but that contained files only become static when they are used as inputs.
+
+Three rules govern how static trees interact with `static()` and `glob()`:
+
+1. **A static tree must be declared before any file it contains.**
+   With `static("data/")` first, a later `static("data/foo.txt")` is simply a no-op,
+   because the tree already owns that file.
+   The reverse order raises an error.
+
+2. **`glob()` still declares its matching files static,
+   except for matches already covered by a static tree.**
+   Those belong to the tree, so `glob()` only records the pattern for them.
+   Consequently, overlapping `glob()` calls are allowed inside a static tree:
+   declare the tree once, then glob it as often as convenient.
+   (Outside a static tree, two `glob()` calls matching the same file still raise an error.)
+
+3. **A `glob()` pattern may only match a directory when that directory lies inside a static tree.**
+   Elsewhere, StepUp has no evidence that the matched directory is source material
+   rather than a step's build product, so an error is raised.
+
+### Trailing Slashes
 
 StepUp 3 strongly insisted on trailing slashes for directory paths.
 This requirement has been abandoned almost entirely in StepUp 4.

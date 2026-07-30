@@ -17,14 +17,14 @@ step:./plan.py
              product   st:../pkgs/
              product   step:./worker.py
 
+st:../pkgs/
+             creator   step:./plan.py
+             product   file:../pkgs/helper.py
+
 file:worker.py
                state = STATIC
              creator   step:./plan.py
                 sink   step:./worker.py
-
-st:../pkgs/
-             creator   step:./plan.py
-             product   file:../pkgs/helper.py
 
 step:./worker.py
                state = SUCCEEDED

@@ -277,6 +277,49 @@ The core data structure is a combined **provenance** and **dependency** graph st
 All graph mutations happen inside SQLite transactions.
 The `DBSession` in `sqlite3.py` serializes writes.
 
+#### Graph Determinism
+
+**The graph must be a deterministic function of the source files and the plan/step code,
+never of scheduling order or job count.**
+Running the same project with `-j1` and `-j16` must produce the same graph,
+and so must two consecutive runs that change nothing.
+This constrains the *provenance* half of the graph as much as the dependency half:
+which node is recorded as the creator of a file may not depend on
+which of two concurrent steps happened to declare it first.
+
+Note the requirement is deliberately stated relative to the source files and the code,
+not in absolute terms:
+`amend()` lets a step extend the graph based on what it discovers at run time,
+so a step whose behaviour genuinely varies (on wall-clock time, on undeclared
+environment state) will legitimately produce a different graph.
+What must never vary is the graph produced by the *same* inputs and code.
+
+Why this matters:
+
+- **Testability.**
+  A deterministic graph is one that `expected_graph*.txt` files can pin down.
+  A graph that depends on dispatch order can only be asserted loosely, or not at all,
+  and it makes timing-sensitive tests flaky for reasons unrelated to what they test.
+- **Debugging.**
+  The graph is what a user inspects (`stepup graph`, `stepup browse`) when a build
+  misbehaves. If it varies between runs, a reported graph no longer describes the run
+  that produced it, and bug reports stop being reproducible.
+- **Reproducibility.**
+  The graph survives restarts and drives watch mode, so it is a durable artifact,
+  not an internal detail. For a tool whose value proposition is persistent provenance,
+  determinism of the graph *is* determinism of the outcome.
+- **Avoiding spurious re-execution.**
+  When a node changes creator, `Trellis.create` calls `lost_product()` on the old creator,
+  which for a `Step` deletes its stored hash (`Step.lost_product`), so that step can no
+  longer be skipped. A creator assignment that varies between runs therefore causes steps
+  to re-run even though their inputs and outputs are unchanged.
+
+The practical consequence for API design:
+an operation that merely *observes* files (such as pattern matching) must not
+acquire ownership of graph nodes, since ownership is what makes call order observable.
+`StaticTree` is the model to follow: it owns the files under it regardless of
+which step first referenced them, so its identity is order-independent by construction.
+
 #### Database schema versioning
 
 The schema version is `Trellis.schema_version` (in `trellis.py`), written to the database via

@@ -45,6 +45,10 @@ You should get the following output:
 As expected, StepUp does not wait for another step to create `limerick.txt` because the file is static.
 The file `numbered.txt` will contain a copy of the limerick with line numbers.
 
+Keep in mind that a file can only be declared static once,
+so it is always clear which step has created the static file.
+When the creating step is later removed, the static files it created are also removed from the plan.
+
 ## Try the Following
 
 - Replace `gloom` by `boom` in `limerick.txt` and run `sb -j 1` again.

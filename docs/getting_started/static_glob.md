@@ -40,9 +40,36 @@ This should produce the following output:
 {% include 'getting_started/static_glob/stdout.txt' %}
 ```
 
-Note that all files found by the `glob()` function are declared static in the workflow.
-Hence, they cannot be outputs of other steps.
+Every file matched by `glob()` is static:
+either it was already covered by a static tree (see [Static Tree](static_tree.md)),
+or `glob()` declares it static itself.
+Matched files can therefore never be outputs of other steps.
 (This restriction is part of StepUp's design.)
+
+A directory match is only accepted when it lies inside a static tree.
+Outside a static tree, StepUp has no evidence that the matched directory is source
+material rather than a step's build product, so the set of matches could depend on
+build progress. See [Combining Static Trees and Globs](#combining-static-trees-and-globs)
+below, and [Static Named Glob](../advanced_topics/static_named_glob.md) for a way to
+identify directories by name without matching them directly.
+
+## Combining Static Trees and Globs
+
+A static tree and `glob()` can be combined: declare the tree once, then glob it as
+often as you like, with overlapping patterns if convenient.
+
+```python
+static("src/")              # declare the tree once
+glob("src/*.txt")           # as many globs as you like
+glob("src/**/*.csv")
+```
+
+The tree must be declared first.
+`glob()` matches under `src/` are already owned by the tree, so `glob()` only
+registers the patterns instead of trying to declare the files again.
+Reversing the order raises an error, for the same reason explained in
+[Static Tree](static_tree.md): a static tree must be declared before any file it
+contains, and a file matched by an earlier `glob()` call counts as such a file.
 
 ## Inherent Risks
 

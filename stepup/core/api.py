@@ -103,9 +103,15 @@ def static(*paths: StrPath | Iterable[StrPath]) -> None:
         Arguments may also be iterables of strings.
         Each string must refer to an existing file or directory and can be one of:
 
-        1. A file: declared immediately as a static path.
+        1. A file: declared immediately as a static path,
+           unless it already belongs to a static tree, in which case this is a no-op.
         2. A directory: registered as a static tree; files within it are lazily
            declared static the first time they are used as step inputs.
+
+        Within a single `static()` call, directory arguments are always registered
+        before file arguments, regardless of the order in which they were given.
+        A single call declaring both a tree and a file it contains is therefore
+        equivalent to declaring the tree first in a separate, earlier call.
 
     Raises
     ------
@@ -114,6 +120,9 @@ def static(*paths: StrPath | Iterable[StrPath]) -> None:
     EnvVarError
         When an environment variable in a path is undefined,
         or when a path contains an invalid variable identifier.
+    GraphError
+        When a directory overlaps with an existing static tree,
+        or when it already contains a file declared before it.
 
     Notes
     -----
@@ -132,25 +141,35 @@ def static(*paths: StrPath | Iterable[StrPath]) -> None:
             su_paths = [subs(path).normpath() for path in paths]
         # Sanity checks
         su_file_paths, su_dir_paths = _check_inp_paths(su_paths, allow_dirs=True)
-        if len(su_file_paths) > 0:
-            # Translate paths to make them relative to the working directory of the director.
-            tr_file_paths = sorted(translate(su_file_path) for su_file_path in su_file_paths)
-            # Declare the files unconfirmed; the director hashes and confirms them in the
-            # background, off this call's critical path.
-            RPC_CLIENT.call.declare_unconfirmed(get_job_i(), tr_file_paths)
+        # Static trees must reach the director before any file it contains:
+        # declaring a file first would make it look like it predates the tree,
+        # which the director rejects. This ordering is load-bearing, not incidental,
+        # which is also why a file already covered by a tree declared in this same call
+        # is skipped as a no-op by `Workflow.declare_unconfirmed` below.
         if len(su_dir_paths) > 0:
             # Translate paths to make them relative to the working directory of the director.
             tr_dir_paths = sorted(translate(su_dir_path) for su_dir_path in su_dir_paths)
             # Declare the static trees; matching existing files are hashed and confirmed
             # in the background by the director, same as above.
             RPC_CLIENT.call.static_trees(get_job_i(), tr_dir_paths)
+        if len(su_file_paths) > 0:
+            # Translate paths to make them relative to the working directory of the director.
+            tr_file_paths = sorted(translate(su_file_path) for su_file_path in su_file_paths)
+            # Declare the files unconfirmed; the director hashes and confirms them in the
+            # background, off this call's critical path.
+            RPC_CLIENT.call.declare_unconfirmed(get_job_i(), tr_file_paths)
 
 
 def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
-    """Declare static files through glob patterns and return the matches.
+    """Return file and directory matches of glob patterns, and declare static files.
 
-    All matched files are declared static with the director,
-    and the returned object can be iterated in the calling script.
+    StepUp registers that the caller uses these patterns,
+    so it can make the calling step pending when new matches appear in future runs.
+    A file match is declared static, unless it already belongs to a static tree
+    (declared with `static()`), which owns it instead.
+    A directory match is only accepted when it lies inside a static tree:
+    outside one, StepUp has no evidence that the directory is source material
+    rather than a step's build product, so the match set could depend on build progress.
 
     Parameters
     ----------
@@ -175,6 +194,8 @@ def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
     ------
     StepUpError
         When no patterns are given.
+    GraphError
+        When a directory match does not lie inside a static tree.
 
     Notes
     -----
@@ -189,33 +210,47 @@ def glob(*patterns: StrPath, **subs: str) -> NGlobMulti:
     """
     if len(patterns) == 0:
         raise StepUpError("At least one path is required for glob.")
-    # Substitute environment variables
+    # Substitute environment variables.
+    # Affixes are captured before normpath(), which would otherwise strip them,
+    # and re-applied after, so a trailing separator survives normalization.
     with subs_env_vars() as subs_path:
-        su_patterns = [subs_path(pattern).normpath() for pattern in patterns]
+        su_patterns = []
+        for pattern in patterns:
+            su_pattern = subs_path(pattern)
+            prefix, suffix = get_affixes(su_pattern)
+            su_patterns.append(apply_affixes(su_pattern.normpath(), prefix, suffix))
 
-    # StepUp needs to know the patterns,
-    # so it can identify new files matching the patterns in future runs.
-    tr_patterns = [translate(su_pattern) for su_pattern in su_patterns]
+    # StepUp needs to know the patterns, so it can identify new files matching the
+    # patterns in future runs. Trailing separators are preserved because translate()
+    # normalizes them away, and a trailing separator distinguishes a directory pattern.
+    tr_patterns = []
+    for su_pattern in su_patterns:
+        prefix, suffix = get_affixes(su_pattern)
+        tr_patterns.append(apply_affixes(translate(su_pattern), prefix, suffix))
 
     # Collect all matches
     nglob_multi = NGlobMulti.from_patterns(su_patterns, subs)
     nglob_multi.glob()
 
-    # Send static paths
-    static_paths = nglob_multi.files()
-    if len(static_paths) > 0:
-        _check_inp_paths(static_paths)
-        tr_static_paths = [translate(static_path) for static_path in static_paths]
-        RPC_CLIENT.call.declare_unconfirmed(get_job_i(), tr_static_paths)
+    # Translate all matches, keeping track of which ones are directories.
+    # Trailing separators are preserved for the same reason as for the patterns above.
+    # Existence is guaranteed by nglob's own filesystem walk, so `_check_inp_path`
+    # here only classifies files versus directories; it cannot raise.
+    tr_all_paths = []
+    tr_dir_paths = []
+    for nglob_single in nglob_multi.nglob_singles:
+        for paths in nglob_single.results.values():
+            for path in paths:
+                prefix, suffix = get_affixes(path)
+                tr_path = apply_affixes(translate(path), prefix, suffix)
+                tr_all_paths.append(tr_path)
+                if _check_inp_path(path, return_dir=True):
+                    tr_dir_paths.append(tr_path)
 
-    # Translate all the nglob matches with matching paths and send to the director.
-    tr_all_paths = [
-        translate(path)
-        for nglob_single in nglob_multi.nglob_singles
-        for paths in nglob_single.results.values()
-        for path in paths
-    ]
-    RPC_CLIENT.call.nglob(get_job_i(), tr_patterns, subs, tr_all_paths)
+    # One call: the director decides which file matches are already owned by a static
+    # tree (skipped), which directory matches lie inside one (accepted),
+    # and which directory matches do not (raises `GraphError`).
+    RPC_CLIENT.call.nglob(get_job_i(), tr_patterns, subs, tr_all_paths, tr_dir_paths)
 
     # Done
     return nglob_multi
@@ -1434,25 +1469,48 @@ def render_jinja(
 #
 
 
+def _check_inp_path(inp_path: Path, return_dir: bool = False) -> bool | None:
+    """Check the validity of a single input path.
+
+    Parameters
+    ----------
+    inp_path
+        The input path to check.
+    return_dir
+        Whether to allow directories as valid input paths.
+        If set, a boolean is returned indicating whether the input path is a directory.
+
+    Returns
+    -------
+    is_dir
+        Whether `inp_path` is a directory, or `None` when `return_dir` is not set.
+
+    Raises
+    ------
+    PathError
+        If the input path is a directory and `return_dir` is not set,
+        or if the input path does not exist.
+    """
+    is_dir = inp_path.is_dir()
+    if not return_dir:
+        if inp_path.endswith(os.sep):
+            raise PathError(f"Directory inputs are not supported: {inp_path}")
+        if is_dir:
+            raise PathError(f"Directory inputs are not supported: {inp_path}")
+    if not inp_path.exists():
+        raise PathError(f"Path does not exist: {inp_path}")
+    return is_dir if return_dir else None
+
+
 def _check_inp_paths(
     inp_paths: Iterable[Path], allow_dirs: bool = False
 ) -> tuple[list[Path], list[Path]]:
-    """Check the validity of the input paths."""
+    """Check the validity of the input paths, splitting files from directories."""
     file_paths = []
     dir_paths = []
     for inp_path in inp_paths:
-        is_dir = inp_path.is_dir()
-        if is_dir:
-            dir_paths.append(inp_path)
-        else:
-            file_paths.append(inp_path)
-        if not allow_dirs:
-            if inp_path.endswith(os.sep):
-                raise PathError(f"Directory inputs are not supported: {inp_path}")
-            if is_dir:
-                raise PathError(f"Directory inputs are not supported: {inp_path}")
-        if not inp_path.exists():
-            raise PathError(f"Path does not exist: {inp_path}")
+        is_dir = _check_inp_path(inp_path, return_dir=allow_dirs)
+        (dir_paths if is_dir else file_paths).append(inp_path)
     return file_paths, dir_paths
 
 

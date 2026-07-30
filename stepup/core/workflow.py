@@ -40,12 +40,13 @@ __all__ = ("Workflow",)
 logger = logging.getLogger(__name__)
 
 
-# Enforce Workflow's creator-kind and dependency-kind rules at the database level, as a
-# backstop against a bug that writes directly to node/dependency (bypassing
-# Trellis.create()/Node.add_source()/Node.recycle()). These are the only Workflow-level
-# invariants that don't belong to a single node kind's own satellite schema (contrast with
-# STEP_SCHEMA's triggers on dependency/file/node, which all maintain a step-table column --
-# see the convention comment above STEP_SCHEMA's trigger block), so they live here instead.
+# Enforce Workflow's creator-kind, dependency-kind and static-tree-ownership rules at the
+# database level, as a backstop against a bug that writes directly to node/dependency
+# (bypassing Trellis.create()/Node.add_source()/Node.recycle()). These are the only
+# Workflow-level invariants that don't belong to a single node kind's own satellite schema
+# (contrast with STEP_SCHEMA's triggers on dependency/file/node, which all maintain a
+# step-table column -- see the convention comment above STEP_SCHEMA's trigger block), so
+# they live here instead.
 #
 # A node's creator must have a kind that depends on the node's own kind:
 # file <- {step, st, root}, step <- {step, root}, st <- {step}. A NULL creator
@@ -1007,9 +1008,47 @@ class Workflow(Trellis):
             return {}
         # Sort paths to make the operation deterministic.
         paths = sorted(set(paths))
+        if creator.kind() != "st":
+            # A path already owned by a static tree is a no-op here:
+            # the tree adopts it lazily when it is first used as a step input.
+            # (`register_static_tree` calls this method with the tree itself as creator,
+            # for paths *inside* the tree being registered, which must not be filtered out.)
+            # Still watch the parent directory of each filtered-out path,
+            # so a glob() whose matches are not (yet) consumed as step inputs
+            # remains reactive in watch mode.
+            kept = []
+            for path in paths:
+                if self._find_matching_static_tree(path) is None:
+                    kept.append(path)
+                else:
+                    self.put_dir_queue(Path(path).parent)
+            paths = kept
         # Define the files whose hashes must be checked.
         unconfirmed = [self._declare_file(creator, path, FileState.UNCONFIRMED) for path in paths]
         return self._build_to_check(unconfirmed)
+
+    def check_dir_matches_static_tree(self, paths: Collection[str]) -> None:
+        """Verify that every directory match of a glob pattern lies inside a static tree.
+
+        Parameters
+        ----------
+        paths
+            Directory paths (ending with `/`) matched by a glob pattern.
+
+        Raises
+        ------
+        GraphError
+            When a directory does not lie inside a static tree, or is not itself a
+            static tree root. Outside a static tree, StepUp has no evidence that the
+            directory is source material rather than a step's build product, so the
+            match set could depend on build progress.
+        """
+        for path in sorted(set(paths)):
+            if self._find_matching_static_tree(path) is None:
+                raise GraphError(
+                    f"Directory match ({path}) does not lie inside a static tree. "
+                    "Declare a static tree with static() before glob()-ing directories under it."
+                )
 
     def register_static_tree(self, creator: Node, path: str) -> dict[str, FileHash]:
         """Install a static tree.
@@ -1046,17 +1085,29 @@ class Workflow(Trellis):
             raise GraphError(
                 f"Static tree is a parent directory of an existing static tree: {path}"
             )
-        st = self.create(StaticTree, creator, path)
-        # Check for matches in existing files.
-        # For example previously defined inputs whose origin was not determined yet.
-        # UNCONFIRMED and MISSING files are excluded: both are already attached to whatever
-        # creator declared them, so matching them here would make declare_unconfirmed try to
-        # reattach an already-attached node and raise a GraphError.
+        # A static tree must be declared before any file it contains: reject when an
+        # attached file node already exists under this path.
         pattern = f"{escape_like_pattern(path)}%"
         sql = (
+            "SELECT node.label FROM node JOIN file ON node.i = file.node "
+            "WHERE NOT node.detached AND node.label LIKE ? ESCAPE '\\' "
+            "ORDER BY node.label LIMIT 1"
+        )
+        row = self.db.execute(sql, (pattern,)).fetchone()
+        if row is not None:
+            (existing_path,) = row
+            raise GraphError(
+                f"Static tree ({path}) cannot be declared: "
+                f"it contains ({existing_path}), which was already declared. "
+                "Declare a static tree before the files it contains."
+            )
+        st = self.create(StaticTree, creator, path)
+        # Adopt matching detached file nodes, e.g. leftovers from a previous run.
+        # Attached nodes are excluded: the check above already rejects any of those,
+        # so only detached ones can remain here.
+        sql = (
             "SELECT label FROM node JOIN file ON node.i = file.node "
-            f"WHERE state NOT IN ({FileState.UNCONFIRMED.value}, {FileState.MISSING.value}) "
-            "AND node.label LIKE ?"
+            "WHERE node.detached AND node.label LIKE ? ESCAPE '\\'"
         )
         matching_paths = [path for (path,) in self.db.execute(sql, (pattern,))]
         return self.declare_unconfirmed(st, matching_paths)

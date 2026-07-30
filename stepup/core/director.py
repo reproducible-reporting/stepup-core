@@ -816,14 +816,29 @@ class DirectorHandler:
 
     @allow_rpc
     async def nglob(
-        self, job_i: int, patterns: list[str], subs: dict[str, str], paths: list[str]
+        self,
+        job_i: int,
+        patterns: list[str],
+        subs: dict[str, str],
+        paths: list[str],
+        dir_paths: list[str],
     ) -> None:
-        """Register glob patterns to be watched."""
+        """Register glob patterns, declare file matches static, validate directory matches.
+
+        File matches already owned by a static tree are silently skipped by
+        `Workflow.declare_unconfirmed`, since the tree owns them.
+        Directory matches must lie inside a static tree; a directory match outside any
+        tree raises `GraphError`, since StepUp cannot tell whether it is source material
+        or a step's build product.
+        """
         ngm = NGlobMulti.from_patterns(patterns, subs)
         ngm.extend(paths)
         async with self.db:
             creator = self.scheduler.get_step(job_i)
+            self.workflow.check_dir_matches_static_tree(dir_paths)
+            to_check = self.workflow.declare_unconfirmed(creator, paths)
             self.workflow.register_nglob(creator, ngm)
+        self._submit_to_check(to_check)
 
     @allow_rpc
     async def step(

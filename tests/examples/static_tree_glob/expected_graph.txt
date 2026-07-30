@@ -1,0 +1,76 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+                 ngm = ['src/*.txt'] {}
+                 ngm = ['src/f*.txt'] {}
+             creator   root:
+              source   file:plan.py
+             product   st:src/
+             product   step:cp -p src/bar.txt out_bar.txt
+             product   step:cp -p src/foo.txt alt_foo.txt
+             product   step:cp -p src/foo.txt out_foo.txt
+
+st:src/
+             creator   step:./plan.py
+             product   file:src/bar.txt
+             product   file:src/foo.txt
+
+step:cp -p src/bar.txt out_bar.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:src/bar.txt
+             product   file:out_bar.txt
+                sink   file:out_bar.txt
+
+file:src/bar.txt
+               state = STATIC
+             creator   st:src/
+                sink   step:cp -p src/bar.txt out_bar.txt
+
+file:out_bar.txt
+               state = BUILT
+             creator   step:cp -p src/bar.txt out_bar.txt
+              source   step:cp -p src/bar.txt out_bar.txt
+
+step:cp -p src/foo.txt out_foo.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:src/foo.txt
+             product   file:out_foo.txt
+                sink   file:out_foo.txt
+
+file:src/foo.txt
+               state = STATIC
+             creator   st:src/
+                sink   step:cp -p src/foo.txt alt_foo.txt
+                sink   step:cp -p src/foo.txt out_foo.txt
+
+file:out_foo.txt
+               state = BUILT
+             creator   step:cp -p src/foo.txt out_foo.txt
+              source   step:cp -p src/foo.txt out_foo.txt
+
+step:cp -p src/foo.txt alt_foo.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:src/foo.txt
+             product   file:alt_foo.txt
+                sink   file:alt_foo.txt
+
+file:alt_foo.txt
+               state = BUILT
+             creator   step:cp -p src/foo.txt alt_foo.txt
+              source   step:cp -p src/foo.txt alt_foo.txt
