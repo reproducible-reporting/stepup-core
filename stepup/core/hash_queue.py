@@ -11,6 +11,7 @@ since a hash job's runnability never depends on the workflow database.
 """
 
 import asyncio
+import functools
 from collections.abc import Collection, Iterator
 from typing import TYPE_CHECKING
 
@@ -75,23 +76,6 @@ class HashJob:
     worker: ThreadWorker | None = attrs.field(init=False, default=None)
     """The in-flight hashing thread, if any, for `Executor.interrupt()`."""
 
-    # The three members below mirror `Job`, so that `Builder._run_with_progress` can bracket
-    # both kinds of job with progress-bar calls without having to know which one it got.
-
-    @property
-    def label(self) -> str:
-        """The description of the job shown in the progress bar, i.e. the file's path."""
-        return self.path
-
-    @property
-    def letter(self) -> str:
-        """The single character identifying the kind of job in the progress bar."""
-        return "H"
-
-    def coro(self, executor: "Executor"):
-        """Return a coroutine, of which the builder will make an asyncio.Task."""
-        return executor.run_hash_job(self)
-
 
 @attrs.define
 class HashQueue:
@@ -115,7 +99,7 @@ class HashQueue:
     """path -> `HashJob`, covering both queued and started (but unresolved) jobs.
 
     An entry is removed as soon as its job's future resolves
-    (success, exception, or cancellation), via `future.add_done_callback`,
+    (success, exception, or cancellation), via `_job_done`,
     which fires in all three cases and therefore cannot leak.
     """
 
@@ -153,10 +137,22 @@ class HashQueue:
         self._job_counter -= 1
         job = HashJob(path, old_hash, cause, self._job_counter)
         self.in_flight[path] = job
-        job.future.add_done_callback(lambda _future, path=path: self.in_flight.pop(path, None))
+        job.future.add_done_callback(functools.partial(self._job_done, path))
         self.queue.put_nowait(job)
         self.wake.set()
         return job
+
+    def _job_done(self, path: str, future: asyncio.Future[FileHash]) -> None:
+        """Retire the job for `path` when its future resolves, however it resolved."""
+        self.in_flight.pop(path, None)
+        if not future.cancelled():
+            # Retrieving the exception (if any) only marks it as retrieved: it stays on the
+            # future for submitters that do await it (`Builder.run_promoted_hash_jobs`).
+            # `Executor.run_hash_job` has already reported it and put the scheduler on hold,
+            # while most submitters are fire-and-forget (`DirectorHandler._submit_to_check`),
+            # so without this, asyncio would log "Future exception was never retrieved"
+            # for an error that was in fact fully handled.
+            future.exception()
 
     def claim(self, job: HashJob) -> bool:
         """Atomically flip `job.started` from `False` to `True`.
@@ -238,8 +234,8 @@ async def gather_hashes(
     executor
         Runs each claimed job in a thread.
     reporter
-        Where live progress is sent: `start_job`/`stop_job` around each claimed job,
-        and `update_counts`, coalesced to at most once per `PROGRESS_REFRESH_DELAY`.
+        Where `update_counts` is sent, coalesced to at most once per `PROGRESS_REFRESH_DELAY`.
+        (The per-job `start_job`/`stop_job` bracket is `Executor.run_hash_job`'s own.)
     path_hash_causes
         `(path, old_hash, cause)` triples to (re)hash;
         see `HashJob.old_hash` and `HashJob.cause`.
@@ -254,10 +250,11 @@ async def gather_hashes(
     path_hashes
         The new hash of every path in `path_hash_causes`, keyed by path, in input order.
         (The input stays a sequence of triples, since a single call may carry several causes.)
-        An exception
-        raised by one job (e.g. a stat error) propagates from `gather()` without cancelling
-        the other jobs already running in the background; that mirrors today's behavior,
-        where an unhandled `regen()` error already crashes the caller (startup or watcher).
+        A path whose hash could not be computed (e.g. a directory used as a file, or a
+        `stat` error) is **absent** from the result: `Executor.run_hash_job` has already
+        reported the error and put the scheduler on hold, and neither caller (startup nor
+        watcher) can do anything with that path, so raising here would only take down the
+        director over one bad file.
     """
     sem = asyncio.Semaphore(njob)
     ntotal = len(path_hash_causes)
@@ -283,16 +280,19 @@ async def gather_hashes(
         counts_flush_tasks.add(task)
         task.add_done_callback(counts_flush_tasks.discard)
 
-    async def run_one(job: HashJob) -> FileHash:
+    async def run_one(job: HashJob) -> FileHash | None:
         nonlocal nsuccess
         if hash_queue.claim(job):
             async with sem:
-                reporter.start_job(job.letter, job.label, job.job_i)
-                try:
-                    await executor.run_hash_job(job)
-                finally:
-                    reporter.stop_job(job.job_i)
-        new_hash = await asyncio.shield(job.future)
+                await executor.run_hash_job(job)
+        try:
+            new_hash = await asyncio.shield(job.future)
+        except Exception:  # noqa: BLE001
+            # Already reported by `Executor.run_hash_job`, which also put the scheduler on
+            # hold. Dropping the path from the result is what keeps one unhashable file from
+            # aborting the whole startup scan or watch cycle. A cancelled job raises
+            # `CancelledError`, which is not an `Exception` and still propagates, as it must.
+            return None
         nsuccess += 1
         request_counts_flush()
         return new_hash
@@ -307,4 +307,8 @@ async def gather_hashes(
         await asyncio.gather(*counts_flush_tasks)
     await reporter.update_counts(nsuccess, ntotal)
 
-    return {job.path: new_hash for job, new_hash in zip(jobs, new_hashes, strict=True)}
+    return {
+        job.path: new_hash
+        for job, new_hash in zip(jobs, new_hashes, strict=True)
+        if new_hash is not None
+    }

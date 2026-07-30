@@ -40,13 +40,20 @@ def _make_executor(
 
 
 class _FakeReporter:
-    """Records `report()` calls instead of sending them anywhere."""
+    """Records `report()` and progress-bar calls instead of sending them anywhere."""
 
     def __init__(self):
         self.calls = []
+        self.jobs = []
 
     async def __call__(self, action, label, pages=None):
         self.calls.append((action, label, pages))
+
+    def start_job(self, letter, label, job_i):
+        self.jobs.append(("start", letter, label, job_i))
+
+    def stop_job(self, job_i):
+        self.jobs.append(("stop", job_i))
 
 
 class _NullDB:
@@ -156,7 +163,7 @@ async def testrun_work_thread_interrupt():
     def work(cancel_event):
         started.set()
         assert cancel_event.wait(10)
-        raise _WorkCancelledError
+        raise _WorkCancelledError("boom")
 
     executor = _make_executor()
     run = _make_worker_run(12)
@@ -166,8 +173,12 @@ async def testrun_work_thread_interrupt():
     # Exercises the ThreadWorker branch in interrupt(); the signal value is ignored there.
     executor.interrupt(signal.SIGTERM)
 
-    with pytest.raises(_WorkCancelledError):
-        await task
+    # Must not propagate as a task exception: any error from the work callable fails
+    # just this run, instead of crashing the job loop (see testrun_work_thread_exception).
+    result = await task
+    assert result is None
+    assert run.success is False
+    assert "boom" in run.outcome.stderr
     assert run.worker is None
     assert 12 not in executor.running
 
@@ -179,8 +190,11 @@ async def testrun_work_thread_exception():
     executor = _make_executor()
     run = _make_worker_run(13)
 
-    with pytest.raises(ValueError, match="boom"):
-        await executor._run_work_thread(run, work)
+    result = await executor._run_work_thread(run, work)
+
+    assert result is None
+    assert run.success is False
+    assert "boom" in run.outcome.stderr
     assert run.worker is None
     assert 13 not in executor.running
 
@@ -382,7 +396,7 @@ async def test_run_hash_job_confirmed_applies_even_when_unchanged(
         real_hash = FileHash.unknown().regen("foo.txt")
 
         calls = _spy_update_file_hashes(monkeypatch)
-        executor = _make_executor(workflow=wfs, db=wfs.db)
+        executor = _make_executor(reporter=_FakeReporter(), workflow=wfs, db=wfs.db)
         hash_job = HashJob("foo.txt", real_hash, HashUpdateCause.CONFIRMED, -1)
 
         await executor.run_hash_job(hash_job)
@@ -408,13 +422,49 @@ async def test_run_hash_job_external_not_applied_when_unchanged(wfs: Workflow, t
             assert wfs.find(File, "foo.txt").get_state() == FileState.STATIC
 
         calls = _spy_update_file_hashes(monkeypatch)
-        executor = _make_executor(workflow=wfs, db=wfs.db)
+        executor = _make_executor(reporter=_FakeReporter(), workflow=wfs, db=wfs.db)
         hash_job = HashJob("foo.txt", real_hash, HashUpdateCause.EXTERNAL, -1)
 
         await executor.run_hash_job(hash_job)
 
         assert calls == []
         assert hash_job.future.result() == real_hash
+
+
+async def test_run_hash_job_brackets_progress_bar(wfs: Workflow, tmpdir):
+    """Hash jobs are user-visible progress items, using the `H` letter and
+    `HashJob.job_i`/`.path` in place of `Step.i`/`.label`. The bracket lives in
+    `run_hash_job` because hash jobs are started from three different places."""
+    with contextlib.chdir(tmpdir):
+        with open("foo.txt", "w") as fh:
+            fh.write("hello")
+        async with wfs.db:
+            wfs.declare_unconfirmed(wfs.root, ["foo.txt"])
+        reporter = _FakeReporter()
+        executor = _make_executor(reporter=reporter, workflow=wfs, db=wfs.db)
+        hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.CONFIRMED, -1)
+
+        await executor.run_hash_job(hash_job)
+
+    assert reporter.jobs == [("start", "H", "foo.txt", -1), ("stop", -1)]
+
+
+async def test_run_hash_job_stops_progress_bar_when_it_raises(monkeypatch):
+    """Even an error that `run_hash_job` does not handle must not leave a dangling
+    `start_job` in the progress bar."""
+
+    async def _boom(self, hash_job):
+        raise ValueError("boom")
+
+    monkeypatch.setattr(Executor, "_run_hash_job", _boom)
+    reporter = _FakeReporter()
+    executor = _make_executor(reporter=reporter)
+    hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -2)
+
+    with pytest.raises(ValueError, match="boom"):
+        await executor.run_hash_job(hash_job)
+
+    assert reporter.jobs == [("start", "H", "foo.txt", -2), ("stop", -2)]
 
 
 async def test_run_hash_job_cancelled_cancels_future_without_raising(monkeypatch):
@@ -430,7 +480,7 @@ async def test_run_hash_job_cancelled_cancels_future_without_raising(monkeypatch
     assert hash_job.future.cancelled()
 
 
-async def test_run_hash_job_exception_resolves_future_without_raising(monkeypatch):
+async def test_run_hash_job_exception_resolves_future_without_raising(wfs: Workflow, monkeypatch):
     """A stat error (e.g. a permission problem) must resolve the future with the exception,
     not propagate: an exception escaping a builder task crashes job_loop via
     handle_done_tasks. It must also put the scheduler on hold: a fire-and-forget submitter
@@ -441,14 +491,47 @@ async def test_run_hash_job_exception_resolves_future_without_raising(monkeypatc
     def _raise_permission_error(old_hash, path, cancel_event=None):
         raise PermissionError("denied")
 
+    async with wfs.db:
+        wfs.define_step(wfs.root, "cat foo.txt", inp_paths=["foo.txt"])
+        wfs.declare_unconfirmed(wfs.root, ["foo.txt"])
+
     monkeypatch.setattr(FileHash, "regen", _raise_permission_error)
     reporter = _FakeReporter()
     scheduler = SimpleNamespace(on_hold=False)
-    executor = _make_executor(reporter=reporter, scheduler=scheduler)
+    executor = _make_executor(reporter=reporter, scheduler=scheduler, workflow=wfs, db=wfs.db)
     hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -1)
 
     await executor.run_hash_job(hash_job)  # must not raise
 
     assert isinstance(hash_job.future.exception(), PermissionError)
-    assert reporter.calls[-1][0] == "ERROR"
+    action, _label, pages = reporter.calls[-1]
+    assert action == "ERROR"
+    # The error names the steps involved with the file, so the user can find the plan.py call.
+    assert pages[0][0] == "Provenance of foo.txt"
+    assert "step:cat foo.txt" in pages[0][1]
     assert scheduler.on_hold is True
+
+
+async def test_run_hash_job_exception_without_file_node_reports_no_provenance(
+    wfs: Workflow, monkeypatch
+):
+    """A file that vanished from the workflow while its hash ran still reports the error."""
+
+    def _raise_permission_error(old_hash, path, cancel_event=None):
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(FileHash, "regen", _raise_permission_error)
+    reporter = _FakeReporter()
+    scheduler = SimpleNamespace(on_hold=False)
+    executor = _make_executor(reporter=reporter, scheduler=scheduler, workflow=wfs, db=wfs.db)
+    hash_job = HashJob("gone.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -1)
+
+    await executor.run_hash_job(hash_job)  # must not raise
+
+    # Retrieve the exception, like `HashQueue._job_done` does in production:
+    # otherwise asyncio warns "Future exception was never retrieved" once this
+    # test-only future (never routed through `HashQueue`) is garbage collected.
+    assert isinstance(hash_job.future.exception(), PermissionError)
+    action, _label, pages = reporter.calls[-1]
+    assert action == "ERROR"
+    assert pages == []

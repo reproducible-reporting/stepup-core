@@ -13,20 +13,16 @@ step:./plan.py
            using_env = STEPUP_PATH_FILTER [amended]
              creator   root:
               source   file:plan.py
-             product   st:subdir/
-             product   step:cat subdir
+             product   step:mkdir result
 
-st:subdir/
-             creator   step:./plan.py
-             product   file:subdir
-
-step:cat subdir
-               state = PENDING
+step:mkdir result
+               state = FAILED
                 need = DEFAULT
              creator   step:./plan.py
-              source   file:subdir
+             product   file:result
+                sink   file:result
 
-file:subdir
-               state = UNCONFIRMED
-             creator   st:subdir/
-                sink   step:cat subdir
+file:result
+               state = AWAITED
+             creator   step:mkdir result
+              source   step:mkdir result

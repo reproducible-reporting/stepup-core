@@ -10,7 +10,7 @@ import pytest
 from conftest import TrippingEvent
 from path import Path
 
-from stepup.core.exceptions import HashCancelledError
+from stepup.core.exceptions import HashCancelledError, HashFailedError
 from stepup.core.hash import (
     HASH_CHUNK_SIZE,
     FileHash,
@@ -59,7 +59,7 @@ def test_symbolic_link(path_tmp: Path):
 
 
 def test_hash_wrong_dir(path_tmp: Path):
-    with pytest.raises(IOError):
+    with pytest.raises(HashFailedError):
         compute_file_digest(path_tmp)
 
 
@@ -68,7 +68,7 @@ def test_hash_symbolic_link_dir(path_tmp: Path):
     path_sub.mkdir()
     path_symlink = path_tmp / "link"
     path_symlink.symlink_to("sub", target_is_directory=True)
-    with pytest.raises(IOError):
+    with pytest.raises(HashFailedError):
         compute_file_digest(path_symlink)
     assert compute_file_digest(path_symlink, follow_symlinks=False) == sha256(b"sub").digest()
 

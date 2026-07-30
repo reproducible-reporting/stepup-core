@@ -25,6 +25,7 @@ from path import Path
 
 from .enums import FileState, HashUpdateCause, StepState
 from .exceptions import HashCancelledError
+from .file import File
 from .hash import (
     FileHash,
     StepHash,
@@ -45,6 +46,10 @@ from .utils import format_subprocess
 from .workflow import Workflow
 
 __all__ = ("Executor",)
+
+
+ROLE_COLUMN = 20
+"""Width of the role column in `Executor._format_provenance`, as in `Trellis.format_str`."""
 
 
 #
@@ -490,7 +495,8 @@ class Executor:
         """Run a GIL-releasing computation in a thread.
 
         Returns `None` if the computation was cancelled by an interrupted shutdown
-        (see `Executor.interrupt`), in which case `run` has already been marked failed.
+        (see `Executor.interrupt`) or failed outright, in which case `run` has already been
+        marked failed.
         """
         with self._track_running(run):
             worker = ThreadWorker(work=work, job_i=run.job_i)
@@ -498,19 +504,32 @@ class Executor:
             try:
                 return await worker.run_in_thread()
             except HashCancelledError:
-                run.success = False
-                if run.outcome is None:
-                    run.outcome = ChildOutcome(
-                        1, "", "Hash computation was cancelled because the build is shutting down."
-                    )
-                else:
-                    stderr = run.outcome.stderr
-                    stderr += "\n" if run.outcome.stderr else ""
-                    stderr += "Hash computation was cancelled because the build is shutting down."
-                    run.outcome = attrs.evolve(run.outcome, stderr=stderr)
+                self._fail_run_with_message(
+                    run, "Hash computation was cancelled because the build is shutting down."
+                )
+                return None
+            except Exception as exc:  # noqa: BLE001
+                # Must not propagate as a task exception: that would crash job_loop via
+                # handle_done_tasks, tearing down the whole director over one bad file
+                # (e.g. HashFailedError when a step's output turned out to be a directory,
+                # or a PermissionError from stat()). Treat it as this step's own failure
+                # instead, mirroring `_run_hash_job`'s handling of the same class of error.
+                self._fail_run_with_message(run, f"Hash computation failed: {exc}")
                 return None
             finally:
                 run.worker = None
+
+    @staticmethod
+    def _fail_run_with_message(run: Run, message: str) -> None:
+        """Mark `run` as failed, appending `message` to its outcome's stderr."""
+        run.success = False
+        if run.outcome is None:
+            run.outcome = ChildOutcome(1, "", message)
+        else:
+            stderr = run.outcome.stderr
+            stderr += "\n" if run.outcome.stderr else ""
+            stderr += message
+            run.outcome = attrs.evolve(run.outcome, stderr=stderr)
 
     @contextmanager
     def _track_running(self, job: Run | HashJob):
@@ -524,6 +543,22 @@ class Executor:
             del self.running[job.job_i]
 
     async def run_hash_job(self, hash_job: HashJob) -> None:
+        """Run `hash_job`, bracketed by progress-bar start/stop calls.
+
+        The bracket lives here, rather than at the three call sites
+        (`Builder.start_hash_task`, `Builder.run_promoted_hash_jobs` and `gather_hashes`),
+        so a hash job is equally visible however it got claimed.
+        `"H"` is its letter in the progress bar, and `HashJob.job_i` is negative
+        (see `hash_queue.py`), so it can never collide with a real `Step.i` in the
+        reporter/progress-bar dict, which is keyed by whatever int it is given.
+        """
+        self.reporter.start_job("H", hash_job.path, hash_job.job_i)
+        try:
+            await self._run_hash_job(hash_job)
+        finally:
+            self.reporter.stop_job(hash_job.job_i)
+
+    async def _run_hash_job(self, hash_job: HashJob) -> None:
         """Compute one file hash in a thread, apply it to the workflow, resolve the future.
 
         Does not reuse `_run_work_thread`: that helper requires a `Run` (step-bound) and
@@ -551,10 +586,14 @@ class Executor:
                 # while letting already-running/queued work wind down normally.
                 # The file is left UNCONFIRMED.
                 # A fire-and-forget submitter never awaits this future,
-                # so on_hold is what actually surfaces the failure to the user.
+                # so on_hold and the reported error are what surface the failure to the user.
                 self.scheduler.on_hold = True
                 hash_job.future.set_exception(exc)
-                await self.reporter("ERROR", f"Could not hash {hash_job.path}: {exc}")
+                await self.reporter(
+                    "ERROR",
+                    f"Could not hash {hash_job.path}: {exc}",
+                    await self._format_provenance(hash_job.path),
+                )
                 return
             finally:
                 hash_job.worker = None
@@ -572,6 +611,40 @@ class Executor:
             # Already done when the future was cancelled concurrently (e.g. Builder.stop());
             # set_result would then raise InvalidStateError.
             hash_job.future.set_result(new_hash)
+
+    async def _format_provenance(self, path: str) -> list[tuple[str, str]]:
+        """Format where `path` came from in the workflow, as a reporter page.
+
+        A failing hash job carries no step context of its own: it is bookkeeping for a file,
+        not a step, so `Could not hash <path>` alone leaves the user guessing which line of
+        which `plan.py` put that path in the workflow. This page fills that gap with the node
+        that created the file and the steps that consume it, each followed by the step that
+        declared it, which is usually the `plan.py` holding the offending call.
+
+        Returns
+        -------
+        pages
+            A single `(title, body)` page, or no page at all when the workflow has no record
+            of `path`, e.g. when the file node was removed while the hash was running.
+        """
+        async with self.db:
+            file = self.workflow.find(File, path)
+            if file is None:
+                return []
+            creator = file.creator()
+            related = [] if creator is None else [("creator", creator)]
+            related.extend(
+                ("sink", node) for node in sorted(file.sinks(Step), key=lambda node: node.label)
+            )
+            lines = []
+            for role, node in related:
+                lines.append(f"{role:>{ROLE_COLUMN}s}   {node.key()}")
+                declarer = node.creator()
+                # Only a step declarer is worth a line: it names the script to fix.
+                # A non-step creator (the root node) adds nothing the user can act on.
+                if isinstance(declarer, Step):
+                    lines.append(f"{'declared by':>{ROLE_COLUMN}s}   {declarer.key()}")
+        return [(f"Provenance of {path}", "\n".join(lines))]
 
     async def _compute_inp_step_hash(
         self,

@@ -41,8 +41,7 @@ logger = logging.getLogger(__name__)
 AnyJob = Job | HashJob
 """Any unit of work the builder tracks as an asyncio task.
 
-Both kinds expose the `letter`, `label`, `job_i` and `coro()` members that
-`Builder._run_with_progress` needs; everything beyond that is handled by the branches in
+Only `job_i` is common to both; everything beyond that is handled by the branches in
 `start_task`/`start_hash_task` and `handle_done_tasks`.
 """
 
@@ -218,7 +217,7 @@ class Builder:
         self.running_tasks[task] = job
         task.add_done_callback(self._task_done)
 
-    async def _run_with_progress(self, job: AnyJob):
+    async def _run_with_progress(self, job: Job):
         """Run `job` on the executor, bracketed by progress-bar start/stop calls.
 
         The bracket lives here, around the whole job coroutine, rather than at the
@@ -227,11 +226,8 @@ class Builder:
         early failure, ...), and it shows the job as running from the moment its task
         begins, including input hash computation, not just once the command itself starts.
 
-        Step jobs and hash jobs share this wrapper: hash jobs are user-visible progress
-        items too, and both kinds expose `letter`, `label`, `job_i` and `coro()` for this
-        purpose. `HashJob.job_i` is negative (see `hash_queue.py`), so it can never collide
-        with a real `Step.i` in the reporter/progress-bar dict, which is keyed by whatever
-        int it is given.
+        Hash jobs get the same treatment from `Executor.run_hash_job` itself,
+        since they are also started outside this class (see `gather_hashes`).
         """
         self.reporter.start_job(job.letter, job.label, job.job_i)
         try:
@@ -242,12 +238,13 @@ class Builder:
     def start_hash_task(self, hash_job: HashJob) -> None:
         """Start an asyncio task that runs `hash_job` on the executor.
 
-        Sibling of `start_task`, sharing `_run_with_progress` and the
-        `running_tasks`/`done_tasks` bookkeeping with it. Only the parts that genuinely
-        differ stay separate: a hash job is named after its path instead of after a step,
-        and it is not logged as a step being run.
+        Sibling of `start_task`, sharing the `running_tasks`/`done_tasks` bookkeeping with
+        it. Only the parts that genuinely differ stay separate: a hash job is named after
+        its path instead of after a step, and it is not logged as a step being run.
         """
-        task = asyncio.create_task(self._run_with_progress(hash_job), name=f"HASH: {hash_job.path}")
+        task = asyncio.create_task(
+            self.executor.run_hash_job(hash_job), name=f"HASH: {hash_job.path}"
+        )
         self.running_tasks[task] = hash_job
         task.add_done_callback(self._task_done)
 
@@ -260,8 +257,6 @@ class Builder:
         step already holds a slot and is idle while it waits, so running its hash jobs
         outside the budget (instead of queuing them, where `njob` steps all blocked in
         `amend()` could starve them forever) keeps real concurrent work roughly at `njob`.
-        Goes through `_run_with_progress`, like every other hash job,
-        so a promoted job is equally visible in the progress bar.
 
         Parameters
         ----------
@@ -274,7 +269,7 @@ class Builder:
         async def run_one(path: str, old_hash: FileHash) -> None:
             job = self.hash_queue.submit(path, old_hash, cause)
             if self.hash_queue.claim(job):
-                await self._run_with_progress(job)
+                await self.executor.run_hash_job(job)
             # Await (rather than just check) the shared future even after running it here:
             # `run_hash_job` swallows per-file errors into the future instead of raising,
             # so this is what lets an exception (e.g. a stat error) propagate to the

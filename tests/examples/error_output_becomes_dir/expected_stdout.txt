@@ -1,0 +1,19 @@
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+    START │ mkdir result
+     FAIL │ mkdir result
+──────────────────────────────── Failed command ────────────────────────────────
+mkdir result
+──────────────────────────────── Standard error ────────────────────────────────
+(stripped)
+────────────────────────────────────────────────────────────────────────────────
+ DIRECTOR │ Ran 2 job(s).
+  WARNING │ 1 step(s) failed.
+  WARNING │ Scheduler is put on hold. Not reporting pending steps.
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
+ DIRECTOR │ See you!

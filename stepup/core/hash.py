@@ -20,7 +20,7 @@ import attrs
 from path import Path
 
 from .cattrs import json_converter
-from .exceptions import HashCancelledError
+from .exceptions import HashCancelledError, HashFailedError
 
 __all__ = (
     "HASH_CHUNK_SIZE",
@@ -89,13 +89,15 @@ def compute_file_digest(
     ------
     HashCancelledError
         When `cancel_event` was set before the whole file was hashed.
+    HashFailedError
+        When `path` is a directory.
     """
     # Cheap part:
     path = Path(path)
     if path.islink() and not follow_symlinks:
         return hashlib.sha256(path.readlink().encode("utf-8")).digest()
     if path.is_dir():
-        raise OSError("File digests of directories are not supported.")
+        raise HashFailedError(f"File digests of directories are not supported: {path}")
     # Expensive part:
     # Not using hashlib.file_digest, same algorithm reimplemented here with a cancellation check.
     digest = hashlib.sha256()
@@ -206,6 +208,8 @@ class FileHash:
         ------
         HashCancelledError
             When `cancel_event` was set before the whole file was hashed.
+        HashFailedError
+            When `path` is a directory.
         """
         # Check for cancellation early.
         if cancel_event is not None and cancel_event.is_set():
@@ -218,9 +222,9 @@ class FileHash:
         st = path.stat()
         mode = st.st_mode
         if path.is_dir():
-            raise ValueError(f"File digests of directories are not supported: {path}")
+            raise HashFailedError(f"File digests of directories are not supported: {path}")
         if path.endswith(os.sep):
-            raise ValueError(f"File digests of directories are not supported: {path}")
+            raise HashFailedError(f"File digests of directories are not supported: {path}")
         mtime = st.st_mtime
         size = st.st_size
         inode = st.st_ino
@@ -563,6 +567,8 @@ def compute_inp_hashes(
     ------
     HashCancelledError
         When `cancel_event` was set before the whole file was hashed.
+    HashFailedError
+        When an input turned out to be a directory.
     """
     messages = []
     new_inp_hashes = {}
@@ -607,6 +613,8 @@ def compute_out_hashes(
     ------
     HashCancelledError
         When `cancel_event` was set before the whole file was hashed.
+    HashFailedError
+        When an output turned out to be a directory.
     """
     out_missing = []
     new_out_hashes = {}
@@ -648,6 +656,8 @@ def compute_both_hashes(
     ------
     HashCancelledError
         When `cancel_event` was set before the whole file was hashed.
+    HashFailedError
+        When an input or output turned out to be a directory.
     """
     return (
         compute_inp_hashes(inp_hashes, cancel_event),

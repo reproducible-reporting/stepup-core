@@ -14,7 +14,6 @@ from stepup.core.enums import HashUpdateCause
 from stepup.core.executor import Executor
 from stepup.core.file import File, FileState
 from stepup.core.hash import FileHash
-from stepup.core.hash_queue import HashJob
 from stepup.core.reporter import ReporterClient
 from stepup.core.scheduler import Scheduler
 from stepup.core.step import Step
@@ -157,42 +156,6 @@ async def test_run_with_progress_still_stops_when_job_raises():
     assert reporter.events == [("start", "S", "false", 2), ("stop", 2)]
 
 
-async def test_run_with_progress_brackets_a_successful_hash_job():
-    """`_run_with_progress` also serves hash jobs: they are user-visible progress items too,
-    using the `H` letter and `HashJob.job_i`/`.path` in place of `Step.i`/`.label`."""
-    reporter = _FakeReporter()
-    builder = _make_progress_builder(reporter)
-    hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -1)
-
-    async def fake_run_hash_job(job):
-        assert ("start", "H", "foo.txt", -1) in reporter.events
-        return "done"
-
-    builder.executor = SimpleNamespace(run_hash_job=fake_run_hash_job)
-
-    result = await builder._run_with_progress(hash_job)
-
-    assert result == "done"
-    assert reporter.events == [("start", "H", "foo.txt", -1), ("stop", -1)]
-
-
-async def test_run_with_progress_still_stops_when_hash_job_raises():
-    """Mirrors `test_run_with_progress_still_stops_when_job_raises`, for a hash job."""
-    reporter = _FakeReporter()
-    builder = _make_progress_builder(reporter)
-    hash_job = HashJob("foo.txt", FileHash.unknown(), HashUpdateCause.EXTERNAL, -2)
-
-    async def fake_run_hash_job(job):
-        raise ValueError("boom")
-
-    builder.executor = SimpleNamespace(run_hash_job=fake_run_hash_job)
-
-    with pytest.raises(ValueError, match="boom"):
-        await builder._run_with_progress(hash_job)
-
-    assert reporter.events == [("start", "H", "foo.txt", -2), ("stop", -2)]
-
-
 async def test_job_loop_dispatches_hash_jobs_before_runnable_steps(wfs: Workflow, monkeypatch):
     """Hash jobs jump the SQL-poll queue: with both a hash job and a runnable step
     pending, the hash job must be dispatched first."""
@@ -283,25 +246,6 @@ async def test_run_promoted_hash_jobs_applies_result(wfs: Workflow, tmpdir):
 
         async with wfs.db:
             assert wfs.find(File, "a.txt").get_state() == FileState.STATIC
-
-
-async def test_run_promoted_hash_jobs_goes_through_progress_wrapper():
-    """A promoted job must be bracketed by start_job/stop_job like any other hash job
-    (Phase 1's requirement that promotion not bypass the progress-bar wrapper)."""
-    reporter = _FakeReporter()
-    builder = _make_progress_builder(reporter)
-
-    async def fake_run_hash_job(job):
-        job.future.set_result(FileHash.unknown())
-
-    builder.executor = SimpleNamespace(run_hash_job=fake_run_hash_job)
-    # run_promoted_hash_jobs submits itself; grab the job first so its job_i is known
-    # ahead of time (submit() dedups by path, so this is the same job it will run).
-    job = builder.hash_queue.submit("foo.txt", FileHash.unknown(), HashUpdateCause.CONFIRMED)
-
-    await builder.run_promoted_hash_jobs({"foo.txt": FileHash.unknown()}, HashUpdateCause.CONFIRMED)
-
-    assert reporter.events == [("start", "H", "foo.txt", job.job_i), ("stop", job.job_i)]
 
 
 async def test_run_promoted_hash_jobs_awaits_already_claimed_job_without_rerunning():

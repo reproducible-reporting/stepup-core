@@ -9,6 +9,8 @@ __all__ = (
     "EnvVarError",
     "GraphError",
     "HashCancelledError",
+    "HashError",
+    "HashFailedError",
     "InputNotFoundError",
     "InteractError",
     "PathError",
@@ -90,5 +92,16 @@ class RunError(RuntimeError):
     """An error raised by the `run` module while executing a command."""
 
 
-class HashCancelledError(Exception):
+class HashError(Exception):
+    """Base class for errors raised while computing a file hash."""
+
+
+class HashCancelledError(HashError):
     """Raised from `FileHash.regen` when `cancel_event` was set."""
+
+
+class HashFailedError(HashError):
+    """Raised when a file cannot be hashed because it is not a regular file.
+
+    E.g. the path turned out to be a directory.
+    """

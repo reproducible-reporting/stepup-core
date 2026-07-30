@@ -363,9 +363,9 @@ def step(
         su_out_paths = [subs(out_path).normpath() for out_path in out_paths]
         su_vol_paths = [subs(vol_path).normpath() for vol_path in vol_paths]
         su_workdir = subs(workdir).normpath()
-    _check_no_directories(su_inp_paths)
-    _check_no_directories(su_out_paths)
-    _check_no_directories(su_vol_paths)
+    _check_no_directories(su_inp_paths, su_workdir)
+    _check_no_directories(su_out_paths, su_workdir)
+    _check_no_directories(su_vol_paths, su_workdir)
     tr_inp_paths = [translate(inp_path, su_workdir) for inp_path in su_inp_paths]
     tr_out_paths = [translate(out_path, su_workdir) for out_path in su_out_paths]
     tr_vol_paths = [translate(vol_path, su_workdir) for vol_path in su_vol_paths]
@@ -692,12 +692,17 @@ def amend(
     env_deps = set(env_deps)
     with subs_env_vars() as subs:
         su_inp_paths = {subs(inp_path).normpath() for inp_path in inp_paths}
-        tr_inp_paths = {translate(inp_path) for inp_path in su_inp_paths}
-        tr_out_paths = {translate(subs(out_path)) for out_path in out_paths}
-        tr_vol_paths = {translate(subs(vol_path)) for vol_path in vol_paths}
-    _check_no_directories(tr_inp_paths)
-    _check_no_directories(tr_out_paths)
-    _check_no_directories(tr_vol_paths)
+        su_out_paths = {subs(out_path).normpath() for out_path in out_paths}
+        su_vol_paths = {subs(vol_path).normpath() for vol_path in vol_paths}
+    # The checks use the substituted paths, not the translated ones below:
+    # they look at the file system, which this process sees relative to its own
+    # working directory, not relative to the director's.
+    _check_no_directories(su_inp_paths)
+    _check_no_directories(su_out_paths)
+    _check_no_directories(su_vol_paths)
+    tr_inp_paths = {translate(inp_path) for inp_path in su_inp_paths}
+    tr_out_paths = {translate(out_path) for out_path in su_out_paths}
+    tr_vol_paths = {translate(vol_path) for vol_path in su_vol_paths}
 
     # Filter out previously amended information
     tr_inp_paths.difference_update(AMEND_HISTORY["inp"])
@@ -1451,10 +1456,30 @@ def _check_inp_paths(
     return file_paths, dir_paths
 
 
-def _check_no_directories(paths: Iterable[Path]):
-    """Check that the paths are not directories."""
+def _check_no_directories(paths: Iterable[Path], workdir: StrPath = "."):
+    """Check that the paths are not directories.
+
+    A path is rejected both when it is spelled as a directory (trailing separator)
+    and when it currently is one on disk.
+    The latter catches e.g. `run("...", inp="some/dir")` at the call site in `plan.py`,
+    instead of much later, when the director fails to hash it.
+
+    Parameters
+    ----------
+    paths
+        The paths to check.
+    workdir
+        The working directory that relative `paths` are interpreted in,
+        itself relative to the current working directory.
+
+    Raises
+    ------
+    PathError
+        If one of the paths is a directory.
+    """
+    workdir = coerce_path(workdir)
     for path in paths:
-        if path.endswith(os.sep):
+        if path.endswith(os.sep) or (workdir / path).is_dir():
             raise PathError(f"Directories are not allowed: {path}")
 
 
