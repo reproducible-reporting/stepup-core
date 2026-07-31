@@ -18,4 +18,4 @@ wait
 [[ -f sub/deeper/b.txt ]] || exit 1
 
 # The middle ** pattern must be registered, and only the .txt files matched.
-grep -qF "nglob = sub/**/*.txt {}" current_graph.txt
+grep -qF "nglob = sub/**/*.txt" current_graph.txt

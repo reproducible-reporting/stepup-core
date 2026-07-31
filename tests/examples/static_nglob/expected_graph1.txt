@@ -11,7 +11,7 @@ step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-               nglob = ch-*/sec-${*ch}-${*sec}-${*name}.txt {'ch': '[0-9]'}
+               nglob = ch-*/sec-${*ch}-${*sec}-${*name}.txt (ch=[0-9])
              creator   root:
               source   file:plan.py
              product   file:ch-1-intro/sec-1-1-blabla.txt

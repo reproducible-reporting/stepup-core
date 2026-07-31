@@ -11,9 +11,9 @@ step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-               nglob = data/*.txt {}
-               nglob = data/*.txt {}
-               nglob = data/a.txt {}
+               nglob = data/*.txt
+               nglob = data/*.txt
+               nglob = data/a.txt
              creator   root:
               source   file:plan.py
              product   file:data/a.txt
@@ -38,6 +38,6 @@ step:./plan.py  # wd=sub
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-               nglob = data/*.txt {}
+               nglob = data/*.txt
              creator   step:./plan.py
               source   file:sub/plan.py

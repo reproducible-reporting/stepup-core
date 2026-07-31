@@ -16,4 +16,4 @@ wait
 [[ -f plan.py ]] || exit 1
 
 # A zero-match pattern is still registered.
-grep -qF "nglob = nothing*.txt {}" current_graph.txt
+grep -qF "nglob = nothing*.txt" current_graph.txt

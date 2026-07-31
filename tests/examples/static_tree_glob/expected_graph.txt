@@ -11,8 +11,8 @@ step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-               nglob = src/*.txt {}
-               nglob = src/f*.txt {}
+               nglob = src/*.txt
+               nglob = src/f*.txt
              creator   root:
               source   file:plan.py
              product   st:src/

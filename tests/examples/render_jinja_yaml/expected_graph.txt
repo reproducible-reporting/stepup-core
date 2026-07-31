@@ -11,7 +11,7 @@ step:./plan.py
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-               nglob = trip*.yaml {}
+               nglob = trip*.yaml
              creator   root:
               source   file:plan.py
              product   file:template.txt

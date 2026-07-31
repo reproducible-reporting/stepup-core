@@ -22,4 +22,4 @@ grep First out1.txt
 grep Second out2.txt
 
 # static(ng) must not register the pattern a second time.
-[[ "$(grep -Fc 'nglob = inp*.txt {}' current_graph.txt)" -eq 1 ]] || exit 1
+[[ "$(grep -Fc 'nglob = inp*.txt' current_graph.txt)" -eq 1 ]] || exit 1

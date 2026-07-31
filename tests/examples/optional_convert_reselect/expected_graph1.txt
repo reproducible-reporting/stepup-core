@@ -12,7 +12,7 @@ step:./plan.py
                 need = PLAN
            using_env = ENV_VAR_TEST_STEPUP_IDX [amended]
                      = STEPUP_PATH_FILTER [amended]
-               nglob = raw*.txt {}
+               nglob = raw*.txt
            explained = yes
              creator   root:
               source   file:plan.py

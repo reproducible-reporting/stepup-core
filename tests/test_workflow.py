@@ -1221,7 +1221,7 @@ step:./plan.py
 step:touch log
                state = PENDING
                 need = DEFAULT
-               nglob = *.txt {}
+               nglob = *.txt
              creator   step:./plan.py
              product   file:log
                 sink   file:log

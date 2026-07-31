@@ -694,7 +694,10 @@ class Step(Node):
 
         for row in self.db.execute("SELECT data FROM nglob WHERE node = ?", (self.i,)):
             ng = json_converter.structure(json.loads(row[0]), NamedGlob)
-            yield "nglob", f"{ng.pattern} {ng.subs}"
+            line = ng.pattern
+            if len(ng.subs) > 0:
+                line += " (" + " ".join(f"{k}={v}" for k, v in ng.subs.items()) + ")"
+            yield "nglob", line
 
         for name, units in self.resources():
             yield "resource", f"{name}: {units} units"

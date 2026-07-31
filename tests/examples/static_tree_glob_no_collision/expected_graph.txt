@@ -30,7 +30,7 @@ step:./plan.py  # wd=sub
                state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
-               nglob = data/*.txt {}
+               nglob = data/*.txt
              creator   step:./plan.py
               source   file:sub/plan.py
              product   step:cp -p ../data/foo.txt foo.txt  # wd=sub

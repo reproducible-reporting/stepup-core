@@ -18,4 +18,4 @@ grep aaa out_a.txt
 grep bbb out_b.txt
 
 # The named wildcard is preserved in the registered pattern, with no subs.
-grep -qF 'nglob = sub/${*name}.txt {}' current_graph.txt
+grep -qF 'nglob = sub/${*name}.txt' current_graph.txt
