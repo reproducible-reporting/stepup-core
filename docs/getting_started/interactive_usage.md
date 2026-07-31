@@ -17,7 +17,7 @@ e.g., in the cloud or on an HPC cluster.
 When working on a project, interactive usage is more efficient and convenient,
 and its usage is described below.
 
-The [Static Glob](static_glob.md) tutorial is a good example
+The [Glob Patterns in `static()`](static_patterns.md) tutorial is a good example
 to demonstrate the interactive use of StepUp.
 Running StepUp as follows will not exit the terminal user interface:
 
@@ -53,7 +53,7 @@ This will trigger a refresh/re-copy of files like `src/foo.txt`, while other ste
 The interactive commands are described in detail
 in the [Interactive Command Reference](../reference/interactive.md).
 
-## Add a New File That Matches `glob("src/*.txt")`
+## Add a New File That Matches `static("src/*.txt")`
 
 Create a new file `src/spam.txt` with content of your choice while StepUp is still running.
 You will see at least the following:
@@ -64,7 +64,7 @@ You will see at least the following:
 
 Now press (lower case) `r` again.
 The `./plan.py` step is executed again because a new file has appeared
-that matches a glob pattern used in `plan.py`.
+that matches the glob pattern used in `plan.py`.
 Running `./plan.py` again will, in turn, create a new step to copy `src/spam.txt` to `dst/spam.txt`.
 
 ## Screen Recording

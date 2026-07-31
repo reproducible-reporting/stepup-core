@@ -3,7 +3,7 @@
     PHASE │ build
  DIRECTOR │ Ran 0 job(s).
   WARNING │ 1 directory target(s) matched no regular output in the workflow: empty/
-  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Skipping file cleanup for a build restricted to targets
   WARNING │ Check logs: .stepup/warning.log
     PHASE │ watch
  DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot

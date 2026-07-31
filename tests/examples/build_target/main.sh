@@ -36,7 +36,7 @@ wait
 grep -q one other.txt
 
 # Run 3: a target that is never produced by any step triggers a WARNING, not a build failure,
-# but does set bit 16 in the exit code.
+# but does set the WARNING bit in the exit code.
 rm .stepup/*.log
 sb nope.txt -j 1 -w & # > current_stdout3.txt &
 PID=$!
@@ -47,6 +47,6 @@ stepup join
 
 # Wait for background processes, if any.
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
-[[ "${RETURNCODE}" -eq 16 ]] || exit 1
+[[ "${RETURNCODE}" -eq "${RETURN_CODE_WARNING}" ]] || exit 1
 
 grep -F "target(s) are not produced by any step in the workflow: nope.txt" .stepup/warning.log

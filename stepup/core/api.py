@@ -26,7 +26,7 @@ import os
 import shlex
 import sys
 import tomllib
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from runpy import run_path
 from types import SimpleNamespace
 from typing import Any
@@ -44,13 +44,12 @@ from .exceptions import (
     StepUpError,
 )
 from .extapi import subs_env_vars
-from .nglob import NamedGlob
+from .nglob import NamedGlob, has_any_wildcards, has_trailing_recursive_wildcard
 from .path import (
     StrPath,
     apply_affixes,
     coerce_path,
     coerce_paths,
-    coerce_paths2,
     coerce_str,
     get_affixes,
     make_path_out,
@@ -93,36 +92,72 @@ logger = logging.getLogger(__name__)
 #
 
 
-def static(*paths: StrPath | Iterable[StrPath]) -> None:
+def static(*paths: StrPath | Iterable[StrPath] | NamedGlob) -> list[Path]:
     """Declare static paths.
 
     Parameters
     ----------
     *paths
         One or more paths to declare as static, relative to the current working directory.
-        Arguments may also be iterables of strings.
-        Each string must refer to an existing file or directory and can be one of:
+        Arguments may also be iterables of strings, or a `NamedGlob` instance
+        (as returned by `glob()`). Each string can be one of:
 
-        1. A file: declared immediately as a static path,
-           unless it already belongs to a static tree, in which case this is a no-op.
-        2. A directory: registered as a static tree; files within it are lazily
+        1. A literal path, containing no glob wildcards: it must refer to an existing
+           file or directory.
+           A file is declared immediately as a static path,
+           unless it already belongs to a static tree registered by the same step,
+           in which case this is a no-op and the tree remains the file's owner.
+           A directory is registered as a static tree; files within it are lazily
            declared static the first time they are used as step inputs.
+        2. A glob pattern with anonymous (`*`, `?`, `[abc]`) or named (`${*name}`)
+           wildcards: it is expanded locally, and every match is classified the same
+           way a literal path is, by what it is on disk.
+           Zero matches is not an error.
+           The pattern is registered with the calling step, so the step becomes
+           pending when the set of matches changes, the same way `glob()` matches are
+           tracked.
+           A recursive `**` wildcard is accepted, except as the final path component,
+           see `Raises` below.
+           `static()` takes no keyword arguments, so a named wildcard always uses its
+           default subpattern `*`; use `static(glob(pattern, **subs))` when the
+           captures or a constrained subpattern are needed.
 
-        Within a single `static()` call, directory arguments are always registered
-        before file arguments, regardless of the order in which they were given.
-        A single call declaring both a tree and a file it contains is therefore
-        equivalent to declaring the tree first in a separate, earlier call.
+        A `NamedGlob` argument contributes its matches (`ng.files()`) the same way a
+        pattern's matches do, without registering its pattern again:
+        `glob()` already did that when it produced the object.
+
+        Within a single `static()` call, directory arguments and matches are always
+        registered before file arguments and matches, regardless of the order in which
+        they were given.
+        This still matters for `static("data/", "other/file.txt")`, where `data/` must
+        exist as a tree before `other/file.txt` is checked against it, and for
+        `static("data/", "data/sub/")`, where the parent tree must be registered before
+        a nested one.
+        It no longer decides the outcome of mixing a tree with a file it contains:
+        a single call declaring both is a no-op in either argument order, the same as
+        declaring them in two separate calls in either order.
+
+    Returns
+    -------
+    paths
+        A sorted list of the files declared and the static tree roots registered by
+        this call, tree roots with a trailing slash.
+        Relative to the caller's working directory.
 
     Raises
     ------
     PathError
-        When a path does not exist.
+        When a literal path does not exist,
+        or when a pattern ends with a recursive `**` wildcard
+        (use `static("dir/")` to declare the directory as a static tree instead,
+        and `glob()` when a recursive list of files is needed).
     EnvVarError
         When an environment variable in a path is undefined,
         or when a path contains an invalid variable identifier.
     GraphError
-        When a directory overlaps with an existing static tree,
-        or when it already contains a file declared before it.
+        When a directory overlaps with an existing static tree of another creator,
+        when it already contains a file declared by another step, or when a file is
+        declared inside another step's static tree.
 
     Notes
     -----
@@ -130,46 +165,94 @@ def static(*paths: StrPath | Iterable[StrPath]) -> None:
     and the variables referenced are added to the calling step's `env_deps` list.
     These substitutions are based on the state of `os.environ` in the calling script,
     at the time this function is called, not when the step is executed.
-    """
-    # Turn paths into one big list.
-    paths = coerce_paths2(paths)
 
-    # Avoid empty RPC calls.
-    if len(paths) > 0:
-        # Perform env var substitutions.
-        with subs_env_vars() as subs:
-            su_paths = [subs(path).normpath() for path in paths]
-        # Sanity checks
-        su_file_paths, su_dir_paths = _check_inp_paths(su_paths, allow_dirs=True)
-        # Static trees must reach the director before any file it contains:
-        # declaring a file first would make it look like it predates the tree,
-        # which the director rejects. This ordering is load-bearing, not incidental,
-        # which is also why a file already covered by a tree declared in this same call
-        # is skipped as a no-op by `Workflow.declare_unconfirmed` below.
-        if len(su_dir_paths) > 0:
-            # Translate paths to make them relative to the working directory of the director.
-            tr_dir_paths = sorted(translate(su_dir_path) for su_dir_path in su_dir_paths)
-            # Declare the static trees; matching existing files are hashed and confirmed
-            # in the background by the director, same as above.
-            RPC_CLIENT.call.static_trees(get_job_i(), tr_dir_paths)
-        if len(su_file_paths) > 0:
-            # Translate paths to make them relative to the working directory of the director.
-            tr_file_paths = sorted(translate(su_file_path) for su_file_path in su_file_paths)
-            # Declare the files unconfirmed; the director hashes and confirms them in the
-            # background, off this call's critical path.
-            RPC_CLIENT.call.declare_unconfirmed(get_job_i(), tr_file_paths)
+    A glob metacharacter (`*`, `?`, `[`) in a literal argument is significant: a file
+    named `table[1].csv` can no longer be declared by spelling it out, since the
+    argument is read as a pattern. Use `glob.escape()` from the standard library
+    (`glob.escape("table[1].csv")`) to declare such a file by name.
+
+    A pattern's matches are re-scanned on every run, so a zero-match pattern is not an
+    error: it registers the pattern anyway, which is what lets a later run detect a
+    newly created match.
+
+    Declaring a static file or a static tree that the same step already declared is a
+    silent no-op, so overlapping patterns and `static(glob(pattern))` compose within
+    one plan instead of raising. This also covers a file inside a static tree the same
+    step registered, in either declaration order: the tree remains the file's owner.
+    The one exception is a step *output* inside the step's own static tree, which still
+    raises, since an output is not a static declaration.
+
+    Named wildcards (`${*name}`) are accepted, but their captured substrings are not
+    part of the return value, and every named wildcard uses the default subpattern `*`
+    because `static()` takes no keyword arguments. Use `glob()` to get either.
+    """
+    # Flatten the arguments and substitute environment variables in one pass.
+    # A single `subs_env_vars()` context is used so the env vars are amended once.
+    su_lit_paths = []
+    su_pattern_matches = []
+    su_match_paths = []
+    with subs_env_vars() as subs:
+        for arg in _iter_static_args(paths):
+            if isinstance(arg, NamedGlob):
+                # glob() already registered this pattern with the calling step and
+                # its matches come from a filesystem scan, so they need neither
+                # registration nor substitution here.
+                su_match_paths.extend(arg.files())
+                continue
+            su_arg = _keep_affixes(subs(arg), Path.normpath)
+            if _classify_static_arg(su_arg):
+                ng = NamedGlob(su_arg)
+                ng.glob()
+                su_pattern_matches.append((su_arg, ng.files()))
+                su_match_paths.extend(ng.files())
+            else:
+                su_lit_paths.append(su_arg)
+
+    # Literal arguments must exist; a match is guaranteed to exist by the scan that
+    # produced it, so it is only classified, never checked.
+    su_lit_files, su_lit_dirs = _check_inp_paths(su_lit_paths, allow_dirs=True)
+    su_match_files = []
+    su_match_dirs = []
+    for su_path in su_match_paths:
+        (su_match_dirs if su_path.is_dir() else su_match_files).append(su_path)
+
+    # Translate to the director's working directory. Trailing separators are preserved
+    # for the patterns and their matches, because the director re-globs the pattern on a
+    # later run and compares against these matches, where a directory carries a
+    # trailing separator (see NamedGlob.glob).
+    # The tree paths are sorted so a parent is registered before a child it contains.
+    tr_trees = sorted({translate(su_path) for su_path in su_lit_dirs + su_match_dirs})
+    tr_files = sorted({translate(su_path) for su_path in su_lit_files + su_match_files})
+    tr_patterns = [
+        (
+            _keep_affixes(su_pattern, translate),
+            sorted(_keep_affixes(su_path, translate) for su_path in su_matches),
+        )
+        for su_pattern, su_matches in su_pattern_matches
+    ]
+
+    # A pattern without matches must still reach the director, so it can make this step
+    # pending when a match appears later.
+    if len(tr_trees) + len(tr_files) + len(tr_patterns) > 0:
+        RPC_CLIENT.call.static(get_job_i(), tr_trees, tr_files, tr_patterns)
+
+    # Report what this call covers, relative to the caller's working directory.
+    return sorted(
+        {Path(su_path) / "" for su_path in su_lit_dirs + su_match_dirs}
+        | {Path(su_path) for su_path in su_lit_files + su_match_files}
+    )
 
 
 def glob(pattern: StrPath, **subs: str) -> NamedGlob:
-    """Return file and directory matches of a glob pattern, and declare static files.
+    """Match a glob pattern against the filesystem, without declaring anything.
 
-    StepUp registers that the caller uses this pattern,
-    so it can make the calling step pending when new matches appear in future runs.
-    A file match is declared static, unless it already belongs to a static tree
-    (declared with `static()`), which owns it instead.
-    A directory match is only accepted when it lies inside a static tree:
-    outside one, StepUp has no evidence that the directory is source material
-    rather than a step's build product, so the match set could depend on build progress.
+    `glob()` is a pure query: it scans the filesystem, registers the pattern with the
+    calling step so the step becomes pending when the match set changes, and returns
+    the matches. It creates no graph node and owns nothing it matches.
+
+    Every match must already be justified some other way: inside a static tree
+    declared with `static()`, or declared static by another plan. Use `static()`
+    instead of `glob()` when the matches still need to be declared.
 
     Parameters
     ----------
@@ -193,7 +276,8 @@ def glob(pattern: StrPath, **subs: str) -> NamedGlob:
     Raises
     ------
     GraphError
-        When a directory match does not lie inside a static tree.
+        When a match is a file that some step builds,
+        or when a match lies under the `.stepup` directory.
 
     Notes
     -----
@@ -201,43 +285,42 @@ def glob(pattern: StrPath, **subs: str) -> NamedGlob:
     and the variables referenced are added to the calling step's `env_deps` list.
     These substitutions are based on the state of `os.environ` in the calling script,
     at the time this function is called, not when the step is executed.
+
+    A wildcard-free `pattern` is a convenient existence probe: `glob()` never raises
+    for a zero-match pattern, so `if glob("data.txt"):` tests whether the file exists
+    without declaring it. Declare it only once the probe succeeds:
+
+    ```python
+    if glob("data.txt"):
+        static("data.txt")
+        ...
+    ```
+
+    A match that is not (yet) justified by a `static()` declaration is not rejected
+    here: the plan that would declare it may not have run yet. It is instead checked
+    once at the end of the build phase, and reported as a warning, without affecting
+    the return code, if it is still unjustified by then.
     """
     # Substitute environment variables.
-    # Affixes are captured before normpath(), which would otherwise strip them,
-    # and re-applied after, so a trailing separator survives normalization.
+    # `_keep_affixes` re-applies the leading `./` and trailing `/` that `normpath()`
+    # and `translate()` would otherwise strip, and a trailing separator is what
+    # distinguishes a directory pattern.
     with subs_env_vars() as subs_path:
-        su_pattern = subs_path(pattern)
-        prefix, suffix = get_affixes(su_pattern)
-        su_pattern = apply_affixes(su_pattern.normpath(), prefix, suffix)
+        su_pattern = _keep_affixes(subs_path(pattern), Path.normpath)
+    tr_pattern = _keep_affixes(su_pattern, translate)
 
-    # StepUp needs to know the pattern, so it can identify new files matching it
-    # in future runs. Trailing separators are preserved because translate()
-    # normalizes them away, and a trailing separator distinguishes a directory pattern.
-    prefix, suffix = get_affixes(su_pattern)
-    tr_pattern = apply_affixes(translate(su_pattern), prefix, suffix)
-
-    # Collect all matches
+    # Collect all matches.
     ng = NamedGlob(su_pattern, subs)
     ng.glob()
 
-    # Translate all matches, keeping track of which ones are directories.
-    # Trailing separators are preserved for the same reason as for the pattern above.
-    # Existence is guaranteed by nglob's own filesystem walk, so `_check_inp_path`
-    # here only classifies files versus directories; it cannot raise.
-    tr_all_paths = []
-    tr_dir_paths = []
-    for paths in ng.results.values():
-        for path in paths:
-            prefix, suffix = get_affixes(path)
-            tr_path = apply_affixes(translate(path), prefix, suffix)
-            tr_all_paths.append(tr_path)
-            if _check_inp_path(path, return_dir=True):
-                tr_dir_paths.append(tr_path)
+    # `ng.files()` is sorted and deduplicated, which keeps the payload deterministic.
+    # Directory matches keep their trailing separator, which is how the director
+    # tells them apart from file matches without a second, redundant list.
+    tr_paths = [_keep_affixes(path, translate) for path in ng.files()]
 
-    # One call: the director decides which file matches are already owned by a static
-    # tree (skipped), which directory matches lie inside one (accepted),
-    # and which directory matches do not (raises `GraphError`).
-    RPC_CLIENT.call.nglob(get_job_i(), tr_pattern, subs, tr_all_paths, tr_dir_paths)
+    # The director records the pattern with the calling step and validates the
+    # matches: a match that is a known build product, or lies under `.stepup`, raises.
+    RPC_CLIENT.call.glob(get_job_i(), tr_pattern, subs, tr_paths)
 
     # Done
     return ng
@@ -1499,6 +1582,52 @@ def _check_inp_paths(
         is_dir = _check_inp_path(inp_path, return_dir=allow_dirs)
         (dir_paths if is_dir else file_paths).append(inp_path)
     return file_paths, dir_paths
+
+
+def _iter_static_args(
+    args: Iterable[StrPath | Iterable[StrPath] | NamedGlob],
+) -> Iterator[StrPath | NamedGlob]:
+    """Flatten one level of nesting in `static()`'s arguments, keeping `NamedGlob`s whole.
+
+    `coerce_paths2` cannot be used here: iterating a `NamedGlob` yields
+    `NamedGlobMatch` objects (not `os.PathLike`) when the pattern has named
+    wildcards, so the flattening has to know about the type.
+    """
+    for arg in args:
+        if isinstance(arg, (str, os.PathLike, NamedGlob)):
+            yield arg
+        else:
+            yield from arg
+
+
+def _keep_affixes(path: StrPath, transform: Callable[[Path], Path]) -> Path:
+    """Apply `transform` to `path`, restoring its leading `./` and trailing `/`.
+
+    Both `Path.normpath()` and `translate()` normalize these affixes away, while a
+    trailing separator is what distinguishes a directory path or pattern in StepUp.
+    """
+    prefix, suffix = get_affixes(path)
+    return apply_affixes(transform(coerce_path(path)), prefix, suffix)
+
+
+def _classify_static_arg(su_arg: Path) -> bool:
+    """Return whether a `static()` argument is a glob pattern rather than a literal path.
+
+    Raises
+    ------
+    PathError
+        When the argument ends with a recursive `**` wildcard.
+    """
+    if not has_any_wildcards(su_arg):
+        return False
+    if has_trailing_recursive_wildcard(su_arg):
+        raise PathError(
+            f"static() does not support a trailing recursive ** wildcard: {su_arg}. "
+            "Declare the directory as a static tree instead, e.g. static('src/'), "
+            "which covers everything below it. "
+            "Use glob() when you need the list of matching files."
+        )
+    return True
 
 
 def _check_no_directories(paths: Iterable[Path], workdir: StrPath = "."):

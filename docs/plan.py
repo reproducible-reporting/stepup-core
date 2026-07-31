@@ -5,7 +5,7 @@
 
 from path import Path
 
-from stepup.core.api import glob, run, static
+from stepup.core.api import run, static
 
 
 def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
@@ -53,7 +53,7 @@ def scan_main(path_main: str) -> tuple[list[Path], Path, list[Path]]:
 def main():
     """Main program."""
     static("run_example.py")
-    paths_main = glob("*/*/main.sh")
+    paths_main = static("*/*/main.sh")
     for path_main in paths_main:
         inp, root, out = scan_main(path_main)
         static(inp)

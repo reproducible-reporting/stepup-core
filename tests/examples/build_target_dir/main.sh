@@ -35,8 +35,8 @@ grep -qx a1b1c1 out/result.txt
 grep -qx 1 invocations.txt
 
 # Run 2: a directory target that matches no regular output triggers a WARNING (not a build
-# failure) and sets bit 16 in the exit code, just like an exact-file target that is never
-# produced.
+# failure) and sets the WARNING bit in the exit code, just like an exact-file target that is
+# never produced.
 rm .stepup/*.log
 sb empty/ -j 1 -w & # > current_stdout2.txt &
 PID=$!
@@ -46,6 +46,6 @@ stepup graph current_graph2
 stepup join
 
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
-[[ "${RETURNCODE}" -eq 16 ]] || exit 1
+[[ "${RETURNCODE}" -eq "${RETURN_CODE_WARNING}" ]] || exit 1
 
 grep -F "directory target(s) matched no regular output in the workflow: empty/" .stepup/warning.log

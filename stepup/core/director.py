@@ -786,59 +786,79 @@ class DirectorHandler:
             self.builder.hash_queue.submit(path, old_hash, HashUpdateCause.CONFIRMED)
 
     @allow_rpc
-    async def declare_unconfirmed(self, job_i: int, paths: list[str]) -> None:
-        """Add a list of absolute paths to the workflow, to become static.
+    async def static(
+        self,
+        job_i: int,
+        tree_paths: list[str],
+        file_paths: list[str],
+        patterns: list[tuple[str, list[str]]],
+    ) -> None:
+        """Register the static trees, static files and glob patterns of one `static()` call.
 
-        They are stored internally as paths relative to `${STEPUP_ROOT}`,
-        initially set to `UNCONFIRMED`.
-        A hash job is submitted for each, running in parallel with other work,
-        to confirm it as `STATIC` or `MISSING`.
+        Parameters
+        ----------
+        job_i
+            The job index of the calling step.
+        tree_paths
+            Directories, given literally or matched by a glob pattern: each becomes a
+            static tree. Sorted, so a parent is always registered before a child it
+            contains, which turns an overlap within one call into a no-op instead of a
+            "parent directory of an existing static tree" error.
+        file_paths
+            Files to declare `UNCONFIRMED`, to be confirmed as `STATIC` or `MISSING` by a
+            hash job submitted in the background. The `UNCONFIRMED` intermediate state
+            avoids unnecessary file hash calculations: when size, inode and mtime are
+            unchanged, the old hash is reused.
+        patterns
+            `(pattern, matches)` pairs, one per glob pattern given to `static()`.
+            The matches are recorded with the pattern, so a later run can tell
+            whether the match set changed. A pattern never carries a `subs` dict,
+            because `static()` takes no keyword arguments, so `NamedGlob(pattern)`
+            rebuilds exactly what the client globbed with.
 
-        The `UNCONFIRMED` intermediate state avoids unnecessary file hash calculations.
-        If the file size, inode number and modification time of a path match have not changed,
-        we can reasonably safely assume that the file contents have not changed.
-        In this case, the hash calculation is skipped and the old hash is reused.
+        Notes
+        -----
+        Everything happens in a single transaction, so the tree-before-file ordering
+        is a guarantee of this method rather than a convention spread over two round
+        trips from the client.
         """
-        async with self.db:
-            creator = self.scheduler.get_step(job_i)
-            to_check = self.workflow.declare_unconfirmed(creator, paths)
-        self._submit_to_check(to_check)
-
-    @allow_rpc
-    async def static_trees(self, job_i: int, paths: list[str]) -> None:
-        """Register directories whose contents become static files when used."""
         to_check = {}
         async with self.db:
             creator = self.scheduler.get_step(job_i)
-            for path in paths:
+            for path in tree_paths:
                 to_check.update(self.workflow.register_static_tree(creator, path))
+            to_check.update(self.workflow.declare_unconfirmed(creator, file_paths))
+            for pattern, matches in patterns:
+                ng = NamedGlob(pattern)
+                ng.extend(matches)
+                self.workflow.register_glob(creator, ng)
         self._submit_to_check(to_check)
 
     @allow_rpc
-    async def nglob(
-        self,
-        job_i: int,
-        pattern: str,
-        subs: dict[str, str],
-        paths: list[str],
-        dir_paths: list[str],
-    ) -> None:
-        """Register a glob pattern, declare file matches static, validate directory matches.
+    async def glob(self, job_i: int, pattern: str, subs: dict[str, str], paths: list[str]) -> None:
+        """Register a glob pattern with the calling step and validate its matches.
 
-        File matches already owned by a static tree are silently skipped by
-        `Workflow.declare_unconfirmed`, since the tree owns them.
-        Directory matches must lie inside a static tree; a directory match outside any
-        tree raises `GraphError`, since StepUp cannot tell whether it is source material
-        or a step's build product.
+        A glob pattern is a pure query: it declares nothing and owns nothing.
+        The pattern is recorded so the calling step becomes pending when the match set
+        changes, and its matches are validated against what the graph already knows.
+
+        Parameters
+        ----------
+        job_i
+            The job index of the calling step.
+        pattern
+            The glob pattern, relative to `${STEPUP_ROOT}`, with its trailing separator
+            preserved when it is a directory pattern.
+        subs
+            The sub-pattern of each named wildcard, as given to `glob()`.
+        paths
+            Every match, sorted, directories with a trailing separator.
         """
         ng = NamedGlob(pattern, subs)
         ng.extend(paths)
         async with self.db:
             creator = self.scheduler.get_step(job_i)
-            self.workflow.check_dir_matches_static_tree(dir_paths)
-            to_check = self.workflow.declare_unconfirmed(creator, paths)
-            self.workflow.register_nglob(creator, ng)
-        self._submit_to_check(to_check)
+            self.workflow.register_glob(creator, ng)
 
     @allow_rpc
     async def step(

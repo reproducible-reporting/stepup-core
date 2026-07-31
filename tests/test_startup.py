@@ -15,7 +15,7 @@ from stepup.core.hash import FileHash, StepHash
 from stepup.core.nglob import NamedGlob
 from stepup.core.reporter import ReporterClient
 from stepup.core.scheduler import Scheduler
-from stepup.core.startup import check_file_changes, check_nglob_changes
+from stepup.core.startup import check_file_changes, check_nglob_changes, populate_dir_queue
 from stepup.core.step import Step
 from stepup.core.workflow import Workflow
 
@@ -192,7 +192,7 @@ async def test_check_nglob_changes_persists_readable_matches(wfp: Workflow, tmpd
             plan = wfp.find(Step, "./plan.py")
             ng = NamedGlob("inp*.txt")
             ng.extend(["inp1.txt", "inp2.txt"])
-            wfp.register_nglob(plan, ng)
+            wfp.register_glob(plan, ng)
             plan.completed(StepHash(b"ok", None, b"inp_ok", None), False)
             assert plan.get_state() == StepState.SUCCEEDED
 
@@ -220,3 +220,28 @@ async def test_check_nglob_changes_persists_readable_matches(wfp: Workflow, tmpd
             new_nglobs = list(wfp.nglobs())
             assert len(new_nglobs) == 1
             assert new_nglobs[0].files() == ["inp1.txt", "inp3.txt"]
+
+
+async def test_populate_dir_queue_includes_glob_base_dirs(wfp: Workflow, tmpdir):
+    """A directory that only ever appears as a glob pattern's base directory (no
+    static() declaration, no recorded match) must still be watched after a restart, or
+    a directory that only ever contained glob matches would go unwatched.
+    """
+    with contextlib.chdir(tmpdir):
+        os.makedirs("data")
+        async with wfp.db:
+            plan = wfp.find(Step, "./plan.py")
+            wfp.register_glob(plan, NamedGlob("data/*.txt"))
+
+        # Drain what fixture setup and register_glob already queued, so only
+        # populate_dir_queue's own contribution is observed below.
+        while not wfp.dir_queue.empty():
+            wfp.dir_queue.get_nowait()
+
+        reporter = _FakeReporter()
+        await populate_dir_queue(wfp, wfp.db, reporter)
+
+        watched = set()
+        while not wfp.dir_queue.empty():
+            watched.add(wfp.dir_queue.get_nowait())
+        assert "data" in watched

@@ -1,0 +1,33 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   root:
+              source   file:plan.py
+             product   file:sub/plan.py
+             product   st:data/
+             product   step:./plan.py  # wd=sub
+
+st:data/
+             creator   step:./plan.py
+
+file:sub/plan.py
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:./plan.py  # wd=sub
+
+step:./plan.py  # wd=sub
+               state = FAILED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./plan.py
+              source   file:sub/plan.py

@@ -29,9 +29,10 @@ grep -qx hello b/done.txt
 #
 # `b`'s own declared input still points at hop2.txt, but since `a` no longer
 # declares it as an output, that file node has no producer anymore: `b` is
-# correctly left PENDING with a "Detached inputs" warning (return code 4, the
-# same code used by e.g. the `awaited_detached` example for an incomplete-but-
-# not-crashed build) instead of silently reusing a stale result. That part is
+# correctly left PENDING with a "Detached inputs" warning (the PENDING return
+# code bit, the same code used by e.g. the `awaited_detached` example for an
+# incomplete-but-not-crashed build) instead of silently reusing a stale result.
+# That part is
 # unrelated to the OPTIONAL-step bug under test here, so this phase only checks
 # that `a`'s own step reran -- not that `b` completes.
 echo "world" > a/hop1.txt
@@ -44,7 +45,7 @@ stepup graph current_graph2
 stepup join
 
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
-[[ "${RETURNCODE}" -eq 4 ]] || exit 1
+[[ "${RETURNCODE}" -eq "${RETURN_CODE_PENDING}" ]] || exit 1
 
 [[ -f a/hop2.txt ]] || exit 1
 grep -qx world a/hop2.txt

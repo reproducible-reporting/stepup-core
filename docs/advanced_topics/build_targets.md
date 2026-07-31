@@ -38,11 +38,20 @@ It cannot name a volatile output (`vol=[...]`) or a path that resolves to a stat
 or inside a registered static tree); both raise a clear error.
 If a target is never produced by any step in the workflow, this is reported as a warning
 at the end of the build, instead of silently doing nothing,
-and the exit code gets bit `16` set, see [Return Codes](../reference/returncode.md).
+and the exit code gets the warning bit (`8`) set,
+see [Return Codes](../reference/returncode.md).
 This warning only appears when the build phase completes normally.
 If the build is interrupted or put on hold
 (e.g. a step fails and `--keep-going` is not used),
 the warning is suppressed, since the workflow may not be fully defined yet.
+
+A build restricted to targets never cleans up outdated outputs,
+even when every step it ran succeeded.
+The steps outside the target's dependencies did not run,
+so their outputs are still outdated,
+and removing them would throw away results that you did not ask to rebuild.
+Run `stepup build` without targets to clean up again
+or perform a [manual cleanup](manual_cleaning.md) with `stepup clean`.
 
 ## Example
 

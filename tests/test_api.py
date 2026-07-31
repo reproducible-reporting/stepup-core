@@ -29,6 +29,7 @@ from stepup.core.api import (
     step,
 )
 from stepup.core.exceptions import AmendWhileHoldingError, PathError
+from stepup.core.nglob import NamedGlob
 from stepup.core.rpc import DummySyncRPCClient
 
 
@@ -470,12 +471,12 @@ def test_check_inp_paths_splits_files_and_dirs(path_tmp):
 
 @attrs.define
 class _CaptureNglobClient(DummySyncRPCClient):
-    """A dummy RPC client that records the arguments of the `nglob` call."""
+    """A dummy RPC client that records the arguments of the `glob` call."""
 
     calls: list = attrs.field(factory=list)
 
     def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
-        if name == "nglob":
+        if name == "glob":
             self.calls.append(args)
         return super().__call__(name, *args, _rpc_timeout=_rpc_timeout, **kwargs)
 
@@ -498,14 +499,28 @@ def test_glob_dir_pattern_keeps_trailing_slash(path_tmp, monkeypatch):
     assert tr_pattern == "src/*/"
 
 
+def test_glob_sends_no_dir_paths(path_tmp, monkeypatch):
+    """`glob()`'s RPC payload is a pure query: job_i, pattern, subs, matches -- no dir_paths."""
+    monkeypatch.chdir(path_tmp)
+    (path_tmp / "src").makedirs()
+    (path_tmp / "src" / "a.txt").write_text("content")
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+    client = _CaptureNglobClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    glob("src/*.txt")
+    assert len(client.calls) == 1
+    # job_i, pattern, subs, matches -- 3 arguments after job_i, no dir_paths.
+    assert len(client.calls[0]) == 4
+
+
 @attrs.define
 class _CaptureCallOrderClient(DummySyncRPCClient):
-    """A dummy RPC client that records the order in which RPC methods are called."""
+    """A dummy RPC client that records the arguments of each RPC call."""
 
-    names: list = attrs.field(factory=list)
+    calls: list = attrs.field(factory=list)
 
     def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
-        self.names.append(name)
+        self.calls.append((name, args))
         return super().__call__(name, *args, _rpc_timeout=_rpc_timeout, **kwargs)
 
 
@@ -515,6 +530,8 @@ def test_static_tree_before_file_regardless_of_argument_order(path_tmp, monkeypa
 
     Otherwise the director would see `src/foo.txt` declared before the tree `src/` exists,
     which it rejects, even though the tree was named in the same `static()` call.
+    The client only groups and sorts the paths into `tree_paths` and `file_paths`;
+    the director is what enforces the ordering, inside a single transaction.
     """
     monkeypatch.chdir(path_tmp)
     (path_tmp / "src").mkdir()
@@ -523,4 +540,255 @@ def test_static_tree_before_file_regardless_of_argument_order(path_tmp, monkeypa
     client = _CaptureCallOrderClient()
     monkeypatch.setattr(api, "RPC_CLIENT", client)
     static(*order)
-    assert client.names == ["static_trees", "declare_unconfirmed"]
+    assert len(client.calls) == 1
+    name, args = client.calls[0]
+    assert name == "static"
+    _job_i, tree_paths, file_paths, patterns = args
+    assert tree_paths == ["src"]
+    assert file_paths == ["src/foo.txt"]
+    assert patterns == []
+
+
+@attrs.define
+class _CaptureStaticClient(DummySyncRPCClient):
+    """A dummy RPC client that records the arguments of the `static` call."""
+
+    calls: list = attrs.field(factory=list)
+
+    def __call__(self, name: str, *args, _rpc_timeout: float | None = None, **kwargs):
+        if name == "static":
+            self.calls.append(args)
+        return super().__call__(name, *args, _rpc_timeout=_rpc_timeout, **kwargs)
+
+
+def test_static_pattern_splits_files_and_dirs(path_tmp, monkeypatch):
+    """A directory match in a `static()` pattern goes to `tree_paths`.
+
+    A file match goes to `file_paths`.
+    """
+    monkeypatch.chdir(path_tmp)
+    (path_tmp / "src" / "sub").makedirs()
+    (path_tmp / "src" / "foo.txt").write_text("content")
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+    client = _CaptureStaticClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    static("src/*")
+    assert len(client.calls) == 1
+    _job_i, tree_paths, file_paths, _patterns = client.calls[0]
+    assert tree_paths == ["src/sub"]
+    assert file_paths == ["src/foo.txt"]
+
+
+def test_static_pattern_registers_pattern_with_matches(path_tmp, monkeypatch):
+    """`static()` registers a pattern together with its matches, not just the matches."""
+    monkeypatch.chdir(path_tmp)
+    path_tmp.joinpath("src").mkdir()
+    (path_tmp / "src" / "a.txt").write_text("content")
+    (path_tmp / "src" / "b.txt").write_text("content")
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+    client = _CaptureStaticClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    static("src/*.txt")
+    assert len(client.calls) == 1
+    _job_i, _tree_paths, file_paths, patterns = client.calls[0]
+    assert file_paths == ["src/a.txt", "src/b.txt"]
+    assert patterns == [("src/*.txt", ["src/a.txt", "src/b.txt"])]
+    assert "src/*.txt" not in file_paths
+
+
+def test_static_dir_pattern_keeps_trailing_slash(path_tmp, monkeypatch):
+    """A directory pattern's trailing separator must survive substitution and normalization.
+
+    Mirrors `test_glob_dir_pattern_keeps_trailing_slash` for `static()`:
+    both the registered pattern and its matches keep the trailing separator.
+    """
+    monkeypatch.chdir(path_tmp)
+    (path_tmp / "src" / "sub").makedirs()
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+    client = _CaptureStaticClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    static("src/*/")
+    assert len(client.calls) == 1
+    _job_i, tree_paths, _file_paths, patterns = client.calls[0]
+    assert tree_paths == ["src/sub"]
+    assert patterns == [("src/*/", ["src/sub/"])]
+
+
+def test_static_empty_pattern_still_registered(path_tmp, monkeypatch):
+    """A pattern with zero matches is still registered, so a later run can react to a new match."""
+    monkeypatch.chdir(path_tmp)
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+    client = _CaptureStaticClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    static("nothing*.txt")
+    assert len(client.calls) == 1
+    _job_i, tree_paths, file_paths, patterns = client.calls[0]
+    assert tree_paths == []
+    assert file_paths == []
+    assert patterns == [("nothing*.txt", [])]
+
+
+def test_static_no_arguments_makes_no_call(path_tmp, monkeypatch):
+    """`static()` with nothing to declare makes no RPC call at all."""
+    monkeypatch.chdir(path_tmp)
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+    client = _CaptureStaticClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    static()
+    static([])
+    assert len(client.calls) == 0
+
+
+def test_static_named_wildcard_pattern(path_tmp, monkeypatch):
+    """A named wildcard in a `static()` pattern is registered verbatim, with no `subs`."""
+    monkeypatch.chdir(path_tmp)
+    (path_tmp / "f1.txt").write_text("content")
+    (path_tmp / "f2.txt").write_text("content")
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+    client = _CaptureStaticClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    static("f${*i}.txt")
+    assert len(client.calls) == 1
+    _job_i, _tree_paths, file_paths, patterns = client.calls[0]
+    assert file_paths == ["f1.txt", "f2.txt"]
+    assert patterns == [("f${*i}.txt", ["f1.txt", "f2.txt"])]
+
+
+def test_static_named_wildcard_consistency(path_tmp, monkeypatch):
+    """A named wildcard still constrains its occurrences to match the same substring."""
+    monkeypatch.chdir(path_tmp)
+    path_tmp.joinpath("a").mkdir()
+    path_tmp.joinpath("b").mkdir()
+    (path_tmp / "a" / "a.txt").write_text("content")
+    (path_tmp / "b" / "c.txt").write_text("content")
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+    client = _CaptureStaticClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    static("${*n}/${*n}.txt")
+    assert len(client.calls) == 1
+    _job_i, _tree_paths, file_paths, _patterns = client.calls[0]
+    assert file_paths == ["a/a.txt"]
+
+
+@pytest.mark.parametrize("pattern", ["src/**", "**", "${*name}/**"])
+def test_static_recursive_wildcard_rejected(path_tmp, monkeypatch, pattern):
+    """A trailing recursive `**` wildcard is rejected before any globbing,
+
+    even over a nonexistent path.
+    """
+    monkeypatch.chdir(path_tmp)
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+    client = _CaptureStaticClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    with pytest.raises(PathError, match="recursive"):
+        static(pattern)
+    assert len(client.calls) == 0
+
+
+def test_static_accepts_middle_recursive_wildcard(path_tmp, monkeypatch):
+    """A `**` that is not the final path component is accepted and expanded eagerly."""
+    monkeypatch.chdir(path_tmp)
+    (path_tmp / "src" / "sub").makedirs()
+    (path_tmp / "src" / "a.c").write_text("content")
+    (path_tmp / "src" / "sub" / "b.c").write_text("content")
+    (path_tmp / "src" / "sub" / "c.txt").write_text("content")
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+    client = _CaptureStaticClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    result = static("src/**/*.c")
+    assert result == ["src/a.c", "src/sub/b.c"]
+    assert len(client.calls) == 1
+    _job_i, tree_paths, file_paths, patterns = client.calls[0]
+    assert tree_paths == []
+    assert file_paths == ["src/a.c", "src/sub/b.c"]
+    assert patterns == [("src/**/*.c", ["src/a.c", "src/sub/b.c"])]
+
+
+def test_static_accepts_recursive_named_glob(path_tmp, monkeypatch):
+    """A `NamedGlob` whose pattern is recursive is accepted: the scan already happened.
+
+    The `**` rejection only applies to patterns `static()` expands itself.
+    """
+    monkeypatch.chdir(path_tmp)
+    (path_tmp / "src" / "sub").makedirs()
+    (path_tmp / "src" / "sub" / "a.txt").write_text("content")
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+    client = _CaptureStaticClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    ng = NamedGlob("src/**")
+    ng.glob()
+    static(ng)
+    assert len(client.calls) == 1
+
+
+def test_static_returns_covered_paths(path_tmp, monkeypatch):
+    """The return value lists every path this call covers, trees with a trailing slash."""
+    monkeypatch.chdir(path_tmp)
+    (path_tmp / "a.txt").write_text("content")
+    (path_tmp / "src").mkdir()
+    (path_tmp / "data" / "sub").makedirs()
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+    client = _CaptureStaticClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    result = static("a.txt", "src/", "data/*")
+    assert result == sorted(result)
+    assert Path("src/") in result
+    assert Path("data/sub/") in result
+    assert Path("a.txt") in result
+
+
+def test_static_accepts_named_glob(path_tmp, monkeypatch):
+    """A `NamedGlob` argument contributes its matches without re-registering its pattern."""
+    monkeypatch.chdir(path_tmp)
+    (path_tmp / "src").mkdir()
+    (path_tmp / "src" / "a.txt").write_text("content")
+    (path_tmp / "src" / "b.txt").write_text("content")
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+
+    client = _CaptureStaticClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    ng = NamedGlob("src/*.txt")
+    ng.glob()
+    static(ng)
+    assert len(client.calls) == 1
+    _job_i, _tree_paths, file_paths, patterns = client.calls[0]
+    assert file_paths == ["src/a.txt", "src/b.txt"]
+    assert patterns == []
+
+    # Named-wildcard variant: `coerce_paths2` cannot flatten a `NamedGlob`'s iteration,
+    # which is exactly the case `_iter_static_args` has to special-case.
+    (path_tmp / "f1.txt").write_text("content")
+    client2 = _CaptureStaticClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client2)
+    ng_named = NamedGlob("f${*i}.txt")
+    ng_named.glob()
+    static(ng_named)
+    assert len(client2.calls) == 1
+    _job_i, _tree_paths, file_paths2, patterns2 = client2.calls[0]
+    assert file_paths2 == ["f1.txt"]
+    assert patterns2 == []
+
+    # Nested form: a `NamedGlob` inside an iterable argument.
+    client3 = _CaptureStaticClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client3)
+    static([ng])
+    assert len(client3.calls) == 1
+    _job_i, _tree_paths, file_paths3, patterns3 = client3.calls[0]
+    assert file_paths3 == ["src/a.txt", "src/b.txt"]
+    assert patterns3 == []
+
+
+def test_static_env_var_in_pattern(path_tmp, monkeypatch):
+    """An environment variable in a `static()` pattern is substituted before registration."""
+    monkeypatch.chdir(path_tmp)
+    (path_tmp / "src").mkdir()
+    (path_tmp / "src" / "a.txt").write_text("content")
+    monkeypatch.setenv("DATA", "src")
+    monkeypatch.setenv("STEPUP_JOB_I", "0")
+    client = _CaptureStaticClient()
+    monkeypatch.setattr(api, "RPC_CLIENT", client)
+    static("${DATA}/*.txt")
+    assert len(client.calls) == 1
+    _job_i, _tree_paths, file_paths, patterns = client.calls[0]
+    assert file_paths == ["src/a.txt"]
+    assert patterns == [("src/*.txt", ["src/a.txt"])]

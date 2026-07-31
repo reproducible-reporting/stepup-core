@@ -32,14 +32,8 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
   Targets may now also name a directory (a path ending in `/`),
   which elevates every step whose declared need is `DEFAULT`
   and whose output falls under that directory, best-effort (never raises).
+  Automatic cleaning is disabled when targets are specified.
   See [Build Targets](advanced_topics/build_targets.md) for details.
-- Return codes have changed:
-    - A new returncode bit (`16`) was added to indicate that at least one target was not produced
-      by any step in the workflow.
-    - A new returncode bit (`64`) indicates that the build was aborted by `Ctrl-C` or `SIGTERM`.
-      Previously, an interrupted build could exit with returncode `0`,
-      making it indistinguishable from a successful one.
-  See [StepUp Return Codes](reference/returncode.md) for details.
 - StepUp can use a forkserver for Python step execution and file hashing,
   which reduces startup overhead.
   This can be controlled with the `--forkserver` flag,
@@ -137,6 +131,14 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
   `-k` (steps already running still finish; no new steps are started).
   Use the new `--keep-going` / `-k` flag (or `STEPUP_BUILD_KEEP_GOING`) to restore the
   previous behavior of continuing to build every step whose inputs remain available.
+- The `static()` and `glob()` functions have been redesigned from scratch to permit more use cases
+  while still imposing the same safety and correctness guarantees as in StepUp 3.
+  See [`static()` and `glob()` Have New Roles](migration/from_3x_to_40.md#static-and-glob-have-new-roles)
+  and [Directory Handling](migration/from_3x_to_40.md#directory-handling)
+  in the migration guide for details.
+- Return codes have changed.
+  The new return code bits are documented in [StepUp Return Codes](reference/returncode.md).
+  The changes compared to StepUp 3 are summarized in the [migration guide](migration/from_3x_to_40.md#return-codes-have-been-renumbered).
 - The `runsh()` and `runpy()` functions have been replaced by the more flexible `run()` function.
   The new implementation is more efficient and automatically tracks local scripts as dependencies.
 - The `plan()` function has been made maximally similar to `run()`,
@@ -256,6 +258,9 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
       File hashing is offloaded to dedicated threads.
     - Strict database sessions management and transaction correctness has been implemented
       to avoid database corruption, e.g. due to race conditions.
+    - The `declare_unconfirmed` and `static_trees` RPC calls are replaced by a single
+      `static` call, so one `static()` invocation is always one round trip and the
+      director registers static trees before the files they contain within one transaction.
     - When a step is detached while it is running (and not recreated before it ends),
       an explicit `DETACHED` warning is shown and its result is discarded.
     - The `STEPUP_STEP_I` environment variable has been replaced by `STEPUP_JOB_I`.
@@ -346,6 +351,7 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
   Consequently, a named wildcard directly following a separator
   no longer matches an empty string, just like `*` in that position.
   The trailing separator of a matched directory is not part of the captured substring.
+- Attempts to use files under `.stepup/` in a workflow will now raise an exception.
 
 ## [3.2.3][] - 2026-04-16 {: #v3.2.3 }
 

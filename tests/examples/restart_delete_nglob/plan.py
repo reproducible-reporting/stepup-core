@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from stepup.core.api import copy, glob
+from stepup.core.api import copy, static
 
-for path_inp in glob("inp*.txt"):
+for path_inp in static("inp*.txt"):
     copy(path_inp, "out" + path_inp.name[3:])
     copy("out" + path_inp.name[3:], "foo" + path_inp.name[3:])

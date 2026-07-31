@@ -10,9 +10,8 @@ import attrs
 from path import Path
 
 from .asyncio import stoppable_iterator, wait_for_events
-from .enums import Change, FileState, HashUpdateCause
+from .enums import Change, HashUpdateCause
 from .executor import Executor
-from .file import File
 from .hash_queue import HashQueue, gather_hashes
 from .reporter import ReporterClient
 from .sqlite3 import DBSession
@@ -158,8 +157,7 @@ class Watcher:
         async with self.db:
             while not change_queue.empty():
                 change, path = change_queue.get_nowait()
-                file = self.workflow.find(File, path)
-                if file is not None and file.get_state() in (FileState.STATIC, FileState.MISSING):
+                if self.workflow.is_relevant_during_build(path):
                     await self.record_change(change, path)
 
         # Wait for new changes to show up.

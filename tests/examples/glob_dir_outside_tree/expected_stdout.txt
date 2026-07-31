@@ -1,17 +1,18 @@
   STARTUP │ (Re)initialized boot script
     PHASE │ build
     START │ ./plan.py
-     FAIL │ ./plan.py
-──────────────────────────────── Failed command ────────────────────────────────
-./plan.py  # exit=1
-──────────────────────────────── Standard error ────────────────────────────────
-(stripped)
-────────────────────────────────────────────────────────────────────────────────
+  SUCCESS │ ./plan.py
  DIRECTOR │ Ran 1 job(s).
-  WARNING │ 1 step(s) failed.
-  WARNING │ Scheduler is put on hold. Not reporting pending steps.
-  WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+  WARNING │ 1 glob match(es) are not declared static.
+────────────────────────────── ./plan.py: sub/*/ ───────────────────────────────
+           (no node)  sub/leaf/
+──────────────────────────────────── Remedy ────────────────────────────────────
+Every matched file must be declared static or lie inside a static tree.
+A matched directory also qualifies when it contains a static file or tree.
+Declare the files with static(), or declare their directory as a static tree.
+────────────────────────────────────────────────────────────────────────────────
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+  WARNING │ Check logs: .stepup/warning.log
     PHASE │ watch
  DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
  DIRECTOR │ See you!

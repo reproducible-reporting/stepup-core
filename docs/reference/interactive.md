@@ -52,6 +52,8 @@ These commands are defined as follows:
 - `g = graph`:
   Writes out the workflow graph in text format to a file named `graph.txt`.
   (This human-readable file contains most of the information from `.stepup/workflow.mp.xz`)
+  Note that the glob patterns registered with a step are labeled `nglob` in this output,
+  which is StepUp's internal name for a (possibly named) glob pattern.
 
 Note that these interactive keys also work without the `-w` or `-W` option,
 except for `r` which only has an effect during the *watch phase*.
@@ -62,7 +64,7 @@ Every running step is interrupted with `SIGINT`,
 and whatever is still running a few seconds later is killed with `SIGKILL`,
 so a single `Ctrl+C` is always enough to get your shell prompt back.
 (Pressing `Ctrl+C` again just skips the waiting.)
-An aborted build sets the `64` bit in the [return code](returncode.md).
+An aborted build sets the `2` bit in the [return code](returncode.md).
 
 ## Interacting With a Background StepUp Process
 

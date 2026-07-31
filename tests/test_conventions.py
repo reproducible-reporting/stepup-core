@@ -6,9 +6,12 @@ See the `__all__` section in `CLAUDE.md` for the convention these tests enforce.
 """
 
 import ast
+import re
 
 import pytest
 from path import Path
+
+from stepup.core.enums import ReturnCode
 
 PACKAGE = Path(__file__).parent.parent / "stepup" / "core"
 MODULE_PATHS = sorted(PACKAGE.glob("*.py"))
@@ -83,3 +86,18 @@ def test_imports_are_exported(path: Path):
             assert alias.name in exported, (
                 f"{path.name} imports {alias.name} from {module}, which does not list it in __all__"
             )
+
+
+def test_example_return_code_constants():
+    """The `RETURN_CODE_*` constants in `example.rc` match the `ReturnCode` enum.
+
+    The integration examples assert exit codes through these shell constants,
+    so a renumbered or renamed flag must not silently leave them behind:
+    the examples would keep passing while testing the wrong bit.
+    """
+    text = (Path(__file__).parent / "examples" / "example.rc").read_text()
+    constants = {
+        match.group(1): int(match.group(2))
+        for match in re.finditer(r"^RETURN_CODE_(\w+)=(\d+)$", text, re.MULTILINE)
+    }
+    assert constants == {flag.name: flag.value for flag in ReturnCode}

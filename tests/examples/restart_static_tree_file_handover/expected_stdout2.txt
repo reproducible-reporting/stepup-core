@@ -1,0 +1,8 @@
+  STARTUP │ Watching 2 director(y|ies)
+  STARTUP │ Checking 3 file(s) for changes
+    PHASE │ build
+ DIRECTOR │ Ran 0 job(s).
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+    PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+ DIRECTOR │ See you!

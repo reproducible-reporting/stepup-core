@@ -45,7 +45,7 @@ stepup join
 # Wait for background processes, if any.
 # There must be pending steps.
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
-[[ "${RETURNCODE}" -eq 4 ]] || exit 1
+[[ "${RETURNCODE}" -eq "${RETURN_CODE_PENDING}" ]] || exit 1
 
 # Check that all outputs have become outdated
 grep 'OUTDATED  out1.txt' .stepup/warning.log

@@ -484,7 +484,7 @@ async def test_run_hash_job_exception_resolves_future_without_raising(wfs: Workf
     """A stat error (e.g. a permission problem) must resolve the future with the exception,
     not propagate: an exception escaping a builder task crashes job_loop via
     handle_done_tasks. It must also put the scheduler on hold: a fire-and-forget submitter
-    (declare_unconfirmed/static_trees/step) never awaits this future, so on_hold's existing
+    (static/step) never awaits this future, so on_hold's existing
     "stop dispatching new steps" + report_completion warning is what actually surfaces the
     failure to the user instead of it being silently lost."""
 

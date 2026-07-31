@@ -10,6 +10,13 @@ All files that are guaranteed to be available before StepUp starts must be decla
 This informs StepUp that such files are readily available,
 unlike files that are outputs of steps that still need to be executed.
 
+The adjective *static* reflects the fact that these files are fixed during the build.
+Any step requiring static files can be executed immediately, without waiting.
+StepUp will ensure that no steps will overwrite static files,
+protecting your manual files from being accidentally deleted or modified.
+It is therefore beneficial to declare static files early in `plan.py`,
+so StepUp knows what to protect before running any steps.
+
 ## Example
 
 Example source files: [`docs/getting_started/static_files/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/static_files)
@@ -47,7 +54,11 @@ The file `numbered.txt` will contain a copy of the limerick with line numbers.
 
 Keep in mind that a file can only be declared static once,
 so it is always clear which step has created the static file.
-When the creating step is later removed, the static files it created are also removed from the plan.
+When the creating step is later removed, the static files it created are also dropped from the plan.
+
+Listing every input file by name quickly becomes tedious.
+The [next tutorial](static_patterns.md) shows how a glob pattern passed to `static()`
+declares a whole group of files at once.
 
 ## Try the Following
 

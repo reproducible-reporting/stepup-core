@@ -2,6 +2,7 @@
 from stepup.core.api import glob, run, static
 
 if glob("data.txt"):
+    static("data.txt")
     run("grep -i foo data.txt > analyzed.txt", shell=True, inp=["data.txt"], out=["analyzed.txt"])
 else:
     static("analyzed.txt")

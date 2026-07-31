@@ -1,0 +1,45 @@
+  STARTUP │ Watching 2 director(y|ies)
+  STARTUP │ Checking 1 file(s) for changes
+  STARTUP │ Checking 1 nglob(s) for new or deleted matches
+  UPDATED │ data/a.txt
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+─────────────────────────────── Standard output ────────────────────────────────
+MATCHES: ['data/a.txt']
+────────────────────────────────────────────────────────────────────────────────
+ DIRECTOR │ Ran 1 job(s).
+  WARNING │ 1 glob match(es) are not declared static.
+──────────────────────────── ./plan.py: data/*.txt ─────────────────────────────
+           (no node)  data/a.txt
+──────────────────────────────────── Remedy ────────────────────────────────────
+Every matched file must be declared static or lie inside a static tree.
+A matched directory also qualifies when it contains a static file or tree.
+Declare the files with static(), or declare their directory as a static tree.
+────────────────────────────────────────────────────────────────────────────────
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph2.txt, current_graph2_provenance.dot and current_graph2_dependency.dot
+  UPDATED │ data/b.txt
+    PHASE │ build
+    START │ ./plan.py
+  SUCCESS │ ./plan.py
+─────────────────────────────── Standard output ────────────────────────────────
+MATCHES: ['data/a.txt', 'data/b.txt']
+────────────────────────────────────────────────────────────────────────────────
+ DIRECTOR │ Ran 1 job(s).
+  WARNING │ 2 glob match(es) are not declared static.
+──────────────────────────── ./plan.py: data/*.txt ─────────────────────────────
+           (no node)  data/a.txt
+           (no node)  data/b.txt
+──────────────────────────────────── Remedy ────────────────────────────────────
+Every matched file must be declared static or lie inside a static tree.
+A matched directory also qualifies when it contains a static file or tree.
+Declare the files with static(), or declare their directory as a static tree.
+────────────────────────────────────────────────────────────────────────────────
+ DIRECTOR │ Trying to remove 0 outdated output(s)
+  WARNING │ Check logs: .stepup/warning.log
+    PHASE │ watch
+ DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
+ DIRECTOR │ See you!

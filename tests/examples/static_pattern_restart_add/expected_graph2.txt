@@ -1,0 +1,38 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+               nglob = inp*.txt {}
+           explained = yes
+             creator   root:
+              source   file:plan.py
+             product   file:inp2.txt
+             product   step:cp -p inp2.txt out2.txt
+
+file:inp2.txt
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:cp -p inp2.txt out2.txt
+
+step:cp -p inp2.txt out2.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           explained = yes
+             creator   step:./plan.py
+              source   file:inp2.txt
+             product   file:out2.txt
+                sink   file:out2.txt
+
+file:out2.txt
+               state = BUILT
+             creator   step:cp -p inp2.txt out2.txt
+              source   step:cp -p inp2.txt out2.txt

@@ -14,7 +14,7 @@ stepup join
 # Wait for background processes, if any.
 # The build fails and the director is on hold: 2 + 32 = 34
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
-[[ "${RETURNCODE}" -eq 34 ]] || exit 1
+[[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_ONHOLD)) ]] || exit 1
 
 # There should be no unawaited futures.
 ! grep -q "Future exception was never retrieved" .stepup/director.log
@@ -41,7 +41,7 @@ stepup join
 # Wait for background processes, if any.
 # The build fails and the director is on hold: 2 + 32 = 34
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
-[[ "${RETURNCODE}" -eq 34 ]] || exit 1
+[[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_ONHOLD)) ]] || exit 1
 
 # There should be no unawaited futures.
 ! grep -q "Future exception was never retrieved" .stepup/director.log

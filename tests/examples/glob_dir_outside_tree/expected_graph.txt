@@ -8,8 +8,9 @@ file:plan.py
                 sink   step:./plan.py
 
 step:./plan.py
-               state = FAILED
+               state = SUCCEEDED
                 need = PLAN
            using_env = STEPUP_PATH_FILTER [amended]
+               nglob = sub/*/ {}
              creator   root:
               source   file:plan.py

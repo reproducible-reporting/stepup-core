@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 from path import Path
 
-from stepup.core.api import copy, glob, run, shq
+from stepup.core.api import copy, glob, run, shq, static
 
 # Conversion of source files into markdown files
 chapters = {}
-for m_sec in glob("ch-*/sec-${*ch}-${*sec}-${*name}.txt", ch="[0-9]"):
+ng = glob("ch-*/sec-${*ch}-${*sec}-${*name}.txt", ch="[0-9]")
+static(ng)
+for m_sec in ng:
     # Mimic compilation of a section with copy from txt to md
     print(f"Planning sec {m_sec.sec} {m_sec.name}")
     path_sec = Path(m_sec.single[:-3] + "md")

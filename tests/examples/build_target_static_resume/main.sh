@@ -27,6 +27,6 @@ sb input.txt -j 1 -w & # > current_stdout2.txt &
 PID=$!
 
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
-[[ "${RETURNCODE}" -eq 2 ]] || exit 1
+[[ "${RETURNCODE}" -eq "${RETURN_CODE_FAILED}" ]] || exit 1
 
 grep -F "A build target cannot be a static file: input.txt" .stepup/fail.log

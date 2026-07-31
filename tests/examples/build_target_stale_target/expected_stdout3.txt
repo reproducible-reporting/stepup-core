@@ -6,7 +6,8 @@
     START │ cp -p b_input.txt b.txt
   SUCCESS │ cp -p b_input.txt b.txt
  DIRECTOR │ Ran 2 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
+  WARNING │ Skipping file cleanup for a build restricted to targets
+  WARNING │ Check logs: .stepup/warning.log
     PHASE │ watch
  DIRECTOR │ Wrote graph to current_graph3.txt, current_graph3_provenance.dot and current_graph3_dependency.dot
  DIRECTOR │ See you!

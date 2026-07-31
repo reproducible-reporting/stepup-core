@@ -1,0 +1,26 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+               nglob = sub/**/*.txt {}
+             creator   root:
+              source   file:plan.py
+             product   file:sub/a.txt
+             product   file:sub/deeper/b.txt
+
+file:sub/a.txt
+               state = STATIC
+             creator   step:./plan.py
+
+file:sub/deeper/b.txt
+               state = STATIC
+             creator   step:./plan.py

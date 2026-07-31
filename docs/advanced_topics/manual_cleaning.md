@@ -61,7 +61,7 @@ to trigger automatic cleaning.
 
 ## Try the Following
 
-- The [Static Named Glob](static_named_glob.md) tutorial provides a good test case
+- The [Named Glob](../getting_started/named_glob.md) tutorial provides a good test case
   for experimenting with `stepup clean`.
   For this example, run `sb` without any arguments.
   Then open a second terminal in the same directory and run

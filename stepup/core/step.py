@@ -16,7 +16,7 @@ from .enums import REGULAR_OUTPUT_STATES, FileState, Need, StepState
 from .exceptions import GraphError
 from .file import File
 from .hash import FileHash, StepHash
-from .nglob import NamedGlob
+from .nglob import NamedGlob, convert_nglob_to_regex
 from .outcome import ChildOutcome, ResourceUsage
 from .static_tree import StaticTree
 from .stepinfo import StepInfo
@@ -336,10 +336,15 @@ END;
 -- step's node and are removed via ON DELETE CASCADE when the node row is deleted.
 
 -- Named glob pattern (with back-references) registered by this step; see NamedGlob.
+-- pattern and regex are derived from data (deterministically, so never migrated), and are
+-- stored in columns of their own so that per-declaration and per-file-event checks never
+-- have to deserialize data, whose match set is unbounded.
 -- data is a JSON blob, see json_converter hooks for NamedGlob in cattrs.py.
 CREATE TABLE IF NOT EXISTS nglob (
     i INTEGER PRIMARY KEY,
     node INTEGER NOT NULL,
+    pattern TEXT NOT NULL,
+    regex TEXT NOT NULL,
     data TEXT NOT NULL,
     FOREIGN KEY (node) REFERENCES node(i) ON DELETE CASCADE
 );
@@ -1430,10 +1435,20 @@ class Step(Node):
         """Remove all recorded subprocess rows for this step."""
         self.db.execute("DELETE FROM step_subprocess WHERE node = ?", (self.i,))
 
-    def register_nglob(self, ng: NamedGlob) -> None:
-        """Store a `NamedGlob` pattern registered by this step."""
-        data = (self.i, json.dumps(json_converter.unstructure(ng)))
-        self.db.execute("INSERT INTO nglob(node, data) VALUES (?, ?)", data)
+    def register_glob(self, ng: NamedGlob) -> None:
+        """Store a `NamedGlob` pattern registered by this step.
+
+        The pattern and its regex are stored in columns of their own, so the checks that
+        run per declared output and per file-change event never have to deserialize
+        `data`, whose match set is unbounded.
+        """
+        data = (
+            self.i,
+            ng.pattern,
+            convert_nglob_to_regex(ng.pattern, ng.subs),
+            json.dumps(json_converter.unstructure(ng)),
+        )
+        self.db.execute("INSERT INTO nglob(node, pattern, regex, data) VALUES (?, ?, ?, ?)", data)
 
     #
     # Respond to graph modifications by flagging the necessary _check_* fields.

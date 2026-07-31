@@ -8,21 +8,28 @@ The StepUp return code indicates the status of the (last) build phase.
 It can be a sum of the following codes:
 
 - `1` = internal error (Python exception)
-- `2` = at least one step failed
-- `4` = at least one step remained pending
-- `8` = at least one step was still runnable
-- `16` = at least one target was not produced by any step
-- `32` = the scheduler was on hold (not reporting pending steps)
-- `64` = the build was aborted by Ctrl-C or `SIGTERM`
+- `2` = the build was aborted by Ctrl-C or `SIGTERM`
+- `4` = at least one step failed
+- `8` = some workflow condition caused a warning (other than the following two)
+- `16` = at least one (non-optional) step remained pending
+- `32` = the scheduler was put on hold (not reporting pending steps)
+
+The warning bit (`8`) is set by conditions that make the build questionable
+without making it fail, such as a target that no step produces
+or a [`glob()`][stepup.core.api.glob] match that no `static()` declaration justifies.
+Such a build is still a successful one:
+the `FAILED` bit is never set on account of a warning.
 
 A few example combinations are:
 
 - `0` = all steps finished successfully.
 - `1` = internal error (never combined with other codes).
-- `6` = at least one step failed and at least one step remained pending.
-- `12` = some steps remain pending and some steps are runnable when StepUp is restarted.
-- `98` = the build was aborted by Ctrl-C (`64`) while a step was running,
-  so that step counted as failed (`2`) and the scheduler was put on hold (`32`).
+- `8` = every step succeeded, but the build reported a warning.
+- `20` = at least one step failed and at least one step remained pending.
+- `36` = a step failed and the scheduler was put on hold,
+  which is what a failing step without `--keep-going` produces.
+- `38` = the build was aborted by Ctrl-C (`2`) while a step was running,
+  so that step counted as failed (`4`) and the scheduler was put on hold (`32`).
 
 To test for a specific flag in Bash, use the bitwise AND operator `&`:
 
@@ -30,16 +37,16 @@ To test for a specific flag in Bash, use the bitwise AND operator `&`:
 #!/usr/bin/env bash
 sb
 RET=$?
-if [ $(($RET & 2)) -gt 0 ]; then
+if [ $(($RET & 4)) -gt 0 ]; then
     echo "At least one step failed"
 fi
-if [ $(($RET & 4)) -gt 0 ]; then
-    echo "At least one step remained pending"
-fi
 if [ $(($RET & 8)) -gt 0 ]; then
-    echo "At least one step was still runnable"
+    echo "The build reported a warning"
 fi
 if [ $(($RET & 16)) -gt 0 ]; then
-    echo "At least one target was not produced by any step"
+    echo "At least one (non-optional) step remained pending"
+fi
+if [ $(($RET & 32)) -gt 0 ]; then
+    echo "The scheduler was put on hold"
 fi
 ```

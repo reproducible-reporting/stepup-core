@@ -18,22 +18,7 @@ __all__ = (
 
 class ReturnCode(Flag):
     INTERNAL = auto()
-    """Exception raised, not related to failing steps in the workflow"""
-
-    FAILED = auto()
-    """Some steps failed."""
-
-    PENDING = auto()
-    """Some steps remained pending."""
-
-    RUNNABLE = auto()
-    """Some steps are runnable. Stopped early due to shutdown, drain, etc."""
-
-    NOTPRODUCED = auto()
-    """Some targets were not produced by any step in the workflow."""
-
-    ONHOLD = auto()
-    """The scheduler is on hold. Pending steps are not reported."""
+    """Internal exception raised in the director, unrelated to failing steps in the workflow"""
 
     INTERRUPTED = auto()
     """The build was aborted by a terminal signal (Ctrl-C or `SIGTERM`).
@@ -42,6 +27,18 @@ class ReturnCode(Flag):
     it describes how the build ended, not the state of the workflow,
     so it is combined with whatever the director reported.
     """
+
+    FAILED = auto()
+    """Some steps failed."""
+
+    WARNING = auto()
+    """The build produced a warning that does not fit the categories of bit flags below."""
+
+    PENDING = auto()
+    """All runnable steps have completed but some non-optional steps remained pending."""
+
+    ONHOLD = auto()
+    """The scheduler is on hold. Pending steps are not reported."""
 
 
 class FileState(IntEnum):

@@ -12,10 +12,6 @@ stepup join
 # Wait for background processes, if any.
 wait
 
-# The error must name the offending directory and state the rule.
-grep -F "static tree" .stepup/fail.log
-grep -F "sub/leaf/" .stepup/fail.log
-
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1
 [[ -f sub/leaf/data.txt ]] || exit 1

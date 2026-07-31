@@ -1,0 +1,54 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   root:
+              source   file:plan.py
+             product   file:sub/plan.py
+             product   st:data/
+             product   step:./plan.py  # wd=sub
+
+st:data/
+             creator   step:./plan.py
+             product   file:data/foo.txt
+
+file:sub/plan.py
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:./plan.py  # wd=sub
+
+step:./plan.py  # wd=sub
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+               nglob = data/*.txt {}
+             creator   step:./plan.py
+              source   file:sub/plan.py
+             product   step:cp -p ../data/foo.txt foo.txt  # wd=sub
+
+step:cp -p ../data/foo.txt foo.txt  # wd=sub
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py  # wd=sub
+              source   file:data/foo.txt
+             product   file:sub/foo.txt
+                sink   file:sub/foo.txt
+
+file:data/foo.txt
+               state = STATIC
+             creator   st:data/
+                sink   step:cp -p ../data/foo.txt foo.txt  # wd=sub
+
+file:sub/foo.txt
+               state = BUILT
+             creator   step:cp -p ../data/foo.txt foo.txt  # wd=sub
+              source   step:cp -p ../data/foo.txt foo.txt  # wd=sub

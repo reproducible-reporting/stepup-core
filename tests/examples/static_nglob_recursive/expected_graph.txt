@@ -14,18 +14,7 @@ step:./plan.py
                nglob = data/**/*.* {}
              creator   root:
               source   file:plan.py
-             product   file:data/sub/test3.xyz
-             product   file:data/test1.txt
-             product   file:data/test2.dat
+             product   st:data/
 
-file:data/sub/test3.xyz
-               state = STATIC
-             creator   step:./plan.py
-
-file:data/test1.txt
-               state = STATIC
-             creator   step:./plan.py
-
-file:data/test2.dat
-               state = STATIC
+st:data/
              creator   step:./plan.py

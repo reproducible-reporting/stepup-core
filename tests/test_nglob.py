@@ -15,8 +15,10 @@ from stepup.core.nglob import (
     NamedGlobMatch,
     convert_nglob_to_glob,
     convert_nglob_to_regex,
+    glob_base_dir,
     has_anonymous_wildcards,
     has_any_wildcards,
+    has_trailing_recursive_wildcard,
     iter_wildcard_names,
 )
 
@@ -56,6 +58,16 @@ def test_has_anonymous_wildcards_true(pattern):
 @pytest.mark.parametrize("pattern", ["bar_${*foo}", "[aaa", "blub"])
 def test_has_anonymous_wildcards_false(pattern):
     assert not has_anonymous_wildcards(pattern)
+
+
+@pytest.mark.parametrize("pattern", ["**", "a/**", "${*i}/**"])
+def test_has_trailing_recursive_wildcard_true(pattern):
+    assert has_trailing_recursive_wildcard(pattern)
+
+
+@pytest.mark.parametrize("pattern", ["a**b", "*", "a/*/b", "${*i}", "a/b", "**/x", "a/**/b"])
+def test_has_trailing_recursive_wildcard_false(pattern):
+    assert not has_trailing_recursive_wildcard(pattern)
 
 
 @pytest.mark.parametrize(
@@ -649,3 +661,20 @@ def test_named_glob_will_change():
     assert ng.will_change(set(), {"subdir/foo.txt"}) is None
     assert ng.will_change(set(), {"foo.log"}) is None
     assert ng.will_change(set(), {"subdir1/"}) is not None
+
+
+@pytest.mark.parametrize(
+    ("pattern", "base_dir"),
+    [
+        ("src/*.txt", "src"),
+        ("src/*/", "src"),
+        ("a/b/c*/d.txt", "a/b"),
+        ("ch-*/sec-*.txt", "."),
+        ("**/*.py", "."),
+        ("data.txt", "."),
+        ("${*name}/x.txt", "."),
+        ("data/${*name}.txt", "data"),
+    ],
+)
+def test_glob_base_dir(pattern, base_dir):
+    assert glob_base_dir(pattern) == base_dir

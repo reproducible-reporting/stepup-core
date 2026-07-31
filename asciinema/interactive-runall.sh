@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 ASCIINEMA=${PWD}
-TUTORIAL=${PWD}/../docs/getting_started/static_glob/
+TUTORIAL=${PWD}/../docs/getting_started/static_patterns/
 
 # Go to right location and prepare
 cd $TUTORIAL

@@ -14,7 +14,7 @@ which is why they live here instead of in `builder.py`.
 """
 
 from collections.abc import Callable, Iterable, Iterator
-from itertools import chain
+from itertools import chain, groupby
 
 from path import Path
 
@@ -24,7 +24,7 @@ from .reporter import ReporterClient
 from .scheduler import Scheduler
 from .sqlite3 import DBSession
 from .step import PathRecord, Step
-from .workflow import Workflow
+from .workflow import GlobViolation, Workflow
 
 __all__ = ("remove_outdated_outputs", "report_completion", "revert_optional")
 
@@ -251,20 +251,72 @@ async def _report_missing_targets(
             for target_dir in workflow.target_dirs
             if not workflow.dir_has_regular_output(target_dir)
         )
-    returncode = ReturnCode(0)
+    return_code = ReturnCode(0)
     if len(missing_targets) > 0:
-        returncode |= ReturnCode.NOTPRODUCED
         await reporter(
             "WARNING",
             f"{len(missing_targets)} target(s) are not produced by any step in the workflow: "
             + ", ".join(missing_targets),
         )
+        return_code |= ReturnCode.WARNING
     if len(missing_target_dirs) > 0:
-        returncode |= ReturnCode.NOTPRODUCED
         await reporter(
             "WARNING",
             f"{len(missing_target_dirs)} directory target(s) matched no regular output "
             "in the workflow: " + ", ".join(missing_target_dirs),
+        )
+        return_code |= ReturnCode.WARNING
+    return return_code
+
+
+GLOB_VIOLATION_REMEDY = """\
+Every matched file must be declared static or lie inside a static tree.
+A matched directory also qualifies when it contains a static file or tree.
+Declare the files with static(), or declare their directory as a static tree."""
+
+
+def _format_glob_violation_state(state: FileState | None) -> str:
+    """Format the state column of a `GlobViolation` row: the state name, or `(no node)`."""
+    return "(no node)" if state is None else state.name
+
+
+def _glob_violation_pages(violations: Iterable[GlobViolation]) -> list[tuple[str, str]]:
+    """Format one page per (step, pattern) group of `violations`, aligned on `STATE_COLUMN`."""
+    return [
+        (
+            f"{step_label}: {pattern}",
+            "\n".join(
+                f"{_format_glob_violation_state(violation.state):>{STATE_COLUMN}s}  "
+                f"{violation.path}"
+                for violation in group
+            ),
+        )
+        for (step_label, pattern), group in groupby(
+            violations, key=lambda violation: (violation.step_label, violation.pattern)
+        )
+    ]
+
+
+async def _report_glob_matches(
+    db: DBSession, workflow: Workflow, reporter: ReporterClient
+) -> ReturnCode:
+    """Report glob matches that no static declaration justifies."""
+    async with db:
+        violations = workflow.check_glob_matches()
+    returncode = ReturnCode(0)
+    warnings = [violation for violation in violations if not violation.is_error]
+    errors = [violation for violation in violations if violation.is_error]
+    if len(warnings) > 0:
+        returncode |= ReturnCode.WARNING
+        pages = _glob_violation_pages(warnings)
+        pages.append(("Remedy", GLOB_VIOLATION_REMEDY))
+        await reporter("WARNING", f"{len(warnings)} glob match(es) are not declared static.", pages)
+    if len(errors) > 0:
+        returncode |= ReturnCode.FAILED
+        await reporter(
+            "ERROR",
+            f"{len(errors)} glob match(es) are files that a step builds.",
+            _glob_violation_pages(errors),
         )
     return returncode
 
@@ -290,6 +342,11 @@ async def report_completion(
 
     returncode |= await _report_pending_steps(db, workflow, scheduler, reporter)
     returncode |= await _report_missing_targets(db, workflow, reporter)
+    # Late glob validation is skipped when the build already went wrong: an unjustified
+    # match is then usually a consequence (a plan that would have declared it never ran),
+    # and fixing the real failure tends to fix this too.
+    if returncode == ReturnCode(0):
+        returncode |= await _report_glob_matches(db, workflow, reporter)
     return returncode
 
 

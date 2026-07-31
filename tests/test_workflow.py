@@ -3,6 +3,7 @@
 """Unit tests for stepup.core.workflow."""
 
 import asyncio
+import contextlib
 import hashlib
 import re
 import sqlite3
@@ -13,6 +14,7 @@ import pytest_asyncio
 from conftest import amend_step, declare_static, fake_hash
 from path import Path
 
+from stepup.core.constants import STEPUP_DIR
 from stepup.core.enums import FileState, HashUpdateCause, Need, StepState
 from stepup.core.exceptions import GraphError
 from stepup.core.file import File
@@ -24,7 +26,13 @@ from stepup.core.sqlite3 import DBSession
 from stepup.core.static_tree import StaticTree
 from stepup.core.step import Step
 from stepup.core.stepinfo import StepInfo
-from stepup.core.workflow import DEFERRED_INPUTS, Workflow
+from stepup.core.workflow import (
+    DEFERRED_INPUTS,
+    GlobViolation,
+    Workflow,
+    _static_tree_file_message,
+    _static_tree_product_message,
+)
 
 
 def _amend(wfx: Workflow, step: Step, **kwargs) -> tuple[bool, list]:
@@ -355,10 +363,11 @@ async def test_simple_example(wfs: Workflow):
     assert step_hash2.inp_info.env_values == env_values
     assert step_hash2.out_info.out_hashes == dict(out_hashes)
 
-    # Verify things that should not be allowed
-    with pytest.raises(GraphError):
-        async with wfs.db:
-            declare_static(wfs, wfs.root, ["foo.txt"])
+    # Re-declaring foo.txt as static is now a no-op: same creator, same file.
+    async with wfs.db:
+        assert wfs.declare_unconfirmed(wfs.root, ["foo.txt"]) == {}
+        assert wfs.find(File, "foo.txt").get_state() == FileState.STATIC
+    # bar.txt is a build product of another creator, so declaring it static still raises.
     with pytest.raises(GraphError):
         async with wfs.db:
             declare_static(wfs, wfs.root, ["bar.txt"])
@@ -948,7 +957,7 @@ async def test_skip_nglob(wfp: Workflow):
 
         # Simulate run
         ng = NamedGlob("${*prefix}_data.txt", subs={"prefix": "n???"})
-        wfp.register_nglob(foo, ng)
+        wfp.register_glob(foo, ng)
         foo.completed(StepHash(b"foo_ok", None, b"zzz", None), False)
         assert foo.get_hash() is not None
         assert foo.get_state() == StepState.SUCCEEDED
@@ -1224,24 +1233,40 @@ file:log
 """
 
 
-async def test_register_nglob(wfp: Workflow):
+async def test_register_glob(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.define_step(plan, "touch log", vol_paths=["log"])
         step = wfp.find(Step, "touch log")
         ng = NamedGlob("*.txt")
-        wfp.register_nglob(step, ng)
+        wfp.register_glob(step, ng)
         assert list(step.nglobs()) == [ng]
         assert list(wfp.nglobs(yield_step=True)) == [(1, ng, step)]
         assert wfp.format_str() == REGISTER_NGLOB_GRAPH
 
-        # Detaching does not clear products
+        # Detaching does not clear the row, but Workflow.nglobs() must skip it: a detached
+        # leftover pattern must not be visible to the eager checks Phase 2 adds.
         step.detach()
         assert list(step.nglobs()) == [ng]
-        assert list(wfp.nglobs(yield_step=True)) == [(1, ng, step)]
+        assert list(wfp.nglobs(yield_step=True)) == []
         wfp.clean()
         assert list(step.nglobs()) == []
         assert list(wfp.nglobs(yield_step=True)) == []
+
+
+async def test_nglobs_skips_detached_step(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "touch log", vol_paths=["log"])
+        step = wfp.find(Step, "touch log")
+        ng = NamedGlob("*.txt")
+        wfp.register_glob(step, ng)
+        assert list(wfp.nglobs()) == [ng]
+        assert wfp.is_relevant("foo.txt")
+
+        step.detach()
+        assert list(wfp.nglobs()) == []
+        assert not wfp.is_relevant("foo.txt")
 
 
 async def test_is_relevant(wfp: Workflow):
@@ -1249,12 +1274,483 @@ async def test_is_relevant(wfp: Workflow):
         assert wfp.is_relevant("plan.py")
         assert not wfp.is_relevant("unknown.txt")
         plan = wfp.find(Step, "./plan.py")
-        wfp.register_nglob(plan, NamedGlob("*.txt"))
+        wfp.register_glob(plan, NamedGlob("*.txt"))
         assert wfp.is_relevant("unknown.txt")
+
+
+async def test_is_relevant_glob_match_without_node(wfp: Workflow):
+    """A path with no node of its own is judged solely by the registered glob patterns.
+
+    `is_relevant` takes only a path, so it cannot tell whether the caller observed an
+    update or a deletion: it must answer the same way either way, which is what lets
+    `Watcher.record_change` use it for both `Change.UPDATED` and `Change.DELETED`.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_glob(plan, NamedGlob("*.txt"))
+        assert wfp.find(File, "unknown.txt") is None
+        assert wfp.is_relevant("unknown.txt")
+        assert wfp.is_relevant("unknown.txt")
+        assert not wfp.is_relevant("unknown.dat")
+
+
+async def test_is_relevant_during_build_glob_match_without_node(wfp: Workflow):
+    """Stricter than `is_relevant` for a real node, but the same for a nodeless glob
+    match: no step can be building it, since a pattern may not match a build product.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_glob(plan, NamedGlob("*.txt"))
+        assert wfp.find(File, "unknown.txt") is None
+        assert wfp.is_relevant_during_build("unknown.txt")
+        assert not wfp.is_relevant_during_build("unknown.dat")
+
+
+async def test_relevant_paths_includes_glob_matches(wfp: Workflow):
+    """`relevant_paths` (the `Change.DELETED_PARENT` handler) must also yield the
+    recorded matches of registered glob patterns under `parent`, since a match has no
+    file node for the node-based half of the query to find.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["data/kept.txt"])
+        ng = NamedGlob("data/*.txt")
+        # kept.txt is both a real node and a glob match: it must be reported once, not
+        # twice. nomatch.txt has no node at all.
+        ng.extend(["data/kept.txt", "data/nomatch.txt"])
+        wfp.register_glob(plan, ng)
+
+        assert set(wfp.relevant_paths("data/")) == {"data/kept.txt", "data/nomatch.txt"}
+
+
+async def test_register_glob_rejects_built_match(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "producer", out_paths=["out.txt"])
+        producer = wfp.find(Step, "producer")
+        wfp.update_file_hashes({"out.txt": fake_hash("out.txt")}, HashUpdateCause.SUCCEEDED)
+        producer.completed(StepHash(b"p" * 32, None, b"q" * 32, None), False)
+        assert wfp.find(File, "out.txt").get_state() == FileState.BUILT
+
+        ng = NamedGlob("*.txt")
+        ng.extend(["out.txt"])
+        with pytest.raises(GraphError, match=r"which step \(producer\) builds"):
+            wfp.register_glob(plan, ng)
+
+
+async def test_register_glob_rejects_awaited_match(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "producer", out_paths=["out.txt"])
+        assert wfp.find(File, "out.txt").get_state() == FileState.AWAITED
+
+        ng = NamedGlob("*.txt")
+        ng.extend(["out.txt"])
+        with pytest.raises(GraphError, match=r"which step \(producer\) builds"):
+            wfp.register_glob(plan, ng)
+
+
+async def test_register_glob_rejects_volatile_match(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "producer", vol_paths=["out.txt"])
+        assert wfp.find(File, "out.txt").get_state() == FileState.VOLATILE
+
+        ng = NamedGlob("*.txt")
+        ng.extend(["out.txt"])
+        with pytest.raises(GraphError, match=r"which step \(producer\) builds"):
+            wfp.register_glob(plan, ng)
+
+
+async def test_register_glob_rejects_outdated_match(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["inp.txt"])
+        wfp.define_step(plan, "producer", inp_paths=["inp.txt"], out_paths=["out.txt"])
+        producer = wfp.find(Step, "producer")
+        wfp.update_file_hashes({"out.txt": fake_hash("out.txt")}, HashUpdateCause.SUCCEEDED)
+        producer.completed(StepHash(b"p" * 32, None, b"q" * 32, None), False)
+        assert wfp.find(File, "out.txt").get_state() == FileState.BUILT
+
+        # Changing the input makes the output OUTDATED without rerunning the step.
+        wfp.update_file_hashes({"inp.txt": fake_hash("changed")}, HashUpdateCause.EXTERNAL)
+        assert wfp.find(File, "out.txt").get_state() == FileState.OUTDATED
+
+        ng = NamedGlob("*.txt")
+        ng.extend(["out.txt"])
+        with pytest.raises(GraphError, match=r"which step \(producer\) builds"):
+            wfp.register_glob(plan, ng)
+
+
+async def test_register_glob_ignores_detached_awaited_match(wfp: Workflow):
+    """An unresolved input created by `_resolve_supply_file` (creator=None, forced
+    detached by `Trellis.create`) is not a claim that some step builds it, unlike an
+    output declared by `define_step`/`amend_step`.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "consumer", inp_paths=["missing.txt"])
+        missing = wfp.find(File, "missing.txt")
+        assert missing.get_state() == FileState.AWAITED
+        assert missing.is_detached()
+
+        ng = NamedGlob("*.txt")
+        ng.extend(["missing.txt"])
+        wfp.register_glob(plan, ng)  # must not raise
+        assert list(wfp.nglobs()) == [ng]
+
+
+async def test_register_glob_accepts_static_and_missing_and_unconfirmed(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["static.txt"])
+        assert wfp.find(File, "static.txt").get_state() == FileState.STATIC
+
+        wfp.declare_unconfirmed(plan, ["unconfirmed.txt"])
+        assert wfp.find(File, "unconfirmed.txt").get_state() == FileState.UNCONFIRMED
+
+        wfp.declare_unconfirmed(plan, ["missing.txt"])
+        wfp.update_file_hashes({"missing.txt": FileHash.unknown()}, HashUpdateCause.CONFIRMED)
+        assert wfp.find(File, "missing.txt").get_state() == FileState.MISSING
+
+        ng = NamedGlob("*.txt")
+        ng.extend(["static.txt", "unconfirmed.txt", "missing.txt"])
+        wfp.register_glob(plan, ng)  # must not raise
+        assert list(wfp.nglobs()) == [ng]
+
+
+async def test_register_glob_rejects_stepup_dir(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        ng = NamedGlob("*")
+        ng.extend([f"{STEPUP_DIR}/"])
+        with pytest.raises(GraphError, match=r"matches a path under \.stepup"):
+            wfp.register_glob(plan, ng)
+
+
+#
+# Workflow.check_glob_matches
+#
+
+
+async def test_check_glob_matches_static_file_no_violation(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["static.txt"])
+        ng = NamedGlob("*.txt")
+        ng.extend(["static.txt"])
+        wfp.register_glob(plan, ng)
+        assert wfp.check_glob_matches() == []
+
+
+async def test_check_glob_matches_unconfirmed_no_violation(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.declare_unconfirmed(plan, ["unconfirmed.txt"])
+        assert wfp.find(File, "unconfirmed.txt").get_state() == FileState.UNCONFIRMED
+        ng = NamedGlob("*.txt")
+        ng.extend(["unconfirmed.txt"])
+        wfp.register_glob(plan, ng)
+        assert wfp.check_glob_matches() == []
+
+
+async def test_check_glob_matches_missing_no_violation(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.declare_unconfirmed(plan, ["missing.txt"])
+        wfp.update_file_hashes({"missing.txt": FileHash.unknown()}, HashUpdateCause.CONFIRMED)
+        assert wfp.find(File, "missing.txt").get_state() == FileState.MISSING
+        ng = NamedGlob("*.txt")
+        ng.extend(["missing.txt"])
+        wfp.register_glob(plan, ng)
+        assert wfp.check_glob_matches() == []
+
+
+async def test_check_glob_matches_inside_static_tree_no_violation(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "sub")
+        ng = NamedGlob("sub/*.txt")
+        ng.extend(["sub/inner.txt"])
+        wfp.register_glob(plan, ng)
+        # The tree owns the file only once a step actually uses it as an input, so
+        # there is no node of its own here.
+        assert wfp.find(File, "sub/inner.txt") is None
+        assert wfp.check_glob_matches() == []
+
+
+async def test_check_glob_matches_dir_is_static_tree_root_no_violation(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "sub")
+        ng = NamedGlob("s*/")
+        ng.extend(["sub/"])
+        wfp.register_glob(plan, ng)
+        assert wfp.check_glob_matches() == []
+
+
+async def test_check_glob_matches_dir_contains_static_tree_no_violation(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "outer/inner")
+        ng = NamedGlob("o*/")
+        ng.extend(["outer/"])
+        wfp.register_glob(plan, ng)
+        assert wfp.check_glob_matches() == []
+
+
+async def test_check_glob_matches_dir_contains_static_file_no_violation(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["sub/inner.txt"])
+        ng = NamedGlob("s*/")
+        ng.extend(["sub/"])
+        wfp.register_glob(plan, ng)
+        assert wfp.check_glob_matches() == []
+
+
+async def test_check_glob_matches_stale_match_not_on_disk_no_violation(wfp: Workflow, tmpdir):
+    with contextlib.chdir(tmpdir):
+        async with wfp.db:
+            plan = wfp.find(Step, "./plan.py")
+            ng = NamedGlob("*.txt")
+            ng.extend(["gone.txt"])
+            wfp.register_glob(plan, ng)
+            assert wfp.check_glob_matches() == []
+
+
+async def test_check_glob_matches_no_node_on_disk_violation(wfp: Workflow, tmpdir):
+    with contextlib.chdir(tmpdir):
+        with open("orphan.txt", "w") as fh:
+            fh.write("x")
+        async with wfp.db:
+            plan = wfp.find(Step, "./plan.py")
+            ng = NamedGlob("*.txt")
+            ng.extend(["orphan.txt"])
+            wfp.register_glob(plan, ng)
+            violations = wfp.check_glob_matches()
+            assert violations == [GlobViolation(plan.label, ng.pattern, "orphan.txt", None)]
+            assert not violations[0].is_error
+
+
+async def test_check_glob_matches_awaited_violation(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "producer", out_paths=["out.txt"])
+        assert wfp.find(File, "out.txt").get_state() == FileState.AWAITED
+
+        ng = NamedGlob("*.txt")
+        ng.extend(["out.txt"])
+        # Workflow.register_glob's eager check (workflow.py:1317-1344) would reject this
+        # match; the AWAITED arm in check_glob_matches is defensive, covering a gap in
+        # that check rather than something reachable through it. Register directly via
+        # Step.register_glob to bypass the eager check and exercise the defensive arm.
+        plan.register_glob(ng)
+        violations = wfp.check_glob_matches()
+        assert violations == [GlobViolation(plan.label, ng.pattern, "out.txt", FileState.AWAITED)]
+        assert not violations[0].is_error
+
+
+async def test_check_glob_matches_built_violation(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "producer", out_paths=["out.txt"])
+        producer = wfp.find(Step, "producer")
+        wfp.update_file_hashes({"out.txt": fake_hash("out.txt")}, HashUpdateCause.SUCCEEDED)
+        producer.completed(StepHash(b"p" * 32, None, b"q" * 32, None), False)
+        assert wfp.find(File, "out.txt").get_state() == FileState.BUILT
+
+        ng = NamedGlob("*.txt")
+        ng.extend(["out.txt"])
+        plan.register_glob(ng)  # bypass the eager check; see test_..._awaited_violation
+        violations = wfp.check_glob_matches()
+        assert violations == [GlobViolation(plan.label, ng.pattern, "out.txt", FileState.BUILT)]
+        assert violations[0].is_error
+
+
+async def test_check_glob_matches_outdated_violation(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["inp.txt"])
+        wfp.define_step(plan, "producer", inp_paths=["inp.txt"], out_paths=["out.txt"])
+        producer = wfp.find(Step, "producer")
+        wfp.update_file_hashes({"out.txt": fake_hash("out.txt")}, HashUpdateCause.SUCCEEDED)
+        producer.completed(StepHash(b"p" * 32, None, b"q" * 32, None), False)
+        wfp.update_file_hashes({"inp.txt": fake_hash("changed")}, HashUpdateCause.EXTERNAL)
+        assert wfp.find(File, "out.txt").get_state() == FileState.OUTDATED
+
+        ng = NamedGlob("*.txt")
+        ng.extend(["out.txt", "inp.txt"])
+        plan.register_glob(ng)  # bypass the eager check; see test_..._awaited_violation
+        violations = wfp.check_glob_matches()
+        # inp.txt is still STATIC (an EXTERNAL update that still hashes keeps it STATIC),
+        # so only out.txt is unjustified.
+        assert violations == [GlobViolation(plan.label, ng.pattern, "out.txt", FileState.OUTDATED)]
+        assert violations[0].is_error
+
+
+async def test_check_glob_matches_volatile_violation(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "producer", vol_paths=["out.txt"])
+        assert wfp.find(File, "out.txt").get_state() == FileState.VOLATILE
+
+        ng = NamedGlob("*.txt")
+        ng.extend(["out.txt"])
+        plan.register_glob(ng)  # bypass the eager check; see test_..._awaited_violation
+        violations = wfp.check_glob_matches()
+        assert violations == [GlobViolation(plan.label, ng.pattern, "out.txt", FileState.VOLATILE)]
+        assert violations[0].is_error
+
+
+async def test_check_glob_matches_detached_step_no_violation(wfp: Workflow, tmpdir):
+    with contextlib.chdir(tmpdir):
+        with open("orphan.txt", "w") as fh:
+            fh.write("x")
+        async with wfp.db:
+            plan = wfp.find(Step, "./plan.py")
+            wfp.define_step(plan, "touch log", vol_paths=["log"])
+            step = wfp.find(Step, "touch log")
+            ng = NamedGlob("*.txt")
+            ng.extend(["orphan.txt"])
+            wfp.register_glob(step, ng)
+            step.detach()
+            assert list(wfp.nglobs(yield_step=True)) == []
+            assert wfp.check_glob_matches() == []
+
+
+async def test_check_glob_matches_detached_node_still_violation(wfp: Workflow, tmpdir):
+    """A detached node never counts as justification: it falls through to the "no node"
+    arms exactly like a path with no node at all (see the `nglobs`/`register_glob`
+    docstrings' "detached nodes never count" rationale).
+    """
+    with contextlib.chdir(tmpdir):
+        with open("detached.txt", "w") as fh:
+            fh.write("x")
+        async with wfp.db:
+            plan = wfp.find(Step, "./plan.py")
+            wfp.define_step(plan, "consumer", inp_paths=["detached.txt"])
+            detached = wfp.find(File, "detached.txt")
+            assert detached.get_state() == FileState.AWAITED
+            assert detached.is_detached()
+
+            ng = NamedGlob("*.txt")
+            ng.extend(["detached.txt"])
+            wfp.register_glob(plan, ng)  # must not raise: detached nodes never count
+            violations = wfp.check_glob_matches()
+            assert violations == [GlobViolation(plan.label, ng.pattern, "detached.txt", None)]
+            assert not violations[0].is_error
+
+
+async def test_check_glob_matches_two_patterns_two_violations_sorted(wfp: Workflow, tmpdir):
+    with contextlib.chdir(tmpdir):
+        with open("shared.txt", "w") as fh:
+            fh.write("x")
+        async with wfp.db:
+            plan = wfp.find(Step, "./plan.py")
+            wfp.define_step(plan, "step_a", vol_paths=["a.log"])
+            wfp.define_step(plan, "step_b", vol_paths=["b.log"])
+            step_a = wfp.find(Step, "step_a")
+            step_b = wfp.find(Step, "step_b")
+            ng_a = NamedGlob("*.txt")
+            ng_a.extend(["shared.txt"])
+            ng_b = NamedGlob("s*.txt")
+            ng_b.extend(["shared.txt"])
+            wfp.register_glob(step_a, ng_a)
+            wfp.register_glob(step_b, ng_b)
+
+            violations = wfp.check_glob_matches()
+            assert violations == sorted(violations)
+            assert violations == [
+                GlobViolation(step_a.label, ng_a.pattern, "shared.txt", None),
+                GlobViolation(step_b.label, ng_b.pattern, "shared.txt", None),
+            ]
+
+
+async def test_check_glob_matches_root_dir_justified_by_any_static_file(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["deep/nested/static.txt"])
+        ng = NamedGlob("./")
+        ng.extend(["./"])
+        wfp.register_glob(plan, ng)
+        assert wfp.check_glob_matches() == []
+
+
+async def test_define_step_output_matching_glob_raises(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_glob(plan, NamedGlob("*.txt"))
+        with pytest.raises(GraphError, match=r"which step \(touch out.txt\) builds"):
+            wfp.define_step(plan, "touch out.txt", out_paths=["out.txt"])
+        assert wfp.find(Step, "touch out.txt") is None
+
+
+async def test_amend_step_output_matching_glob_raises(wfp: Workflow):
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_glob(plan, NamedGlob("*.txt"))
+        wfp.define_step(plan, "touch")
+        step = wfp.find(Step, "touch")
+        with pytest.raises(GraphError, match=r"which step \(touch\) builds"):
+            amend_step(wfp, step, out_paths=["out.txt"])
+
+
+async def test_define_step_output_matching_detached_glob_ok(wfp: Workflow):
+    """A detached step keeps its `nglob` row (only `reset_for_rerun` deletes it), so the
+    detached-pattern filter in `Workflow.nglobs()` must apply to check (b) too, or a
+    leftover pattern from a step that has moved on would block a perfectly valid build.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "globber")
+        globber = wfp.find(Step, "globber")
+        wfp.register_glob(globber, NamedGlob("*.txt"))
+        globber.detach()
+
+        wfp.define_step(plan, "touch out.txt", out_paths=["out.txt"])
+        assert wfp.find(Step, "touch out.txt") is not None
+
+
+async def test_eager_checks_agree_on_message_text(wfp: Workflow):
+    """Check (a) (in `register_glob`) and check (b) (in `_raise_if_glob_match`) must
+    raise the exact same message for the same conflict, since the diagnostic must not
+    depend on which of the two events happens first (open question 2)."""
+    # (a): the output is declared first, so the file already has a node when the
+    # pattern is registered.
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "touch out.txt", out_paths=["out.txt"])
+        ng = NamedGlob("*.txt")
+        ng.extend(["out.txt"])
+        with pytest.raises(GraphError) as excinfo_a:
+            wfp.register_glob(plan, ng)
+
+    # (b): an independent workflow with identical labels, but the pattern is
+    # registered first and the output is declared afterwards. A second workflow is
+    # used (rather than reusing wfp) so the labels can be identical to (a)'s, which is
+    # what makes a literal string comparison meaningful. This mirrors the `wfp` fixture
+    # in conftest.py.
+    dir_queue = asyncio.Queue()
+    with DBSession.open(":memory:") as db:
+        wfp_b = Workflow(db, makedirs=False, dir_queue=dir_queue)
+        await wfp_b.initialize()
+        async with db:
+            declare_static(wfp_b, wfp_b.root, ["plan.py"])
+            wfp_b.define_step(wfp_b.root, "./plan.py", inp_paths=["plan.py"], need=Need.PLAN)
+            plan_b = wfp_b.find(Step, "./plan.py")
+            wfp_b.register_glob(plan_b, NamedGlob("*.txt"))
+            with pytest.raises(GraphError) as excinfo_b:
+                wfp_b.define_step(plan_b, "touch out.txt", out_paths=["out.txt"])
+
+    assert str(excinfo_a.value) == str(excinfo_b.value)
 
 
 async def test_externally_updated1(wfp: Workflow):
     # Simulate creating and running two steps: one succeeds and one fails.
+    # `aa1_bar.txt` and `bb7_bar.txt` are only ever glob matches, never declared or
+    # built by any step: a glob pattern may not match a build product, so the step's
+    # own output uses a name (`aa1_out.txt`) outside both registered patterns.
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         declare_static(wfp, plan, ["aa1_foo.txt", "bb7_foo.txt", "cc5_foo.txt"])
@@ -1262,23 +1758,23 @@ async def test_externally_updated1(wfp: Workflow):
         subs = {"prefix": "??[0-9]", "unused": "aa??"}
         ng_foo = NamedGlob("${*prefix}_foo.txt", subs)
         ng_foo.extend(paths)
-        wfp.register_nglob(plan, ng_foo)
+        wfp.register_glob(plan, ng_foo)
         ng_bar = NamedGlob("${*prefix}_bar.txt", subs)
         ng_bar.extend(paths)
-        wfp.register_nglob(plan, ng_bar)
+        wfp.register_glob(plan, ng_bar)
         wfp.define_step(
-            plan, "work", inp_paths=["aa1_foo.txt"], out_paths=["aa1_bar.txt"], vol_paths=["log"]
+            plan, "work", inp_paths=["aa1_foo.txt"], out_paths=["aa1_out.txt"], vol_paths=["log"]
         )
         work = wfp.find(Step, "work")
         plan.completed(StepHash(b"ok", None, b"inp_ok", None), False)
-        aa1_bar = wfp.find(File, "aa1_bar.txt")
-        assert aa1_bar.creator() == work
-        assert aa1_bar.get_state() == FileState.AWAITED
+        aa1_out = wfp.find(File, "aa1_out.txt")
+        assert aa1_out.creator() == work
+        assert aa1_out.get_state() == FileState.AWAITED
         assert work.get_state() == StepState.PENDING
-        wfp.update_file_hashes({"aa1_bar.txt": fake_hash("ok")}, HashUpdateCause.SUCCEEDED)
+        wfp.update_file_hashes({"aa1_out.txt": fake_hash("ok")}, HashUpdateCause.SUCCEEDED)
         work.completed(None, False)
         assert work.get_state() == StepState.FAILED
-        assert aa1_bar.get_state() == FileState.OUTDATED
+        assert aa1_out.get_state() == FileState.OUTDATED
         assert list(wfp.steps(StepState.SUCCEEDED)) == [plan]
         assert list(wfp.steps(StepState.FAILED)) == [work]
         cc5_foo = wfp.find(File, "cc5_foo.txt")
@@ -1290,10 +1786,10 @@ async def test_externally_updated1(wfp: Workflow):
     async with wfp.db:
         # Changes:
         # - Delete `cc5_foo.txt` (static but not used)
-        # - Update `aa1_bar.txt` (output of work, must be repeated)
+        # - Update `aa1_out.txt` (output of work, must be repeated)
         # - Update `bb7_bar.txt` (not used, trigggers a change in the nglob results)
         wfp.update_file_hashes(
-            {"cc5_foo.txt": FileHash.unknown(), "aa1_bar.txt": fake_hash("change1")},
+            {"cc5_foo.txt": FileHash.unknown(), "aa1_out.txt": fake_hash("change1")},
             HashUpdateCause.EXTERNAL,
         )
         wfp.process_nglob_changes({"cc5_foo.txt"}, {"bb7_bar.txt"})
@@ -1301,8 +1797,8 @@ async def test_externally_updated1(wfp: Workflow):
         # The top-level plan became pending (and pending again), so the step work becomes detached.
         assert work.get_state() == StepState.PENDING
         assert not work.is_detached()
-        assert not aa1_bar.is_detached()
-        assert aa1_bar.get_state() == FileState.AWAITED
+        assert not aa1_out.is_detached()
+        assert aa1_out.get_state() == FileState.AWAITED
         assert cc5_foo is not None
         assert cc5_foo.get_state() == FileState.MISSING
         assert wfp.find(File, "bb7_bar.txt") is None
@@ -1885,40 +2381,103 @@ async def test_static_tree_subdir(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.register_static_tree(plan, "static/sub")
+    # Becoming the parent of an existing tree still raises, regardless of creator.
     with pytest.raises(GraphError):
         async with wfp.db:
             wfp.register_static_tree(plan, "static")
-    with pytest.raises(GraphError):
-        async with wfp.db:
-            wfp.register_static_tree(plan, "static/sub/dir")
+    # A subdirectory of the same creator's own tree is a no-op, not a rejection.
+    async with wfp.db:
+        assert wfp.register_static_tree(plan, "static/sub/dir") == {}
+        assert wfp.find(StaticTree, "static/sub/dir/") is None
 
 
-async def test_static_tree_static(wfp: Workflow):
-    """Declaring a file already owned by an existing static tree is a silent no-op.
+async def test_static_tree_then_static_file_hands_over(wfp: Workflow):
+    """Declaring a file already owned by the same creator's static tree hands it over.
 
-    The tree was declared first, so it already owns the file; no new node is created,
-    and the file resolves lazily through the tree when later used as a step input.
+    The tree was declared first, so `declare_unconfirmed` finds it immediately: the
+    file is declared eagerly under the tree, rather than waiting for lazy adoption
+    through a step input.
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.register_static_tree(plan, "static")
         to_check = wfp.declare_unconfirmed(plan, ["static/README.md"])
-        assert to_check == {}
-        assert wfp.find(File, "static/README.md") is None
-
-        to_check = wfp.define_step(plan, "cat static/README.md", inp_paths=["static/README.md"])
         assert to_check == {"static/README.md": FileHash.unknown()}
         readme = wfp.find(File, "static/README.md")
         assert readme.creator() == wfp.find(StaticTree, "static/")
+
+        wfp.update_file_hashes(
+            {"static/README.md": fake_hash("static/README.md")}, HashUpdateCause.CONFIRMED
+        )
+        assert readme.get_state() == FileState.STATIC
+
+        to_check = wfp.define_step(plan, "cat static/README.md", inp_paths=["static/README.md"])
+        assert to_check == {}
+        assert readme.creator() == wfp.find(StaticTree, "static/")
+
+
+async def test_static_tree_then_static_file_raises_other_creator(wfp: Workflow):
+    """The tree-first order raises for a foreign creator.
+
+    This is the centrepiece of the phase: previously this order was a silent no-op
+    regardless of which step declared the file, so whether an independent plan's build
+    succeeded could depend on which of two plans ran first. Now both orders raise; see
+    `test_static_file_then_static_tree_raises_other_creator` for the reverse order and
+    `test_static_tree_conflict_same_message_both_orders` for the message equality.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        wfp.register_static_tree(plan, "data")
+    with pytest.raises(
+        GraphError, match=re.escape(_static_tree_file_message("data/", "data/foo.txt"))
+    ):
+        async with wfp.db:
+            wfp.declare_unconfirmed(sub, ["data/foo.txt"])
+    async with wfp.db:
+        assert wfp.find(File, "data/foo.txt") is None
+
+
+async def test_static_tree_conflict_same_message_both_orders(wfp: Workflow):
+    """Tree-first and file-first raise byte-identical text for a foreign creator.
+
+    A second, independent workflow is used for the file-first order, mirroring
+    `test_eager_checks_agree_on_message_text`: reusing `wfp` would leave the first
+    raise's partial state contaminating the comparison.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        wfp.register_static_tree(plan, "data")
+    with pytest.raises(GraphError) as excinfo_a:
+        async with wfp.db:
+            wfp.declare_unconfirmed(sub, ["data/foo.txt"])
+
+    dir_queue = asyncio.Queue()
+    with DBSession.open(":memory:") as db:
+        wfp_b = Workflow(db, makedirs=False, dir_queue=dir_queue)
+        await wfp_b.initialize()
+        async with db:
+            declare_static(wfp_b, wfp_b.root, ["plan.py"])
+            wfp_b.define_step(wfp_b.root, "./plan.py", inp_paths=["plan.py"], need=Need.PLAN)
+            plan_b = wfp_b.find(Step, "./plan.py")
+            wfp_b.define_step(plan_b, "sub")
+            sub_b = wfp_b.find(Step, "sub")
+            declare_static(wfp_b, sub_b, ["data/foo.txt"])
+            with pytest.raises(GraphError) as excinfo_b:
+                wfp_b.register_static_tree(plan_b, "data")
+
+    assert str(excinfo_a.value) == str(excinfo_b.value)
 
 
 async def test_static_tree_declare_unconfirmed_queues_parent_dir(wfp: Workflow):
     """A tree-covered path declared through `declare_unconfirmed` still watches its parent.
 
-    No file node may be created for a path already owned by a static tree
-    (that adoption happens lazily), but the parent directory must still be queued for
-    watching, so a `glob()` match that is not (yet) consumed as a step input stays
-    reactive in watch mode.
+    The file is now declared eagerly under the tree by `_declare_file`, rather than
+    filtered out and left for lazy adoption; `_declare_file` itself calls
+    `put_dir_queue`, so the parent directory ends up watched either way.
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
@@ -1928,63 +2487,81 @@ async def test_static_tree_declare_unconfirmed_queues_parent_dir(wfp: Workflow):
 
         to_check = wfp.declare_unconfirmed(plan, ["static/sub/README.md"])
 
-        assert to_check == {}
-        assert wfp.find(File, "static/sub/README.md") is None
+        assert to_check == {"static/sub/README.md": FileHash.unknown()}
+        assert wfp.find(File, "static/sub/README.md") is not None
         assert wfp.dir_queue.get_nowait() == "static/sub"
         assert wfp.dir_queue.empty()
-
-
-async def test_check_dir_matches_static_tree_inside(wfp: Workflow):
-    async with wfp.db:
-        plan = wfp.find(Step, "./plan.py")
-        wfp.register_static_tree(plan, "static")
-        # Must not raise: static/sub/ lies inside the static/ tree.
-        wfp.check_dir_matches_static_tree(["static/sub/"])
-
-
-async def test_check_dir_matches_static_tree_root(wfp: Workflow):
-    """A directory match equal to the tree root itself counts as covered.
-
-    This falls out of `_find_matching_static_tree`'s `substr` arithmetic
-    (probing "static/" against a tree labeled "static/" matches itself),
-    rather than from an explicit branch, so it is easy to break by accident.
-    """
-    async with wfp.db:
-        plan = wfp.find(Step, "./plan.py")
-        wfp.register_static_tree(plan, "static")
-        wfp.check_dir_matches_static_tree(["static/"])
-
-
-async def test_check_dir_matches_static_tree_outside(wfp: Workflow):
-    async with wfp.db:
-        with pytest.raises(GraphError, match="other/"):
-            wfp.check_dir_matches_static_tree(["other/"])
-
-
-async def test_check_dir_matches_static_tree_mixed(wfp: Workflow):
-    async with wfp.db:
-        plan = wfp.find(Step, "./plan.py")
-        wfp.register_static_tree(plan, "static")
-        with pytest.raises(GraphError, match="other/"):
-            wfp.check_dir_matches_static_tree(["static/sub/", "other/"])
 
 
 async def test_static_tree_output(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.register_static_tree(plan, "static")
-    with pytest.raises(GraphError):
+    with pytest.raises(
+        GraphError, match=re.escape(_static_tree_product_message("static/", "static/README.md"))
+    ) as excinfo:
         async with wfp.db:
             wfp.define_step(plan, "echo foo > static/README.md", out_paths=["static/README.md"])
+    assert "glob()" not in str(excinfo.value)
 
 
 async def test_static_tree_volatile(wfp: Workflow):
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
         wfp.register_static_tree(plan, "static")
-    with pytest.raises(GraphError):
+    with pytest.raises(
+        GraphError, match=re.escape(_static_tree_product_message("static/", "static/README.md"))
+    ) as excinfo:
         async with wfp.db:
             wfp.define_step(plan, "echo foo > static/README.md", vol_paths=["static/README.md"])
+    assert "glob()" not in str(excinfo.value)
+
+
+async def test_static_tree_output_same_creator_still_raises(wfp: Workflow):
+    """A build product inside a tree still raises even for the tree's own creator.
+
+    The same-creator no-op is specific to static declarations
+    (see `test_static_tree_same_creator_file_and_subdir_both_no_op`); `_declare_file`'s
+    product branch has no such exemption. `define_step`'s out_paths always belong to a
+    freshly created child step, which can never equal an existing tree's creator, so
+    calling `_declare_file` directly with the tree's own creator is the only way to
+    exercise this case.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "static")
+    with pytest.raises(GraphError):
+        async with wfp.db:
+            wfp._declare_file(plan, "static/out.txt", FileState.AWAITED)
+
+
+async def test_static_tree_product_message_both_orders(wfp: Workflow):
+    """Tree-then-output and output-then-tree raise byte-identical text.
+
+    Unlike the static-file collision, a build product has no same-creator exemption
+    (`test_static_tree_output_same_creator_still_raises`), so both directions can use
+    the same creator and still raise.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "data")
+    with pytest.raises(GraphError) as excinfo_a:
+        async with wfp.db:
+            wfp.define_step(plan, "touch data/out.txt", out_paths=["data/out.txt"])
+
+    dir_queue = asyncio.Queue()
+    with DBSession.open(":memory:") as db:
+        wfp_b = Workflow(db, makedirs=False, dir_queue=dir_queue)
+        await wfp_b.initialize()
+        async with db:
+            declare_static(wfp_b, wfp_b.root, ["plan.py"])
+            wfp_b.define_step(wfp_b.root, "./plan.py", inp_paths=["plan.py"], need=Need.PLAN)
+            plan_b = wfp_b.find(Step, "./plan.py")
+            wfp_b.define_step(plan_b, "touch data/out.txt", out_paths=["data/out.txt"])
+            with pytest.raises(GraphError) as excinfo_b:
+                wfp_b.register_static_tree(plan_b, "data")
+
+    assert str(excinfo_a.value) == str(excinfo_b.value)
 
 
 async def test_orhphaned_static_tree(wfp: Workflow):
@@ -2069,6 +2646,42 @@ async def test_static_tree_race_condition(wfp: Workflow):
             {"data/foo.txt": fake_hash("data/foo.txt")}, HashUpdateCause.CONFIRMED
         )
         assert foo.get_state() == FileState.STATIC
+
+
+async def test_static_tree_same_creator_file_and_subdir_both_no_op(wfp: Workflow):
+    """The same-creator rule is uniform across files and subdirectories.
+
+    `static("data/")` followed by `static("data/sub/")` or by `static("data/foo.txt")`
+    are both no-ops for the tree's own creator:
+    `test_register_static_tree_same_creator_subdirectory` already covers the directory
+    case; this test exists so the file case is visibly the same rule, not a separate
+    exception.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "data")
+        assert wfp.register_static_tree(plan, "data/sub") == {}
+        assert wfp.find(StaticTree, "data/sub/") is None
+        to_check = wfp.declare_unconfirmed(plan, ["data/foo.txt"])
+        assert to_check == {"data/foo.txt": FileHash.unknown()}
+        assert wfp.find(File, "data/foo.txt").creator() == wfp.find(StaticTree, "data/")
+
+
+async def test_static_tree_glob_owns_nothing(wfp: Workflow):
+    """A `glob()` pattern matching inside another step's static tree is not a collision.
+
+    After Phase 2, `register_glob` no longer declares its matches, so there is nothing
+    for the tree to conflict with (README open question 3): the pattern is accepted
+    even though `sub`, not `plan`, registers it.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        wfp.register_static_tree(plan, "data")
+        ng = NamedGlob("data/*.txt")
+        ng.extend(["data/foo.txt"])
+        wfp.register_glob(sub, ng)
 
 
 async def test_define_step_reqdir_out_path(wfp: Workflow):
@@ -2514,7 +3127,10 @@ async def test_register_static_tree_rejects_attached_unconfirmed_or_missing(wfp:
 
     This holds regardless of the file's state: an UNCONFIRMED or MISSING file declared by
     another creator blocks the tree exactly like a STATIC or BUILT one would, per the rule
-    "a static tree must be declared before any file it contains."
+    that a static tree is the sole owner of the files under it. The two declarations here
+    already come from different creators (`sub` and `plan`), which is what keeps this a
+    rejection rather than the hand-over case covered by
+    `test_static_file_then_static_tree_hands_over`.
     """
     async with wfp.db:
         plan = wfp.find(Step, "./plan.py")
@@ -2526,7 +3142,10 @@ async def test_register_static_tree_rejects_attached_unconfirmed_or_missing(wfp:
         unconfirmed = wfp.find(File, "data/unconfirmed.txt")
         assert unconfirmed.get_state() == FileState.UNCONFIRMED
 
-    with pytest.raises(GraphError, match=re.escape("data/unconfirmed.txt")):
+    with pytest.raises(
+        GraphError,
+        match=re.escape(_static_tree_file_message("data/", "data/unconfirmed.txt")),
+    ):
         async with wfp.db:
             wfp.register_static_tree(plan, "data")
     async with wfp.db:
@@ -2540,13 +3159,73 @@ async def test_register_static_tree_rejects_attached_unconfirmed_or_missing(wfp:
         missing = wfp.find(File, "other/missing.txt")
         assert missing.get_state() == FileState.MISSING
 
-    with pytest.raises(GraphError, match=re.escape("other/missing.txt")):
+    with pytest.raises(
+        GraphError, match=re.escape(_static_tree_file_message("other/", "other/missing.txt"))
+    ):
         async with wfp.db:
             wfp.register_static_tree(plan, "other")
     async with wfp.db:
         assert missing.creator() == sub
         assert not missing.is_detached()
         assert wfp.find(StaticTree, "other/") is None
+
+
+async def test_static_file_then_static_tree_hands_over(wfp: Workflow):
+    """The file-first order hands the file over to the tree, for the same creator.
+
+    Four things must survive the hand-over: the new creator, the consuming step's
+    dependency edge, the stored hash, and — the one a `Trellis.create()`-based
+    implementation would get wrong — the declaring step's own hash, since the tree
+    registration must not look like a recycle of the file's previous creator
+    (see the "bypassing `Trellis.create()`" note at `register_static_tree`).
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        (foo,) = declare_static(wfp, plan, ["data/foo.txt"])
+        foo_hash = foo.get_hash()
+        wfp.define_step(plan, "prog", inp_paths=["data/foo.txt"])
+        prog = wfp.find(Step, "prog")
+        plan.completed(StepHash(b"p" * 32, None, b"p" * 32, None), False)
+        assert plan.get_hash() is not None
+
+        wfp.register_static_tree(plan, "data")
+
+        assert foo.creator() == wfp.find(StaticTree, "data/")
+        assert list(foo.sinks()) == [prog]
+        assert wfp.get_file_hashes(["data/foo.txt"]) == {"data/foo.txt": foo_hash}
+        assert plan.get_hash() is not None
+
+
+async def test_static_file_then_static_tree_raises_other_creator(wfp: Workflow):
+    """The file-first order raises for a foreign creator, mirroring the tree-first case."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        declare_static(wfp, sub, ["data/foo.txt"])
+    with pytest.raises(
+        GraphError, match=re.escape(_static_tree_file_message("data/", "data/foo.txt"))
+    ):
+        async with wfp.db:
+            wfp.register_static_tree(plan, "data")
+    async with wfp.db:
+        assert wfp.find(File, "data/foo.txt").creator() == sub
+        assert wfp.find(StaticTree, "data/") is None
+
+
+async def test_static_tree_handover_multiple_files(wfp: Workflow):
+    """Every matching file is handed over in one `register_static_tree` call.
+
+    The hand-over loops over every attached file under the new tree's path; a `LIMIT 1`
+    left in the query by accident would silently hand over only the first match.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        declare_static(wfp, plan, ["data/a.txt", "data/b.txt", "data/c.txt"])
+        wfp.register_static_tree(plan, "data")
+        tree = wfp.find(StaticTree, "data/")
+        for name in ("a", "b", "c"):
+            assert wfp.find(File, f"data/{name}.txt").creator() == tree
 
 
 async def test_register_static_tree_adopts_detached_file(wfp: Workflow):
@@ -2566,6 +3245,141 @@ async def test_register_static_tree_adopts_detached_file(wfp: Workflow):
         assert to_check == {"data/foo.txt": fake_hash("data/foo.txt")}
         assert not foo.is_detached()
         assert foo.creator() == wfp.find(StaticTree, "data/")
+
+
+async def test_declare_unconfirmed_same_creator_twice(wfp: Workflow):
+    """Re-declaring a static file with the same creator is a silent no-op."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        to_check1 = wfp.declare_unconfirmed(plan, ["a.txt"])
+        assert to_check1 == {"a.txt": FileHash.unknown()}
+        to_check2 = wfp.declare_unconfirmed(plan, ["a.txt"])
+        assert to_check2 == {}
+        assert [file.path for file in wfp.nodes(File) if file.path == "a.txt"] == ["a.txt"]
+        assert wfp.find(File, "a.txt").creator() == plan
+
+
+async def test_declare_unconfirmed_other_creator_still_raises(wfp: Workflow):
+    """Re-declaring a static file with a different creator is still an error."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        wfp.declare_unconfirmed(plan, ["a.txt"])
+    with pytest.raises(GraphError):
+        async with wfp.db:
+            wfp.declare_unconfirmed(sub, ["a.txt"])
+
+
+async def test_declare_unconfirmed_same_creator_after_confirm(wfp: Workflow):
+    """The same-creator no-op also applies once the file has been confirmed STATIC."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        (a,) = declare_static(wfp, plan, ["a.txt"])
+        assert a.get_state() == FileState.STATIC
+        a_hash = a.get_hash()
+
+        to_check = wfp.declare_unconfirmed(plan, ["a.txt"])
+        assert to_check == {}
+        assert a.get_state() == FileState.STATIC
+        assert a.get_hash() == a_hash
+
+
+async def test_declare_unconfirmed_same_creator_output_still_raises(wfp: Workflow):
+    """Declaring a file the same step already produced as an output is still an error.
+
+    An AWAITED file is not one of the three states a static declaration can produce, so
+    it is a genuine contradiction, not a repeated declaration.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "touch a.txt", out_paths=["a.txt"])
+        step = wfp.find(Step, "touch a.txt")
+        assert wfp.find(File, "a.txt").get_state() == FileState.AWAITED
+    with pytest.raises(GraphError):
+        async with wfp.db:
+            wfp.declare_unconfirmed(step, ["a.txt"])
+
+
+async def test_declare_unconfirmed_detached_is_recycled(wfp: Workflow):
+    """A detached same-creator file is recycled, not skipped as a no-op.
+
+    This is the case `initialize_boot` relies on: a re-running step re-declares its own
+    detached files and must get a fresh `to_check` entry so the hash is re-verified.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        (a,) = declare_static(wfp, plan, ["a.txt"])
+        a.detach()
+        assert a.is_detached()
+
+        to_check = wfp.declare_unconfirmed(plan, ["a.txt"])
+        assert to_check == {"a.txt": fake_hash("a.txt")}
+        assert not a.is_detached()
+        assert a.creator() == plan
+
+
+async def test_register_static_tree_same_creator_twice(wfp: Workflow):
+    """Re-registering a static tree with the same creator is a silent no-op."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        to_check1 = wfp.register_static_tree(plan, "static")
+        assert to_check1 == {}
+        to_check2 = wfp.register_static_tree(plan, "static")
+        assert to_check2 == {}
+        assert list(wfp.nodes(StaticTree)) == [wfp.find(StaticTree, "static/")]
+
+
+async def test_register_static_tree_same_creator_subdirectory(wfp: Workflow):
+    """A subdirectory of the same creator's own tree is a no-op, not a rejection."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "static")
+        assert wfp.register_static_tree(plan, "static/sub") == {}
+        assert wfp.find(StaticTree, "static/sub/") is None
+
+
+async def test_register_static_tree_other_creator_subdirectory_raises(wfp: Workflow):
+    """A subdirectory of another creator's tree is still rejected."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.define_step(plan, "sub")
+        sub = wfp.find(Step, "sub")
+        wfp.register_static_tree(plan, "static")
+    with pytest.raises(GraphError):
+        async with wfp.db:
+            wfp.register_static_tree(sub, "static/sub")
+
+
+async def test_register_static_tree_parent_still_raises(wfp: Workflow):
+    """Registering the parent of an existing tree still raises, even for the same creator."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        wfp.register_static_tree(plan, "static/sub")
+    with pytest.raises(GraphError):
+        async with wfp.db:
+            wfp.register_static_tree(plan, "static")
+
+
+@pytest.mark.parametrize("sub_path", [STEPUP_DIR, f"{STEPUP_DIR}/", f"{STEPUP_DIR}/sub"])
+async def test_register_static_tree_stepup_dir_raises(wfp: Workflow, sub_path: str):
+    """A static tree can never be rooted at or under `.stepup`, like a static file."""
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        with pytest.raises(GraphError, match=re.escape(str(STEPUP_DIR))):
+            wfp.register_static_tree(plan, sub_path)
+
+
+@pytest.mark.parametrize("root_path", [".", "./", ""])
+async def test_register_static_tree_root_raises(wfp: Workflow, root_path: str):
+    """A static tree cannot be rooted at the project root.
+
+    It would have to own `plan.py` and every step output.
+    """
+    async with wfp.db:
+        plan = wfp.find(Step, "./plan.py")
+        with pytest.raises(GraphError, match="project root"):
+            wfp.register_static_tree(plan, root_path)
 
 
 async def test_step_try_clean(wfp: Workflow):
@@ -3321,7 +4135,7 @@ async def test_clean_cascades_satellite_rows(wfs: Workflow):
         step.set_hash(StepHash(b"inp", None, b"out", None))
         step.store_outcome(ChildOutcome(0, "hello\n", ""), 0)
         step.record_subprocess("do something", ".", None, 0, False, "in", "out", "err")
-        wfs.register_nglob(step, NamedGlob("*.txt"))
+        wfs.register_glob(step, NamedGlob("*.txt"))
         step_i = step.i
         out_i = out_file.i
 
@@ -3585,29 +4399,6 @@ async def test_dependency_kind_check_rejects_step_to_step(wfp: Workflow):
             wfp.db.execute(
                 "INSERT INTO dependency (source, sink) VALUES (?, ?)", (step_a.i, step_b.i)
             )
-
-
-async def test_static_tree_check_rejects_file_insert_under_tree(wfp: Workflow):
-    """An attached `file` node under a static tree's path must have that tree as creator.
-
-    `Workflow.register_static_tree` / `Workflow._declare_file` already reject this with a
-    friendlier, two-path `GraphError` before either of them ever writes to the node table
-    (see `test_register_static_tree_rejects_attached_unconfirmed_or_missing` and
-    `test_static_tree_static`). This exercises only the `node_check_static_tree_ins`
-    backstop trigger (WORKFLOW_SCHEMA, workflow.py) directly, by inserting a conflicting
-    row with raw SQL.
-    """
-    async with wfp.db:
-        plan = wfp.find(Step, "./plan.py")
-        wfp.register_static_tree(plan, "data")
-
-
-async def test_static_tree_check_rejects_file_update_under_tree(wfp: Workflow):
-    """The `_upd` variant fires when a file under a tree's path is reattached to a creator
-    other than the tree with raw SQL, e.g. bypassing `Node.recycle()`."""
-    async with wfp.db:
-        plan = wfp.find(Step, "./plan.py")
-        wfp.register_static_tree(plan, "data")
 
 
 #

@@ -24,13 +24,13 @@ for running only part of the workflow when this is genuinely useful.
 These are supported by StepUp as follows:
 
 - One can define **steps conditionally**, e.g.,
-  as in the tutorial [Static Glob Conditional](../getting_started/static_glob_conditional.md).
+  as in the tutorial [Glob Conditional](../getting_started/glob_conditional.md).
   Such conditionals are controlled by external factors and
   are picked up by your `plan.py` without manual interventions.
 
 - One can make **steps optional**, as in this tutorial.
   This is useful when multiple steps are defined in a loop,
-  as in the [Static Glob](../getting_started/static_glob.md) tutorial,
+  as in the [Glob Patterns in `static()`](../getting_started/static_patterns.md) tutorial,
   of which not all steps are required for the end result.
   Use this feature wisely:
   Defining thousands of steps when only a few are actually used, is obviously inefficient.

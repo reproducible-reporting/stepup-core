@@ -199,7 +199,14 @@ class Builder:
         self.returncode = await report_completion(
             self.db, self.workflow, self.scheduler, self.reporter
         )
-        if self.returncode.value != 0:
+        # A build restricted to targets leaves the outputs of every step outside the target's
+        # dependencies OUTDATED, so cleaning up would delete results the user never asked to
+        # rebuild. A warning on its own does not make the build incomplete, so it is masked out.
+        if len(self.workflow.targets) > 0 or len(self.workflow.target_dirs) > 0:
+            await self.reporter(
+                "WARNING", "Skipping file cleanup for a build restricted to targets"
+            )
+        elif self.returncode & ~ReturnCode.WARNING:
             await self.reporter("WARNING", "Skipping file cleanup due to incomplete build")
         elif not self.do_remove_outdated:
             await self.reporter("WARNING", "Skipping file cleanup at user's request (--no-clean)")

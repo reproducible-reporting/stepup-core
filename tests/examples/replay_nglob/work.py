@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stepup.core.api import copy, glob
+from stepup.core.api import copy, static
 
-for path in glob("inp.*"):
+for path in static("inp.*"):
     copy(path, "out." + path[4:])

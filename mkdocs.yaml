@@ -76,9 +76,11 @@ nav:
     - getting_started/copy.md
     - getting_started/workdir.md
     - getting_started/static_files.md
+    - getting_started/static_patterns.md
     - getting_started/static_tree.md
-    - getting_started/static_glob.md
-    - getting_started/static_glob_conditional.md
+    - getting_started/glob.md
+    - getting_started/glob_conditional.md
+    - getting_started/named_glob.md
     - getting_started/interactive_usage.md
     - getting_started/failing_steps.md
     - getting_started/call.md
@@ -88,7 +90,6 @@ nav:
     - getting_started/automatic_cleaning.md
   - Advanced Topics:
     - advanced_topics/introduction.md
-    - advanced_topics/static_named_glob.md
     - advanced_topics/optional_steps.md
     - advanced_topics/build_targets.md
     - advanced_topics/resources.md
@@ -133,6 +134,7 @@ nav:
     - deprecated/stepup.core.script.md
 
 exclude_docs: |
+  CLAUDE.md
   */*/ch*/*.md
   */*/public/*.md
 

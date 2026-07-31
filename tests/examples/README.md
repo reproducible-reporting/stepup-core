@@ -16,9 +16,13 @@ so you may ignore them when you just use them as a reference for how to make som
 
 When writing new examples, the following conventions ensure that they are properly tested:
 
-- **Register the example** in the `@pytest.mark.parametrize` `name` list of `test_example`
-  in `tests/test_examples.py`. Examples are *not* auto-discovered from this directory, so an
-  unregistered example is silently never run. If its `plan.py` should also be exercised
+- **Register the example** in the `EXAMPLES` list at the top of `tests/test_examples.py`,
+  from which `test_example` is parametrized.
+  Examples are *not* auto-discovered from this directory,
+  but forgetting to register one is not silent:
+  the guard tests `test_examples_list_has_all_dirs` and `test_examples_list_has_no_extra`
+  fail when `EXAMPLES` and the directories under `tests/examples/` disagree.
+  If its `plan.py` should also be exercised
   standalone (without StepUp), add the name to the `test_plan` list as well.
 
 - CI runs the whole example suite twice, once with `STEPUP_BUILD_FORKSERVER=1` and once with
@@ -111,7 +115,14 @@ When writing new examples, the following conventions ensure that they are proper
   set +e; wait -fn $PID; RETURNCODE=$?; set -e
   ```
 
-  `stepup build` exits with **0** when all steps succeeded, **2** when at least one step failed.
+  `stepup build` exits with **0** when all steps succeeded,
+  and otherwise with a sum of the bits documented in
+  [Return Codes](../../docs/reference/returncode.md).
+  Never assert a bare number: `example.rc` defines one shell constant per bit
+  (`RETURN_CODE_INTERNAL`, `RETURN_CODE_INTERRUPTED`, `RETURN_CODE_FAILED`,
+  `RETURN_CODE_WARNING`, `RETURN_CODE_PENDING`, `RETURN_CODE_ONHOLD`),
+  which say what the example expects instead of leaving the reader to decode a literal.
+  `tests/test_conventions.py` keeps them in sync with the `ReturnCode` enum.
 
     - For tests where all steps must succeed, assert the exit code:
 
@@ -119,12 +130,20 @@ When writing new examples, the following conventions ensure that they are proper
       [[ "${RETURNCODE}" -eq 0 ]] || exit 1
       ```
 
-    - For tests where a step is *expected* to fail, assert the non-zero exit code
+    - For tests where a step is *expected* to fail, assert the exit code
       and verify the failure via the fail log:
 
       ```bash
-      [[ "${RETURNCODE}" -eq 2 ]] || exit 1
+      [[ "${RETURNCODE}" -eq "${RETURN_CODE_FAILED}" ]] || exit 1
       grep "expected error text" .stepup/fail.log
+      ```
+
+    - Combine bits with an arithmetic expansion.
+      A step that fails without `--keep-going` also puts the scheduler on hold,
+      which is the most common combination in these examples:
+
+      ```bash
+      [[ "${RETURNCODE}" -eq $((RETURN_CODE_FAILED | RETURN_CODE_ONHOLD)) ]] || exit 1
       ```
 
       The `[[ ! -f result.txt ]] || exit 1` pattern can confirm that failed steps did

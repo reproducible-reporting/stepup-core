@@ -24,14 +24,14 @@ async def test_missing_argument(client: AsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
-        await client("declare_unconfirmed")
+        await client("static")
 
 
 async def test_wrong_type(client: AsyncRPCClient):
     with open("DONE.txt", "w") as fh:
         fh.write("done")
     with pytest.raises(RPCError):
-        await client("declare_unconfirmed", 5)
+        await client("static", 5)
 
 
 FROM_SCRATCH_GRAPH = """\
@@ -105,7 +105,7 @@ async def test_static(client: AsyncRPCClient, path_tmp: Path):
     try:
         with open("foo", "w") as fh:
             fh.write("bar")
-        result = await client("declare_unconfirmed", _get_job_i(), ["foo"])
+        result = await client("static", _get_job_i(), [], ["foo"], [])
         assert result is None
     finally:
         with open("DONE.txt", "w") as fh:
@@ -174,7 +174,7 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
             {},
             True,
         )
-        result = await client("declare_unconfirmed", job_i, ["original.txt"])
+        result = await client("static", job_i, [], ["original.txt"], [])
         assert result is None
     finally:
         with open("DONE.txt", "w") as fh:
@@ -185,6 +185,51 @@ async def test_copy(client: AsyncRPCClient, path_tmp: Path):
     _check_graph(prefix_graph + ".txt", COPY_GRAPH)
 
 
+async def test_static_registers_tree_before_file(client: AsyncRPCClient, path_tmp: Path):
+    """One `static` RPC must register a tree before a file it contains.
+
+    This is the canonical same-creator case: `Director.static` groups directories
+    before files within a single call, so the tree is always registered first and
+    hands the file over to itself, regardless of argument order.
+
+    A consuming step is added for `sub/data.txt` so it has a sink: `Workflow.clean()`
+    detaches an unused static-tree file at the end of every build (see
+    `test_static_tree_clean` in `test_workflow.py`), which would otherwise sweep away
+    the very node this test means to inspect, hand-over or not.
+    """
+    try:
+        job_i = _get_job_i()
+        os.mkdir("sub")
+        with open("sub/data.txt", "w") as fh:
+            fh.write("hello")
+        result = await client("static", job_i, ["sub/"], ["sub/data.txt"], [])
+        assert result is None
+        await client(
+            "step",
+            job_i,
+            "cat sub/data.txt",
+            ["sub/data.txt"],
+            {},
+            [],
+            [],
+            ".",
+            Need.DEFAULT.value,
+            {},
+            True,
+        )
+    finally:
+        with open("DONE.txt", "w") as fh:
+            fh.write("done")
+    await client("wait")
+    prefix_graph = path_tmp / "graph"
+    await client("graph", prefix_graph)
+    with open(prefix_graph + ".txt") as fh:
+        graph = fh.read()
+    # The tree is the file's owner: a node is created, with the tree as its creator.
+    assert "file:sub/data.txt\n" in graph
+    assert "             creator   st:sub/\n" in graph
+
+
 async def test_amend_blocks_until_static_tree_match_confirmed(client: AsyncRPCClient):
     """`amend()` naming a fresh static-tree match must block until it is hashed and
     confirmed, then report the step as runnable with the file STATIC."""
@@ -193,7 +238,7 @@ async def test_amend_blocks_until_static_tree_match_confirmed(client: AsyncRPCCl
         os.mkdir("sub")
         with open("sub/data.txt", "w") as fh:
             fh.write("hello")
-        await client("static_trees", job_i, ["sub/"])
+        await client("static", job_i, ["sub/"], [], [])
         carry_on = await client("amend", job_i, ["sub/data.txt"], [], [], [])
         assert carry_on is True
     finally:
@@ -208,7 +253,7 @@ async def test_amend_reports_missing_static_tree_match(client: AsyncRPCClient):
     try:
         job_i = _get_job_i()
         os.mkdir("sub")
-        await client("static_trees", job_i, ["sub/"])
+        await client("static", job_i, ["sub/"], [], [])
         carry_on = await client("amend", job_i, ["sub/ghost.txt"], [], [], [])
         assert carry_on is False
     finally:

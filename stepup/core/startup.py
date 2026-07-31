@@ -13,7 +13,7 @@ from .cattrs import json_converter
 from .enums import FileState, HashUpdateCause, StepState
 from .hash import FileHash, fmt_env_value, fmt_file_hash_diff
 from .hash_queue import gather_hashes
-from .nglob import NamedGlob
+from .nglob import NamedGlob, glob_base_dir
 from .reporter import ReporterClient
 from .sqlite3 import DBSession
 from .step import Step
@@ -103,13 +103,27 @@ async def populate_dir_queue(workflow: Workflow, db: DBSession, reporter: Report
     )
     async with db:
         rows = db.execute(sql).fetchall()
-    if len(rows) > 0:
-        parents = set()
-        for (path,) in rows:
-            parents.add(str(Path(path).parent))
+        nglobs = list(workflow.nglobs())
+
+    # File-node directories are known to exist and are watched directly. Glob-pattern
+    # directories are not: a pattern only observes the filesystem, so they go through
+    # put_glob_dir_queue instead, which never creates a directory (see there).
+    # A root-level path's parent is "", normalized to "." so it folds into the same
+    # set entry as glob_base_dir's own root value, keeping the reported count accurate.
+    file_dirs = {str(Path(path).parent) or "." for (path,) in rows}
+    glob_dirs = set()
+    for ng in nglobs:
+        for path in ng.files():
+            glob_dirs.add(str(Path(path.rstrip(os.sep)).parent) or ".")
+        glob_dirs.add(glob_base_dir(ng.pattern))
+
+    parents = file_dirs | glob_dirs
+    if len(parents) > 0:
         await reporter("STARTUP", f"Watching {len(parents)} director(y|ies)")
-        for path in parents:
+        for path in file_dirs:
             workflow.put_dir_queue(path)
+        for path in glob_dirs - file_dirs:
+            workflow.put_glob_dir_queue(path)
 
 
 async def check_file_changes(db: DBSession, reporter: ReporterClient, builder: Builder):

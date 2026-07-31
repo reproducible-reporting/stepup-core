@@ -120,6 +120,151 @@ compared to execution via `run()` with `shell=False`:
 
 In short: use `run()` with the default `shell=False` unless you specifically need shell features.
 
+## `static()` and `glob()` Have New Roles
+
+In StepUp 3, [`static()`][stepup.core.api.static] and [`glob()`][stepup.core.api.glob]
+differed by *how you named the files*:
+`static()` took literal paths, `glob()` took patterns,
+and both declared their files static.
+In StepUp 4, they differ by *what they do*.
+`static()` declares, with or without wildcards.
+`glob()` only looks: it is a pure query that owns nothing it matches.
+(Matches must be declared static elsewhere.)
+The following table compares the new and old roles:
+
+| Role | StepUp 3 | StepUp 4 |
+| --- | --- | --- |
+| Declare a static file | `static("data/foo.txt")` | `static("data/foo.txt")` |
+| Declare static files by pattern | `glob("*.txt")` | `static("*.txt")` |
+| Query files by pattern | *N.A.* | `glob("*.txt")` |
+
+### Migration Of StepUp 3 `glob()` calls
+
+Every loop that used `glob()` with *conventional wildcards* to declare *files* (not directories)
+becomes a call to `static()`:
+
+```python
+# StepUp 3
+for path in glob("src/*.txt"):
+    copy(path, "out/" + path.name)
+
+# StepUp 4
+for path in static("src/*.txt"):
+    copy(path, "out/" + path.name)
+```
+
+An unmigrated plan fails loudly:
+the matched files are never declared static,
+so the steps that use them are stuck with unavailable inputs.
+There is no silent misbehaviour to watch out for here.
+
+There are a few corner cases that require a more careful migration:
+
+- If the `glob()` call matched directories, keep using `glob()`
+   because StepUp 4 no longer keeps track of directories in the database.
+  To make this safe, the matched directories must contain a static file,
+  static tree, or sit inside a static tree.
+- If the `glob()` call used the `_defer=True` argument,
+  use a [static tree](../getting_started/static_tree.md) instead, e.g. `static("src/")`
+  and query the files with `glob()` when needed.
+- If the `glob()` call used named wildcards (`${*name}`)
+  and the captured substrings were used in the loop body,
+  keep using `glob()` and declare the matches as static files where needed.
+  See [Named Glob](../getting_started/named_glob.md) for details.
+
+### `static()` Takes Patterns and Returns Paths
+
+The new `static()` gained the two properties that made `glob()` convenient:
+
+- It accepts glob patterns with anonymous (`*`, `?`, `[abc]`) and named (`${*name}`)
+  wildcards, in addition to literal paths.
+  A file match is declared static, a directory match is registered as a static tree,
+  and a pattern without matches is not an error.
+- It returns a sorted list of the paths it covers,
+  so its result can be iterated directly.
+
+As with `glob()`, the pattern is registered with the calling step,
+so the step becomes pending and re-runs when the set of matches changes.
+See [Glob Patterns in `static()`](../getting_started/static_patterns.md).
+
+### The Escaping Gotcha
+
+Because every argument of `static()` is now read as a pattern,
+the characters `*`, `?` and `[` are significant where they used to be literal.
+This is the one change in this section that can break a working plan
+without an error message pointing at the cause:
+a file named `table[1].csv` is no longer declared by spelling out its name,
+because the argument is interpreted as a character class.
+
+Wrap such paths in
+[`glob.escape()`](https://docs.python.org/3/library/glob.html#glob.escape)
+from the standard library:
+
+```python
+import glob as globmod
+
+static(globmod.escape("table[1].csv"))
+```
+
+### A Trailing `**` Is Rejected by `static()`
+
+A recursive `**` wildcard as the *final* path component is not accepted by `static()`,
+e.g. `static("src/**")` or `static("**")`.
+Declare the directory as a [static tree](../getting_started/static_tree.md) instead,
+e.g. `static("src/")`, which covers the whole subtree lazily.
+A `**` earlier in the pattern, e.g. `static("src/**/*.c")`, is accepted.
+Use `glob()` when a recursive *list* of files is genuinely needed.
+
+### Overlapping Patterns Are Now Allowed
+
+This is a new capability rather than a migration,
+but it removes workarounds that StepUp 3 forced upon you.
+
+- A single plan may declare the same file twice,
+  e.g. with `static("*/*.tex")` and `static("figures/*.*")`.
+  A repeated declaration by the same step is a silent no-op.
+- Because a query owns nothing, any number of `glob()` calls may match the same file,
+  from any number of plans.
+  The ordering tricks and artificially non-overlapping patterns that StepUp 3 required
+  can all be deleted.
+
+### The End-of-Build Check
+
+A `glob()` match that no `static()` declaration and no static tree justifies
+cannot be judged while the build is running,
+since the plan that would declare it may not have run yet.
+It is checked once at the end of the build phase and reported as a warning:
+
+```text
+N glob match(es) are not declared static.
+```
+
+This is a warning and nothing more: it does not fail the build.
+It only sets the warning bit of the return code
+(see [Return Codes](#return-codes-have-been-renumbered) below).
+It has one fatal sibling, reported as an error and setting the `FAILED` return-code bit:
+
+```text
+N glob match(es) are files that a step builds.
+```
+
+A glob pattern may only match static files,
+so a match that some step builds is always a mistake.
+See [Glob](../getting_started/glob.md) for both checks in context.
+
+### Named Globs
+
+`static()` accepts named wildcards (`${*name}`)
+and honours the back-reference constraint,
+so `static("ch${*ch}/sec${*ch}_*.txt")` is valid.
+It has no `subs` keyword arguments, though,
+so a named wildcard there always uses the default sub-pattern `*`,
+and the captured substrings are not part of the return value.
+Use the composition `static(glob(pattern, **subs))` when you need either;
+`static()` accepts the `NamedGlob` object returned by `glob()` directly
+and does not register the pattern a second time.
+See [Named Glob](../getting_started/named_glob.md).
+
 ## Directory Handling
 
 In StepUp 3, directories were stored in the database
@@ -147,21 +292,36 @@ but that contained files only become static when they are used as inputs.
 
 Three rules govern how static trees interact with `static()` and `glob()`:
 
-1. **A static tree must be declared before any file it contains.**
-   With `static("data/")` first, a later `static("data/foo.txt")` is simply a no-op,
-   because the tree already owns that file.
-   The reverse order raises an error.
+1. **A static tree is the sole owner of the files under it.**
 
-2. **`glob()` still declares its matching files static,
-   except for matches already covered by a static tree.**
-   Those belong to the tree, so `glob()` only records the pattern for them.
-   Consequently, overlapping `glob()` calls are allowed inside a static tree:
-   declare the tree once, then glob it as often as convenient.
-   (Outside a static tree, two `glob()` calls matching the same file still raise an error.)
+    A *single plan* may declare `static("data/")` and `static("data/foo.txt")` in either
+    order:
 
-3. **A `glob()` pattern may only match a directory when that directory lies inside a static tree.**
-   Elsewhere, StepUp has no evidence that the matched directory is source material
-   rather than a step's build product, so an error is raised.
+    - If the tree is declared first, the static file declaration is a no-op.
+      (It will become static when it is first used as an input.)
+    - If the file is declared first, the tree takes ownership of it.
+      (If the static file appears unused at the end of a successful build,
+      it is removed from the database.)
+
+    The build graph in the end is the same in both cases.
+
+    Two *different plans* doing the same thing
+    (one declaring the tree, the other the file inside it)
+    raise an error, again in either order, since only one of them can own the file.
+    Use `glob()` to list the files inside another plan's static tree without claiming them.
+
+2. **`glob()` no longer declares anything**,
+   so overlapping `glob()` calls are allowed.
+   See [`static()` and `glob()` Have New Roles](#static-and-glob-have-new-roles)
+   above for the migration this requires.
+
+3. **A directory match is treated differently by the two functions.**
+   A `static()` pattern that matches a directory registers a static tree for it,
+   just like a directory listed by name.
+   A `glob()` pattern may match a directory anywhere, but the match must be justified
+   by the end of the build phase: it must lie inside a static tree, contain one,
+   or contain a static file.
+   An unjustified match is reported as a warning, not an error.
 
 ### Trailing Slashes
 
@@ -253,6 +413,29 @@ The following environment variables have been renamed to have a `STEPUP_BUILD_` 
 | `STEPUP_WATCH` | `STEPUP_BUILD_WATCH` |
 | `STEPUP_WATCH_FIRST` | `STEPUP_BUILD_WATCH_FIRST` |
 | `STEPUP_YAPPI` | `STEPUP_BUILD_YAPPI` |
+
+## Return Codes Have Been Renumbered
+
+The `stepup build` or `sb` command (previously `stepup boot`)
+still emits a return code that is a sum of bit flags,
+but the flags themselves were renumbered in StepUp 4.0,
+and the "runnable" flag was dropped because nothing ever set it.
+
+| Meaning | StepUp 3 | StepUp 4 |
+| --- | --- | --- |
+| Internal error (Python exception). | `1` | `1` |
+| Build aborted by Ctrl-C or `SIGTERM`. | — | `2` |
+| At least one step failed. | `2` | `4` |
+| The build reported a warning (other than the ones below). | — | `8` |
+| At least one (non-optional) step remained pending. | `4` | `16` |
+| At least one step was still runnable. | `8` | *removed* |
+| The scheduler was put on hold. | — | `32` |
+
+This is a silent change for scripts:
+a StepUp 3 test like `[ $(($? & 2)) -gt 0 ]` still runs under StepUp 4,
+but it now tests whether the build was interrupted instead of whether a step failed.
+Revisit every place where your scripts inspect `$?` after `stepup build`.
+See [Return Codes](../reference/returncode.md) for the current meaning of each bit.
 
 ## Deprecated Features
 
@@ -469,3 +652,14 @@ from stepup.core.utils import filter_dependencies, get_local_import_paths
 # StepUp 4 (current)
 from stepup.core.extapi import filter_dependencies, get_local_import_paths, get_rpc_client, subs_env_vars
 ```
+
+### Changed RPC Calls
+
+If you call the director's RPC layer directly, instead of going through
+[`stepup.core.api`](../reference/stepup.core.api.md), note that the
+`declare_unconfirmed` and `static_trees` calls have been replaced by a single `static`
+call.
+It takes the literal files, the static tree roots and the registered patterns together,
+so one `static()` invocation is always one round trip,
+and the director registers static trees before the files they contain
+within a single transaction.

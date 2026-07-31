@@ -3,9 +3,11 @@
 """The `Workflow` is a `Trellis` subclass with more concrete node implementations."""
 
 import asyncio
+import functools
 import json
 import logging
 import os
+import re
 import stat
 import textwrap
 from collections.abc import Callable, Collection, Iterator, Mapping
@@ -26,7 +28,7 @@ from .enums import (
 from .exceptions import GraphError
 from .file import File
 from .hash import FileHash, fmt_digest
-from .nglob import NamedGlob, has_any_wildcards
+from .nglob import NamedGlob, glob_base_dir, has_any_wildcards
 from .path import dir_range_upper
 from .sqlite3 import escape_like_pattern
 from .static_tree import StaticTree
@@ -34,7 +36,7 @@ from .step import RESERVED_ENV_VARS, Step
 from .trellis import Node, Root, Trellis
 from .utils import string_to_bool
 
-__all__ = ("Workflow",)
+__all__ = ("GlobViolation", "Workflow")
 
 
 logger = logging.getLogger(__name__)
@@ -53,6 +55,11 @@ logger = logging.getLogger(__name__)
 # (detached-on-creation) is always allowed and is not covered by these triggers. The root
 # node is exempt (kind = 'root' in the WHEN clause): it is inserted once with creator = 1
 # (self) directly in SQL (Trellis.create()), which does not fit this per-kind table.
+#
+# `register_static_tree`'s file <- st hand-over (`UPDATE node SET creator = ...`) is
+# another deliberate direct-SQL write that bypasses `Trellis.create()`/`Node.recycle()`;
+# it relies on `node_check_creator_kind_upd` below to keep enforcing this same invariant
+# on that path.
 WORKFLOW_SCHEMA = """
 CREATE TRIGGER IF NOT EXISTS node_check_creator_kind_ins AFTER INSERT ON node
 WHEN NEW.creator IS NOT NULL AND NEW.kind != 'root'
@@ -197,6 +204,80 @@ _HASH_TRANSITIONS: dict[tuple[HashUpdateCause, FileState, bool], tuple[FileState
 }
 
 
+@functools.lru_cache(maxsize=1024)
+def _compiled(regex: str) -> re.Pattern[str]:
+    """Compile and cache a glob pattern's regex.
+
+    The regexes come from the `nglob` table and are re-read on every check, while the
+    set of distinct patterns in a project is small, so caching the compilation is what
+    keeps the check cheap.
+    """
+    return re.compile(regex)
+
+
+# The three file states a static declaration (as opposed to a build product) can leave
+# behind. Shared by `_is_own_static_file` and the static-tree ownership checks in
+# `_declare_file` and `register_static_tree`, so the triple cannot drift between them.
+STATIC_DECLARED_STATES = (FileState.UNCONFIRMED, FileState.STATIC, FileState.MISSING)
+
+# The three file states that mean "a step builds this". The complement of
+# STATIC_DECLARED_STATES within the states a glob match can resolve to, except for
+# AWAITED, which is a build product whose producer may not have run yet and is therefore
+# reported as a warning, not an error (see Workflow.check_glob_matches).
+BUILT_PRODUCT_STATES = (FileState.BUILT, FileState.OUTDATED, FileState.VOLATILE)
+
+
+def _static_tree_file_message(tree_path: str, path: str) -> str:
+    """Format the error for a static file declaration colliding with a static tree.
+
+    Both directions produce this exact text: `_declare_file` raises it when the tree
+    was declared first, `register_static_tree` when the file was. A byte-identical
+    message is what makes the diagnostic independent of execution order.
+
+    Parameters
+    ----------
+    tree_path
+        The static tree's label, with a trailing slash.
+    path
+        The file inside the tree that a `static()` call tried to declare.
+
+    Returns
+    -------
+    message
+        The error message.
+    """
+    return (
+        f"Static tree ({tree_path}) and static file ({path}) cannot both be declared: "
+        "a static tree is the sole owner of the files under it, in either order. "
+        "Drop the file declaration; use glob() to list files inside a tree."
+    )
+
+
+def _static_tree_product_message(tree_path: str, path: str) -> str:
+    """Format the error for a build product colliding with a static tree.
+
+    The mirror of `_static_tree_file_message` for the other collision: a step output
+    or volatile output under a tree, in either declaration order.
+
+    Parameters
+    ----------
+    tree_path
+        The static tree's label, with a trailing slash.
+    path
+        The build product inside the tree.
+
+    Returns
+    -------
+    message
+        The error message.
+    """
+    return (
+        f"Static tree ({tree_path}) cannot contain build product ({path}): "
+        "a static tree is the sole owner of the files under it, in either order. "
+        "Move the output outside the tree, or narrow the tree."
+    )
+
+
 @attrs.define
 class SupplyInfo:
     """Result of the `_supply_files` method, for internal use only."""
@@ -222,6 +303,28 @@ class SupplyInfo:
 
     new_idep: int | None = attrs.field()
     """Dependency identifier when the relation is new, None otherwise."""
+
+
+@attrs.define(frozen=True, order=True)
+class GlobViolation:
+    """A recorded glob match that no static declaration justifies."""
+
+    step_label: str = attrs.field()
+    """The label of the step that registered the pattern."""
+
+    pattern: str = attrs.field()
+    """The glob pattern, as registered."""
+
+    path: str = attrs.field()
+    """The offending match, relative to the root, directories with a trailing slash."""
+
+    state: FileState | None = attrs.field(default=None, order=False)
+    """The state of the attached file node, or `None` when the match has no node."""
+
+    @property
+    def is_error(self) -> bool:
+        """Whether the match is a build product, i.e. an error rather than a warning."""
+        return self.state in BUILT_PRODUCT_STATES
 
 
 @attrs.define(eq=False)
@@ -765,6 +868,31 @@ class Workflow(Trellis):
             return srs[0]
         return None
 
+    def _is_own_static_file(self, creator: Node, path: str) -> bool:
+        """Test whether `creator` already declared `path` as a static file.
+
+        Parameters
+        ----------
+        creator
+            The node re-declaring the file.
+        path
+            The (normalized) path of the file.
+
+        Returns
+        -------
+        is_own
+            Whether an attached file node for `path` exists, was created by `creator`, and
+            is in a state that a static declaration can produce.
+        """
+        states = ", ".join(str(state.value) for state in STATIC_DECLARED_STATES)
+        sql = (
+            "SELECT 1 FROM node JOIN file ON file.node = node.i "
+            "WHERE node.kind = 'file' AND NOT node.detached "
+            "AND node.label = ? AND node.creator = ? "
+            f"AND file.state IN ({states})"
+        )
+        return self.db.execute(sql, (path, creator.i)).fetchone() is not None
+
     def _raise_if_forbidden_target(self, path: str, state: FileState):
         """Raise when `path` is a build target in a state a target may never have.
 
@@ -931,10 +1059,9 @@ class Workflow(Trellis):
         if creator.kind() != "st":
             static_tree = self._find_matching_static_tree(path)
             if static_tree is not None:
-                raise GraphError(
-                    f"Cannot manually add a file ({path}) "
-                    f"that matches a static tree ({static_tree.label})."
-                )
+                if file_state == FileState.UNCONFIRMED:
+                    raise GraphError(_static_tree_file_message(static_tree.label, path))
+                raise GraphError(_static_tree_product_message(static_tree.label, path))
         self._raise_if_forbidden_target(path, file_state)
         if path.startswith(STEPUP_DIR + os.sep):
             raise GraphError(f"Cannot declare a file under {STEPUP_DIR}: {path}")
@@ -949,6 +1076,38 @@ class Workflow(Trellis):
             # Watch parent directories of non-volatile files.
             self.put_dir_queue(Path(path).parent)
         return file
+
+    def _raise_if_glob_match(self, step_label: str, paths: Collection[str]) -> None:
+        """Raise when a registered glob pattern matches a path a step is about to build.
+
+        This is the late-arriving half of the rule that a glob pattern may only match
+        static files: `register_glob` catches the outputs that already exist, this
+        catches the ones declared afterwards. Whichever event happens second is the one
+        that raises, which is what makes the rule independent of execution order.
+
+        Parameters
+        ----------
+        step_label
+            The label of the step declaring `paths`, or its command when the step node
+            does not exist yet (`define_step`, before the recycle short-circuit).
+        paths
+            The output and volatile paths the step is about to declare.
+        """
+        if not paths:
+            return
+        sql = (
+            "SELECT node.i, node.label, nglob.pattern, nglob.regex FROM nglob "
+            "JOIN node ON node.i = nglob.node WHERE NOT node.detached"
+        )
+        for _node_i, glob_step_label, pattern, regex in self.db.execute(sql):
+            for path in sorted(paths):
+                if _compiled(regex).fullmatch(path):
+                    raise GraphError(
+                        f"Glob pattern ({pattern}) registered by step ({glob_step_label}) "
+                        f"matches ({path}), which step ({step_label}) builds. "
+                        "A glob pattern may only match static files: narrow the pattern, "
+                        "or declare the file with static() instead of building it."
+                    )
 
     def _build_to_check(self, deferred: Collection[File]) -> dict[str, FileHash]:
         """Collect the currently known hashes of UNCONFIRMED file nodes, keyed by path.
@@ -1001,6 +1160,17 @@ class Workflow(Trellis):
         -------
         to_check
             The known hashes of the files to check, keyed by path.
+            A path skipped because it is already declared static by the same creator
+            contributes no entry here.
+
+        Raises
+        ------
+        GraphError
+            When a path lies inside a static tree owned by another creator.
+
+        Notes
+        -----
+        Declaring a file that the same creator already declared static is a no-op.
         """
         if isinstance(paths, str):
             raise TypeError("The paths argument cannot be a string.")
@@ -1010,47 +1180,38 @@ class Workflow(Trellis):
             return {}
         # Sort paths to make the operation deterministic.
         paths = sorted(set(paths))
+        own_tree_paths = []
         if creator.kind() != "st":
-            # A path already owned by a static tree is a no-op here:
-            # the tree adopts it lazily when it is first used as a step input.
+            # A path the same creator already declared static is a no-op, so that
+            # overlapping declarations (two patterns, or a pattern and its own literal
+            # match) compose instead of colliding. Its parent directory is already
+            # watched by the first declaration, so put_dir_queue is not repeated here.
+            # A path inside a static tree belongs to that tree, which is its sole owner.
+            # The step that declared the tree may name such a path as often as it likes:
+            # the declaration is handed over to the tree, so that it does not matter
+            # whether the tree or the file was declared first. Any other step naming it
+            # is an error, again in either order (see `register_static_tree`).
             # (`register_static_tree` calls this method with the tree itself as creator,
-            # for paths *inside* the tree being registered, which must not be filtered out.)
-            # Still watch the parent directory of each filtered-out path,
-            # so a glob() whose matches are not (yet) consumed as step inputs
-            # remains reactive in watch mode.
+            # for paths *inside* the tree being registered; hence the `kind() != "st"`
+            # guard here and in `_declare_file`.)
             kept = []
             for path in paths:
-                if self._find_matching_static_tree(path) is None:
+                static_tree = self._find_matching_static_tree(path)
+                if static_tree is not None:
+                    tree_creator = static_tree.creator()
+                    if tree_creator is None or tree_creator.i != creator.i:
+                        raise GraphError(_static_tree_file_message(static_tree.label, path))
+                    own_tree_paths.append((static_tree, path))
+                elif not self._is_own_static_file(creator, path):
                     kept.append(path)
-                else:
-                    self.put_dir_queue(Path(path).parent)
             paths = kept
         # Define the files whose hashes must be checked.
         unconfirmed = [self._declare_file(creator, path, FileState.UNCONFIRMED) for path in paths]
-        return self._build_to_check(unconfirmed)
-
-    def check_dir_matches_static_tree(self, paths: Collection[str]) -> None:
-        """Verify that every directory match of a glob pattern lies inside a static tree.
-
-        Parameters
-        ----------
-        paths
-            Directory paths (ending with `/`) matched by a glob pattern.
-
-        Raises
-        ------
-        GraphError
-            When a directory does not lie inside a static tree, or is not itself a
-            static tree root. Outside a static tree, StepUp has no evidence that the
-            directory is source material rather than a step's build product, so the
-            match set could depend on build progress.
-        """
-        for path in sorted(set(paths)):
-            if self._find_matching_static_tree(path) is None:
-                raise GraphError(
-                    f"Directory match ({path}) does not lie inside a static tree. "
-                    "Declare a static tree with static() before glob()-ing directories under it."
-                )
+        unconfirmed.extend(
+            self._declare_file(static_tree, path, FileState.UNCONFIRMED)
+            for static_tree, path in own_tree_paths
+        )
+        return self._build_to_check(sorted(unconfirmed, key=lambda file: file.path))
 
     def register_static_tree(self, creator: Node, path: str) -> dict[str, FileHash]:
         """Install a static tree.
@@ -1067,6 +1228,10 @@ class Workflow(Trellis):
         to_check
             The known hashes of the matching files whose existence and validity must be
             checked, keyed by path.
+
+        Notes
+        -----
+        Registering a tree that the same creator's tree already covers is a no-op.
         """
         if not isinstance(path, str):
             raise TypeError("The argument path must be a string.")
@@ -1074,12 +1239,30 @@ class Workflow(Trellis):
             raise ValueError(f"Static tree paths cannot be absolute paths: {path}")
         if has_any_wildcards(path):
             raise ValueError(f"Static tree does not support wildcards: {path}")
+        if path == STEPUP_DIR or path.startswith(STEPUP_DIR + os.sep):
+            raise GraphError(f"Cannot declare a static tree under {STEPUP_DIR}: {path}")
         if creator.is_detached():
             # The creator has moved on without this call (see Step.detach()), so
             # registering a static tree for it is moot.
             return {}
         path = Path(path) / ""
-        if self._find_matching_static_tree(path) is not None:
+        if path in ("./", ""):
+            # A root tree would have to own plan.py and every step output, which
+            # defeats the point of a static tree. Reject it explicitly: without this
+            # check, `_find_matching_static_tree`'s `substr(label, 1, length(label))`
+            # comparison never matches an in-root label (which carries no `./` prefix),
+            # so a root tree would otherwise silently own nothing and block nothing.
+            raise GraphError(
+                "A static tree cannot be the project root: it would have to own "
+                "plan.py and every step output. Declare the subdirectories instead."
+            )
+        static_tree = self._find_matching_static_tree(path)
+        if static_tree is not None:
+            own_creator = static_tree.creator()
+            if own_creator is not None and own_creator.i == creator.i:
+                # This creator already covers `path` with a static tree of its own,
+                # so re-registering it adds nothing.
+                return {}
             raise GraphError(f"Static tree is a subdirectory of an existing static tree: {path}")
         sql = "SELECT 1 FROM node WHERE kind = 'st' AND NOT detached AND label LIKE ? ESCAPE '\\'"
         pattern = f"{escape_like_pattern(path)}%"
@@ -1087,26 +1270,40 @@ class Workflow(Trellis):
             raise GraphError(
                 f"Static tree is a parent directory of an existing static tree: {path}"
             )
-        # A static tree must be declared before any file it contains: reject when an
-        # attached file node already exists under this path.
+        # A static tree is the sole owner of the files under it. Attached file nodes
+        # already present under this path are therefore either this creator's own static
+        # declarations, which the tree takes over below, or a violation. Which of the two
+        # declarations came first only decides where the error is raised, not what it
+        # says (see `_static_tree_file_message`).
         pattern = f"{escape_like_pattern(path)}%"
         sql = (
-            "SELECT node.label FROM node JOIN file ON node.i = file.node "
+            "SELECT node.i, node.label, node.creator, file.state "
+            "FROM node JOIN file ON node.i = file.node "
             "WHERE NOT node.detached AND node.label LIKE ? ESCAPE '\\' "
-            "ORDER BY node.label LIMIT 1"
+            "ORDER BY node.label"
         )
-        row = self.db.execute(sql, (pattern,)).fetchone()
-        if row is not None:
-            (existing_path,) = row
-            raise GraphError(
-                f"Static tree ({path}) cannot be declared: "
-                f"it contains ({existing_path}), which was already declared. "
-                "Declare a static tree before the files it contains."
-            )
+        handover = []
+        for node_i, existing_path, existing_creator, existing_state in self.db.execute(
+            sql, (pattern,)
+        ):
+            if existing_state not in STATIC_DECLARED_STATES:
+                raise GraphError(_static_tree_product_message(path, existing_path))
+            if existing_creator != creator.i:
+                raise GraphError(_static_tree_file_message(path, existing_path))
+            handover.append(node_i)
         st = self.create(StaticTree, creator, path)
+        # The creator declared these files itself, before declaring the tree that
+        # contains them. The tree is their sole owner, so transfer them to it. This is a
+        # deliberate bypass of Trellis.create(): going through it would treat the
+        # transfer as a recycle and call Step.lost_product() on the old creator, deleting
+        # the hash of the very step that is handing them over and making it permanently
+        # unskippable. Nothing is lost here -- the creator re-declares both the files and
+        # the tree on its next run -- so the creator column is simply reassigned.
+        for node_i in handover:
+            self.db.execute("UPDATE node SET creator = ? WHERE i = ?", (st.i, node_i))
         # Adopt matching detached file nodes, e.g. leftovers from a previous run.
-        # Attached nodes are excluded: the check above already rejects any of those,
-        # so only detached ones can remain here.
+        # Attached nodes owned by this creator were handed over just above;
+        # any other attached node raised.
         sql = (
             "SELECT label FROM node JOIN file ON node.i = file.node "
             "WHERE node.detached AND node.label LIKE ? ESCAPE '\\'"
@@ -1114,14 +1311,83 @@ class Workflow(Trellis):
         matching_paths = [path for (path,) in self.db.execute(sql, (pattern,))]
         return self.declare_unconfirmed(st, matching_paths)
 
-    def register_nglob(self, step: Step, ng: NamedGlob):
+    def register_glob(self, step: Step, ng: NamedGlob) -> None:
+        """Register a glob pattern used by a step and validate its matches.
+
+        Parameters
+        ----------
+        step
+            The step that called `glob()` (or `static()` with a pattern).
+        ng
+            The pattern and the matches found by the client's filesystem scan.
+
+        Raises
+        ------
+        GraphError
+            When a match is a known build product, or lies under the `.stepup` directory.
+
+        Notes
+        -----
+        A pattern owns nothing: this only records the pattern, so the step becomes
+        pending when the match set changes, and rejects matches that a glob may never
+        see. Matches that are not (yet) justified are accepted here; Phase 4 catches
+        the ones that never become justified.
+        """
         if not isinstance(step, Step):
             raise TypeError(f"step must be a Step instance, got: {step!r}")
         if step.is_detached():
             # The step's creator has moved on without it (see Step.detach()), so
             # registering more nglobs for it is moot.
             return
-        step.register_nglob(ng)
+
+        paths = ng.files()
+
+        # Eager check (a): a match cannot already be a known build product. Detached
+        # nodes are excluded: an AWAITED file with no producer is created with
+        # creator=None, and Trellis.create forces detached=True in that case, so such
+        # a node is not a claim that the file is a build product. The LEFT JOIN is
+        # therefore only defensive here.
+        if paths:
+            db = self.db
+            db.execute("DELETE FROM path_list")
+            db.executemany("INSERT INTO path_list VALUES (?)", ((path,) for path in paths))
+            sql = (
+                "SELECT node.label, creator.label FROM node "
+                "JOIN file ON file.node = node.i "
+                "LEFT JOIN node AS creator ON creator.i = node.creator "
+                "WHERE node.kind = 'file' AND NOT node.detached "
+                "AND node.label IN (SELECT path FROM path_list) "
+                f"AND file.state IN ({FileState.AWAITED.value}, {FileState.BUILT.value}, "
+                f"{FileState.OUTDATED.value}, {FileState.VOLATILE.value}) "
+                "ORDER BY node.label LIMIT 1"
+            )
+            row = db.execute(sql).fetchone()
+            if row is not None:
+                path, creator_label = row
+                raise GraphError(
+                    f"Glob pattern ({ng.pattern}) registered by step ({step.label}) matches "
+                    f"({path}), which step ({creator_label}) builds. "
+                    "A glob pattern may only match static files: narrow the pattern, "
+                    "or declare the file with static() instead of building it."
+                )
+
+        # Reject matches under .stepup/, mirroring the rule _declare_file applies.
+        # This is load-bearing, not defensive: NamedGlob does not skip dot entries the
+        # way the standard library's glob does.
+        for path in paths:
+            if path.startswith(STEPUP_DIR + os.sep):
+                raise GraphError(
+                    f"Glob pattern ({ng.pattern}) matches a path under {STEPUP_DIR}: {path}"
+                )
+
+        step.register_glob(ng)
+
+        # Watch the directories that could produce a new match: the parent of every
+        # current match, and the pattern's base directory, so a zero-match pattern
+        # still notices its first match appearing.
+        for path in paths:
+            self.put_glob_dir_queue(Path(path.rstrip(os.sep)).parent)
+        self.put_glob_dir_queue(glob_base_dir(ng.pattern))
 
     def define_step(
         self,
@@ -1220,6 +1486,11 @@ class Workflow(Trellis):
                 raise GraphError(
                     "Variable(s) set by StepUp cannot be overridden: " + ", ".join(sorted(reserved))
                 )
+        # This step does not exist yet, so a registered glob pattern that already matches
+        # one of its outputs is named by `command` rather than by a step label. Checked
+        # before the recycle short-circuit below, so it applies uniformly to a fresh
+        # definition and a re-definition.
+        self._raise_if_glob_match(command, out_paths + vol_paths)
 
         # If a compatible detached step is found, fully recycle it, instead of creating
         # a new one. This restores the step and its products (recursively), preserving
@@ -1375,6 +1646,8 @@ class Workflow(Trellis):
         # Process vars
         step.amend_env_deps(env_deps)
 
+        self._raise_if_glob_match(step.label, out_paths + vol_paths)
+
         # Create out_paths
         for out_path in out_paths:
             file = self._declare_file(step, out_path, FileState.AWAITED)
@@ -1394,14 +1667,46 @@ class Workflow(Trellis):
     # Watch phase
     #
 
+    def matches_any_glob(self, path: str) -> bool:
+        """Test whether any registered glob pattern matches `path`.
+
+        This is the relevance test for a path with no node of its own: after a pattern
+        stopped declaring its matches, the pattern itself is the only record that the
+        path is interesting. Deliberately not `NamedGlob.may_change`, which answers a
+        different question (it discards a path that is already a recorded match, so it
+        cannot see a deletion) and deserializes every match set to do it.
+        """
+        sql = (
+            "SELECT nglob.regex FROM nglob JOIN node ON node.i = nglob.node WHERE NOT node.detached"
+        )
+        return any(_compiled(regex).fullmatch(path) for (regex,) in self.db.execute(sql))
+
     def is_relevant(self, path: str) -> bool:
         file, detached = self.find_detached(File, path)
         if not (file is None or detached):
             return file.get_state() not in (FileState.AWAITED, FileState.VOLATILE)
-        return any(ng.may_change(set(), {path}) for ng in self.nglobs())
+        return self.matches_any_glob(path)
+
+    def is_relevant_during_build(self, path: str) -> bool:
+        """Relevance test for events observed while a build phase was running.
+
+        Stricter than `is_relevant`: a file the build itself is writing is not a user
+        edit, so only `STATIC` and `MISSING` nodes qualify. A path with no node at all
+        is judged by the registered glob patterns, as in `is_relevant`; no step can be
+        building it, since a pattern may not match a build product.
+        """
+        file, detached = self.find_detached(File, path)
+        if not (file is None or detached):
+            return file.get_state() in (FileState.STATIC, FileState.MISSING)
+        return self.matches_any_glob(path)
 
     def relevant_paths(self, parent: str) -> Iterator[str]:
-        """Iterate over all non-detached files that are relevant for a given parent directory."""
+        """Iterate over all paths under `parent` whose disappearance is relevant.
+
+        Both file nodes and the recorded matches of glob patterns are considered: a
+        match has no node of its own, so the pattern is the only place it is recorded.
+        """
+        seen = set()
         sql = (
             "SELECT label FROM node JOIN file ON node.i = file.node "
             f"WHERE state NOT IN ({FileState.AWAITED.value}, {FileState.VOLATILE.value}) AND "
@@ -1409,17 +1714,122 @@ class Workflow(Trellis):
         )
         pattern = f"{escape_like_pattern(parent)}%"
         for (path,) in self.db.execute(sql, (pattern,)):
+            seen.add(path)
             yield path
+        for ng in self.nglobs():
+            for path in ng.files():
+                if path.startswith(parent) and path not in seen:
+                    seen.add(path)
+                    yield path
 
     def nglobs(self, yield_step: bool = False) -> Iterator[NamedGlob | tuple[int, NamedGlob, Step]]:
         sql = (
-            "SELECT node.i, label, kind, nglob.i, data FROM node JOIN nglob ON node.i = nglob.node"
+            "SELECT node.i, label, kind, nglob.i, data FROM node "
+            "JOIN nglob ON node.i = nglob.node WHERE NOT node.detached"
         )
         for node_i, label, kind, nglob_i, data in self.db.execute(sql):
             if kind != "step":
                 raise ValueError("Only steps can define nglobs")
             ng = json_converter.structure(json.loads(data), NamedGlob)
             yield (nglob_i, ng, Step(self, node_i, label)) if yield_step else ng
+
+    def check_glob_matches(self) -> list[GlobViolation]:
+        """Find recorded glob matches that no static declaration justifies.
+
+        Runs once at the end of every build phase, over the persisted `nglob` table
+        rather than over the patterns registered during this phase, which makes it
+        order-independent and idempotent across restarts.
+        See `finalize.report_completion` for the reporting side.
+
+        Returns
+        -------
+        violations
+            The unjustified matches, sorted by (step label, pattern, path).
+        """
+        records = []
+        paths = set()
+        for _nglob_i, ng, step in self.nglobs(yield_step=True):
+            for path in ng.files():
+                records.append((step.label, ng.pattern, str(path)))
+                paths.add(str(path))
+        if len(records) == 0:
+            return []
+
+        # Resolve every match against the attached file nodes in one bulk query.
+        # See get_file_hashes for why this uses an IN subquery against path_list.
+        db = self.db
+        db.execute("DELETE FROM path_list")
+        db.executemany("INSERT INTO path_list VALUES (?)", ((path,) for path in paths))
+        sql = (
+            "SELECT node.label, file.state FROM node "
+            "JOIN file ON file.node = node.i "
+            "WHERE node.kind = 'file' AND NOT node.detached "
+            "AND node.label IN (SELECT path FROM path_list)"
+        )
+        states = {path: FileState(value) for path, value in db.execute(sql)}
+
+        # Static tree roots are few, so a prefix test in Python beats a join per match.
+        tree_labels = [
+            label
+            for (label,) in db.execute("SELECT label FROM node WHERE kind = 'st' AND NOT detached")
+        ]
+
+        violations = []
+        for step_label, pattern, path in records:
+            state = states.get(path)
+            if state is not None:
+                if state in STATIC_DECLARED_STATES:
+                    continue
+            elif self._is_justified_without_node(path, tree_labels) or not Path(path).exists():
+                # A match deleted during the build is not the user's fault to fix:
+                # the watcher and the startup rescan already handle its disappearance.
+                continue
+            violations.append(GlobViolation(step_label, pattern, path, state))
+        return sorted(violations)
+
+    def _is_justified_without_node(self, path: str, tree_labels: list[str]) -> bool:
+        """Test whether a match with no file node of its own is nevertheless justified.
+
+        Parameters
+        ----------
+        path
+            The match, root-relative, directories with a trailing separator.
+        tree_labels
+            The labels of all attached static trees, each with a trailing separator.
+
+        Returns
+        -------
+        justified
+            Whether `path` is (inside) a static tree, or a directory that contains a
+            static tree or a static file.
+        """
+        # A) Inside a static tree, or a static tree root itself.
+        # Appending a separator reproduces _find_matching_static_tree's `Path(path) / ""` exactly.
+        probe = path if path.endswith(os.sep) else path + os.sep
+        if any(probe.startswith(label) for label in tree_labels):
+            return True
+        if not path.endswith(os.sep):
+            return False
+        # B) Directory-only arms: the match contains a static tree, or a static file.
+        # A root match ("./") contains every label, which the prefix range cannot express:
+        # labels are root-relative and carry no "./" prefix,
+        # so dir_range_upper("./") == ".0" would match nothing.
+        # Drop the range instead of inventing a sentinel upper bound
+        # (SQLite compares TEXT byte-wise by default, so no string is a reliable maximum).
+        is_root = path in ("./", "/")
+        if any(is_root or label.startswith(path) for label in tree_labels):
+            return True
+        states = ", ".join(str(state.value) for state in STATIC_DECLARED_STATES)
+        sql = (
+            "SELECT 1 FROM node JOIN file ON file.node = node.i "
+            "WHERE node.kind = 'file' AND NOT node.detached "
+            f"AND file.state IN ({states}) "
+        )
+        args = ()
+        if not is_root:
+            sql += "AND node.label >= ? AND node.label < ? "
+            args = (path, dir_range_upper(path))
+        return self.db.execute(sql + "LIMIT 1", args).fetchone() is not None
 
     def process_nglob_changes(self, deleted: Collection[str], added: Collection[str]):
         """Mark steps with nglob pending if they are affected by the deleted and updated paths.
@@ -1486,3 +1896,16 @@ class Workflow(Trellis):
             path.makedirs_p()
         if self.dir_queue is not None:
             self.dir_queue.put_nowait(path)
+
+    def put_glob_dir_queue(self, path: str):
+        """Watch the nearest existing ancestor of `path`, without creating directories.
+
+        Unlike `put_dir_queue`, this never calls `makedirs_p`: a glob pattern only
+        observes the filesystem, so registering one must not create the directory it
+        points at. When the directory does not exist, the closest existing ancestor is
+        watched instead, which is the best that can be done without creating anything.
+        """
+        path = Path(path) if path else Path(".")
+        while path not in ("", ".") and not path.is_dir():
+            path = path.parent
+        self.put_dir_queue(path if path != "" else ".")

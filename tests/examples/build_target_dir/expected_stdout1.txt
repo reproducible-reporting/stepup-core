@@ -11,7 +11,8 @@
     START │ ./gen.py run '{"out": ["out/result.txt"]}'
   SUCCESS │ ./gen.py run '{"out": ["out/result.txt"]}'
  DIRECTOR │ Ran 5 job(s).
- DIRECTOR │ Trying to remove 0 outdated output(s)
+  WARNING │ Skipping file cleanup for a build restricted to targets
+  WARNING │ Check logs: .stepup/warning.log
     PHASE │ watch
  DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
  DIRECTOR │ See you!

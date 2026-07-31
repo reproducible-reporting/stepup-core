@@ -20,6 +20,11 @@ st:src/
              creator   step:./plan.py
              product   file:src/foo.txt
 
+file:src/foo.txt
+               state = STATIC
+             creator   st:src/
+                sink   step:cat src/foo.txt > copy.txt
+
 step:cat src/foo.txt > copy.txt
                state = SUCCEEDED
                 need = DEFAULT
@@ -27,11 +32,6 @@ step:cat src/foo.txt > copy.txt
               source   file:src/foo.txt
              product   file:copy.txt
                 sink   file:copy.txt
-
-file:src/foo.txt
-               state = STATIC
-             creator   st:src/
-                sink   step:cat src/foo.txt > copy.txt
 
 file:copy.txt
                state = BUILT

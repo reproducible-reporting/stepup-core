@@ -70,15 +70,20 @@ __all__ = (
     "NamedGlobMatch",
     "convert_nglob_to_glob",
     "convert_nglob_to_regex",
+    "glob_base_dir",
     "has_any_wildcards",
+    "has_trailing_recursive_wildcard",
     "iter_wildcard_names",
 )
 
+RE_TRAILING_RECURSIVE_WILD_PARTS = [
+    r"^[*][*]$",  # recursive ** wildcard, full string
+    r"(?<=/)[*][*]$",  # recursive ** wildcard, trailing
+]
 
 RE_WILD_PARTS = [
-    r"^[*][*]$",  # recursive ** wildcard, full string
+    *RE_TRAILING_RECURSIVE_WILD_PARTS,
     r"^[*][*]/",  # recursive ** wildcard, leading
-    r"(?<=/)[*][*]$",  # recursive ** wildcard, trailing
     r"(?<=/)[*][*]/",  # recursive ** wildcard, middle
     r"\[.*?]",  # anonymous [abc] wildcard
     r"[*]",  # anonymous * wildcard
@@ -87,6 +92,7 @@ RE_WILD_PARTS = [
 ]
 
 RE_ANY_WILD = re.compile("(" + "|".join(RE_WILD_PARTS) + ")")
+RE_TRAILING_RECURSIVE_WILD = re.compile("(" + "|".join(RE_TRAILING_RECURSIVE_WILD_PARTS) + ")")
 
 
 @attrs.define
@@ -362,6 +368,20 @@ def has_any_wildcards(pattern: str) -> bool:
     return RE_ANY_WILD.search(pattern) is not None
 
 
+def has_trailing_recursive_wildcard(pattern: str) -> bool:
+    """Test if a glob pattern ends with a recursive `**` wildcard.
+
+    True when the pattern is exactly `**`,
+    or its last path component is `**` (e.g. `src/**`).
+    A `**` earlier in the pattern (leading or middle, e.g. `**/src/x` or `src/**/x`)
+    does not count:
+    it still enumerates eagerly,
+    but it does not collapse the final path component,
+    so it lacks the "declare the tree instead" replacement that a trailing `**` has.
+    """
+    return RE_TRAILING_RECURSIVE_WILD.search(pattern) is not None
+
+
 def has_anonymous_wildcards(pattern: str) -> bool:
     """Test if a glob pattern has anonymous wildcards."""
     for ipart, part in enumerate(RE_ANY_WILD.split(pattern)):
@@ -593,3 +613,27 @@ def convert_nglob_to_glob(pattern: str, subs: dict[str, str] | None = None) -> s
         else:
             texts.append(part)
     return "".join(texts)
+
+
+def glob_base_dir(pattern: str) -> str:
+    """Return the longest wildcard-free directory prefix of a glob pattern.
+
+    The result never has a trailing separator, and is `.` when the first path component
+    already contains a wildcard, so it can be handed to `Workflow.put_dir_queue` directly.
+
+    Parameters
+    ----------
+    pattern
+        A (named) glob pattern, relative to the project root.
+
+    Returns
+    -------
+    base_dir
+        The directory below which every match of `pattern` must lie.
+    """
+    parts = []
+    for part in pattern.split("/")[:-1]:
+        if has_any_wildcards(part):
+            break
+        parts.append(part)
+    return "/".join(parts) if parts else "."

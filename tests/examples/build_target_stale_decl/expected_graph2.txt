@@ -16,6 +16,10 @@ step:./plan.py
              product   file:input.txt
              product   step:cp -p input.txt out.txt
 
+(step:touch out.txt)
+               state = SUCCEEDED
+                need = DEFAULT
+
 file:out.txt
                state = BUILT
              creator   step:cp -p input.txt out.txt
