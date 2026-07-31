@@ -71,6 +71,7 @@ EXAMPLES = [
     "clean_drained_scheduler",
     "clean_nonexisting",
     "clean_detached",
+    "command_callable",
     "config_sections",
     "copy_mkdir",
     "cyclic_dynamic",
@@ -337,6 +338,7 @@ def test_examples_list_has_no_extra():
     "name",
     [
         "amend",
+        "command_callable",
         "not_cyclic",
         "optional_convert",
         "script_single",

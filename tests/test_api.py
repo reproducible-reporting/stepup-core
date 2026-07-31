@@ -4,6 +4,7 @@
 
 import logging
 import pathlib
+import re
 
 import attrs
 import pytest
@@ -28,7 +29,7 @@ from stepup.core.api import (
     static,
     step,
 )
-from stepup.core.exceptions import AmendWhileHoldingError, PathError
+from stepup.core.exceptions import AmendWhileHoldingError, PathError, StepUpError
 from stepup.core.nglob import NamedGlob
 from stepup.core.rpc import DummySyncRPCClient
 
@@ -256,7 +257,7 @@ def captured_step_kwargs(monkeypatch):
     calls = []
 
     def mock_step(command, **kwargs):
-        calls.append(kwargs)
+        calls.append({"command": command, **kwargs})
 
     monkeypatch.setattr("stepup.core.api.step", mock_step)
     monkeypatch.setattr("stepup.core.api.amend", noop_amend)
@@ -304,6 +305,120 @@ def test_shq_env_var(monkeypatch):
     monkeypatch.setattr("stepup.core.api.amend", noop_amend)
     monkeypatch.setenv("MYVAR", "sub")
     assert shq("${MYVAR}/a.txt") == "sub/a.txt"
+
+
+def test_command_callable_step_out(monkeypatch):
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    info = step(lambda out: f"./gen.py {shq(out)}", out=["a.txt", "b.txt"])
+    assert info.command == "./gen.py a.txt b.txt"
+    assert info.out == ["a.txt", "b.txt"]
+
+
+def test_command_callable_step_all_params(monkeypatch):
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    info = step(
+        lambda inp, out, vol: f"./gen.py {shq(inp)} {shq(out)} --log {shq(vol)}",
+        inp=["in put.txt"],
+        out=["a.txt"],
+        vol=["gen.log"],
+    )
+    assert info.command == "./gen.py 'in put.txt' a.txt --log gen.log"
+    assert info.inp == ["in put.txt"]
+    assert info.out == ["a.txt"]
+    assert info.vol == ["gen.log"]
+
+
+def test_command_callable_step_no_params(monkeypatch):
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    info = step(lambda: "echo hello")
+    assert info.command == "echo hello"
+
+
+def test_command_callable_step_env_var(monkeypatch):
+    """One substitution feeds both the command text and the declared paths."""
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    monkeypatch.setenv("MYVAR", "sub")
+    info = step(lambda out: f"./gen.py {shq(out)}", out=["${MYVAR}/a.txt"])
+    assert info.command == "./gen.py sub/a.txt"
+    assert info.out == ["sub/a.txt"]
+
+
+def test_command_callable_run_excludes_exe(captured_step_kwargs):
+    """The callable's `inp` never holds the executable that `run()` detects in the command.
+
+    The executable is derived from the command text, which does not exist yet when the
+    callable is called. It is also what one wants: the executable already appears as the
+    first word of the command the callable writes.
+    """
+    seen = []
+
+    def make_command(inp):
+        seen.append(list(inp))
+        return f"./script.py {shq(inp)}"
+
+    run(make_command, inp="data.csv")
+    assert seen == [[Path("data.csv")]]
+    assert captured_step_kwargs[-1]["command"] == "./script.py data.csv"
+    assert captured_step_kwargs[-1]["inp"] == ["./script.py", "data.csv"]
+
+
+def test_command_callable_plan_exe(captured_step_kwargs):
+    seen = []
+
+    def make_command(inp):
+        seen.append(list(inp))
+        return f"./plan.py {shq(inp)}"
+
+    plan(make_command, inp="config.toml")
+    assert seen == [[Path("config.toml")]]
+    assert captured_step_kwargs[-1]["command"] == "./plan.py config.toml"
+    assert captured_step_kwargs[-1]["inp"] == ["./plan.py", "config.toml"]
+
+
+def test_command_callable_plan_without_exe_raises(captured_step_kwargs):
+    """The error message shows the resolved command, not a `<lambda>` repr."""
+    with pytest.raises(PathError, match=re.escape("echo a.txt")):
+        plan(lambda out: f"echo {shq(out)}", out="a.txt")
+    assert len(captured_step_kwargs) == 0
+
+
+def test_command_callable_run_env_overrides(captured_step_kwargs):
+    run(lambda out: f"OMP_NUM_THREADS=4 ./gen.py {shq(out)}", out="a.txt")
+    assert captured_step_kwargs[-1]["command"] == "./gen.py a.txt"
+    assert captured_step_kwargs[-1]["env_overrides"] == {"OMP_NUM_THREADS": "4"}
+    assert captured_step_kwargs[-1]["inp"] == ["./gen.py"]
+
+
+def _positional_only_command(inp, /):
+    return f"./gen.py {shq(inp)}"
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        lambda foo: "x",
+        lambda *args: "x",
+        lambda **kwargs: "x",
+        _positional_only_command,
+    ],
+)
+def test_command_callable_invalid_signature(monkeypatch, command):
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    with pytest.raises(StepUpError):
+        step(command, inp="a.txt")
+
+
+def test_command_callable_generator_inp(captured_step_kwargs):
+    """A single-use iterable must not be exhausted by the callable resolution pass."""
+    run(lambda inp: f"./gen.py {shq(inp)}", inp=(p for p in ["a.txt", "b.txt"]))
+    assert captured_step_kwargs[-1]["command"] == "./gen.py a.txt b.txt"
+    assert captured_step_kwargs[-1]["inp"] == ["./gen.py", "a.txt", "b.txt"]
+
+
+def test_command_callable_empty(monkeypatch):
+    monkeypatch.setattr("stepup.core.api.amend", noop_amend)
+    with pytest.raises(StepUpError, match="must not be empty"):
+        step(lambda: "   ")
 
 
 def test_amend_raises_while_holding(monkeypatch):

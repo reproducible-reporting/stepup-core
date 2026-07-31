@@ -68,6 +68,17 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
   before any measurement is available.
   All step-generating API functions (`run()`, `script()`, `call()`, `render_jinja()`, etc.)
   also accept a `duration` argument.
+- The `command` argument of `step()`, `run()` and `plan()` may now be a callable
+  that builds the command from the step's own paths,
+  so a path list no longer has to be named twice:
+
+  ```python
+  run(lambda out: f"./gen.py {shq(out)}", out=["out1.txt", "out2.txt"])
+  ```
+
+  The callable may declare any subset of the parameters `inp`, `out` and `vol`,
+  matched by name, and receives the paths after environment variable substitution
+  and normalization.
 - New `hold()` context manager in `stepup.core.api`, for a step (typically a `plan.py`) to
   wrap a batch of declarations so its children are held back from dispatch until the block
   closes, instead of each being dispatched as soon as it is declared.

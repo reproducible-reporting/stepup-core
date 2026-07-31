@@ -18,6 +18,7 @@ pass a `str` or a `path.Path` to preserve them.
 """
 
 import contextlib
+import inspect
 import json
 import keyword
 import logging
@@ -63,6 +64,7 @@ from .utils import extract_env_overrides, format_command, parse_resources, strin
 
 __all__ = (
     "RPC_CLIENT",
+    "CommandArg",
     "amend",
     "call",
     "copy",
@@ -85,6 +87,11 @@ __all__ = (
 )
 
 logger = logging.getLogger(__name__)
+
+# The `command` argument of `step()`, `run()` and `plan()`:
+# either a path-like object holding the command text,
+# or a callable that builds the command text from the step's own paths.
+CommandArg = StrPath | Callable[..., StrPath]
 
 
 #
@@ -327,7 +334,7 @@ def glob(pattern: StrPath, **subs: str) -> NamedGlob:
 
 
 def step(
-    command: StrPath,
+    command: CommandArg,
     *,
     inp: Iterable[StrPath] | StrPath = (),
     env: Iterable[str] | str = (),
@@ -349,6 +356,15 @@ def step(
         The command is sent to the director verbatim: no placeholder or environment-variable
         substitution is performed on it. Use [`shq()`][stepup.core.api.shq] to embed `inp`,
         `out`, or `vol` paths, e.g. `step(f"cat {shq(inp)} > {shq(out)}", inp=inp, out=out)`.
+        A callable may be given instead of the command text,
+        to build the command from the step's own paths
+        without first assigning those paths to a variable.
+        It may declare any subset of the parameters `inp`, `out` and `vol`,
+        which receive the corresponding path lists
+        after environment variable substitution and normalization,
+        and it must return the command,
+        e.g. `step(lambda out: f"./gen.py {shq(out)}", out=["a.txt", "b.txt"])`.
+        The callable is invoked once, while the step is being defined.
     inp
         File(s) required by the step.
         Relative paths are assumed to be relative to `workdir`.
@@ -409,7 +425,8 @@ def step(
     Raises
     ------
     StepUpError
-        When `command` is empty, when an env override collides with an `env` dependency
+        When `command` is empty, when a command callable declares an unsupported parameter,
+        when an env override collides with an `env` dependency
         or a reserved variable name, when a resource quantity is not a strictly
         positive integer, or when `duration` is not a finite non-negative number.
     PathError
@@ -425,15 +442,12 @@ def step(
     Relative paths in `inp`, `out`, and `vol` are relative to the working directory of the new step.
     """
     # Pre-process the arguments for the Director process.
-    command = coerce_str(command)
+    # The command is resolved after the environment variable substitution below,
+    # because a callable command is built from the substituted paths.
     inp_paths = coerce_paths(inp)
     env_deps = string_to_list(env)
     out_paths = coerce_paths(out)
     vol_paths = coerce_paths(vol)
-
-    # Validate the command
-    if len(command.strip()) == 0:
-        raise StepUpError("The command must not be empty.")
 
     # Validate the duration.
     # `bool` is a subclass of `int`, so it is excluded explicitly to catch callers confusing
@@ -468,6 +482,14 @@ def step(
         su_out_paths = [subs(out_path).normpath() for out_path in out_paths]
         su_vol_paths = [subs(vol_path).normpath() for vol_path in vol_paths]
         su_workdir = subs(workdir).normpath()
+
+    # Build the command text from the substituted paths when a callable is given.
+    command = _resolve_command(command, su_inp_paths, su_out_paths, su_vol_paths)
+
+    # Validate the command
+    if len(command.strip()) == 0:
+        raise StepUpError("The command must not be empty.")
+
     _check_no_directories(su_inp_paths, su_workdir)
     _check_no_directories(su_out_paths, su_workdir)
     _check_no_directories(su_vol_paths, su_workdir)
@@ -960,7 +982,7 @@ def shq(paths: StrPath | Iterable[StrPath]) -> str:
 
 
 def run(
-    command: StrPath,
+    command: CommandArg,
     *,
     inp: Iterable[StrPath] | StrPath = (),
     env: Iterable[str] | str = (),
@@ -1014,6 +1036,22 @@ def run(
 
         Use [`shq()`][stepup.core.api.shq] to embed `inp`, `out`, or `vol` paths in the
         command, e.g. `run(f"./script.py {shq(inp)}", inp=inp)`.
+
+        A callable may be given instead of the command text,
+        to build the command from the step's own paths
+        without first assigning those paths to a variable.
+        It may declare any subset of the parameters `inp`, `out` and `vol`,
+        which receive the corresponding path lists
+        after environment variable substitution and normalization,
+        and it must return the command,
+        e.g. `run(lambda out: f"./gen.py {shq(out)}", out=["a.txt", "b.txt"])`.
+        The callable is invoked once, while the step is being defined.
+        The callable's `inp` holds only the paths passed to `run()`,
+        not the local executable that is detected in the command and added as an input:
+        that executable is derived from the command, which does not exist yet
+        when the callable is called.
+        This is also what one wants, since the executable already appears in the command itself.
+        (The returned `step_info.inp` does include the executable.)
     inp, env, out, vol, workdir, optional, resources, duration
         See [`step()`][stepup.core.api.step] for more information.
 
@@ -1022,17 +1060,20 @@ def run(
     step_info
         Holds relevant information of the step, useful for defining follow-up steps.
     """
+    command, inp_paths, out_paths, vol_paths = _resolve_run_command(
+        command, inp=inp, out=out, vol=vol
+    )
     command, exe, env_overrides = _prepare_run_command(
         command, shell=shell, need_relative_exe=False
     )
     if exe is not None:
-        inp = [exe, *coerce_paths(inp)]
+        inp_paths = [coerce_path(exe), *inp_paths]
     return step(
         command,
-        inp=inp,
+        inp=inp_paths,
         env=env,
-        out=out,
-        vol=vol,
+        out=out_paths,
+        vol=vol_paths,
         workdir=workdir,
         need=Need.OPTIONAL if optional else Need.DEFAULT,
         resources=resources,
@@ -1043,7 +1084,7 @@ def run(
 
 
 def plan(
-    command: StrPath,
+    command: CommandArg,
     *,
     inp: Iterable[StrPath] | StrPath = (),
     env: Iterable[str] | str = (),
@@ -1084,6 +1125,22 @@ def plan(
 
         Use [`shq()`][stepup.core.api.shq] to embed `inp`, `out`, or `vol` paths in the
         command, e.g. `plan(f"./plan.py {shq(inp)}", inp=inp)`.
+
+        A callable may be given instead of the command text,
+        to build the command from the step's own paths
+        without first assigning those paths to a variable.
+        It may declare any subset of the parameters `inp`, `out` and `vol`,
+        which receive the corresponding path lists
+        after environment variable substitution and normalization,
+        and it must return the command,
+        e.g. `plan(lambda inp: f"./plan.py {shq(inp)}", inp=["config.toml"])`.
+        The callable is invoked once, while the step is being defined.
+        The callable's `inp` holds only the paths passed to `plan()`,
+        not the local executable that is detected in the command and added as an input:
+        that executable is derived from the command, which does not exist yet
+        when the callable is called.
+        This is also what one wants, since the executable already appears in the command itself.
+        (The returned `step_info.inp` does include the executable.)
     inp, env, out, vol, workdir, resources, duration
         See [`step()`][stepup.core.api.step] for more information.
 
@@ -1093,14 +1150,17 @@ def plan(
         Holds relevant information of the step, useful for defining follow-up steps.
     """
     # Note that we do not use `run()` here because we need to set `need=Need.PLAN`.
+    command, inp_paths, out_paths, vol_paths = _resolve_run_command(
+        command, inp=inp, out=out, vol=vol
+    )
     command, exe, env_overrides = _prepare_run_command(command, shell=False, need_relative_exe=True)
-    inp = [exe, *coerce_paths(inp)]
+    inp_paths = [coerce_path(exe), *inp_paths]
     return step(
         command,
-        inp=inp,
+        inp=inp_paths,
         env=env,
-        out=out,
-        vol=vol,
+        out=out_paths,
+        vol=vol_paths,
         workdir=workdir,
         need=Need.PLAN,
         resources=resources,
@@ -1655,6 +1715,113 @@ def _check_no_directories(paths: Iterable[Path], workdir: StrPath = "."):
     for path in paths:
         if path.endswith(os.sep) or (workdir / path).is_dir():
             raise PathError(f"Directories are not allowed: {path}")
+
+
+# The parameter names a command callable may declare.
+# Extending this mapping later is backward compatible,
+# since a callable only receives the parameters it declares.
+_COMMAND_PARAM_NAMES = ("inp", "out", "vol")
+
+
+def _resolve_command(
+    command: CommandArg,
+    su_inp_paths: list[Path],
+    su_out_paths: list[Path],
+    su_vol_paths: list[Path],
+) -> str:
+    """Return the command text, calling `command` first when it is a callable.
+
+    Parameters
+    ----------
+    command
+        The `command` argument as given by the user.
+        A path-like object is returned as a string, unmodified.
+        A callable is called with the subset of `inp`, `out` and `vol` that it declares.
+    su_inp_paths, su_out_paths, su_vol_paths
+        The step's input, output and volatile output paths,
+        after environment variable substitution and normalization.
+
+    Returns
+    -------
+    command
+        The command text.
+
+    Raises
+    ------
+    StepUpError
+        When the callable declares a parameter that is not one of `inp`, `out` or `vol`,
+        or declares `*args`, `**kwargs` or a positional-only parameter.
+    """
+    if not callable(command):
+        return coerce_str(command)
+    # Copies are passed to the callable, so that in-place modifications (e.g. `inp.sort()`)
+    # cannot affect the paths sent to the director.
+    available = {
+        "inp": list(su_inp_paths),
+        "out": list(su_out_paths),
+        "vol": list(su_vol_paths),
+    }
+    parameters = inspect.signature(command).parameters
+    kwargs = {}
+    for name, parameter in parameters.items():
+        if parameter.kind not in (parameter.POSITIONAL_OR_KEYWORD, parameter.KEYWORD_ONLY):
+            raise StepUpError(
+                "A command callable must declare its parameters by name: "
+                f"*args, **kwargs and positional-only parameters are not supported ({name})."
+            )
+        if name not in available:
+            raise StepUpError(
+                f"A command callable cannot declare a parameter {name!r}. "
+                f"Supported parameters: {', '.join(_COMMAND_PARAM_NAMES)}."
+            )
+        kwargs[name] = available[name]
+    return coerce_str(command(**kwargs))
+
+
+def _resolve_run_command(
+    command: CommandArg,
+    *,
+    inp: Iterable[StrPath] | StrPath,
+    out: Iterable[StrPath] | StrPath,
+    vol: Iterable[StrPath] | StrPath,
+) -> tuple[str, list[Path], list[Path], list[Path]]:
+    """Resolve a `run()`/`plan()` command before the local executable is detected.
+
+    `run()` and `plan()` cannot leave the resolution of a callable command to `step()`:
+    they need the command **text** to detect the local executable that is added as an
+    implicit input, and that executable is the first word of the command text.
+    See the documentation of `run()` for the consequences for the callable.
+
+    Parameters
+    ----------
+    command
+        The `command` argument as given by the user.
+    inp, out, vol
+        The `inp`, `out` and `vol` arguments as given by the user.
+
+    Returns
+    -------
+    command
+        The command text.
+    inp_paths, out_paths, vol_paths
+        The path arguments, coerced to lists of `Path` instances.
+        These are returned, instead of being coerced again by the caller,
+        so that a single-use iterable (e.g. a generator expression) is consumed only once.
+    """
+    inp_paths = coerce_paths(inp)
+    out_paths = coerce_paths(out)
+    vol_paths = coerce_paths(vol)
+    if callable(command):
+        # The environment variable substitution is repeated in `step()` (on the same paths),
+        # which is idempotent. The repeated `amend(env=...)` is filtered out by AMEND_HISTORY.
+        with subs_env_vars() as subs:
+            su_inp_paths = [subs(inp_path).normpath() for inp_path in inp_paths]
+            su_out_paths = [subs(out_path).normpath() for out_path in out_paths]
+            su_vol_paths = [subs(vol_path).normpath() for vol_path in vol_paths]
+        command = _resolve_command(command, su_inp_paths, su_out_paths, su_vol_paths)
+    else:
+        command = coerce_str(command)
+    return command, inp_paths, out_paths, vol_paths
 
 
 def _prepare_run_command(

@@ -1,0 +1,60 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   root:
+              source   file:plan.py
+             product   file:gen.py
+             product   step:./gen.py first.txt second.txt
+             product   step:cat first.txt second.txt > both.txt
+
+file:gen.py
+               state = STATIC
+             creator   step:./plan.py
+                sink   step:./gen.py first.txt second.txt
+
+step:./gen.py first.txt second.txt
+               state = SUCCEEDED
+                need = DEFAULT
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   step:./plan.py
+              source   file:gen.py
+             product   file:first.txt
+             product   file:second.txt
+                sink   file:first.txt
+                sink   file:second.txt
+
+file:first.txt
+               state = BUILT
+             creator   step:./gen.py first.txt second.txt
+              source   step:./gen.py first.txt second.txt
+                sink   step:cat first.txt second.txt > both.txt
+
+file:second.txt
+               state = BUILT
+             creator   step:./gen.py first.txt second.txt
+              source   step:./gen.py first.txt second.txt
+                sink   step:cat first.txt second.txt > both.txt
+
+step:cat first.txt second.txt > both.txt
+               state = SUCCEEDED
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:first.txt
+              source   file:second.txt
+             product   file:both.txt
+                sink   file:both.txt
+
+file:both.txt
+               state = BUILT
+             creator   step:cat first.txt second.txt > both.txt
+              source   step:cat first.txt second.txt > both.txt

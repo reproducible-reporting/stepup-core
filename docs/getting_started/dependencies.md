@@ -23,6 +23,26 @@ the command string. When they are computed dynamically (e.g. a list of paths, or
 built from other variables), use [`shq()`][stepup.core.api.shq] to shell-quote and embed
 them, e.g. `run(f"grep Coffee {shq(inp)}", inp=inp)`.
 
+Embedding a step's own paths this way normally means naming the path list twice,
+which forces an extra variable definition.
+To avoid that, the command may also be a callable that builds the command from the paths,
+so they are written exactly once:
+
+```python
+run(lambda out: f"./gen.py {shq(out)}", out=["out1.txt", "out2.txt"])
+run(lambda inp, out: f"cat {shq(inp)} > {shq(out)}", shell=True, inp=["a.md", "b.md"], out="all.md")
+```
+
+The callable may declare any subset of the parameters `inp`, `out` and `vol`,
+matched by name, and it is called once while the step is defined.
+It receives the paths after environment variable substitution and normalization,
+so the command text and the declared paths are guaranteed to be derived from the same values.
+With `run()` and `plan()`, the callable's `inp` does not include the local executable
+that is detected in the command and added as an input:
+that executable is derived from the command,
+which does not exist yet when the callable is called,
+and it already appears as the first word of the command itself.
+
 The [`graph()`][stepup.core.api.graph] function writes the graph in a few formats,
 which are used for visualization below.
 
