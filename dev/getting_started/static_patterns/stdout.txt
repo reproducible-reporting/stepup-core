@@ -3,10 +3,10 @@
     PHASE │ build
     START │ ./plan.py
   SUCCESS │ ./plan.py
-    START │ tr '[:lower:]' '[:upper:]' < lower1.txt > upper1.txt
-  SUCCESS │ tr '[:lower:]' '[:upper:]' < lower1.txt > upper1.txt
-    START │ tr '[:lower:]' '[:upper:]' < lower2.txt > upper2.txt
-  SUCCESS │ tr '[:lower:]' '[:upper:]' < lower2.txt > upper2.txt
+    START │ cp -p src/bar.txt dst/bar.txt
+  SUCCESS │ cp -p src/bar.txt dst/bar.txt
+    START │ cp -p src/foo.txt dst/foo.txt
+  SUCCESS │ cp -p src/foo.txt dst/foo.txt
  DIRECTOR │ Ran 3 job(s).
  DIRECTOR │ Trying to remove 0 outdated output(s)
  DIRECTOR │ Wall 0.2s, Director 0.2u/0.0s, Steps 0.0u/0.0s

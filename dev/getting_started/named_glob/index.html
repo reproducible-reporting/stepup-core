@@ -16,13 +16,13 @@ SPDX-License-Identifier: CC-BY-SA-4.0
         <meta name="author" content="Toon Verstraelen">
       
       
-        <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/advanced_topics/static_named_glob/">
+        <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/getting_started/named_glob/">
       
       
-        <link rel="prev" href="../introduction/">
+        <link rel="prev" href="../glob_conditional/">
       
       
-        <link rel="next" href="../optional_steps/">
+        <link rel="next" href="../interactive_usage/">
       
       
         
@@ -33,7 +33,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     
     
       
-        <title>Static named glob - StepUp Core</title>
+        <title>Named Glob - StepUp Core</title>
       
     
     
@@ -86,7 +86,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     <div data-md-component="skip">
       
         
-        <a href="#static-named-glob" class="md-skip">
+        <a href="#named-glob" class="md-skip">
           Skip to content
         </a>
       
@@ -137,7 +137,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Static named glob
+              Named Glob
             
           </span>
         </div>
@@ -350,18 +350,20 @@ SPDX-License-Identifier: CC-BY-SA-4.0
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -382,544 +384,12 @@ SPDX-License-Identifier: CC-BY-SA-4.0
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
     Getting Started
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/introduction/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Introduction
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/first_step/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    First step
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/first_runpy/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    First runpy
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/dependencies/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Dependencies
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/copy/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Copy
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/workdir/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Workdir
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/static_files/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static files
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/static_tree/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static tree
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/static_glob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static glob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/static_glob_conditional/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static glob conditional
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/interactive_usage/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Interactive usage
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/failing_steps/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Failing steps
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/call/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Call
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/no_rules/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    No rules
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/distributed_plans/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Distributed plans
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/load_namespace/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Load namespace
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../getting_started/automatic_cleaning/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Automatic cleaning
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-    
-  
-  
-  
-    
-    
-    
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
-        
-          
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Advanced Topics
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_4">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Advanced Topics
   
 
           </label>
@@ -957,6 +427,286 @@ SPDX-License-Identifier: CC-BY-SA-4.0
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../first_step/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    First Step
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../first_runpy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running Python Scripts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../copy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    File copy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../workdir/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Working Directory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static_files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static_patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glob Patterns in static()
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static_tree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Static Tree
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../glob/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glob
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../glob_conditional/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glob Conditional
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -976,7 +726,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Static named glob
+    Named Glob
   
 
     
@@ -994,7 +744,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Static named glob
+    Named Glob
   
 
     
@@ -1020,6 +770,28 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#restricting-what-a-named-wildcard-may-match" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Restricting What a Named Wildcard May Match
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#accessing-the-captured-substrings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accessing the Captured Substrings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#matching-directories-by-name" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1035,6 +807,17 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     <span class="md-ellipsis">
       
         Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes-on-static" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes on static()
       
     </span>
   </a>
@@ -1057,14 +840,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../optional_steps/" class="md-nav__link">
+      <a href="../interactive_usage/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Optional steps
+    Interactive Usage
   
 
     
@@ -1085,14 +868,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../build_targets/" class="md-nav__link">
+      <a href="../failing_steps/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Build targets
+    Failing Steps
   
 
     
@@ -1113,7 +896,285 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../resources/" class="md-nav__link">
+      <a href="../call/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Function Calls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../no_rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    No Rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../distributed_plans/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distributed Plans
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../load_namespace/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Load Settings From Configuration Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../automatic_cleaning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Automatic Cleaning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Topics
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Advanced Topics
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/optional_steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional Steps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/build_targets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build Targets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced_topics/resources/" class="md-nav__link">
         
   
   
@@ -1141,14 +1202,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../duration_and_hold/" class="md-nav__link">
+      <a href="../../advanced_topics/duration_and_hold/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Duration and hold
+    Duration and Hold
   
 
     
@@ -1169,14 +1230,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../blocked_steps/" class="md-nav__link">
+      <a href="../../advanced_topics/blocked_steps/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Blocked steps
+    Blocked Steps
   
 
     
@@ -1197,14 +1258,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../environment_variables/" class="md-nav__link">
+      <a href="../../advanced_topics/environment_variables/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Environment variables
+    Environment Variables
   
 
     
@@ -1225,14 +1286,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../volatile_outputs/" class="md-nav__link">
+      <a href="../../advanced_topics/volatile_outputs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Volatile outputs
+    Volatile Outputs
   
 
     
@@ -1253,14 +1314,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../amending_steps/" class="md-nav__link">
+      <a href="../../advanced_topics/amending_steps/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending steps
+    Amending Steps
   
 
     
@@ -1281,14 +1342,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../amending_static_inputs/" class="md-nav__link">
+      <a href="../../advanced_topics/amending_static_inputs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Amending static inputs
+    Amending Steps with Static Inputs
   
 
     
@@ -1309,14 +1370,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../variable_substitution/" class="md-nav__link">
+      <a href="../../advanced_topics/variable_substitution/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Variable substitution
+    Variable Substitution
   
 
     
@@ -1337,14 +1398,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../here_and_root/" class="md-nav__link">
+      <a href="../../advanced_topics/here_and_root/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Here and root
+    HERE and ROOT Variables
   
 
     
@@ -1365,14 +1426,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../stepup_root/" class="md-nav__link">
+      <a href="../../advanced_topics/stepup_root/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Stepup root
+    The STEPUP_ROOT variable
   
 
     
@@ -1393,14 +1454,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../render_jinja/" class="md-nav__link">
+      <a href="../../advanced_topics/render_jinja/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Render jinja
+    Rendering Files with Jinja
   
 
     
@@ -1421,14 +1482,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../cyclic_dependencies/" class="md-nav__link">
+      <a href="../../advanced_topics/cyclic_dependencies/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Cyclic dependencies
+    Cyclic Dependencies
   
 
     
@@ -1449,14 +1510,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../manual_cleaning/" class="md-nav__link">
+      <a href="../../advanced_topics/manual_cleaning/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Manual cleaning
+    Manual Cleaning
   
 
     
@@ -1477,14 +1538,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../step_info/" class="md-nav__link">
+      <a href="../../advanced_topics/step_info/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Step info
+    StepInfo Objects
   
 
     
@@ -1566,7 +1627,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    From 3x to 40
+    Migration from StepUp 3.X to 4.0
   
 
     
@@ -2010,7 +2071,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Api
+    Custom API Functions
   
 
     
@@ -2038,7 +2099,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Console scripts
+    Console Scripts
   
 
     
@@ -2066,7 +2127,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Tool
+    Custom Tools
   
 
     
@@ -2128,7 +2189,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Development
+    Developer Notes
   
 
     
@@ -2257,7 +2318,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Script single
+    Script (Single Case)
   
 
     
@@ -2285,7 +2346,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Script multiple
+    Script (Multiple Cases)
   
 
     
@@ -2313,7 +2374,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Stepup.core.script
+    stepup.core.script
   
 
     
@@ -2361,6 +2422,28 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#restricting-what-a-named-wildcard-may-match" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Restricting What a Named Wildcard May Match
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#accessing-the-captured-substrings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accessing the Captured Substrings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#matching-directories-by-name" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2376,6 +2459,17 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     <span class="md-ellipsis">
       
         Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes-on-static" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes on static()
       
     </span>
   </a>
@@ -2399,7 +2493,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 
   
-    <a href="https://github.com/reproducible-reporting/stepup-core/edit/main/docs/advanced_topics/static_named_glob.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/reproducible-reporting/stepup-core/edit/main/docs/getting_started/named_glob.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2407,13 +2501,17 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
 
 
+<h1 id="named-glob">Named Glob<a class="headerlink" href="#named-glob" title="Permanent link">&para;</a></h1>
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-<h1 id="static-named-glob">Static Named Glob<a class="headerlink" href="#static-named-glob" title="Permanent link">&para;</a></h1>
+
 <p>Conventional glob patterns support a handful of different wildcards.
 For advanced use cases, StepUp also supports an in-house extension called &ldquo;named glob&rdquo;.
+A <em>named wildcard</em> is written as <code>${*name}</code>,
+and repeating the same name within one pattern constrains both occurrences
+to match the same substring.
 For example, the following pattern will only match files with matching strings at the placeholders.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>prefix_${*name}_something_${*name}.txt
 </span></code></pre></div>
@@ -2427,99 +2525,150 @@ For example, the following pattern will only match files with matching strings a
 </span></code></pre></div>
 <p>Named globs are especially valuable for coordinating output across multiple directories
 where a consistent naming pattern links them together.</p>
+<h2 id="restricting-what-a-named-wildcard-may-match">Restricting What a Named Wildcard May Match<a class="headerlink" href="#restricting-what-a-named-wildcard-may-match" title="Permanent link">&para;</a></h2>
+<p>By default, a named wildcard matches <code>*</code>, i.e. anything a plain wildcard would match.
+The keyword arguments of <a class="autorefs autorefs-internal" title="stepup.core.api.glob(pattern, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> override that sub-pattern
+for individual names:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">ng</span> <span class="o">=</span> <span class="n">glob</span><span class="p">(</span><span class="s2">&quot;ch${*ch}/sec${*ch}_${*sec}_${*name}.txt&quot;</span><span class="p">,</span> <span class="n">ch</span><span class="o">=</span><span class="s2">&quot;[0-9]&quot;</span><span class="p">,</span> <span class="n">sec</span><span class="o">=</span><span class="s2">&quot;[0-9]&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Here, <code>ch</code> and <code>sec</code> may only match a single digit, while <code>name</code> still matches anything.
+This is what makes the example below ignore inconsistently named files.</p>
+<h2 id="accessing-the-captured-substrings">Accessing the Captured Substrings<a class="headerlink" href="#accessing-the-captured-substrings" title="Permanent link">&para;</a></h2>
+<p>Iterating over the result of <code>glob()</code> yields
+<a class="autorefs autorefs-internal" href="../../reference/stepup.core.nglob/#stepup.core.nglob.NamedGlobMatch"><code>NamedGlobMatch</code></a> objects
+when the pattern contains named wildcards,
+and plain <code>Path</code> objects when it does not.
+The captured substrings are attributes of the match,
+and <code>match.single</code> is the matching path:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">for</span> <span class="n">match</span> <span class="ow">in</span> <span class="n">ng</span><span class="p">:</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">ch</span><span class="p">,</span> <span class="n">match</span><span class="o">.</span><span class="n">sec</span><span class="p">,</span> <span class="n">match</span><span class="o">.</span><span class="n">single</span><span class="p">)</span>
+</span></code></pre></div>
+<p>A few methods are useful when the default iteration mode is not what you need:</p>
+<ul>
+<li><code>ng.matches()</code> and <code>ng.files()</code> force iteration over <code>NamedGlobMatch</code> objects
+  or over <code>Path</code> objects, respectively.</li>
+<li><code>ng.single()</code> asserts that there is exactly one match and returns its path.</li>
+</ul>
 <h2 id="matching-directories-by-name">Matching Directories by Name<a class="headerlink" href="#matching-directories-by-name" title="Permanent link">&para;</a></h2>
-<p>A glob pattern that matches a bare directory is only accepted when the directory lies
-inside a static tree (declared with <code>static()</code>);
-see <a href="../../getting_started/static_glob/#combining-static-trees-and-globs">Combining Static Trees and Globs</a>.
-Outside a static tree, StepUp has no evidence that the directory is source material
-rather than a step&rsquo;s build product.</p>
-<p>When you only need to discover directories by name, without declaring a static tree,
-combine a named wildcard with a file inside each directory that shares its name.
+<p>When you only need to discover directories by name, without declaring a static tree or
+the whole directory, combine a named wildcard with a file inside each directory that
+shares its name.
 For example, given a set of Typst documents organized one per directory:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>typst-report/report.typ
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>typst-summary/summary.typ
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>typst-report/report.typ
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>typst-summary/summary.typ
 </span></code></pre></div>
 <p>the directories can be discovered by name with:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">for</span> <span class="n">match</span> <span class="ow">in</span> <span class="n">glob</span><span class="p">(</span><span class="s2">&quot;typst-${*name}/${*name}.typ&quot;</span><span class="p">):</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="o">...</span>  <span class="c1"># match.name is &quot;report&quot;, &quot;summary&quot;, ...</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">ng</span> <span class="o">=</span> <span class="n">glob</span><span class="p">(</span><span class="s2">&quot;typst-${*name}/${*name}.typ&quot;</span><span class="p">)</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">static</span><span class="p">(</span><span class="n">ng</span><span class="p">)</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">for</span> <span class="n">match</span> <span class="ow">in</span> <span class="n">ng</span><span class="p">:</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="o">...</span>  <span class="c1"># match.name is &quot;report&quot;, &quot;summary&quot;, ...</span>
 </span></code></pre></div>
-<p>This matches a <em>file</em>, not the directory itself, so it works with or without a static
-tree, while <code>match.name</code> still gives you the enclosing directory&rsquo;s name.</p>
+<p>This matches a <em>file</em>, not the directory itself,
+so it works with or without a static tree,
+while <code>match.name</code> still gives you the enclosing directory&rsquo;s name.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
-<p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/static_named_glob"><code>docs/advanced_topics/static_named_glob/</code></a></p>
+<p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/named_glob"><code>docs/getting_started/named_glob/</code></a></p>
 <p>In the example below, each directory represents a chapter from course notes,
 containing source files for individual sections.
-In a realistic setting, one could envision building a PDF presentations from LaTeX sources instead.
-To keep the example independent of StepUp RepRep,
-text files will be copied to Markdown files, which will then be concatenated.</p>
+The files in this example are just placeholders and the operations in the workflow are just mockups,
+but the structure is realistic enough to illustrate the use of named globs.
+In a realistic setting, one could envision building PDF presentations from LaTeX sources instead,
+using <a href="https://reproducible-reporting.github.io/stepup-reprep/stable/">StepUp RepRep</a>
+to drive your LaTeX or Typst builds.</p>
 <p>Create the following directory layout with markdown files:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ch1/
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>ch1/sec1_1_introduction.txt
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>ch1/sec1_2_objectives.txt
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>ch2/
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>ch2/sec2_1_mathematical_requisites.txt
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>ch2/sec2_2_theory.txt
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>ch3/
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>ch3/sec3_1_applications.txt
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>ch3/sec3_2_discussion.txt
-</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>ch4/sec4_1_summary.txt
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>ch1/
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>ch1/sec1_1_introduction.txt
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>ch1/sec1_2_objectives.txt
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>ch2/
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>ch2/sec2_1_mathematical_requisites.txt
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>ch2/sec2_2_theory.txt
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>ch3/
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>ch3/sec3_1_applications.txt
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>ch3/sec3_2_discussion.txt
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>ch4/sec4_1_summary.txt
 </span></code></pre></div>
 <p>Create the following <code>plan.py</code>:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="ch">#!/usr/bin/env python3</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span><span class="p">,</span> <span class="n">glob</span><span class="p">,</span> <span class="n">run</span><span class="p">,</span> <span class="n">shq</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Enforce consistent chapter numbers throughout the match,</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1"># ignoring inconsistent txt files.</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="n">md_chapter</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="k">for</span> <span class="n">match</span> <span class="ow">in</span> <span class="n">glob</span><span class="p">(</span><span class="s2">&quot;ch${*ch}/sec${*ch}_${*sec}_${*name}.txt&quot;</span><span class="p">,</span> <span class="n">ch</span><span class="o">=</span><span class="s2">&quot;[0-9]&quot;</span><span class="p">,</span> <span class="n">sec</span><span class="o">=</span><span class="s2">&quot;[0-9]&quot;</span><span class="p">):</span>
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    <span class="n">path_txt</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">single</span>
-</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    <span class="n">path_md</span> <span class="o">=</span> <span class="n">path_txt</span><span class="p">[:</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;md&quot;</span>
-</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    <span class="n">copy</span><span class="p">(</span><span class="n">path_txt</span><span class="p">,</span> <span class="n">path_md</span><span class="p">)</span>
-</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    <span class="n">md_chapter</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">ch</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">path_md</span><span class="p">)</span>
-</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>
-</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="c1"># Concatenate all markdown files per chapter</span>
-</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="k">for</span> <span class="n">ch</span><span class="p">,</span> <span class="n">paths_md</span> <span class="ow">in</span> <span class="n">md_chapter</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-</span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    <span class="n">path_out</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;public/ch</span><span class="si">{</span><span class="n">ch</span><span class="si">}</span><span class="s2">.md&quot;</span>
-</span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>    <span class="n">run</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;cat </span><span class="si">{</span><span class="n">shq</span><span class="p">(</span><span class="n">paths_md</span><span class="p">)</span><span class="si">}</span><span class="s2"> &gt; </span><span class="si">{</span><span class="n">shq</span><span class="p">(</span><span class="n">path_out</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="n">paths_md</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">path_out</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="ch">#!/usr/bin/env python3</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span><span class="p">,</span> <span class="n">glob</span><span class="p">,</span> <span class="n">run</span><span class="p">,</span> <span class="n">shq</span><span class="p">,</span> <span class="n">static</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># Enforce consistent chapter numbers throughout the match,</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1"># ignoring inconsistent txt files.</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="n">md_chapter</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="n">ng</span> <span class="o">=</span> <span class="n">glob</span><span class="p">(</span><span class="s2">&quot;ch${*ch}/sec${*ch}_${*sec}_${*name}.txt&quot;</span><span class="p">,</span> <span class="n">ch</span><span class="o">=</span><span class="s2">&quot;[0-9]&quot;</span><span class="p">,</span> <span class="n">sec</span><span class="o">=</span><span class="s2">&quot;[0-9]&quot;</span><span class="p">)</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="n">static</span><span class="p">(</span><span class="n">ng</span><span class="p">)</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="k">for</span> <span class="n">match</span> <span class="ow">in</span> <span class="n">ng</span><span class="p">:</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    <span class="n">path_txt</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">single</span>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    <span class="n">path_md</span> <span class="o">=</span> <span class="n">path_txt</span><span class="p">[:</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;md&quot;</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    <span class="n">copy</span><span class="p">(</span><span class="n">path_txt</span><span class="p">,</span> <span class="n">path_md</span><span class="p">)</span>
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    <span class="n">md_chapter</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">ch</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">path_md</span><span class="p">)</span>
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>
+</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="c1"># Concatenate all markdown files per chapter</span>
+</span><span id="__span-8-16"><a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="k">for</span> <span class="n">ch</span><span class="p">,</span> <span class="n">paths_md</span> <span class="ow">in</span> <span class="n">md_chapter</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="__span-8-17"><a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>    <span class="n">path_out</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;public/ch</span><span class="si">{</span><span class="n">ch</span><span class="si">}</span><span class="s2">.md&quot;</span>
+</span><span id="__span-8-18"><a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>    <span class="n">run</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;cat </span><span class="si">{</span><span class="n">shq</span><span class="p">(</span><span class="n">paths_md</span><span class="p">)</span><span class="si">}</span><span class="s2"> &gt; </span><span class="si">{</span><span class="n">shq</span><span class="p">(</span><span class="n">path_out</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="n">paths_md</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">path_out</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Note that the substrings matching the named glob patterns are accessible as attributes of
 the <a class="autorefs autorefs-internal" href="../../reference/stepup.core.nglob/#stepup.core.nglob.NamedGlobMatch"><code>NamedGlobMatch</code></a> object.
 For example, <code>match.ch</code> is the chapter number (as a string).</p>
 <p>Make the plan executable and run StepUp:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>sb<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>sb<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>You should get the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc4.post0)
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>   STARTUP │ (Re)initialized boot script
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>     PHASE │ build
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>     START │ ./plan.py
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>   SUCCESS │ ./plan.py
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>     START │ cp -p ch1/sec1_1_introduction.txt ch1/sec1_1_introduction.md
-</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>   SUCCESS │ cp -p ch1/sec1_1_introduction.txt ch1/sec1_1_introduction.md
-</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>     START │ cp -p ch1/sec1_2_objectives.txt ch1/sec1_2_objectives.md
-</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>   SUCCESS │ cp -p ch1/sec1_2_objectives.txt ch1/sec1_2_objectives.md
-</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>     START │ cp -p ch2/sec2_1_mathematical_requisites.txt ch2/sec2_1_mathematical_requisites.md
-</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>   SUCCESS │ cp -p ch2/sec2_1_mathematical_requisites.txt ch2/sec2_1_mathematical_requisites.md
-</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>     START │ cp -p ch2/sec2_2_theory.txt ch2/sec2_2_theory.md
-</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>   SUCCESS │ cp -p ch2/sec2_2_theory.txt ch2/sec2_2_theory.md
-</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>     START │ cp -p ch3/sec3_1_applications.txt ch3/sec3_1_applications.md
-</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>   SUCCESS │ cp -p ch3/sec3_1_applications.txt ch3/sec3_1_applications.md
-</span><span id="__span-8-16"><a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>     START │ cp -p ch3/sec3_2_discussion.txt ch3/sec3_2_discussion.md
-</span><span id="__span-8-17"><a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>   SUCCESS │ cp -p ch3/sec3_2_discussion.txt ch3/sec3_2_discussion.md
-</span><span id="__span-8-18"><a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>     START │ cp -p ch4/sec4_1_summary.txt ch4/sec4_1_summary.md
-</span><span id="__span-8-19"><a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>   SUCCESS │ cp -p ch4/sec4_1_summary.txt ch4/sec4_1_summary.md
-</span><span id="__span-8-20"><a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>     START │ cat ch1/sec1_1_introduction.md ch1/sec1_2_objectives.md &gt; public/ch1.md
-</span><span id="__span-8-21"><a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>   SUCCESS │ cat ch1/sec1_1_introduction.md ch1/sec1_2_objectives.md &gt; public/ch1.md
-</span><span id="__span-8-22"><a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>     START │ cat ch2/sec2_1_mathematical_requisites.md ch2/sec2_2_theory.md &gt; public/ch2.md
-</span><span id="__span-8-23"><a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>   SUCCESS │ cat ch2/sec2_1_mathematical_requisites.md ch2/sec2_2_theory.md &gt; public/ch2.md
-</span><span id="__span-8-24"><a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>     START │ cat ch3/sec3_1_applications.md ch3/sec3_2_discussion.md &gt; public/ch3.md
-</span><span id="__span-8-25"><a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>   SUCCESS │ cat ch3/sec3_1_applications.md ch3/sec3_2_discussion.md &gt; public/ch3.md
-</span><span id="__span-8-26"><a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>     START │ cat ch4/sec4_1_summary.md &gt; public/ch4.md
-</span><span id="__span-8-27"><a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>   SUCCESS │ cat ch4/sec4_1_summary.md &gt; public/ch4.md
-</span><span id="__span-8-28"><a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
-</span><span id="__span-8-29"><a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>  DIRECTOR │ See you!
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a> DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc8.post10)
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>  STARTUP │ (Re)initialized boot script
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    PHASE │ build
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    START │ ./plan.py
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>  SUCCESS │ ./plan.py
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    START │ cp -p ch1/sec1_1_introduction.txt ch1/sec1_1_introduction.md
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>  SUCCESS │ cp -p ch1/sec1_1_introduction.txt ch1/sec1_1_introduction.md
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    START │ cp -p ch1/sec1_2_objectives.txt ch1/sec1_2_objectives.md
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>  SUCCESS │ cp -p ch1/sec1_2_objectives.txt ch1/sec1_2_objectives.md
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    START │ cp -p ch2/sec2_1_mathematical_requisites.txt ch2/sec2_1_mathematical_requisites.md
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>  SUCCESS │ cp -p ch2/sec2_1_mathematical_requisites.txt ch2/sec2_1_mathematical_requisites.md
+</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    START │ cp -p ch2/sec2_2_theory.txt ch2/sec2_2_theory.md
+</span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>  SUCCESS │ cp -p ch2/sec2_2_theory.txt ch2/sec2_2_theory.md
+</span><span id="__span-10-14"><a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    START │ cp -p ch3/sec3_1_applications.txt ch3/sec3_1_applications.md
+</span><span id="__span-10-15"><a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>  SUCCESS │ cp -p ch3/sec3_1_applications.txt ch3/sec3_1_applications.md
+</span><span id="__span-10-16"><a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>    START │ cp -p ch3/sec3_2_discussion.txt ch3/sec3_2_discussion.md
+</span><span id="__span-10-17"><a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>  SUCCESS │ cp -p ch3/sec3_2_discussion.txt ch3/sec3_2_discussion.md
+</span><span id="__span-10-18"><a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>    START │ cp -p ch4/sec4_1_summary.txt ch4/sec4_1_summary.md
+</span><span id="__span-10-19"><a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>  SUCCESS │ cp -p ch4/sec4_1_summary.txt ch4/sec4_1_summary.md
+</span><span id="__span-10-20"><a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>    START │ cat ch1/sec1_1_introduction.md ch1/sec1_2_objectives.md &gt; public/ch1.md
+</span><span id="__span-10-21"><a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>  SUCCESS │ cat ch1/sec1_1_introduction.md ch1/sec1_2_objectives.md &gt; public/ch1.md
+</span><span id="__span-10-22"><a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>    START │ cat ch2/sec2_1_mathematical_requisites.md ch2/sec2_2_theory.md &gt; public/ch2.md
+</span><span id="__span-10-23"><a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>  SUCCESS │ cat ch2/sec2_1_mathematical_requisites.md ch2/sec2_2_theory.md &gt; public/ch2.md
+</span><span id="__span-10-24"><a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>    START │ cat ch3/sec3_1_applications.md ch3/sec3_2_discussion.md &gt; public/ch3.md
+</span><span id="__span-10-25"><a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>  SUCCESS │ cat ch3/sec3_1_applications.md ch3/sec3_2_discussion.md &gt; public/ch3.md
+</span><span id="__span-10-26"><a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a>    START │ cat ch4/sec4_1_summary.md &gt; public/ch4.md
+</span><span id="__span-10-27"><a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a>  SUCCESS │ cat ch4/sec4_1_summary.md &gt; public/ch4.md
+</span><span id="__span-10-28"><a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a> DIRECTOR │ Ran 12 job(s).
+</span><span id="__span-10-29"><a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a> DIRECTOR │ Trying to remove 0 outdated output(s)
+</span><span id="__span-10-30"><a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a> DIRECTOR │ Wall 0.3s, Director 0.2u/0.0s, Steps 0.0u/0.0s
+</span><span id="__span-10-31"><a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a> DIRECTOR │ See you!
 </span></code></pre></div>
+<h2 id="notes-on-static">Notes on <code>static()</code><a class="headerlink" href="#notes-on-static" title="Permanent link">&para;</a></h2>
+<p>Two details of the interaction with <a class="autorefs autorefs-internal" title="stepup.core.api.static(*paths)" href="../../reference/stepup.core.api/#stepup.core.api.static"><code>static()</code></a>
+are worth spelling out:</p>
+<ul>
+<li>
+<p><strong>Named wildcards work in <code>static()</code> too</strong>,
+  and the back-reference constraint applies there as well,
+  so <code>static("ch${*ch}/sec${*ch}_*.txt")</code> is a valid declaration.
+  There are limits, though: <code>static()</code> takes no keyword arguments,
+  so a named wildcard there always uses the default sub-pattern <code>*</code>,
+  and the captured substrings are not part of the return value.
+  Go through <code>glob()</code> when you need either.</p>
+</li>
+<li>
+<p><strong><code>static()</code> accepts the return value of <code>glob()</code> directly.</strong>
+  The call <code>static(ng)</code> declares exactly what <code>ng</code> matched,
+  without registering the pattern a second time — <a href="../glob/"><code>glob()</code></a> already did that.
+  This is the composition used in the example plan above,
+  and it is what makes query-then-declare, and the
+  <a href="../glob_conditional/">probe-then-declare</a> idiom, cheap.</p>
+</li>
+</ul>
 
 
 

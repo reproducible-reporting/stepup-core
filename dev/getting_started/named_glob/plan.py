@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-from stepup.core.api import copy, glob, run, shq
+from stepup.core.api import copy, glob, run, shq, static
 
 # Enforce consistent chapter numbers throughout the match,
 # ignoring inconsistent txt files.
 md_chapter = {}
-for match in glob("ch${*ch}/sec${*ch}_${*sec}_${*name}.txt", ch="[0-9]", sec="[0-9]"):
+ng = glob("ch${*ch}/sec${*ch}_${*sec}_${*name}.txt", ch="[0-9]", sec="[0-9]")
+static(ng)
+for match in ng:
     path_txt = match.single
     path_md = path_txt[:-3] + "md"
     copy(path_txt, path_md)

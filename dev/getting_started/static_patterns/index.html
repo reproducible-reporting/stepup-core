@@ -16,13 +16,13 @@ SPDX-License-Identifier: CC-BY-SA-4.0
         <meta name="author" content="Toon Verstraelen">
       
       
-        <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/getting_started/static_glob/">
+        <link rel="canonical" href="https://reproducible-reporting.github.io/stepup-core/dev/getting_started/static_patterns/">
       
       
-        <link rel="prev" href="../static_tree/">
+        <link rel="prev" href="../static_files/">
       
       
-        <link rel="next" href="../static_glob_conditional/">
+        <link rel="next" href="../static_tree/">
       
       
         
@@ -33,7 +33,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     
     
       
-        <title>Static glob - StepUp Core</title>
+        <title>Glob Patterns in static() - StepUp Core</title>
       
     
     
@@ -86,7 +86,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
     <div data-md-component="skip">
       
         
-        <a href="#static-glob" class="md-skip">
+        <a href="#glob-patterns-in-static" class="md-skip">
           Skip to content
         </a>
       
@@ -137,7 +137,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Static glob
+              Glob Patterns in static()
             
           </span>
         </div>
@@ -437,7 +437,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    First step
+    First Step
   
 
     
@@ -465,7 +465,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    First runpy
+    Running Python Scripts
   
 
     
@@ -521,7 +521,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Copy
+    File copy
   
 
     
@@ -549,7 +549,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Workdir
+    Working Directory
   
 
     
@@ -577,35 +577,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Static files
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../static_tree/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static tree
+    Static Files
   
 
     
@@ -642,7 +614,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Static glob
+    Glob Patterns in static()
   
 
     
@@ -660,7 +632,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Static glob
+    Glob Patterns in static()
   
 
     
@@ -697,10 +669,32 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
       
         <li class="md-nav__item">
-  <a href="#combining-static-trees-and-globs" class="md-nav__link">
+  <a href="#patterns-make-steps-react-to-new-and-deleted-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Combining Static Trees and Globs
+        Patterns Make Steps React to New and Deleted Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#escaping-glob-metacharacters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Escaping Glob Metacharacters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#directories-and-recursive-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Directories and Recursive Patterns
       
     </span>
   </a>
@@ -745,14 +739,98 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../static_glob_conditional/" class="md-nav__link">
+      <a href="../static_tree/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Static glob conditional
+    Static Tree
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../glob/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glob
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../glob_conditional/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glob Conditional
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../named_glob/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Named Glob
   
 
     
@@ -780,7 +858,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Interactive usage
+    Interactive Usage
   
 
     
@@ -808,7 +886,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Failing steps
+    Failing Steps
   
 
     
@@ -836,7 +914,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Call
+    Function Calls
   
 
     
@@ -864,7 +942,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    No rules
+    No Rules
   
 
     
@@ -892,7 +970,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Distributed plans
+    Distributed Plans
   
 
     
@@ -920,7 +998,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Load namespace
+    Load Settings From Configuration Files
   
 
     
@@ -948,7 +1026,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Automatic cleaning
+    Automatic Cleaning
   
 
     
@@ -1051,34 +1129,6 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
   
     <li class="md-nav__item">
-      <a href="../../advanced_topics/static_named_glob/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Static named glob
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../advanced_topics/optional_steps/" class="md-nav__link">
         
   
@@ -1086,7 +1136,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Optional steps
+    Optional Steps
   
 
     
@@ -1114,7 +1164,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Build targets
+    Build Targets
   
 
     
@@ -1170,7 +1220,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Duration and hold
+    Duration and Hold
   
 
     
@@ -1198,7 +1248,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Blocked steps
+    Blocked Steps
   
 
     
@@ -1226,7 +1276,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Environment variables
+    Environment Variables
   
 
     
@@ -1254,7 +1304,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Volatile outputs
+    Volatile Outputs
   
 
     
@@ -1282,7 +1332,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Amending steps
+    Amending Steps
   
 
     
@@ -1310,7 +1360,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Amending static inputs
+    Amending Steps with Static Inputs
   
 
     
@@ -1338,7 +1388,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Variable substitution
+    Variable Substitution
   
 
     
@@ -1366,7 +1416,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Here and root
+    HERE and ROOT Variables
   
 
     
@@ -1394,7 +1444,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Stepup root
+    The STEPUP_ROOT variable
   
 
     
@@ -1422,7 +1472,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Render jinja
+    Rendering Files with Jinja
   
 
     
@@ -1450,7 +1500,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Cyclic dependencies
+    Cyclic Dependencies
   
 
     
@@ -1478,7 +1528,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Manual cleaning
+    Manual Cleaning
   
 
     
@@ -1506,7 +1556,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Step info
+    StepInfo Objects
   
 
     
@@ -1588,7 +1638,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    From 3x to 40
+    Migration from StepUp 3.X to 4.0
   
 
     
@@ -2032,7 +2082,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Api
+    Custom API Functions
   
 
     
@@ -2060,7 +2110,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Console scripts
+    Console Scripts
   
 
     
@@ -2088,7 +2138,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Tool
+    Custom Tools
   
 
     
@@ -2150,7 +2200,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Development
+    Developer Notes
   
 
     
@@ -2279,7 +2329,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Script single
+    Script (Single Case)
   
 
     
@@ -2307,7 +2357,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Script multiple
+    Script (Multiple Cases)
   
 
     
@@ -2335,7 +2385,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   <span class="md-ellipsis">
     
   
-    Stepup.core.script
+    stepup.core.script
   
 
     
@@ -2394,10 +2444,32 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 </li>
       
         <li class="md-nav__item">
-  <a href="#combining-static-trees-and-globs" class="md-nav__link">
+  <a href="#patterns-make-steps-react-to-new-and-deleted-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Combining Static Trees and Globs
+        Patterns Make Steps React to New and Deleted Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#escaping-glob-metacharacters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Escaping Glob Metacharacters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#directories-and-recursive-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Directories and Recursive Patterns
       
     </span>
   </a>
@@ -2443,7 +2515,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 
   
-    <a href="https://github.com/reproducible-reporting/stepup-core/edit/main/docs/getting_started/static_glob.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/reproducible-reporting/stepup-core/edit/main/docs/getting_started/static_patterns.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2451,123 +2523,162 @@ SPDX-License-Identifier: CC-BY-SA-4.0
   
 
 
+<h1 id="glob-patterns-in-static">Glob Patterns in <code>static()</code><a class="headerlink" href="#glob-patterns-in-static" title="Permanent link">&para;</a></h1>
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-<h1 id="static-glob">Static Glob<a class="headerlink" href="#static-glob" title="Permanent link">&para;</a></h1>
-<p>In addition to the <code>static()</code> function in the previous two tutorials,
-StepUp also supports globbing for static files.</p>
-<p>The <a class="autorefs autorefs-internal" title="stepup.core.api.glob(pattern, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> function is similar to <a class="autorefs autorefs-internal" title="stepup.core.api.static(*paths)" href="../../reference/stepup.core.api/#stepup.core.api.static"><code>static()</code></a>
-and supports globbing, including some non-standard glob techniques
-discussed in the following tutorials.</p>
-<p>Here, only the basic usage of <a class="autorefs autorefs-internal" title="stepup.core.api.glob(pattern, **subs)" href="../../reference/stepup.core.api/#stepup.core.api.glob"><code>glob()</code></a> is covered.
-In the <a href="../static_glob_conditional/">following tutorial</a>,
-the use of <code>glob()</code> in conditionals is discussed.
-See <a href="../../advanced_topics/static_named_glob/">Static Named Glob</a> for more advanced use cases.</p>
+
+<p>In addition to explicit paths, the <a class="autorefs autorefs-internal" title="stepup.core.api.static(*paths)" href="../../reference/stepup.core.api/#stepup.core.api.static"><code>static()</code></a> function also
+accepts glob patterns with the usual anonymous wildcards (<code>*</code>, <code>?</code>, <code>[abc]</code>),
+so you don&rsquo;t have to list every file by name.
+Every match is declared exactly as if you had listed it by name.</p>
+<p>The return value is a sorted list of the paths the call covers,
+which makes a one-liner the common idiom:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">static</span><span class="p">(</span><span class="s2">&quot;src/*.txt&quot;</span><span class="p">):</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">copy</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;out/&quot;</span> <span class="o">+</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</span></code></pre></div>
+<p>A pattern without matches is not an error.
+Unlike a literal path, which must exist, a pattern that matches nothing is accepted as is,
+for a good reason explained in the next section.</p>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
-<p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/static_glob"><code>docs/getting_started/static_glob/</code></a></p>
+<p>Example source files: <a href="https://github.com/reproducible-reporting/stepup-core/tree/main/docs/getting_started/static_patterns"><code>docs/getting_started/static_patterns/</code></a></p>
 <p>Create a subdirectory <code>src/</code> with two files: <code>src/foo.txt</code> and <code>src/bar.txt</code>.
 Also, create a <code>plan.py</code> file with the following contents:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span><span class="p">,</span> <span class="n">glob</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">for</span> <span class="n">path_src</span> <span class="ow">in</span> <span class="n">glob</span><span class="p">(</span><span class="s2">&quot;src/*.txt&quot;</span><span class="p">):</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">copy</span><span class="p">(</span><span class="n">path_src</span><span class="p">,</span> <span class="s2">&quot;dst/&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="ch">#!/usr/bin/env python3</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span><span class="p">,</span> <span class="n">static</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">for</span> <span class="n">path_src</span> <span class="ow">in</span> <span class="n">static</span><span class="p">(</span><span class="s2">&quot;src/*.txt&quot;</span><span class="p">):</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">copy</span><span class="p">(</span><span class="n">path_src</span><span class="p">,</span> <span class="s2">&quot;dst/&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Make the plan executable and run it non-interactively:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>sb<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>chmod<span class="w"> </span>+x<span class="w"> </span>plan.py
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>sb<span class="w"> </span>-j<span class="w"> </span><span class="m">1</span>
 </span></code></pre></div>
 <p>This should produce the following output:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc4.post0)
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>   STARTUP │ (Re)initialized boot script
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>     PHASE │ build
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>     START │ ./plan.py
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>   SUCCESS │ ./plan.py
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>     START │ cp -p src/bar.txt dst/bar.txt
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>   SUCCESS │ cp -p src/bar.txt dst/bar.txt
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>     START │ cp -p src/foo.txt dst/foo.txt
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>   SUCCESS │ cp -p src/foo.txt dst/foo.txt
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>  DIRECTOR │ Trying to delete 0 outdated output(s)
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>  DIRECTOR │ See you!
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a> DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc8.post10)
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  STARTUP │ (Re)initialized boot script
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    PHASE │ build
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    START │ ./plan.py
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  SUCCESS │ ./plan.py
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    START │ cp -p src/bar.txt dst/bar.txt
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>  SUCCESS │ cp -p src/bar.txt dst/bar.txt
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    START │ cp -p src/foo.txt dst/foo.txt
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>  SUCCESS │ cp -p src/foo.txt dst/foo.txt
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a> DIRECTOR │ Ran 3 job(s).
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a> DIRECTOR │ Trying to remove 0 outdated output(s)
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a> DIRECTOR │ Wall 0.2s, Director 0.2u/0.0s, Steps 0.0u/0.0s
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a> DIRECTOR │ See you!
 </span></code></pre></div>
-<p>Every file matched by <code>glob()</code> is static:
-either it was already covered by a static tree (see <a href="../static_tree/">Static Tree</a>),
-or <code>glob()</code> declares it static itself.
-Matched files can therefore never be outputs of other steps.
-(This restriction is part of StepUp&rsquo;s design.)</p>
-<p>A directory match is only accepted when it lies inside a static tree.
-Outside a static tree, StepUp has no evidence that the matched directory is source
-material rather than a step&rsquo;s build product, so the set of matches could depend on
-build progress. See <a href="#combining-static-trees-and-globs">Combining Static Trees and Globs</a>
-below, and <a href="../../advanced_topics/static_named_glob/">Static Named Glob</a> for a way to
-identify directories by name without matching them directly.</p>
-<h2 id="combining-static-trees-and-globs">Combining Static Trees and Globs<a class="headerlink" href="#combining-static-trees-and-globs" title="Permanent link">&para;</a></h2>
-<p>A static tree and <code>glob()</code> can be combined: declare the tree once, then glob it as
-often as you like, with overlapping patterns if convenient.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">static</span><span class="p">(</span><span class="s2">&quot;src/&quot;</span><span class="p">)</span>              <span class="c1"># declare the tree once</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;src/*.txt&quot;</span><span class="p">)</span>           <span class="c1"># as many globs as you like</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;src/**/*.csv&quot;</span><span class="p">)</span>
+<h2 id="patterns-make-steps-react-to-new-and-deleted-files">Patterns Make Steps React to New and Deleted Files<a class="headerlink" href="#patterns-make-steps-react-to-new-and-deleted-files" title="Permanent link">&para;</a></h2>
+<p>A pattern does more than save you some typing.
+Besides declaring the matches, StepUp records the <em>pattern itself</em> with the step that
+called <code>static()</code>, together with the set of matches it produced.</p>
+<p>On a later run, StepUp re-scans the filesystem and compares.
+When a matching file was added or removed since the last build,
+the step that called <code>static()</code> is made pending and runs again,
+so the plan is rebuilt against the new set of files.
+When the set of matches is unchanged, the step is skipped like any other.
+This is also why a zero-match pattern is accepted:
+it is registered anyway, so a match that appears later is still noticed.</p>
+<p>For this to work, StepUp must know about every pattern you use.
+Never use glob functions from other libraries,
+such as Python&rsquo;s built-in <code>glob</code> and <code>pathlib</code> modules.
+When you use these in your <code>plan.py</code>, StepUp will not know which patterns are used,
+and hence will not rerun a step when files are added or removed that match the pattern.</p>
+<h2 id="escaping-glob-metacharacters">Escaping Glob Metacharacters<a class="headerlink" href="#escaping-glob-metacharacters" title="Permanent link">&para;</a></h2>
+<p>Because every argument of <code>static()</code> is read as a pattern,
+the characters <code>*</code>, <code>?</code> and <code>[</code> are significant everywhere.
+A file whose name literally contains one of them can no longer be declared by spelling it out.
+Use <a href="https://docs.python.org/3/library/glob.html#glob.escape"><code>glob.escape()</code></a>
+from the standard library instead:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">glob</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">globmod</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">static</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">static</span><span class="p">(</span><span class="n">globmod</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="s2">&quot;table[1].csv&quot;</span><span class="p">))</span>
 </span></code></pre></div>
-<p>The tree must be declared first.
-<code>glob()</code> matches under <code>src/</code> are already owned by the tree, so <code>glob()</code> only
-registers the patterns instead of trying to declare the files again.
-Reversing the order raises an error, for the same reason explained in
-<a href="../static_tree/">Static Tree</a>: a static tree must be declared before any file it
-contains, and a file matched by an earlier <code>glob()</code> call counts as such a file.</p>
+<p>(While this solves the problem of declaring a file with a metacharacter in its name,
+it is generally recommended to avoid such characters in filenames altogether.)</p>
+<h2 id="directories-and-recursive-patterns">Directories and Recursive Patterns<a class="headerlink" href="#directories-and-recursive-patterns" title="Permanent link">&para;</a></h2>
+<p>Two rules of thumb complete the picture, each covered by a following tutorial:</p>
+<ul>
+<li>
+<p>A match that is a directory is registered as a <em>static tree</em>,
+  the subject of the <a href="../static_tree/">next tutorial</a>.
+  Spell such a pattern with a trailing slash, e.g. <code>static("data/*/")</code>,
+  so the intent is visible at the call site.</p>
+</li>
+<li>
+<p>A recursive <code>**</code> wildcard is accepted by <code>static()</code>, except as the final path
+  component, e.g. <code>static("src/**")</code> and <code>static("**")</code> are rejected.
+  Declare the directory as a <a href="../static_tree/">static tree</a> instead, e.g. <code>static("src/")</code>,
+  which covers the whole subtree lazily.
+  A <code>**</code> earlier in the pattern, e.g. <code>static("src/**/*.txt")</code>, is accepted
+  and expanded eagerly, the same as any other pattern.
+  When a recursive <em>list</em> of files is genuinely needed instead of declaring them,
+  use <a href="../glob/"><code>glob()</code></a> once the tree is declared.</p>
+</li>
+</ul>
 <h2 id="inherent-risks">Inherent Risks<a class="headerlink" href="#inherent-risks" title="Permanent link">&para;</a></h2>
 <p>Glob patterns are inherently error-prone and we therefore recommend to avoid them when possible,
 and use them with care otherwise.
-When using <code>glob()</code> to construct a long list of matching files,
+When using a pattern to construct a long list of matching files,
 a small number of omissions can easily go unnoticed.
 For instance, files may be missing due to data loss or because of mistakes in the dataset,
-and any globbing pattern will proceed with the files that are found, without any warning.</p>
+and any globbing pattern will proceed with the files that are found, not warning you of potential gaps.</p>
 <p>Consider for example a dataset where filenames have a predictable structure,
 e.g. an enumeration as follows:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>file_000.txt
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>file_001.txt
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>file_002.txt
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>file_003.txt
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>file_000.txt
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>file_001.txt
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>file_002.txt
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>file_003.txt
 </span></code></pre></div>
-<p>There are two ways to loop over these files:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">glob</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">glob</span><span class="p">(</span><span class="s2">&quot;file_*.txt&quot;</span><span class="p">):</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="c1"># do something with path</span>
-</span></code></pre></div>
-<p>Alternatively, one can loop over the expected range of numbers:</p>
+<p>The first approach is to loop over them with a pattern:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">static</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;file_</span><span class="si">{</span><span class="n">i</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">.txt&quot;</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">static</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="c1"># do something with path</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">static</span><span class="p">(</span><span class="s2">&quot;file_*.txt&quot;</span><span class="p">):</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="c1"># do something with path</span>
+</span></code></pre></div>
+<p>Alternatively, one can loop over the expected range of numbers:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">stepup.core.api</span><span class="w"> </span><span class="kn">import</span> <span class="n">static</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;file_</span><span class="si">{</span><span class="n">i</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">.txt&quot;</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">static</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="c1"># do something with path</span>
 </span></code></pre></div>
 <p>If the four files are present, both loops are equivalent in StepUp.
 The latter encodes a bit of extra knowledge about the dataset,
 which requires a small effort to implement,
-but the call to <code>static()</code> will fail in case of a missing file.
-A globbing pattern will not.</p>
+but the call to <code>static()</code> will fail in case of a missing file even when using a pattern.</p>
 <h2 id="try-the-following">Try the Following<a class="headerlink" href="#try-the-following" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
 <p>Run StepUp again without making any changes.
-  You will notice that the <code>./plan.py</code> step is executed again despite not having changed it.
-  When StepUp starts from scratch, it must assume that new files matching the glob pattern
-  may have been added since the last run.
-  Hence, a step calling the <code>glob()</code> function can never be skipped.
-  (This can be avoided when using StepUp interactively. More on that later.)</p>
+  You will notice that <code>./plan.py</code> is skipped this time: on startup, StepUp re-scans the
+  filesystem and compares it against the pattern&rsquo;s persisted matches, so a step is only
+  made pending again when the match set actually changed.</p>
 </li>
 <li>
 <p>Add a file <code>src/egg.txt</code> and run StepUp again with the same arguments.
   You will notice that known steps for <code>src/foo.txt</code> and <code>src/bar.txt</code> are skipped.
   A new step is added for <code>src/egg.txt</code>.</p>
 </li>
+<li>
+<p>Delete the file <code>src/bar.txt</code> and run StepUp again.
+  The plan is re-run because the set of matches shrank,
+  and the copy step for <code>src/bar.txt</code> disappears from the workflow,
+  together with its output <code>dst/bar.txt</code>.</p>
+</li>
 </ul>
-<p>Never use glob functions from other libraries such as Python&rsquo;s built-in <code>glob</code> and <code>pathlib</code> modules.
-When you use these in your <code>plan.py</code>, StepUp will not know which patterns are used,
-and hence will not rerun a step when new files are added that match the glob pattern.</p>
+<div class="admonition note">
+<p class="admonition-title">Changed in StepUp 4</p>
+<p>In StepUp 3, <code>static()</code> only accepted literal paths:
+a pattern had to be passed to <code>glob()</code>, which declared its matches as a side effect.
+See <a href="../../migration/from_3x_to_40/#static-and-glob-have-new-roles"><code>static()</code> and <code>glob()</code> Have New Roles</a>
+for the (usually one-word) edit this requires.</p>
+</div>
 
 
 
