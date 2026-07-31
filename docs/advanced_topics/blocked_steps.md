@@ -24,8 +24,8 @@ This can be verified by analyzing the file `converted.txt` or by running unit te
 To avoid executing `Step 2` at every iteration in the development of `Step 1`,
 you can **block** this step.
 Blocking is achieved by assigning an undefined resource to the step,
-e.g. `resources="blocked"`.
-Because the scheduler does not know about a resource named `blocked`,
+e.g. `resources="gate"`.
+Because the scheduler does not know about a resource named `gate`,
 the step remains permanently pending until you remove the argument.
 Blocked steps are intended to be a temporary measure,
 and to be reverted once you're done with `Step 1`.
@@ -34,7 +34,12 @@ Blocking a step has some consequences:
 
 - A blocked step remains in the `PENDING` state,
   meaning that outdated output files are not cleaned up automatically.
-- At the end of the **build phase**, all currently blocked steps are listed as a reminder.
+- At the end of the **build phase**, blocked steps are reported as a reminder,
+  grouped by resource name with a count of how many steps each resource blocks.
+  (The same grouping applies to steps blocked on unavailable inputs, grouped by file.)
+  These counts are per-root totals: a step blocked on two different roots is counted
+  under both, so the counts across the report can add up to more than the total
+  number of pending steps.
   When [build targets](build_targets.md) are in use and the blocked step is not needed
   to produce any of the given targets, it stays silently `PENDING` like any other unneeded step.
 - Subsequent steps, which use outputs of blocked or pending steps, also remain pending.
@@ -66,12 +71,16 @@ You should get the following terminal output:
 
 ## Try the Following
 
-- Remove the `resources="blocked"` argument, run StepUp, add it back, and run StepUp again.
-  Although the copy commands are no longer executed, their outputs (`b.txt` and `c.txt`)
-  are not cleaned up.
+- Run `sb -r gate` to provide the `gate` resource and allow the blocked step to run.
+  The output files `b.txt` and `c.txt` will be created.
+
+- Next, run `sb` without the `gate` resource.
+  Although the copy commands are not executed, obviously,
+  but their outputs (`b.txt` and `c.txt`) are not cleaned up either.
   This is the expected behavior because automatic cleaning is only performed when all
   (non-optional) steps have been executed successfully.
 
-- Remove the `resources="blocked"` argument,
-  run StepUp, and then make the last copy command optional.
-  In this case, the output of the optional step (`c.txt`) will be removed.
+- Remove the `resources="gate"` argument and then make the last copy command optional.
+  Rerun `sb` and the output of the optional step (`c.txt`) will be removed.
+  Because all non-optional steps have been executed successfully,
+  the automatic cleaning mechanism was triggered.

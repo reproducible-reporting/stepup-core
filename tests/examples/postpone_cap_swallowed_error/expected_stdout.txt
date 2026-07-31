@@ -8,15 +8,14 @@ POSTPONED │ ./work.py
 never.txt
 ────────────────────────────────────────────────────────────────────────────────
  DIRECTOR │ Ran 2 job(s).
-  WARNING │ 1 step(s) remained pending ...
-─────────────────────────────── Detached inputs ────────────────────────────────
-             AWAITED  never.txt
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                required inputs are unavailable
-Command               ./work.py
-Inputs        STATIC  trigger.txt
-              STATIC  work.py
-             AWAITED  (never.txt) [amended]
+  WARNING │ 1 step(s) remained pending.
+────────────────────────────── Unavailable inputs ──────────────────────────────
+             AWAITED: (never.txt)  1 step(s)
+──────────────────────────────────── Remedy ────────────────────────────────────
+Create the input file(s) listed above, correct their static() paths,
+or add a step that builds them.
+Paths in parentheses are detached: no step in the workflow declares them.
+Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
   WARNING │ Skipping file cleanup due to incomplete build
   WARNING │ Check logs: .stepup/warning.log

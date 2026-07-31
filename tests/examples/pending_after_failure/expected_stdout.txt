@@ -2,23 +2,23 @@
     PHASE │ build
     START │ ./plan.py
   SUCCESS │ ./plan.py
-    START │ ./work.py
-POSTPONED │ ./work.py
-────────────────────────── Unavailable amended inputs ──────────────────────────
-inp2.txt
+    START │ false
+     FAIL │ false
+──────────────────────────────── Failed command ────────────────────────────────
+false  # exit=1
+───────────────────────── Expected outputs not created ─────────────────────────
+broken.txt
 ────────────────────────────────────────────────────────────────────────────────
  DIRECTOR │ Ran 2 job(s).
+  WARNING │ 1 step(s) failed.
   WARNING │ 1 step(s) remained pending.
-────────────────────────────── Unavailable inputs ──────────────────────────────
-             AWAITED: (inp2.txt)  1 step(s)
+──────────────────────────────── Other reasons ─────────────────────────────────
+1 step(s) are blocked by failed steps, e.g. cp -p broken.txt final.txt.
 ──────────────────────────────────── Remedy ────────────────────────────────────
-Create the input file(s) listed above, correct their static() paths,
-or add a step that builds them.
-Paths in parentheses are detached: no step in the workflow declares them.
 Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
   WARNING │ Skipping file cleanup due to incomplete build
-  WARNING │ Check logs: .stepup/warning.log
+  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
     PHASE │ watch
- DIRECTOR │ Wrote graph to current_graph_1.txt, current_graph_1_provenance.dot and current_graph_1_dependency.dot
+ DIRECTOR │ Wrote graph to current_graph.txt, current_graph_provenance.dot and current_graph_dependency.dot
  DIRECTOR │ See you!

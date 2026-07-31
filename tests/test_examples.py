@@ -159,6 +159,7 @@ EXAMPLES = [
     "output_storage",
     "path_filter",
     "pending",
+    "pending_after_failure",
     "pending_cleanup",
     "pending_nested",
     "pending_shutdown",

@@ -8,15 +8,14 @@
     START │ cp hop1.txt hop2.txt  # wd=a
   SUCCESS │ cp hop1.txt hop2.txt  # wd=a
  DIRECTOR │ Ran 4 job(s).
-  WARNING │ 1 step(s) remained pending ...
-─────────────────────────────── Detached inputs ────────────────────────────────
-            OUTDATED  a/hop2.txt
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                required inputs are unavailable
-Command               cp ../a/hop2.txt done.txt
-Working directory     b
-Inputs      OUTDATED  (a/hop2.txt)
-Outputs     OUTDATED  b/done.txt
+  WARNING │ 1 step(s) remained pending.
+────────────────────────────── Unavailable inputs ──────────────────────────────
+            OUTDATED: (a/hop2.txt)  1 step(s)
+──────────────────────────────────── Remedy ────────────────────────────────────
+Create the input file(s) listed above, correct their static() paths,
+or add a step that builds them.
+Paths in parentheses are detached: no step in the workflow declares them.
+Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
   WARNING │ Skipping file cleanup due to incomplete build
   WARNING │ Check logs: .stepup/warning.log

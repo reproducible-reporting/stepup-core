@@ -8,27 +8,14 @@
     START │ ./plan.py
   SUCCESS │ ./plan.py
  DIRECTOR │ Ran 1 job(s).
-  WARNING │ 3 step(s) remained pending ...
-─────────────────────────────── Detached inputs ────────────────────────────────
-             MISSING  inp1.txt
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                required inputs are unavailable
-Command               ./work1.py
-Inputs        STATIC  work1.py
-             MISSING  (inp1.txt)
-Outputs     OUTDATED  out1.txt
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                creator is not RUNNING or SUCCEEDED
-Command               ./work2.py
-Inputs        STATIC  work2.py
-              STATIC  inp2.txt
-Outputs     OUTDATED  out2.txt
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                creator is not RUNNING or SUCCEEDED
-Command               ./work3.py
-Inputs        STATIC  work3.py
-              STATIC  inp3.txt
-Outputs     OUTDATED  out3.txt
+  WARNING │ 3 step(s) remained pending.
+────────────────────────────── Unavailable inputs ──────────────────────────────
+             MISSING: (inp1.txt)  3 step(s)
+──────────────────────────────────── Remedy ────────────────────────────────────
+Create the input file(s) listed above, correct their static() paths,
+or add a step that builds them.
+Paths in parentheses are detached: no step in the workflow declares them.
+Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
   WARNING │ Skipping file cleanup due to incomplete build
   WARNING │ Check logs: .stepup/warning.log

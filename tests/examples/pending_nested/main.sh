@@ -47,10 +47,9 @@ stepup join
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq "${RETURN_CODE_PENDING}" ]] || exit 1
 
-# Check that all outputs have become outdated
-grep 'OUTDATED  out1.txt' .stepup/warning.log
-grep 'OUTDATED  out2.txt' .stepup/warning.log
-grep 'OUTDATED  out3.txt' .stepup/warning.log
+# Check that all outputs have become outdated.
+# (The pending report no longer lists per-step output states; current_graph2.txt,
+# compared against expected_graph2.txt below, already asserts this precisely.)
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1

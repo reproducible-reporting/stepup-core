@@ -13,17 +13,17 @@ they work with the workflow, the scheduler and the reporter only,
 which is why they live here instead of in `builder.py`.
 """
 
-from collections.abc import Callable, Iterable, Iterator
-from itertools import chain, groupby
+from collections.abc import Callable, Iterable
+from itertools import groupby
 
 from path import Path
 
 from .enums import FileState, Need, ReturnCode, StepState
 from .hash import FileHash
+from .pending import PendingSummary, analyze_pending
 from .reporter import ReporterClient
 from .scheduler import Scheduler
 from .sqlite3 import DBSession
-from .step import PathRecord, Step
 from .workflow import GlobViolation, Workflow
 
 __all__ = ("remove_outdated_outputs", "report_completion", "revert_optional")
@@ -122,114 +122,172 @@ async def revert_optional(db: DBSession, workflow: Workflow, reporter: ReporterC
 #
 
 
-PENDING_REASON_TEXT = {
-    "runnable": "runnable but not executed (builder was interrupted)",
-    "inputs": "required inputs are unavailable",
-    "resources": "required resources exceed maximum available",
-    "unsafe": "creator is not RUNNING or SUCCEEDED",
-}
-"""Explanation of every reason returned by `Scheduler.get_pending_step_records`."""
-
 STATE_COLUMN = 20
-"""Column at which the state field of a line in a `PENDING Step` page ends.
+"""Column at which the state (or resource name) field of a report line ends.
 
 Every block on the page aligns its state (or resource name) on this column,
 whatever the width of the block's label,
 so that the paths (or resource units) after it line up as well.
 """
 
+PENDING_INPUT_REMEDY = """\
+Create the input file(s) listed above, correct their static() paths,
+or add a step that builds them."""
 
-def _column_lines(label: str, rows: Iterable[tuple[str, str]]) -> Iterator[str]:
-    """Format `rows` as a block of aligned lines, labeled on the first line only.
+PENDING_DETACHED_REMEDY = """\
+Paths in parentheses are detached: no step in the workflow declares them."""
+
+PENDING_RESOURCE_REMEDY = """\
+Increase resources with --resources or lower the step requirements."""
+
+PENDING_BROWSE_REMEDY = """\
+Run `stepup browse` and search for a name above to see the steps involved."""
+
+
+def _table_lines(rows: list[tuple[str, str, str]], dw: int, cw: int) -> list[str]:
+    """Format `rows` as a block of aligned `Unavailable inputs` / `Blocked resources` lines.
 
     Parameters
     ----------
-    label
-        The label of the block, e.g. `"Inputs"`.
-        It is printed on the first line and replaced by blanks on the following ones.
     rows
-        The `(state, path)` pairs to format,
-        where **state** is right-aligned on `STATE_COLUMN` and **path** follows it.
+        `(key, detail, count)` triples, where **key** is a `FileState` or resource name
+        (or `""` for a remainder row), right-aligned on `STATE_COLUMN`,
+        **detail** is left-aligned on `dw`,
+        and **count** is right-aligned on `cw` and followed by the literal `" step(s)"`.
+    dw
+        The width to left-align `detail` on.
+    cw
+        The width to right-align `count` on.
 
     Returns
     -------
     lines
-        One line per row, empty when `rows` is empty.
+        One line per row.
     """
-    for state, path in rows:
-        yield f"{label}{state:>{STATE_COLUMN - len(label)}s}  {path}"
-        label = ""
-
-
-def _format_path(rec: PathRecord) -> str:
-    """Format the path of `rec`, flagging it as detached and/or amended when relevant."""
-    path = f"({rec.path})" if rec.detached else rec.path
-    return f"{path} [amended]" if rec.amended else path
-
-
-def _format_pending_step(step: Step, reason: str) -> str:
-    """Format the page describing a step that remained pending and the reason why."""
-    command, workdir = step.command_workdir
-    header_width = STATE_COLUMN + 2
-    lines = [
-        f"{'Reason':<{header_width}}{PENDING_REASON_TEXT[reason]}",
-        f"{'Command':<{header_width}}{command}",
+    return [
+        f"{key:>{STATE_COLUMN}s}: {detail:<{dw}s}  {count:>{cw}s} step(s)"
+        for key, detail, count in rows
     ]
-    if workdir != ".":
-        lines.append(f"{'Working directory':<{header_width}}{workdir}")
-    lines.extend(
-        _column_lines("Declares", ((rec.state.name, rec.path) for rec in step.static_paths()))
-    )
-    lines.extend(
-        _column_lines("Declares", ((rec.state.name, rec.path) for rec in step.missing_paths()))
-    )
-    lines.extend(
-        _column_lines(
-            "Inputs",
-            ((rec.state.name, _format_path(rec)) for rec in step.inp_paths(include_detached=True)),
-        )
-    )
-    # Outputs and volatile outputs share one block, i.e. the label is not repeated.
-    lines.extend(
-        _column_lines(
-            "Outputs",
+
+
+def _input_rows(summary: PendingSummary) -> list[tuple[str, str, str]]:
+    """Build the `(state, path, count)` rows of the `Unavailable inputs` table."""
+    rows = [
+        (row.state.name, f"({row.path})" if row.detached else row.path, str(row.nblocked))
+        for row in summary.inputs
+    ]
+    if summary.ninputs_hidden > 0:
+        rows.append(
             (
-                (rec.state.name, _format_path(rec))
-                for rec in chain(step.out_paths(), step.vol_paths())
-            ),
+                "",
+                f"... and {summary.ninputs_hidden} more input(s)",
+                f"≥ {summary.ninputs_hidden_blocked}",
+            )
         )
-    )
-    lines.extend(
-        _column_lines("Resource", ((name, str(units)) for name, units in step.resources()))
-    )
-    return "\n".join(lines)
+    return rows
+
+
+def _format_units_available(units_available: int | None) -> str:
+    """Format the "available" clause of a `Insufficient resources` row."""
+    return "none available" if units_available is None else f"{units_available} available"
+
+
+def _resource_rows(summary: PendingSummary) -> list[tuple[str, str, str]]:
+    """Build the `(name, detail, count)` rows of the `Insufficient resources` table."""
+    rows = [
+        (
+            row.name,
+            f"{row.units_needed} unit(s) needed, {_format_units_available(row.units_available)}",
+            str(row.nblocked),
+        )
+        for row in summary.resources
+    ]
+    if summary.nresources_hidden > 0:
+        rows.append(
+            (
+                "",
+                f"... and {summary.nresources_hidden} more resource(s)",
+                f"≥ {summary.nresources_hidden_blocked}",
+            )
+        )
+    return rows
+
+
+def _other_lines(summary: PendingSummary) -> list[str]:
+    """Format the `Other reasons` page: one prose line per non-empty bucket.
+
+    The `, e.g. {example}` clause is always included:
+    `PendingOther.example` is `None` only when `nblocked == 0`,
+    which the queries in `pending.py` make impossible to reach here, so it is asserted
+    rather than branched around.
+    """
+    lines = []
+    for bucket, template in (
+        (summary.failed, "{n} step(s) are blocked by failed steps, e.g. {example}."),
+        (summary.cyclic, "{n} step(s) are waiting on each other, e.g. {example}."),
+        (
+            summary.postponed,
+            "{n} step(s) are postponed with unavailable amended inputs, e.g. {example}.",
+        ),
+        (
+            summary.other,
+            "{n} step(s) are blocked by a step that is not reported here, e.g. {example}.",
+        ),
+        (
+            summary.runnable,
+            "{n} step(s) seem runnable, e.g. {example}; the build phase may have ended early.",
+        ),
+    ):
+        if bucket.nblocked == 0:
+            continue
+        assert bucket.example is not None
+        lines.append(template.format(n=bucket.nblocked, example=bucket.example))
+    return lines
+
+
+def _remedy_lines(summary: PendingSummary) -> list[str]:
+    """Format the `Remedy` page: one paragraph per pending-step problem actually shown."""
+    lines = []
+    if len(summary.inputs) > 0:
+        lines.append(PENDING_INPUT_REMEDY)
+        if any(row.detached for row in summary.inputs):
+            lines.append(PENDING_DETACHED_REMEDY)
+    if len(summary.resources) > 0:
+        lines.append(PENDING_RESOURCE_REMEDY)
+    lines.append(PENDING_BROWSE_REMEDY)
+    return lines
 
 
 async def _report_pending_steps(
-    db: DBSession, workflow: Workflow, scheduler: Scheduler, reporter: ReporterClient
+    db: DBSession, workflow: Workflow, reporter: ReporterClient
 ) -> ReturnCode:
-    """Report the steps that remained pending, with the reason why, if there are any."""
+    """Report a fixed-size root-cause summary of the steps that remained pending, if any."""
     async with db:
-        step_records = scheduler.get_pending_step_records()
-        if len(step_records) == 0:
-            return ReturnCode(0)
-        pages = [
-            ("PENDING Step", _format_pending_step(step, reason)) for step, reason in step_records
-        ]
-        detached_page = "\n".join(
-            f"{file_state.name:>{STATE_COLUMN}s}  {path}"
-            for path, file_state in workflow.detached_inp_paths()
-        )
-        missing_page = "\n".join(
-            f"{FileState.MISSING.name:>{STATE_COLUMN}s}  {path}"
-            for path in workflow.missing_paths()
-        )
-    # Insert pages with detached and missing inputs in front.
-    if detached_page != "":
-        pages.insert(0, ("Detached inputs", detached_page))
-    if missing_page != "":
-        pages.insert(0, ("Missing inputs", missing_page))
-    await reporter("WARNING", f"{len(step_records)} step(s) remained pending ...", pages)
+        summary = analyze_pending(workflow)
+    if summary.ntotal == 0:
+        return ReturnCode(0)
+
+    input_rows = _input_rows(summary)
+    resource_rows = _resource_rows(summary)
+    table_rows = input_rows + resource_rows
+    dw = max((len(detail) for _, detail, _ in table_rows), default=0)
+    cw = max((len(count) for _, _, count in table_rows), default=0)
+
+    pages = []
+    if len(input_rows) > 0:
+        pages.append(("Unavailable inputs", "\n".join(_table_lines(input_rows, dw, cw))))
+    if len(resource_rows) > 0:
+        pages.append(("Insufficient resources", "\n".join(_table_lines(resource_rows, dw, cw))))
+    other_lines = _other_lines(summary)
+    if len(other_lines) > 0:
+        pages.append(("Other reasons", "\n".join(other_lines)))
+    if len(pages) > 0:
+        # Unconditional once any other page is present: the `stepup browse` line always
+        # applies, and PENDING_INPUT_REMEDY/PENDING_RESOURCE_REMEDY are gated above on the
+        # very tables that make this page non-empty in the first place.
+        pages.append(("Remedy", "\n".join(_remedy_lines(summary))))
+
+    await reporter("WARNING", f"{summary.ntotal} step(s) remained pending.", pages)
     return ReturnCode.PENDING
 
 
@@ -340,7 +398,7 @@ async def report_completion(
         # making a "not produced" warning unreliable.
         return returncode
 
-    returncode |= await _report_pending_steps(db, workflow, scheduler, reporter)
+    returncode |= await _report_pending_steps(db, workflow, reporter)
     returncode |= await _report_missing_targets(db, workflow, reporter)
     # Late glob validation is skipped when the build already went wrong: an unjustified
     # match is then usually a consequence (a plan that would have declared it never ran),

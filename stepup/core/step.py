@@ -23,7 +23,15 @@ from .stepinfo import StepInfo
 from .trellis import Node, NodeType
 from .utils import format_digest
 
-__all__ = ("RESERVED_ENV_VARS", "STEP_DISPATCH_WHERE", "PathRecord", "Step", "truncate_output")
+__all__ = (
+    "RESERVED_ENV_VARS",
+    "STEP_DISPATCH_WHERE",
+    "UNAVAILABLE_INPUT_WHERE",
+    "PathRecord",
+    "Step",
+    "truncate_output",
+    "unavailable_input_sql",
+)
 
 
 logger = logging.getLogger(__name__)
@@ -54,6 +62,62 @@ STEP_DISPATCH_WHERE = f"""step.state = {StepState.PENDING.value} AND
     NOT step.postponed AND
     step._implied_need > {Need.OPTIONAL.value} AND
     step._ready"""
+
+
+# Boolean expression identifying an input file that blocks a step from running.
+# It references three aliases the enclosing query must provide:
+# `input_file` (file row), `input_node` (node row) and `amended_dep`
+# (LEFT JOINed amended_dep row, NULL for an initial dependency).
+# Shared verbatim by dispatch (RECOMPUTE_READY, via `unavailable_input_sql` below,
+# in scheduler.py) and by the end-of-build analysis in pending.py,
+# so the two can never disagree about what "blocked" means.
+UNAVAILABLE_INPUT_WHERE = f"""
+input_file.state = {FileState.VOLATILE.value} OR
+(
+    -- Case 1: Is an amended dependency
+    amended_dep.i IS NOT NULL AND
+    NOT input_node.detached AND
+    input_file.state IN ({FileState.AWAITED.value}, {FileState.OUTDATED.value})
+) OR
+(
+    -- Case 2: Is an initial dependency
+    amended_dep.i IS NULL AND
+    (
+        input_node.detached OR
+        input_file.state NOT IN ({FileState.BUILT.value}, {FileState.STATIC.value})
+    )
+)
+"""
+
+
+def unavailable_input_sql(correlate: str) -> str:
+    """Return an `EXISTS`-ready subquery for the unavailable inputs of one step.
+
+    Only ever used inside `EXISTS(...)`/`NOT EXISTS(...)`,
+    so the projected column is irrelevant to the result --
+    `SELECT 1` avoids depending on an outer `node` alias that may not be in scope
+    (e.g. `RECOMPUTE_READY`'s bare `UPDATE step ...`).
+
+    Parameters
+    ----------
+    correlate
+        The SQL expression identifying "this step's node id" in the enclosing query --
+        `node.i` when joined against `node`/`step`,
+        or `step.node` when there is no `node` table in scope.
+
+    Returns
+    -------
+    subquery
+        A `SELECT` statement, suitable as the body of an `EXISTS`/`NOT EXISTS` clause.
+    """
+    return f"""
+    SELECT 1
+    FROM dependency AS dep
+    JOIN file AS input_file ON input_file.node = dep.source
+    JOIN node AS input_node ON input_node.i = dep.source
+    LEFT JOIN amended_dep ON amended_dep.i = dep.i
+    WHERE dep.sink = {correlate} AND ({UNAVAILABLE_INPUT_WHERE})
+    """
 
 
 STEP_SCHEMA = f"""

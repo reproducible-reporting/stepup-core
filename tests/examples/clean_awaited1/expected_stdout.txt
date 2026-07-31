@@ -3,14 +3,14 @@
     START │ ./plan.py
   SUCCESS │ ./plan.py
  DIRECTOR │ Ran 1 job(s).
-  WARNING │ 1 step(s) remained pending ...
-─────────────────────────────── Detached inputs ────────────────────────────────
-             AWAITED  missing.txt
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                required inputs are unavailable
-Command               cp -p missing.txt hello.txt
-Inputs       AWAITED  (missing.txt)
-Outputs      AWAITED  hello.txt
+  WARNING │ 1 step(s) remained pending.
+────────────────────────────── Unavailable inputs ──────────────────────────────
+             AWAITED: (missing.txt)  1 step(s)
+──────────────────────────────────── Remedy ────────────────────────────────────
+Create the input file(s) listed above, correct their static() paths,
+or add a step that builds them.
+Paths in parentheses are detached: no step in the workflow declares them.
+Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
   WARNING │ Skipping file cleanup due to incomplete build
   WARNING │ Check logs: .stepup/warning.log
@@ -18,14 +18,14 @@ Outputs      AWAITED  hello.txt
  DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot and current_graph1_dependency.dot
     PHASE │ build
  DIRECTOR │ Ran 0 job(s).
-  WARNING │ 1 step(s) remained pending ...
-─────────────────────────────── Detached inputs ────────────────────────────────
-             AWAITED  missing.txt
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                required inputs are unavailable
-Command               cp -p missing.txt hello.txt
-Inputs       AWAITED  (missing.txt)
-Outputs      AWAITED  hello.txt
+  WARNING │ 1 step(s) remained pending.
+────────────────────────────── Unavailable inputs ──────────────────────────────
+             AWAITED: (missing.txt)  1 step(s)
+──────────────────────────────────── Remedy ────────────────────────────────────
+Create the input file(s) listed above, correct their static() paths,
+or add a step that builds them.
+Paths in parentheses are detached: no step in the workflow declares them.
+Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
   WARNING │ Skipping file cleanup due to incomplete build
   WARNING │ Check logs: .stepup/warning.log

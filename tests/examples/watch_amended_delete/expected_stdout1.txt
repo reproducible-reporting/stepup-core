@@ -16,15 +16,13 @@ POSTPONED │ ./work.py
 inp.txt
 ────────────────────────────────────────────────────────────────────────────────
  DIRECTOR │ Ran 2 job(s).
-  WARNING │ 1 step(s) remained pending ...
-──────────────────────────────── Missing inputs ────────────────────────────────
-             MISSING  inp.txt
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                required inputs are unavailable
-Command               ./work.py
-Inputs       MISSING  inp.txt [amended]
-              STATIC  work.py
-Outputs     OUTDATED  out.txt [amended]
+  WARNING │ 1 step(s) remained pending.
+────────────────────────────── Unavailable inputs ──────────────────────────────
+             MISSING: inp.txt  1 step(s)
+──────────────────────────────────── Remedy ────────────────────────────────────
+Create the input file(s) listed above, correct their static() paths,
+or add a step that builds them.
+Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
   WARNING │ Skipping file cleanup due to incomplete build
   WARNING │ Check logs: .stepup/warning.log

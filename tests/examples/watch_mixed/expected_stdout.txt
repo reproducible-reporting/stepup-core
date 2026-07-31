@@ -16,14 +16,14 @@
     START │ ./plan.py
   SUCCESS │ ./plan.py
  DIRECTOR │ Ran 2 job(s).
-  WARNING │ 1 step(s) remained pending ...
-─────────────────────────────── Detached inputs ────────────────────────────────
-            OUTDATED  copy1.txt
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                required inputs are unavailable
-Command               cp copy1.txt copy2.txt
-Inputs      OUTDATED  (copy1.txt)
-Outputs     OUTDATED  copy2.txt
+  WARNING │ 1 step(s) remained pending.
+────────────────────────────── Unavailable inputs ──────────────────────────────
+            OUTDATED: (copy1.txt)  1 step(s)
+──────────────────────────────────── Remedy ────────────────────────────────────
+Create the input file(s) listed above, correct their static() paths,
+or add a step that builds them.
+Paths in parentheses are detached: no step in the workflow declares them.
+Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
   WARNING │ Skipping file cleanup due to incomplete build
   WARNING │ Check logs: .stepup/warning.log

@@ -12,14 +12,13 @@
   DELETED │ message.txt
     PHASE │ build
  DIRECTOR │ Ran 0 job(s).
-  WARNING │ 1 step(s) remained pending ...
-──────────────────────────────── Missing inputs ────────────────────────────────
-             MISSING  sub/message.txt
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                required inputs are unavailable
-Command               cp -p sub/message.txt message.txt
-Inputs       MISSING  sub/message.txt
-Outputs      AWAITED  message.txt
+  WARNING │ 1 step(s) remained pending.
+────────────────────────────── Unavailable inputs ──────────────────────────────
+             MISSING: sub/message.txt  1 step(s)
+──────────────────────────────────── Remedy ────────────────────────────────────
+Create the input file(s) listed above, correct their static() paths,
+or add a step that builds them.
+Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
   WARNING │ Skipping file cleanup due to incomplete build
   WARNING │ Check logs: .stepup/warning.log

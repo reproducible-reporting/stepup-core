@@ -13,14 +13,13 @@
   DELETED │ plan.py
     PHASE │ build
  DIRECTOR │ Ran 0 job(s).
-  WARNING │ 1 step(s) remained pending ...
-──────────────────────────────── Missing inputs ────────────────────────────────
-             MISSING  plan.py
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                required inputs are unavailable
-Command               ./plan.py
-Declares      STATIC  original.txt
-Inputs       MISSING  plan.py
+  WARNING │ 1 step(s) remained pending.
+────────────────────────────── Unavailable inputs ──────────────────────────────
+             MISSING: plan.py  1 step(s)
+──────────────────────────────────── Remedy ────────────────────────────────────
+Create the input file(s) listed above, correct their static() paths,
+or add a step that builds them.
+Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
   WARNING │ Skipping file cleanup due to incomplete build
   WARNING │ Check logs: .stepup/warning.log

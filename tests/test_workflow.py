@@ -166,7 +166,6 @@ async def test_step(wfs: Workflow):
             ("foo.txt", True)
         }
         assert {r.path for r in step.out_paths()} == {"sub/bar.txt"}
-        assert set(wfs.detached_inp_paths()) == {("foo.txt", FileState.AWAITED)}
 
     # Redefining the boot script is not allowed.
     with pytest.raises(GraphError):
@@ -2803,7 +2802,6 @@ async def test_static_missing_paths(wfp: Workflow):
         wfp.find(File, "zzz").set_state(FileState.MISSING)
         assert {r.path for r in step.static_paths()} == {"bar", "foo"}
         assert {r.path for r in step.missing_paths()} == {"zzz"}
-        assert set(wfp.missing_paths()) == {"zzz"}
         assert sorted((r.path, r.hash) for r in step.static_paths()) == [
             ("bar", fake_hash("bar")),
             ("foo", fake_hash("foo")),

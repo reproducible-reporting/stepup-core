@@ -1,0 +1,43 @@
+root:
+             product   file:plan.py
+             product   step:./plan.py
+
+file:plan.py
+               state = STATIC
+             creator   root:
+                sink   step:./plan.py
+
+step:./plan.py
+               state = SUCCEEDED
+                need = PLAN
+           using_env = STEPUP_PATH_FILTER [amended]
+             creator   root:
+              source   file:plan.py
+             product   step:cp -p broken.txt final.txt
+             product   step:false
+
+step:false
+               state = FAILED
+                need = DEFAULT
+             creator   step:./plan.py
+             product   file:broken.txt
+                sink   file:broken.txt
+
+file:broken.txt
+               state = AWAITED
+             creator   step:false
+              source   step:false
+                sink   step:cp -p broken.txt final.txt
+
+step:cp -p broken.txt final.txt
+               state = PENDING
+                need = DEFAULT
+             creator   step:./plan.py
+              source   file:broken.txt
+             product   file:final.txt
+                sink   file:final.txt
+
+file:final.txt
+               state = AWAITED
+             creator   step:cp -p broken.txt final.txt
+              source   step:cp -p broken.txt final.txt

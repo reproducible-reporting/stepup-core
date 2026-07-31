@@ -17,21 +17,13 @@ Same inp hash        asource2.txt
     START │ cp -p asource2.txt data2.txt
   SUCCESS │ cp -p asource2.txt data2.txt
  DIRECTOR │ Ran 2 job(s).
-  WARNING │ 2 step(s) remained pending ...
-──────────────────────────────── Missing inputs ────────────────────────────────
-             MISSING  asource1.txt
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                required inputs are unavailable
-Command               cp -p asource1.txt data1.txt
-Inputs       MISSING  asource1.txt
-Outputs      AWAITED  data1.txt
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                required inputs are unavailable
-Command               ./work.py > log.txt
-Inputs       AWAITED  data1.txt
-              STATIC  work.py
-               BUILT  data2.txt [amended]
-Outputs      AWAITED  log.txt
+  WARNING │ 2 step(s) remained pending.
+────────────────────────────── Unavailable inputs ──────────────────────────────
+             MISSING: asource1.txt  2 step(s)
+──────────────────────────────────── Remedy ────────────────────────────────────
+Create the input file(s) listed above, correct their static() paths,
+or add a step that builds them.
+Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
   WARNING │ Skipping file cleanup due to incomplete build
   WARNING │ Check logs: .stepup/warning.log

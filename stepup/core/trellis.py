@@ -938,7 +938,8 @@ class Trellis:
             # * Sinks may well be attached, because detachment propagates along creator edges
             #   only, never along dependency edges. A detached file that is still an input of an
             #   attached step must be kept: deleting it would silently drop that step's input.
-            #   Such nodes are reported to the user instead, see `Workflow.detached_inp_paths`.
+            #   Such nodes are reported to the user instead, see `pending.py`'s dead-end-file
+            #   detection (`_INSERT_PEND_DEAD_FILE`), which flags a detached blocking input.
             #
             # The intended fixed point is therefore: every surviving detached node is held
             # (directly or indirectly) by an attached sink.

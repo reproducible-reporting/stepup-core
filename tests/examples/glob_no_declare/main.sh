@@ -16,7 +16,8 @@ stepup join
 set +e; wait -fn $PID; RETURNCODE=$?; set -e
 [[ "${RETURNCODE}" -eq "${RETURN_CODE_PENDING}" ]] || exit 1
 
-grep "required inputs are unavailable" current_stdout.txt
+# The AWAITED, undeclared inp.txt is asserted verbatim by expected_stdout.txt's
+# "Unavailable inputs" page instead of a separate grep.
 
 # Check files that are expected to be present and/or missing.
 [[ -f plan.py ]] || exit 1

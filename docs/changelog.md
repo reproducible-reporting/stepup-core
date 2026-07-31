@@ -130,6 +130,12 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
   `-k` (steps already running still finish; no new steps are started).
   Use the new `--keep-going` / `-k` flag (or `STEPUP_BUILD_KEEP_GOING`) to restore the
   previous behavior of continuing to build every step whose inputs remain available.
+- The end-of-build pending report no longer prints one `PENDING Step` page per pending step.
+  Instead, it summarizes the **root causes** as a fixed-size ranked report: the unavailable
+  input files and blocked resources that account for the most pending steps, plus a
+  count of steps blocked by failed steps, waiting on each other, postponed, or otherwise
+  unexplained. Use `stepup browse` to inspect the individual steps behind any entry.
+  See [Blocked Steps](advanced_topics/blocked_steps.md) for details on the new format.
 - The `static()` and `glob()` functions have been redesigned from scratch to permit more use cases
   while still imposing the same safety and correctness guarantees as in StepUp 3.
   See [`static()` and `glob()` Have New Roles](migration/from_3x_to_40.md#static-and-glob-have-new-roles)

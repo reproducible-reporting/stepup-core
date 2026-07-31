@@ -12,7 +12,7 @@ from .hash import FileHash
 from .job import Job, RunJob, ValidateAmendedJob
 from .path import dir_range_upper
 from .sqlite3 import DBSession
-from .step import STEP_DISPATCH_WHERE, Step
+from .step import STEP_DISPATCH_WHERE, Step, unavailable_input_sql
 from .utils import parse_resources, write_joblog_record
 from .workflow import Workflow
 
@@ -266,79 +266,21 @@ WHERE NOT source_node.detached
 """
 
 
-# Subquery body for EXISTS checks: matches input files that block a step from running.
-# The amended_dep data is brought in via LEFT JOIN
-# to distinguish between initial and amended dependencies.
-# `correlate` is the SQL expression identifying "this step's node id" in the enclosing
-# query -- `node.i` when joined against `node`/`step` (SELECT_PENDING_REASONS), or
-# `step.node` when there is no `node` table in scope (RECOMPUTE_READY, a bare
-# `UPDATE step ...`). The two instantiations below share this one body so they can never
-# drift apart.
-def _unavailable_input_sql(correlate: str) -> str:
-    # Only ever used inside EXISTS(...)/NOT EXISTS(...), so the projected column is
-    # irrelevant to the result -- `SELECT 1` avoids depending on an outer `node` alias that
-    # may not be in scope (e.g. RECOMPUTE_READY's bare `UPDATE step ...`).
-    return f"""
-    SELECT 1
-    FROM dependency AS dep
-    JOIN file AS input_file ON input_file.node = dep.source
-    JOIN node AS input_node ON input_node.i = dep.source
-    LEFT JOIN amended_dep ON amended_dep.i = dep.i
-    WHERE dep.sink = {correlate} AND (
-        input_file.state = {FileState.VOLATILE.value} OR
-        (
-            -- Case 1: Is an amended dependency
-            amended_dep.i IS NOT NULL AND
-            NOT input_node.detached AND
-            input_file.state IN ({FileState.AWAITED.value}, {FileState.OUTDATED.value})
-        ) OR
-        (
-            -- Case 2: Is an initial dependency
-            amended_dep.i IS NULL AND
-            (
-                input_node.detached OR
-                input_file.state NOT IN ({FileState.BUILT.value}, {FileState.STATIC.value})
-            )
-        )
-    )
-    """
-
-
-# Used by SELECT_PENDING_REASONS, correlated on the outer node.i.
-UNAVAILABLE_INPUT = _unavailable_input_sql("node.i")
-
-
 # Recompute step._ready for every _check_ready-flagged step. See Scheduler._update_meta_ready.
 RECOMPUTE_READY = f"""
 UPDATE step SET
-    _ready = NOT EXISTS ({_unavailable_input_sql("step.node")}),
+    _ready = NOT EXISTS ({unavailable_input_sql("step.node")}),
     _check_ready = 0
 WHERE _check_ready
 """
-
-
-# Priority WHERE clause:
-# - Planning steps run first to unlock more work early.
-# - Within each group, higher tail_time steps go first.
-#   A step that has been postponed (multiple times) gets its tail_time divided by
-#   1 + postpone_count, to reduce the risk of too early dispatching after postponing.
-#   Dividing (rather than subtracting a fixed penalty) keeps the demotion proportional
-#   to the step's own tail_time, so it behaves consistently regardless of the time
-#   scale of the workflow.
-# - Label provides a deterministic tie-breaker.
-_ORDER_BY_PRIORITY = f"""ORDER BY
-    (step._implied_need = {Need.PLAN.value}) DESC,
-    step._tail_time / (1 + step.postpone_count) DESC,
-    node.label ASC"""
 
 
 # Whether a step has at least one required resource that is currently undefined
 # or over-committed (i.e. cannot be run right now).
 # Named resources are only relevant to actual execution,
 # never to hash-checking -- see SELECT_NEXT_STEP.
-# Not shared with SELECT_PENDING_REASONS's similarly-shaped resource check:
-# that one omits the currently-RUNNING subtraction
-# because it documents "assumed no RUNNING steps at this point"
+# Not shared with pending.py's similarly-shaped resource check: that one omits the
+# currently-RUNNING subtraction because it documents "assumed no RUNNING steps at this point"
 # (it runs after the builder has stopped),
 # so the two have different semantics despite the surface resemblance.
 RESOURCE_UNAVAILABLE = f"""
@@ -436,36 +378,6 @@ LEFT JOIN (
     WHERE s.state = {StepState.RUNNING.value}
     GROUP BY st.name
 ) AS running ON running.name = ar.name
-"""
-
-
-# Identify the reasons why pending steps are not runnable after the builder has stopped.
-# It is assumed that there are no RUNNING steps at this point.
-# (This is typically called after the builder has (been) stopped.)
-#
-# step._implied_need > ? binds Workflow.need_threshold, the same property SELECT_NEXT_STEP
-# binds, so the dispatch and reporting thresholds can never diverge. Without targets this is
-# OPTIONAL, equivalent to the old static `!= OPTIONAL` filter since OPTIONAL is Need's
-# minimum value; with targets it is DEFAULT, so DEFAULT-implied PENDING steps (never
-# selected for dispatch) are no longer reported.
-SELECT_PENDING_REASONS = f"""
-SELECT
-    node.i,
-    node.label,
-    step._safe,
-    step.postponed AS postponed,
-    EXISTS ({UNAVAILABLE_INPUT}) AS has_unavailable_inputs,
-    EXISTS (
-        SELECT 1 FROM step_resource AS req
-        LEFT JOIN available_resource AS avail ON avail.name = req.name
-        WHERE req.node = node.i AND (avail.name IS NULL OR avail.units < req.units)
-    ) AS has_resource_issue
-FROM node
-JOIN step ON node.i = step.node
-WHERE step.state = {StepState.PENDING.value} AND
-    step._implied_need > ? AND
-    NOT node.detached
-{_ORDER_BY_PRIORITY}
 """
 
 
@@ -871,37 +783,3 @@ class Scheduler:
             name, used, available = row
             result[name] = {"used": used, "available": available}
         return result
-
-    def get_pending_step_records(self) -> list[tuple["Step", str]]:
-        """Return non-optional pending steps with reasons why each could not be executed.
-
-        Must be called after the builder has stopped (no steps in RUNNING state).
-
-        Returns
-        -------
-        list[tuple[Step, str]]
-            Each tuple contains a Step and a reason string, one of:
-
-            - `runnable`: step seems runnable but was not executed
-              (e.g. the builder was interrupted before reaching it)
-            - `inputs`: required inputs are unavailable
-              (detached, wrong file state, or waiting for amended inputs)
-            - `resources`: required resources exceed the maximum available
-            - `unsafe`: the step's creator is not RUNNING or SUCCEEDED
-        """
-        results = []
-        cur = self.workflow.db.execute(
-            SELECT_PENDING_REASONS, (self.workflow.need_threshold.value,)
-        )
-        for i, label, safe, postponed, unavailable_inputs, resource_issue in cur:
-            step = Step(self.workflow, i, label)
-            if not safe:
-                reason = "unsafe"
-            elif postponed or unavailable_inputs:
-                reason = "inputs"
-            elif resource_issue:
-                reason = "resources"
-            else:
-                reason = "runnable"
-            results.append((step, reason))
-        return results

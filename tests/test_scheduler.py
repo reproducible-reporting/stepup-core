@@ -24,17 +24,19 @@ from stepup.core.scheduler import (
     RECOMPUTE_READY,
     SELECT_INPUTS,
     SELECT_NEXT_STEP,
-    SELECT_PENDING_REASONS,
     SELECT_RESOURCE_COUNTS,
     SELECT_SAFE_UPDATE,
-    UNAVAILABLE_INPUT,
     UPDATE_CHECK_AFTER,
     Scheduler,
 )
 from stepup.core.sqlite3 import connect
-from stepup.core.step import STEP_SCHEMA, Step
+from stepup.core.step import STEP_SCHEMA, Step, unavailable_input_sql
 from stepup.core.trellis import TRELLIS_SCHEMA
 from stepup.core.workflow import RECONCILE_TARGET_DIRS, Workflow
+
+# Shared verbatim with the (deleted) scheduler.UNAVAILABLE_INPUT: correlated on the outer
+# node.i, see `unavailable_input_sql` (step.py) for the shared subquery body.
+UNAVAILABLE_INPUT = unavailable_input_sql("node.i")
 
 
 @pytest.fixture
@@ -883,7 +885,7 @@ def test_reconcile_target_dirs_plan_uses_range_scan(con):
 
 
 # -----------------------------------------------------------------------
-# Tests for the need_threshold bound parameter (SELECT_NEXT_STEP, SELECT_PENDING_REASONS)
+# Tests for the need_threshold bound parameter (SELECT_NEXT_STEP)
 # -----------------------------------------------------------------------
 
 
@@ -898,19 +900,6 @@ def test_target_implied_step_included_with_default_threshold(con):
     """With need_threshold=DEFAULT, a TARGET-implied step is still dispatched."""
     _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.TARGET)
     assert _get_runnable_ids(con, Need.DEFAULT) == [2]
-
-
-def test_pending_reasons_default_threshold_excludes_default_implied(con):
-    """With need_threshold=DEFAULT, a DEFAULT-implied PENDING step is not reported."""
-    _insert_step(con, 2, 1, StepState.PENDING, implied_need=Need.DEFAULT)
-    assert _get_pending_reasons(con, Need.DEFAULT) == {}
-    assert 2 in _get_pending_reasons(con, Need.OPTIONAL)
-
-
-def test_pending_reasons_default_threshold_includes_target_implied(con):
-    """With need_threshold=DEFAULT, a TARGET-implied PENDING step is still reported."""
-    _insert_step(con, 2, 1, StepState.PENDING, implied_need=Need.TARGET)
-    assert 2 in _get_pending_reasons(con, Need.DEFAULT)
 
 
 def test_no_check_after_skips_update(con):
@@ -1529,247 +1518,6 @@ def test_resource_counts_resource_not_in_available_excluded(con):
     con.execute("INSERT INTO step_resource (node, name, units) VALUES (2, 'secret', 1)")
     counts = _get_resource_counts(con)
     assert "secret" not in counts
-
-
-# -----------------------------------------------------------------------
-# Tests for SELECT_PENDING_REASONS
-# -----------------------------------------------------------------------
-
-
-def _get_pending_reasons(con, need_threshold=Need.OPTIONAL):
-    """Run SELECT_PENDING_REASONS and return a dict mapping node id -> row dict.
-
-    See `_get_runnable_ids` for `need_threshold`.
-    """
-    keys = ("i", "label", "safe", "postponed", "has_unavailable_inputs", "has_resource_issue")
-    return {
-        row[0]: dict(zip(keys, row, strict=True))
-        for row in con.execute(SELECT_PENDING_REASONS, (need_threshold.value,)).fetchall()
-    }
-
-
-def test_pending_reasons_basic_row(con):
-    """A ready PENDING step returns a row with all flags cleared."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
-    rows = _get_pending_reasons(con)
-    assert 2 in rows
-    r = rows[2]
-    assert r["label"] == "echo 2"
-    assert r["safe"] == 1
-    assert r["postponed"] == 0
-    assert r["has_unavailable_inputs"] == 0
-    assert r["has_resource_issue"] == 0
-
-
-def test_pending_reasons_excludes_running(con):
-    """RUNNING steps are not returned."""
-    _insert_step(con, 2, 1, StepState.RUNNING)
-    assert _get_pending_reasons(con) == {}
-
-
-def test_pending_reasons_excludes_succeeded(con):
-    """SUCCEEDED steps are not returned."""
-    _insert_step(con, 2, 1, StepState.SUCCEEDED)
-    assert _get_pending_reasons(con) == {}
-
-
-def test_pending_reasons_excludes_failed(con):
-    """FAILED steps are not returned."""
-    _insert_step(con, 2, 1, StepState.FAILED)
-    assert _get_pending_reasons(con) == {}
-
-
-def test_pending_reasons_excludes_optional(con):
-    """PENDING steps with implied_need=OPTIONAL are not returned."""
-    _insert_step(con, 2, 1, StepState.PENDING, implied_need=Need.OPTIONAL)
-    assert _get_pending_reasons(con) == {}
-
-
-def test_pending_reasons_excludes_detached(con):
-    """Detached PENDING steps are not returned."""
-    _insert_step(con, 2, 1, StepState.PENDING, detached=True)
-    assert _get_pending_reasons(con) == {}
-
-
-def test_pending_reasons_safe_flag_false(con):
-    """A PENDING step with _safe=0 returns safe=0."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=False)
-    rows = _get_pending_reasons(con)
-    assert rows[2]["safe"] == 0
-
-
-def test_pending_reasons_postponed_flag(con):
-    """A step with postponed=1 returns postponed=1."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT)
-    con.execute("UPDATE step SET postponed = 1 WHERE node = 2")
-    rows = _get_pending_reasons(con)
-    assert rows[2]["postponed"] == 1
-
-
-# -- has_unavailable_inputs ----------------------------------------------
-
-
-def test_pending_reasons_volatile_input(con):
-    """A VOLATILE input sets has_unavailable_inputs=1."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True)
-    _insert_input_file(con, 3, 1, FileState.VOLATILE)
-    _add_dep(con, 3, 2)
-    assert _get_pending_reasons(con)[2]["has_unavailable_inputs"] == 1
-
-
-def test_pending_reasons_initial_awaited_input(con):
-    """An initial AWAITED input sets has_unavailable_inputs=1."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True)
-    _insert_input_file(con, 3, 1, FileState.AWAITED)
-    _add_dep(con, 3, 2)
-    assert _get_pending_reasons(con)[2]["has_unavailable_inputs"] == 1
-
-
-def test_pending_reasons_initial_outdated_input(con):
-    """An initial OUTDATED input sets has_unavailable_inputs=1."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True)
-    _insert_input_file(con, 3, 1, FileState.OUTDATED)
-    _add_dep(con, 3, 2)
-    assert _get_pending_reasons(con)[2]["has_unavailable_inputs"] == 1
-
-
-def test_pending_reasons_initial_missing_input(con):
-    """An initial MISSING input sets has_unavailable_inputs=1."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True)
-    _insert_input_file(con, 3, 1, FileState.MISSING)
-    _add_dep(con, 3, 2)
-    assert _get_pending_reasons(con)[2]["has_unavailable_inputs"] == 1
-
-
-def test_pending_reasons_initial_detached_input(con):
-    """An initial dependency on a detached node sets has_unavailable_inputs=1."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True)
-    _insert_input_file(con, 3, 1, FileState.BUILT, detached=True)
-    _add_dep(con, 3, 2)
-    assert _get_pending_reasons(con)[2]["has_unavailable_inputs"] == 1
-
-
-def test_pending_reasons_initial_built_input(con):
-    """An initial BUILT input does not set has_unavailable_inputs."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True)
-    _insert_input_file(con, 3, 1, FileState.BUILT)
-    _add_dep(con, 3, 2)
-    assert _get_pending_reasons(con)[2]["has_unavailable_inputs"] == 0
-
-
-def test_pending_reasons_initial_static_input(con):
-    """An initial STATIC input does not set has_unavailable_inputs."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True)
-    _insert_input_file(con, 3, 1, FileState.STATIC)
-    _add_dep(con, 3, 2)
-    assert _get_pending_reasons(con)[2]["has_unavailable_inputs"] == 0
-
-
-def test_pending_reasons_amended_awaited_input(con):
-    """An amended, non-detached AWAITED input sets has_unavailable_inputs=1."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True)
-    _insert_input_file(con, 3, 1, FileState.AWAITED)
-    dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
-    assert _get_pending_reasons(con)[2]["has_unavailable_inputs"] == 1
-
-
-def test_pending_reasons_amended_outdated_input(con):
-    """An amended, non-detached OUTDATED input sets has_unavailable_inputs=1."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True)
-    _insert_input_file(con, 3, 1, FileState.OUTDATED)
-    dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
-    assert _get_pending_reasons(con)[2]["has_unavailable_inputs"] == 1
-
-
-def test_pending_reasons_amended_built_input(con):
-    """An amended BUILT input does not set has_unavailable_inputs."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True)
-    _insert_input_file(con, 3, 1, FileState.BUILT)
-    dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
-    assert _get_pending_reasons(con)[2]["has_unavailable_inputs"] == 0
-
-
-def test_pending_reasons_amended_missing_input(con):
-    """An amended MISSING input does not set has_unavailable_inputs (step can validate itself)."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True)
-    _insert_input_file(con, 3, 1, FileState.MISSING)
-    dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
-    assert _get_pending_reasons(con)[2]["has_unavailable_inputs"] == 0
-
-
-def test_pending_reasons_amended_detached_input(con):
-    """An amended dependency on a detached node does not set has_unavailable_inputs."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True)
-    _insert_input_file(con, 3, 1, FileState.MISSING, detached=True)
-    dep_id = _add_dep_returning_id(con, 3, 2)
-    _mark_dep_amended(con, dep_id)
-    assert _get_pending_reasons(con)[2]["has_unavailable_inputs"] == 0
-
-
-# -- has_resource_issue --------------------------------------------------
-
-
-def test_pending_reasons_resource_undefined(con):
-    """A required resource absent from available_resource sets has_resource_issue=1."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True)
-    con.execute("INSERT INTO step_resource (node, name, units) VALUES (2, 'gpu', 1)")
-    assert _get_pending_reasons(con)[2]["has_resource_issue"] == 1
-
-
-def test_pending_reasons_resource_total_below_required(con):
-    """Total available units strictly below required units sets has_resource_issue=1.
-
-    Unlike SELECT_NEXT_STEP's resource check (RESOURCE_UNAVAILABLE),
-    this query compares total capacity against the requirement,
-    not the remaining capacity.
-    A resource that is temporarily over-committed is not flagged.
-    """
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True)
-    con.execute("INSERT INTO available_resource (name, units) VALUES ('gpu', 1)")
-    con.execute("INSERT INTO step_resource (node, name, units) VALUES (2, 'gpu', 2)")
-    assert _get_pending_reasons(con)[2]["has_resource_issue"] == 1
-
-
-def test_pending_reasons_resource_available(con):
-    """A fitting resource requirement does not set has_resource_issue."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True)
-    con.execute("INSERT INTO available_resource (name, units) VALUES ('gpu', 4)")
-    con.execute("INSERT INTO step_resource (node, name, units) VALUES (2, 'gpu', 1)")
-    assert _get_pending_reasons(con)[2]["has_resource_issue"] == 0
-
-
-# -- ordering ------------------------------------------------------------
-
-
-def test_pending_reasons_ordering_plan_before_default(con):
-    """PLAN steps appear before DEFAULT steps regardless of tail_time."""
-    _insert_step(
-        con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=100.0
-    )
-    _insert_step(con, 3, 1, StepState.PENDING, safe=True, implied_need=Need.PLAN, tail_time=1.0)
-    ids = [r["i"] for r in _get_pending_reasons(con).values()]
-    assert ids == [3, 2]
-
-
-def test_pending_reasons_ordering_higher_tail_time_first(con):
-    """Within the same implied_need level, higher _tail_time comes first."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=5.0)
-    _insert_step(con, 3, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=10.0)
-    ids = [r["i"] for r in _get_pending_reasons(con).values()]
-    assert ids == [3, 2]
-
-
-def test_pending_reasons_ordering_label_tiebreaker(con):
-    """Equal tail_time and implied_need: alphabetical label order."""
-    _insert_step(con, 2, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=5.0)
-    _insert_step(con, 3, 1, StepState.PENDING, safe=True, implied_need=Need.DEFAULT, tail_time=5.0)
-    # labels are "echo 2" and "echo 3"; "echo 2" < "echo 3"
-    ids = [r["i"] for r in _get_pending_reasons(con).values()]
-    assert ids == [2, 3]
 
 
 # -----------------------------------------------------------------------

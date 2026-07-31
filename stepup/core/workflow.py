@@ -614,26 +614,6 @@ class Workflow(Trellis):
         for i, label in self.db.execute(sql, (state.value,)):
             yield Step(self, i, label)
 
-    def detached_inp_paths(self) -> Iterator[tuple[str, FileState]]:
-        """Iterate over detached input paths used by non-detached steps."""
-        sql = (
-            "SELECT node.label, file.state FROM node JOIN file ON node.i = file.node "
-            "WHERE node.detached "
-            "AND EXISTS (SELECT 1 FROM dependency JOIN node ON node.i = dependency.sink "
-            "WHERE source = file.node AND not node.detached)"
-        )
-        for row in self.db.execute(sql):
-            yield row[0], FileState(row[1])
-
-    def missing_paths(self) -> Iterator[str]:
-        """Iterate over static files that are confirmed absent (deleted or never present)."""
-        sql = (
-            "SELECT label FROM node JOIN file ON node.i = file.node "
-            "WHERE state = ? AND NOT detached"
-        )
-        for row in self.db.execute(sql, (FileState.MISSING.value,)):
-            yield row[0]
-
     def is_regular_output(self, path: str) -> bool:
         """Return whether `path` is currently a regular (non-volatile) output of a step."""
         node, detached = self.find_detached(File, path)

@@ -1,13 +1,13 @@
-  DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc4.post0)
-   STARTUP │ (Re)initialized boot script
-     PHASE │ build
-     START │ ./plan.py
-      FAIL │ ./plan.py
+ DIRECTOR │ Listening on /tmp/stepup-########/director (StepUp Core 4.0.0rc8.post10)
+  STARTUP │ (Re)initialized boot script
+    PHASE │ build
+    START │ ./plan.py
+     FAIL │ ./plan.py
 ──────────────────────────────── Failed command ────────────────────────────────
 ./plan.py  # exit=1
 ──────────────────────────────── Standard error ────────────────────────────────
 Traceback (most recent call last):
-  File "stepup/core/executor.py", line 450, in _forkserver_entry
+  File "stepup/core/run.py", line 780, in _forkserver_entry
     runpy.run_path(cmd, run_name="__main__")
     ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "<frozen runpy>", line 294, in run_path
@@ -16,55 +16,49 @@ Traceback (most recent call last):
   File "./plan.py", line 5, in <module>
     copy("b.txt", "a.txt")
     ~~~~^^^^^^^^^^^^^^^^^^
-  File "stepup/core/api.py", line 916, in copy
+  File "stepup/core/api.py", line 1154, in copy
     return step(
         f"cp -p {shq(src)} {shq(dst)}",
-    ...<4 lines>...
-        shell=False,
+    ...<5 lines>...
+        duration=duration,
     )
-  File "stepup/core/api.py", line 376, in step
-    to_check = RPC_CLIENT.call.step(
-        _get_step_i(),
-    ...<9 lines>...
-        env_overrides,
+  File "stepup/core/api.py", line 509, in step
+    RPC_CLIENT.call.step(
+    ~~~~~~~~~~~~~~~~~~~~^
+        get_job_i(),
+        ^^^^^^^^^^^^
+    ...<10 lines>...
+        duration,
+        ^^^^^^^^^
     )
-  File "stepup/core/rpc.py", line 541, in __call__
+    ^
+  File "stepup/core/rpc.py", line 560, in __call__
     _handle_error(body, name, args, kwargs)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "stepup/core/rpc.py", line 58, in _handle_error
     raise RPCError(f"An exception was raised in the server during the call {fmt_call}: \n\n{body}")
-stepup.core.exceptions.RPCError: An exception was raised in the server during the call step(3, 'cp -p b.txt a.txt', [Path('b.txt')], [], [Path('a.txt')], [], Path('.'), 32, {}, False, None):
+stepup.core.exceptions.RPCError: An exception was raised in the server during the call step(1, 'cp -p b.txt a.txt', [Path('b.txt')], [], [Path('a.txt')], [], Path('.'), 32, {}, False, None, None):
 Traceback (most recent call last):
   File "stepup/core/rpc.py", line 197, in _handle_request
     result = await result
              ^^^^^^^^^^^^
-  File "stepup/core/director.py", line 601, in step
-    return self.workflow.define_step(
-           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+  File "stepup/core/director.py", line 887, in step
+    to_check = self.workflow.define_step(
         creator,
-        ^^^^^^^^
-    ...<9 lines>...
-        env_overrides=env_overrides,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+        duration=duration,
     )
-    ^
-  File "stepup/core/workflow.py", line 907, in define_step
+  File "stepup/core/workflow.py", line 1531, in define_step
     file.add_source(step)
     ~~~~~~~~~~~~~~~^^^^^^
-  File "stepup/core/trellis.py", line 436, in add_source
+  File "stepup/core/trellis.py", line 491, in add_source
     raise CyclicError("New relation introduces a cyclic dependency")
 stepup.core.exceptions.CyclicError: New relation introduces a cyclic dependency
 ────────────────────────────────────────────────────────────────────────────────
-   WARNING │ 1 step(s) failed.
-   WARNING │ 1 step(s) remained pending ...
-─────────────────────────────── Detached inputs ────────────────────────────────
-             AWAITED  a.txt
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                creator is not RUNNING or SUCCEEDED
-Command               cp -p a.txt b.txt
-Inputs       AWAITED  (a.txt)
-Outputs      AWAITED  b.txt
-────────────────────────────────────────────────────────────────────────────────
-   WARNING │ Skipping file cleanup due to incomplete build
-   WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
-  DIRECTOR │ See you!
+ DIRECTOR │ Ran 1 job(s).
+  WARNING │ 1 step(s) failed.
+  WARNING │ Scheduler is put on hold. Not reporting pending steps.
+  WARNING │ Skipping file cleanup due to incomplete build
+  WARNING │ Check logs: .stepup/fail.log .stepup/warning.log
+ DIRECTOR │ Wall 0.2s, Director 0.2u/0.0s, Steps 0.0u/0.0s
+ DIRECTOR │ See you!

@@ -13,27 +13,11 @@ POSTPONED │ ./work2.py
 inp1.txt
 ────────────────────────────────────────────────────────────────────────────────
  DIRECTOR │ Ran 3 job(s).
-  WARNING │ 4 step(s) remained pending ...
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                creator is not RUNNING or SUCCEEDED
-Command               echo first > inp1.txt
-Outputs      AWAITED  inp1.txt
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                creator is not RUNNING or SUCCEEDED
-Command               echo second > inp2.txt
-Outputs      AWAITED  inp2.txt
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                required inputs are unavailable
-Command               ./work1.py
-Inputs        STATIC  work1.py
-             AWAITED  inp2.txt [amended]
-Outputs      AWAITED  out2.txt [amended]
-───────────────────────────────── PENDING Step ─────────────────────────────────
-Reason                required inputs are unavailable
-Command               ./work2.py
-Inputs        STATIC  work2.py
-             AWAITED  inp1.txt [amended]
-Outputs      AWAITED  out1.txt [amended]
+  WARNING │ 4 step(s) remained pending.
+──────────────────────────────── Other reasons ─────────────────────────────────
+4 step(s) are waiting on each other, e.g. ./work1.py.
+──────────────────────────────────── Remedy ────────────────────────────────────
+Run `stepup browse` and search for a name above to see the steps involved.
 ────────────────────────────────────────────────────────────────────────────────
   WARNING │ Skipping file cleanup due to incomplete build
   WARNING │ Check logs: .stepup/warning.log
