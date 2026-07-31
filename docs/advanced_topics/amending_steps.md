@@ -1,15 +1,15 @@
+# Amending Steps
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Amending Steps
 
 Every step in StepUp can inform the director process of additional inputs
 or environment variables it uses, or of additional (volatile) outputs it creates.
-However, defining an amended input will fail
+However, amending a step with an input will fail
 when that file is not yet built nor known as a static file.
 In this case, the step will exit early
-and will be postponed by the director process until the amended input becomes available.
+and will be postponed by the director process until that input becomes available.
 
 The [`amend()`][stepup.core.api.amend] function implements this feature
 and is convenient in various scenarios:
@@ -41,7 +41,7 @@ the step is postponed instead of failing outright.
 Still, use `amend()` as early as possible,
 before accessing additional input files or creating unforeseen output files,
 whenever that is practical.
-Also, try to amend as many step arguments as possible in a single call.
+Also, try to amend the step with as many additional arguments as possible in a single call.
 This will avoid the following problems:
 
 - Trying to read from a file that hasn't been created yet.
@@ -90,7 +90,7 @@ Some features in Ninja cover what can be achieved with `amend()`.
 
 Example source files: [`docs/advanced_topics/amending_steps/`](https://github.com/reproducible-reporting/stepup-core/tree/main/docs/advanced_topics/amending_steps)
 
-This example intentionally creates a simple scenario with an amended input.
+This example intentionally creates a simple scenario in which a step is amended with an extra input.
 This is a somewhat silly example to illustrate the concept.
 You may achieve the same result without amending,
 because you have full control over all scripts in the example.
@@ -109,7 +109,7 @@ with some arbitrary contents and the following `step.py` script:
 {% include 'advanced_topics/amending_steps/step.py' %}
 ```
 
-Make the scripts executable and fire up StepUp to see how it deals with the amended input:
+Make the scripts executable and fire up StepUp to see how it deals with the amended step:
 
 ```bash
 chmod +x step.py plan.py
@@ -134,7 +134,8 @@ After `input.txt` has been created, StepUp runs `./step.py` again.
   The `.stepup/graph.db` file also stores the amended information,
   so these don't need to be rediscovered later.
 
-- Modify the `plan.py` file to include a second amended input, for example, `other.txt`.
+- Modify the `plan.py` file so that `./step.py` is amended with a second input,
+  for example, `other.txt`.
   Run StepUp with these changes.
   Because `sources.txt` contains a new file, StepUp will try re-running
   `./step.py`, which will amend the step with new inputs that require the step to be postponed again.

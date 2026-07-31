@@ -1,8 +1,8 @@
+# Named Glob
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Named Glob
 
 Conventional glob patterns support a handful of different wildcards.
 For advanced use cases, StepUp also supports an in-house extension called "named glob".

@@ -1,8 +1,8 @@
+# Distributed Plans
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Distributed Plans
 
 When your project grows, defining the entire workflow
 in a single `plan.py` file may become inconvenient.

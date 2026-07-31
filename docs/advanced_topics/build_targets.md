@@ -1,8 +1,8 @@
+# Build Targets
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Build Targets
 
 As explained in [Optional Steps](optional_steps.md),
 StepUp normally builds the whole workflow instead of asking you to specify targets.

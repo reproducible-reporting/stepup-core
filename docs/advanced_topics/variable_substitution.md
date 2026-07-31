@@ -1,8 +1,8 @@
+# Variable Substitution
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Variable Substitution
 
 StepUp does not substitute environment variables in the command (first argument)
 of the [`step()`][stepup.core.api.step] function.

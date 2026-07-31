@@ -1,8 +1,8 @@
+# Glob Patterns in `static()`
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Glob Patterns in `static()`
 
 In addition to explicit paths, the [`static()`][stepup.core.api.static] function also
 accepts glob patterns with the usual anonymous wildcards (`*`, `?`, `[abc]`),

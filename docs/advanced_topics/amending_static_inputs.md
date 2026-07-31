@@ -1,18 +1,20 @@
+# Amending Steps with Static Inputs
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Amending Static Inputs
 
 This page covers a special case of [Amending Steps](amending_steps.md):
-amending a file as input that the same script also declares as static.
+amending a step with an input file that the same script has just declared as static.
 
-Occasionally, it may be convenient to declare a static file and then use it as input in the same script.
+Occasionally, it may be convenient to declare a static file
+and then amend the running step with that file as an input, all in the same script.
 As of StepUp 1.2.0, this is allowed and no longer treated as a cyclic dependency.
 
 ## Example
 
-Create the following `plan.py`, which declares a static file, amends it as input,
+Create the following `plan.py`, which declares a static file,
+amends the step with that file as an input,
 and then opens it to print it to the standard output.
 
 ```python

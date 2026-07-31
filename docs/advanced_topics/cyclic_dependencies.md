@@ -1,8 +1,8 @@
+# Cyclic Dependencies
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Cyclic dependencies
 
 Cyclic dependencies are defined in StepUp as closed loops in the dependency graph.
 Formally, such a loop is defined as a set of `source ➜ sink` edges

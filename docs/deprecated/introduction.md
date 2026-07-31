@@ -1,8 +1,8 @@
+# Introduction
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Introduction
 
 This part of the documentation contains some pages describing
 currently deprecated features that have not been removed yet.

@@ -1,8 +1,8 @@
+# Rendering Files with Jinja
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Rendering Files with Jinja
 
 [Jinja](https://jinja.palletsprojects.com/en/stable/) is a popular templating engine for Python.
 Given a template file and a set of variables, Jinja renders the template, i.e. it inserts the variables.

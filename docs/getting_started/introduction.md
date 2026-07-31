@@ -1,8 +1,8 @@
+# Introduction
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Introduction
 
 The "Getting Started" section consists of a series of short tutorials.
 Each tutorial gradually introduces a few concepts to maintain a gentle learning curve.

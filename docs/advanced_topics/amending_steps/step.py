@@ -9,7 +9,7 @@ with open("sources.txt") as fh:
 amend(inp=paths_inp)
 
 # Write all files from source.txt to the standard output.
-# This part is reachable only if the amended input is present.
+# This part is reachable only if the requested inputs are present.
 for path_inp in paths_inp:
     print(f"Contents of {path_inp}:")
     with open(path_inp) as fh:

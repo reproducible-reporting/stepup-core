@@ -1,8 +1,8 @@
+# Load Settings From Configuration Files
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Load Settings From Configuration Files
 
 It is often useful to load settings from configuration files in different parts of the workflow.
 The [`loadns()`][stepup.core.api.loadns] function (short for "load namespace")

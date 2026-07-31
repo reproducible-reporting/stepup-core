@@ -1,8 +1,8 @@
+# Glob Conditional
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Glob Conditional
 
 A wildcard-free pattern passed to [`glob()`][stepup.core.api.glob] is a convenient
 existence probe: `glob()` never raises for a zero-match pattern, so it can be used

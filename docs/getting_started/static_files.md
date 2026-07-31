@@ -1,8 +1,8 @@
+# Static Files
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Static Files
 
 When steps use input files written by *you*, or at least you somehow provided these input files,
 this must be explicitly stated in `plan.py`.

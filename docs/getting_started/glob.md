@@ -1,8 +1,8 @@
+# Glob
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Glob
 
 StepUp's [`glob()`][stepup.core.api.glob] function looks like
 [`static()`][stepup.core.api.static] with a pattern, but does not declare its matches static.

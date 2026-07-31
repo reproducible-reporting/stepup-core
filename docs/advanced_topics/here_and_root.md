@@ -1,19 +1,19 @@
+# `HERE` and `ROOT` Variables
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# HERE and ROOT Variables
 
 When a step runs, it defines several environment variables,
-including `${HERE}` and `${ROOT}`, which can be relevant for writing advanced scripts.
+including `HERE` and `ROOT`, which can be relevant for writing advanced scripts.
 (Steps also have variables starting with `STEPUP_`,
 but these are only useful to StepUp itself, not to end users.)
 
 The two variables are defined as follows:
 
-- `${HERE}` is the relative path from the directory where StepUp was started
+- `HERE` is the relative path from the directory where StepUp was started
   to the step's working directory.
-- `${ROOT}` is the relative path in the opposite direction:
+- `ROOT` is the relative path in the opposite direction:
   from the step's working directory back to where StepUp was started.
 
 The two are therefore inverse paths,

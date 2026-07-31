@@ -1,8 +1,8 @@
+# Console Scripts
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Console Scripts
 
 New console scripts are added to a Python package
 using the standard `console_scripts` entry point mechanism,

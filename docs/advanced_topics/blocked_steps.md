@@ -1,8 +1,8 @@
+# Blocked Steps
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Blocked Steps
 
 As discussed in a previous tutorials on [Optional Steps](optional_steps.md) and [Build Targets](build_targets.md),
 StepUp has several mechanisms to ignore certain steps.

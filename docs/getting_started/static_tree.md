@@ -1,8 +1,8 @@
+# Static Tree
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Static Tree
 
 The previous tutorials declared static files one by one or with a glob pattern.
 Both approaches enumerate the files, which is impractical for a directory

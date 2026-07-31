@@ -1,8 +1,8 @@
+# The `STEPUP_ROOT` variable
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# The STEPUP_ROOT variable
 
 If you are working on a large project with several subdirectories,
 it may be useful to define the `STEPUP_ROOT` environment variable.

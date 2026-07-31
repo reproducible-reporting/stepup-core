@@ -1,8 +1,8 @@
+# Duration and Hold
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Duration and Hold
 
 By default,
 the scheduler prioritizes eligible steps by *tail time*,

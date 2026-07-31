@@ -1,8 +1,8 @@
+# Introduction
 <!--
 SPDX-FileCopyrightText: 2024 Toon Verstraelen <Toon.Verstraelen@UGent.be>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
-# Introduction
 
 StepUp Core supports domain-specific build features
 through extension packages that live outside the core.
