@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-from stepup.core.api import getinfo
+from stepup.core.api import get_info
 
 # This is a somewhat poor example, because plan.py script should normally not do
 # much more than just calling run functions.
 # This example is just meant to show that it is possible
 # to use input files and write output files.
-# It also demonstrates how to use the getinfo() function.
+# It also demonstrates how to use the get_info() function.
 
-info = getinfo()
+info = get_info()
 
 # Just checking for the sake of the test:
 print(info)

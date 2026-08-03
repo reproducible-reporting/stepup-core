@@ -15,31 +15,31 @@ step:./plan.py
               source   file:plan.py
              product   file:README.txt
              product   file:inp1.txt
-             product   file:sub/getinfo.py
+             product   file:sub/info.py
              product   file:sub/inp0.txt
-             product   step:./getinfo.py  # wd=sub
+             product   step:./info.py  # wd=sub
 
 file:README.txt
                state = STATIC
              creator   step:./plan.py
-                sink   step:./getinfo.py  # wd=sub
+                sink   step:./info.py  # wd=sub
 
 file:inp1.txt
                state = STATIC
              creator   step:./plan.py
-                sink   step:./getinfo.py  # wd=sub
+                sink   step:./info.py  # wd=sub
 
-file:sub/getinfo.py
+file:sub/info.py
                state = STATIC
              creator   step:./plan.py
-                sink   step:./getinfo.py  # wd=sub
+                sink   step:./info.py  # wd=sub
 
 file:sub/inp0.txt
                state = STATIC
              creator   step:./plan.py
-                sink   step:./getinfo.py  # wd=sub
+                sink   step:./info.py  # wd=sub
 
-step:./getinfo.py  # wd=sub
+step:./info.py  # wd=sub
                state = SUCCEEDED
                 need = DEFAULT
            using_env = BAR
@@ -49,7 +49,7 @@ step:./getinfo.py  # wd=sub
              creator   step:./plan.py
               source   file:README.txt
               source   file:inp1.txt [dynamic]
-              source   file:sub/getinfo.py
+              source   file:sub/info.py
               source   file:sub/inp0.txt
              product   file:out0.txt
              product   file:out2.txt
@@ -66,30 +66,30 @@ step:./getinfo.py  # wd=sub
 
 file:out0.txt
                state = BUILT
-             creator   step:./getinfo.py  # wd=sub
-              source   step:./getinfo.py  # wd=sub
+             creator   step:./info.py  # wd=sub
+              source   step:./info.py  # wd=sub
 
 file:sub/out1.txt
                state = BUILT
-             creator   step:./getinfo.py  # wd=sub
-              source   step:./getinfo.py  # wd=sub
+             creator   step:./info.py  # wd=sub
+              source   step:./info.py  # wd=sub
 
 file:sub/vol0.txt
                state = VOLATILE
-             creator   step:./getinfo.py  # wd=sub
-              source   step:./getinfo.py  # wd=sub
+             creator   step:./info.py  # wd=sub
+              source   step:./info.py  # wd=sub
 
 file:vol1.txt
                state = VOLATILE
-             creator   step:./getinfo.py  # wd=sub
-              source   step:./getinfo.py  # wd=sub
+             creator   step:./info.py  # wd=sub
+              source   step:./info.py  # wd=sub
 
 file:out2.txt
                state = BUILT
-             creator   step:./getinfo.py  # wd=sub
-              source   step:./getinfo.py  # wd=sub
+             creator   step:./info.py  # wd=sub
+              source   step:./info.py  # wd=sub
 
 file:vol2.txt
                state = VOLATILE
-             creator   step:./getinfo.py  # wd=sub
-              source   step:./getinfo.py  # wd=sub
+             creator   step:./info.py  # wd=sub
+              source   step:./info.py  # wd=sub

@@ -6,7 +6,7 @@ import json
 import logging
 import os
 from collections.abc import Collection, Iterator
-from typing import Self
+from typing import Literal, Self
 
 import attrs
 from path import Path
@@ -90,7 +90,7 @@ input_file.state = {FileState.VOLATILE.value} OR
 """
 
 
-def unavailable_input_sql(correlate: str) -> str:
+def unavailable_input_sql(node_expr: str) -> str:
     """Return an `EXISTS`-ready subquery for the unavailable inputs of one step.
 
     Only ever used inside `EXISTS(...)`/`NOT EXISTS(...)`,
@@ -100,7 +100,7 @@ def unavailable_input_sql(correlate: str) -> str:
 
     Parameters
     ----------
-    correlate
+    node_expr
         The SQL expression identifying "this step's node id" in the enclosing query --
         `node.i` when joined against `node`/`step`,
         or `step.node` when there is no `node` table in scope.
@@ -116,7 +116,7 @@ def unavailable_input_sql(correlate: str) -> str:
     JOIN file AS input_file ON input_file.node = dep.source
     JOIN node AS input_node ON input_node.i = dep.source
     LEFT JOIN dynamic_dep ON dynamic_dep.i = dep.i
-    WHERE dep.sink = {correlate} AND ({UNAVAILABLE_INPUT_WHERE})
+    WHERE dep.sink = {node_expr} AND ({UNAVAILABLE_INPUT_WHERE})
     """
 
 
@@ -141,8 +141,8 @@ CREATE TABLE IF NOT EXISTS step (
     -- Number of consecutive defers since the last SUCCEEDED state.
     -- Reset to 0 only on SUCCEEDED (see step_reset_defer_count below);
     -- NOT reset by FAILED or by deferred being cleared via mark_pending().
-    subshell INTEGER NOT NULL CHECK(subshell IN (0, 1)),
-    -- Whether the step command is executed via a subshell (shell=True).
+    shell INTEGER NOT NULL CHECK(shell IN (0, 1)),
+    -- Whether the step command is executed via a shell (shell=True).
     env_overrides TEXT,
     -- JSON-encoded dict[str, str] of step-specific environment variable overrides, or NULL.
     -- Applied to the child process environment when the step runs.
@@ -500,7 +500,7 @@ CREATE TABLE IF NOT EXISTS step_resource (
 CREATE INDEX IF NOT EXISTS step_resource_name ON step_resource(name);
 
 -- Subprocess invocations made by this (wrapper) step, recorded for archival/debugging via
--- Step.record_subprocess; informative only, not authoritative.
+-- Step.add_subprocess; informative only, not authoritative.
 CREATE TABLE IF NOT EXISTS step_subprocess (
     node INTEGER NOT NULL,
     -- The step node that ran this subprocess.
@@ -530,10 +530,10 @@ CREATE INDEX IF NOT EXISTS step_subprocess_node ON step_subprocess(node);
 """
 
 
-def truncate_output(content: str, max_size: int) -> str:
-    """Truncate `content` to at most `max_size` UTF-8 bytes, appending a sentinel if cut.
+def truncate_output(content: str, max_bytes: int) -> str:
+    """Truncate `content` to at most `max_bytes` UTF-8 bytes, appending a sentinel if cut.
 
-    A `max_size` of `0` (or any non-positive value) means unlimited: the content is
+    A `max_bytes` of `0` (or any non-positive value) means unlimited: the content is
     returned unchanged. Otherwise the cut is made on a valid UTF-8 character boundary
     (`decode(..., "ignore")` drops a trailing partial multi-byte sequence), so the result
     is always valid text.
@@ -542,7 +542,7 @@ def truncate_output(content: str, max_size: int) -> str:
     ----------
     content
         The captured text to (possibly) truncate.
-    max_size
+    max_bytes
         Maximum number of UTF-8 bytes to keep, or `0` (or any non-positive value) for
         unlimited.
 
@@ -550,15 +550,15 @@ def truncate_output(content: str, max_size: int) -> str:
     -------
     truncated
         The original content if within the budget or unlimited, otherwise the content cut
-        to `max_size` bytes with a sentinel line appended.
+        to `max_bytes` bytes with a sentinel line appended.
     """
-    if max_size <= 0:
+    if max_bytes <= 0:
         return content
     encoded = content.encode("utf-8")
-    if len(encoded) <= max_size:
+    if len(encoded) <= max_bytes:
         return content
-    truncated = encoded[:max_size].decode("utf-8", "ignore")
-    return f"{truncated}\n[output truncated at {max_size} bytes]\n"
+    truncated = encoded[:max_bytes].decode("utf-8", "ignore")
+    return f"{truncated}\n[output truncated at {max_bytes} bytes]\n"
 
 
 # When a step is detached or recycled, its creator chain changes, which alters the "safe" state
@@ -634,6 +634,8 @@ class PathRecord:
 
 @attrs.define
 class Step(Node):
+    """A command in the workflow with with its input and/or output files."""
+
     #
     # Override from base class
     #
@@ -660,7 +662,7 @@ class Step(Node):
         *,
         safe: bool = False,
         need: Need = Need.DEFAULT,
-        subshell: bool = False,
+        shell: bool = False,
         duration: float | None = None,
         **kwargs,  # workdir is consumed by adjust_label, not used here
     ):
@@ -709,9 +711,9 @@ class Step(Node):
         self.db.execute("DELETE FROM step WHERE node = :node", {"node": self.i})
         self.db.execute(
             "INSERT INTO step "
-            "(node, state, need, duration, subshell, _safe, _check_safe, _safe_ignoring_hold, "
+            "(node, state, need, duration, shell, _safe, _check_safe, _safe_ignoring_hold, "
             "_implied_need, _check_after, _has_hash) "
-            "VALUES(:node, :state, :need, :duration, :subshell, :safe, :check_safe, :safe, "
+            "VALUES(:node, :state, :need, :duration, :shell, :safe, :check_safe, :safe, "
             ":implied_need, 1, "
             "(SELECT EXISTS(SELECT 1 FROM step_hash WHERE node = :node)))",
             {
@@ -719,7 +721,7 @@ class Step(Node):
                 "need": need.value,
                 "state": StepState.PENDING.value,
                 "duration": 1.0 if duration is None else duration,
-                "subshell": int(subshell),
+                "shell": int(shell),
                 "safe": int(safe),
                 "check_safe": int(not safe),
                 "implied_need": need.value,
@@ -815,7 +817,7 @@ class Step(Node):
         self,
         *,
         need: Need = Need.DEFAULT,
-        subshell: bool = False,
+        shell: bool = False,
         resources: dict[str, int] | None = None,
         env_overrides: dict[str, str] | None = None,
         duration: float | None = None,
@@ -838,8 +840,8 @@ class Step(Node):
         before the step could be recycled.
         """
         self.db.execute(
-            "UPDATE step SET need = ?, subshell = ?, _holding = 0 WHERE node = ?",
-            (need.value, int(subshell), self.i),
+            "UPDATE step SET need = ?, shell = ?, _holding = 0 WHERE node = ?",
+            (need.value, int(shell), self.i),
         )
         self.set_resources(resources)
         self.set_env_overrides(env_overrides)
@@ -879,12 +881,12 @@ class Step(Node):
             yield key
 
     @property
-    def command_workdir(self) -> tuple[str, Path]:
+    def command_and_workdir(self) -> tuple[str, Path]:
         """The command and working directory of this step."""
         parts = self.label.split("  # wd=", maxsplit=1)
         return parts[0], Path(parts[1] if len(parts) == 2 else ".")
 
-    def get_step_info(self) -> StepInfo:
+    def get_info(self) -> StepInfo:
         """Return a `StepInfo` object with information about this step.
 
         Dynamic dependencies are not included for consistency with
@@ -894,7 +896,7 @@ class Step(Node):
             # This step's creator has moved on without it (see Step.detach()); its real
             # info is moot.
             return StepInfo("", [], [], [], [], Path("."))
-        command, workdir = self.command_workdir
+        command, workdir = self.command_and_workdir
         return StepInfo(
             command,
             [r.path for r in self.inp_paths(dynamic=False)],
@@ -904,9 +906,9 @@ class Step(Node):
             workdir,
         )
 
-    def get_subshell(self) -> bool:
-        """Return whether this step runs the command via a subshell."""
-        row = self.db.execute("SELECT subshell FROM step WHERE node = ?", (self.i,)).fetchone()
+    def uses_shell(self) -> bool:
+        """Return whether this step runs the command via a shell."""
+        row = self.db.execute("SELECT shell FROM step WHERE node = ?", (self.i,)).fetchone()
         return bool(row[0])
 
     def get_need(self) -> Need:
@@ -967,7 +969,7 @@ class Step(Node):
         if row[0] == 1:
             # Only a 0 -> 1 transition can newly block any descendant's dispatch eligibility;
             # nested hold() calls on an already-holding step change nothing observable.
-            self._check_with_products()
+            self._flag_checks_with_products()
 
     def release(self):
         """Release one `hold()` on this step, decrementing its open-hold counter.
@@ -987,7 +989,7 @@ class Step(Node):
             raise GraphError(f"Step {self.key()} is not holding; release() has no matching hold().")
         if row[0] == 0:
             # Only a 1 -> 0 transition can newly unblock any descendant's dispatch eligibility.
-            self._check_with_products()
+            self._flag_checks_with_products()
 
     #
     # Env vars
@@ -1054,11 +1056,11 @@ class Step(Node):
 
     def _paths(
         self,
-        relation: str,
+        relation: Literal["product", "source", "sink"],
         *,
         include_detached: bool = False,
         dynamic: bool | None = None,
-        filter_states: tuple[FileState, ...] = (),
+        states: tuple[FileState, ...] = (),
     ) -> Iterator[PathRecord]:
         """Iterate over paths of this step using various criteria."""
         # Which relation?
@@ -1107,9 +1109,9 @@ class Step(Node):
                 )
 
         # Filter certain states
-        if len(filter_states) > 0:
+        if len(states) > 0:
             where_states = []
-            for i, state in enumerate(filter_states):
+            for i, state in enumerate(states):
                 where_states.append(f"state = :state_{i}")
                 data[f"state_{i}"] = state.value
             where += f" AND ({' OR '.join(where_states)})"
@@ -1132,7 +1134,7 @@ class Step(Node):
             "sink",
             include_detached=include_detached,
             dynamic=dynamic,
-            filter_states=REGULAR_OUTPUT_STATES,
+            states=REGULAR_OUTPUT_STATES,
         )
 
     def vol_paths(
@@ -1143,16 +1145,16 @@ class Step(Node):
             "sink",
             include_detached=include_detached,
             dynamic=dynamic,
-            filter_states=(FileState.VOLATILE,),
+            states=(FileState.VOLATILE,),
         )
 
     def static_paths(self) -> Iterator[PathRecord]:
         """Iterate over static paths created by this step."""
-        yield from self._paths("product", filter_states=(FileState.STATIC,))
+        yield from self._paths("product", states=(FileState.STATIC,))
 
     def missing_paths(self) -> Iterator[PathRecord]:
         """Iterate over missing paths created by this step."""
-        yield from self._paths("product", filter_states=(FileState.MISSING,))
+        yield from self._paths("product", states=(FileState.MISSING,))
 
     def nglobs(self) -> Iterator[NamedGlob]:
         """Iterate over nglobs used by this step."""
@@ -1301,7 +1303,7 @@ class Step(Node):
         ).fetchone()
         return row[0]
 
-    def completed(self, new_hash: StepHash | None, wants_defer: bool) -> tuple[bool, bool]:
+    def mark_completed(self, new_hash: StepHash | None, wants_defer: bool) -> tuple[bool, bool]:
         """Set a step as completed (succeeded or failed) and trigger the consequences.
 
         Parameters
@@ -1395,14 +1397,14 @@ class Step(Node):
         """Clear the stored step hash, if any."""
         self.db.execute("DELETE FROM step_hash WHERE node = ?", (self.i,))
 
-    def store_outcome(self, outcome: ChildOutcome, max_size: int) -> None:
+    def set_outcome(self, outcome: ChildOutcome, max_bytes: int) -> None:
         """Persist captured child process outcome for this step in a single update.
 
         Parameters
         ----------
         outcome
             The child outcome to store.
-        max_size
+        max_bytes
             Maximum number of UTF-8 bytes to store per stream, or `0` for unlimited.
             See `truncate_output`.
         """
@@ -1411,8 +1413,8 @@ class Step(Node):
             (
                 self.i,
                 outcome.returncode,
-                truncate_output(outcome.stdout, max_size),
-                truncate_output(outcome.stderr, max_size),
+                truncate_output(outcome.stdout, max_bytes),
+                truncate_output(outcome.stderr, max_bytes),
                 outcome.usage.utime,
                 outcome.usage.stime,
                 outcome.usage.wtime,
@@ -1439,7 +1441,7 @@ class Step(Node):
         """Remove the stored child outcome for this step."""
         self.db.execute("DELETE FROM step_outcome WHERE node = ?", (self.i,))
 
-    def record_subprocess(
+    def add_subprocess(
         self,
         cmd: str,
         workdir: str,
@@ -1501,7 +1503,7 @@ class Step(Node):
         """Remove all recorded subprocess rows for this step."""
         self.db.execute("DELETE FROM step_subprocess WHERE node = ?", (self.i,))
 
-    def register_glob(self, ng: NamedGlob) -> None:
+    def add_nglob(self, ng: NamedGlob) -> None:
         """Store a `NamedGlob` pattern registered by this step.
 
         The pattern and its regex are stored in columns of their own, so the checks that
@@ -1523,15 +1525,15 @@ class Step(Node):
     def detach(self):
         """Detach this step from the graph, but keep it in the database."""
         super().detach()
-        self._check_with_products()
+        self._flag_checks_with_products()
         # Source steps of the detached subtree lost a sink, so their metadata is stale.
         self.db.execute(RECURSIVE_CHECK_AFTER_SOURCES, (self.i,))
 
     def reattach(self, new_creator: Node):
         """Reattach the node to a new creator node, preserving its properties."""
         super().reattach(new_creator)
-        self._check_with_products()
+        self._flag_checks_with_products()
 
-    def _check_with_products(self):
+    def _flag_checks_with_products(self):
         """Flag the _check_safe and _check_after fields of this step and its products."""
         self.db.execute(RECURSIVE_CHECK_WITH_PRODUCTS, (self.i,))

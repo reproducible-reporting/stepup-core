@@ -83,7 +83,7 @@ def get_socket() -> Path:
 
     Returns
     -------
-    path_socket
+    socket_path
         The path of the director's RPC socket.
 
     Raises
@@ -94,14 +94,14 @@ def get_socket() -> Path:
         e.g. because no director is running.
     """
     stepup_root = Path(os.getenv("STEPUP_ROOT", "."))
-    path_director_log = stepup_root / DIRECTOR_LOG
+    director_log = stepup_root / DIRECTOR_LOG
     deadline = time.monotonic() + GET_SOCKET_TIMEOUT
     first = True
     reported_startup = False
     while True:
-        path_socket, pid, message = query_director_log(path_director_log)
-        if path_socket is not None:
-            return path_socket
+        socket_path, pid, message = query_director_log(director_log)
+        if socket_path is not None:
+            return socket_path
         if first:
             print("Trying to contact StepUp director process.", file=sys.stderr)
             first = False

@@ -69,10 +69,10 @@ __all__ = (
     "call",
     "copy",
     "dumpns",
+    "get_info",
     "get_job_i",
     "get_rpc_client",
     "getenv",
-    "getinfo",
     "glob",
     "graph",
     "hold",
@@ -923,7 +923,7 @@ def hold() -> Iterator[None]:
             _HOLD_STATE.holding -= 1
 
 
-def getinfo() -> StepInfo:
+def get_info() -> StepInfo:
     """Get the information of the current step.
 
     Returns
@@ -933,7 +933,7 @@ def getinfo() -> StepInfo:
         For consistency with other functions in this module, the `inp`, `out` and `vol`
         paths are relative to the working directory of the step.
     """
-    step_info = RPC_CLIENT.call.getinfo(get_job_i())
+    step_info = RPC_CLIENT.call.get_info(get_job_i())
     # Update paths to make them relative to the working directory of the step.
     step_info.inp = sorted(translate_back(inp) for inp in step_info.inp)
     step_info.out = sorted(translate_back(out) for out in step_info.out)

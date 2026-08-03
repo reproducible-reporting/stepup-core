@@ -14,7 +14,7 @@ DIRECTOR │ Wrote graph to current_graph1.txt, current_graph1_provenance.dot an
    PHASE │ build
   NOSKIP │ ./demovars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest ccd0130b ➜ 021ba5a6, out_digest e3b0c442 ➜ (unset)
+Modified step hash   explained, inp_digest fe4a632f ➜ 48d4e347, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    variables.json (digest 718135f7 ➜ f74499a3, size 35 ➜ 67)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        demovars.py
@@ -24,7 +24,7 @@ Same env var         STEPUP_PATH_FILTER (unset)
  SUCCESS │ ./demovars.py
   NOSKIP │ ./printvars.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest bf899786 ➜ 97902349, out_digest 268581fb ➜ (unset)
+Modified step hash   explained, inp_digest 9e3a968c ➜ 1d8d76e8, out_digest 268581fb ➜ (unset)
 Added env var        ENV_VAR_TEST_STEPUP_DFTHYH ='BBBB'
 ────────────────────────────── Remained the same ───────────────────────────────
 Same inp hash        printvars.py

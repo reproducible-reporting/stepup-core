@@ -305,7 +305,7 @@ def is_process_running(pid: int) -> bool:
     return True
 
 
-def query_director_log(path_director_log: Path) -> tuple[Path | None, int | None, str]:
+def query_director_log(director_log: Path) -> tuple[Path | None, int | None, str]:
     """Look up the director's socket and pid in `DIRECTOR_LOG`.
 
     This is the single place that reads the header lines
@@ -317,12 +317,12 @@ def query_director_log(path_director_log: Path) -> tuple[Path | None, int | None
 
     Parameters
     ----------
-    path_director_log
+    director_log
         The path of the director log to read from.
 
     Returns
     -------
-    path_socket
+    socket_path
         The socket path advertised by the director, if it exists on disk, `None` otherwise.
     pid
         The pid advertised by the director,
@@ -336,11 +336,11 @@ def query_director_log(path_director_log: Path) -> tuple[Path | None, int | None
     # Any error is reported as a message, i.e. the caller's retry path,
     # never as an exception escaping to the client's exit code.
     try:
-        with open(path_director_log) as fh:
+        with open(director_log) as fh:
             line_socket = fh.readline()
             line_pid = fh.readline()
     except OSError as exc:
-        return None, None, f"File {path_director_log} could not be read: {exc}"
+        return None, None, f"File {director_log} could not be read: {exc}"
 
     # A non-empty path is the only degenerate case worth guarding:
     # `async_main` writes each line in one shot (`sys.stderr` is line-buffered), so a short
@@ -353,13 +353,11 @@ def query_director_log(path_director_log: Path) -> tuple[Path | None, int | None
             pid = int(line_pid[3:])
 
     if not line_socket.startswith("SOCKET"):
-        return None, pid, f"File {path_director_log} does not start with SOCKET line."
-    path_socket = Path(line_socket[6:].strip())
-    if path_socket and path_socket.exists():
-        return path_socket, pid, ""
-    message = (
-        f"Socket {path_socket} read from {path_director_log} does not exist. StepUp not running?"
-    )
+        return None, pid, f"File {director_log} does not start with SOCKET line."
+    socket_path = Path(line_socket[6:].strip())
+    if socket_path and socket_path.exists():
+        return socket_path, pid, ""
+    message = f"Socket {socket_path} read from {director_log} does not exist. StepUp not running?"
     return None, pid, message
 
 

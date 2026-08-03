@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-from stepup.core.api import amend, getinfo
+from stepup.core.api import amend, get_info
 
-info = getinfo()
-assert info.command == "./getinfo.py"
+info = get_info()
+assert info.command == "./info.py"
 assert info.workdir == "sub"
-assert set(info.inp) == {"getinfo.py", "../README.txt", "inp0.txt"}
+assert set(info.inp) == {"info.py", "../README.txt", "inp0.txt"}
 assert info.env == ["BAR", "FOO"]
 assert info.out == ["../out0.txt", "out1.txt"]
 assert info.vol == ["../vol1.txt", "vol0.txt"]
@@ -26,10 +26,10 @@ with open("../vol2.txt", "w") as f:
     pass
 
 # Info should not be affected by amendments.
-info = getinfo()
-assert info.command == "./getinfo.py"
+info = get_info()
+assert info.command == "./info.py"
 assert info.workdir == "sub"
-assert set(info.inp) == {"getinfo.py", "../README.txt", "inp0.txt"}
+assert set(info.inp) == {"info.py", "../README.txt", "inp0.txt"}
 assert info.env == ["BAR", "FOO"]
 assert info.out == ["../out0.txt", "out1.txt"]
 assert info.vol == ["../vol1.txt", "vol0.txt"]

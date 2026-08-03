@@ -145,8 +145,8 @@ def test_is_process_running_no_such_process(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_query_director_log_missing_file(path_tmp: Path):
-    path_socket, pid, message = query_director_log(path_tmp / "director.log")
-    assert path_socket is None
+    socket_path, pid, message = query_director_log(path_tmp / "director.log")
+    assert socket_path is None
     assert pid is None
     assert "could not be read" in message
 
@@ -160,37 +160,37 @@ def test_query_director_log_unopenable(path_tmp: Path):
     """
     path_log = path_tmp / "director.log"
     path_log.makedirs_p()
-    path_socket, pid, message = query_director_log(path_log)
-    assert path_socket is None
+    socket_path, pid, message = query_director_log(path_log)
+    assert socket_path is None
     assert pid is None
     assert "could not be read" in message
 
 
 def test_query_director_log_live_socket(path_tmp: Path):
-    path_socket = path_tmp / "director"
-    path_socket.touch()
+    socket_path = path_tmp / "director"
+    socket_path.touch()
     path_log = path_tmp / "director.log"
-    path_log.write_text(f"SOCKET {path_socket}\nPID 12345\nLOG_LEVEL INFO\n")
-    assert query_director_log(path_log) == (path_socket, 12345, "")
+    path_log.write_text(f"SOCKET {socket_path}\nPID 12345\nLOG_LEVEL INFO\n")
+    assert query_director_log(path_log) == (socket_path, 12345, "")
 
 
 def test_query_director_log_stale_socket(path_tmp: Path):
     path_log = path_tmp / "director.log"
     path_log.write_text(f"SOCKET {path_tmp / 'director'}\nPID 12345\nLOG_LEVEL INFO\n")
-    path_socket, pid, message = query_director_log(path_log)
-    assert path_socket is None
+    socket_path, pid, message = query_director_log(path_log)
+    assert socket_path is None
     assert pid == 12345
     assert "does not exist" in message
 
 
 def test_query_director_log_socket_path_with_space(path_tmp: Path):
     """A socket path with a space in it must not be truncated."""
-    path_socket = path_tmp / "with space" / "director"
-    path_socket.parent.makedirs_p()
-    path_socket.touch()
+    socket_path = path_tmp / "with space" / "director"
+    socket_path.parent.makedirs_p()
+    socket_path.touch()
     path_log = path_tmp / "director.log"
-    path_log.write_text(f"SOCKET {path_socket}\nPID 12345\n")
-    assert query_director_log(path_log)[0] == path_socket
+    path_log.write_text(f"SOCKET {socket_path}\nPID 12345\n")
+    assert query_director_log(path_log)[0] == socket_path
 
 
 @pytest.mark.parametrize("content", ["", "\n", "Traceback (most recent call last):\n"])
@@ -198,8 +198,8 @@ def test_query_director_log_without_socket_line(path_tmp: Path, content: str):
     """A director that crashed before advertising its socket must not confuse the parsing."""
     path_log = path_tmp / "director.log"
     path_log.write_text(content)
-    path_socket, pid, message = query_director_log(path_log)
-    assert path_socket is None
+    socket_path, pid, message = query_director_log(path_log)
+    assert socket_path is None
     assert pid is None
     assert "does not start with SOCKET line" in message
 

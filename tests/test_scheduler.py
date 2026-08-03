@@ -109,7 +109,7 @@ def _insert_step(
     con.execute(
         "INSERT INTO step"
         " (node, state, need, duration, defer_count,"
-        " subshell, _safe, _check_safe, _safe_ignoring_hold, _holding, _implied_need,"
+        " shell, _safe, _check_safe, _safe_ignoring_hold, _holding, _implied_need,"
         " _tail_time, _check_after, _ready, _check_ready)"
         " VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (

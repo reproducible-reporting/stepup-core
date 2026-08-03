@@ -437,6 +437,10 @@ but it now tests whether the build was interrupted instead of whether a step fai
 Revisit every place where your scripts inspect `$?` after `stepup build`.
 See [Return Codes](../reference/returncode.md) for the current meaning of each bit.
 
+## Other Small Changes
+
+- The `getinfo()` function has been renamed to `get_info()`.
+
 ## Deprecated Features
 
 The following features are still supported but will be removed from StepUp 5.0
@@ -652,14 +656,3 @@ from stepup.core.utils import filter_dependencies, get_local_import_paths
 # StepUp 4 (current)
 from stepup.core.extapi import filter_dependencies, get_local_import_paths, get_rpc_client, subs_env_vars
 ```
-
-### Changed RPC Calls
-
-If you call the director's RPC layer directly, instead of going through
-[`stepup.core.api`](../reference/stepup.core.api.md), note that the
-`declare_unconfirmed` and `static_trees` calls have been replaced by a single `static`
-call.
-It takes the literal files, the static tree roots and the registered patterns together,
-so one `static()` invocation is always one round trip,
-and the director registers static trees before the files they contain
-within a single transaction.

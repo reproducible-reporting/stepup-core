@@ -2,8 +2,8 @@
    PHASE │ build
    START │ ./plan.py
  SUCCESS │ ./plan.py
-   START │ ./getinfo.py  # wd=sub
- SUCCESS │ ./getinfo.py  # wd=sub
+   START │ ./info.py  # wd=sub
+ SUCCESS │ ./info.py  # wd=sub
 DIRECTOR │ Ran 2 job(s).
 DIRECTOR │ Trying to remove 0 outdated output(s)
    PHASE │ watch

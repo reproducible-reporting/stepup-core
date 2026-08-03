@@ -7,7 +7,7 @@
  SUCCESS │ ./plan.py
     SKIP │ cp -p inp2.txt out2.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest ce2b09cd, out_digest 9e7bd348
+Same step hash       explained, inp_digest 4e6353a4, out_digest 9e7bd348
 Same inp hash        inp2.txt
 Same out hash        out2.txt
 ────────────────────────────────────────────────────────────────────────────────

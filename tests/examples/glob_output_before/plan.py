@@ -5,6 +5,6 @@ from stepup.core.api import glob, run
 run("touch out.txt", shell=True, out="out.txt")
 
 # out.txt already exists on disk (see main.sh), so the pattern's filesystem scan sees
-# it. Eager check (a), in register_glob, rejects a pattern that matches a file another
+# it. Eager check (a), in register_nglob, rejects a pattern that matches a file another
 # step already builds.
 list(glob("*.txt"))

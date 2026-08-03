@@ -313,7 +313,7 @@ class Executor:
             # e.g. the user restored them to the expected state,
             # we still want to record the new hash.
             self.workflow.update_file_hashes(new_out_hashes, HashUpdateCause.SUCCEEDED)
-            step.completed(new_hash, False)
+            step.mark_completed(new_hash, False)
             # Do not call `scheduler.record_stop_time`, as no start time was recorded either.
         self._report_step_counts()
 
@@ -352,7 +352,7 @@ class Executor:
                 new_out_hashes,
                 HashUpdateCause.SUCCEEDED if run.success else HashUpdateCause.FAILED,
             )
-            run.detached, run.interrupted_defer = step.completed(new_hash, wants_defer)
+            run.detached, run.interrupted_defer = step.mark_completed(new_hash, wants_defer)
             self.scheduler.record_stop_time(step.i, succeeded=new_hash is not None)
             if run.detached:
                 # The step's creator moved on without it before/when it finished (see
@@ -366,10 +366,10 @@ class Executor:
                 # Persist the captured output in the same transaction as completed(),
                 # so a crash cannot leave a completed step without its output (or vice versa).
                 # outcome.stdout/outcome.stderr stay untruncated.
-                # store_output truncates a copy internally,
+                # set_outcome truncates a copy internally,
                 # so report() below still forwards the full text to the TUI.
-                max_size = int(os.getenv("STEPUP_MAX_OUTPUT_SIZE", "0"))
-                step.store_outcome(run.outcome, max_size=max_size)
+                max_bytes = int(os.getenv("STEPUP_MAX_OUTPUT_SIZE", "0"))
+                step.set_outcome(run.outcome, max_bytes=max_bytes)
         self._report_step_counts()
 
         # Report the result of running the step
@@ -526,7 +526,7 @@ class Executor:
     async def _finalize_failed_run(self, run: Run) -> None:
         """Complete, record and report a run that failed before producing a new step hash."""
         async with self.db:
-            run.step.completed(None, False)
+            run.step.mark_completed(None, False)
         self.scheduler.record_stop_time(run.step.i, succeeded=False)
         self._report_step_counts()
         await self._report_run(run)
@@ -716,7 +716,7 @@ class Executor:
 
         # Get some info from the workflow to include in the step hash.
         async with self.db:
-            subshell = run.step.get_subshell()
+            shell = run.step.uses_shell()
             env_overrides = run.step.get_env_overrides()
 
         step_hash = StepHash.from_inp(
@@ -724,7 +724,7 @@ class Executor:
             self.explain_rerun,
             result.all_hashes,
             {name: self.base_env.get(name) for name in env_deps},
-            subshell,
+            shell,
             env_overrides or {},
         )
         run.inp_digest = step_hash.inp_digest
@@ -771,7 +771,7 @@ class Executor:
             }
             env_deps = list(run.step.env_deps())
             out_hashes = {rec.path: rec.hash for rec in run.step.out_paths()}
-            subshell = run.step.get_subshell()
+            shell = run.step.uses_shell()
             env_overrides = run.step.get_env_overrides()
 
         result = await self._run_work_thread(
@@ -788,7 +788,7 @@ class Executor:
                 self.explain_rerun,
                 inp_result.all_hashes,
                 {name: self.base_env.get(name) for name in env_deps},
-                subshell,
+                shell,
                 env_overrides or {},
             )
             step_hash = step_hash.evolve_out(out_result.all_hashes)
@@ -810,9 +810,9 @@ class Executor:
         """Run the command of the step described by `run`."""
         await self.reporter("START", run.description)
 
-        command, workdir = run.step.command_workdir
+        command, workdir = run.step.command_and_workdir
         async with self.db:
-            subshell = run.step.get_subshell()
+            shell = run.step.uses_shell()
             need = run.step.get_need()
             env_overrides = run.step.get_env_overrides()
 
@@ -831,7 +831,7 @@ class Executor:
         suspended_before = self.suspended_total
         with self._track_running(run):
             outcome = await launch_command(
-                command, subshell=subshell, env=env, cwd=workdir, mp_ctx=self.mp_ctx, run=run
+                command, shell=shell, env=env, cwd=workdir, mp_ctx=self.mp_ctx, run=run
             )
         # A suspension stops the child but not the monotonic clock, on either launch path,
         # so it would otherwise be recorded as time the step spent working.
@@ -861,7 +861,7 @@ class Executor:
 
     async def _build_report_pages(self, run: Run) -> list[tuple[str, str]]:
         """Build the report pages describing what happened during a step's execution."""
-        command, workdir = run.step.command_workdir
+        command, workdir = run.step.command_and_workdir
         pages = []
         needs_defer = not (
             (len(run.unavailable) == 0 and len(run.unfresh) == 0) or run.interrupted_defer
@@ -878,7 +878,7 @@ class Executor:
             # Format command for display (can be copied and pasted into a shell); a non-zero
             # return code is appended as a trailing `# exit=N` comment by format_subprocess.
             async with self.db:
-                subshell = run.step.get_subshell()
+                shell = run.step.uses_shell()
             pages.append(
                 (
                     f"Deferred more than {self.workflow.defer_cap} times"
@@ -889,7 +889,7 @@ class Executor:
                         str(workdir),
                         None,
                         None if run.outcome is None else run.outcome.returncode,
-                        shell=subshell,
+                        shell=shell,
                     ),
                 )
             )

@@ -837,7 +837,7 @@ class DirectorHandler:
             for pattern, matches in patterns:
                 ng = NamedGlob(pattern)
                 ng.extend(matches)
-                self.workflow.register_glob(creator, ng)
+                self.workflow.register_nglob(creator, ng)
         self._submit_to_check(to_check)
 
     @allow_rpc
@@ -864,7 +864,7 @@ class DirectorHandler:
         ng.extend(paths)
         async with self.db:
             creator = self.scheduler.get_step(job_i)
-            self.workflow.register_glob(creator, ng)
+            self.workflow.register_nglob(creator, ng)
 
     @allow_rpc
     async def step(
@@ -878,7 +878,7 @@ class DirectorHandler:
         workdir: str,
         need: int,
         resources: dict[str, int],
-        subshell: bool = False,
+        shell: bool = False,
         env_overrides: dict[str, str] | None = None,
         duration: float | None = None,
     ) -> None:
@@ -900,7 +900,7 @@ class DirectorHandler:
                 workdir=workdir,
                 need=Need(need),
                 resources=resources,
-                subshell=subshell,
+                shell=shell,
                 env_overrides=env_overrides,
                 duration=duration,
             )
@@ -1016,12 +1016,12 @@ class DirectorHandler:
 
         Notes
         -----
-        This is an RPC wrapper for `Step.record_subprocess`.
+        This is an RPC wrapper for `Step.add_subprocess`.
         The recorded metadata is informative for archival and debugging, not authoritative.
         """
         async with self.db:
             step = self.scheduler.get_step(job_i)
-            step.record_subprocess(
+            step.add_subprocess(
                 cmd,
                 workdir,
                 env_overrides,
@@ -1033,14 +1033,14 @@ class DirectorHandler:
             )
 
     @allow_rpc
-    async def getinfo(self, job_i: int) -> StepInfo:
+    async def get_info(self, job_i: int) -> StepInfo:
         """Return step information, consistent with return values of functions in stepup.core.api.
 
         For the sake of consistency, dynamic dependencies are not included.
         """
         async with self.db:
             step = self.scheduler.get_step(job_i)
-            return step.get_step_info()
+            return step.get_info()
 
     #
     # Termination and lifecycle

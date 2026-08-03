@@ -57,7 +57,7 @@ Naming gotcha — two similar flags with different meanings:
 
 `run.py` owns "run a step's command as a child process and return a `ChildOutcome`,"
 independent of the step lifecycle in `executor.py`:
-command classification (subshell vs. `*.py` script vs. console-script entry point vs. plain
+command classification (shell vs. `*.py` script vs. console-script entry point vs. plain
 exec), spawning the subprocess or forkserver child, and capturing its output/return code/
 resource usage. `launch_command()` is its single dispatch entry point, called from
 `Executor.run()`.

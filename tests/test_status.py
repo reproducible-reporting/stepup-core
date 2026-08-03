@@ -33,7 +33,7 @@ def _insert_step(con, node_id, label, state, *, detached=False):
     )
     con.execute(
         "INSERT INTO step"
-        " (node, state, need, subshell, _safe, _check_safe, _implied_need, _check_after)"
+        " (node, state, need, shell, _safe, _check_safe, _implied_need, _check_after)"
         " VALUES (?, ?, ?, 0, 0, 0, ?, 0)",
         (node_id, state.value, Need.DEFAULT.value, Need.DEFAULT.value),
     )

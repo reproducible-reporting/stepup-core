@@ -309,7 +309,7 @@ class StepHash:
         extended: bool,
         inp_hashes: Mapping[str, FileHash],
         env_values: dict[str, str | None],
-        subshell: bool = False,
+        shell: bool = False,
         env_overrides: dict[str, str] | None = None,
     ):
         """Create a new step hash with input information only.
@@ -320,8 +320,8 @@ class StepHash:
         env_overrides = {} if env_overrides is None else env_overrides
         hw = HashWords()
         hw.update(step_key)
-        hw.update("__subshell__")
-        hw.update(bytes([int(subshell)]))
+        hw.update("__shell__")
+        hw.update(bytes([int(shell)]))
         hw.update("__inp_paths__")
         for path in sorted(inp_hashes):
             file_hash = inp_hashes[path]

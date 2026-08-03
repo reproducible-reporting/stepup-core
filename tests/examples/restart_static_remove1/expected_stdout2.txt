@@ -5,13 +5,13 @@
    PHASE │ build
   NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   compact ➜ explained, inp_digest 9beae1cd ➜ 315b8e75, out_digest e3b0c442 ➜ (unset)
+Modified step hash   compact ➜ explained, inp_digest db3db621 ➜ f60dbc8d, out_digest e3b0c442 ➜ (unset)
 ────────────────────────────────────────────────────────────────────────────────
    START │ ./plan.py
  SUCCESS │ ./plan.py
     SKIP │ cp -p README.txt backup.txt
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       compact, inp_digest 6a185d90, out_digest 463361ab
+Same step hash       compact, inp_digest dabbddf5, out_digest 463361ab
 ────────────────────────────────────────────────────────────────────────────────
 DIRECTOR │ Ran 3 job(s).
 DIRECTOR │ Trying to remove 1 outdated output(s)

@@ -31,14 +31,14 @@ __all__ = (
 )
 
 
-def _prepare_stream(data: str | bytes | None, max_size: int = 0) -> str:
+def _prepare_stream(data: str | bytes | None, max_bytes: int = 0) -> str:
     """Return a text representation of `data` suitable for the archival record.
 
     `None` is returned unchanged.
 
-    `str` remains unchanged if `max_size` is `0` (unlimited)
-    or the string is shorter than `max_size`.
-    Otherwise, the string is truncated to `max_size` characters
+    `str` remains unchanged if `max_bytes` is `0` (unlimited)
+    or the string is shorter than `max_bytes`.
+    Otherwise, the string is truncated to `max_bytes` characters
     and a note is appended to indicate that it was truncated.
 
     `bytes` are summarized into a short,
@@ -49,7 +49,7 @@ def _prepare_stream(data: str | bytes | None, max_size: int = 0) -> str:
     if data is None:
         return ""
     if isinstance(data, str):
-        return truncate_output(data, max_size)
+        return truncate_output(data, max_bytes)
     if isinstance(data, bytes):
         digest = hashlib.sha256(data).hexdigest()[:16]
         return f"<{len(data)} bytes of binary data, sha256={digest}>"

@@ -196,7 +196,7 @@ def _append_sqllog_row(
 class DBSession:
     """Manages SQLite lifetime (via sync context) and exclusive access (via async context)."""
 
-    db_path: str | os.PathLike[str] = attrs.field()
+    path_db: str | os.PathLike[str] = attrs.field()
     """Path to the SQLite database file.
 
     The connection is opened and kept private when creating a DBSession instance.
@@ -229,7 +229,7 @@ class DBSession:
 
     def __attrs_post_init__(self) -> None:
         """Open the connection from the start."""
-        self._con = connect(self.db_path, **self.connect_kwargs)
+        self._con = connect(self.path_db, **self.connect_kwargs)
         if self.path_sqlcsv is not None:
             _init_sqllog_csv(self.path_sqlcsv)
 
@@ -244,7 +244,7 @@ class DBSession:
     @contextmanager
     def open(
         cls,
-        db_path: str | os.PathLike[str],
+        path_db: str | os.PathLike[str],
         *,
         path_sqllog: StrPath | None = None,
         path_sqlcsv: StrPath | None = None,
@@ -262,7 +262,7 @@ class DBSession:
             file on every `execute()` / `executemany()` call.
         """
         record = path_sqllog is not None or path_sqlcsv is not None
-        db = cls(db_path, connect_kwargs, record=record, path_sqlcsv=path_sqlcsv)
+        db = cls(path_db, connect_kwargs, record=record, path_sqlcsv=path_sqlcsv)
         with contextlib.ExitStack() as stack:
             stack.callback(db._close)
             if path_sqllog is not None:

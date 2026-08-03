@@ -172,6 +172,7 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
   the old inp/out/pickle argument modes are replaced
   by explicit function dispatch and optional `args_file` support for file-based argument passing.
   See [Function Calls](getting_started/call.md) for details.
+- The `getinfo()` function has been renamed to `get_info()`.
 - File hashes are computed in concurrent hash jobs instead of the old serial client-side delegation.
   Similarly, the director uses the same mechanism to compute file hashes in parallel on startup.
 - File hashing now runs in threads inside the director process
@@ -901,7 +902,7 @@ This release fixes several bugs.
 - `--perf` option to analyze performance bottlenecks in the director process.
 - The "call" protocol is added as a light alternative to the "script" protocol.
   It can be used through the new [`call()`][stepup.core.api.call] function.
-- [`getinfo()`][stepup.core.api.getinfo] function to retrieve the
+- `getinfo()` function to retrieve the
   [`StepInfo`][stepup.core.stepinfo.StepInfo] object of the current step.
 - Cleanly exit the director process upon several types of exceptions (instead of hanging).
 - Gracefully handle `SIGINT` and `SIGTERM`, e.g. pressing `ctrl-c` in the terminal.

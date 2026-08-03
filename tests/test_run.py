@@ -128,12 +128,12 @@ async def test_launch_command_measures_resource_usage(tmp_path):
     `perf_counter` bracket around `Popen`), which the pure `ResourceUsage` unit tests in
     test_usage.py cannot exercise because they feed in synthetic `rusage` snapshots.
     """
-    step = SimpleNamespace(i=1, label="burn", command_workdir=("burn", "."))
+    step = SimpleNamespace(i=1, label="burn", command_and_workdir=("burn", "."))
     run = Run(step, job_i=1)
     command = f"{shlex.quote(sys.executable)} -c 'print(sum(range(2000000)))'"
 
     outcome = await launch_command(
-        command, subshell=True, env=dict(os.environ), cwd=Path(tmp_path), mp_ctx=None, run=run
+        command, shell=True, env=dict(os.environ), cwd=Path(tmp_path), mp_ctx=None, run=run
     )
 
     assert outcome.returncode == 0
@@ -201,7 +201,7 @@ class _FakeMPContext:
 
 async def test_exec_in_forkserver_child_killed():
     """A child killed (e.g. during an aborted build) becomes a failed outcome, not an error."""
-    run = Run(SimpleNamespace(i=1, label="killed", command_workdir=("killed", ".")), job_i=1)
+    run = Run(SimpleNamespace(i=1, label="killed", command_and_workdir=("killed", ".")), job_i=1)
     mp_ctx = _FakeMPContext(-signal.SIGKILL)
 
     outcome = await _exec_in_forkserver(mp_ctx, None, (), run)
@@ -213,7 +213,7 @@ async def test_exec_in_forkserver_child_killed():
 
 async def test_exec_in_forkserver_outcome_received():
     """A child that does send its outcome has it returned unchanged."""
-    run = Run(SimpleNamespace(i=1, label="fine", command_workdir=("fine", ".")), job_i=1)
+    run = Run(SimpleNamespace(i=1, label="fine", command_and_workdir=("fine", ".")), job_i=1)
     sent = ChildOutcome(0, "out", "err")
     mp_ctx = _FakeMPContext(0, sent)
 

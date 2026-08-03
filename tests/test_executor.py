@@ -68,7 +68,7 @@ class _NullDB:
 
 
 def _make_detached_run(*, success: bool) -> Run:
-    step = SimpleNamespace(i=1, label="one", command_workdir=("echo hi", "."))
+    step = SimpleNamespace(i=1, label="one", command_and_workdir=("echo hi", "."))
     run = Run(step, job_i=1)
     run.success = success
     run.detached = True
@@ -77,7 +77,7 @@ def _make_detached_run(*, success: bool) -> Run:
 
 def _make_failed_run() -> Run:
     step = SimpleNamespace(
-        i=1, label="false", command_workdir=("false", "."), get_subshell=lambda: None
+        i=1, label="false", command_and_workdir=("false", "."), uses_shell=lambda: None
     )
     run = Run(step, job_i=1)
     run.success = False
@@ -267,8 +267,8 @@ def _make_command_run(job_i: int) -> Run:
     step = SimpleNamespace(
         i=1,
         label="./step.sh",
-        command_workdir=("./step.sh", Path(".")),
-        get_subshell=lambda: False,
+        command_and_workdir=("./step.sh", Path(".")),
+        uses_shell=lambda: False,
         get_need=lambda: Need.DEFAULT,
         get_env_overrides=dict,
     )

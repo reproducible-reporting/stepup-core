@@ -349,7 +349,7 @@ class Workflow(Trellis):
     defer_cap: int = attrs.field(kw_only=True, default=100)
     """Maximum number of consecutive defers (since the last SUCCEEDED) before a
     step is failed instead of parked in PENDING again. A livelock guard, not expected
-    to bind in normal use; see `Step.completed()`."""
+    to bind in normal use; see `Step.mark_completed()`."""
 
     targets: frozenset[Path] = attrs.field(kw_only=True, factory=frozenset, converter=frozenset)
     """The paths `stepup build` was asked to produce.
@@ -1051,7 +1051,7 @@ class Workflow(Trellis):
         """Raise when a registered glob pattern matches a path a step is about to build.
 
         This is the late-arriving half of the rule that a glob pattern may only match
-        static files: `register_glob` catches the outputs that already exist, this
+        static files: `register_nglob` catches the outputs that already exist, this
         catches the ones declared afterwards. Whichever event happens second is the one
         that raises, which is what makes the rule independent of execution order.
 
@@ -1295,7 +1295,7 @@ class Workflow(Trellis):
         matching_paths = [path for (path,) in self.db.execute(sql, (pattern,))]
         return self.declare_unconfirmed(st, matching_paths)
 
-    def register_glob(self, step: Step, ng: NamedGlob) -> None:
+    def register_nglob(self, step: Step, ng: NamedGlob) -> None:
         """Register a glob pattern used by a step and validate its matches.
 
         Parameters
@@ -1364,7 +1364,7 @@ class Workflow(Trellis):
                     f"Glob pattern ({ng.pattern}) matches a path under {STEPUP_DIR}: {path}"
                 )
 
-        step.register_glob(ng)
+        step.add_nglob(ng)
 
         # Watch the directories that could produce a new match: the parent of every
         # current match, and the pattern's base directory, so a zero-match pattern
@@ -1386,7 +1386,7 @@ class Workflow(Trellis):
         need: Need = Need.DEFAULT,
         resources: dict[str, int] | None = None,
         safe: bool = False,
-        subshell: bool = False,
+        shell: bool = False,
         env_overrides: dict[str, str] | None = None,
         duration: float | None = None,
     ) -> dict[str, FileHash]:
@@ -1485,7 +1485,7 @@ class Workflow(Trellis):
             command,
             workdir=workdir,
             need=need,
-            subshell=subshell,
+            shell=shell,
             resources=resources,
             env_overrides=env_overrides,
             duration=duration,
@@ -1511,7 +1511,7 @@ class Workflow(Trellis):
             workdir=workdir,
             need=need,
             safe=safe,
-            subshell=subshell,
+            shell=shell,
             duration=duration,
         )
         step.set_resources(resources)

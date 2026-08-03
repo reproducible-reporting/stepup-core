@@ -17,11 +17,11 @@ from stepup.core.enums import ReturnCode
 from stepup.core.exceptions import InteractError
 
 
-def _write_director_log(path_tmp: Path, path_socket: Path, pid: int) -> None:
+def _write_director_log(path_tmp: Path, socket_path: Path, pid: int) -> None:
     """Write a director log with the same first lines as `async_main` in `director.py`."""
     (path_tmp / DIRECTOR_LOG).parent.makedirs_p()
     with open(path_tmp / DIRECTOR_LOG, "w") as fh:
-        fh.write(f"SOCKET {path_socket}\nPID {pid}\nLOG_LEVEL INFO\n")
+        fh.write(f"SOCKET {socket_path}\nPID {pid}\nLOG_LEVEL INFO\n")
 
 
 def test_get_socket_timeout(path_tmp: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -49,16 +49,16 @@ def test_get_socket_slow_startup(
     path_tmp: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
     """As long as the director process is alive, `get_socket` must wait without a deadline."""
-    path_socket = path_tmp / "director"
-    _write_director_log(path_tmp, path_socket, os.getpid())
+    socket_path = path_tmp / "director"
+    _write_director_log(path_tmp, socket_path, os.getpid())
     monkeypatch.setenv("STEPUP_ROOT", str(path_tmp))
     # The socket shows up long after the timeout, which must not apply on this path.
     monkeypatch.setattr(interact, "GET_SOCKET_TIMEOUT", 0.05)
     monkeypatch.setattr(interact, "GET_SOCKET_INTERVAL", 0.01)
-    timer = threading.Timer(0.5, path_socket.touch)
+    timer = threading.Timer(0.5, socket_path.touch)
     timer.start()
     try:
-        assert interact.get_socket() == path_socket
+        assert interact.get_socket() == socket_path
     finally:
         timer.cancel()
     # The startup notice must not be repeated for every attempt.

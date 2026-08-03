@@ -21,7 +21,7 @@ may undergo larger changes and are not intended to be API stable.
 
 ### ::: stepup.core.api.hold
 
-### ::: stepup.core.api.getinfo
+### ::: stepup.core.api.get_info
 
 ### ::: stepup.core.api.graph
 

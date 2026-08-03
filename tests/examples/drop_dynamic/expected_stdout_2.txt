@@ -4,7 +4,7 @@
    PHASE │ build
   NOSKIP │ ./plan.py
 ──────────────────────────── Changes causing rerun ─────────────────────────────
-Modified step hash   explained, inp_digest 09337be6 ➜ e97c352d, out_digest e3b0c442 ➜ (unset)
+Modified step hash   explained, inp_digest d7f69114 ➜ 3fe25bf7, out_digest e3b0c442 ➜ (unset)
 Modified inp hash    plan.py (digest 3eb66c71 ➜ 66781fbe, size 220 ➜ 268)
 ────────────────────────────── Remained the same ───────────────────────────────
 Same env var         STEPUP_PATH_FILTER (unset)
@@ -15,7 +15,7 @@ Same env var         STEPUP_PATH_FILTER (unset)
  SUCCESS │ sleep 0.5; echo 'Some input for drop_dynamic example' > inp.txt
     SKIP │ ./work.py
 ───────────────────────────── No changes observed ──────────────────────────────
-Same step hash       explained, inp_digest 6ece54df, out_digest e3b0c442
+Same step hash       explained, inp_digest 051c6f8e, out_digest e3b0c442
 Same inp hash        inp.txt
 Same inp hash        work.py
 Same env var         STEPUP_PATH_FILTER (unset)

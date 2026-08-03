@@ -38,7 +38,7 @@ def _insert_step(con, node_id, creator_id):
     con.execute(
         "INSERT INTO step"
         " (node, state, need, duration, deferred, defer_count,"
-        " subshell, _safe, _check_safe, _implied_need, _tail_time, _check_after)"
+        " shell, _safe, _check_safe, _implied_need, _tail_time, _check_after)"
         " VALUES (?, ?, ?, 1.0, 0, 0, 0, 0, 0, ?, 1.0, 0)",
         (node_id, StepState.PENDING.value, Need.DEFAULT.value, Need.DEFAULT.value),
     )
@@ -66,7 +66,7 @@ def _flagged(con):
     return flagged
 
 
-def test_check_with_products_flags_step_and_all_products(con):
+def test_flag_checks_with_products_flags_step_and_all_products(con):
     """The flagged step and its (recursive) product steps must be flagged."""
     # Creator chain: root(1) -> A(2) -> B(3) -> C(4)
     _insert_step(con, 2, 1)
@@ -76,7 +76,7 @@ def test_check_with_products_flags_step_and_all_products(con):
     assert _flagged(con) == {2, 3, 4}
 
 
-def test_check_with_products_does_not_flag_sibling_subtree(con):
+def test_flag_checks_with_products_does_not_flag_sibling_subtree(con):
     """Steps in an unrelated creator subtree must not be flagged."""
     # Two independent subtrees under root:
     #   root(1) -> A(2) -> B(3)
@@ -90,7 +90,7 @@ def test_check_with_products_does_not_flag_sibling_subtree(con):
     assert _flagged(con) == {2, 3}
 
 
-def test_check_with_products_leaf_flags_only_itself(con):
+def test_flag_checks_with_products_leaf_flags_only_itself(con):
     """A leaf step (one that creates nothing) must flag only itself."""
     # root(1) -> A(2) -> B(3); flag the leaf B, which creates no products.
     _insert_step(con, 2, 1)
@@ -100,7 +100,7 @@ def test_check_with_products_leaf_flags_only_itself(con):
     assert _flagged(con) == {3}
 
 
-def test_check_with_products_single_step(con):
+def test_flag_checks_with_products_single_step(con):
     """Flagging the only step flags exactly that step."""
     _insert_step(con, 2, 1)
     con.execute(RECURSIVE_CHECK_WITH_PRODUCTS, (2,))
@@ -271,7 +271,7 @@ def test_duration_update_flags_check_after(con):
 
 
 def test_truncate_output_unlimited():
-    """A non-positive max_size returns the content unchanged, even when large."""
+    """A non-positive max_bytes returns the content unchanged, even when large."""
     content = "x" * 10_000
     assert truncate_output(content, 0) is content
     assert truncate_output(content, -1) is content
@@ -295,7 +295,7 @@ def test_truncate_output_over_limit():
 def test_truncate_output_multibyte_boundary():
     """Cutting in the middle of a multi-byte character yields valid UTF-8 within budget."""
     content = "é" * 10  # each 'é' is 2 UTF-8 bytes => 20 bytes total
-    # max_size 5 lands in the middle of the third 'é' (after 2 full chars = 4 bytes).
+    # max_bytes 5 lands in the middle of the third 'é' (after 2 full chars = 4 bytes).
     result = truncate_output(content, 5)
     kept = result.split("\n")[0]
     assert kept == "éé"

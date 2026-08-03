@@ -473,7 +473,7 @@ class GraphServer(BaseHTTPRequestHandler):
         # Format the state (if a file or a step)
         if kind == "step":
             sql_props = (
-                "SELECT state, need, duration, deferred, defer_count, subshell, env_overrides, "
+                "SELECT state, need, duration, deferred, defer_count, shell, env_overrides, "
                 "_safe, _check_safe, _holding, _implied_need, _tail_time, _check_after "
                 "FROM step WHERE node = ?"
             )
@@ -483,7 +483,7 @@ class GraphServer(BaseHTTPRequestHandler):
                 duration,
                 deferred,
                 defer_count,
-                subshell,
+                shell,
                 env_overrides,
                 safe,
                 check_safe,
@@ -493,7 +493,7 @@ class GraphServer(BaseHTTPRequestHandler):
                 check_after,
             ) = self.con.execute(sql_props, (node_i,)).fetchone()
             state = StepState(state_i)
-            yield f"<p><b>Subshell:</b> {'yes' if subshell else 'no'}</p>"
+            yield f"<p><b>Runs in shell:</b> {'yes' if shell else 'no'}</p>"
             yield f'<p><b>State:</b> <span class="{state.name.lower()}">{state.name}</span></p>'
             if deferred:
                 yield ('<p><b>Deferred:</b> <span class="deferred">yes</span></p>')

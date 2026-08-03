@@ -109,7 +109,7 @@ EXAMPLES = [
     "error_stepup_dir",
     "external_sources",
     "filter_deps_symlink",
-    "getinfo",
+    "get_info",
     "glob_dir_outside_tree",
     "glob_dir_parent_of_static",
     "glob_justified_late",

@@ -192,8 +192,8 @@ async def test_check_nglob_changes_persists_readable_matches(wfp: Workflow, tmpd
             plan = wfp.find(Step, "./plan.py")
             ng = NamedGlob("inp*.txt")
             ng.extend(["inp1.txt", "inp2.txt"])
-            wfp.register_glob(plan, ng)
-            plan.completed(StepHash(b"ok", None, b"inp_ok", None), False)
+            wfp.register_nglob(plan, ng)
+            plan.mark_completed(StepHash(b"ok", None, b"inp_ok", None), False)
             assert plan.get_state() == StepState.SUCCEEDED
 
         # Simulate files changing while the director was not running:
@@ -231,9 +231,9 @@ async def test_populate_dir_queue_includes_glob_base_dirs(wfp: Workflow, tmpdir)
         os.makedirs("data")
         async with wfp.db:
             plan = wfp.find(Step, "./plan.py")
-            wfp.register_glob(plan, NamedGlob("data/*.txt"))
+            wfp.register_nglob(plan, NamedGlob("data/*.txt"))
 
-        # Drain what fixture setup and register_glob already queued, so only
+        # Drain what fixture setup and register_nglob already queued, so only
         # populate_dir_queue's own contribution is observed below.
         while not wfp.dir_queue.empty():
             wfp.dir_queue.get_nowait()

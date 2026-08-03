@@ -297,7 +297,7 @@ class Run:
     """Set to True when the step has reached its defer cap."""
 
     detached: bool = attrs.field(init=False, default=False)
-    """Set to True when `Step.completed()` found this step had already been detached by
+    """Set to True when `Step.mark_completed()` found this step had already been detached by
     its creator (see `Step.detach()`) when it finished, regardless of success or failure.
     """
 
@@ -905,7 +905,7 @@ async def _run_python_entrypoint(
 async def launch_command(
     command: str,
     *,
-    subshell: bool,
+    shell: bool,
     env: dict,
     cwd: Path,
     mp_ctx: multiprocessing.context.BaseContext | None,
@@ -913,7 +913,7 @@ async def launch_command(
 ) -> ChildOutcome:
     """Launch a step's command and return its `ChildOutcome`.
 
-    Dispatches between a subshell, a Python script (`*.py`), a Python console_script
+    Dispatches between a shell, a Python script (`*.py`), a Python console_script
     entry point, or a plain (non-shell) exec. Python scripts and entry points run in a
     forkserver child when `mp_ctx` is not `None`, and as a plain subprocess otherwise.
 
@@ -921,7 +921,7 @@ async def launch_command(
     ----------
     command
         The command line to launch, as it would be typed in a shell.
-    subshell
+    shell
         Whether to run `command` through a shell instead of splitting and exec'ing it directly.
     env
         The environment variables for the child process.
@@ -940,7 +940,7 @@ async def launch_command(
     parts = shlex.split(command)
     if not parts:
         raise ValueError(f"Empty command: {command!r}")
-    if subshell:
+    if shell:
         return await _run_subprocess(command, shell=True, env=env, cwd=cwd, run=run)
     if parts[0].endswith(".py"):
         return await _run_python_script(parts[0], parts[1:], env, cwd, mp_ctx, run)

@@ -320,15 +320,15 @@ def test_prepare_stream_none():
 
 
 def test_prepare_stream_str_unlimited():
-    """_prepare_stream passes through str when max_size is 0 (unlimited)."""
+    """_prepare_stream passes through str when max_bytes is 0 (unlimited)."""
     s = "hello"
-    assert _prepare_stream(s, max_size=0) == s
+    assert _prepare_stream(s, max_bytes=0) == s
 
 
 def test_prepare_stream_str_truncated():
-    """_prepare_stream truncates str when it exceeds max_size."""
+    """_prepare_stream truncates str when it exceeds max_bytes."""
     s = "hello world"
-    result = _prepare_stream(s, max_size=5)
+    result = _prepare_stream(s, max_bytes=5)
     # The result should be truncated and include a note about truncation
     assert len(result) <= 5 + 50  # Some allowance for the truncation note
 
