@@ -66,16 +66,14 @@ Consider the following example:
 run("weasyprint document.html document.pdf", inp="document.html", out="document.pdf")
 ```
 
-StepUp will create a `runpyep` action for this command,
-which is similar to `runpy` but designed to run Python entry points.
+Upon execution, StepUp will detect that `weasyprint` is a Python entry point.
 If the `--forkserver` option is enabled (the default on Linux),
-StepUp will run the command with the forkserver mechanism,
-which is significantly faster than a normal subprocess.
+StepUp will call the entry point in a forked subprocess,
+which is significantly faster than launching a normal subprocess.
 
 Several sanity checks are performed to ensure that the command
 is a proper Python entry point from the same Python environment as StepUp.
-If not, StepUp will fall back to running the command with the `runexec` action,
-which always executes the command as a normal subprocess.
+If not, StepUp will fall back to running the command as a normal subprocess.
 
 ## Notes
 

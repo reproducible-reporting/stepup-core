@@ -50,12 +50,11 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
 - All functions in `stepup.core.api` now accept `os.PathLike` objects (i.e. `pathlib.Path`)
   as path arguments, in addition to `str` and `path.Path`.
 - When the first word of a `run()` command is a bare command name matching a `console_scripts`
-  entry point from the current Python environment, StepUp now automatically selects the
-  `runpyep` action.
-  When the forkserver is enabled (`--forkserver`), the entry point function is called
+  entry point from the current Python environment, StepUp now runs it as a Python entry point:
+  when the forkserver is enabled (`--forkserver`), the entry point function is called
   in-process rather than spawning a new subprocess, reducing overhead.
   If the entry point belongs to a different Python environment, a warning is logged and
-  the command falls back to direct subprocess execution (`runexec` action).
+  the command falls back to direct subprocess execution.
 - A `run()` or `step()` command may now start with `VAR=value` assignments
   (when `shell=False`), e.g. `run("OMP_NUM_THREADS=4 ./work.py")`.
   These are applied as step-specific environment variable overrides when the step runs,

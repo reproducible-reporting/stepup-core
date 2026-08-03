@@ -337,8 +337,8 @@ the internal environment variables described above.
     This is useful in special cases.
     For example, it can be used to decide if cached results
     from a previously interrupted run of the step are still valid.
-    It can also be useful when actions submit jobs to a scheduler,
-    to decide if a running job is still valid.
+    It can also be useful when a step submits a job to an external scheduler,
+    to decide if a previously submitted job is still valid.
 
 `STEPUP_STEP_NEED`
 

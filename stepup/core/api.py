@@ -382,7 +382,7 @@ def step(
         Relative paths are assumed to be relative to `workdir`.
         Directory outputs are not supported.
     workdir
-        The directory where the action must be executed.
+        The directory where the command must be executed.
         The path is normalized before further processing.
         If this is a relative path, it is relative to the work directory of the caller.
         (The default is the current directory.)
