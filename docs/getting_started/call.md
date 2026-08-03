@@ -138,7 +138,7 @@ The real power of `call()` is composing steps dynamically.
 One common pattern is a two-phase script, where a `plan()` function registers a `run()` function.
 The benefit of such a split is that the top-level `./plan.py`
 can focus on the high-level logic of the workflow,
-while some details of the workflow are deferred to the `plan()` function of the called script.
+while some details of the workflow are delegated to the `plan()` function of the called script.
 
 To make the example more engaging,
 it leverages [NumPy](https://numpy.org/) and [Matplotlib](https://matplotlib.org/).

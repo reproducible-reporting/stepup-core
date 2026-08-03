@@ -118,8 +118,8 @@ CREATE TEMP TABLE IF NOT EXISTS node_list (i INTEGER PRIMARY KEY) WITHOUT ROWID;
 # No recursion through the dependency graph is needed:
 # file-to-file dependency edges no longer exist
 # since directory nodes were removed from the graph (schema version 5),
-# so a step's deferred inputs are always among its direct inputs.
-DEFERRED_INPUTS = f"""
+# so a step's unconfirmed inputs are always among its direct inputs.
+UNCONFIRMED_INPUTS = f"""
 SELECT node.i, node.label FROM node
 JOIN node AS cnode ON node.creator = cnode.i
 JOIN file ON node.i = file.node
@@ -285,24 +285,35 @@ class SupplyInfo:
     file: File = attrs.field()
     """A new or existing file."""
 
-    available: bool = attrs.field()
-    """True if possibly available, False if certainly unavailable.
+    state: FileState = attrs.field()
+    """The state of the file when it was supplied.
 
-    If False, the file is AWAITED, OUTDATED or MISSING, and thus certainly unavailable.
+    This remains valid for as long as the caller holds the `SupplyInfo`,
+    because inserting a dependency edge does not affect the file state.
     (A VOLATILE file never reaches this point: `_resolve_supply_file` raises `GraphError`
-    for it before an `available` value is computed.)
-    A MISSING file only becomes available again at a build boundary
-    (watch phase or restart), never within the current build.
-    If True, the file is BUILT, UNCONFIRMED or STATIC.
-    In case of an UNCONFIRMED file, it still needs to be confirmed as STATIC (or MISSING),
-    but we cannot report it as unavailable yet, hence the True value.
+    for it before a `SupplyInfo` is constructed.)
     """
-
-    is_deferred: bool = attrs.field()
-    """True if the file's state is UNCONFIRMED and needs to be checked."""
 
     new_idep: int | None = attrs.field()
     """Dependency identifier when the relation is new, None otherwise."""
+
+    @property
+    def is_available(self) -> bool:
+        """True if possibly available, False if certainly unavailable.
+
+        If False, the file is AWAITED, OUTDATED or MISSING, and thus certainly unavailable.
+        A MISSING file only becomes available again at a build boundary
+        (watch phase or restart), never within the current build.
+        If True, the file is BUILT, UNCONFIRMED or STATIC.
+        In case of an UNCONFIRMED file, it still needs to be confirmed as STATIC (or MISSING),
+        but we cannot report it as unavailable yet, hence the True value.
+        """
+        return self.state in (FileState.BUILT, FileState.STATIC, FileState.UNCONFIRMED)
+
+    @property
+    def is_unconfirmed(self) -> bool:
+        """True if the file's state is UNCONFIRMED and its existence still needs to be checked."""
+        return self.state == FileState.UNCONFIRMED
 
 
 @attrs.define(frozen=True, order=True)
@@ -891,7 +902,7 @@ class Workflow(Trellis):
         node: Node,
         path: str,
         new: bool,
-    ) -> tuple[File, bool, bool, bool]:
+    ) -> tuple[File, FileState, bool]:
         """Find or create the file for a path and resolve its relation to node.
 
         This performs everything `_supply_files` needs except inserting the
@@ -912,10 +923,8 @@ class Workflow(Trellis):
         -------
         file
             The existing or newly created file node.
-        available
-            See `SupplyInfo.available`.
-        is_deferred
-            See `SupplyInfo.is_deferred`.
+        state
+            See `SupplyInfo.state`.
         new_relation
             `True` when the (file, node) dependency edge does not exist yet
             and still needs to be inserted by the caller.
@@ -926,27 +935,22 @@ class Workflow(Trellis):
             When the path is volatile.
             When the path exists while it is expected to be new.
         """
-        available = False
         file, detached = self.find_detached(File, path)
-        is_deferred = False
         if file is None or detached:
             st = self._find_matching_static_tree(path)
             if st is None:
-                file = self.create(File, None, path, state=FileState.AWAITED)
+                state = FileState.AWAITED
+                file = self.create(File, None, path, state=state)
             else:
-                self._raise_if_forbidden_target(path, FileState.UNCONFIRMED)
-                file = self.create(File, st, path, state=FileState.UNCONFIRMED)
-                is_deferred = True
-                available = True
+                state = FileState.UNCONFIRMED
+                self._raise_if_forbidden_target(path, state)
+                file = self.create(File, st, path, state=state)
             self.put_dir_queue(Path(path).parent)
         else:
             state = file.get_state()
             if state == FileState.VOLATILE:
                 raise GraphError(f"Input is volatile: {path}")
             self._raise_if_forbidden_target(path, state)
-            available = state in (FileState.BUILT, FileState.STATIC, FileState.UNCONFIRMED)
-            if state == FileState.UNCONFIRMED:
-                is_deferred = True
         new_relation = (
             self.db.execute(
                 "SELECT 1 FROM dependency WHERE source = ? AND sink = ?", (file.i, node.i)
@@ -955,7 +959,7 @@ class Workflow(Trellis):
         )
         if not new_relation and new:
             raise GraphError(f"Supplying file already exists: {path}")
-        return file, available, is_deferred, new_relation
+        return file, state, new_relation
 
     def _supply_files(
         self,
@@ -997,17 +1001,16 @@ class Workflow(Trellis):
             When adding the new relations would introduce a cyclic dependency.
         """
         resolved = [self._resolve_supply_file(node, path, new) for path in paths]
-        new_file_is = [file.i for file, _, _, new_relation in resolved if new_relation]
+        new_file_is = [file.i for file, _, new_relation in resolved if new_relation]
         if len(new_file_is) > 0:
             node.check_no_cycle_batch(new_file_is)
         return [
             SupplyInfo(
                 file,
-                available,
-                is_deferred,
+                state,
                 new_idep=(node.add_source(file, skip_cycle_check=True) if new_relation else None),
             )
-            for file, available, is_deferred, new_relation in resolved
+            for file, state, new_relation in resolved
         ]
 
     def _declare_file(self, creator: Node, path: str, file_state: FileState) -> File:
@@ -1089,7 +1092,7 @@ class Workflow(Trellis):
                         "or declare the file with static() instead of building it."
                     )
 
-    def _build_to_check(self, deferred: Collection[File]) -> dict[str, FileHash]:
+    def _build_to_check(self, unconfirmed: Collection[File]) -> dict[str, FileHash]:
         """Collect the currently known hashes of UNCONFIRMED file nodes, keyed by path.
 
         This mapping is intended for the caller to submit as hash jobs
@@ -1099,7 +1102,7 @@ class Workflow(Trellis):
 
         Parameters
         ----------
-        deferred
+        unconfirmed
             UNCONFIRMED file nodes that match a static tree.
 
         Returns
@@ -1109,7 +1112,7 @@ class Workflow(Trellis):
         """
         db = self.db
         db.execute("DELETE FROM node_list")
-        db.executemany("INSERT INTO node_list VALUES (?)", ((file.i,) for file in deferred))
+        db.executemany("INSERT INTO node_list VALUES (?)", ((file.i,) for file in unconfirmed))
         sql = (
             "SELECT node.label, file.hash FROM node_list "
             "JOIN node ON node.i = node_list.i "
@@ -1493,10 +1496,11 @@ class Workflow(Trellis):
         if old_step is not None:
             # Look for UNCONFIRMED inputs that match a static tree. Their existence still
             # needs to be checked, ideally confirmed by a hash job submitted for them.
-            deferred = {
-                File(self, i, label) for i, label in self.db.execute(DEFERRED_INPUTS, (old_step.i,))
+            unconfirmed = {
+                File(self, i, label)
+                for i, label in self.db.execute(UNCONFIRMED_INPUTS, (old_step.i,))
             }
-            return self._build_to_check(deferred)
+            return self._build_to_check(unconfirmed)
 
         # Create new step
         step = self.create(
@@ -1513,14 +1517,14 @@ class Workflow(Trellis):
         step.set_env_overrides(env_overrides)
 
         # Keep track of all missing files that match a static tree and need to be confirmed.
-        deferred = set()
+        unconfirmed = set()
 
         # Supply inp_paths
         for info in self._supply_files(step, inp_paths):
             # We do not care about the unavailable files here,
             # because the step will only be executed when all inputs are available.
-            if info.is_deferred:
-                deferred.add(info.file)
+            if info.is_unconfirmed:
+                unconfirmed.add(info.file)
 
         # Process vars
         step.add_env_deps(env_deps)
@@ -1537,7 +1541,7 @@ class Workflow(Trellis):
 
         # Determine if the step needs executing and queue if relevant.
         logger.info("Define step: %s", step.label)
-        return self._build_to_check(deferred)
+        return self._build_to_check(unconfirmed)
 
     def amend_step(
         self,
@@ -1601,27 +1605,26 @@ class Workflow(Trellis):
         # Keep track of missing files, of which there are three different types:
         # - unavailable = certainly not available
         # - unfresh = available, but fails the amend() freshness check.
-        # - deferred = possibly available but need to be checked.
-        #   For example, these can be UNCONFIRMED files that need to be confirmed as STATIC
-        #   (or MISSING).
+        # - unconfirmed = possibly available but need to be checked.
+        #   These are UNCONFIRMED files that need to be confirmed as STATIC (or MISSING).
         unavailable = set()
         unfresh = set()
-        deferred = set()
+        unconfirmed = set()
         amended_ideps = []
 
         # Process inp_paths
         infos = self._supply_files(step, inp_paths, new=False)
         for info in infos:
-            if not info.available:
+            if not info.is_available:
                 unavailable.add(info.file.path)
-            elif info.file.get_state() == FileState.BUILT:
+            elif info.state == FileState.BUILT:
                 producer = info.file.creator()
                 if isinstance(producer, Step) and ran_concurrently(producer.i, step.i):
                     unfresh.add(info.file.path)
             if info.new_idep is not None:
                 amended_ideps.append((info.new_idep,))
-            if info.is_deferred:
-                deferred.add(info.file)
+            if info.is_unconfirmed:
+                unconfirmed.add(info.file)
 
         # Process vars
         step.amend_env_deps(env_deps)
@@ -1641,7 +1644,7 @@ class Workflow(Trellis):
             amended_ideps.append((new_idep,))
 
         self.db.executemany("INSERT INTO amended_dep VALUES (?)", amended_ideps)
-        return False, unavailable, unfresh, self._build_to_check(deferred)
+        return False, unavailable, unfresh, self._build_to_check(unconfirmed)
 
     #
     # Watch phase

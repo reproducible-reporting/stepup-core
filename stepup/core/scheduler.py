@@ -418,7 +418,7 @@ class Scheduler:
     """Step node id -> most recently measured job duration, not yet written to the database.
 
     In-memory only. Populated by `job_completed()`, written and cleared by
-    `flush_durations()` at the end of a build phase (see `Builder.finalize`/`Builder.stop`).
+    `build_completed()` at the end of a build phase (see `Builder.finalize`/`Builder.stop`).
     """
 
     jobs: dict[int, Step] = attrs.field(init=False, factory=dict)

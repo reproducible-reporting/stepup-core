@@ -497,7 +497,7 @@ def test_two_step_chain_upstream_tail_time_includes_downstream(con):
 
 
 def test_three_step_chain_processes_bottom_up(con):
-    """When A and B both have check_after=True in A -> F1 -> B -> F2 -> C, A is deferred.
+    """When A and B both have check_after=True in A -> F1 -> B -> F2 -> C, A is written last.
 
     INIT_CHECK_AFTER removes A from the initial set because B (also check_after=True) is a
     downstream sink of A.  B is processed first; propagation from B then queues A,
@@ -1998,7 +1998,12 @@ async def test_stop_times_cleared_when_no_steps_running(wfs: Workflow):
 
 
 # -----------------------------------------------------------------------
-# Tests for deferred step-duration writes (new_durations / build_completed)
+# Tests for step-duration bookkeeping (new_durations)
+#
+# A job's measured duration is not written to the database when the job completes:
+# `job_completed()` buffers it in memory, and `build_completed()` writes the whole
+# buffer once at the end of the build phase, skipping steps whose duration changed
+# by 10% or less.
 # -----------------------------------------------------------------------
 
 
