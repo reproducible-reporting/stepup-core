@@ -17,6 +17,7 @@ import signal
 import stat
 import subprocess
 import sys
+import termios
 import time
 
 import pytest
@@ -120,11 +121,22 @@ def spawn_on_pty(path_tmp: Path) -> tuple[subprocess.Popen, int]:
     return process, master
 
 
-def drain(master: int) -> None:
-    """Read whatever the pty has buffered, so the child never blocks on a full buffer."""
+def drain(master: int) -> bytes:
+    """Read whatever the pty has buffered, so the child never blocks on a full buffer.
+
+    Returns
+    -------
+    output
+        The bytes read, for the tests that assert on what StepUp wrote to the terminal.
+    """
+    chunks = []
     with contextlib.suppress(BlockingIOError, OSError):
-        while os.read(master, 65536):
-            pass
+        while True:
+            chunk = os.read(master, 65536)
+            if not chunk:
+                break
+            chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def wait_for_director(path_tmp: Path, master: int) -> int:
@@ -239,3 +251,164 @@ def test_ctrl_c_stops_work_behind_a_shell_wrapper(stepup_on_pty) -> None:
     os.write(master, INTERRUPT_CHAR)
     wait_exit(process, master, TIMEOUT)
     assert wait_gone(leaf_pid, 10.0), "The process behind the shell wrapper kept running."
+
+
+#
+# Ctrl-Z, which needs job control on top of a pseudo terminal
+#
+
+
+SUSPEND_CHAR = b"\x1a"
+"""Ctrl-Z, which the terminal line discipline turns into a SIGTSTP for the foreground group."""
+
+JOB_CONTROL_BOOTSTRAP = """
+import fcntl, os, sys, termios
+
+# Claim the pty (this process's stdin) as the controlling terminal, then act as the shell
+# would: run StepUp in a process group of its own and hand it the terminal.
+# Without this stand-in for a shell, StepUp's process group would be orphaned, because its
+# parent lives in another session, and the kernel discards SIGTSTP for an orphaned group.
+fcntl.ioctl(0, termios.TIOCSCTTY, 0)
+pid = os.fork()
+if pid == 0:
+    os.setpgid(0, 0)
+    os.execv(sys.executable, [sys.executable, "-m", "stepup.core", "build"])
+# Also set here, so neither process can race ahead of the other.
+os.setpgid(pid, pid)
+os.tcsetpgrp(0, pid)
+_, status = os.waitpid(pid, 0)
+sys.exit(os.waitstatus_to_exitcode(status))
+"""
+"""Child-side stand-in for an interactive shell, which starts StepUp as a job."""
+
+
+def proc_state(pid: int) -> str:
+    """Return the single-letter process state of `pid`, e.g. `S` (sleeping) or `T` (stopped)."""
+    stat = (Path("/proc") / str(pid) / "stat").read_text()
+    # The command in the second field may contain spaces and parentheses.
+    return stat[stat.rindex(")") + 2]
+
+
+def wait_states(pids: list[int], states: str, master: int, timeout: float) -> bytes:
+    """Wait until every pid is in one of the given states, and return the pty output seen.
+
+    Raises
+    ------
+    AssertionError
+        When a process is still in another state when the timeout expires.
+    """
+    output = b""
+    deadline = time.monotonic() + timeout
+    while True:
+        output += drain(master)
+        actual = {pid: proc_state(pid) for pid in pids}
+        if all(state in states for state in actual.values()):
+            return output
+        if time.monotonic() > deadline:
+            raise AssertionError(f"Expected states in {states!r}, got {actual}.")
+        time.sleep(0.05)
+
+
+@pytest.fixture
+def stepup_job_on_pty(path_tmp: Path):
+    """Run `stepup build` as the job of a shell stand-in, so that Ctrl-Z is delivered.
+
+    Yields
+    ------
+    process, master, pids
+        The shell stand-in, the pty primary fd, and the pids of the terminal user
+        interface, the director and the long-running step, in that order.
+    """
+    path_plan = path_tmp / "plan.py"
+    path_plan.write_text(PLAN.format(command=LEAF, shell=False))
+    path_plan.chmod(stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
+    master, slave = pty.openpty()
+    process = subprocess.Popen(
+        [sys.executable, "-c", JOB_CONTROL_BOOTSTRAP],
+        cwd=path_tmp,
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        # A live progress display is part of what a suspension has to clean up.
+        env={**os.environ, "TERM": "xterm-256color"},
+        start_new_session=True,
+    )
+    os.close(slave)
+    os.set_blocking(master, False)
+    pids = []
+    try:
+        director_pid = wait_for_director(path_tmp, master)
+        leaf_pid = wait_for_leaf(director_pid, master)
+        # The terminal user interface leads the process group its own children inherit.
+        pids = [os.getpgid(director_pid), director_pid, leaf_pid]
+        yield process, master, pids
+    finally:
+        for pid in [*pids, process.pid]:
+            # SIGKILL also reaches a process left stopped by a failed test.
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(pid, signal.SIGKILL)
+        process.wait()
+        os.close(master)
+
+
+def test_ctrl_z_suspends_running_steps(stepup_job_on_pty) -> None:
+    """Ctrl-Z stops the steps too, which the terminal cannot do: they run in their own session."""
+    _, master, pids = stepup_job_on_pty
+    leaf_pid = pids[-1]
+    os.write(master, SUSPEND_CHAR)
+    wait_states(pids, "T", master, 10.0)
+    # Nothing may wake up on its own while the build is suspended.
+    time.sleep(1.0)
+    assert proc_state(leaf_pid) == "T"
+
+    os.killpg(pids[0], signal.SIGCONT)  # what `fg` does
+    wait_states(pids, "SR", master, 10.0)
+
+
+def test_ctrl_z_restores_the_terminal(stepup_job_on_pty) -> None:
+    """The shell gets a canonical terminal back, and StepUp takes raw mode over again.
+
+    The primary and secondary side of a pty share one line discipline,
+    so the test can read the attributes StepUp set from its own end.
+    """
+    _, master, pids = stepup_job_on_pty
+    assert not termios.tcgetattr(master)[3] & termios.ICANON
+    assert not termios.tcgetattr(master)[3] & termios.ECHO
+
+    os.write(master, SUSPEND_CHAR)
+    wait_states(pids, "T", master, 10.0)
+    suspended = termios.tcgetattr(master)[3]
+    assert suspended & termios.ICANON
+    assert suspended & termios.ECHO
+
+    os.killpg(pids[0], signal.SIGCONT)
+    wait_states(pids, "SR", master, 10.0)
+    # The keyboard interface is dead without this, with every key echoed and then swallowed
+    # by the line buffer of the terminal.
+    resumed = termios.tcgetattr(master)[3]
+    assert not resumed & termios.ICANON
+    assert not resumed & termios.ECHO
+
+
+def test_ctrl_z_shows_the_cursor(stepup_job_on_pty) -> None:
+    """The live display hides the cursor, so it must be stopped before the shell prompt returns."""
+    _, master, pids = stepup_job_on_pty
+    drain(master)
+    os.write(master, SUSPEND_CHAR)
+    output = wait_states(pids, "T", master, 10.0)
+    output += drain(master)
+    assert b"\x1b[?25h" in output, "The cursor was left invisible while suspended."
+
+
+def test_ctrl_z_then_ctrl_c_still_aborts(stepup_job_on_pty) -> None:
+    """A suspension is not an interruption: the build must survive it and still abort later."""
+    process, master, pids = stepup_job_on_pty
+    os.write(master, SUSPEND_CHAR)
+    wait_states(pids, "T", master, 10.0)
+    os.killpg(pids[0], signal.SIGCONT)
+    wait_states(pids, "SR", master, 10.0)
+
+    os.write(master, INTERRUPT_CHAR)
+    returncode = wait_exit(process, master, TIMEOUT)
+    assert returncode & ReturnCode.INTERRUPTED.value
+    assert wait_gone(pids[-1], 5.0), "The running step outlived the build."

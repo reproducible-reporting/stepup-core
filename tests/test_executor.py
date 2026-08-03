@@ -9,15 +9,16 @@ import threading
 from types import SimpleNamespace
 
 import pytest
+from path import Path
 
-from stepup.core.enums import HashUpdateCause, StepState
+from stepup.core.enums import HashUpdateCause, Need, StepState
 from stepup.core.exceptions import HashCancelledError
 from stepup.core.executor import Executor, NoOverwriteDict, Run
 from stepup.core.file import File, FileState
 from stepup.core.hash import FileHash, StepHash, compute_inp_hashes
 from stepup.core.hash_queue import HashJob
 from stepup.core.outcome import ChildOutcome, ResourceUsage
-from stepup.core.run import ThreadWorker
+from stepup.core.run import ThreadWorker, Worker
 from stepup.core.step import Step
 from stepup.core.workflow import Workflow
 
@@ -197,6 +198,110 @@ async def testrun_work_thread_exception():
     assert "boom" in run.outcome.stderr
     assert run.worker is None
     assert 13 not in executor.running
+
+
+class _FakeProcessWorker(Worker):
+    """A worker that records the signals it is sent instead of touching a process."""
+
+    def __init__(self, job_i: int):
+        super().__init__(job_i=job_i)
+        self.calls = []
+
+    def _describe(self) -> str:
+        return "fake process"
+
+    def _signal(self, sig: int) -> None:
+        self.calls.append(sig)
+
+
+def test_suspend_resume_signal_process_workers():
+    """Steps are stopped with `SIGSTOP` and continued with `SIGCONT`."""
+    executor = _make_executor()
+    run = _make_worker_run(21)
+    worker = _FakeProcessWorker(21)
+    run.worker = worker
+    executor.running[21] = run
+
+    executor.suspend()
+    assert worker.calls == [signal.SIGSTOP]
+    nrun, seconds = executor.resume()
+    assert worker.calls == [signal.SIGSTOP, signal.SIGCONT]
+    assert nrun == 1
+    assert seconds >= 0.0
+    assert executor.suspended_total == seconds
+
+
+async def test_suspend_leaves_hash_threads_alone():
+    """A `ThreadWorker` runs inside the director, which is suspended as a whole."""
+    executor = _make_executor()
+    run = _make_worker_run(22)
+    run.worker = ThreadWorker(job_i=22, work=lambda cancel_event: None)
+    executor.running[22] = run
+
+    executor.suspend()
+    executor.resume()
+
+    # Unlike interrupt(), suspension must not cancel the computation.
+    assert not run.worker._cancel_event.is_set()
+
+
+def test_suspend_is_idempotent_and_resume_needs_a_suspend():
+    """A second suspension does not restart the clock, and a stray resume does nothing."""
+    executor = _make_executor()
+    assert executor.resume() == (0, 0.0)
+
+    executor.suspend()
+    first_start = executor._suspend_start
+    executor.suspend()
+    assert executor._suspend_start == first_start
+
+    executor.resume()
+    assert executor._suspend_start is None
+    total = executor.suspended_total
+    assert executor.resume() == (0, 0.0)
+    assert executor.suspended_total == total
+
+
+def _make_command_run(job_i: int) -> Run:
+    """Build a `Run` whose step answers everything `_run_command` asks of it."""
+    step = SimpleNamespace(
+        i=1,
+        label="./step.sh",
+        command_workdir=("./step.sh", Path(".")),
+        get_subshell=lambda: False,
+        get_need=lambda: Need.DEFAULT,
+        get_env_overrides=dict,
+    )
+    return Run(step, job_i=job_i)
+
+
+@pytest.mark.parametrize(
+    ("wtime", "expected"), [(10.0, 5.0), (1.0, 0.0)], ids=["discounted", "clamped"]
+)
+async def test_run_command_discounts_suspended_time(
+    monkeypatch: pytest.MonkeyPatch, wtime: float, expected: float
+):
+    """Time spent suspended is not recorded as time the step spent working.
+
+    The second case checks the clamp at zero, which the `CHECK(wtime >= 0)` constraint
+    on the `step_outcome` table depends on.
+    """
+    executor = _make_executor(reporter=_FakeReporter(), db=_NullDB())
+    run = _make_command_run(23)
+
+    async def fake_launch_command(*args, **kwargs):
+        executor.suspend()
+        # Pretend the suspension lasted 5 seconds instead of waiting for it.
+        executor._suspend_start -= 5.0
+        executor.resume()
+        return ChildOutcome(0, "", "", ResourceUsage(wtime=wtime))
+
+    monkeypatch.setattr("stepup.core.executor.launch_command", fake_launch_command)
+    await executor._run_command(run)
+
+    assert executor.suspended_total >= 5.0
+    assert run.outcome.usage.wtime == pytest.approx(max(0.0, wtime - executor.suspended_total))
+    assert run.outcome.usage.wtime == pytest.approx(expected, abs=0.1)
 
 
 def test_no_overwrite_dict_allows_insertion_of_new_keys():

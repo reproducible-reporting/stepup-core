@@ -16,6 +16,7 @@ import functools
 import multiprocessing
 import os
 import threading
+import time
 from collections.abc import Callable, Mapping
 from contextlib import contextmanager
 from typing import Any
@@ -149,6 +150,16 @@ class Executor:
     """In-flight step-counts flush tasks, kept alive here so they cannot be garbage-collected
     mid-send (same rationale as `ReporterClient._flush_tasks`)."""
 
+    suspended_total: float = attrs.field(init=False, default=0.0)
+    """Total wall time [s] spent suspended since the director started.
+
+    `_run_command` samples this before and after launching a child process, so that time
+    spent suspended is not counted as the step's wall time.
+    """
+
+    _suspend_start: float | None = attrs.field(init=False, default=None)
+    """`time.perf_counter()` when `suspend` stopped the steps, or `None` when not suspended."""
+
     #
     # Cached properties
     #
@@ -185,6 +196,45 @@ class Executor:
         for run in list(self.running.values()):
             if run.worker is not None:
                 run.worker.interrupt(sig)
+
+    def suspend(self) -> None:
+        """Stop the child process of every running step, for the duration of a suspension.
+
+        This is not a variation on `interrupt`: `ThreadWorker.interrupt` cancels its
+        computation instead of signalling a process, which is the opposite of what a
+        suspension needs. Hash threads are left alone here, see `ThreadWorker.suspend`.
+        """
+        if self._suspend_start is not None:
+            return
+        self._suspend_start = time.perf_counter()
+        for run in list(self.running.values()):
+            if run.worker is not None:
+                run.worker.suspend()
+
+    def resume(self) -> tuple[int, float]:
+        """Continue what `suspend` stopped.
+
+        The director's event loop is frozen between `suspend` and `resume`,
+        so `running` holds exactly the same jobs in both.
+
+        Returns
+        -------
+        nrun
+            The number of running jobs that were resumed.
+        seconds
+            The wall time spent suspended.
+        """
+        if self._suspend_start is None:
+            return 0, 0.0
+        seconds = time.perf_counter() - self._suspend_start
+        self._suspend_start = None
+        self.suspended_total += seconds
+        nrun = 0
+        for run in list(self.running.values()):
+            if run.worker is not None:
+                run.worker.resume()
+                nrun += 1
+        return nrun, seconds
 
     #
     # Functions called by jobs, see job.py
@@ -778,10 +828,20 @@ class Executor:
         env["HERE"] = str(Path(workdir).relpath())
         # Note: the variables defined here should be listed in stepup.core.api.getenv
 
+        suspended_before = self.suspended_total
         with self._track_running(run):
             outcome = await launch_command(
                 command, subshell=subshell, env=env, cwd=workdir, mp_ctx=self.mp_ctx, run=run
             )
+        # A suspension stops the child but not the monotonic clock, on either launch path,
+        # so it would otherwise be recorded as time the step spent working.
+        # This assumes a stopped step makes no progress, which holds for work that needs the
+        # CPU. A step waiting on a timer is the exception: the kernel keeps its deadline
+        # running while it is stopped, so part of the discounted time was progress after all.
+        suspended = self.suspended_total - suspended_before
+        if suspended > 0.0:
+            usage = attrs.evolve(outcome.usage, wtime=max(0.0, outcome.usage.wtime - suspended))
+            outcome = attrs.evolve(outcome, usage=usage)
 
         self.step_accumulator.add_usage(outcome.usage)
         run.outcome = outcome

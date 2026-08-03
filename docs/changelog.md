@@ -376,6 +376,15 @@ This is release candidate 10 of the upcoming StepUp Core 4.0 release.
   no longer matches an empty string, just like `*` in that position.
   The trailing separator of a matched directory is not part of the captured substring.
 - Attempts to use files under `.stepup/` in a workflow will now raise an exception.
+- Pressing `Ctrl-Z` now suspends the whole build.
+  Steps run in a session of their own, so the terminal never reached them and they kept
+  running (and writing files) while StepUp itself was stopped.
+  The director now stops them with `SIGSTOP` and continues them on resume,
+  and the time spent suspended is no longer recorded as time a step spent working.
+- Resuming StepUp with `fg` no longer leaves a broken terminal:
+  the cursor stays visible while the build is suspended,
+  and keyboard interaction keeps working after the build is resumed.
+  Previously every keystroke was echoed and then swallowed by the terminal.
 
 ## [3.2.3][] - 2026-04-16 {: #v3.2.3 }
 

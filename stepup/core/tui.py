@@ -19,8 +19,10 @@ import sys
 import tempfile
 import termios
 import threading
-from collections.abc import AsyncGenerator, Callable, Generator
+import time
+from collections.abc import AsyncGenerator, Callable
 from decimal import Decimal
+from typing import Self
 
 import attrs
 from path import Path
@@ -664,6 +666,7 @@ async def _supervise_director(
         as translated by `TerminalSignalHandler.translate_wait_status`.
     """
     task_keyboard = None
+    raw_terminal = None
     try:
         with open(DIRECTOR_LOG, "w") as log_file:
             # The child gets a duplicate of the log file descriptor, so this handle can be
@@ -679,6 +682,7 @@ async def _supervise_director(
         # The director aborts the build itself, so this waits for it rather than
         # exiting straight away, which would cut its shutdown short.
         signal_handler = TerminalSignalHandler(reporter_handler, process_director)
+        suspend_handler = SuspendHandler(reporter_handler, process_director)
         loop = asyncio.get_running_loop()
         # Wait for the director in a task, so that the interactive setup below can
         # race the appearance of its socket against its exit.
@@ -686,10 +690,17 @@ async def _supervise_director(
         try:
             for sig in (signal.SIGINT, signal.SIGTERM):
                 loop.add_signal_handler(sig, signal_handler.handle, sig)
+            loop.add_signal_handler(signal.SIGTSTP, suspend_handler.handle)
             # Instantiate keyboard interaction or work non-interactively
             if sys.stdin.isatty() and await _wait_for_director_socket(
                 director_socket_path, stop_event, task_director
             ):
+                # Raw mode is entered here, not inside the keyboard task, so that it is
+                # already in place when that task starts and so that the suspend handler
+                # has a terminal to hand back to the shell.
+                raw_terminal = RawTerminal(sys.stdin.fileno())
+                raw_terminal.enter()
+                suspend_handler.raw_terminal = raw_terminal
                 task_keyboard = asyncio.create_task(
                     keyboard(director_socket_path, reporter_handler, stop_event),
                     name="keyboard",
@@ -697,7 +708,7 @@ async def _supervise_director(
             wait_status = await task_director
         finally:
             signal_handler.cancel_kill()
-            for sig in (signal.SIGINT, signal.SIGTERM):
+            for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGTSTP):
                 loop.remove_signal_handler(sig)
             if not task_director.done():
                 # An exception escaped on the way to (or during) the await above.
@@ -715,13 +726,16 @@ async def _supervise_director(
         return signal_handler.translate_wait_status(wait_status)
     finally:
         if task_keyboard is not None:
-            # The keyboard task reads keystrokes until stop_event is set,
-            # which also lets it restore the terminal settings on its way out.
+            # The keyboard task reads keystrokes until stop_event is set.
             # The event is set here (idempotently, the caller sets it too) because the
             # await below would hang forever when an exception escapes the try block
             # before the reporter shutdown that normally sets it.
             stop_event.set()
             await task_keyboard
+        if raw_terminal is not None:
+            # After the keyboard task, so that the reader thread cannot consume a keystroke
+            # in raw mode after the terminal has been handed back to the shell.
+            raw_terminal.leave()
 
 
 async def _wait_for_director_socket(
@@ -907,14 +921,72 @@ class TerminalSignalHandler:
             self.process_director.kill()
 
 
+@attrs.define
+class SuspendHandler:
+    """Handle a `SIGTSTP` (Ctrl-Z) received while the director subprocess is running.
+
+    A suspension is not an interruption: unlike `TerminalSignalHandler`, this leaves the
+    return code alone and never gives up on the director.
+    The director stops its own steps and itself (see `DirectorHandler.suspend`), so the work
+    here is to hand the terminal back to the shell in a usable state and to take it back
+    afterwards.
+    """
+
+    reporter_handler: ReporterHandler = attrs.field()
+    """The reporter whose live display must be stopped for the duration of the suspension."""
+
+    process_director: asyncio.subprocess.Process = attrs.field()
+    """The director subprocess, to forward signals to."""
+
+    raw_terminal: "RawTerminal | None" = attrs.field(default=None)
+    """The terminal to hand back and take over again, or `None` when not interactive."""
+
+    def handle(self) -> None:
+        """Suspend this process, and resume when it is continued.
+
+        The default disposition is restored to actually stop, since a handled `SIGTSTP` does
+        not stop anything. Execution continues after `os.kill` once the shell continues the
+        process group, which is where the terminal is taken over again.
+        """
+        self.reporter_handler.suspend_display()
+        if self.raw_terminal is not None:
+            self.raw_terminal.suspend()
+        forwarded = not _terminal_broadcasts(signal.SIGTSTP, self.process_director.pid)
+        if forwarded:
+            # Only this process received the signal, so the director must be told separately.
+            with contextlib.suppress(ProcessLookupError):
+                self.process_director.send_signal(signal.SIGTSTP)
+        loop = asyncio.get_running_loop()
+        loop.remove_signal_handler(signal.SIGTSTP)
+        wtime_start = time.perf_counter()
+        try:
+            os.kill(os.getpid(), signal.SIGTSTP)
+        finally:
+            suspended = time.perf_counter() - wtime_start
+            loop.add_signal_handler(signal.SIGTSTP, self.handle)
+            if forwarded:
+                # The shell continues the process group of its job, which does not include a
+                # director that did not receive the suspension from the terminal either.
+                with contextlib.suppress(ProcessLookupError):
+                    self.process_director.send_signal(signal.SIGCONT)
+            if self.raw_terminal is not None:
+                self.raw_terminal.resume()
+            self.reporter_handler.resume_display(suspended)
+
+
+_TERMINAL_SIGNALS = frozenset({signal.SIGINT, signal.SIGTSTP})
+"""The signals StepUp handles that the terminal driver can generate itself."""
+
+
 def _terminal_broadcasts(sig: signal.Signals, pid: int) -> bool:
     """Whether the terminal driver already delivered `sig` to `pid` as well as to this process.
 
-    Only `SIGINT` (Ctrl-C) is generated by the terminal driver, which sends it to every
-    process in the foreground process group at once. That is the case exactly when this
-    process and `pid` are both in the process group that owns the controlling terminal.
-    A `SIGINT` sent explicitly (`kill -INT`) to a backgrounded StepUp does not qualify,
-    and neither does any `SIGTERM`.
+    Of the signals StepUp handles, only `SIGINT` (Ctrl-C) and `SIGTSTP` (Ctrl-Z) are
+    generated by the terminal driver, which sends them to every process in the foreground
+    process group at once. That is the case exactly when this process and `pid` are both in
+    the process group that owns the controlling terminal.
+    A `SIGINT` or `SIGTSTP` sent explicitly (`kill -INT`, `kill -TSTP`) to a backgrounded
+    StepUp does not qualify, and neither does any `SIGTERM`.
 
     Parameters
     ----------
@@ -928,7 +1000,7 @@ def _terminal_broadcasts(sig: signal.Signals, pid: int) -> bool:
     broadcast
         True if `pid` received `sig` from the terminal driver as well.
     """
-    if sig != signal.SIGINT:
+    if sig not in _TERMINAL_SIGNALS:
         return False
     try:
         # Query the controlling terminal itself: stdin may be redirected while the
@@ -1003,27 +1075,72 @@ _KEY_STROKE_HELP = "\n".join(
 )
 
 
-@contextlib.contextmanager
-def _raw_terminal(fd: int) -> Generator[None]:
-    """Disable canonical input and echo on `fd` for the duration of the context.
+@attrs.define
+class RawTerminal:
+    """Owner of the terminal attributes of `fd` while keyboard interaction is active.
 
-    Parameters
-    ----------
-    fd
-        The file descriptor of the terminal to reconfigure.
+    Single keystrokes can only be read when canonical input and echo are disabled,
+    which is a process-wide change to a terminal shared with the shell.
+    This class owns the attributes it found, so that the same state can be handed back on
+    the way out (`leave`) and for the duration of a suspension (`suspend`).
     """
-    old_tcattr = termios.tcgetattr(fd)
-    new_tcattr = termios.tcgetattr(fd)
-    new_tcattr[3] &= ~(termios.ICANON | termios.ECHO)
-    termios.tcsetattr(fd, termios.TCSAFLUSH, new_tcattr)
-    try:
-        yield
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_tcattr)
+
+    fd: int = attrs.field()
+    """The file descriptor of the terminal to reconfigure."""
+
+    _saved: list | None = attrs.field(init=False, default=None)
+    """The attributes found by `enter`, or `None` when this terminal is not reconfigured."""
+
+    def __enter__(self) -> Self:
+        self.enter()
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb) -> None:
+        self.leave()
+
+    def enter(self) -> None:
+        """Disable canonical input and echo, remembering the attributes found."""
+        self._saved = termios.tcgetattr(self.fd)
+        self._apply_raw()
+
+    def leave(self) -> None:
+        """Restore the attributes found by `enter`, for good."""
+        if self._saved is not None:
+            termios.tcsetattr(self.fd, termios.TCSADRAIN, self._saved)
+            self._saved = None
+
+    def suspend(self) -> None:
+        """Restore the attributes found by `enter`, to be undone by `resume`.
+
+        The shell takes the terminal back while StepUp is suspended,
+        and it must not find it in a mode meant for single keystrokes.
+        """
+        if self._saved is not None:
+            termios.tcsetattr(self.fd, termios.TCSADRAIN, self._saved)
+
+    def resume(self) -> None:
+        """Disable canonical input and echo again, after a `suspend`.
+
+        This is not optional bookkeeping: shells do not reliably restore the attributes of
+        a job they continue, so without this the keyboard interface silently stops working
+        after a Ctrl-Z, with every keystroke echoed and swallowed by the line buffer.
+        """
+        if self._saved is not None:
+            self._apply_raw()
+
+    def _apply_raw(self) -> None:
+        """Clear the `ICANON` and `ECHO` flags on the terminal."""
+        tcattr = termios.tcgetattr(self.fd)
+        tcattr[3] &= ~(termios.ICANON | termios.ECHO)
+        termios.tcsetattr(self.fd, termios.TCSAFLUSH, tcattr)
 
 
 async def _iter_keystrokes(stop_event: asyncio.Event) -> AsyncGenerator[str, None]:
-    """Yield keystrokes from stdin, one at a time, in raw mode, until `stop_event` is set.
+    """Yield keystrokes from stdin, one at a time, until `stop_event` is set.
+
+    The terminal must already be in raw mode, which is `_supervise_director`'s job:
+    it owns the `RawTerminal` for as long as this generator's task lives, and the
+    suspend handler needs to reach the same object.
 
     Reads happen in a background thread because putting stdin in non-blocking mode
     (e.g. via `asyncio.StreamReader`) also affects stdout and stderr when they share the
@@ -1035,22 +1152,20 @@ async def _iter_keystrokes(stop_event: asyncio.Event) -> AsyncGenerator[str, Non
     another thread. It is daemonic and the process is about to exit anyway, so it consumes
     at most one keystroke typed between the end of the build and process exit.
     """
-    fd = sys.stdin.fileno()
-    with _raw_terminal(fd):
-        loop = asyncio.get_running_loop()
-        queue = asyncio.Queue()
+    loop = asyncio.get_running_loop()
+    queue = asyncio.Queue()
 
-        def _stdin_loop():
-            while True:
-                ch = sys.stdin.read(1)
-                # read() keeps returning an empty string when stdin is closed, without blocking.
-                if ch == "":
-                    break
-                loop.call_soon_threadsafe(queue.put_nowait, ch)
+    def _stdin_loop():
+        while True:
+            ch = sys.stdin.read(1)
+            # read() keeps returning an empty string when stdin is closed, without blocking.
+            if ch == "":
+                break
+            loop.call_soon_threadsafe(queue.put_nowait, ch)
 
-        threading.Thread(target=_stdin_loop, daemon=True).start()
-        async for ch in stoppable_iterator(queue.get, stop_event):
-            yield ch
+    threading.Thread(target=_stdin_loop, daemon=True).start()
+    async for ch in stoppable_iterator(queue.get, stop_event):
+        yield ch
 
 
 async def keyboard(

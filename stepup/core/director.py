@@ -687,6 +687,8 @@ async def _run_tasks(
     if handle_signals:
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, handler.interrupt, sig)
+        # Stop the running steps along with this process, which the terminal cannot do itself.
+        loop.add_signal_handler(signal.SIGTSTP, handler.suspend)
     try:
         await asyncio.gather(*coroutines)
     finally:
@@ -700,7 +702,7 @@ async def _run_tasks(
         director_socket_path.remove_p()
         await handler.cancel_interrupt()
         if handle_signals:
-            for sig in (signal.SIGINT, signal.SIGTERM):
+            for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGTSTP):
                 loop.remove_signal_handler(sig)
 
 
@@ -770,6 +772,10 @@ class DirectorHandler:
 
     _interrupt_escalate: asyncio.Event = attrs.field(init=False, factory=asyncio.Event)
     """Set by a second terminal signal, to cut the grace period of the first one short."""
+
+    _resume_tasks: set[asyncio.Task] = attrs.field(init=False, factory=set)
+    """In-flight resume reports of `suspend`, kept alive here so they cannot be
+    garbage-collected mid-send (same rationale as `Executor._counts_flush_tasks`)."""
 
     #
     # Building the workflow
@@ -1121,6 +1127,49 @@ class DirectorHandler:
         if len(self.builder.running_tasks) > 0:
             await self.reporter("DIRECTOR", "Killing unresponsive steps (SIGKILL).")
             self.executor.interrupt(signal.SIGKILL)
+
+    def suspend(self) -> None:
+        """Suspend the whole build after a `SIGTSTP`, and resume it when continued.
+
+        Steps run in a session of their own, so the terminal never stops them:
+        just like `interrupt`, this is the only thing that reaches them.
+        Stopping this process is done by re-raising `SIGTSTP` with the default disposition,
+        the canonical way for a program to honour a suspension, rather than by `SIGSTOP`:
+        the shell tracks the terminal user interface as a job, and `fg` continues the whole
+        process group, this process included.
+
+        The steps are resumed on the line after the self-stop instead of from a `SIGCONT`
+        handler, which keeps both halves in one readable block. It also degrades gracefully
+        when this process group is orphaned (`setsid stepup build`): the kernel then
+        discards the re-raised `SIGTSTP`, `os.kill` returns straight away and the steps are
+        resumed immediately, matching the terminal user interface, which is not stopped
+        in that situation either.
+
+        Nothing is reported here: the reporter socket is served by the terminal user
+        interface, which is stopping at this very moment, so awaiting it would block this
+        process on its way down. The user-visible message is sent on resume instead.
+
+        This is a plain callback (not a coroutine), as required by `add_signal_handler`.
+        Blocking the event loop is the point: the process must not do anything else while
+        it is suspended.
+        """
+        loop = asyncio.get_running_loop()
+        self.executor.suspend()
+        logger.info("Suspending the build (SIGTSTP).")
+        loop.remove_signal_handler(signal.SIGTSTP)
+        try:
+            os.kill(os.getpid(), signal.SIGTSTP)
+        finally:
+            loop.add_signal_handler(signal.SIGTSTP, self.suspend)
+            nrun, seconds = self.executor.resume()
+            logger.info("Resumed %d job(s) after %.1f s.", nrun, seconds)
+            if nrun > 0 and not self.stop_event.is_set():
+                task = asyncio.create_task(
+                    self.reporter("DIRECTOR", f"Resumed {nrun} step(s) after {seconds:.1f} s."),
+                    name="resume-report",
+                )
+                self._resume_tasks.add(task)
+                task.add_done_callback(self._resume_tasks.discard)
 
     async def cancel_interrupt(self) -> None:
         """Cancel the pending grace period of `interrupt`, e.g. when the build ended in time."""

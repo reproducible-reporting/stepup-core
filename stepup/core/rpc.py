@@ -531,7 +531,7 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
             The timeout for the remote call in seconds.
             This keyword argument is not passed to the remote procedure.
             When None (the default), the timeout is taken from the environment variable
-            `STEPUP_SYNC_RPC_TIMEOUT` or set to 300 if the variable is not defined.
+            `STEPUP_SYNC_RPC_TIMEOUT` or set to 600 if the variable is not defined.
             A negative or zero value means that the client will wait indefinitely for
             a response to the remote procedure call.
             A `TimeoutError` will be raised when the wait time for a response from the RPC
@@ -547,7 +547,7 @@ class SocketSyncRPCClient(BaseSyncRPCClient):
         if name.startswith("_"):
             raise ValueError("Methods starting with underscores are not allowed.")
         if _rpc_timeout is None:
-            _rpc_timeout = float(os.environ.get("STEPUP_SYNC_RPC_TIMEOUT", "300"))
+            _rpc_timeout = float(os.environ.get("STEPUP_SYNC_RPC_TIMEOUT", "600"))
 
         request = pickle.dumps([name, args, kwargs], protocol=pickle.HIGHEST_PROTOCOL)
         self.counter += 1

@@ -230,6 +230,18 @@ class StepUpProgressBar(ProgressBar):
         # No need to coalesce here, since this is already called from a coalesced `_flush_jobs`.
         self.do_refresh()
 
+    def shift_starts(self, seconds: float) -> None:
+        """Move the start of every running job forward, to discount a suspension.
+
+        The elapsed time shown per job is a wall-clock difference, which keeps growing
+        while the steps are stopped. Shifting their starts keeps the display consistent
+        with the wall time recorded for the steps, see `Executor.suspended_total`.
+        """
+        self._running = {
+            job_i: (start + seconds, letter, description)
+            for job_i, (start, letter, description) in self._running.items()
+        }
+
     def get_renderables(self) -> Iterable[RenderableType]:
         if len(self._running) > 0:
             running = sorted(self._running.values())[: self.console.height // 2 - 1]
@@ -401,6 +413,29 @@ class ReporterHandler:
         paths_log = [path_log for path_log in [FAIL_LOG, WARNING_LOG] if path_log.exists()]
         if len(paths_log) > 0:
             self.report("WARNING", "Check logs: {}".format(" ".join(paths_log)), [])
+
+    def suspend_display(self) -> None:
+        """Stop the live display, because this process is about to be suspended.
+
+        Stopping it erases the progress bar and makes the cursor visible again,
+        so the shell prompt does not appear in a terminal StepUp has left half-decorated.
+        """
+        if self.progress_bar is not None:
+            self.progress_bar.stop()
+
+    def resume_display(self, suspended: float = 0.0) -> None:
+        """Restart the live display stopped by `suspend_display` and repaint it.
+
+        Parameters
+        ----------
+        suspended
+            The wall time spent suspended, which the running steps did not spend working
+            and which is therefore taken off their elapsed times.
+        """
+        if self.progress_bar is not None and not self.stop_event.is_set():
+            self.progress_bar.shift_starts(suspended)
+            self.progress_bar.start()
+            self.progress_bar.do_refresh()
 
     @allow_rpc
     def shutdown(self):

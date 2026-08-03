@@ -77,6 +77,17 @@ The flip side is that the terminal no longer signals steps directly:
 a Ctrl-C reaches only the TUI and the director, and the director is the only thing that stops
 running steps (`DirectorHandler.interrupt`).
 
+The same holds for a Ctrl-Z, with one extra twist.
+`DirectorHandler.suspend` stops the steps before stopping itself
+(`Worker.suspend` / `Executor.suspend`), and continues them after being continued.
+It must use **`SIGSTOP`, not `SIGTSTP`**: a step's process group is orphaned by construction,
+since its leader's parent (the director) lives in another session,
+and the kernel discards `SIGTSTP` for an orphaned process group.
+The director and the TUI stop *themselves* by re-raising `SIGTSTP` with the default
+disposition, which keeps them a well-behaved job of the shell.
+Anything that measures wall time across a suspension must discount it,
+see `Executor.suspended_total`.
+
 ## Workflow Graph (`trellis.py`, `workflow.py`)
 
 The core data structure is a combined **provenance** and **dependency** graph stored in SQLite.

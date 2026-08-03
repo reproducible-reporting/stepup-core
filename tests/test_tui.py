@@ -10,8 +10,9 @@ import pty
 import signal
 import sys
 import termios
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator, Callable, Generator
 from decimal import Decimal
+from types import SimpleNamespace
 
 import attrs
 import pytest
@@ -27,6 +28,8 @@ from stepup.core.rpc import allow_rpc, serve_socket_rpc
 from stepup.core.tui import (
     _KEY_ACTIONS,
     _KEY_STROKE_HELP,
+    RawTerminal,
+    SuspendHandler,
     TerminalSignalHandler,
     _add_build_parser,
     _async_build,
@@ -36,7 +39,6 @@ from stepup.core.tui import (
     _deprecated_boot_tool,
     _iter_keystrokes,
     _normalize_targets,
-    _raw_terminal,
     _report_director_log_problems,
     _reset_stepup_dir,
     _terminal_broadcasts,
@@ -585,6 +587,7 @@ class FakeReporterHandler:
     reports: list[tuple[str, str]] = attrs.field(init=False, factory=list)
     pages: list[tuple[str, str]] = attrs.field(init=False, factory=list)
     shutdown_calls: int = attrs.field(init=False, default=0)
+    display_calls: list[str] = attrs.field(init=False, factory=list)
 
     def report(self, action: str, description: str, pages: list) -> None:
         self.reports.append((action, description))
@@ -592,6 +595,12 @@ class FakeReporterHandler:
 
     def shutdown(self) -> None:
         self.shutdown_calls += 1
+
+    def suspend_display(self) -> None:
+        self.display_calls.append("suspend")
+
+    def resume_display(self, suspended: float = 0.0) -> None:
+        self.display_calls.append("resume")
 
 
 def _log_record(level: str, message: str) -> str:
@@ -794,9 +803,119 @@ def test_signal_handler_sig_unset_without_signal(
     assert signal_handler.sig is None
 
 
+def _run_suspend_handler(
+    suspend_handler: SuspendHandler,
+    monkeypatch: pytest.MonkeyPatch,
+    on_stop: Callable[[], None] | None = None,
+) -> list[tuple[int, int]]:
+    """Run `SuspendHandler.handle` with the self-stop replaced by a recording stub.
+
+    Really stopping is not an option here: nothing would continue the pytest process again.
+    The signal handler installed on the way out is removed, so it cannot outlive the loop
+    it was registered with.
+
+    Parameters
+    ----------
+    suspend_handler
+        The handler under test.
+    monkeypatch
+        The fixture used to replace `os.kill`.
+    on_stop
+        Called where the process would have stopped, to observe the suspended state.
+
+    Returns
+    -------
+    stops
+        The `(pid, signal)` pairs the handler tried to stop itself with.
+    """
+    stops = []
+
+    def fake_kill(pid: int, sig: int) -> None:
+        stops.append((pid, sig))
+        if on_stop is not None:
+            on_stop()
+
+    async def scenario() -> None:
+        monkeypatch.setattr(os, "kill", fake_kill)
+        try:
+            suspend_handler.handle()
+        finally:
+            asyncio.get_running_loop().remove_signal_handler(signal.SIGTSTP)
+
+    asyncio.run(asyncio.wait_for(scenario(), timeout=5))
+    return stops
+
+
+def test_suspend_handler_stops_this_process(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ctrl-Z reaches the director through the terminal, so forwarding it would duplicate it."""
+    monkeypatch.setattr("stepup.core.tui._terminal_broadcasts", lambda sig, pid: True)
+    suspend_handler = SuspendHandler(FakeReporterHandler(), FakeProcess())
+    stops = _run_suspend_handler(suspend_handler, monkeypatch)
+    assert stops == [(os.getpid(), signal.SIGTSTP)]
+    assert suspend_handler.process_director.signals == []
+    assert suspend_handler.reporter_handler.display_calls == ["suspend", "resume"]
+
+
+def test_suspend_handler_forwards_when_not_broadcast(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A `kill -TSTP` reaches only the TUI, so the director must be stopped and continued too."""
+    monkeypatch.setattr("stepup.core.tui._terminal_broadcasts", lambda sig, pid: False)
+    suspend_handler = SuspendHandler(FakeReporterHandler(), FakeProcess())
+    _run_suspend_handler(suspend_handler, monkeypatch)
+    assert suspend_handler.process_director.signals == [signal.SIGTSTP, signal.SIGCONT]
+
+
+def test_suspend_handler_hands_the_terminal_over_and_back(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The shell gets a canonical terminal, and raw mode is taken over again on resume."""
+    monkeypatch.setattr("stepup.core.tui._terminal_broadcasts", lambda sig, pid: True)
+    primary_fd, secondary_fd = pty.openpty()
+    try:
+        before = termios.tcgetattr(secondary_fd)
+        raw_terminal = RawTerminal(secondary_fd)
+        raw_terminal.enter()
+        suspend_handler = SuspendHandler(FakeReporterHandler(), FakeProcess(), raw_terminal)
+
+        while_stopped = []
+        _run_suspend_handler(
+            suspend_handler,
+            monkeypatch,
+            on_stop=lambda: while_stopped.append(termios.tcgetattr(secondary_fd)),
+        )
+
+        assert while_stopped == [before]
+        after = termios.tcgetattr(secondary_fd)
+        assert not after[3] & termios.ICANON
+        assert not after[3] & termios.ECHO
+    finally:
+        os.close(primary_fd)
+        os.close(secondary_fd)
+
+
+def test_suspend_handler_without_terminal(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A non-interactive run has no terminal to hand over, but must still suspend."""
+    monkeypatch.setattr("stepup.core.tui._terminal_broadcasts", lambda sig, pid: True)
+    suspend_handler = SuspendHandler(FakeReporterHandler(), FakeProcess())
+    assert suspend_handler.raw_terminal is None
+    stops = _run_suspend_handler(suspend_handler, monkeypatch)
+    assert stops == [(os.getpid(), signal.SIGTSTP)]
+
+
 def test_terminal_broadcasts_never_for_sigterm() -> None:
     """SIGTERM is never generated by the terminal driver, whatever the process group is."""
     assert not _terminal_broadcasts(signal.SIGTERM, os.getpid())
+
+
+def test_terminal_broadcasts_for_sigtstp_in_foreground(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ctrl-Z is generated by the terminal driver for the whole foreground process group."""
+
+    @contextlib.contextmanager
+    def fake_tty(path: str):
+        assert path == "/dev/tty"
+        yield SimpleNamespace(fileno=lambda: 99)
+
+    monkeypatch.setattr("builtins.open", fake_tty)
+    monkeypatch.setattr(os, "tcgetpgrp", lambda fd: 4321)
+    monkeypatch.setattr(os, "getpgid", lambda pid: 4321)
+    assert _terminal_broadcasts(signal.SIGTSTP, os.getpid())
 
 
 def test_terminal_broadcasts_without_controlling_terminal(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1296,10 +1415,27 @@ def test_async_build_stops_reporter_on_spawn_failure(
     assert fake_reporter_handler.shutdown_calls >= 1
 
 
+@pytest.fixture
+def tty_stdin(monkeypatch: pytest.MonkeyPatch) -> Generator[int]:
+    """Replace `sys.stdin` with a real pseudo terminal, and yield the primary fd.
+
+    A plain `isatty` patch is not enough for an interactive `_supervise_director`:
+    it also reconfigures the terminal, which needs a real `fileno()`.
+    """
+    primary_fd, secondary_fd = pty.openpty()
+    stdin = os.fdopen(secondary_fd, "r")
+    monkeypatch.setattr(sys, "stdin", stdin)
+    yield primary_fd
+    stdin.close()
+    os.close(primary_fd)
+
+
 def _patch_interactive_director(
     monkeypatch: pytest.MonkeyPatch, *, returncode: int, create_socket: bool
 ) -> tuple[FakeReporterHandler, list[Path]]:
     """Set up `_async_build` for an interactive run against a fake director.
+
+    The caller must also request the `tty_stdin` fixture, which supplies the terminal.
 
     Parameters
     ----------
@@ -1318,7 +1454,6 @@ def _patch_interactive_director(
     """
     fake_reporter_handler = FakeReporterHandler()
     monkeypatch.setattr("stepup.core.tui.ReporterHandler", lambda *a, **kw: fake_reporter_handler)
-    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
 
     async def fake_create_subprocess_exec(*argv, **kwargs):
         if create_socket:
@@ -1339,7 +1474,7 @@ def _patch_interactive_director(
 
 
 def test_async_build_director_exits_before_socket(
-    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+    path_tmp: Path, monkeypatch: pytest.MonkeyPatch, tty_stdin: int
 ) -> None:
     """A director exiting before creating its socket must not hang the TUI.
 
@@ -1363,7 +1498,7 @@ def test_async_build_director_exits_before_socket(
 
 
 def test_async_build_starts_keyboard_when_socket_appears(
-    path_tmp: Path, monkeypatch: pytest.MonkeyPatch
+    path_tmp: Path, monkeypatch: pytest.MonkeyPatch, tty_stdin: int
 ) -> None:
     """On a terminal, the keyboard task is started once the director socket exists."""
     (path_tmp / "plan.py").touch()
@@ -1377,11 +1512,11 @@ def test_async_build_starts_keyboard_when_socket_appears(
 
 
 def test_raw_terminal_restores_attributes() -> None:
-    """`_raw_terminal` clears `ICANON`/`ECHO` inside the context and restores them after."""
+    """`RawTerminal` clears `ICANON`/`ECHO` inside the context and restores them after."""
     primary_fd, secondary_fd = pty.openpty()
     try:
         before = termios.tcgetattr(secondary_fd)
-        with _raw_terminal(secondary_fd):
+        with RawTerminal(secondary_fd):
             inside = termios.tcgetattr(secondary_fd)
             assert not inside[3] & termios.ICANON
             assert not inside[3] & termios.ECHO
@@ -1393,11 +1528,11 @@ def test_raw_terminal_restores_attributes() -> None:
 
 
 def test_raw_terminal_restores_on_exception() -> None:
-    """`_raw_terminal` restores the original attributes even when the body raises."""
+    """`RawTerminal` restores the original attributes even when the body raises."""
     primary_fd, secondary_fd = pty.openpty()
     try:
         before = termios.tcgetattr(secondary_fd)
-        with pytest.raises(ValueError, match="boom"), _raw_terminal(secondary_fd):
+        with pytest.raises(ValueError, match="boom"), RawTerminal(secondary_fd):
             raise ValueError("boom")
         after = termios.tcgetattr(secondary_fd)
         assert after == before
@@ -1406,14 +1541,49 @@ def test_raw_terminal_restores_on_exception() -> None:
         os.close(secondary_fd)
 
 
-def test_iter_keystrokes_yields_from_pty(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`_iter_keystrokes` reads real keystrokes from a pty and restores terminal attrs after.
+def test_raw_terminal_suspend_resume_round_trip() -> None:
+    """`suspend` hands the original attributes back, `resume` takes raw mode over again."""
+    primary_fd, secondary_fd = pty.openpty()
+    try:
+        before = termios.tcgetattr(secondary_fd)
+        raw_terminal = RawTerminal(secondary_fd)
+        raw_terminal.enter()
+        raw_terminal.suspend()
+        assert termios.tcgetattr(secondary_fd) == before
+        raw_terminal.resume()
+        resumed = termios.tcgetattr(secondary_fd)
+        assert not resumed[3] & termios.ICANON
+        assert not resumed[3] & termios.ECHO
+        raw_terminal.leave()
+        assert termios.tcgetattr(secondary_fd) == before
+    finally:
+        os.close(primary_fd)
+        os.close(secondary_fd)
 
-    The keystrokes are written to the master only after `_iter_keystrokes` has had a
-    chance to switch the slave into raw mode: `_raw_terminal` uses `TCSAFLUSH`, which
-    discards unread input still sitting in the line discipline, so bytes written while
-    the pty is still in its default canonical mode would otherwise be silently dropped
-    (canonical mode also withholds them from `read()` until a newline arrives).
+
+def test_raw_terminal_suspend_resume_without_enter() -> None:
+    """A `RawTerminal` that never entered raw mode leaves the terminal alone."""
+    primary_fd, secondary_fd = pty.openpty()
+    try:
+        before = termios.tcgetattr(secondary_fd)
+        raw_terminal = RawTerminal(secondary_fd)
+        raw_terminal.suspend()
+        raw_terminal.resume()
+        raw_terminal.leave()
+        assert termios.tcgetattr(secondary_fd) == before
+    finally:
+        os.close(primary_fd)
+        os.close(secondary_fd)
+
+
+def test_iter_keystrokes_yields_from_pty(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`_iter_keystrokes` reads real keystrokes from a pty put in raw mode by its caller.
+
+    The keystrokes are written to the master only after `RawTerminal` has switched the
+    slave into raw mode: it uses `TCSAFLUSH`, which discards unread input still sitting in
+    the line discipline, so bytes written while the pty is still in its default canonical
+    mode would otherwise be silently dropped (canonical mode also withholds them from
+    `read()` until a newline arrives).
 
     Neither fd is closed at the end: `_iter_keystrokes`' background reader thread stays
     blocked in `sys.stdin.read(1)` after the generator closes (see its own docstring), and
@@ -1440,6 +1610,7 @@ def test_iter_keystrokes_yields_from_pty(monkeypatch: pytest.MonkeyPatch) -> Non
         os.write(primary_fd, b"rq")
         return await task
 
-    chars = asyncio.run(asyncio.wait_for(run(), timeout=5))
+    with RawTerminal(secondary_fd):
+        chars = asyncio.run(asyncio.wait_for(run(), timeout=5))
     assert chars == ["r", "q"]
     assert termios.tcgetattr(secondary_fd) == before

@@ -78,6 +78,24 @@ class Worker:
             )
             self._signal(sig)
 
+    def suspend(self) -> None:
+        """Stop the in-flight work until `resume` is called.
+
+        `SIGSTOP` is used rather than `SIGTSTP` because every step runs in a session of its
+        own, which makes its process group orphaned: its group leader's parent (the director)
+        lives in another session. The kernel discards `SIGTSTP` for an orphaned process group
+        whose members have the default disposition, while `SIGSTOP` always works.
+        """
+        with contextlib.suppress(ProcessLookupError):
+            logger.info("Suspending %s (job %d)", self._describe(), self.job_i)
+            self._signal(signal.SIGSTOP)
+
+    def resume(self) -> None:
+        """Continue the work stopped by `suspend`."""
+        with contextlib.suppress(ProcessLookupError):
+            logger.info("Resuming %s (job %d)", self._describe(), self.job_i)
+            self._signal(signal.SIGCONT)
+
     def _describe(self) -> str:
         """A short human-readable description of the worker, for logging."""
         raise NotImplementedError
@@ -139,6 +157,12 @@ class ThreadWorker(Worker):
     def interrupt(self, sig: int) -> None:
         logger.info("Cancelling background compute thread for job %d", self.job_i)
         self._cancel_event.set()
+
+    def suspend(self) -> None:
+        """Do nothing: this thread runs inside the director, which is suspended as a whole."""
+
+    def resume(self) -> None:
+        """Do nothing, the counterpart of `suspend`."""
 
     def _run(self) -> None:
         try:

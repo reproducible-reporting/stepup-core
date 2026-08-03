@@ -66,6 +66,31 @@ so a single `Ctrl+C` is always enough to get your shell prompt back.
 (Pressing `Ctrl+C` again just skips the waiting.)
 An aborted build sets the `2` bit in the [return code](returncode.md).
 
+## Suspending a Build
+
+Pressing `Ctrl+Z` suspends the build and returns you to the shell prompt,
+and `fg` resumes it where it left off, with keyboard interaction still working.
+
+Running steps are suspended along with StepUp itself,
+so nothing keeps using CPU or writing files while the build is stopped.
+This needs StepUp's cooperation:
+steps run in a session of their own (so that a `Ctrl+C` cannot reach them directly),
+which also means the terminal cannot suspend them.
+The director stops them with `SIGSTOP` and continues them with `SIGCONT`.
+The time a step spends suspended is not counted as time it spent working,
+so the durations reported for steps stay meaningful.
+
+Two caveats:
+
+- Sending a suspended build to the background with `bg` is not supported.
+  StepUp reads the keyboard, and a background process that reads from the terminal
+  is stopped again by the operating system.
+  If you want to run StepUp in the background,
+  do so from the beginning as explained in the next section.
+- A step that calls back into StepUp (with `amend()`, for instance) at the moment of
+  the suspension gives up after `STEPUP_SYNC_RPC_TIMEOUT` seconds (600 by default),
+  so a build left suspended for longer than that may report a failed step.
+
 ## Interacting With a Background StepUp Process
 
 You can run StepUp in the background in several ways:
