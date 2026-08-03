@@ -148,7 +148,22 @@ def test_query_director_log_missing_file(path_tmp: Path):
     path_socket, pid, message = query_director_log(path_tmp / "director.log")
     assert path_socket is None
     assert pid is None
-    assert "not found" in message
+    assert "could not be read" in message
+
+
+def test_query_director_log_unopenable(path_tmp: Path):
+    """A log that exists but cannot be opened must not raise, e.g. when it is a directory.
+
+    This stands in for the race that motivated opening the file without testing first:
+    a director starting up in parallel wipes `.stepup/` and can remove the log
+    in between an existence test and the `open` call.
+    """
+    path_log = path_tmp / "director.log"
+    path_log.makedirs_p()
+    path_socket, pid, message = query_director_log(path_log)
+    assert path_socket is None
+    assert pid is None
+    assert "could not be read" in message
 
 
 def test_query_director_log_live_socket(path_tmp: Path):
@@ -192,6 +207,13 @@ def test_query_director_log_without_socket_line(path_tmp: Path, content: str):
 def test_scan_director_log_missing_file(path_tmp: Path):
     """A build that never started a director leaves no log to complain about."""
     assert scan_director_log(path_tmp / "director.log") == []
+
+
+def test_scan_director_log_unopenable(path_tmp: Path):
+    """A log that exists but cannot be opened yields no findings instead of raising."""
+    path_log = path_tmp / "director.log"
+    path_log.makedirs_p()
+    assert scan_director_log(path_log) == []
 
 
 def test_scan_director_log_clean(path_tmp: Path):

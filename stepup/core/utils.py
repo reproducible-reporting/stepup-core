@@ -330,11 +330,17 @@ def query_director_log(path_director_log: Path) -> tuple[Path | None, int | None
     message
         An explanation of why no existing socket was found, empty when one was.
     """
-    if not os.path.isfile(path_director_log):
-        return None, None, f"File {path_director_log} not found."
-    with open(path_director_log) as fh:
-        line_socket = fh.readline()
-        line_pid = fh.readline()
+    # The log is opened without testing for its existence first:
+    # a director starting up in parallel wipes `.stepup/` before writing its own log,
+    # so a file that exists when tested can be gone by the time it is opened.
+    # Any error is reported as a message, i.e. the caller's retry path,
+    # never as an exception escaping to the client's exit code.
+    try:
+        with open(path_director_log) as fh:
+            line_socket = fh.readline()
+            line_pid = fh.readline()
+    except OSError as exc:
+        return None, None, f"File {path_director_log} could not be read: {exc}"
 
     # A non-empty path is the only degenerate case worth guarding:
     # `async_main` writes each line in one shot (`sys.stderr` is line-buffered), so a short
@@ -403,7 +409,8 @@ def scan_director_log(path_director_log: Path) -> list[str]:
     ----------
     path_director_log
         The path of the director log to read from.
-        A non-existing log yields no findings.
+        A log that cannot be opened (most commonly because it does not exist)
+        yields no findings.
 
     Returns
     -------
@@ -411,15 +418,18 @@ def scan_director_log(path_director_log: Path) -> list[str]:
         One `"{label}: {line}"` string per matching line, in the order of the log.
         Empty when the director log is clean, i.e. the expected outcome of every build.
     """
-    if not os.path.isfile(path_director_log):
-        return []
+    # As in `query_director_log`, the log is opened without testing for its existence first,
+    # because a director starting up in parallel may remove it in between the two calls.
     findings = []
-    with open(path_director_log) as fh:
-        for line in fh:
-            for pattern, label in DIRECTOR_LOG_CHECKS:
-                if pattern.search(line) is not None:
-                    findings.append(f"{label}: {line.strip()}")
-                    break
+    try:
+        with open(path_director_log) as fh:
+            for line in fh:
+                for pattern, label in DIRECTOR_LOG_CHECKS:
+                    if pattern.search(line) is not None:
+                        findings.append(f"{label}: {line.strip()}")
+                        break
+    except OSError:
+        return []
     return findings
 
 
